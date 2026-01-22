@@ -40,16 +40,18 @@ def connect_and_execute_query():
 
 
 def make_mysql_connection_mock():
-    cnx = mock.MagicMock()
-    cnx.database = "test"
-    cnx.host = "localhost"
-    cnx.port = 3306
+    cnx = mock.MagicMock(
+        database="test",
+        host="localhost",
+        port=3306,
+    )
 
     cursor = mock.MagicMock()
-    cursor._cnx = mock.MagicMock()
-    cursor._cnx.host = "localhost"
-    cursor._cnx.port = 3306
-    cursor._cnx.database = "test"
+    cursor._cnx = mock.MagicMock(
+        database="test",
+        host="localhost",
+        port=3306,
+    )
 
     cnx.cursor.return_value = cursor
     return cnx
