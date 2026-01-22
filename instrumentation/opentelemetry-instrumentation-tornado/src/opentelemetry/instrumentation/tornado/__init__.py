@@ -682,7 +682,13 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
     )
     _set_http_scheme(attrs, request.protocol, sem_conv_opt_in_mode)
     _set_http_host_server(attrs, request.host, sem_conv_opt_in_mode)
-    _set_http_target(attrs, request.path, None, None, sem_conv_opt_in_mode)
+    _set_http_target(
+        attrs,
+        request.uri,
+        request.path,
+        request.query or None,
+        sem_conv_opt_in_mode,
+    )
     _set_http_url(attrs, redact_url(request.uri), sem_conv_opt_in_mode)
     user_agent = request.headers.get("user-agent")
     if user_agent:

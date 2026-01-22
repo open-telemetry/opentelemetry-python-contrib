@@ -43,6 +43,7 @@ from opentelemetry.semconv.attributes.http_attributes import (
 from opentelemetry.semconv.attributes.url_attributes import (
     URL_FULL,
     URL_PATH,
+    URL_QUERY,
     URL_SCHEME,
 )
 from opentelemetry.semconv.attributes.user_agent_attributes import (
@@ -418,6 +419,9 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         self.assertIn(HTTP_RESPONSE_STATUS_CODE, server_span.attributes)
         self.assertIn(URL_FULL, server_span.attributes)
         self.assertIn(USER_AGENT_ORIGINAL, server_span.attributes)
+        self.assertIn(URL_PATH, server_span.attributes)
+        # URL_QUERY should not be present for requests without query strings
+        self.assertNotIn(URL_QUERY, server_span.attributes)
         # Verify old semconv attributes are NOT present
         self.assertNotIn(HTTP_METHOD, server_span.attributes)
         self.assertNotIn(HTTP_SCHEME, server_span.attributes)
@@ -472,6 +476,21 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         )
         self.assertTrue(new_duration_found, "New semconv metric not found")
 
+    def test_url_query_attribute_new_semconv(self):
+        """Test that URL_QUERY is set when request has query string."""
+        response = self.fetch("/?foo=bar&baz=qux")
+        self.assertEqual(response.code, 201)
+        spans = self.memory_exporter.get_finished_spans()
+        server_span = self._get_server_span(spans)
+        self.assertIsNotNone(server_span)
+
+        # Verify URL_QUERY is present when there's a query string
+        self.assertIn(URL_QUERY, server_span.attributes)
+        self.assertEqual(server_span.attributes[URL_QUERY], "foo=bar&baz=qux")
+        # Verify URL_PATH is also present
+        self.assertIn(URL_PATH, server_span.attributes)
+        self.assertEqual(server_span.attributes[URL_PATH], "/")
+
 
 class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
     def setUp(self):
@@ -503,6 +522,9 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
         self.assertIn(HTTP_RESPONSE_STATUS_CODE, server_span.attributes)
         self.assertIn(URL_FULL, server_span.attributes)
         self.assertIn(USER_AGENT_ORIGINAL, server_span.attributes)
+        self.assertIn(URL_PATH, server_span.attributes)
+        # URL_QUERY should not be present for requests without query strings
+        self.assertNotIn(URL_QUERY, server_span.attributes)
         # Verify values match between old and new
         self.assertEqual(
             server_span.attributes[HTTP_METHOD],
@@ -575,6 +597,28 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
                         self.assertEqual(metric.unit, "s")
         self.assertTrue(old_duration_found, "Old semconv metric not found")
         self.assertTrue(new_duration_found, "New semconv metric not found")
+
+    def test_url_query_attribute_both_semconv(self):
+        """Test that URL_QUERY is set in dup mode when request has query string."""
+        response = self.fetch("/?test=value&another=param")
+        self.assertEqual(response.code, 201)
+        spans = self.memory_exporter.get_finished_spans()
+        server_span = self._get_server_span(spans)
+        self.assertIsNotNone(server_span)
+
+        # Verify URL_QUERY is present in new semconv
+        self.assertIn(URL_QUERY, server_span.attributes)
+        self.assertEqual(
+            server_span.attributes[URL_QUERY], "test=value&another=param"
+        )
+        # Verify URL_PATH is also present
+        self.assertIn(URL_PATH, server_span.attributes)
+        self.assertEqual(server_span.attributes[URL_PATH], "/")
+        # Verify HTTP_TARGET still contains the full target with query
+        self.assertIn(HTTP_TARGET, server_span.attributes)
+        self.assertEqual(
+            server_span.attributes[HTTP_TARGET], "/?test=value&another=param"
+        )
 
     def test_client_metrics_both_semconv(self):
         response = self.fetch("/")
