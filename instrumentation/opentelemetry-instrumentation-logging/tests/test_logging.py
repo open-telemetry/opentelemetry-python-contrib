@@ -121,6 +121,18 @@ class TestLoggingInstrumentor(TestBase):
                 span_id, trace_id, trace_sampled
             )
 
+    def test_no_trace_context_injection_by_default(self):
+        with self.tracer.start_as_current_span("s1"):
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                self.assertEqual(len(self.caplog.records), 1)
+                record = self.caplog.records[0]
+                self.assertFalse(hasattr(record, "otelServiceName"))
+                self.assertFalse(hasattr(record, "otelSpanID"))
+                self.assertFalse(hasattr(record, "otelTraceID"))
+                self.assertFalse(hasattr(record, "otelTraceSampled"))
+
     def test_trace_context_injection_without_span(self):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(set_logging_format=True)
@@ -184,9 +196,9 @@ class TestLoggingInstrumentor(TestBase):
                 logger.info("hello")
                 self.assertEqual(len(self.caplog.records), 1)
                 record = self.caplog.records[0]
+                self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelSpanID"))
                 self.assertFalse(hasattr(record, "otelTraceID"))
-                self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
                 self.assertEqual(
                     record.custom_user_attribute_from_log_hook, "some-value"
@@ -224,9 +236,9 @@ class TestLoggingInstrumentor(TestBase):
                 logger.info("hello")
                 self.assertEqual(len(self.caplog.records), 1)
                 record = self.caplog.records[0]
+                self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelSpanID"))
                 self.assertFalse(hasattr(record, "otelTraceID"))
-                self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
 
     def test_no_op_tracer_provider(self):
