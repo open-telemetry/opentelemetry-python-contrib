@@ -339,7 +339,7 @@ class EngineTracer:
                         # just to handle type safety
                         statement = str(statement)
 
-                        # sqlcomment is added to executed query and db.statement span attribute
+                        # sqlcomment is added to executed query and db.statement and/or db.query.text span attribute
                         statement = _add_sql_comment(
                             statement, **commenter_data
                         )
@@ -349,7 +349,7 @@ class EngineTracer:
 
                     else:
                         # sqlcomment is only added to executed query
-                        # so db.statement is set before add_sql_comment
+                        # so db.statement and/or db.query.text is set before add_sql_comment
                         self._set_db_client_span_attributes(
                             span, statement, attrs
                         )
