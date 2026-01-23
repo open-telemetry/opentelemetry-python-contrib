@@ -38,7 +38,7 @@
 | [opentelemetry-instrumentation-pymongo](./opentelemetry-instrumentation-pymongo) | pymongo >= 3.1, < 5.0 | No | development
 | [opentelemetry-instrumentation-pymssql](./opentelemetry-instrumentation-pymssql) | pymssql >= 2.1.5, < 3 | No | development
 | [opentelemetry-instrumentation-pymysql](./opentelemetry-instrumentation-pymysql) | PyMySQL < 2 | No | development
-| [opentelemetry-instrumentation-pyramid](./opentelemetry-instrumentation-pyramid) | pyramid >= 1.7 | Yes | development
+| [opentelemetry-instrumentation-pyramid](./opentelemetry-instrumentation-pyramid) | pyramid >= 1.7 | Yes | migration
 | [opentelemetry-instrumentation-redis](./opentelemetry-instrumentation-redis) | redis >= 2.6 | No | development
 | [opentelemetry-instrumentation-remoulade](./opentelemetry-instrumentation-remoulade) | remoulade >= 0.50 | No | development
 | [opentelemetry-instrumentation-requests](./opentelemetry-instrumentation-requests) | requests ~= 2.0 | Yes | migration
@@ -47,7 +47,7 @@
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette >= 0.13 | Yes | development
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No | development
 | [opentelemetry-instrumentation-threading](./opentelemetry-instrumentation-threading) | threading | No | development
-| [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes | development
+| [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes | migration
 | [opentelemetry-instrumentation-tortoiseorm](./opentelemetry-instrumentation-tortoiseorm) | tortoise-orm >= 0.17.0 | No | development
 | [opentelemetry-instrumentation-urllib](./opentelemetry-instrumentation-urllib) | urllib | Yes | migration
 | [opentelemetry-instrumentation-urllib3](./opentelemetry-instrumentation-urllib3) | urllib3 >= 1.0.0, < 3.0.0 | Yes | migration
