@@ -557,8 +557,6 @@ class NonStreamingTestCase(TestCase):
                     event.attributes["extra_attribute_key"]
                     == "extra_attribute_value"
                 )
-            except:
-                raise
             finally:
                 context_api.detach(tok)
 
