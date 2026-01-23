@@ -641,9 +641,10 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         )
         trace_id = format_trace_id(span.get_span_context().trace_id)
         span_id = format_span_id(span.get_span_context().span_id)
+        trace_flags = span.get_span_context().trace_flags
         self.assertEqual(
             response["traceresponse"],
-            f"00-{trace_id}-{span_id}-01",
+            f"00-{trace_id}-{span_id}-{trace_flags:02x}",
         )
         self.memory_exporter.clear()
 

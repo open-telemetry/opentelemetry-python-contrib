@@ -198,9 +198,10 @@ class TestMySQLClientIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -246,9 +247,10 @@ class TestMySQLClientIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -347,9 +349,10 @@ class TestMySQLClientIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -392,9 +395,10 @@ class TestMySQLClientIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -441,9 +445,10 @@ class TestMySQLClientIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
