@@ -529,7 +529,12 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         )
 
         for metrics in resource_metrics:
-            for scope_metrics in metrics.scope_metrics:
+            scope_metrics_list = [
+                sm
+                for sm in metrics.scope_metrics
+                if sm.scope.name == "opentelemetry.instrumentation.urllib3"
+            ]
+            for scope_metrics in scope_metrics_list:
                 self.assertEqual(
                     scope_metrics.scope.schema_url,
                     "https://opentelemetry.io/schemas/1.11.0",
