@@ -128,7 +128,7 @@ def fixture_suppress():
 
 @pytest_asyncio.fixture(name="server_fixture")
 async def fixture_server_fixture(tracer, aiohttp_server, suppress):
-    tracer_provider, memory_exporter = tracer
+    tracer_provider, _ = tracer
 
     AioHttpServerInstrumentor().instrument(tracer_provider=tracer_provider)
 
