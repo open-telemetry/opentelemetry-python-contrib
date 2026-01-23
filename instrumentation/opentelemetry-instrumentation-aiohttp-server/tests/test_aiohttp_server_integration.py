@@ -71,10 +71,6 @@ from opentelemetry.semconv.attributes.url_attributes import (
 from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
-from opentelemetry.test.globals_test import (
-    reset_metrics_globals,
-    reset_trace_globals,
-)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
