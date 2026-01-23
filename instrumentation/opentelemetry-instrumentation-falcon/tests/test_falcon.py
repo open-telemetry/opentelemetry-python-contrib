@@ -500,9 +500,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                     for attr in point.attributes:
                         self.assertIn(
                             attr,
-                            _recommended_metrics_attrs_old[
-                                metric.name
-                            ],
+                            _recommended_metrics_attrs_old[metric.name],
                         )
 
     def test_uninstrument_after_instrument(self):
@@ -536,9 +534,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 if isinstance(point, NumberDataPoint):
                     number_data_point_seen = True
                 for attr in point.attributes:
-                    self.assertIn(
-                        attr, _recommended_attrs[metric.name]
-                            )
+                    self.assertIn(attr, _recommended_attrs[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_falcon_metric_values_new_semconv(self):
@@ -557,9 +553,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     histogram_data_point_seen = True
-                    self.assertAlmostEqual(
-                        duration, point.sum, delta=10
-                    )
+                    self.assertAlmostEqual(duration, point.sum, delta=10)
                     self.assertEqual(
                         point.explicit_bounds,
                         HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -590,13 +584,9 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
             if metric.unit == "ms":
                 self.assertEqual(metric.name, "http.server.duration")
             elif metric.unit == "s":
-                self.assertEqual(
-                    metric.name, "http.server.request.duration"
-                )
+                self.assertEqual(metric.name, "http.server.request.duration")
             else:
-                self.assertEqual(
-                    metric.name, "http.server.active_requests"
-                )
+                self.assertEqual(metric.name, "http.server.active_requests")
             data_points = list(metric.data.data_points)
             self.assertEqual(len(data_points), 1)
             for point in data_points:
@@ -644,9 +634,7 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
                     histogram_data_point_seen = True
-                    self.assertAlmostEqual(
-                        duration, point.sum, delta=10
-                    )
+                    self.assertAlmostEqual(duration, point.sum, delta=10)
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
                     number_data_point_seen = True
