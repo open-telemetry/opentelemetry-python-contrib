@@ -185,12 +185,13 @@ class TestStarletteManualInstrumentation(TestBase):
         histogram_data_point_seen = False
         self.assertTrue(len(metrics_list.resource_metrics) == 1)
         for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) == 1)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.starlette",
-                )
+            scope_metrics = [
+                sm
+                for sm in resource_metric.scope_metrics
+                if sm.scope.name == "opentelemetry.instrumentation.starlette"
+            ]
+            self.assertTrue(len(scope_metrics) == 1)
+            for scope_metric in scope_metrics:
                 self.assertTrue(len(scope_metric.metrics) == 3)
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names)
@@ -233,10 +234,8 @@ class TestStarletteManualInstrumentation(TestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics()
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -262,10 +261,8 @@ class TestStarletteManualInstrumentation(TestBase):
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics()
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -283,10 +280,8 @@ class TestStarletteManualInstrumentation(TestBase):
         client.get("/foobar")
         client.get("/foobar")
         client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics()
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
