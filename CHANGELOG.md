@@ -91,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- `opentelemetry-instrumentation-logging`: Inject span context attributes into logging LogRecord only if configured to do so
+  ([#4112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4112))
 - `opentelemetry-instrumentation-django`: Drop support for Django < 2.0
   ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
 
