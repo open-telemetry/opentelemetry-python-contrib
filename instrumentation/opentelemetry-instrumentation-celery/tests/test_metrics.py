@@ -73,13 +73,13 @@ class TestMetrics(TestBase):
 
         metrics = self.get_metrics()
         self.assertEqual(
-            (metrics[0].data.data_points[0].bucket_counts[1]),
+            metrics[0].data.data_points[0].bucket_counts[1],
             1,
         )
 
         metrics = self.get_metrics()
         self.assertEqual(
-            (metrics[0].data.data_points[0].bucket_counts[1]),
+            metrics[0].data.data_points[0].bucket_counts[1],
             2,
         )
 
@@ -87,6 +87,6 @@ class TestMetrics(TestBase):
 
         metrics = self.get_metrics()
         self.assertEqual(
-            (metrics[0].data.data_points[0].bucket_counts[1]),
+            metrics[0].data.data_points[0].bucket_counts[1],
             2,
         )
