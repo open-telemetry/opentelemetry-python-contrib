@@ -43,6 +43,7 @@ from google.genai.types import (
     GenerateContentConfig,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
+    ToolListUnionDict,
 )
 
 from opentelemetry import context as context_api
@@ -286,10 +287,22 @@ def _config_to_system_instruction(
     return config.system_instruction
 
 
+def _config_to_tools(
+    config: Union[GenerateContentConfigOrDict, None],
+) -> Union[ToolListUnionDict, None]:
+    if not config:
+        return None
+
+    if isinstance(config, dict):
+        return GenerateContentConfig.model_validate(config).tools
+    return config.tools
+
+
 def _create_completion_details_attributes(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instructions: list[MessagePart],
+    tool_definitions: list[MessagePart],
     as_str: bool = False,
 ) -> dict[str, Any]:
     attributes: dict[str, Any] = {
@@ -306,6 +319,9 @@ def _create_completion_details_attributes(
         attributes[gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS] = [
             dataclasses.asdict(sys_instr) for sys_instr in system_instructions
         ]
+
+    if tool_definitions:
+        attributes[gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS] = tool_definitions
 
     return attributes
 
@@ -484,6 +500,10 @@ class _GenerateContentInstrumentationHelper:
         )
         output_messages = to_output_messages(candidates=candidates)
 
+        tool_definitions = []
+        if tools := _config_to_tools(config):
+            tool_definitions = [_to_dict(tool) for tool in tools]
+
         span = trace.get_current_span()
         event = LogRecord(
             event_name="gen_ai.client.inference.operation.details",
@@ -500,6 +520,7 @@ class _GenerateContentInstrumentationHelper:
             input_messages,
             output_messages,
             system_instructions,
+            tool_definitions,
         )
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
