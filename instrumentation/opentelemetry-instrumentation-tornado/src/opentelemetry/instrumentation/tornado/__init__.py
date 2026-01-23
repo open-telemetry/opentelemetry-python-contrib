@@ -687,7 +687,7 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
     _, query = _parse_url_query(uri)
     _set_http_target(
         attrs,
-        request.uri,
+        uri,
         request.path,
         query,
         sem_conv_opt_in_mode,
