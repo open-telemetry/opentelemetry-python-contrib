@@ -84,6 +84,43 @@ class TelemetryHandlerMetricsTest(TestCase):
             places=3,
         )
 
+    def test_stop_llm_records_duration_and_tokens_with_additional_attributes(
+        self,
+    ) -> None:
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+
+        invocation = LLMInvocation(request_model="model", provider="prov")
+        invocation.input_tokens = 5
+        invocation.output_tokens = 7
+        invocation.server_address = "custom.server.com"
+        invocation.server_port = 42
+        handler.start_llm(invocation)
+        invocation.metric_attributes = {
+            "custom.attribute": "custom_value",
+        }
+        invocation.attributes = {"should not be on metrics": "value"}
+        handler.stop_llm(invocation)
+
+        metrics = self._harvest_metrics()
+        self.assertIn("gen_ai.client.operation.duration", metrics)
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        self.assertIn("gen_ai.client.token.usage", metrics)
+        token_points = metrics["gen_ai.client.token.usage"]
+        points = duration_points + token_points
+
+        for point in points:
+            self.assertEqual(
+                point.attributes["server.address"], "custom.server.com"
+            )
+            self.assertEqual(point.attributes["server.port"], 42)
+            self.assertEqual(
+                point.attributes["custom.attribute"], "custom_value"
+            )
+            self.assertIsNone(point.attributes.get("should not be on metrics"))
+
     def test_fail_llm_records_error_and_available_tokens(self) -> None:
         handler = TelemetryHandler(
             tracer_provider=self.tracer_provider,
