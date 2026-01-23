@@ -29,12 +29,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
 - `opentelemetry-instrumentation-system-metrics`: Add support for the `OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS` environment variable
   ([#3959](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3959))
-- `opentelemetry-instrumentation-httpx`: add ability to capture custom headers 
+- `opentelemetry-instrumentation-httpx`: add ability to capture custom headers
   ([#4047](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4047))
 - `opentelemetry-instrumentation-urllib3`: add ability to capture custom headers
   ([#4050](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4050))
 - `opentelemetry-instrumentation-urllib`: add ability to capture custom headers
   ([#4051](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4051))
+- `opentelemetry-instrumentation-confluent-kafka`: Increase confluent-kafka upper bound to support newer versions (2.13.0)
+  ([#4099](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4099))
+- `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
+  ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
+- `opentelemetry-instrumentation`: add database stability attribute setters in `_semconv` utilities
+  ([#4108](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4108))
+- `opentelemetry-instrumentation-tornado`: Implement new semantic convention opt-in migration
+  ([#3993](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3993))
+- `opentelemetry-instrumentation-pyramid` Implement new semantic convention opt-in migration
+  ([#3982](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3982))
 
 ### Fixed
 
@@ -64,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4068](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4068))
 - `opentelemetry-instrumentation-mysqlclient`: Replace SpanAttributes with semconv constants
   ([#4067](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4067))
+- `opentelemetry-instrumentation-pymemcache`: Remove span attributes pymemcache
+  ([#4076](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4076))
 - `opentelemetry-instrumentation-pymongo`: Replace SpanAttributes with semconv constants
   ([#4077](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4077))
 - `opentelemetry-instrumentation-pymysql`: Replace SpanAttributes with semconv constants
@@ -79,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- `opentelemetry-instrumentation-logging`: Inject span context attributes into logging LogRecord only if configured to do so
+  ([#4112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4112))
 - `opentelemetry-instrumentation-django`: Drop support for Django < 2.0
   ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
 
