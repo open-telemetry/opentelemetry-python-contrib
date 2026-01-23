@@ -183,7 +183,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         metrics = self.get_sorted_metrics()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics) > 0)
+        self.assertEqual(len(metrics), 2)
         for metric in metrics:
             self.assertIn(metric.name, _expected_metric_names)
             data_points = list(metric.data.data_points)
