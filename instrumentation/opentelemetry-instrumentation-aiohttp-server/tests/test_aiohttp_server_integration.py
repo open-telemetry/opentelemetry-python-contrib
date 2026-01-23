@@ -20,8 +20,6 @@ import pytest
 import pytest_asyncio
 from multidict import CIMultiDict
 
-from opentelemetry import metrics as metrics_api
-from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -103,33 +101,24 @@ class HTTPMethod(Enum):
     TRACE = "TRACE"
 
 
-@pytest.fixture(name="tracer", scope="function")
-def fixture_tracer():
+@pytest.fixture(name="test_base", scope="function")
+def fixture_test_base():
     test_base = TestBase()
+    test_base.setUp()
+    try:
+        yield test_base
+    finally:
+        test_base.tearDown()
 
-    tracer_provider, memory_exporter = test_base.create_tracer_provider()
 
-    reset_trace_globals()
-    trace_api.set_tracer_provider(tracer_provider)
-
-    yield tracer_provider, memory_exporter
-
-    reset_trace_globals()
-    memory_exporter.clear()
+@pytest.fixture(name="tracer", scope="function")
+def fixture_tracer(test_base: TestBase):
+    return test_base.tracer_provider, test_base.memory_exporter
 
 
 @pytest.fixture(name="meter", scope="function")
-def fixture_meter():
-    test_base = TestBase()
-
-    meter_provider, memory_reader = test_base.create_meter_provider()
-
-    reset_metrics_globals()
-    metrics_api.set_meter_provider(meter_provider)
-
-    yield meter_provider, memory_reader
-
-    reset_metrics_globals()
+def fixture_meter(test_base: TestBase):
+    return test_base.meter_provider, test_base.memory_metrics_reader
 
 
 async def default_handler(request, status=200):
@@ -157,8 +146,6 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
 
     yield server, app
 
-    memory_exporter.clear()
-
     AioHttpServerInstrumentor().uninstrument()
 
 
@@ -179,31 +166,27 @@ def test_checking_instrumentor_pkg_installed():
     ],
 )
 async def test_status_code_instrumentation(
-    tracer,
-    meter,
+    test_base: TestBase,
     server_fixture,
     aiohttp_client,
     url,
     expected_method,
     expected_status_code,
 ):
-    _, memory_exporter = tracer
-    _, metrics_reader = meter
     server, _ = server_fixture
 
-    assert len(memory_exporter.get_finished_spans()) == 0
-    metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+    assert len(test_base.get_finished_spans()) == 0
+    metrics = test_base.get_sorted_metrics()
     assert len(metrics) == 0
 
     client = await aiohttp_client(server)
     await client.get(url)
 
-    assert len(memory_exporter.get_finished_spans()) == 1
-    metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+    assert len(test_base.get_finished_spans()) == 1
+    metrics = test_base.get_sorted_metrics()
     assert len(metrics) == 2
 
-    [span] = memory_exporter.get_finished_spans()
-
+    [span] = test_base.get_finished_spans()
     assert expected_method.value == span.attributes[HTTP_METHOD]
     assert expected_status_code == span.attributes[HTTP_STATUS_CODE]
     assert url == span.attributes[HTTP_TARGET]
@@ -212,23 +195,22 @@ async def test_status_code_instrumentation(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("suppress", [True])
 async def test_suppress_instrumentation(
-    tracer, server_fixture, aiohttp_client
+    test_base: TestBase, server_fixture, aiohttp_client
 ):
-    _, memory_exporter = tracer
     server, _ = server_fixture
-    assert len(memory_exporter.get_finished_spans()) == 0
+    assert len(test_base.get_finished_spans()) == 0
 
     client = await aiohttp_client(server)
     await client.get("/test-path")
 
-    assert len(memory_exporter.get_finished_spans()) == 0
+    assert len(test_base.get_finished_spans()) == 0
 
 
 @pytest.mark.asyncio
-async def test_remove_sensitive_params(tracer, aiohttp_server, monkeypatch):
+async def test_remove_sensitive_params(
+    test_base: TestBase, aiohttp_server, monkeypatch
+):
     """Test that sensitive information in URLs is properly redacted."""
-    _, memory_exporter = tracer
-
     # Use old semconv to test HTTP_URL redaction
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
@@ -257,7 +239,7 @@ async def test_remove_sensitive_params(tracer, aiohttp_server, monkeypatch):
             assert await response.text() == "hello"
 
     # Verify redaction in span attributes
-    spans = memory_exporter.get_finished_spans()
+    spans = test_base.get_finished_spans()
     assert len(spans) == 1
 
     span = spans[0]
@@ -270,16 +252,13 @@ async def test_remove_sensitive_params(tracer, aiohttp_server, monkeypatch):
 
     # Clean up
     AioHttpServerInstrumentor().uninstrument()
-    memory_exporter.clear()
 
 
 @pytest.mark.asyncio
 async def test_remove_sensitive_params_new(
-    tracer, aiohttp_server, monkeypatch
+    test_base: TestBase, aiohttp_server, monkeypatch
 ):
     """Test URL handling with new semantic conventions (no redaction for URL_PATH/URL_QUERY)."""
-    _, memory_exporter = tracer
-
     # Use new semconv
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
@@ -308,7 +287,7 @@ async def test_remove_sensitive_params_new(
             assert await response.text() == "hello"
 
     # Verify span attributes with new semconv
-    spans = memory_exporter.get_finished_spans()
+    spans = test_base.get_finished_spans()
     assert len(spans) == 1
 
     span = spans[0]
@@ -320,21 +299,6 @@ async def test_remove_sensitive_params_new(
 
     # Clean up
     AioHttpServerInstrumentor().uninstrument()
-    memory_exporter.clear()
-
-
-def _get_sorted_metrics(metrics_data):
-    resource_metrics = metrics_data.resource_metrics if metrics_data else []
-
-    all_metrics = []
-    for metrics in resource_metrics:
-        for scope_metrics in metrics.scope_metrics:
-            all_metrics.extend(scope_metrics.metrics)
-
-    return sorted(
-        all_metrics,
-        key=lambda m: m.name,
-    )
 
 
 @pytest.mark.asyncio
@@ -343,12 +307,9 @@ def _get_sorted_metrics(metrics_data):
     ["OTEL_PYTHON_AIOHTTP_SERVER_EXCLUDED_URLS", "OTEL_PYTHON_EXCLUDED_URLS"],
 )
 async def test_excluded_urls(
-    tracer, meter, aiohttp_server, monkeypatch, env_var
+    test_base: TestBase, aiohttp_server, monkeypatch, env_var
 ):
     """Test that excluded env vars are taken into account."""
-    _, memory_exporter = tracer
-    _, metrics_reader = meter
-
     monkeypatch.setenv(env_var, "/status/200")
     AioHttpServerInstrumentor().instrument()
 
@@ -367,10 +328,10 @@ async def test_excluded_urls(
             assert response.status == 200
             assert await response.text() == "hello"
 
-    spans = memory_exporter.get_finished_spans()
+    spans = test_base.get_finished_spans()
     assert len(spans) == 0
 
-    metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+    metrics = test_base.get_sorted_metrics()
     assert len(metrics) == 0
 
     AioHttpServerInstrumentor().uninstrument()
@@ -415,25 +376,11 @@ async def test_non_global_tracer_provider(
     )
 
 
-def _get_sorted_metrics(metrics_data):
-    resource_metrics = metrics_data.resource_metrics if metrics_data else []
-
-    all_metrics = []
-    for metrics in resource_metrics:
-        for scope_metrics in metrics.scope_metrics:
-            all_metrics.extend(scope_metrics.metrics)
-
-    return sorted(
-        all_metrics,
-        key=lambda m: m.name,
-    )
-
-
 @pytest.mark.asyncio
-async def test_custom_request_headers(tracer, aiohttp_server, monkeypatch):
+async def test_custom_request_headers(
+    test_base: TestBase, aiohttp_server, monkeypatch
+):
     # pylint: disable=too-many-locals
-    _, memory_exporter = tracer
-
     monkeypatch.setenv(
         OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
         ".*my-secret.*",
@@ -466,7 +413,7 @@ async def test_custom_request_headers(tracer, aiohttp_server, monkeypatch):
             assert response.status == 200
             assert await response.text() == "hello"
 
-    spans = memory_exporter.get_finished_spans()
+    spans = test_base.get_finished_spans()
     assert len(spans) == 1
 
     span = spans[0]
@@ -489,9 +436,9 @@ async def test_custom_request_headers(tracer, aiohttp_server, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_custom_response_headers(tracer, aiohttp_server, monkeypatch):
-    _, memory_exporter = tracer
-
+async def test_custom_response_headers(
+    test_base: TestBase, aiohttp_server, monkeypatch
+):
     monkeypatch.setenv(
         OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
         ".*my-secret.*",
@@ -526,7 +473,7 @@ async def test_custom_response_headers(tracer, aiohttp_server, monkeypatch):
             assert response.status == 200
             assert await response.text() == "hello"
 
-    spans = memory_exporter.get_finished_spans()
+    spans = test_base.get_finished_spans()
     assert len(spans) == 1
 
     span = spans[0]
@@ -553,10 +500,8 @@ async def test_custom_response_headers(tracer, aiohttp_server, monkeypatch):
 # pylint: disable=too-many-locals
 @pytest.mark.asyncio
 async def test_semantic_conventions_metrics_old_default(
-    tracer, meter, aiohttp_server, monkeypatch
+    test_base: TestBase, aiohttp_server, monkeypatch
 ):
-    _, memory_exporter = tracer
-    _, metrics_reader = meter
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
     )
@@ -573,7 +518,7 @@ async def test_semantic_conventions_metrics_old_default(
             url, headers={"User-Agent": "test-agent"}
         ) as response:
             assert response.status == 200
-        spans = memory_exporter.get_finished_spans()
+        spans = test_base.get_finished_spans()
         assert len(spans) == 1
         span = spans[0]
 
@@ -604,7 +549,7 @@ async def test_semantic_conventions_metrics_old_default(
         assert NETWORK_PROTOCOL_VERSION not in span.attributes
         assert HTTP_RESPONSE_STATUS_CODE not in span.attributes
 
-        metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+        metrics = test_base.get_sorted_metrics()
         expected_metric_names = [
             "http.server.active_requests",
             "http.server.duration",
@@ -629,10 +574,8 @@ async def test_semantic_conventions_metrics_old_default(
 # pylint: disable=too-many-locals
 @pytest.mark.asyncio
 async def test_semantic_conventions_metrics_new(
-    tracer, meter, aiohttp_server, monkeypatch
+    test_base: TestBase, meter, aiohttp_server, monkeypatch
 ):
-    _, memory_exporter = tracer
-    _, metrics_reader = meter
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
     )
@@ -649,7 +592,7 @@ async def test_semantic_conventions_metrics_new(
             url, headers={"User-Agent": "test-agent"}
         ) as response:
             assert response.status == 200
-        spans = memory_exporter.get_finished_spans()
+        spans = test_base.get_finished_spans()
         assert len(spans) == 1
         span = spans[0]
 
@@ -680,7 +623,7 @@ async def test_semantic_conventions_metrics_new(
         assert HTTP_FLAVOR not in span.attributes
         assert HTTP_STATUS_CODE not in span.attributes
 
-        metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+        metrics = test_base.get_sorted_metrics()
         expected_metric_names = [
             "http.server.active_requests",
             "http.server.request.duration",
@@ -714,10 +657,8 @@ async def test_semantic_conventions_metrics_new(
 # pylint: disable=too-many-statements
 @pytest.mark.asyncio
 async def test_semantic_conventions_metrics_both(
-    tracer, meter, aiohttp_server, monkeypatch
+    test_base: TestBase, meter, aiohttp_server, monkeypatch
 ):
-    _, memory_exporter = tracer
-    _, metrics_reader = meter
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP_DUP.value
     )
@@ -734,7 +675,7 @@ async def test_semantic_conventions_metrics_both(
             url, headers={"User-Agent": "test-agent"}
         ) as response:
             assert response.status == 200
-        spans = memory_exporter.get_finished_spans()
+        spans = test_base.get_finished_spans()
         assert len(spans) == 1
         span = spans[0]
 
@@ -764,7 +705,7 @@ async def test_semantic_conventions_metrics_both(
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
         assert span.attributes.get(HTTP_ROUTE) == "default_handler"
 
-        metrics = _get_sorted_metrics(metrics_reader.get_metrics_data())
+        metrics = test_base.get_sorted_metrics()
         assert len(metrics) == 3  # Both duration metrics + active requests
         server_active_requests_count_attrs_both = list(
             _server_active_requests_count_attrs_old
