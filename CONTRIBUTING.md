@@ -122,6 +122,12 @@ Some packages may require additional system-wide dependencies to be installed. F
 
 For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
 
+If you are using `tox-uv` for tests and have issues with resolving OpenTelemetry dependencies try:
+
+```sh
+uv sync --refresh
+```
+
 ### Benchmarks
 
 Some packages have benchmark tests. To run them, run `tox -f benchmark`. Benchmark tests use `pytest-benchmark` and they output a table with results to the console.
