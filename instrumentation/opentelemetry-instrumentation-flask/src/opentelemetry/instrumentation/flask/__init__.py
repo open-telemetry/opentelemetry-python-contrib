@@ -287,7 +287,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_ROUTE,
     HTTP_TARGET,
 )
-from opentelemetry.semconv._incubating.metrics.http.server import (
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_active_requests,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
