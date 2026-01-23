@@ -88,6 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4081))
 - `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
   ([#4092](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4092))
+- `opentelemetry-instrumentation-psycopg2`: fix AttributeError at `instrument_connection`
+  ([#3043](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3043))
 
 ### Breaking changes
 
