@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3993](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3993))
 - `opentelemetry-instrumentation-pyramid` Implement new semantic convention opt-in migration
   ([#3982](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3982))
+- `opentelemetry-instrumentation-tortoiseorm` Add unit tests for Tortoise ORM instrumentation
+  ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
 
 ### Fixed
 
