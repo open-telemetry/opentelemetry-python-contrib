@@ -47,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3982](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3982))
 
 ### Fixed
-
+- `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
+  ([#4116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4116))
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
   ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
 - `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
