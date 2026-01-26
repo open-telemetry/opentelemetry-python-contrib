@@ -258,6 +258,10 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_SERVER_NAME,
+    HTTP_TARGET,
+)
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
@@ -270,7 +274,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -283,6 +286,7 @@ from opentelemetry.util.http import (
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
+    normalize_user_agent,
     parse_excluded_urls,
     redact_url,
     sanitize_method,
@@ -396,13 +400,15 @@ def collect_request_attributes(
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
-                http_host_value_list
-            )
+            result[HTTP_SERVER_NAME] = ",".join(http_host_value_list)
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        user_agent_value = http_user_agent[0]
-        _set_http_user_agent(result, user_agent_value, sem_conv_opt_in_mode)
+        user_agent_raw = http_user_agent[0]
+        user_agent_value = normalize_user_agent(user_agent_raw)
+        if user_agent_value:
+            _set_http_user_agent(
+                result, user_agent_value, sem_conv_opt_in_mode
+            )
 
         # Check for synthetic user agent type
         synthetic_type = detect_synthetic_user_agent(user_agent_value)
@@ -820,17 +826,22 @@ class OpenTelemetryMiddleware:
                     attributes, _StabilityMode.DEFAULT
                 )
                 if target:
-                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
+                    duration_attrs_old[HTTP_TARGET] = target
                 duration_attrs_new = _parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
                 )
+                span_ctx = set_span_in_context(span)
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(
-                        max(round(duration_s * 1000), 0), duration_attrs_old
+                        max(round(duration_s * 1000), 0),
+                        duration_attrs_old,
+                        context=span_ctx,
                     )
                 if self.duration_histogram_new:
                     self.duration_histogram_new.record(
-                        max(duration_s, 0), duration_attrs_new
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                        context=span_ctx,
                     )
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
@@ -838,11 +849,15 @@ class OpenTelemetryMiddleware:
                 if self.content_length_header:
                     if self.server_response_size_histogram:
                         self.server_response_size_histogram.record(
-                            self.content_length_header, duration_attrs_old
+                            self.content_length_header,
+                            duration_attrs_old,
+                            context=span_ctx,
                         )
                     if self.server_response_body_size_histogram:
                         self.server_response_body_size_histogram.record(
-                            self.content_length_header, duration_attrs_new
+                            self.content_length_header,
+                            duration_attrs_new,
+                            context=span_ctx,
                         )
 
                 request_size = asgi_getter.get(scope, "content-length")
@@ -854,11 +869,15 @@ class OpenTelemetryMiddleware:
                     else:
                         if self.server_request_size_histogram:
                             self.server_request_size_histogram.record(
-                                request_size_amount, duration_attrs_old
+                                request_size_amount,
+                                duration_attrs_old,
+                                context=span_ctx,
                             )
                         if self.server_request_body_size_histogram:
                             self.server_request_body_size_histogram.record(
-                                request_size_amount, duration_attrs_new
+                                request_size_amount,
+                                duration_attrs_new,
+                                context=span_ctx,
                             )
             if token:
                 context.detach(token)

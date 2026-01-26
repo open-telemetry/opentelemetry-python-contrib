@@ -24,7 +24,7 @@ botocore~=1.0
 boto3~=1.0
 cassandra-driver~=3.25
 celery>=4.0
-confluent-kafka>= 1.8.2,<= 2.11.0
+confluent-kafka>= 1.8.2,<= 2.13.0
 elasticsearch>=6.0,<9.0
 flask~=2.0
 falcon~=2.0
@@ -44,6 +44,7 @@ pyramid>=1.7
 redis>=2.6
 remoulade>=0.50
 sqlalchemy>=1.0
+starlette~=0.50
 tornado>=5.1.1
 tortoise-orm>=0.17.0
 

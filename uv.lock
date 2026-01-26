@@ -20,6 +20,7 @@ members = [
     "opentelemetry-instrumentation-aiohttp-server",
     "opentelemetry-instrumentation-aiokafka",
     "opentelemetry-instrumentation-aiopg",
+    "opentelemetry-instrumentation-anthropic",
     "opentelemetry-instrumentation-asgi",
     "opentelemetry-instrumentation-asyncclick",
     "opentelemetry-instrumentation-asyncio",
@@ -313,6 +314,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89", size = 16081, upload-time = "2024-05-20T21:33:25.928Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53", size = 13643, upload-time = "2024-05-20T21:33:24.1Z" },
+]
+
+[[package]]
+name = "anthropic"
+version = "0.75.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "docstring-parser" },
+    { name = "httpx" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/04/1f/08e95f4b7e2d35205ae5dcbb4ae97e7d477fc521c275c02609e2931ece2d/anthropic-0.75.0.tar.gz", hash = "sha256:e8607422f4ab616db2ea5baacc215dd5f028da99ce2f022e33c7c535b29f3dfb", size = 439565, upload-time = "2025-11-24T20:41:45.28Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/60/1c/1cd02b7ae64302a6e06724bf80a96401d5313708651d277b1458504a1730/anthropic-0.75.0-py3-none-any.whl", hash = "sha256:ea8317271b6c15d80225a9f3c670152746e88805a7a61e14d4a374577164965b", size = 388164, upload-time = "2025-11-24T20:41:43.587Z" },
 ]
 
 [[package]]
@@ -2765,6 +2785,31 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
+name = "opentelemetry-instrumentation-anthropic"
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-anthropic" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-genai" },
+]
+
+[package.optional-dependencies]
+instruments = [
+    { name = "anthropic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", marker = "extra == 'instruments'", specifier = ">=0.16.0" },
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "opentelemetry-util-genai", editable = "util/opentelemetry-util-genai" },
+]
+provides-extras = ["instruments"]
+
+[[package]]
 name = "opentelemetry-instrumentation-asgi"
 source = { editable = "instrumentation/opentelemetry-instrumentation-asgi" }
 dependencies = [
@@ -3042,7 +3087,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<=2.11.0" },
+    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<=2.13.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
@@ -3090,7 +3135,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "django", marker = "extra == 'instruments'", specifier = ">=1.10" },
+    { name = "django", marker = "extra == 'instruments'", specifier = ">=2.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-asgi", marker = "extra == 'asgi'", editable = "instrumentation/opentelemetry-instrumentation-asgi" },

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import timeit
-from numbers import Number
 from typing import Dict, Optional
 
 from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
+)
+from opentelemetry.semconv.attributes import (
+    error_attributes,
+    server_attributes,
 )
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.genai.instruments import (
@@ -34,6 +37,9 @@ class InvocationMetricsRecorder:
         error_type: Optional[str] = None,
     ) -> None:
         """Record duration and token metrics for an invocation if possible."""
+
+        # pylint: disable=too-many-branches
+
         if span is None:
             return
 
@@ -64,23 +70,28 @@ class InvocationMetricsRecorder:
             attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
                 invocation.response_model_name
             )
+        if invocation.server_address:
+            attributes[server_attributes.SERVER_ADDRESS] = (
+                invocation.server_address
+            )
+        if invocation.server_port is not None:
+            attributes[server_attributes.SERVER_PORT] = invocation.server_port
+        if invocation.metric_attributes:
+            attributes.update(invocation.metric_attributes)
 
         # Calculate duration from span timing or invocation monotonic start
         duration_seconds: Optional[float] = None
         if invocation.monotonic_start_s is not None:
             duration_seconds = max(
-                timeit.default_timer() - invocation.monotonic_start_s, 0.0
+                timeit.default_timer() - invocation.monotonic_start_s,
+                0.0,
             )
 
         span_context = set_span_in_context(span)
         if error_type:
-            attributes["error.type"] = error_type
+            attributes[error_attributes.ERROR_TYPE] = error_type
 
-        if (
-            duration_seconds is not None
-            and isinstance(duration_seconds, Number)
-            and duration_seconds >= 0
-        ):
+        if duration_seconds is not None:
             self._duration_histogram.record(
                 duration_seconds,
                 attributes=attributes,
