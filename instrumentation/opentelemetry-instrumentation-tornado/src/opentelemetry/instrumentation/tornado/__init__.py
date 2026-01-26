@@ -754,22 +754,21 @@ def _get_full_handler_name(handler):
 
 
 def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
+    attributes = _get_attributes_from_request(
+        handler.request, sem_conv_opt_in_mode
+    )
     span, token = _start_internal_or_server_span(
         tracer=tracer,
         span_name=_get_default_span_name(handler.request),
         start_time=time_ns(),
         context_carrier=handler.request.headers,
         context_getter=textmap.default_getter,
+        attributes=attributes,
     )
 
     if span.is_recording():
-        attributes = _get_attributes_from_request(
-            handler.request, sem_conv_opt_in_mode
-        )
-        for key, value in attributes.items():
-            span.set_attribute(key, value)
         span.set_attribute("tornado.handler", _get_full_handler_name(handler))
-        if span.is_recording() and span.kind == trace.SpanKind.SERVER:
+        if span.kind == trace.SpanKind.SERVER:
             custom_attributes = _collect_custom_request_headers_attributes(
                 handler.request.headers
             )
