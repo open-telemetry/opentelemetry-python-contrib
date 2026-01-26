@@ -4,11 +4,11 @@ The Python special interest group (SIG) meets regularly. See the OpenTelemetry
 [community](https://github.com/open-telemetry/community#python-sdk) repo for
 information on this and other language SIGs.
 
-See the [public meeting notes](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit)
+See the [public meeting notes](https://docs.google.com/document/d/18w8zOBm_mbety0OqlPwxc7dvnfu641EgmrO4AdJef0U/edit?tab=t.0)
 for a summary description of past meetings. To request edit access, join the
 meeting or get in touch on [Slack](https://cloud-native.slack.com/archives/C01PD4HUVBL).
 
-See to the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
+See the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
 on how to become a [**Member**](https://github.com/open-telemetry/community/blob/main/community-membership.md#member),
 [**Approver**](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
 and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).
@@ -121,6 +121,12 @@ This will create a virtual environment in the `.venv` directory and install all 
 Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
+
+If you are using `tox-uv` for tests and have issues with resolving OpenTelemetry dependencies try:
+
+```sh
+uv sync --refresh
+```
 
 ### Benchmarks
 

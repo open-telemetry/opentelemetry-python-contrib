@@ -36,21 +36,15 @@ API
 ---
 The `instrument` method accepts the following keyword args:
 
-tracer_provider (TracerProvider) - an optional tracer provider
-request_hook (Callable) -
-a function with extra user-defined logic to be performed before querying mongodb
-this function signature is:  def request_hook(span: Span, event: CommandStartedEvent) -> None
-response_hook (Callable) -
-a function with extra user-defined logic to be performed after the query returns with a successful response
-this function signature is:  def response_hook(span: Span, event: CommandSucceededEvent) -> None
-failed_hook (Callable) -
-a function with extra user-defined logic to be performed after the query returns with a failed response
-this function signature is:  def failed_hook(span: Span, event: CommandFailedEvent) -> None
-capture_statement (bool) - an optional value to enable capturing the database statement that is being executed
+* tracer_provider (``TracerProvider``) - an optional tracer provider
+* request_hook (``Callable[[Span, CommandStartedEvent], None]``) - a function with extra user-defined logic to be performed before querying mongodb
+* response_hook (``Callable[[Span, CommandSucceededEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a successful response
+* failed_hook (``Callable[[Span, CommandFailedEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a failed response
+* capture_statement (``bool``) - an optional value to enable capturing the database statement that is being executed
 
 for example:
 
-.. code: python
+.. code:: python
 
     from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
     from pymongo import MongoClient
@@ -92,7 +86,17 @@ from opentelemetry.instrumentation.pymongo.utils import (
 )
 from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
-from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_MONGODB_COLLECTION,
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.trace import DbSystemValues
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
@@ -138,27 +142,19 @@ class CommandTracer(monitoring.CommandListener):
         command_name = event.command_name
         span_name = f"{event.database_name}.{command_name}"
         statement = self._get_statement_by_command_name(command_name, event)
-        collection = event.command.get(event.command_name)
+        collection = _get_command_collection_name(event)
 
         try:
             span = self._tracer.start_span(span_name, kind=SpanKind.CLIENT)
             if span.is_recording():
-                span.set_attribute(
-                    SpanAttributes.DB_SYSTEM, DbSystemValues.MONGODB.value
-                )
-                span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                span.set_attribute(DB_SYSTEM, DbSystemValues.MONGODB.value)
+                span.set_attribute(DB_NAME, event.database_name)
+                span.set_attribute(DB_STATEMENT, statement)
                 if collection:
-                    span.set_attribute(
-                        SpanAttributes.DB_MONGODB_COLLECTION, collection
-                    )
+                    span.set_attribute(DB_MONGODB_COLLECTION, collection)
                 if event.connection_id is not None:
-                    span.set_attribute(
-                        SpanAttributes.NET_PEER_NAME, event.connection_id[0]
-                    )
-                    span.set_attribute(
-                        SpanAttributes.NET_PEER_PORT, event.connection_id[1]
-                    )
+                    span.set_attribute(NET_PEER_NAME, event.connection_id[0])
+                    span.set_attribute(NET_PEER_PORT, event.connection_id[1])
             try:
                 self.start_hook(span, event)
             except (
@@ -198,7 +194,12 @@ class CommandTracer(monitoring.CommandListener):
         if span is None:
             return
         if span.is_recording():
-            span.set_status(Status(StatusCode.ERROR, event.failure))
+            span.set_status(
+                Status(
+                    StatusCode.ERROR,
+                    event.failure.get("errmsg", "Unknown error"),
+                )
+            )
             try:
                 self.failed_hook(span, event)
             except (
@@ -219,6 +220,13 @@ class CommandTracer(monitoring.CommandListener):
         if command and self.capture_statement:
             statement += " " + str(command)
         return statement
+
+
+def _get_command_collection_name(event: CommandEvent) -> str | None:
+    collection_name = event.command.get(event.command_name)
+    if not collection_name or not isinstance(collection_name, str):
+        return None
+    return collection_name
 
 
 def _get_span_dict_key(

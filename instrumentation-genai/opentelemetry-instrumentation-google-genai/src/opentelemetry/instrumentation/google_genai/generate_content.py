@@ -20,7 +20,14 @@ import json
 import logging
 import os
 import time
-from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Iterator,
+    Optional,
+    Union,
+)
 
 from google.genai.models import AsyncModels, Models
 from google.genai.models import t as transformers
@@ -37,6 +44,7 @@ from google.genai.types import (
     GenerateContentResponse,
 )
 
+from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation._semconv import (
@@ -58,6 +66,9 @@ from opentelemetry.util.genai.types import (
     OutputMessage,
 )
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
+from opentelemetry.util.types import (
+    AttributeValue,
+)
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
@@ -79,6 +90,10 @@ _CONTENT_ELIDED = "<elided>"
 
 # Constant used for the value of 'gen_ai.operation.name".
 _GENERATE_CONTENT_OP_NAME = "generate_content"
+
+GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY = context_api.create_key(
+    "generate_content_extra_attributes_context_key"
+)
 
 
 class _MethodsSnapshot:
@@ -162,30 +177,23 @@ def _to_dict(value: object):
     if isinstance(value, dict):
         return value
     if hasattr(value, "model_dump"):
-        return value.model_dump()
+        try:
+            return value.model_dump()
+        except TypeError:
+            return {"ModelName": str(value)}
+
     return json.loads(json.dumps(value))
 
 
-def _add_request_options_to_span(
-    span: Span,
+def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     allow_list: AllowList,
-):
-    if config is None:
-        return
-    span_context = span.get_span_context()
-    if not span_context.trace_flags.sampled:
-        # Avoid potentially costly traversal of config
-        # options if the span will be dropped, anyway.
-        return
-    # Automatically derive attributes from the contents of the
-    # config object. This ensures that all relevant parameters
-    # are captured in the telemetry data (except for those
-    # that are excluded via "exclude_keys"). Dynamic attributes (those
-    # starting with "gcp.gen_ai." instead of simply "gen_ai.request.")
-    # are filtered with the "allow_list" before inclusion in the span.
+) -> dict[str, AttributeValue]:
+    if not config:
+        return {}
+    config = _to_dict(config)
     attributes = flatten_dict(
-        _to_dict(config),
+        config,
         # A custom prefix is used, because the names/structure of the
         # configuration is likely to be specific to Google Gen AI SDK.
         key_prefix=GCP_GENAI_OPERATION_CONFIG,
@@ -212,37 +220,21 @@ def _add_request_options_to_span(
             "gcp.gen_ai.operation.config.seed": gen_ai_attributes.GEN_AI_REQUEST_SEED,
         },
     )
-    for key, value in attributes.items():
-        if key.startswith(
-            GCP_GENAI_OPERATION_CONFIG
-        ) and not allow_list.allowed(key):
-            # The allowlist is used to control inclusion of the dynamic keys.
-            continue
-        span.set_attribute(key, value)
-
-
-def _get_gen_ai_request_attributes(
-    config: Union[GenerateContentConfigOrDict, None],
-) -> dict[str, Any]:
-    if not config:
-        return {}
-    attributes: dict[str, Any] = {}
-    config = _coerce_config_to_object(config)
-    if config.seed:
-        attributes[gen_ai_attributes.GEN_AI_REQUEST_SEED] = config.seed
-    if config.candidate_count:
-        attributes[gen_ai_attributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
-            config.candidate_count
-        )
-    if config.response_mime_type:
-        if config.response_mime_type == "text/plain":
+    response_mime_type = config.get("response_mime_type")
+    if response_mime_type:
+        if response_mime_type == "text/plain":
             attributes[gen_ai_attributes.GEN_AI_OUTPUT_TYPE] = "text"
-        elif config.response_mime_type == "application/json":
+        elif response_mime_type == "application/json":
             attributes[gen_ai_attributes.GEN_AI_OUTPUT_TYPE] = "json"
         else:
             attributes[gen_ai_attributes.GEN_AI_OUTPUT_TYPE] = (
-                config.response_mime_type
+                response_mime_type
             )
+    for key in list(attributes.keys()):
+        if key.startswith(
+            GCP_GENAI_OPERATION_CONFIG
+        ) and not allow_list.allowed(key):
+            del attributes[key]
     return attributes
 
 
@@ -298,8 +290,8 @@ def _create_completion_details_attributes(
     output_messages: list[OutputMessage],
     system_instructions: list[MessagePart],
     as_str: bool = False,
-) -> dict[str, Any]:
-    attributes: dict[str, Any] = {
+) -> dict[str, AttributeValue]:
+    attributes: dict[str, AttributeValue] = {
         gen_ai_attributes.GEN_AI_INPUT_MESSAGES: [
             dataclasses.asdict(input_message)
             for input_message in input_messages
@@ -315,6 +307,13 @@ def _create_completion_details_attributes(
         ]
 
     return attributes
+
+
+def _get_extra_generate_content_attributes() -> dict[str, AttributeValue]:
+    attrs = context_api.get_value(
+        GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY
+    )
+    return dict(attrs or {})
 
 
 class _GenerateContentInstrumentationHelper:
@@ -372,19 +371,25 @@ class _GenerateContentInstrumentationHelper:
             end_on_exit=end_on_exit,
         )
 
-    def add_request_options_to_span(
-        self, config: Optional[GenerateContentConfigOrDict]
-    ):
-        span = trace.get_current_span()
-        _add_request_options_to_span(
-            span, config, self._generate_content_config_key_allowlist
-        )
+    def create_final_attributes(self) -> dict[str, AttributeValue]:
+        final_attributes = {
+            gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS: self._input_tokens,
+            gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS: self._output_tokens,
+            gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS: sorted(
+                self._finish_reasons_set
+            ),
+        }
+        if self._error_type:
+            final_attributes[error_attributes.ERROR_TYPE] = self._error_type
+        return final_attributes
 
     def process_request(
         self,
         contents: Union[ContentListUnion, ContentListUnionDict],
         config: Optional[GenerateContentConfigOrDict],
+        span: Span,
     ):
+        span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, self._genai_system)
         self._maybe_log_system_instruction(config=config)
         self._maybe_log_user_prompt(contents)
 
@@ -393,38 +398,8 @@ class _GenerateContentInstrumentationHelper:
         self._maybe_log_response(response)
         self._response_index += 1
 
-    def process_completion(
-        self,
-        request: Union[ContentListUnion, ContentListUnionDict],
-        response: GenerateContentResponse,
-        config: Optional[GenerateContentConfigOrDict] = None,
-    ):
-        self._update_response(response)
-        self._maybe_log_completion_details(
-            request, response.candidates or [], config
-        )
-
     def process_error(self, e: Exception):
         self._error_type = str(e.__class__.__name__)
-
-    def finalize_processing(self):
-        span = trace.get_current_span()
-        span.set_attribute(
-            gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS, self._input_tokens
-        )
-        span.set_attribute(
-            gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS, self._output_tokens
-        )
-        span.set_attribute(
-            gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
-            sorted(self._finish_reasons_set),
-        )
-        if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-            span.set_attribute(
-                gen_ai_attributes.GEN_AI_SYSTEM, self._genai_system
-            )
-        self._record_token_usage_metric()
-        self._record_duration_metric()
 
     def _update_response(self, response: GenerateContentResponse):
         # TODO: Determine if there are other response properties that
@@ -488,11 +463,18 @@ class _GenerateContentInstrumentationHelper:
 
     def _maybe_log_completion_details(
         self,
+        extra_attributes: dict[str, AttributeValue],
+        request_attributes: dict[str, AttributeValue],
+        final_attributes: dict[str, AttributeValue],
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
     ):
-        attributes = _get_gen_ai_request_attributes(config)
+        if (
+            self.sem_conv_opt_in_mode
+            != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ):
+            return
         system_instructions = []
         if system_content := _config_to_system_instruction(config):
             system_instructions = to_system_instructions(
@@ -506,7 +488,9 @@ class _GenerateContentInstrumentationHelper:
         span = trace.get_current_span()
         event = LogRecord(
             event_name="gen_ai.client.inference.operation.details",
-            attributes=attributes,
+            attributes=extra_attributes
+            | request_attributes
+            | final_attributes,
         )
         self.completion_hook.on_completion(
             inputs=input_messages,
@@ -540,36 +524,34 @@ class _GenerateContentInstrumentationHelper:
                     for k, v in completion_details_attributes.items()
                 }
             )
-            span.set_attributes(attributes)
+            # request attributes were already set on the span..
 
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
     ):
-        system_instruction = None
-        if config is not None:
-            if isinstance(config, dict):
-                system_instruction = config.get("system_instruction")
-            else:
-                system_instruction = config.system_instruction
+        content_union = _config_to_system_instruction(config)
+        if not content_union:
+            return
+        content = transformers.t_contents(content_union)[0]
+        if not content.parts:
+            return
+        # System instruction is required to be text. An error will be returned by the API if it isn't.
+        system_instruction = " ".join(
+            part.text for part in content.parts if part.text
+        )
         if not system_instruction:
             return
-        attributes = {
-            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-        }
-        # TODO: determine if "role" should be reported here or not. It is unclear
-        # since the caller does not supply a "role" and since this comes through
-        # a property named "system_instruction" which would seem to align with
-        # the default "role" that is allowed to be omitted by default.
-        #
-        # See also: "TODOS.md"
-        body = {}
-        if self._content_recording_enabled:
-            body["content"] = _to_dict(system_instruction)
-        else:
-            body["content"] = _CONTENT_ELIDED
         self._otel_wrapper.log_system_prompt(
-            attributes=attributes,
-            body=body,
+            attributes={
+                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+            },
+            body={
+                "content": (
+                    system_instruction
+                    if self._content_recording_enabled
+                    else _CONTENT_ELIDED
+                )
+            },
         )
 
     def _maybe_log_user_prompt(
@@ -748,6 +730,7 @@ def _create_instrumented_generate_content(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
+        candidates = []
         helper = _GenerateContentInstrumentationHelper(
             self,
             otel_wrapper,
@@ -755,12 +738,17 @@ def _create_instrumented_generate_content(
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
+        request_attributes = _create_request_attributes(
+            config,
+            helper._generate_content_config_key_allowlist,
+        )
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content"
-        ):
-            helper.add_request_options_to_span(config)
+        ) as span:
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(contents, config)
+                helper.process_request(contents, config, span)
             try:
                 response = wrapped_func(
                     self,
@@ -769,23 +757,33 @@ def _create_instrumented_generate_content(
                     config=helper.wrapped_config(config),
                     **kwargs,
                 )
-                if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                    helper.process_response(response)
-                elif (
+                if (
                     helper.sem_conv_opt_in_mode
                     == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 ):
-                    helper.process_completion(contents, response, config)
+                    helper._update_response(response)
+                    if response.candidates:
+                        candidates += response.candidates
+
                 else:
-                    raise ValueError(
-                        f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
-                    )
+                    helper.process_response(response)
                 return response
             except Exception as error:
                 helper.process_error(error)
                 raise
             finally:
-                helper.finalize_processing()
+                final_attributes = helper.create_final_attributes()
+                span.set_attributes(final_attributes)
+                helper._maybe_log_completion_details(
+                    extra_attributes,
+                    request_attributes,
+                    final_attributes,
+                    contents,
+                    candidates,
+                    config,
+                )
+                helper._record_token_usage_metric()
+                helper._record_duration_metric()
 
     return instrumented_generate_content
 
@@ -815,12 +813,17 @@ def _create_instrumented_generate_content_stream(
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
+        request_attributes = _create_request_attributes(
+            config,
+            helper._generate_content_config_key_allowlist,
+        )
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content_stream"
-        ):
-            helper.add_request_options_to_span(config)
+        ) as span:
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(contents, config)
+                helper.process_request(contents, config, span)
             try:
                 for response in wrapped_func(
                     self,
@@ -829,28 +832,33 @@ def _create_instrumented_generate_content_stream(
                     config=helper.wrapped_config(config),
                     **kwargs,
                 ):
-                    if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                        helper.process_response(response)
-                    elif (
+                    if (
                         helper.sem_conv_opt_in_mode
                         == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                     ):
                         helper._update_response(response)
                         if response.candidates:
                             candidates += response.candidates
+
                     else:
-                        raise ValueError(
-                            f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
-                        )
+                        helper.process_response(response)
                     yield response
             except Exception as error:
                 helper.process_error(error)
                 raise
             finally:
+                final_attributes = helper.create_final_attributes()
+                span.set_attributes(final_attributes)
                 helper._maybe_log_completion_details(
-                    contents, candidates, config
+                    extra_attributes,
+                    request_attributes,
+                    final_attributes,
+                    contents,
+                    candidates,
+                    config,
                 )
-                helper.finalize_processing()
+                helper._record_token_usage_metric()
+                helper._record_duration_metric()
 
     return instrumented_generate_content_stream
 
@@ -879,12 +887,18 @@ def _create_instrumented_async_generate_content(
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
+        request_attributes = _create_request_attributes(
+            config,
+            helper._generate_content_config_key_allowlist,
+        )
+        candidates: list[Candidate] = []
         with helper.start_span_as_current_span(
             model, "google.genai.AsyncModels.generate_content"
-        ):
-            helper.add_request_options_to_span(config)
+        ) as span:
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(contents, config)
+                helper.process_request(contents, config, span)
             try:
                 response = await wrapped_func(
                     self,
@@ -893,23 +907,32 @@ def _create_instrumented_async_generate_content(
                     config=helper.wrapped_config(config),
                     **kwargs,
                 )
-                if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                    helper.process_response(response)
-                elif (
+                if (
                     helper.sem_conv_opt_in_mode
                     == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 ):
-                    helper.process_completion(contents, response, config)
+                    helper._update_response(response)
+                    if response.candidates:
+                        candidates += response.candidates
                 else:
-                    raise ValueError(
-                        f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
-                    )
+                    helper.process_response(response)
                 return response
             except Exception as error:
                 helper.process_error(error)
                 raise
             finally:
-                helper.finalize_processing()
+                final_attributes = helper.create_final_attributes()
+                span.set_attributes(final_attributes)
+                helper._maybe_log_completion_details(
+                    extra_attributes,
+                    request_attributes,
+                    final_attributes,
+                    contents,
+                    candidates,
+                    config,
+                )
+                helper._record_token_usage_metric()
+                helper._record_duration_metric()
 
     return instrumented_generate_content
 
@@ -939,14 +962,22 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
         )
+        request_attributes = _create_request_attributes(
+            config,
+            helper._generate_content_config_key_allowlist,
+        )
         with helper.start_span_as_current_span(
             model,
             "google.genai.AsyncModels.generate_content_stream",
             end_on_exit=False,
         ) as span:
-            helper.add_request_options_to_span(config)
-            if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-                helper.process_request(contents, config)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
+            if (
+                not helper.sem_conv_opt_in_mode
+                == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+            ):
+                helper.process_request(contents, config, span)
             try:
                 response_async_generator = await wrapped_func(
                     self,
@@ -957,7 +988,18 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 )
             except Exception as error:  # pylint: disable=broad-exception-caught
                 helper.process_error(error)
-                helper.finalize_processing()
+                helper._record_token_usage_metric()
+                final_attributes = helper.create_final_attributes()
+                span.set_attributes(final_attributes)
+                helper._maybe_log_completion_details(
+                    extra_attributes,
+                    request_attributes,
+                    final_attributes,
+                    contents,
+                    [],
+                    config,
+                )
+                helper._record_duration_metric()
                 with trace.use_span(span, end_on_exit=True):
                     raise
 
@@ -968,29 +1010,31 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                         async for response in response_async_generator:
                             if (
                                 helper.sem_conv_opt_in_mode
-                                == _StabilityMode.DEFAULT
-                            ):
-                                helper.process_response(response)
-                            elif (
-                                helper.sem_conv_opt_in_mode
                                 == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                             ):
                                 helper._update_response(response)
                                 if response.candidates:
                                     candidates += response.candidates
+
                             else:
-                                raise ValueError(
-                                    f"Sem Conv opt in mode {helper.sem_conv_opt_in_mode} not supported."
-                                )
+                                helper.process_response(response)
                             yield response
                     except Exception as error:
                         helper.process_error(error)
                         raise
                     finally:
+                        final_attributes = helper.create_final_attributes()
+                        span.set_attributes(final_attributes)
                         helper._maybe_log_completion_details(
-                            contents, candidates, config
+                            extra_attributes,
+                            request_attributes,
+                            final_attributes,
+                            contents,
+                            candidates,
+                            config,
                         )
-                        helper.finalize_processing()
+                        helper._record_token_usage_metric()
+                        helper._record_duration_metric()
 
             return _response_async_generator_wrapper()
 
@@ -1007,6 +1051,14 @@ def instrument_generate_content(
     completion_hook: CompletionHook,
     generate_content_config_key_allowlist: Optional[AllowList] = None,
 ) -> object:
+    opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.GEN_AI
+    )
+    if opt_in_mode not in (
+        _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+        _StabilityMode.DEFAULT,
+    ):
+        raise ValueError(f"Sem Conv opt in mode {opt_in_mode} not supported.")
     snapshot = _MethodsSnapshot()
     Models.generate_content = _create_instrumented_generate_content(
         snapshot,
