@@ -20,6 +20,8 @@ from typing import Callable
 
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
+from django.utils.encoding import iri_to_uri
+from urllib.parse import urljoin, urlsplit
 
 from opentelemetry.context import detach
 from opentelemetry.instrumentation._semconv import (
@@ -114,6 +116,30 @@ _logger = getLogger(__name__)
 def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
+def _current_scheme_host(request):
+    return "{}://{}".format(request.scheme, request._get_raw_host())
+
+def build_absolute_uri(request, location=None):
+    if location is None:
+        location = "//%s" % request.get_full_path()
+    else:
+        location = str(location)
+    bits = urlsplit(location)
+    if not (bits.scheme and bits.netloc):
+        if (
+            bits.path.startswith("/")
+            and not bits.scheme
+            and not bits.netloc
+            and "/./" not in bits.path
+            and "/../" not in bits.path
+        ):
+            if location.startswith("//"):
+                location = location[2:]
+            location = _current_scheme_host(request) + location
+        else:
+            location = urljoin(_current_scheme_host(request) + request.path, location)
+    return iri_to_uri(location)
+
 
 class _DjangoMiddleware:
     """Django Middleware for OpenTelemetry"""
@@ -182,7 +208,7 @@ class _DjangoMiddleware:
         # Read more about request.META here:
         # https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.META
 
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._excluded_urls.url_disabled(build_absolute_uri(request, "?")):
             return
 
         is_asgi_request = _is_asgi_request(request)
@@ -293,7 +319,7 @@ class _DjangoMiddleware:
     def process_view(self, request, view_func, *args, **kwargs):
         # Process view is executed before the view function, here we get the
         # route template from request.resolver_match.  It is not set yet in process_request
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._excluded_urls.url_disabled(build_absolute_uri(request, "?")):
             return
 
         if (
@@ -318,7 +344,7 @@ class _DjangoMiddleware:
                         duration_attrs[HTTP_ROUTE] = route
 
     def process_exception(self, request, exception):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._excluded_urls.url_disabled(build_absolute_uri(request, "?")):
             return
 
         if self._environ_activation_key in request.META.keys():
@@ -328,7 +354,7 @@ class _DjangoMiddleware:
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def process_response(self, request, response):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if self._excluded_urls.url_disabled(build_absolute_uri(request, "?")):
             return response
 
         is_asgi_request = _is_asgi_request(request)
