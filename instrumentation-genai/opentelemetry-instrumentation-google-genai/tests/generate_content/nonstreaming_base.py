@@ -363,7 +363,7 @@ class NonStreamingTestCase(TestCase):
             )
             content = "Some input"
             output = "Some response content"
-            sys_instr = "System instruction "
+            sys_instr = "System instruction"
             tools = [_some_tool]
             with self.subTest(
                 f"mode: {mode}", patched_environ=patched_environ
