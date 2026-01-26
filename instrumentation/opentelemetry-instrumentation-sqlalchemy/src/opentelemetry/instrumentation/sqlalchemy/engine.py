@@ -129,8 +129,11 @@ def _wrap_connect(tracer):
 
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
-        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.DATABASE,
+        )
+        sem_conv_opt_in_mode_http = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
         )
 
         with tracer.start_as_current_span(
@@ -138,10 +141,14 @@ def _wrap_connect(tracer):
         ) as span:
             if span.is_recording():
                 attrs, _ = _get_attributes_from_url(
-                    module.url, sem_conv_opt_in_mode
+                    module.url,
+                    sem_conv_opt_in_mode_db,
+                    sem_conv_opt_in_mode_http,
                 )
                 _set_db_system(
-                    attrs, _normalize_vendor(module.name), sem_conv_opt_in_mode
+                    attrs,
+                    _normalize_vendor(module.name),
+                    sem_conv_opt_in_mode_db,
                 )
                 span.set_attributes(attrs)
             return func(*args, **kwargs)
@@ -163,8 +170,11 @@ class EngineTracer:
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
-        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        self._sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.DATABASE,
+        )
+        self._sem_conv_opt_in_mode_http = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
         )
 
         self.tracer = tracer
@@ -303,8 +313,8 @@ class EngineTracer:
     def _set_db_client_span_attributes(self, span, statement, attrs) -> None:
         """Uses statement and attrs to set attributes of provided Otel span"""
         span_attrs = dict(attrs)
-        _set_db_statement(span_attrs, statement, self._sem_conv_opt_in_mode)
-        _set_db_system(span_attrs, self.vendor, self._sem_conv_opt_in_mode)
+        _set_db_statement(span_attrs, statement, self._sem_conv_opt_in_mode_db)
+        _set_db_system(span_attrs, self.vendor, self._sem_conv_opt_in_mode_db)
         for key, value in span_attrs.items():
             span.set_attribute(key, value)
 
@@ -315,11 +325,17 @@ class EngineTracer:
             return statement, params
 
         attrs, found = _get_attributes_from_url(
-            conn.engine.url, self._sem_conv_opt_in_mode
+            conn.engine.url,
+            self._sem_conv_opt_in_mode_db,
+            self._sem_conv_opt_in_mode_http,
         )
         if not found:
             attrs = _get_attributes_from_cursor(
-                self.vendor, cursor, attrs, self._sem_conv_opt_in_mode
+                self.vendor,
+                cursor,
+                attrs,
+                self._sem_conv_opt_in_mode_db,
+                self._sem_conv_opt_in_mode_http,
             )
 
         # Extract db_name for operation name
@@ -390,28 +406,34 @@ def _handle_error(context):
     span.end()
 
 
-def _get_attributes_from_url(url, sem_conv_opt_in_mode):
+def _get_attributes_from_url(
+    url, sem_conv_opt_in_mode_db, sem_conv_opt_in_mode_http
+):
     """Set connection tags from the url. return true if successful."""
     attrs = {}
     if url.host:
-        _set_http_net_peer_name_client(attrs, url.host, sem_conv_opt_in_mode)
+        _set_http_net_peer_name_client(
+            attrs, url.host, sem_conv_opt_in_mode_http
+        )
     if url.port:
-        _set_http_peer_port_client(attrs, url.port, sem_conv_opt_in_mode)
+        _set_http_peer_port_client(attrs, url.port, sem_conv_opt_in_mode_http)
     if url.database:
-        _set_db_name(attrs, url.database, sem_conv_opt_in_mode)
+        _set_db_name(attrs, url.database, sem_conv_opt_in_mode_db)
     if url.username:
-        _set_db_user(attrs, url.username, sem_conv_opt_in_mode)
+        _set_db_user(attrs, url.username, sem_conv_opt_in_mode_db)
     return attrs, bool(url.host)
 
 
-def _get_attributes_from_cursor(vendor, cursor, attrs, sem_conv_opt_in_mode):
+def _get_attributes_from_cursor(
+    vendor, cursor, attrs, sem_conv_opt_in_mode_db, sem_conv_opt_in_mode_http
+):
     """Attempt to set db connection attributes by introspecting the cursor."""
     if vendor == "postgresql":
         info = getattr(getattr(cursor, "connection", None), "info", None)
         if not info:
             return attrs
 
-        _set_db_name(attrs, info.dbname, sem_conv_opt_in_mode)
+        _set_db_name(attrs, info.dbname, sem_conv_opt_in_mode_db)
         is_unix_socket = info.host and info.host.startswith("/")
 
         if is_unix_socket:
@@ -421,16 +443,16 @@ def _get_attributes_from_cursor(vendor, cursor, attrs, sem_conv_opt_in_mode):
                 _set_http_net_peer_name_client(
                     attrs,
                     os.path.join(info.host, f".s.PGSQL.{info.port}"),
-                    sem_conv_opt_in_mode,
+                    sem_conv_opt_in_mode_http,
                 )
         else:
             attrs[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
             _set_http_net_peer_name_client(
-                attrs, info.host, sem_conv_opt_in_mode
+                attrs, info.host, sem_conv_opt_in_mode_http
             )
             if info.port:
                 _set_http_peer_port_client(
-                    attrs, int(info.port), sem_conv_opt_in_mode
+                    attrs, int(info.port), sem_conv_opt_in_mode_http
                 )
     return attrs
 

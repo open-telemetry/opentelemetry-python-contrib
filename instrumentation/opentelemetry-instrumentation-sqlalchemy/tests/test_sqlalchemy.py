@@ -39,6 +39,9 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
     DB_SYSTEM,
 )
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_QUERY_TEXT,
@@ -730,6 +733,41 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
 
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http"})
+    def test_semconv_http_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # HTTP attributes should use new semconv
+        self.assertNotIn(NET_PEER_NAME, connect_span.attributes)
+        # DB attributes should still use old semconv
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertNotIn(DB_NAMESPACE, connect_span.attributes)
+
+        query_span = spans[1]
+        # DB attributes should still use old semconv
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
+
     @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
     def test_semconv_database_mode(self):
         SQLAlchemyInstrumentor().uninstrument()
@@ -760,6 +798,74 @@ class TestSqlalchemyInstrumentation(TestBase):
         # Verify old conventions are NOT present
         self.assertNotIn(DB_STATEMENT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM, query_span.attributes)
+
+    @mock.patch.dict(
+        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http,database"}
+    )
+    def test_semconv_http_and_database_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # New DB conventions should be present
+        self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertIn(DB_NAMESPACE, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAMESPACE], ":memory:")
+        # Old DB conventions should NOT be present
+        self.assertNotIn(DB_SYSTEM, connect_span.attributes)
+        self.assertNotIn(DB_NAME, connect_span.attributes)
+
+        query_span = spans[1]
+        # New DB conventions should be present
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        # Old DB conventions should NOT be present
+        self.assertNotIn(DB_STATEMENT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM, query_span.attributes)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup"})
+    def test_semconv_http_dup_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # DB attributes should use old semconv only
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertNotIn(DB_NAMESPACE, connect_span.attributes)
+
+        query_span = spans[1]
+        # DB attributes should use old semconv
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
 
     @mock.patch.dict(
         "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
@@ -793,6 +899,42 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertIn(DB_SYSTEM, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
         # New conventions
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
+
+    @mock.patch.dict(
+        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup,database/dup"}
+    )
+    def test_semconv_http_and_database_dup_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # Both old and new DB conventions
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertIn(DB_NAMESPACE, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAMESPACE], ":memory:")
+
+        query_span = spans[1]
+        # Both old and new DB conventions
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
         self.assertIn(DB_QUERY_TEXT, query_span.attributes)
         self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
         self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
