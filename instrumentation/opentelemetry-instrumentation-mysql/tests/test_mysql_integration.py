@@ -53,6 +53,38 @@ def make_mysql_connection_mock():
     return cnx
 
 
+def make_mysql_commenter_mocks(client_version="foobaz"):
+    """Create mock objects for MySQL connector with SQL commenter support.
+
+    Args:
+        client_version: The MySQL client version string to return from get_client_info()
+
+    Returns:
+        Tuple of (mock_connect_module, mock_connection, mock_cursor)
+    """
+    mock_connect_module = mock.MagicMock(
+        __name__="mysql.connector",
+        __version__="foobar",
+        threadsafety="123",
+        apilevel="123",
+        paramstyle="test",
+    )
+    mock_cursor = mock_connect_module.connect().cursor()
+    mock_cursor._cnx._cmysql.get_client_info.return_value = client_version
+
+    mock_cursor._cnx.host = "localhost"
+    mock_cursor._cnx.port = 3306
+    mock_cursor._cnx.database = "test"
+
+    mock_connection = mock.MagicMock()
+    mock_connection.database = "test"
+    mock_connection.host = "localhost"
+    mock_connection.port = 3306
+    mock_connection.cursor.return_value = mock_cursor
+
+    return mock_connect_module, mock_connection, mock_cursor
+
+
 class TestMysqlIntegration(TestBase):
     def tearDown(self):
         super().tearDown()
@@ -150,25 +182,9 @@ class TestMysqlIntegration(TestBase):
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.database = "test"
-        mock_connection.host = "localhost"
-        mock_connection.port = 3306
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -196,25 +212,9 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_stmt_enabled(
         self,
     ):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.database = "test"
-        mock_connection.host = "localhost"
-        mock_connection.port = 3306
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -243,25 +243,9 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_with_options(
         self,
     ):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.database = "test"
-        mock_connection.host = "localhost"
-        mock_connection.port = 3306
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -294,25 +278,9 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_not_enabled_default(
         self,
     ):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.database = "test"
-        mock_connection.host = "localhost"
-        mock_connection.port = 3306
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -354,25 +322,9 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_enabled(
         self,
     ):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.database = "test"
-        mock_connection.host = "localhost"
-        mock_connection.port = 3306
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -401,25 +353,9 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_enabled_stmt_enabled(
         self,
     ):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.database = "test"
-        mock_connection.host = "localhost"
-        mock_connection.port = 3306
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -449,22 +385,9 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_enabled_with_options(
         self,
     ):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -498,25 +421,9 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_not_enabled_default(
         self,
     ):
-        mock_connect_module = mock.MagicMock(
-            __name__="mysql.connector",
-            __version__="foobar",
-            threadsafety="123",
-            apilevel="123",
-            paramstyle="test",
+        mock_connect_module, mock_connection, mock_cursor = (
+            make_mysql_commenter_mocks()
         )
-        mock_cursor = mock_connect_module.connect().cursor()
-        mock_cursor._cnx._cmysql.get_client_info.return_value = "foobaz"
-
-        mock_cursor._cnx.host = "localhost"
-        mock_cursor._cnx.port = 3306
-        mock_cursor._cnx.database = "test"
-
-        mock_connection = mock.MagicMock()
-        mock_connection.database = "test"
-        mock_connection.host = "localhost"
-        mock_connection.port = 3306
-        mock_connection.cursor.return_value = mock_cursor
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
