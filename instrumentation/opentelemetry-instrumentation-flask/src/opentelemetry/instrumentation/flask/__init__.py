@@ -688,13 +688,13 @@ class _InstrumentedFlask(flask.Flask):
             )
         duration_histogram_new = None
         if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
-            duration_histogram_new = meter.create_histogram(
-                name=HTTP_SERVER_REQUEST_DURATION,
-                unit="s",
-                description="Duration of HTTP server requests.",
-                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            active_requests_counter = create_http_server_active_requests(meter)
+        else:
+            active_requests_counter = meter.create_up_down_counter(
+                name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+                unit="requests",
+                description="Measures the number of concurrent HTTP requests that are currently in-flight.",
             )
-        active_requests_counter = create_http_server_active_requests(meter)
 
         self.wsgi_app = _rewrapped_app(
             self.wsgi_app,
@@ -824,7 +824,16 @@ class FlaskInstrumentor(BaseInstrumentor):
                     description="Duration of HTTP server requests.",
                     explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
-            active_requests_counter = create_http_server_active_requests(meter)
+            if _report_new(sem_conv_opt_in_mode):
+                active_requests_counter = create_http_server_active_requests(
+                    meter
+                )
+            else:
+                active_requests_counter = meter.create_up_down_counter(
+                    name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+                    unit="requests",
+                    description="Measures the number of concurrent HTTP requests that are currently in-flight.",
+                )
 
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(
