@@ -120,6 +120,18 @@ class LLMInvocation(GenAIInvocation):
     finish_reasons: list[str] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    """
+    Additional attributes to set on spans and/or events. These attributes
+    will not be set on metrics.
+    """
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of a low cardinality.
+    These attributes will not be set on spans or events.
+    """
     temperature: float | None = None
     top_p: float | None = None
     frequency_penalty: float | None = None
@@ -127,6 +139,8 @@ class LLMInvocation(GenAIInvocation):
     max_tokens: int | None = None
     stop_sequences: list[str] | None = None
     seed: int | None = None
+    server_address: str | None = None
+    server_port: int | None = None
     # Monotonic start time in seconds (from timeit.default_timer) used
     # for duration calculations to avoid mixing clock sources. This is
     # populated by the TelemetryHandler when starting an invocation.
