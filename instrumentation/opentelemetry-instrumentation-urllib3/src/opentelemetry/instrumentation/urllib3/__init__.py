@@ -428,6 +428,70 @@ def _get_span_name(method: str) -> str:
     return method
 
 
+def _normalize_headers_to_kwargs(
+    args: typing.Tuple, kwargs: typing.Dict
+) -> typing.Tuple[typing.Tuple, typing.Dict]:
+    """
+    Normalize urlopen args to ensure headers is only in kwargs, not in positional args.
+
+    urllib3's urlopen signature: urlopen(self, method, url, body=None, headers=None, ...)
+    During retries, urllib3 calls: self.urlopen(method, url, body, headers, ...)
+    This passes headers as positional arg at position 3.
+
+    This function extracts headers from args[3] (if present) and moves it to kwargs,
+    preventing "multiple values for argument 'headers'" error.
+
+    Args:
+        args: Positional arguments tuple (self, method, url, body, headers, ...)
+        kwargs: Keyword arguments dict
+
+    Returns:
+        Tuple of (normalized_args, normalized_kwargs) where:
+        - normalized_args has headers removed from position 3 (set to None)
+        - normalized_kwargs has headers (merged from args and kwargs if both existed)
+    """
+
+    # Guard: If args doesn't reach headers position, nothing to normalize
+    if len(args) <= 3:
+        return args, kwargs
+
+    # Extract headers from position 3
+    positional_headers = args[3]
+
+    # Guard: If no headers at position 3, just truncate args
+    if positional_headers is None:
+        return args[:3], kwargs
+
+    # Make kwargs mutable if needed
+    kwargs = dict(kwargs) if kwargs else {}
+
+    # Check if headers already in kwargs
+    existing_headers = kwargs.get("headers")
+
+    # If no existing headers in kwargs, just move positional headers
+    if existing_headers is None:
+        kwargs["headers"] = positional_headers
+        return args[:3], kwargs
+
+    # Both exist - merge them (kwargs takes precedence)
+    if not isinstance(positional_headers, dict):
+        # Can't merge non-dict, use kwargs version
+        return args[:3], kwargs
+
+    if not isinstance(existing_headers, dict):
+        # Use positional headers if kwargs version isn't dict
+        kwargs["headers"] = positional_headers
+        return args[:3], kwargs
+
+    # Merge both dicts (kwargs overrides positional)
+    merged_headers = {}
+    merged_headers.update(positional_headers)
+    merged_headers.update(existing_headers)
+    kwargs["headers"] = merged_headers
+
+    return args[:3], kwargs
+
+
 def _instrument(
     tracer: Tracer,
     duration_histogram_old: Histogram,
@@ -449,6 +513,8 @@ def _instrument(
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
+
+        args, kwargs = _normalize_headers_to_kwargs(args, kwargs)
 
         url = _get_url(instance, args, kwargs, url_filter)
         if excluded_urls and excluded_urls.url_disabled(url):
