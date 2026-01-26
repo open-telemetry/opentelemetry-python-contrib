@@ -657,6 +657,79 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                     self.assertEqual(point.count, 1)
 
 
+class TestFalconManualInstrumentation(TestFalconInstrumentation):
+    def setUp(self):
+        TestBase.setUp(self)
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
+                "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
+            },
+        )
+        self.env_patch.start()
+        self.app = make_app()
+
+        self.app = FalconInstrumentor.instrument_app(
+            self.app,
+            request_hook=getattr(self, "request_hook", None),
+            response_hook=getattr(self, "response_hook", None),
+        )
+
+    def client(self):
+        return testing.TestClient(self.app)
+
+    def tearDown(self):
+        TestBase.tearDown(self)
+        with self.disable_logging():
+            FalconInstrumentor.uninstrument_app(self.app)
+        self.env_patch.stop()
+
+    def test_uninstrument_after_instrument(self):
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        FalconInstrumentor.uninstrument_app(self.app)
+        self.memory_exporter.clear()
+
+        self.client().simulate_get(path="/hello")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_metric_uninstrument(self):
+        self.client().simulate_request(method="POST", path="/hello/756")
+        FalconInstrumentor.uninstrument_app(self.app)
+        self.client().simulate_request(method="POST", path="/hello/756")
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    for point in list(metric.data.data_points):
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 1)
+
+    def test_falcon_attribute_validity(self):
+        import falcon
+        _parsed_falcon_version = package_version.parse(falcon.__version__)
+        if _parsed_falcon_version < package_version.parse("3.0.0"):
+            # Falcon 1 and Falcon 2
+
+            class MyAPI(falcon.API):
+                class_var = "class_var"
+
+            self.app = MyAPI()
+        else:
+            # Falcon 3
+            class MyAPP(falcon.App):
+                class_var = "class_var"
+
+            self.app = MyAPP()
+        
+        self.app = FalconInstrumentor.instrument_app(self.app)
+        self.assertEqual(self.app.class_var, "class_var")
+
+
 class TestFalconInstrumentationWithTracerProvider(TestBase):
     def setUp(self):
         super().setUp()
@@ -687,6 +760,29 @@ class TestFalconInstrumentationWithTracerProvider(TestBase):
         self.exporter.clear()
 
 
+class TestFalconManualInstrumentationWithTracerProvider(
+    TestFalconInstrumentationWithTracerProvider
+):
+    def setUp(self):
+        TestBase.setUp(self)
+        resource = Resource.create({"resource-key": "resource-value"})
+        result = self.create_tracer_provider(resource=resource)
+        tracer_provider, exporter = result
+        self.exporter = exporter
+        self.app = make_app()
+        self.app = FalconInstrumentor.instrument_app(
+            self.app, tracer_provider=tracer_provider
+        )
+
+    def client(self):
+        return testing.TestClient(self.app)
+
+    def tearDown(self):
+        TestBase.tearDown(self)
+        with self.disable_logging():
+            FalconInstrumentor.uninstrument_app(self.app)
+
+
 class TestFalconInstrumentationHooks(TestFalconBase):
     # pylint: disable=no-self-use
     def request_hook(self, span, req):
@@ -706,6 +802,35 @@ class TestFalconInstrumentationHooks(TestFalconBase):
         )
 
 
+class TestFalconManualInstrumentationHooks(TestFalconInstrumentationHooks):
+    def setUp(self):
+        TestBase.setUp(self)
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
+                "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
+            },
+        )
+        self.env_patch.start()
+        self.app = make_app()
+
+        self.app = FalconInstrumentor.instrument_app(
+            self.app,
+            request_hook=getattr(self, "request_hook", None),
+            response_hook=getattr(self, "response_hook", None),
+        )
+
+    def client(self):
+        return testing.TestClient(self.app)
+
+    def tearDown(self):
+        TestBase.tearDown(self)
+        with self.disable_logging():
+            FalconInstrumentor.uninstrument_app(self.app)
+        self.env_patch.stop()
+
+
 class TestFalconInstrumentationWrappedWithOtherFramework(TestFalconBase):
     def test_mark_span_internal_in_presence_of_span_from_other_framework(self):
         tracer = trace.get_tracer(__name__)
@@ -719,6 +844,36 @@ class TestFalconInstrumentationWrappedWithOtherFramework(TestFalconBase):
             self.assertEqual(
                 span.parent.span_id, parent_span.get_span_context().span_id
             )
+
+
+class TestFalconManualInstrumentationWrappedWithOtherFramework(
+    TestFalconInstrumentationWrappedWithOtherFramework
+):
+    def setUp(self):
+        TestBase.setUp(self)
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
+                "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
+            },
+        )
+        self.env_patch.start()
+        self.app = make_app()
+
+        self.app = FalconInstrumentor.instrument_app(
+            self.app,
+            request_hook=getattr(self, "request_hook", None),
+            response_hook=getattr(self, "response_hook", None),
+        )
+
+    def client(self):
+        return testing.TestClient(self.app)
+
+    def tearDown(self):
+        TestBase.tearDown(self)
+        with self.disable_logging():
+            FalconInstrumentor.uninstrument_app(self.app)
 
 
 @patch.dict(
@@ -862,3 +1017,33 @@ class TestCustomRequestResponseHeaders(TestFalconBase):
             self.assertEqual(span.kind, trace.SpanKind.INTERNAL)
             for key, _ in not_expected.items():
                 self.assertNotIn(key, span.attributes)
+
+
+class TestCustomRequestResponseHeadersManualInstrumentation(
+    TestCustomRequestResponseHeaders
+):
+    def setUp(self):
+        TestBase.setUp(self)
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "OTEL_PYTHON_FALCON_EXCLUDED_URLS": "ping",
+                "OTEL_PYTHON_FALCON_TRACED_REQUEST_ATTRS": "query_string",
+            },
+        )
+        self.env_patch.start()
+        self.app = make_app()
+
+        self.app = FalconInstrumentor.instrument_app(
+            self.app,
+            request_hook=getattr(self, "request_hook", None),
+            response_hook=getattr(self, "response_hook", None),
+        )
+
+    def client(self):
+        return testing.TestClient(self.app)
+
+    def tearDown(self):
+        TestBase.tearDown(self)
+        with self.disable_logging():
+            FalconInstrumentor.uninstrument_app(self.app)
