@@ -73,8 +73,6 @@ from opentelemetry.util.types import (
     AttributeValue,
 )
 
-from typing import Callable
-
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
@@ -190,9 +188,7 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
-def _to_tool_definition(
-    tool: ToolUnionDict
-) -> MessagePart:
+def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
     if isinstance(tool, dict):
         return tool
     if hasattr(tool, "to_json_dict"):
@@ -210,7 +206,7 @@ def _to_tool_definition(
         return {
             "function": {
                 "name": getattr(tool, "__name__", str(type(tool))),
-                "description": doc.strip()
+                "description": doc.strip(),
             }
         }
     try:
@@ -353,7 +349,9 @@ def _create_completion_details_attributes(
         ]
 
     if tool_definitions:
-        attributes[gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS] = tool_definitions
+        attributes[gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS] = (
+            tool_definitions
+        )
 
     return attributes
 
