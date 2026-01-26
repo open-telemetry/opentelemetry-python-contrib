@@ -258,9 +258,55 @@ class TestShouldEmitEvent(unittest.TestCase):
         content_capturing="EVENT_ONLY",
         emit_event="",
     )
-    def test_should_emit_event_by_defaults(
+    def test_should_emit_event_defaults_to_true_for_event_only(
         self,
     ):  # pylint: disable=no-self-use
+        # When EVENT_ONLY is set, should_emit_event should default to True
+        assert should_emit_event() is True
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_AND_EVENT",
+        emit_event="",
+    )
+    def test_should_emit_event_defaults_to_true_for_span_and_event(
+        self,
+    ):  # pylint: disable=no-self-use
+        # When SPAN_AND_EVENT is set, should_emit_event should default to True
+        assert should_emit_event() is True
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="NO_CONTENT",
+        emit_event="",
+    )
+    def test_should_emit_event_defaults_to_false_for_no_content(
+        self,
+    ):  # pylint: disable=no-self-use
+        # When NO_CONTENT is set, should_emit_event should default to False
+        assert should_emit_event() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_should_emit_event_defaults_to_false_for_span_only(
+        self,
+    ):  # pylint: disable=no-self-use
+        # When SPAN_ONLY is set, should_emit_event should default to False
+        assert should_emit_event() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="",
+        emit_event="",
+    )
+    def test_should_emit_event_defaults_to_false_when_no_content_capturing_set(
+        self,
+    ):  # pylint: disable=no-self-use
+        # When content_capturing is not set (defaults to NO_CONTENT),
+        # should_emit_event should default to False
         assert should_emit_event() is False
 
     @patch_env_vars(
@@ -268,17 +314,60 @@ class TestShouldEmitEvent(unittest.TestCase):
         content_capturing="EVENT_ONLY",
         emit_event="INVALID_VALUE",
     )
-    def test_should_emit_event_with_invalid_value(
+    def test_should_emit_event_with_invalid_value_falls_back_to_default(
         self,
     ):  # pylint: disable=no-self-use
+        # When invalid value is set, should fall back to default based on content_capturing_mode
+        # EVENT_ONLY should default to True
         with self.assertLogs(level="WARNING") as cm:
             result = should_emit_event()
-            assert result is False, f"Expected False but got {result}"
+            assert result is True, (
+                f"Expected True but got {result} (EVENT_ONLY should default to True)"
+            )
         self.assertEqual(len(cm.output), 1)
         self.assertIn("INVALID_VALUE is not a valid option for", cm.output[0])
         self.assertIn(
             "Must be one of true or false (case-insensitive)", cm.output[0]
         )
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="INVALID_VALUE",
+    )
+    def test_should_emit_event_with_invalid_value_falls_back_to_false_for_span_only(
+        self,
+    ):  # pylint: disable=no-self-use
+        # When invalid value is set with SPAN_ONLY, should default to False
+        with self.assertLogs(level="WARNING") as cm:
+            result = should_emit_event()
+            assert result is False, (
+                f"Expected False but got {result} (SPAN_ONLY should default to False)"
+            )
+        self.assertEqual(len(cm.output), 1)
+        self.assertIn("INVALID_VALUE is not a valid option for", cm.output[0])
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="false",
+    )
+    def test_should_emit_event_user_setting_overrides_default(
+        self,
+    ):  # pylint: disable=no-self-use
+        # User explicitly setting emit_event="false" should override the default (True for EVENT_ONLY)
+        assert should_emit_event() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="NO_CONTENT",
+        emit_event="true",
+    )
+    def test_should_emit_event_user_setting_overrides_default_for_no_content(
+        self,
+    ):  # pylint: disable=no-self-use
+        # User explicitly setting emit_event="true" should override the default (False for NO_CONTENT)
+        assert should_emit_event() is True
 
 
 class TestTelemetryHandler(unittest.TestCase):
@@ -799,11 +888,11 @@ class TestTelemetryHandler(unittest.TestCase):
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
-        content_capturing="EVENT_ONLY",
+        content_capturing="NO_CONTENT",
         emit_event="",
     )
-    def test_does_not_emit_llm_event_by_default(self):
-        """Test that event is not emitted by default when OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
+    def test_does_not_emit_llm_event_by_default_for_no_content(self):
+        """Test that event is not emitted by default when content_capturing is NO_CONTENT and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
         invocation = LLMInvocation(
             request_model="default-model",
             input_messages=[_create_input_message("default test")],
@@ -816,6 +905,92 @@ class TestTelemetryHandler(unittest.TestCase):
         ]
         self.telemetry_handler.stop_llm(invocation)
 
-        # Check that no event was emitted (default behavior is false)
+        # Check that no event was emitted (NO_CONTENT defaults to False)
         logs = self.log_exporter.get_finished_logs()
         self.assertEqual(len(logs), 0)
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_does_not_emit_llm_event_by_default_for_span_only(self):
+        """Test that event is not emitted by default when content_capturing is SPAN_ONLY and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
+        invocation = LLMInvocation(
+            request_model="default-model",
+            input_messages=[_create_input_message("default test")],
+            provider="test-provider",
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        invocation.output_messages = [
+            _create_output_message("default response")
+        ]
+        self.telemetry_handler.stop_llm(invocation)
+
+        # Check that no event was emitted (SPAN_ONLY defaults to False)
+        logs = self.log_exporter.get_finished_logs()
+        self.assertEqual(len(logs), 0)
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="",
+    )
+    def test_emits_llm_event_by_default_for_event_only(self):
+        """Test that event is emitted by default when content_capturing is EVENT_ONLY and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
+        invocation = LLMInvocation(
+            request_model="default-model",
+            input_messages=[_create_input_message("default test")],
+            provider="test-provider",
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        invocation.output_messages = [
+            _create_output_message("default response")
+        ]
+        self.telemetry_handler.stop_llm(invocation)
+
+        # Check that event was emitted (EVENT_ONLY defaults to True)
+        logs = self.log_exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+        log_record = logs[0].log_record
+        self.assertEqual(
+            log_record.event_name, "gen_ai.client.inference.operation.details"
+        )
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_AND_EVENT",
+        emit_event="",
+    )
+    def test_emits_llm_event_by_default_for_span_and_event(self):
+        """Test that event is emitted by default when content_capturing is SPAN_AND_EVENT and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
+        message = _create_input_message("span and event test")
+        chat_generation = _create_output_message("span and event response")
+        system_instruction = _create_system_instruction("System prompt")
+
+        invocation = LLMInvocation(
+            request_model="span-and-event-model",
+            input_messages=[message],
+            system_instruction=system_instruction,
+            provider="test-provider",
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        invocation.output_messages = [chat_generation]
+        self.telemetry_handler.stop_llm(invocation)
+
+        # Check span was created
+        span = _get_single_span(self.span_exporter)
+        span_attrs = _get_span_attributes(span)
+        self.assertIn(GenAI.GEN_AI_INPUT_MESSAGES, span_attrs)
+
+        # Check that event was emitted (SPAN_AND_EVENT defaults to True)
+        logs = self.log_exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+        log_record = logs[0].log_record
+        self.assertEqual(
+            log_record.event_name, "gen_ai.client.inference.operation.details"
+        )
+        self.assertIn(GenAI.GEN_AI_INPUT_MESSAGES, log_record.attributes)
