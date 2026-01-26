@@ -184,6 +184,7 @@ API
 """
 
 import collections.abc
+import inspect
 import io
 import typing
 from dataclasses import dataclass
@@ -429,67 +430,58 @@ def _get_span_name(method: str) -> str:
 
 
 def _normalize_headers_to_kwargs(
-    args: typing.Tuple, kwargs: typing.Dict
+    wrapped, args: typing.Tuple, kwargs: typing.Dict
 ) -> typing.Tuple[typing.Tuple, typing.Dict]:
     """
-    Normalize urlopen args to ensure headers is only in kwargs, not in positional args.
+    Normalize urlopen args using inspect.signature to ensure headers is only in kwargs.
 
     urllib3's urlopen signature: urlopen(self, method, url, body=None, headers=None, ...)
     During retries, urllib3 calls: self.urlopen(method, url, body, headers, ...)
     This passes headers as positional arg at position 3.
 
-    This function extracts headers from args[3] (if present) and moves it to kwargs,
-    preventing "multiple values for argument 'headers'" error.
+    This function uses inspect.signature to bind arguments to the actual function signature,
+    then reconstructs them with headers guaranteed to be in kwargs only, preventing
+    "multiple values for argument 'headers'" errors.
 
     Args:
-        args: Positional arguments tuple (self, method, url, body, headers, ...)
+        wrapped: The wrapped function to inspect signature from
+        args: Positional arguments tuple
         kwargs: Keyword arguments dict
 
     Returns:
         Tuple of (normalized_args, normalized_kwargs) where:
-        - normalized_args has headers removed from position 3 (set to None)
-        - normalized_kwargs has headers (merged from args and kwargs if both existed)
+        - normalized_args contains parameters before 'headers'
+        - normalized_kwargs contains 'headers' and any parameters after it
     """
-
-    # Guard: If args doesn't reach headers position, nothing to normalize
-    if len(args) <= 3:
+    try:
+        sig = inspect.signature(wrapped)
+        bound = sig.bind(*args, **kwargs)
+    except (ValueError, TypeError):
+        # If signature introspection or binding fails, return unchanged
         return args, kwargs
 
-    # Extract headers from position 3
-    positional_headers = args[3]
+    # Get the parameter names in order
+    param_names = list(sig.parameters.keys())
 
-    # Guard: If no headers at position 3, just truncate args
-    if positional_headers is None:
-        return args[:3], kwargs
+    # Find headers position
+    if "headers" not in param_names:
+        return args, kwargs
 
-    # Make kwargs mutable if needed
-    kwargs = dict(kwargs) if kwargs else {}
+    headers_idx = param_names.index("headers")
 
-    # Check if headers already in kwargs
-    existing_headers = kwargs.get("headers")
+    # Build new args with parameters before 'headers' only
+    new_args = []
+    for param_name in param_names[:headers_idx]:
+        if param_name in bound.arguments:
+            new_args.append(bound.arguments[param_name])
 
-    # If no existing headers in kwargs, just move positional headers
-    if existing_headers is None:
-        kwargs["headers"] = positional_headers
-        return args[:3], kwargs
+    # Build new kwargs with 'headers' and any parameters after it
+    new_kwargs = {}
+    for param_name in param_names[headers_idx:]:
+        if param_name in bound.arguments:
+            new_kwargs[param_name] = bound.arguments[param_name]
 
-    # Both exist - merge them (kwargs takes precedence)
-    if not isinstance(positional_headers, dict):
-        # Can't merge non-dict, use kwargs version
-        return args[:3], kwargs
-
-    if not isinstance(existing_headers, dict):
-        # Use positional headers if kwargs version isn't dict
-        kwargs["headers"] = positional_headers
-        return args[:3], kwargs
-
-    # Merge both dicts (kwargs overrides positional)
-    merged_headers = {}
-    merged_headers.update(positional_headers)
-    merged_headers.update(existing_headers)
-    kwargs["headers"] = merged_headers
-
-    return args[:3], kwargs
+    return tuple(new_args), new_kwargs
 
 
 def _instrument(
@@ -514,7 +506,7 @@ def _instrument(
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
-        args, kwargs = _normalize_headers_to_kwargs(args, kwargs)
+        args, kwargs = _normalize_headers_to_kwargs(wrapped, args, kwargs)
 
         url = _get_url(instance, args, kwargs, url_filter)
         if excluded_urls and excluded_urls.url_disabled(url):
