@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4099](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4099))
 - `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
   ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
+- `opentelemetry-instrumentation-falcon`: pass request attributes at span creation
+  ([#4119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4119))
 - `opentelemetry-instrumentation`: add database stability attribute setters in `_semconv` utilities
   ([#4108](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4108))
 - `opentelemetry-instrumentation-tornado`: Implement new semantic convention opt-in migration
