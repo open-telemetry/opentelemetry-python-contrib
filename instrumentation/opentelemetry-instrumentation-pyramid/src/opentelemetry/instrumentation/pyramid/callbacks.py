@@ -115,27 +115,29 @@ def _before_traversal(event):
     else:
         span_name = otel_wsgi.get_default_span_name(request_environ)
 
+    attributes = otel_wsgi.collect_request_attributes(
+        request_environ, _sem_conv_opt_in_mode
+    )
+    if request.matched_route:
+        attributes[HTTP_ROUTE] = request.matched_route.pattern
+
     span, token = _start_internal_or_server_span(
         tracer=tracer,
         span_name=span_name,
         start_time=start_time,
         context_carrier=request_environ,
         context_getter=otel_wsgi.wsgi_getter,
+        attributes=attributes,
     )
 
     if span.is_recording():
-        attributes = otel_wsgi.collect_request_attributes(
-            request_environ, _sem_conv_opt_in_mode
-        )
-        if request.matched_route:
-            attributes[HTTP_ROUTE] = request.matched_route.pattern
+        attributes = {}
         _set_http_url(
             attributes,
             redact_url(wsgiref_util.request_uri(request_environ)),
             _sem_conv_opt_in_mode,
         )
-        for key, value in attributes.items():
-            span.set_attribute(key, value)
+        span.set_attributes(attributes)
         if span.kind == trace.SpanKind.SERVER:
             custom_attributes = (
                 otel_wsgi.collect_custom_request_headers_attributes(
