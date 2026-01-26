@@ -39,6 +39,11 @@ from .base import TestCase
 # pylint: disable=too-many-public-methods
 
 
+def _some_tool():
+    """Description of some tool."""
+    return "result"
+
+
 class ExampleResponseSchema(BaseModel):
     name: str = Field(description="A Destination's Name")
 
@@ -358,7 +363,8 @@ class NonStreamingTestCase(TestCase):
             )
             content = "Some input"
             output = "Some response content"
-            sys_instr = "System instruction"
+            sys_instr = "System instruction "
+            tools = [_some_tool]
             with self.subTest(
                 f"mode: {mode}", patched_environ=patched_environ
             ):
@@ -371,6 +377,7 @@ class NonStreamingTestCase(TestCase):
                         config=GenerateContentConfig(
                             system_instruction=sys_instr,
                             response_schema=ExampleResponseSchema,
+                            tools=tools,
                         ),
                     )
                     self.otel.assert_has_event_named(
@@ -401,6 +408,11 @@ class NonStreamingTestCase(TestCase):
                             gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS,
                             event.attributes,
                         )
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS,
+                            event.attributes,
+                        )
+
                     else:
                         expected_event_attributes = {
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES: (
@@ -422,6 +434,14 @@ class NonStreamingTestCase(TestCase):
                             ),
                             gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS: (
                                 {"content": sys_instr, "type": "text"},
+                            ),
+                            gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS: (
+                                {
+                                    "function": {
+                                        "name": "_some_tool",
+                                        "description": "Description of some tool.",
+                                    }
+                                },
                             ),
                         }
                         self.assertEqual(
@@ -446,6 +466,14 @@ class NonStreamingTestCase(TestCase):
                             ],
                             expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
+                            ],
+                        )
+                        self.assertEqual(
+                            event.attributes[
+                                gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
+                            ],
+                            expected_event_attributes[
+                                gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
                             ],
                         )
                 self.tearDown()
@@ -477,6 +505,7 @@ class NonStreamingTestCase(TestCase):
                         config=GenerateContentConfig(
                             system_instruction="System instruction",
                             response_schema=ExampleResponseSchema,
+                            tools=[_some_tool],
                         ),
                     )
                     span = self.otel.get_span_named(
@@ -504,6 +533,12 @@ class NonStreamingTestCase(TestCase):
                             ],
                             '[{"content":"System instruction","type":"text"}]',
                         )
+                        self.assertEqual(
+                            span.attributes[
+                                gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
+                            ],
+                            '[{"function":{"name":"_some_tool","description":"Description of some tool."}}]',
+                        )
                     else:
                         self.assertNotIn(
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES,
@@ -515,6 +550,10 @@ class NonStreamingTestCase(TestCase):
                         )
                         self.assertNotIn(
                             gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS,
+                            span.attributes,
+                        )
+                        self.assertNotIn(
+                            gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS,
                             span.attributes,
                         )
 
