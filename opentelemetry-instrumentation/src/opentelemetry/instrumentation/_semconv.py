@@ -20,6 +20,12 @@ from enum import Enum
 from typing import Container, Mapping, MutableMapping
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -41,6 +47,11 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
     CLIENT_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
@@ -531,6 +542,55 @@ def _set_http_net_peer_name_server(
         set_string_attribute(result, NET_PEER_NAME, name)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, CLIENT_ADDRESS, name)
+
+
+# Database
+
+
+def _set_db_system(
+    result: MutableMapping[str, AttributeValue],
+    system: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_SYSTEM, system)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_SYSTEM_NAME, system)
+
+
+def _set_db_name(
+    result: MutableMapping[str, AttributeValue],
+    name: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_NAME, name)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_NAMESPACE, name)
+
+
+def _set_db_statement(
+    result: MutableMapping[str, AttributeValue],
+    statement: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_STATEMENT, statement)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_QUERY_TEXT, statement)
+
+
+def _set_db_user(
+    result: MutableMapping[str, AttributeValue],
+    user: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_USER, user)
+    # No new attribute - db.user was removed with no replacement
+
+
+# General
 
 
 def _set_status(
