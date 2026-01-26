@@ -57,7 +57,7 @@ dependencies = [
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-threading",
   "opentelemetry-instrumentation-tornado",
-  "opentelemetry-instrumentation-tortoiseorm",
+  "opentelemetry-instrumentation-tortoiseorm[instruments]",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
   "opentelemetry-instrumentation-wsgi",

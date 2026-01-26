@@ -39,12 +39,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4099](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4099))
 - `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
   ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
+- `opentelemetry-instrumentation-falcon`: pass request attributes at span creation
+  ([#4119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4119))
 - `opentelemetry-instrumentation`: add database stability attribute setters in `_semconv` utilities
   ([#4108](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4108))
 - `opentelemetry-instrumentation-tornado`: Implement new semantic convention opt-in migration
   ([#3993](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3993))
+- `opentelemetry-instrumentation-tornado`: pass request attributes at span creation
+  ([#4140](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4140))
 - `opentelemetry-instrumentation-pyramid` Implement new semantic convention opt-in migration
   ([#3982](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3982))
+- `opentelemetry-instrumentation-tortoiseorm` Add unit tests for Tortoise ORM instrumentation
+  ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
+- `opentelemetry-instrumentation-pyramid`: pass request attributes at span creation
+  ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 
 ### Fixed
 
@@ -90,6 +98,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4081))
 - `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
   ([#4092](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4092))
+- `opentelemetry-instrumentation-dbapi`: Fix sqlcomment calculation of mysql_client_version field if connection reassignment, with "unknown" fallback
+  ([#3729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3729))
+- `opentelemetry-instrumentation-confluent-kafka`: Fix incorrect number of argument to `_inner_wrap_close`
+  ([#3922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3922))
 
 ### Breaking changes
 
