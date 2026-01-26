@@ -44,6 +44,7 @@ from google.genai.types import (
     GenerateContentConfigOrDict,
     GenerateContentResponse,
     ToolListUnionDict,
+    ToolUnionDict,
 )
 
 from opentelemetry import context as context_api
@@ -71,6 +72,8 @@ from opentelemetry.util.genai.utils import gen_ai_json_dumps
 from opentelemetry.util.types import (
     AttributeValue,
 )
+
+from typing import Callable
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
@@ -185,6 +188,35 @@ def _to_dict(value: object):
             return {"ModelName": str(value)}
 
     return json.loads(json.dumps(value))
+
+
+def _to_tool_definition(
+    tool: ToolUnionDict
+) -> MessagePart:
+    if isinstance(tool, dict):
+        return tool
+    if hasattr(tool, "to_json_dict"):
+        try:
+            return tool.to_json_dict()
+        except TypeError:
+            pass
+    if hasattr(tool, "model_dump"):
+        try:
+            return tool.model_dump()
+        except TypeError:
+            pass
+    if callable(tool) and hasattr(tool, "__name__"):
+        doc = getattr(tool, "__doc__", "") or ""
+        return {
+            "function": {
+                "name": getattr(tool, "__name__", str(type(tool))),
+                "description": doc.strip()
+            }
+        }
+    try:
+        return {"value": str(tool)}
+    except Exception:
+        return {"error": "failed to serialize tool definition"}
 
 
 def _create_request_attributes(
@@ -502,7 +534,7 @@ class _GenerateContentInstrumentationHelper:
 
         tool_definitions = []
         if tools := _config_to_tools(config):
-            tool_definitions = [_to_dict(tool) for tool in tools]
+            tool_definitions = [_to_tool_definition(tool) for tool in tools]
 
         span = trace.get_current_span()
         event = LogRecord(
