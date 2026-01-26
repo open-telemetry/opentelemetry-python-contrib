@@ -61,18 +61,16 @@ def _get_llm_common_attributes(
     if invocation.provider is not None:
         # TODO: clean provider name to match GenAiProviderNameValues?
         attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
-    return attributes
 
     if invocation.server_address:
-        span.set_attribute(
-            server_attributes.SERVER_ADDRESS, invocation.server_address
+        attributes[server_attributes.SERVER_ADDRESS] = (
+            invocation.server_address
         )
     if invocation.server_port:
-        span.set_attribute(
-            server_attributes.SERVER_PORT, invocation.server_port
-        )
+        attributes[server_attributes.SERVER_PORT] = invocation.server_port
 
-    _apply_response_attributes(span, invocation)
+    return attributes
+
 
 def _get_llm_span_name(invocation: LLMInvocation) -> str:
     """Get the span name for an LLM invocation."""
@@ -172,7 +170,7 @@ def _maybe_emit_llm_event(
 
     # Add error.type if operation ended in error
     if error is not None:
-        attributes[ErrorAttributes.ERROR_TYPE] = error.type.__qualname__
+        attributes[error_attributes.ERROR_TYPE] = error.type.__qualname__
 
     # Create and emit the event
     context = set_span_in_context(span, get_current())

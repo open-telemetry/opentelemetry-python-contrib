@@ -445,6 +445,7 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
                 GenAI.GEN_AI_INPUT_MESSAGES: AnyNonNone(),
                 GenAI.GEN_AI_OUTPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_SYSTEM_INSTRUCTIONS: AnyNonNone(),
                 GenAI.GEN_AI_REQUEST_TEMPERATURE: 0.5,
                 GenAI.GEN_AI_REQUEST_TOP_P: 0.9,
                 GenAI.GEN_AI_REQUEST_STOP_SEQUENCES: ("stop",),
@@ -875,7 +876,7 @@ class TestTelemetryHandler(unittest.TestCase):
 
         # Verify error attribute is present
         self.assertEqual(
-            attrs[ErrorAttributes.ERROR_TYPE], TestError.__qualname__
+            attrs[error_attributes.ERROR_TYPE], TestError.__qualname__
         )
         self.assertEqual(attrs[GenAI.GEN_AI_OPERATION_NAME], "chat")
         self.assertEqual(attrs[GenAI.GEN_AI_REQUEST_MODEL], "error-model")
@@ -1018,6 +1019,7 @@ class TestTelemetryHandler(unittest.TestCase):
             log_record.event_name, "gen_ai.client.inference.operation.details"
         )
         self.assertIn(GenAI.GEN_AI_INPUT_MESSAGES, log_record.attributes)
+
 
 class AnyNonNone:
     def __eq__(self, other):
