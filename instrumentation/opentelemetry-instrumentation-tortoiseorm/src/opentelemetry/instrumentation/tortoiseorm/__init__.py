@@ -48,8 +48,21 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.tortoiseorm.package import _instruments
 from opentelemetry.instrumentation.tortoiseorm.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+    DbSystemValues,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
@@ -230,34 +243,28 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         capabilities = getattr(connection, "capabilities", None)
         if capabilities is not None:
             if capabilities.dialect == "sqlite":
-                span_attributes[SpanAttributes.DB_SYSTEM] = (
-                    DbSystemValues.SQLITE.value
-                )
+                span_attributes[DB_SYSTEM] = DbSystemValues.SQLITE.value
             elif capabilities.dialect == "postgres":
-                span_attributes[SpanAttributes.DB_SYSTEM] = (
-                    DbSystemValues.POSTGRESQL.value
-                )
+                span_attributes[DB_SYSTEM] = DbSystemValues.POSTGRESQL.value
             elif capabilities.dialect == "mysql":
-                span_attributes[SpanAttributes.DB_SYSTEM] = (
-                    DbSystemValues.MYSQL.value
-                )
+                span_attributes[DB_SYSTEM] = DbSystemValues.MYSQL.value
         dbname = getattr(connection, "filename", None)
         if dbname:
-            span_attributes[SpanAttributes.DB_NAME] = dbname
+            span_attributes[DB_NAME] = dbname
         dbname = getattr(connection, "database", None)
         if dbname:
-            span_attributes[SpanAttributes.DB_NAME] = dbname
+            span_attributes[DB_NAME] = dbname
         if query is not None:
-            span_attributes[SpanAttributes.DB_STATEMENT] = query
+            span_attributes[DB_STATEMENT] = query
         user = getattr(connection, "user", None)
         if user:
-            span_attributes[SpanAttributes.DB_USER] = user
+            span_attributes[DB_USER] = user
         host = getattr(connection, "host", None)
         if host:
-            span_attributes[SpanAttributes.NET_PEER_NAME] = host
+            span_attributes[NET_PEER_NAME] = host
         port = getattr(connection, "port", None)
         if port:
-            span_attributes[SpanAttributes.NET_PEER_PORT] = port
+            span_attributes[NET_PEER_PORT] = port
 
         if self.capture_parameters:
             if parameters is not None and len(parameters) > 0:
@@ -266,6 +273,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return span_attributes
 
     async def _do_execute(self, func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         name = args[0].split()[0]
 
@@ -293,6 +303,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return result
 
     async def _from_queryset(self, func, modelcls, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         name = f"pydantic.{func.__name__}"
 

@@ -110,7 +110,9 @@ from confluent_kafka import Consumer, Producer
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import MessagingOperationValues
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MessagingOperationTypeValues,
+)
 from opentelemetry.trace import Tracer
 
 from .package import _instruments
@@ -132,8 +134,8 @@ class AutoInstrumentedProducer(Producer):
 
 
 class AutoInstrumentedConsumer(Consumer):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._current_consume_span = None
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
@@ -183,9 +185,9 @@ class ProxiedConsumer(Consumer):
         self._current_consume_span = None
         self._current_context_token = None
 
-    def close(self):
+    def close(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_close(
-            self._consumer.close, self
+            self._consumer.close, self, args, kwargs
         )
 
     def committed(self, partitions, timeout=-1):
@@ -306,8 +308,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 func, instance, self._tracer, args, kwargs
             )
 
-        def _inner_wrap_close(func, instance):
-            return ConfluentKafkaInstrumentor.wrap_close(func, instance)
+        def _inner_wrap_close(func, instance, args, kwargs):
+            return ConfluentKafkaInstrumentor.wrap_close(
+                func, instance, args, kwargs
+            )
 
         wrapt.wrap_function_wrapper(
             AutoInstrumentedProducer,
@@ -363,7 +367,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationValues.RECEIVE,
+                operation=MessagingOperationTypeValues.RECEIVE,
             )  # Replace
             propagate.inject(
                 headers,
@@ -387,7 +391,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.topic(),
                     record.partition(),
                     record.offset(),
-                    operation=MessagingOperationValues.PROCESS,
+                    operation=MessagingOperationTypeValues.PROCESS,
                 )
         instance._current_context_token = context.attach(
             trace.set_span_in_context(instance._current_consume_span)
@@ -409,7 +413,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 _enrich_span(
                     instance._current_consume_span,
                     records[0].topic(),
-                    operation=MessagingOperationValues.PROCESS,
+                    operation=MessagingOperationTypeValues.PROCESS,
                 )
 
         instance._current_context_token = context.attach(
@@ -419,7 +423,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return records
 
     @staticmethod
-    def wrap_close(func, instance):
+    def wrap_close(func, instance, args, kwargs):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
-        func()
+        func(*args, **kwargs)

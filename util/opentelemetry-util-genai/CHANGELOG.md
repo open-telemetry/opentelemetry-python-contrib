@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add support for `server.address`, `server.port` on all signals and additional metric-only attributes
+  ([#4069](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4069))
+- Log error when `fsspec` fails to be imported instead of silently failing ([#4037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4037)).
 - Minor change to check LRU cache in Completion Hook before acquiring semaphore/thread ([#3907](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3907)).
 - Add environment variable for genai upload hook queue size
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3943](#3943))
-- Add more Semconv attributes to LLMInvocation spans. 
+- Add more Semconv attributes to LLMInvocation spans.
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3862](#3862))
+- Limit the upload hook thread pool to 64 workers
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3944](#3944))
 - Add metrics to LLMInvocation traces
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3891](#3891))
 

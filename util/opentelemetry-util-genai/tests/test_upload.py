@@ -285,6 +285,19 @@ class TestUploadCompletionHook(TestCase):
             logs.output[0],
         )
 
+    def test_threadpool_max_workers(self):
+        for max_queue_size, expect_threadpool_workers in ((10, 10), (100, 64)):
+            with patch(
+                "opentelemetry.util.genai._upload.completion_hook.ThreadPoolExecutor"
+            ) as mock:
+                hook = UploadCompletionHook(
+                    base_path=BASE_PATH, max_queue_size=max_queue_size
+                )
+                self.addCleanup(hook.shutdown)
+                mock.assert_called_once_with(
+                    max_workers=expect_threadpool_workers
+                )
+
 
 class TestUploadCompletionHookIntegration(TestBase):
     def setUp(self):
