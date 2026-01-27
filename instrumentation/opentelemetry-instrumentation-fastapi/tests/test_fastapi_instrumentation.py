@@ -33,6 +33,9 @@ from starlette.routing import Match
 from starlette.types import Receive, Scope, Send
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
+from opentelemetry.instrumentation.fastapi.environment_variables import (
+    OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS,
+)
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -2478,3 +2481,192 @@ class TestFastAPIHostHeaderURLBothSemconv(TestFastAPIHostHeaderURL):
         assert server_span is not None
 
         self.assertEqual(server_span.name, "GET /error")
+
+
+class TestExcludedSpansEnvVar(TestBaseManualFastAPI):
+    """Tests for the OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS environment variable."""
+
+    def _create_app_with_excluded_spans(self):
+        app = self._create_app()
+
+        @app.get("/foobar")
+        async def _():
+            return {"message": "hello world"}
+
+        otel_fastapi.FastAPIInstrumentor().instrument_app(app)
+        return app
+
+    def test_excluded_spans_send_via_env(self):
+        """Setting OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS=send should exclude send spans."""
+        with patch.dict(
+            "os.environ",
+            {
+                OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS: "send",
+                OTEL_SEMCONV_STABILITY_OPT_IN: "default",
+            },
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            app = self._create_app_with_excluded_spans()
+            client = TestClient(app)
+
+            client.get("/foobar")
+            spans = self.memory_exporter.get_finished_spans()
+
+            # Expect: only the server span (no send span)
+            self.assertEqual(len(spans), 1)
+
+            span_name = spans[0].name
+            self.assertIn("GET /foobar", span_name)
+            self.assertNotIn("http send", span_name)
+
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
+
+    def test_excluded_spans_both_receive_and_send_via_env(self):
+        """Setting OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS=receive,send should exclude both."""
+        with patch.dict(
+            "os.environ",
+            {
+                OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS: "receive,send",
+                OTEL_SEMCONV_STABILITY_OPT_IN: "default",
+            },
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            app = self._create_app_with_excluded_spans()
+            client = TestClient(app)
+
+            client.get("/foobar")
+            spans = self.memory_exporter.get_finished_spans()
+
+            # Expect: only the server span (no receive or send spans)
+            self.assertEqual(len(spans), 1)
+
+            span_name = spans[0].name
+            self.assertIn("GET /foobar", span_name)
+            self.assertNotIn("http receive", span_name)
+            self.assertNotIn("http send", span_name)
+
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
+
+    def test_excluded_spans_invalid_value_raises_error(self):
+        """Invalid values in OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS should raise ValueError."""
+        with patch.dict(
+            "os.environ",
+            {
+                OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS: "invalid",
+                OTEL_SEMCONV_STABILITY_OPT_IN: "default",
+            },
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            app = fastapi.FastAPI()
+            with self.assertRaises(ValueError) as context:
+                otel_fastapi.FastAPIInstrumentor().instrument_app(app)
+
+            error_msg = str(context.exception)
+            self.assertIn("Invalid excluded span", error_msg)
+            self.assertIn("invalid", error_msg)
+
+    def test_exclude_spans_takes_priority(self):
+        """`exclude_spans` passed to the instrumenter must take priority over the environment variable"""
+        with patch.dict(
+            "os.environ",
+            {
+                OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS: "send",
+                OTEL_SEMCONV_STABILITY_OPT_IN: "default",
+            },
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            app = self._create_websocket_app()
+
+            # Pass exclude_spans parameter that differs from env var
+            otel_fastapi.FastAPIInstrumentor().instrument_app(
+                app, exclude_spans=["receive"]
+            )
+            client = TestClient(app)
+
+            with client.websocket_connect("/ws") as websocket:
+                data = websocket.receive_json()
+                self.assertEqual(data, {"message": "hello"})
+
+            spans = self.memory_exporter.get_finished_spans()
+            span_names = [span.name for span in spans]
+
+            # Receive spans should NOT exist (parameter takes priority)
+            self.assertFalse(
+                any("receive" in name.lower() for name in span_names)
+            )
+
+            # Send spans should exist (env var should be ignored)
+            self.assertTrue(any("send" in name.lower() for name in span_names))
+
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
+
+    @staticmethod
+    def _create_websocket_app():
+        """Create a FastAPI app with a WebSocket endpoint."""
+        app = fastapi.FastAPI()
+
+        @app.websocket("/ws")
+        async def websocket_endpoint(websocket: fastapi.WebSocket):
+            await websocket.accept()
+            await websocket.send_json({"message": "hello"})
+            await websocket.close()
+
+        return app
+
+    def test_websocket_excluded_spans_receive_via_env(self):
+        """Setting OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS=receive should exclude receive spans for WebSocket."""
+        with patch.dict(
+            "os.environ",
+            {
+                OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS: "receive",
+                OTEL_SEMCONV_STABILITY_OPT_IN: "default",
+            },
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            app = self._create_websocket_app()
+
+            otel_fastapi.FastAPIInstrumentor().instrument_app(app)
+            client = TestClient(app)
+
+            with client.websocket_connect("/ws") as websocket:
+                data = websocket.receive_json()
+                self.assertEqual(data, {"message": "hello"})
+
+            spans = self.memory_exporter.get_finished_spans()
+            span_names = [span.name for span in spans]
+
+            # Receive spans should NOT exist
+            self.assertFalse(
+                any("receive" in name.lower() for name in span_names)
+            )
+
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
+
+    def test_websocket_receive_spans_present_by_default(self):
+        """Without OTEL_PYTHON_FASTAPI_EXCLUDE_SPANS, receive spans should be present for WebSocket."""
+        with patch.dict(
+            "os.environ",
+            {
+                OTEL_SEMCONV_STABILITY_OPT_IN: "default",
+            },
+            clear=True,
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            app = self._create_websocket_app()
+
+            otel_fastapi.FastAPIInstrumentor().instrument_app(app)
+            client = TestClient(app)
+
+            with client.websocket_connect("/ws") as websocket:
+                data = websocket.receive_json()
+                self.assertEqual(data, {"message": "hello"})
+
+            spans = self.memory_exporter.get_finished_spans()
+            span_names = [span.name for span in spans]
+
+            # Receive spans should exist
+            self.assertTrue(
+                any("receive" in name.lower() for name in span_names)
+            )
+
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
