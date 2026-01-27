@@ -17,7 +17,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator, Optional, Sequence
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncIterator,
+    Iterator,
+    Optional,
+    Sequence,
+    Union,
+)
 from urllib.parse import urlparse
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -38,7 +46,7 @@ if TYPE_CHECKING:
         MessageStream,
         MessageStreamManager,
     )
-    from anthropic.resources.messages import Messages
+    from anthropic.resources.messages import AsyncMessages, Messages
     from anthropic.types import Message, RawMessageStreamEvent
 
 
@@ -94,7 +102,8 @@ def extract_params(  # pylint: disable=too-many-locals
 
 
 def set_server_address_and_port(
-    client_instance: "Messages", attributes: dict[str, Any]
+    client_instance: "Union[Messages, AsyncMessages]",
+    attributes: dict[str, Any],
 ) -> None:
     """Extract server address and port from the Anthropic client instance."""
     base_client = getattr(client_instance, "_client", None)
@@ -117,7 +126,8 @@ def set_server_address_and_port(
 
 
 def get_llm_request_attributes(
-    params: MessageRequestParams, client_instance: "Messages"
+    params: MessageRequestParams,
+    client_instance: "Union[Messages, AsyncMessages]",
 ) -> dict[str, AttributeValue]:
     """Extract LLM request attributes from MessageRequestParams.
 
@@ -378,7 +388,9 @@ class AsyncStreamWrapper(AsyncIterator["RawMessageStreamEvent"]):
     async def __aenter__(self) -> "AsyncStreamWrapper":
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    async def __aexit__(
+        self, exc_type: Any, exc_val: Any, exc_tb: Any
+    ) -> bool:
         await self.close()
         return False
 
@@ -431,10 +443,14 @@ class MessageStreamManagerWrapper:
             # Handle error case
             self._handler.fail_llm(
                 self._invocation,
-                Error(message=str(exc_val) if exc_val else str(exc_type), type=exc_type),
+                Error(
+                    message=str(exc_val) if exc_val else str(exc_type),
+                    type=exc_type,
+                ),
             )
         # Always exit the underlying stream manager
-        return self._stream_manager.__exit__(exc_type, exc_val, exc_tb)
+        self._stream_manager.__exit__(exc_type, exc_val, exc_tb)
+        return False
 
     def _extract_telemetry_from_stream(self) -> None:
         """Extract telemetry data from the MessageStream's final message."""
@@ -455,8 +471,12 @@ class MessageStreamManagerWrapper:
                 self._invocation.finish_reasons = [final_message.stop_reason]
 
             if final_message.usage:
-                self._invocation.input_tokens = final_message.usage.input_tokens
-                self._invocation.output_tokens = final_message.usage.output_tokens
+                self._invocation.input_tokens = (
+                    final_message.usage.input_tokens
+                )
+                self._invocation.output_tokens = (
+                    final_message.usage.output_tokens
+                )
         except Exception:  # pylint: disable=broad-exception-caught
             # If we can't get the final message, we still want to end the span
             pass
@@ -494,7 +514,9 @@ class AsyncMessageStreamManagerWrapper:
             )
             raise
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    async def __aexit__(
+        self, exc_type: Any, exc_val: Any, exc_tb: Any
+    ) -> bool:
         """Exit the async context, extract telemetry, and finalize the span."""
         # Extract telemetry from the final message before exiting
         if self._message_stream is not None and exc_type is None:
@@ -504,10 +526,14 @@ class AsyncMessageStreamManagerWrapper:
             # Handle error case
             self._handler.fail_llm(
                 self._invocation,
-                Error(message=str(exc_val) if exc_val else str(exc_type), type=exc_type),
+                Error(
+                    message=str(exc_val) if exc_val else str(exc_type),
+                    type=exc_type,
+                ),
             )
         # Always exit the underlying stream manager
-        return await self._stream_manager.__aexit__(exc_type, exc_val, exc_tb)
+        await self._stream_manager.__aexit__(exc_type, exc_val, exc_tb)
+        return False
 
     async def _extract_telemetry_from_stream(self) -> None:
         """Extract telemetry data from the AsyncMessageStream's final message."""
@@ -528,8 +554,12 @@ class AsyncMessageStreamManagerWrapper:
                 self._invocation.finish_reasons = [final_message.stop_reason]
 
             if final_message.usage:
-                self._invocation.input_tokens = final_message.usage.input_tokens
-                self._invocation.output_tokens = final_message.usage.output_tokens
+                self._invocation.input_tokens = (
+                    final_message.usage.input_tokens
+                )
+                self._invocation.output_tokens = (
+                    final_message.usage.output_tokens
+                )
         except Exception:  # pylint: disable=broad-exception-caught
             # If we can't get the final message, we still want to end the span
             pass

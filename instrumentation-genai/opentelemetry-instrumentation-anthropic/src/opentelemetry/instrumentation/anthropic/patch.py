@@ -34,18 +34,23 @@ from .utils import (
 
 if TYPE_CHECKING:
     from anthropic._streaming import AsyncStream, Stream
-    from anthropic.lib.streaming import AsyncMessageStreamManager, MessageStreamManager
+    from anthropic.lib.streaming import (
+        AsyncMessageStreamManager,
+        MessageStreamManager,
+    )
     from anthropic.resources.messages import AsyncMessages, Messages
     from anthropic.types import Message, RawMessageStreamEvent
 
 
 def messages_create(
     handler: TelemetryHandler,
-) -> Callable[..., Union["Message", "Stream[RawMessageStreamEvent]"]]:
+) -> Callable[..., Any]:
     """Wrap the `create` method of the `Messages` class to trace it."""
 
     def traced_method(
-        wrapped: Callable[..., Union["Message", "Stream[RawMessageStreamEvent]"]],
+        wrapped: Callable[
+            ..., Union["Message", "Stream[RawMessageStreamEvent]"]
+        ],
         instance: "Messages",
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
@@ -71,8 +76,16 @@ def messages_create(
         try:
             result = wrapped(*args, **kwargs)
             if is_streaming:
-                return StreamWrapper(result, handler, invocation)
-            wrapper = MessageWrapper(result, handler, invocation)
+                return StreamWrapper(
+                    result,  # pyright: ignore[reportArgumentType]
+                    handler,
+                    invocation,
+                )
+            wrapper = MessageWrapper(
+                result,  # pyright: ignore[reportArgumentType]
+                handler,
+                invocation,
+            )
             return wrapper.message
         except Exception as exc:
             handler.fail_llm(
@@ -85,7 +98,7 @@ def messages_create(
 
 def messages_stream(
     handler: TelemetryHandler,
-) -> Callable[..., "MessageStreamManager"]:
+) -> Callable[..., Any]:
     """Wrap the `stream` method of the `Messages` class to trace it."""
 
     def traced_method(
@@ -125,7 +138,7 @@ def messages_stream(
 
 def async_messages_stream(
     handler: TelemetryHandler,
-) -> Callable[..., "AsyncMessageStreamManager"]:
+) -> Callable[..., Any]:
     """Wrap the `stream` method of the `AsyncMessages` class to trace it."""
 
     def traced_method(
@@ -153,7 +166,9 @@ def async_messages_stream(
         try:
             result = wrapped(*args, **kwargs)
             # Return wrapped AsyncMessageStreamManager
-            return AsyncMessageStreamManagerWrapper(result, handler, invocation)
+            return AsyncMessageStreamManagerWrapper(
+                result, handler, invocation
+            )
         except Exception as exc:
             handler.fail_llm(
                 invocation, Error(message=str(exc), type=type(exc))
@@ -165,15 +180,17 @@ def async_messages_stream(
 
 def async_messages_create(
     handler: TelemetryHandler,
-) -> Callable[
-    ..., Coroutine[Any, Any, Union["Message", "AsyncStream[RawMessageStreamEvent]"]]
-]:
+) -> Callable[..., Coroutine[Any, Any, Any]]:
     """Wrap the `create` method of the `AsyncMessages` class to trace it."""
 
     async def traced_method(
         wrapped: Callable[
             ...,
-            Coroutine[Any, Any, Union["Message", "AsyncStream[RawMessageStreamEvent]"]],
+            Coroutine[
+                Any,
+                Any,
+                Union["Message", "AsyncStream[RawMessageStreamEvent]"],
+            ],
         ],
         instance: "AsyncMessages",
         args: tuple[Any, ...],
@@ -200,8 +217,16 @@ def async_messages_create(
         try:
             result = await wrapped(*args, **kwargs)
             if is_streaming:
-                return AsyncStreamWrapper(result, handler, invocation)
-            wrapper = MessageWrapper(result, handler, invocation)
+                return AsyncStreamWrapper(
+                    result,  # pyright: ignore[reportArgumentType]
+                    handler,
+                    invocation,
+                )
+            wrapper = MessageWrapper(
+                result,  # pyright: ignore[reportArgumentType]
+                handler,
+                invocation,
+            )
             return wrapper.message
         except Exception as exc:
             handler.fail_llm(

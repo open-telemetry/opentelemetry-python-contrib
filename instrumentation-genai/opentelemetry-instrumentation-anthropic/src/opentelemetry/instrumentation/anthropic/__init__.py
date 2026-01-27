@@ -55,10 +55,10 @@ from wrapt import (
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
 from opentelemetry.instrumentation.anthropic.patch import (
-    async_messages_create,
-    async_messages_stream,
+    async_messages_create,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue]
+    async_messages_stream,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue]
     messages_create,
-    messages_stream,
+    messages_stream,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue]
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
@@ -105,28 +105,28 @@ class AnthropicInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             module="anthropic.resources.messages",
             name="Messages.create",
-            wrapper=messages_create(handler),
+            wrapper=messages_create(handler),  # pyright: ignore[reportUnknownArgumentType,reportCallIssue]
         )
 
         # Patch Messages.stream
         wrap_function_wrapper(
             module="anthropic.resources.messages",
             name="Messages.stream",
-            wrapper=messages_stream(handler),
+            wrapper=messages_stream(handler),  # pyright: ignore[reportUnknownArgumentType]
         )
 
         # Patch AsyncMessages.create
         wrap_function_wrapper(
             module="anthropic.resources.messages",
             name="AsyncMessages.create",
-            wrapper=async_messages_create(handler),
+            wrapper=async_messages_create(handler),  # pyright: ignore[reportUnknownArgumentType]
         )
 
         # Patch AsyncMessages.stream
         wrap_function_wrapper(
             module="anthropic.resources.messages",
             name="AsyncMessages.stream",
-            wrapper=async_messages_stream(handler),
+            wrapper=async_messages_stream(handler),  # pyright: ignore[reportUnknownArgumentType]
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
