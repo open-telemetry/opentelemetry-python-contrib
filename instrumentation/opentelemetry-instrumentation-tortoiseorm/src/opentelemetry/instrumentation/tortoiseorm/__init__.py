@@ -48,7 +48,10 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.tortoiseorm.package import _instruments
 from opentelemetry.instrumentation.tortoiseorm.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_STATEMENT,
@@ -270,6 +273,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return span_attributes
 
     async def _do_execute(self, func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         name = args[0].split()[0]
 
@@ -297,6 +303,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return result
 
     async def _from_queryset(self, func, modelcls, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         name = f"pydantic.{func.__name__}"
 
