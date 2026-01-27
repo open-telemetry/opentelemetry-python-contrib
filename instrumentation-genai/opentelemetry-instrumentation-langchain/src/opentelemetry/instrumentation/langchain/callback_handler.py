@@ -144,7 +144,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         **kwargs: Any,
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
-        if llm_invocation is None or not isinstance(llm_invocation, LLMInvocation):
+        if llm_invocation is None or not isinstance(
+            llm_invocation, LLMInvocation
+        ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
 
@@ -234,7 +236,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         **kwargs: Any,
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
-        if llm_invocation is None or not isinstance(llm_invocation, LLMInvocation):
+        if llm_invocation is None or not isinstance(
+            llm_invocation, LLMInvocation
+        ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
 
@@ -247,7 +251,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 
 
-def get_property_value(obj: dict[str, Any] | object, property_name: str) -> Any:
+def get_property_value(
+    obj: dict[str, Any] | object, property_name: str
+) -> Any:
     if isinstance(obj, dict):
         return obj.get(property_name, None)  # type: ignore[reportUnknownParameterType]
 
