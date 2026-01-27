@@ -108,9 +108,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
         input_messages: list[InputMessage] = []
         for sub_messages in messages:  # type: ignore[reportUnknownVariableType]
-            for message in sub_messages:  # type: BaseMessage
-                content = get_property_value(message, "content")
-                role = get_property_value(message, "type")
+            for message in sub_messages:  # type: ignore[reportUnknownVariableType]
+                content = get_property_value(message, "content")  # type: ignore[reportUnknownVariableType]
+                role = get_property_value(message, "type")  # type: ignore[reportUnknownArgumentType, reportUnknownVariableType]
                 parts = [Text(content=content, type="text")]
                 input_messages.append(InputMessage(parts=parts, role=role))
 
@@ -144,7 +144,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         **kwargs: Any,
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
-        if llm_invocation is None:
+        if llm_invocation is None or not isinstance(llm_invocation, LLMInvocation):
             # If the invocation does not exist, we cannot set attributes or end it
             return
 
@@ -183,7 +183,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     ]
                     role = get_property_value(chat_generation.message, "type")
                     output_message = OutputMessage(
-                        role=role,  # type: ignore[reportArgumentType]
+                        role=role,
                         parts=parts,
                         finish_reason=finish_reason,  # type: ignore[reportPossiblyUnboundVariable, reportArgumentType]
                     )
@@ -233,8 +233,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         parent_run_id: UUID | None,
         **kwargs: Any,
     ) -> None:
-        llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)  # type: ignore[reportAssignmentType]
-        if llm_invocation is None:
+        llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if llm_invocation is None or not isinstance(llm_invocation, LLMInvocation):
             # If the invocation does not exist, we cannot set attributes or end it
             return
 
@@ -247,8 +247,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 
 
-def get_property_value(obj: object, property_name: str) -> Any:
+def get_property_value(obj: dict[str, Any] | object, property_name: str) -> Any:
     if isinstance(obj, dict):
-        return obj.get(property_name, None)
+        return obj.get(property_name, None)  # type: ignore[reportUnknownParameterType]
 
     return getattr(obj, property_name, None)
