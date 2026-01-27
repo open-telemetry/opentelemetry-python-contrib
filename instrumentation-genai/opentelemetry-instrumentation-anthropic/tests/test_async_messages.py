@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for sync Messages.create instrumentation."""
+"""Tests for async AsyncMessages.create and AsyncMessages.stream instrumentation."""
 
 import pytest
-from anthropic import Anthropic, APIConnectionError, NotFoundError
+from anthropic import APIConnectionError, AsyncAnthropic, NotFoundError
 
-from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -86,15 +85,21 @@ def assert_span_attributes(
         )
 
 
+# =============================================================================
+# Tests for AsyncMessages.create() method
+# =============================================================================
+
+
 @pytest.mark.vcr()
-def test_sync_messages_create_basic(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_create_basic(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test basic sync message creation produces correct span."""
+    """Test basic async message creation produces correct span."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
 
-    response = anthropic_client.messages.create(
+    response = await async_anthropic_client.messages.create(
         model=model,
         max_tokens=100,
         messages=messages,
@@ -115,14 +120,15 @@ def test_sync_messages_create_basic(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_with_all_params(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_create_with_all_params(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test message creation with all optional parameters."""
+    """Test async message creation with all optional parameters."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello."}]
 
-    anthropic_client.messages.create(
+    await async_anthropic_client.messages.create(
         model=model,
         max_tokens=50,
         messages=messages,
@@ -146,14 +152,15 @@ def test_sync_messages_create_with_all_params(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_token_usage(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_create_token_usage(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test that token usage is captured correctly."""
+    """Test that token usage is captured correctly for async create."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Count to 5."}]
 
-    response = anthropic_client.messages.create(
+    response = await async_anthropic_client.messages.create(
         model=model,
         max_tokens=100,
         messages=messages,
@@ -176,14 +183,15 @@ def test_sync_messages_create_token_usage(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_stop_reason(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_create_stop_reason(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test that stop reason is captured as finish_reasons array."""
+    """Test that stop reason is captured as finish_reasons array for async create."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
 
-    response = anthropic_client.messages.create(
+    response = await async_anthropic_client.messages.create(
         model=model,
         max_tokens=100,
         messages=messages,
@@ -199,18 +207,19 @@ def test_sync_messages_create_stop_reason(
     )
 
 
-def test_sync_messages_create_connection_error(
+@pytest.mark.asyncio
+async def test_async_messages_create_connection_error(
     span_exporter, instrument_no_content
 ):
-    """Test that connection errors are handled correctly."""
+    """Test that connection errors are handled correctly for async create."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
 
     # Create client with invalid endpoint
-    client = Anthropic(base_url="http://localhost:9999")
+    client = AsyncAnthropic(base_url="http://localhost:9999")
 
     with pytest.raises(APIConnectionError):
-        client.messages.create(
+        await client.messages.create(
             model=model,
             max_tokens=100,
             messages=messages,
@@ -227,15 +236,16 @@ def test_sync_messages_create_connection_error(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_api_error(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_create_api_error(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test that API errors (e.g., invalid model) are handled correctly."""
+    """Test that API errors (e.g., invalid model) are handled correctly for async."""
     model = "invalid-model-name"
     messages = [{"role": "user", "content": "Hello"}]
 
     with pytest.raises(NotFoundError):
-        anthropic_client.messages.create(
+        await async_anthropic_client.messages.create(
             model=model,
             max_tokens=100,
             messages=messages,
@@ -250,63 +260,12 @@ def test_sync_messages_create_api_error(
     assert "NotFoundError" in span.attributes[ErrorAttributes.ERROR_TYPE]
 
 
-def test_uninstrument_removes_patching(
-    span_exporter, tracer_provider, logger_provider, meter_provider
-):
-    """Test that uninstrument() removes the patching."""
-    instrumentor = AnthropicInstrumentor()
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
-
-    # Uninstrument
-    instrumentor.uninstrument()
-
-    # Create a new client after uninstrumenting
-    # The actual API call won't work without a real API key,
-    # but we can verify no spans are created for a mocked scenario
-    # For this test, we'll just verify uninstrument doesn't raise
-    assert True
-
-
-def test_multiple_instrument_uninstrument_cycles(
-    tracer_provider, logger_provider, meter_provider
-):
-    """Test that multiple instrument/uninstrument cycles work correctly."""
-    instrumentor = AnthropicInstrumentor()
-
-    # First cycle
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
-    instrumentor.uninstrument()
-
-    # Second cycle
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
-    instrumentor.uninstrument()
-
-    # Third cycle - should still work
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
-    instrumentor.uninstrument()
-
-
 @pytest.mark.vcr()
-def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_create_streaming(  # pylint: disable=too-many-locals
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test streaming message creation produces correct span."""
+    """Test async streaming message creation produces correct span."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
 
@@ -318,13 +277,16 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
     input_tokens = None
     output_tokens = None
 
-    with anthropic_client.messages.create(
+    # Note: AsyncMessages.create() is a coroutine that must be awaited first,
+    # then you can use async with on the result (unlike sync which returns directly)
+    stream = await async_anthropic_client.messages.create(
         model=model,
         max_tokens=100,
         messages=messages,
         stream=True,
-    ) as stream:
-        for chunk in stream:
+    )
+    async with stream:
+        async for chunk in stream:
             # Extract data from chunks for assertion
             if chunk.type == "message_start":
                 message = getattr(chunk, "message", None)
@@ -361,14 +323,15 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_streaming_iteration(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_create_streaming_iteration(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test streaming with direct iteration (without context manager)."""
+    """Test async streaming with direct iteration (without context manager)."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
 
-    stream = anthropic_client.messages.create(
+    stream = await async_anthropic_client.messages.create(
         model=model,
         max_tokens=100,
         messages=messages,
@@ -376,7 +339,9 @@ def test_sync_messages_create_streaming_iteration(
     )
 
     # Consume the stream by iterating
-    chunks = list(stream)
+    chunks = []
+    async for chunk in stream:
+        chunks.append(chunk)
     assert len(chunks) > 0
 
     spans = span_exporter.get_finished_spans()
@@ -389,18 +354,19 @@ def test_sync_messages_create_streaming_iteration(
     assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
 
 
-def test_sync_messages_create_streaming_connection_error(
+@pytest.mark.asyncio
+async def test_async_messages_create_streaming_connection_error(
     span_exporter, instrument_no_content
 ):
-    """Test that connection errors during streaming are handled correctly."""
+    """Test that connection errors during async streaming are handled correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
 
     # Create client with invalid endpoint
-    client = Anthropic(base_url="http://localhost:9999")
+    client = AsyncAnthropic(base_url="http://localhost:9999")
 
     with pytest.raises(APIConnectionError):
-        client.messages.create(
+        await client.messages.create(
             model=model,
             max_tokens=100,
             messages=messages,
@@ -418,27 +384,31 @@ def test_sync_messages_create_streaming_connection_error(
 
 
 # =============================================================================
-# Tests for Messages.stream() method
+# Tests for AsyncMessages.stream() method
 # =============================================================================
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_basic(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_stream_basic(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test Messages.stream() produces correct span with context manager."""
+    """Test AsyncMessages.stream() produces correct span with async context manager."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
 
-    with anthropic_client.messages.stream(
+    async with async_anthropic_client.messages.stream(
         model=model,
         max_tokens=100,
         messages=messages,
     ) as stream:
         # Consume the stream using text_stream
-        response_text = "".join(stream.text_stream)
+        text_parts = []
+        async for text in stream.text_stream:
+            text_parts.append(text)
+        response_text = "".join(text_parts)
         # Get the final message for assertions
-        final_message = stream.get_final_message()
+        final_message = await stream.get_final_message()
 
     assert response_text  # Should have some text
 
@@ -457,14 +427,15 @@ def test_sync_messages_stream_basic(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_with_params(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_stream_with_params(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test Messages.stream() with additional parameters."""
+    """Test AsyncMessages.stream() with additional parameters."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
 
-    with anthropic_client.messages.stream(
+    async with async_anthropic_client.messages.stream(
         model=model,
         max_tokens=50,
         messages=messages,
@@ -473,7 +444,8 @@ def test_sync_messages_stream_with_params(
         top_k=40,
     ) as stream:
         # Consume the stream
-        _ = "".join(stream.text_stream)
+        async for _ in stream.text_stream:
+            pass
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
@@ -487,20 +459,22 @@ def test_sync_messages_stream_with_params(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_token_usage(
-    span_exporter, anthropic_client, instrument_no_content
+@pytest.mark.asyncio
+async def test_async_messages_stream_token_usage(
+    span_exporter, async_anthropic_client, instrument_no_content
 ):
-    """Test that Messages.stream() captures token usage correctly."""
+    """Test that AsyncMessages.stream() captures token usage correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Count to 3."}]
 
-    with anthropic_client.messages.stream(
+    async with async_anthropic_client.messages.stream(
         model=model,
         max_tokens=100,
         messages=messages,
     ) as stream:
-        _ = "".join(stream.text_stream)
-        final_message = stream.get_final_message()
+        async for _ in stream.text_stream:
+            pass
+        final_message = await stream.get_final_message()
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
@@ -518,25 +492,28 @@ def test_sync_messages_stream_token_usage(
     )
 
 
-def test_sync_messages_stream_connection_error(
+@pytest.mark.asyncio
+async def test_async_messages_stream_connection_error(
     span_exporter, instrument_no_content
 ):
-    """Test that connection errors in Messages.stream() are handled correctly."""
+    """Test that connection errors in AsyncMessages.stream() are handled correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
 
     # Create client with invalid endpoint
-    client = Anthropic(base_url="http://localhost:9999")
+    client = AsyncAnthropic(base_url="http://localhost:9999")
 
     with pytest.raises(APIConnectionError):
-        with client.messages.stream(
+        # pylint: disable=not-async-context-manager
+        async with client.messages.stream(
             model=model,
             max_tokens=100,
             messages=messages,
             timeout=0.1,
         ) as stream:
             # Try to consume the stream
-            _ = "".join(stream.text_stream)
+            async for _ in stream.text_stream:
+                pass
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
