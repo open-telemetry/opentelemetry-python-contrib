@@ -3384,9 +3384,7 @@ provides-extras = ["instruments", "instruments-any"]
 name = "opentelemetry-instrumentation-langchain"
 source = { editable = "instrumentation-genai/opentelemetry-instrumentation-langchain" }
 dependencies = [
-    { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
 ]
 
 [package.optional-dependencies]
@@ -3397,9 +3395,7 @@ instruments = [
 [package.metadata]
 requires-dist = [
     { name = "langchain", marker = "extra == 'instruments'", specifier = ">=0.3.21" },
-    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
 provides-extras = ["instruments"]
 
