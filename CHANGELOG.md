@@ -102,6 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3729))
 - `opentelemetry-instrumentation-confluent-kafka`: Fix incorrect number of argument to `_inner_wrap_close`
   ([#3922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3922))
+- `opentelemetry-instrumentation-urllib3`: fix multiple arguments error 
+  ([#4144](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4144))
 
 ### Breaking changes
 
