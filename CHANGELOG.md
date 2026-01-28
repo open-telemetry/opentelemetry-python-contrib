@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4006](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4006))
 - `opentelemetry-instrumentation-flask`: Add support for 3.1+ streaming responses
   ([#3938](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3938))
+- `opentelemetry-instrumentation`: Add support for wrapt 2
+  ([#4082](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4082))
 - `opentelemetry-instrumentation-aiohttp-server`: Support passing `TracerProvider` when instrumenting.
   ([#3819](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3819))
 - `opentelemetry-instrumentation-system-metrics`: Add support for the `OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS` environment variable
