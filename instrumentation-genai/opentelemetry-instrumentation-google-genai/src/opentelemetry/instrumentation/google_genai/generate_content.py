@@ -42,6 +42,8 @@ from google.genai.types import (
     GenerateContentConfig,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
+    ToolListUnionDict,
+    ToolUnionDict,
 )
 
 from opentelemetry import context as context_api
@@ -185,6 +187,35 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
+def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+    if isinstance(tool, dict):
+        return tool
+    if hasattr(tool, "to_json_dict"):
+        try:
+            return tool.to_json_dict()
+        except TypeError:
+            pass
+    if hasattr(tool, "model_dump"):
+        try:
+            return tool.model_dump(exclude_none=True)
+        except TypeError:
+            pass
+    if callable(tool) and hasattr(tool, "__name__"):
+        doc = getattr(tool, "__doc__", "") or ""
+        return {
+            "function": {
+                "name": getattr(tool, "__name__", str(type(tool))),
+                "description": doc.strip(),
+            }
+        }
+    try:
+        return {"value": str(tool)}
+    except Exception:
+        return {
+            "error": f"failed to serialize tool definition, tool type={type(tool).__name__}"
+        }
+
+
 def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     allow_list: AllowList,
@@ -285,10 +316,22 @@ def _config_to_system_instruction(
     return config.system_instruction
 
 
+def _config_to_tools(
+    config: Union[GenerateContentConfigOrDict, None],
+) -> Union[ToolListUnionDict, None]:
+    if not config:
+        return None
+
+    if isinstance(config, dict):
+        return GenerateContentConfig.model_validate(config).tools
+    return config.tools
+
+
 def _create_completion_details_attributes(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instructions: list[MessagePart],
+    tool_definitions: list[MessagePart],
     as_str: bool = False,
 ) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue] = {
@@ -305,6 +348,11 @@ def _create_completion_details_attributes(
         attributes[gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS] = [
             dataclasses.asdict(sys_instr) for sys_instr in system_instructions
         ]
+
+    if tool_definitions:
+        attributes[gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS] = (
+            tool_definitions
+        )
 
     return attributes
 
@@ -485,6 +533,10 @@ class _GenerateContentInstrumentationHelper:
         )
         output_messages = to_output_messages(candidates=candidates)
 
+        tool_definitions = []
+        if tools := _config_to_tools(config):
+            tool_definitions = [_to_tool_definition(tool) for tool in tools]
+
         span = trace.get_current_span()
         event = LogRecord(
             event_name="gen_ai.client.inference.operation.details",
@@ -503,6 +555,7 @@ class _GenerateContentInstrumentationHelper:
             input_messages,
             output_messages,
             system_instructions,
+            tool_definitions,
         )
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
