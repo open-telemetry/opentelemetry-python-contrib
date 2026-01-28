@@ -149,9 +149,54 @@ class _DjangoMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+            return self.get_response(request)
+
+        is_asgi_request = _is_asgi_request(request)
+        if not _is_asgi_supported and is_asgi_request:
+            return self.get_response(request)
+
         self.process_request(request)
-        response = self.get_response(request)
-        return self.process_response(request, response)
+        activation = request.META.get(self._environ_activation_key)
+        if activation is None:
+            return self.get_response(request)
+
+        try:
+            activation.__enter__()
+            if _DjangoMiddleware._otel_request_hook:
+                try:
+                    _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
+                        request.META.get(self._environ_span_key), request
+                    )
+                except Exception:  # pylint: disable=broad-exception-caught
+                    _logger.exception("Exception raised by request_hook")
+            response = self.get_response(request)
+            return self.process_response(request, response)
+        finally:
+            # Decrement active request counter (must happen even on exception)
+            active_requests_count_attrs = request.META.pop(
+                self._environ_active_request_attr_key, None
+            )
+            if active_requests_count_attrs is not None:
+                self._active_request_counter.add(
+                    -1, active_requests_count_attrs
+                )
+
+            # Exit span context
+            exception = request.META.pop(self._environ_exception_key, None)
+            if exception:
+                activation.__exit__(
+                    type(exception),
+                    exception,
+                    getattr(exception, "__traceback__", None),
+                )
+            else:
+                activation.__exit__(None, None, None)
+
+            # Detach context token
+            token = request.META.pop(self._environ_token, None)
+            if token is not None:
+                detach(token)
 
     @staticmethod
     def _get_span_name(request):
@@ -271,23 +316,12 @@ class _DjangoMiddleware:
                 span.set_attribute(key, value)
 
         activation = use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation
         request.META[self._environ_span_key] = span
         if token:
             request.META[self._environ_token] = token
-
-        if _DjangoMiddleware._otel_request_hook:
-            try:
-                _DjangoMiddleware._otel_request_hook(  # pylint: disable=not-callable
-                    span, request
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                # Raising an exception here would leak the request span since process_response
-                # would not be called. Log the exception instead.
-                _logger.exception("Exception raised by request_hook")
 
     # pylint: disable=unused-argument
     def process_view(self, request, view_func, *args, **kwargs):
@@ -335,11 +369,8 @@ class _DjangoMiddleware:
         if not _is_asgi_supported and is_asgi_request:
             return response
 
-        activation = request.META.pop(self._environ_activation_key, None)
+        activation = request.META.get(self._environ_activation_key)
         span = request.META.pop(self._environ_span_key, None)
-        active_requests_count_attrs = request.META.pop(
-            self._environ_active_request_attr_key, None
-        )
         duration_attrs = request.META.pop(
             self._environ_duration_attr_key, None
         )
@@ -394,9 +425,6 @@ class _DjangoMiddleware:
             if propagator:
                 propagator.inject(response)
 
-            # record any exceptions raised while processing the request
-            exception = request.META.pop(self._environ_exception_key, None)
-
             if _DjangoMiddleware._otel_response_hook:
                 try:
                     _DjangoMiddleware._otel_response_hook(  # pylint: disable=not-callable
@@ -427,21 +455,6 @@ class _DjangoMiddleware:
                     max(duration_s, 0),
                     duration_attrs_new,
                 )
-        self._active_request_counter.add(-1, active_requests_count_attrs)
-
-        if activation and span:
-            if exception:
-                activation.__exit__(
-                    type(exception),
-                    exception,
-                    getattr(exception, "__traceback__", None),
-                )
-            else:
-                activation.__exit__(None, None, None)
-
-        if request.META.get(self._environ_token, None) is not None:
-            detach(request.META.get(self._environ_token))
-            request.META.pop(self._environ_token)
 
         return response
 
