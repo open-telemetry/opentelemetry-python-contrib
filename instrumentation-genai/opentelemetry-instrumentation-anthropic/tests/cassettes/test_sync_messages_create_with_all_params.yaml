@@ -555,4 +555,1132 @@ interactions:
     status:
       code: 200
       message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01DomMdboNakADbdEfijMjzr",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! It's nice to meet you. How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 18,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c224ccb9f2b6109-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 22 Jan 2026 21:56:14 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-22T21:56:14Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-22T21:56:14Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-22T21:56:14Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-22T21:56:14Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '458'
+      request-id:
+      - req_011CXPAQo9XRyfTnwdhxaAq6
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '2077'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01BwmbnXPsqhS9ifLcQFJ9r9",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 11,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c27232b7f433f02-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 23 Jan 2026 12:01:38 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-23T12:01:38Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-23T12:01:38Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-23T12:01:37Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-23T12:01:38Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '435'
+      request-id:
+      - req_011CXQGssGmvyGq8w59f5mY7
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '1875'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01XNrt6xjAf5pHn9QTdeBjNe",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! It's nice to meet you. How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 18,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c2900c508f91492-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 23 Jan 2026 17:27:40 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-23T17:27:40Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-23T17:27:41Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-23T17:27:40Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-23T17:27:40Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '458'
+      request-id:
+      - req_011CXQhjujYo3KYJ51Tx585P
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '1895'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01Ez3oismm4nmbab7fxV9WSV",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 11,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c2904eb4bb7f3ba-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 23 Jan 2026 17:30:30 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-23T17:30:30Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-23T17:30:30Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-23T17:30:30Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-23T17:30:30Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '435'
+      request-id:
+      - req_011CXQhxRzoGmET6ZvNhz4n2
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '1723'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_013R8UmZRcDQ4GVGB1kFR3hP",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 11,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c454698a986c44a-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 27 Jan 2026 03:48:42 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-27T03:48:41Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-27T03:48:42Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-27T03:48:41Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-27T03:48:41Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '435'
+      request-id:
+      - req_011CXXCXM55oSHb9NH6Qmhpb
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '2001'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01NaZiJAbd5w4wa6qdL2VAbM",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 11,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c4574c82dc7c33c-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 27 Jan 2026 04:20:13 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-27T04:20:13Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-27T04:20:13Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-27T04:20:13Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-27T04:20:13Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '435'
+      request-id:
+      - req_011CXXEvo9MhBcisibd37ZyM
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '1299'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01AcqgLjwsTra6K35NvoWknN",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 11,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c457a235bda0866-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 27 Jan 2026 04:23:52 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-27T04:23:52Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-27T04:23:52Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-27T04:23:52Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-27T04:23:52Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '435'
+      request-id:
+      - req_011CXXFCy764VjeMFXJraEus
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '1172'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 50,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "stop_sequences": [
+          "STOP"
+        ],
+        "temperature": 0.7,
+        "top_k": 40,
+        "top_p": 0.9
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '171'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01JkTkyqDoQs4eUwHe9pmKSs",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hello! It's nice to meet you. How are you doing today?"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 18,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c49d37c5f927ced-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 27 Jan 2026 17:03:55 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '30000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '30000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-01-27T17:03:55Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '8000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '8000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-01-27T17:03:55Z'
+      anthropic-ratelimit-requests-limit:
+      - '50'
+      anthropic-ratelimit-requests-remaining:
+      - '49'
+      anthropic-ratelimit-requests-reset:
+      - '2026-01-27T17:03:55Z'
+      anthropic-ratelimit-tokens-limit:
+      - '38000'
+      anthropic-ratelimit-tokens-remaining:
+      - '38000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-01-27T17:03:55Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '458'
+      request-id:
+      - req_011CXYFAYM1aLH6BcPrBn8qn
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '1368'
+    status:
+      code: 200
+      message: OK
 version: 1
