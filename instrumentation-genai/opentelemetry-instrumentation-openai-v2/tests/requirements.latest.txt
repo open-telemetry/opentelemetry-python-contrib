@@ -52,3 +52,4 @@ wrapt==1.16.0
 
 -e opentelemetry-instrumentation
 -e instrumentation-genai/opentelemetry-instrumentation-openai-v2
+-e util/opentelemetry-util-genai
