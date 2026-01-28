@@ -197,7 +197,7 @@ def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
             pass
     if hasattr(tool, "model_dump"):
         try:
-            return tool.model_dump()
+            return tool.model_dump(exclude_none=True)
         except TypeError:
             pass
     if callable(tool) and hasattr(tool, "__name__"):
@@ -211,7 +211,9 @@ def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
     try:
         return {"value": str(tool)}
     except Exception:
-        return {"error": "failed to serialize tool definition"}
+        return {
+            "error": f"failed to serialize tool definition, tool type={type(tool).__name__}"
+        }
 
 
 def _create_request_attributes(
