@@ -125,12 +125,15 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import Instrument, Meter, get_meter
 from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
-from opentelemetry.semconv._incubating.attributes import rpc_attributes
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_METHOD,
+    RPC_SERVICE,
 )
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
@@ -300,9 +303,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
             return original_func(*args, **kwargs)
 
         attributes = {
-            rpc_attributes.RPC_SYSTEM: "aws-api",
-            rpc_attributes.RPC_SERVICE: call_context.service_id,
-            rpc_attributes.RPC_METHOD: call_context.operation,
+            "rpc.system": "aws-api",
+            "rpc.service": call_context.service_id,
+            "rpc.method": call_context.operation,
             CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
@@ -363,12 +366,12 @@ class BotocoreInstrumentor(BaseInstrumentor):
         with tracer.start_as_current_span("botocore.presigned_url") as span:
             if service := getattr(instance, "_service_id", None):
                 service = service.lower()
-                span.set_attribute(rpc_attributes.RPC_SERVICE, service)
+                span.set_attribute(RPC_SERVICE, service)
                 # Botocore uses the low-level operation name ("connect") when generating
                 # RDS auth tokens, not the high-level helper name.
 
             if operation := kwargs.get("operation_name"):
-                span.set_attribute(rpc_attributes.RPC_METHOD, operation)
+                span.set_attribute(RPC_METHOD, operation)
 
             if expires_in := kwargs.get("expires_in"):
                 span.set_attribute("aws.expires_in", expires_in)

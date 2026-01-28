@@ -11,13 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import importlib.util
 import json
 import os
 from unittest.mock import ANY, Mock, patch
 
 import botocore.session
-import pytest
 from botocore.exceptions import ParamValidationError
 from moto import mock_aws  # pylint: disable=import-error
 
@@ -29,7 +27,6 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import TRACE_HEADER_KEY
-from opentelemetry.semconv._incubating.attributes import rpc_attributes
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
@@ -41,11 +38,15 @@ from opentelemetry.semconv._incubating.attributes.exception_attributes import (
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_STATUS_CODE,
 )
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.semconv._incubating.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import format_span_id, format_trace_id
@@ -76,9 +77,9 @@ class TestBotocoreInstrumentor(TestBase):
 
     def _default_span_attributes(self, service: str, operation: str):
         return {
-            rpc_attributes.RPC_SYSTEM: "aws-api",
-            rpc_attributes.RPC_SERVICE: service,
-            rpc_attributes.RPC_METHOD: operation,
+            RPC_SYSTEM: "aws-api",
+            RPC_SERVICE: service,
+            RPC_METHOD: operation,
             CLOUD_REGION: self.region,
             "retry_attempts": 0,
             HTTP_STATUS_CODE: 200,
@@ -353,7 +354,7 @@ class TestBotocoreInstrumentor(TestBase):
         span = self.assert_only_span()
         expected = self._default_span_attributes("STS", "GetCallerIdentity")
         expected["aws.request_id"] = ANY
-        expected[SpanAttributes.SERVER_ADDRESS] = ANY
+        expected[SERVER_ADDRESS] = ANY
         # check for exact attribute set to make sure not to leak any sts secrets
         self.assertEqual(expected, dict(span.attributes))
 
@@ -412,10 +413,6 @@ class TestBotocoreInstrumentor(TestBase):
             set_global_textmap(previous_propagator)
 
     @mock_aws
-    @pytest.mark.skipif(
-        importlib.util.find_spec("aws_xray_sdk") is None,
-        reason="aws_xray_sdk not installed",
-    )
     def test_no_op_tracer_provider_xray(self):
         BotocoreInstrumentor().uninstrument()
         BotocoreInstrumentor().instrument(
@@ -448,10 +445,6 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertNotIn(MockTextMapPropagator.SPAN_ID_KEY, headers)
 
     @mock_aws
-    @pytest.mark.skipif(
-        importlib.util.find_spec("aws_xray_sdk") is None,
-        reason="aws_xray_sdk not installed",
-    )
     def test_suppress_instrumentation_xray_client(self):
         xray_client = self._make_client("xray")
         with suppress_instrumentation():
@@ -460,10 +453,6 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertEqual(0, len(self.get_finished_spans()))
 
     @mock_aws
-    @pytest.mark.skipif(
-        importlib.util.find_spec("aws_xray_sdk") is None,
-        reason="aws_xray_sdk not installed",
-    )
     def test_suppress_http_instrumentation_xray_client(self):
         xray_client = self._make_client("xray")
         with suppress_http_instrumentation():
@@ -610,11 +599,11 @@ class TestBotocoreInstrumentor(TestBase):
 
         self.assertEqual(
             "rds",
-            span.attributes.get(SpanAttributes.RPC_SERVICE),
+            span.attributes.get(RPC_SERVICE),
         )
         self.assertEqual(
             "connect",
-            span.attributes.get(SpanAttributes.RPC_METHOD),
+            span.attributes.get(RPC_METHOD),
         )
         self.assertEqual(
             self.region,
