@@ -11,6 +11,9 @@ from opentelemetry.test.test_base import TestBase
 from .celery_test_tasks import app, task_add
 
 
+SCOPE = "opentelemetry.instrumentation.celery"
+
+
 class TestMetrics(TestBase):
     def setUp(self):
         super().setUp()
@@ -34,7 +37,7 @@ class TestMetrics(TestBase):
             if time.time() > timeout:
                 break
             time.sleep(0.05)
-        return self.get_sorted_metrics()
+        return self.get_sorted_metrics(SCOPE)
 
     def test_basic_metric(self):
         CeleryInstrumentor().instrument()
