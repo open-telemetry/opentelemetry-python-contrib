@@ -14,10 +14,12 @@
 
 import json
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, create_autospec, patch
 
 import pytest
 from google.genai.types import GenerateContentConfig, Part
+from mcp import ClientSession as McpClientSession
+from mcp import types as mcp_types
 from pydantic import BaseModel, Field
 
 from opentelemetry import context as context_api
@@ -39,9 +41,50 @@ from .base import TestCase
 # pylint: disable=too-many-public-methods
 
 
-def _some_tool():
+def _mock_callable_tool():
     """Description of some tool."""
     return "result"
+
+
+def _mock_mcp_client_session() -> McpClientSession:
+    mock_session = create_autospec(spec=McpClientSession, instance=True)
+
+    mock_tool_obj = mcp_types.Tool(
+        name="mcp_tool",
+        description="Tool from session",
+        inputSchema={
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+        },
+    )
+    mock_result = create_autospec(mcp_types.ListToolsResult, instance=True)
+    mock_result.tools = [mock_tool_obj]
+
+    mock_session.list_tools = AsyncMock(return_value=mock_result)
+
+    return mock_session
+
+
+def _mock_mcp_tool() -> mcp_types.Tool:
+    return mcp_types.Tool(
+        name="mcp_tool",
+        description="A standalone mcp tool",
+        inputSchema={
+            "type": "object",
+            "properties": {"id": {"type": "integer"}},
+        },
+    )
+
+
+def _mock_tool_dict():
+    return {
+        "function_declarations": [
+            {
+                "name": "mock_tool",
+                "description": "Description of mock tool.",
+            }
+        ]
+    }
 
 
 class ExampleResponseSchema(BaseModel):
@@ -364,7 +407,12 @@ class NonStreamingTestCase(TestCase):
             content = "Some input"
             output = "Some response content"
             sys_instr = "System instruction"
-            tools = [_some_tool]
+            tools = [
+                _mock_callable_tool,
+                _mock_mcp_client_session(),
+                _mock_mcp_tool(),
+                _mock_tool_dict(),
+            ]
             with self.subTest(
                 f"mode: {mode}", patched_environ=patched_environ
             ):
@@ -438,9 +486,37 @@ class NonStreamingTestCase(TestCase):
                             gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS: (
                                 {
                                     "function": {
-                                        "name": "_some_tool",
+                                        "name": "_mock_callable_tool",
                                         "description": "Description of some tool.",
                                     }
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "Tool from session",
+                                    "inputSchema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "query": {"type": "string"}
+                                        },
+                                    },
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "A standalone mcp tool",
+                                    "inputSchema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"}
+                                        },
+                                    },
+                                },
+                                {
+                                    "function_declarations": (
+                                        {
+                                            "name": "mock_tool",
+                                            "description": "Description of mock tool.",
+                                        },
+                                    )
                                 },
                             ),
                         }
@@ -505,7 +581,12 @@ class NonStreamingTestCase(TestCase):
                         config=GenerateContentConfig(
                             system_instruction="System instruction",
                             response_schema=ExampleResponseSchema,
-                            tools=[_some_tool],
+                            tools=[
+                                _mock_callable_tool,
+                                _mock_mcp_client_session(),
+                                _mock_mcp_tool(),
+                                _mock_tool_dict(),
+                            ],
                         ),
                     )
                     span = self.otel.get_span_named(
@@ -537,7 +618,7 @@ class NonStreamingTestCase(TestCase):
                             span.attributes[
                                 gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
                             ],
-                            '[{"function":{"name":"_some_tool","description":"Description of some tool."}}]',
+                            '[{"function":{"name":"_mock_callable_tool","description":"Description of some tool."}},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
                         )
                     else:
                         self.assertNotIn(
