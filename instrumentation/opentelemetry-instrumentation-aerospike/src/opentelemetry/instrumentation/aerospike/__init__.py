@@ -204,6 +204,8 @@ _ERROR_TYPE_ATTR = "error.type"
 _DB_AEROSPIKE_KEY_ATTR = "db.aerospike.key"
 _DB_AEROSPIKE_GENERATION_ATTR = "db.aerospike.generation"
 _DB_AEROSPIKE_TTL_ATTR = "db.aerospike.ttl"
+_DB_AEROSPIKE_UDF_MODULE_ATTR = "db.aerospike.udf.module"
+_DB_AEROSPIKE_UDF_FUNCTION_ATTR = "db.aerospike.udf.function"
 
 
 class AerospikeInstrumentor(BaseInstrumentor):
@@ -215,38 +217,6 @@ class AerospikeInstrumentor(BaseInstrumentor):
     Note: Aerospike Python client is a C extension, so we wrap the client
     factory function (aerospike.client) to instrument each client instance.
     """
-
-    # Methods to instrument
-    _SINGLE_RECORD_METHODS = [
-        "put",
-        "get",
-        "select",
-        "exists",
-        "remove",
-        "touch",
-        "operate",
-        "append",
-        "prepend",
-        "increment",
-    ]
-
-    _BATCH_METHODS = [
-        "batch_read",
-        "batch_write",
-        "batch_operate",
-        "batch_remove",
-        "batch_apply",
-        # Note: get_many, exists_many, select_many were removed in aerospike 17.0.0
-        # Use batch_read() instead
-    ]
-
-    _QUERY_SCAN_METHODS = ["query", "scan"]
-
-    _UDF_METHODS = ["apply", "scan_apply", "query_apply"]
-
-    _ADMIN_METHODS = ["truncate", "info_all"]
-
-    _original_client = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         """Return the dependencies required for this instrumentation."""
@@ -356,7 +326,11 @@ class InstrumentedAerospikeClient:
 
     _QUERY_SCAN_METHODS = ["query", "scan"]
 
-    _UDF_METHODS = ["apply", "scan_apply", "query_apply"]
+    _UDF_METHODS = ["apply"]
+
+    _SCAN_APPLY_METHODS = ["scan_apply"]
+
+    _QUERY_APPLY_METHODS = ["query_apply"]
 
     _ADMIN_METHODS = ["truncate", "info_all"]
 
@@ -399,23 +373,36 @@ class InstrumentedAerospikeClient:
                     pass
 
     def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped client."""
+        """Proxy attribute access to the wrapped client.
+
+        Wrapped methods are cached via object.__setattr__ so subsequent
+        calls bypass __getattr__ entirely.
+        """
         attr = getattr(self._client, name)
 
-        # If it's a method we want to instrument, wrap it
+        # If it's a method we want to instrument, wrap and cache it
         if callable(attr):
+            wrapped = None
             if name in self._SINGLE_RECORD_METHODS:
-                return self._wrap_single_record_method(attr, name.upper())
-            if name in self._BATCH_METHODS:
+                wrapped = self._wrap_single_record_method(attr, name.upper())
+            elif name in self._BATCH_METHODS:
                 op_name = _get_batch_operation_name(name)
-                return self._wrap_batch_method(attr, op_name)
-            if name in self._QUERY_SCAN_METHODS:
-                return self._wrap_query_scan_method(attr, name.upper())
-            if name in self._UDF_METHODS:
+                wrapped = self._wrap_batch_method(attr, op_name)
+            elif name in self._QUERY_SCAN_METHODS:
+                wrapped = self._wrap_query_scan_method(attr, name.upper())
+            elif name in self._UDF_METHODS:
                 op_name = name.upper().replace("_", " ")
-                return self._wrap_udf_method(attr, op_name)
-            if name in self._ADMIN_METHODS:
-                return self._wrap_admin_method(attr, name.upper())
+                wrapped = self._wrap_udf_method(attr, op_name)
+            elif name in self._SCAN_APPLY_METHODS:
+                wrapped = self._wrap_scan_apply_method(attr, "SCAN APPLY")
+            elif name in self._QUERY_APPLY_METHODS:
+                wrapped = self._wrap_query_apply_method(attr, "QUERY APPLY")
+            elif name in self._ADMIN_METHODS:
+                wrapped = self._wrap_admin_method(attr, name.upper())
+
+            if wrapped is not None:
+                object.__setattr__(self, name, wrapped)
+                return wrapped
 
         return attr
 
@@ -686,6 +673,130 @@ class InstrumentedAerospikeClient:
 
         return wrapper
 
+    def _wrap_scan_apply_method(
+        self, method: Callable, operation: str
+    ) -> Callable:
+        """Wrap scan_apply: scan_apply(namespace, set, module, function, args)."""
+
+        @functools.wraps(method)
+        def wrapper(*args, **kwargs) -> Any:
+            if not is_instrumentation_enabled():
+                return method(*args, **kwargs)
+
+            namespace = args[0] if args else None
+            set_name = args[1] if len(args) > 1 else None
+
+            span_name = _generate_span_name(operation, namespace, set_name)
+
+            with self._tracer.start_as_current_span(
+                span_name,
+                kind=SpanKind.CLIENT,
+            ) as span:
+                if span.is_recording():
+                    span.set_attribute(_DB_SYSTEM_ATTR, _DB_SYSTEM)
+
+                    if namespace:
+                        span.set_attribute(_DB_NAMESPACE_ATTR, namespace)
+                    if set_name:
+                        span.set_attribute(_DB_COLLECTION_NAME_ATTR, set_name)
+
+                    span.set_attribute(_DB_OPERATION_NAME_ATTR, operation)
+                    self._set_connection_attributes(span)
+
+                    # UDF info: scan_apply(ns, set, module, function, args)
+                    if len(args) > 2:
+                        span.set_attribute(
+                            _DB_AEROSPIKE_UDF_MODULE_ATTR, str(args[2])
+                        )
+                    if len(args) > 3:
+                        span.set_attribute(
+                            _DB_AEROSPIKE_UDF_FUNCTION_ATTR, str(args[3])
+                        )
+
+                if self._request_hook:
+                    self._request_hook(span, operation, args, kwargs)
+
+                try:
+                    result = method(*args, **kwargs)
+
+                    if self._response_hook:
+                        self._response_hook(span, operation, result)
+
+                    return result
+
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    if span.is_recording():
+                        _set_error_attributes(span, exc)
+
+                    if self._error_hook:
+                        self._error_hook(span, operation, exc)
+
+                    raise
+
+        return wrapper
+
+    def _wrap_query_apply_method(
+        self, method: Callable, operation: str
+    ) -> Callable:
+        """Wrap query_apply: query_apply(namespace, set, predicate, module, function, args)."""
+
+        @functools.wraps(method)
+        def wrapper(*args, **kwargs) -> Any:
+            if not is_instrumentation_enabled():
+                return method(*args, **kwargs)
+
+            namespace = args[0] if args else None
+            set_name = args[1] if len(args) > 1 else None
+
+            span_name = _generate_span_name(operation, namespace, set_name)
+
+            with self._tracer.start_as_current_span(
+                span_name,
+                kind=SpanKind.CLIENT,
+            ) as span:
+                if span.is_recording():
+                    span.set_attribute(_DB_SYSTEM_ATTR, _DB_SYSTEM)
+
+                    if namespace:
+                        span.set_attribute(_DB_NAMESPACE_ATTR, namespace)
+                    if set_name:
+                        span.set_attribute(_DB_COLLECTION_NAME_ATTR, set_name)
+
+                    span.set_attribute(_DB_OPERATION_NAME_ATTR, operation)
+                    self._set_connection_attributes(span)
+
+                    # UDF info: query_apply(ns, set, predicate, module, function, args)
+                    if len(args) > 3:
+                        span.set_attribute(
+                            _DB_AEROSPIKE_UDF_MODULE_ATTR, str(args[3])
+                        )
+                    if len(args) > 4:
+                        span.set_attribute(
+                            _DB_AEROSPIKE_UDF_FUNCTION_ATTR, str(args[4])
+                        )
+
+                if self._request_hook:
+                    self._request_hook(span, operation, args, kwargs)
+
+                try:
+                    result = method(*args, **kwargs)
+
+                    if self._response_hook:
+                        self._response_hook(span, operation, result)
+
+                    return result
+
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    if span.is_recording():
+                        _set_error_attributes(span, exc)
+
+                    if self._error_hook:
+                        self._error_hook(span, operation, exc)
+
+                    raise
+
+        return wrapper
+
     def _set_udf_span_attributes(
         self,
         span: Span,
@@ -708,9 +819,9 @@ class InstrumentedAerospikeClient:
 
         # UDF info
         if len(args) > 1:
-            span.set_attribute("db.aerospike.udf.module", str(args[1]))
+            span.set_attribute(_DB_AEROSPIKE_UDF_MODULE_ATTR, str(args[1]))
         if len(args) > 2:
-            span.set_attribute("db.aerospike.udf.function", str(args[2]))
+            span.set_attribute(_DB_AEROSPIKE_UDF_FUNCTION_ATTR, str(args[2]))
 
         # Optional: capture key
         if self._capture_key and key_tuple and len(key_tuple) > 2:
@@ -779,8 +890,6 @@ def _get_batch_operation_name(method: str) -> str:
     method_upper = method.upper()
     if method_upper.startswith("BATCH_"):
         return f"BATCH {method_upper[6:]}"
-    if method_upper.endswith("_MANY"):
-        return f"BATCH {method_upper[:-5]}"
     return f"BATCH {method_upper}"
 
 
