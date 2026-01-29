@@ -17,9 +17,9 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
-from langchain_core.messages import BaseMessage  # type: ignore
-from langchain_core.outputs import LLMResult  # type: ignore
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import LLMResult
 
 from opentelemetry.instrumentation.langchain.invocation_manager import (
     _InvocationManager,
@@ -34,20 +34,20 @@ from opentelemetry.util.genai.types import (
 )
 
 
-class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignore[misc]
+class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     """
     A callback handler for LangChain that uses OpenTelemetry to create spans for LLM calls and chains, tools etc,. in future.
     """
 
     def __init__(self, telemetry_handler: TelemetryHandler) -> None:
-        super().__init__()  # type: ignore
+        super().__init__()
         self._telemetry_handler = telemetry_handler
         self._invocation_manager = _InvocationManager()
 
     def on_chat_model_start(
         self,
         serialized: dict[str, Any],
-        messages: list[list[BaseMessage]],  # type: ignore
+        messages: list[list[BaseMessage]],
         *,
         run_id: UUID,
         tags: list[str] | None,
@@ -107,19 +107,19 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             max_tokens = metadata.get("ls_max_tokens")
 
         input_messages: list[InputMessage] = []
-        for sub_messages in messages:  # type: ignore[reportUnknownVariableType]
-            for message in sub_messages:  # type: ignore[reportUnknownVariableType]
-                content = message.content  # type: ignore[reportUnknownVariableType]
-                role = message.type  # type: ignore[reportUnknownVariableType]
-                parts = [Text(content=content, type="text")]  # type: ignore[reportUnknownVariableType]
-                input_messages.append(InputMessage(parts=parts, role=role))  # type: ignore[reportUnknownVariableType]
+        for sub_messages in messages:
+            for message in sub_messages:
+                content = message.content  # pyright: ignore[reportUnknownMemberType]
+                role = message.type
+                parts = [Text(content=content, type="text")]
+                input_messages.append(InputMessage(parts=parts, role=role))
 
         llm_invocation = LLMInvocation(
             request_model=request_model,
             input_messages=input_messages,
             provider=provider,
-            top_p=top_p,  # type: ignore[reportPossiblyUnboundVariable]
-            frequency_penalty=frequency_penalty,  # type: ignore[reportPossiblyUnboundVariable]
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,  # type: ignore[reportPossiblyUnboundVariable]
             stop_sequences=stop_sequences,  # type: ignore[reportPossiblyUnboundVariable]
             seed=seed,  # type: ignore[reportPossiblyUnboundVariable]
@@ -137,7 +137,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
     def on_llm_end(
         self,
-        response: LLMResult,  # type: ignore [reportUnknownParameterType]
+        response: LLMResult,
         *,
         run_id: UUID,
         parent_run_id: UUID | None,
@@ -151,7 +151,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             return
 
         output_messages: list[OutputMessage] = []
-        for generation in getattr(response, "generations", []):  # type: ignore
+        for generation in getattr(response, "generations", []):
             for chat_generation in generation:
                 # Get finish reason
                 generation_info = getattr(
@@ -185,7 +185,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     output_message = OutputMessage(
                         role=role,
                         parts=parts,
-                        finish_reason=finish_reason,  # type: ignore[reportPossiblyUnboundVariable, reportArgumentType]
+                        finish_reason=finish_reason,
                     )
                     output_messages.append(output_message)
 
@@ -207,7 +207,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
 
         llm_invocation.output_messages = output_messages
 
-        llm_output = getattr(response, "llm_output", None)  # type: ignore
+        llm_output = getattr(response, "llm_output", None)
         if llm_output is not None:
             response_model = llm_output.get("model_name") or llm_output.get(
                 "model"
@@ -222,7 +222,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         llm_invocation = self._telemetry_handler.stop_llm(
             invocation=llm_invocation
         )
-        if not llm_invocation.span.is_recording():  # type: ignore[reportOptionalMemberAccess]
+        if llm_invocation.span and not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 
     def on_llm_error(
@@ -240,10 +240,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
             # If the invocation does not exist, we cannot set attributes or end it
             return
 
-        error = Error(message=str(error), type=type(error))  # type: ignore[reportAssignmentType]
+        error_otel = Error(message=str(error), type=type(error))
         llm_invocation = self._telemetry_handler.fail_llm(
-            invocation=llm_invocation,
-            error=error,  # type: ignore[reportArgumentType]
+            invocation=llm_invocation, error=error_otel
         )
-        if not llm_invocation.span.is_recording():  # type: ignore[reportOptionalMemberAccess]
+        if llm_invocation.span and not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)

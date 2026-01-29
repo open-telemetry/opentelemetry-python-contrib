@@ -38,7 +38,7 @@ API
 
 from typing import Any, Callable, Collection
 
-from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
+from langchain_core.callbacks import BaseCallbackHandler
 from wrapt import wrap_function_wrapper  # type: ignore
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -104,7 +104,7 @@ class _BaseCallbackManagerInitWrapper:
     def __call__(
         self,
         wrapped: Callable[..., None],
-        instance: BaseCallbackHandler,  # type: ignore
+        instance: BaseCallbackHandler,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ):
