@@ -35,6 +35,13 @@ class KafkaPropertiesExtractor:
         return kwargs.get("topic") or (args[0] if args else "unknown")
 
     @staticmethod
+    def extract_produce_partition(args, kwargs):
+        """extract partition from `produce` method arguments in Producer class"""
+        return KafkaPropertiesExtractor._extract_argument(
+            "partition", 3, None, args, kwargs
+        )
+
+    @staticmethod
     def extract_produce_headers(args, kwargs):
         """extract headers from `produce` method arguments in Producer class"""
         return KafkaPropertiesExtractor._extract_argument(

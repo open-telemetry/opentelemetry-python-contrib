@@ -380,19 +380,30 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            record = func(*args, **kwargs)
-            if record:
-                _create_new_consume_span(instance, tracer, [record])
-                _enrich_span(
-                    instance._current_consume_span,
-                    record.topic(),
-                    record.partition(),
-                    record.offset(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                )
+        ######
+        # Notes on Spans Surrounding Poll
+        # we don't wrap the poll operation in a span because there's no context to extract yet
+        # creating a span here would create a new span for each poll call
+        # if more work is done in poll() function, such as in the DeserializingConsumer,
+        # that is hard to trace for the same reason
+
+        # Based on the diagram in https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/kafka.md
+        # a span around poll should be created by the client, not the consumer
+        # in this case the client is librdkafka, so we don't create a span here
+        #####
+        record = func(*args, **kwargs)
+
+        # create a new span for the message
+        if record:
+            _create_new_consume_span(instance, tracer, [record])
+            _enrich_span(
+                instance._current_consume_span,
+                record.topic(),
+                partition=record.partition(),
+                offset=record.offset(),
+                operation=MessagingOperationTypeValues.PROCESS,
+            )
+
         instance._current_context_token = context.attach(
             trace.set_span_in_context(instance._current_consume_span)
         )
@@ -404,17 +415,29 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            records = func(*args, **kwargs)
-            if len(records) > 0:
-                _create_new_consume_span(instance, tracer, records)
-                _enrich_span(
-                    instance._current_consume_span,
-                    records[0].topic(),
-                    operation=MessagingOperationTypeValues.PROCESS,
-                )
+        ######
+        # Notes on Spans Surrounding Consume
+        # since consume can return multiple records, we _could_ wrap the call in a span
+        # and then create a new span for each record
+        # however, this span is awkward because there is no obvious trace to assign to it
+        # before the messages are returned, and afterwards it's can't be modified
+
+        # Based on the diagram in https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/kafka.md
+        # a span around consume should be created by the client, not the consumer
+        # in this case the client is librdkafka, so we don't create a span here
+        ######
+        records = func(*args, **kwargs)
+
+        # create a new span for each message
+        if len(records) > 0:
+            _create_new_consume_span(instance, tracer, records)
+            _enrich_span(
+                instance._current_consume_span,
+                records[0].topic(),
+                partition=records[0].partition(),
+                offset=records[0].offset(),
+                operation=MessagingOperationTypeValues.PROCESS,
+            )
 
         instance._current_context_token = context.attach(
             trace.set_span_in_context(instance._current_consume_span)
