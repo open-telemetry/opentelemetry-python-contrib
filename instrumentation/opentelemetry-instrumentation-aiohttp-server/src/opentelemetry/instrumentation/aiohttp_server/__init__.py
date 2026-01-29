@@ -468,13 +468,12 @@ def create_aiohttp_middleware(
             span_name,
             context=extract(request, getter=getter),
             kind=trace.SpanKind.SERVER,
+            attributes=request_attrs,
         ) as span:
             if span.is_recording():
-                request_headers_attributes = (
+                span.set_attributes(
                     collect_request_headers_attributes(request)
                 )
-                request_attrs.update(request_headers_attributes)
-                span.set_attributes(request_attrs)
             start = default_timer()
             active_requests_counter.add(1, active_requests_count_attrs)
             try:

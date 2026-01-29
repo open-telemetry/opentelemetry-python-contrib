@@ -3087,7 +3087,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<=2.11.0" },
+    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<=2.13.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
@@ -4134,7 +4134,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-system-metrics" },
     { name = "opentelemetry-instrumentation-threading" },
     { name = "opentelemetry-instrumentation-tornado" },
-    { name = "opentelemetry-instrumentation-tortoiseorm" },
+    { name = "opentelemetry-instrumentation-tortoiseorm", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-vertexai", extra = ["instruments"] },
@@ -4208,7 +4208,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-system-metrics", editable = "instrumentation/opentelemetry-instrumentation-system-metrics" },
     { name = "opentelemetry-instrumentation-threading", editable = "instrumentation/opentelemetry-instrumentation-threading" },
     { name = "opentelemetry-instrumentation-tornado", editable = "instrumentation/opentelemetry-instrumentation-tornado" },
-    { name = "opentelemetry-instrumentation-tortoiseorm", editable = "instrumentation/opentelemetry-instrumentation-tortoiseorm" },
+    { name = "opentelemetry-instrumentation-tortoiseorm", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-tortoiseorm" },
     { name = "opentelemetry-instrumentation-urllib", editable = "instrumentation/opentelemetry-instrumentation-urllib" },
     { name = "opentelemetry-instrumentation-urllib3", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-urllib3" },
     { name = "opentelemetry-instrumentation-vertexai", extras = ["instruments"], editable = "instrumentation-genai/opentelemetry-instrumentation-vertexai" },
