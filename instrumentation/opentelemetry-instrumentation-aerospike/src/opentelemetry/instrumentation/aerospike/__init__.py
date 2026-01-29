@@ -182,7 +182,10 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.aerospike.package import _instruments
 from opentelemetry.instrumentation.aerospike.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import is_instrumentation_enabled, unwrap
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
 from opentelemetry.trace import Span, SpanKind, Status, StatusCode, Tracer
 
 # Semantic convention constants
@@ -251,7 +254,7 @@ class AerospikeInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any) -> None:
         """Instrument Aerospike client factory function."""
-        import aerospike  # pylint: disable=import-outside-toplevel
+        import aerospike  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
 
         tracer_provider = kwargs.get("tracer_provider")
         tracer = trace.get_tracer(
@@ -273,12 +276,14 @@ class AerospikeInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             "aerospike",
             "client",
-            _create_client_wrapper(tracer, request_hook, response_hook, error_hook, capture_key),
+            _create_client_wrapper(
+                tracer, request_hook, response_hook, error_hook, capture_key
+            ),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
         """Remove instrumentation from Aerospike client factory."""
-        import aerospike  # pylint: disable=import-outside-toplevel
+        import aerospike  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
 
         unwrap(aerospike, "client")
 
@@ -292,7 +297,9 @@ def _create_client_wrapper(
 ) -> Callable:
     """Create a wrapper for aerospike.client() factory function."""
 
-    def client_wrapper(wrapped: Callable, instance: Any, args: tuple, kwargs: dict) -> Any:
+    def client_wrapper(
+        wrapped: Callable, instance: Any, args: tuple, kwargs: dict
+    ) -> Any:
         # Create the original client
         client = wrapped(*args, **kwargs)
 
@@ -305,7 +312,13 @@ def _create_client_wrapper(
 
         # Wrap the client instance with our instrumented proxy
         return InstrumentedAerospikeClient(
-            client, tracer, request_hook, response_hook, error_hook, capture_key, config
+            client,
+            tracer,
+            request_hook,
+            response_hook,
+            error_hook,
+            capture_key,
+            config,
         )
 
     return client_wrapper
@@ -377,7 +390,9 @@ class InstrumentedAerospikeClient:
                     if isinstance(first_host, tuple) and len(first_host) >= 2:
                         self._server_address = str(first_host[0])
                         self._server_port = int(first_host[1])
-                    elif isinstance(first_host, tuple) and len(first_host) == 1:
+                    elif (
+                        isinstance(first_host, tuple) and len(first_host) == 1
+                    ):
                         self._server_address = str(first_host[0])
                         self._server_port = 3000
                 except (TypeError, AttributeError, IndexError):
@@ -453,7 +468,9 @@ class InstrumentedAerospikeClient:
             if self._server_port:
                 span.set_attribute(_SERVER_PORT_ATTR, self._server_port)
 
-    def _wrap_single_record_method(self, method: Callable, operation: str) -> Callable:
+    def _wrap_single_record_method(
+        self, method: Callable, operation: str
+    ) -> Callable:
         """Wrap a single record operation method."""
 
         @functools.wraps(method)
@@ -485,7 +502,9 @@ class InstrumentedAerospikeClient:
                     if self._capture_key and key_tuple and len(key_tuple) > 2:
                         user_key = key_tuple[2]  # pylint: disable=unsubscriptable-object
                         if user_key is not None:
-                            span.set_attribute(_DB_AEROSPIKE_KEY_ATTR, str(user_key))
+                            span.set_attribute(
+                                _DB_AEROSPIKE_KEY_ATTR, str(user_key)
+                            )
 
                 # Request hook
                 if self._request_hook:
@@ -544,8 +563,10 @@ class InstrumentedAerospikeClient:
                     self._set_connection_attributes(span)
 
                     # Batch size
-                    if keys and isinstance(keys, list | tuple):
-                        span.set_attribute(_DB_OPERATION_BATCH_SIZE_ATTR, len(keys))
+                    if keys and isinstance(keys, (list, tuple)):
+                        span.set_attribute(
+                            _DB_OPERATION_BATCH_SIZE_ATTR, len(keys)
+                        )
 
                 if self._request_hook:
                     self._request_hook(span, operation, args, kwargs)
@@ -569,7 +590,9 @@ class InstrumentedAerospikeClient:
 
         return wrapper
 
-    def _wrap_query_scan_method(self, method: Callable, operation: str) -> Callable:
+    def _wrap_query_scan_method(
+        self, method: Callable, operation: str
+    ) -> Callable:
         """Wrap a query/scan operation method."""
 
         @functools.wraps(method)
@@ -704,7 +727,9 @@ class InstrumentedAerospikeClient:
                 return method(*args, **kwargs)
 
             namespace = args[0] if args and isinstance(args[0], str) else None
-            set_name = args[1] if len(args) > 1 and isinstance(args[1], str) else None
+            set_name = (
+                args[1] if len(args) > 1 and isinstance(args[1], str) else None
+            )
 
             span_name = _generate_span_name(operation, namespace, set_name)
 
@@ -759,7 +784,9 @@ def _get_batch_operation_name(method: str) -> str:
     return f"BATCH {method_upper}"
 
 
-def _extract_namespace_set_from_key(key_tuple: tuple | None) -> tuple[str | None, str | None]:
+def _extract_namespace_set_from_key(
+    key_tuple: tuple | None,
+) -> tuple[str | None, str | None]:
     """Extract namespace and set from a single key tuple.
 
     Key format: (namespace, set, key[, digest])
@@ -772,9 +799,11 @@ def _extract_namespace_set_from_key(key_tuple: tuple | None) -> tuple[str | None
     return namespace, set_name
 
 
-def _extract_namespace_set_from_batch(keys: list | tuple | None) -> tuple[str | None, str | None]:
+def _extract_namespace_set_from_batch(
+    keys: list | tuple | None,
+) -> tuple[str | None, str | None]:
     """Extract namespace and set from batch keys (uses first key)."""
-    if not keys or not isinstance(keys, list | tuple):
+    if not keys or not isinstance(keys, (list, tuple)):
         return None, None
 
     first_key = keys[0]
@@ -783,7 +812,9 @@ def _extract_namespace_set_from_batch(keys: list | tuple | None) -> tuple[str | 
     return None, None
 
 
-def _generate_span_name(operation: str, namespace: str | None, set_name: str | None) -> str:
+def _generate_span_name(
+    operation: str, namespace: str | None, set_name: str | None
+) -> str:
     """Generate span name following convention: {operation} {namespace}.{set}."""
     if namespace and set_name:
         return f"{operation} {namespace}.{set_name}"

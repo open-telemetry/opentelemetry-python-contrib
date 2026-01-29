@@ -25,6 +25,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-vertexai>=2.0b0",
     },
     {
+        "library": "aerospike >= 17.0.0",
+        "instrumentation": "opentelemetry-instrumentation-aerospike==0.61b0.dev",
+    },
+    {
         "library": "aio_pika >= 7.2.0, < 10.0.0",
         "instrumentation": "opentelemetry-instrumentation-aio-pika==0.61b0.dev",
     },

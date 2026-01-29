@@ -29,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+    "opentelemetry-instrumentation-aerospike==0.61b0.dev",
     "opentelemetry-instrumentation-aio-pika==0.61b0.dev",
     "opentelemetry-instrumentation-aiohttp-client==0.61b0.dev",
     "opentelemetry-instrumentation-aiohttp-server==0.61b0.dev",

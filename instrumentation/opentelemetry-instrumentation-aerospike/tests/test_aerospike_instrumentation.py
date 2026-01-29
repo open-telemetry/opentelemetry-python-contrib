@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # pylint: disable=import-outside-toplevel,no-self-use,redefined-outer-name,unused-variable
+# ruff: noqa: PLC0415
 
 """Unit tests for OpenTelemetry Aerospike Instrumentation."""
 
@@ -41,9 +42,14 @@ class TestAerospikeInstrumentation(TestBase):
     def _instrument(self, **kwargs):
         """Helper to instrument with mocked aerospike."""
         with patch.dict("sys.modules", {"aerospike": self.mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
+
             self.instrumentor = AerospikeInstrumentor()
-            self.instrumentor.instrument(tracer_provider=self.tracer_provider, **kwargs)
+            self.instrumentor.instrument(
+                tracer_provider=self.tracer_provider, **kwargs
+            )
 
     def _uninstrument(self):
         """Helper to uninstrument."""
@@ -99,13 +105,20 @@ class TestAerospikeInstrumentation(TestBase):
         mock_tracer = mock.Mock()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
-        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(return_value=mock_span)
-        mock_tracer.start_as_current_span.return_value.__exit__ = mock.Mock(return_value=False)
+        mock_tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=mock_span
+        )
+        mock_tracer.start_as_current_span.return_value.__exit__ = mock.Mock(
+            return_value=False
+        )
 
         with patch.dict("sys.modules", {"aerospike": self.mock_aerospike}):
             with mock.patch("opentelemetry.trace.get_tracer") as tracer:
                 tracer.return_value = mock_tracer
-                from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+                from opentelemetry.instrumentation.aerospike import (
+                    AerospikeInstrumentor,
+                )
+
                 instrumentor = AerospikeInstrumentor()
                 instrumentor.instrument()
 
@@ -244,7 +257,9 @@ class TestAerospikeInstrumentation(TestBase):
         hook_calls = []
 
         def error_hook(span, operation, exception):
-            hook_calls.append({"operation": operation, "error": str(exception)})
+            hook_calls.append(
+                {"operation": operation, "error": str(exception)}
+            )
 
         self._instrument(error_hook=error_hook)
 
@@ -270,7 +285,9 @@ class TestAerospikeInstrumentation(TestBase):
             client.put(("test", "demo", "my_key"), {"bin": "value"})
 
             spans = self.memory_exporter.get_finished_spans()
-            self.assertEqual(spans[0].attributes.get("db.aerospike.key"), "my_key")
+            self.assertEqual(
+                spans[0].attributes.get("db.aerospike.key"), "my_key"
+            )
         finally:
             self._uninstrument()
 
@@ -297,7 +314,10 @@ class TestAerospikeInstrumentation(TestBase):
         )
 
         with patch.dict("sys.modules", {"aerospike": self.mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
+
             tracer_provider = trace.NoOpTracerProvider()
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=tracer_provider)
@@ -318,7 +338,9 @@ def tracer_setup():
     """Create a tracer provider with in-memory exporter."""
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+        InMemorySpanExporter,
+    )
 
     provider = TracerProvider()
     exporter = InMemorySpanExporter()
@@ -336,7 +358,9 @@ class TestAerospikeInstrumentorUnit:
         mock_aerospike.client = MagicMock()
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             deps = instrumentor.instrumentation_dependencies()
@@ -353,7 +377,9 @@ class TestAerospikeInstrumentorUnit:
         mock_aerospike.client = original_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
 
@@ -384,7 +410,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
@@ -420,7 +448,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
@@ -451,7 +481,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
@@ -487,7 +519,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
@@ -524,10 +558,14 @@ class TestInstrumentedAerospikeClient:
             span.set_attribute("custom.attr", "test")
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
-            instrumentor.instrument(tracer_provider=provider, request_hook=request_hook)
+            instrumentor.instrument(
+                tracer_provider=provider, request_hook=request_hook
+            )
 
             try:
                 client = mock_aerospike.client({})
@@ -547,7 +585,11 @@ class TestInstrumentedAerospikeClient:
 
         mock_aerospike = MagicMock()
         mock_client = MagicMock()
-        mock_client.get.return_value = (("test", "demo", "key1"), {"gen": 1}, {"bin": "value"})
+        mock_client.get.return_value = (
+            ("test", "demo", "key1"),
+            {"gen": 1},
+            {"bin": "value"},
+        )
         mock_aerospike.client.return_value = mock_client
 
         hook_calls = []
@@ -556,10 +598,14 @@ class TestInstrumentedAerospikeClient:
             hook_calls.append({"operation": operation, "result": result})
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
-            instrumentor.instrument(tracer_provider=provider, response_hook=response_hook)
+            instrumentor.instrument(
+                tracer_provider=provider, response_hook=response_hook
+            )
 
             try:
                 client = mock_aerospike.client({})
@@ -582,13 +628,19 @@ class TestInstrumentedAerospikeClient:
         hook_calls = []
 
         def error_hook(span, operation, exception):
-            hook_calls.append({"operation": operation, "error": str(exception)})
+            hook_calls.append(
+                {"operation": operation, "error": str(exception)}
+            )
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
-            instrumentor.instrument(tracer_provider=provider, error_hook=error_hook)
+            instrumentor.instrument(
+                tracer_provider=provider, error_hook=error_hook
+            )
 
             try:
                 client = mock_aerospike.client({})
@@ -612,7 +664,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider, capture_key=True)
@@ -636,7 +690,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
@@ -661,7 +717,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
@@ -689,21 +747,34 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
 
             try:
                 client = mock_aerospike.client({})
-                client.apply(("test", "demo", "key1"), "mymodule", "myfunction", ["arg1"])
+                client.apply(
+                    ("test", "demo", "key1"),
+                    "mymodule",
+                    "myfunction",
+                    ["arg1"],
+                )
 
                 spans = exporter.get_finished_spans()
                 span = spans[0]
 
                 assert span.name == "APPLY test.demo"
-                assert span.attributes.get("db.aerospike.udf.module") == "mymodule"
-                assert span.attributes.get("db.aerospike.udf.function") == "myfunction"
+                assert (
+                    span.attributes.get("db.aerospike.udf.module")
+                    == "mymodule"
+                )
+                assert (
+                    span.attributes.get("db.aerospike.udf.function")
+                    == "myfunction"
+                )
             finally:
                 instrumentor.uninstrument()
 
@@ -721,7 +792,9 @@ class TestInstrumentedAerospikeClient:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
@@ -752,14 +825,18 @@ class TestSpanNaming:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
 
             try:
                 client = mock_aerospike.client({})
-                client.put(("production", "orders", "order123"), {"total": 100})
+                client.put(
+                    ("production", "orders", "order123"), {"total": 100}
+                )
 
                 spans = exporter.get_finished_spans()
                 assert spans[0].name == "PUT production.orders"
@@ -776,7 +853,9 @@ class TestSpanNaming:
         mock_aerospike.client.return_value = mock_client
 
         with patch.dict("sys.modules", {"aerospike": mock_aerospike}):
-            from opentelemetry.instrumentation.aerospike import AerospikeInstrumentor
+            from opentelemetry.instrumentation.aerospike import (
+                AerospikeInstrumentor,
+            )
 
             instrumentor = AerospikeInstrumentor()
             instrumentor.instrument(tracer_provider=provider)
