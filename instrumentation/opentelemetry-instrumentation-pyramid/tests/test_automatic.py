@@ -92,6 +92,8 @@ _recommended_attrs = {
     MetricInstruments.HTTP_SERVER_DURATION: _server_duration_attrs_old,
 }
 
+SCOPE = "opentelemetry.instrumentation.pyramid.callbacks"
+
 
 class TestAutomatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
@@ -223,7 +225,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         self.client.get("/hello/756")
         self.client.get("/hello/756")
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
         self.assertEqual(len(metrics), 2)

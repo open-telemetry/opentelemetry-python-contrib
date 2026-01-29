@@ -99,6 +99,8 @@ urlpatterns = [
 ]
 _django_instrumentor = DjangoInstrumentor()
 
+SCOPE = "opentelemetry.instrumentation.django"
+
 
 # pylint: disable=too-many-public-methods
 class TestMiddleware(WsgiTestBase):
@@ -737,7 +739,7 @@ class TestMiddleware(WsgiTestBase):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
@@ -786,7 +788,7 @@ class TestMiddleware(WsgiTestBase):
             response = Client().get("/span_name/1234/")
             self.assertEqual(response.status_code, 200)
         duration_s = default_timer() - start
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
@@ -855,7 +857,7 @@ class TestMiddleware(WsgiTestBase):
             self.assertEqual(response.status_code, 200)
         duration_s = max(default_timer() - start, 0)
         duration = max(round(duration_s * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
@@ -901,7 +903,7 @@ class TestMiddleware(WsgiTestBase):
         Client().get("/span_name/1234/")
         _django_instrumentor.uninstrument()
         Client().get("/span_name/1234/")
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):

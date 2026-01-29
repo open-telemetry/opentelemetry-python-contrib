@@ -97,6 +97,9 @@ class HTTPMethod(Enum):
     TRACE = "TRACE"
 
 
+SCOPE = "opentelemetry.instrumentation.aiohttp_server"
+
+
 @pytest.fixture(name="test_base", scope="function")
 def fixture_test_base():
     test_base = TestBase()
@@ -172,14 +175,14 @@ async def test_status_code_instrumentation(
     server, _ = server_fixture
 
     assert len(test_base.get_finished_spans()) == 0
-    metrics = test_base.get_sorted_metrics()
+    metrics = test_base.get_sorted_metrics(SCOPE)
     assert len(metrics) == 0
 
     client = await aiohttp_client(server)
     await client.get(url)
 
     assert len(test_base.get_finished_spans()) == 1
-    metrics = test_base.get_sorted_metrics()
+    metrics = test_base.get_sorted_metrics(SCOPE)
     assert len(metrics) == 2
 
     [span] = test_base.get_finished_spans()
@@ -327,7 +330,7 @@ async def test_excluded_urls(
     spans = test_base.get_finished_spans()
     assert len(spans) == 0
 
-    metrics = test_base.get_sorted_metrics()
+    metrics = test_base.get_sorted_metrics(SCOPE)
     assert len(metrics) == 0
 
     AioHttpServerInstrumentor().uninstrument()
@@ -545,7 +548,7 @@ async def test_semantic_conventions_metrics_old_default(
         assert NETWORK_PROTOCOL_VERSION not in span.attributes
         assert HTTP_RESPONSE_STATUS_CODE not in span.attributes
 
-        metrics = test_base.get_sorted_metrics()
+        metrics = test_base.get_sorted_metrics(SCOPE)
         expected_metric_names = [
             "http.server.active_requests",
             "http.server.duration",
@@ -619,7 +622,7 @@ async def test_semantic_conventions_metrics_new(
         assert HTTP_FLAVOR not in span.attributes
         assert HTTP_STATUS_CODE not in span.attributes
 
-        metrics = test_base.get_sorted_metrics()
+        metrics = test_base.get_sorted_metrics(SCOPE)
         expected_metric_names = [
             "http.server.active_requests",
             "http.server.request.duration",
@@ -701,7 +704,7 @@ async def test_semantic_conventions_metrics_both(
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
         assert span.attributes.get(HTTP_ROUTE) == "default_handler"
 
-        metrics = test_base.get_sorted_metrics()
+        metrics = test_base.get_sorted_metrics(SCOPE)
         assert len(metrics) == 3  # Both duration metrics + active requests
         server_active_requests_count_attrs_both = list(
             _server_active_requests_count_attrs_old
