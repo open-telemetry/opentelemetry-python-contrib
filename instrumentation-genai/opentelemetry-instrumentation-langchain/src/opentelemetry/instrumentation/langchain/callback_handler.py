@@ -109,10 +109,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         input_messages: list[InputMessage] = []
         for sub_messages in messages:  # type: ignore[reportUnknownVariableType]
             for message in sub_messages:  # type: ignore[reportUnknownVariableType]
-                content = message.content # type: ignore[reportUnknownVariableType]
-                role = message.type # type: ignore[reportUnknownVariableType]
-                parts = [Text(content=content, type="text")] # type: ignore[reportUnknownVariableType]
-                input_messages.append(InputMessage(parts=parts, role=role)) # type: ignore[reportUnknownVariableType]
+                content = message.content  # type: ignore[reportUnknownVariableType]
+                role = message.type  # type: ignore[reportUnknownVariableType]
+                parts = [Text(content=content, type="text")]  # type: ignore[reportUnknownVariableType]
+                input_messages.append(InputMessage(parts=parts, role=role))  # type: ignore[reportUnknownVariableType]
 
         llm_invocation = LLMInvocation(
             request_model=request_model,
