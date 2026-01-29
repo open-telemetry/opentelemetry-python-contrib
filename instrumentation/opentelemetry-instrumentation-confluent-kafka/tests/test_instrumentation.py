@@ -73,7 +73,25 @@ class TestConfluentKafka(TestBase):
         consumer = instrumentation.uninstrument_consumer(consumer)
         self.assertEqual(consumer.__class__, Consumer)
 
-    def test_consumer_commit_method_exists(self) -> None:
+    def test_producer_proxy_implemented_all_methods(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+
+        producer = Producer({"bootstrap.servers": "localhost:29092"})
+
+        producer = instrumentation.instrument_producer(producer)
+
+        self.assertEqual(producer.__class__, ProxiedProducer)
+        self.assertTrue(hasattr(producer, "produce"))
+        self.assertTrue(hasattr(producer, "poll"))
+        self.assertTrue(hasattr(producer, "flush"))
+        self.assertTrue(hasattr(producer, "init_transactions"))
+        self.assertTrue(hasattr(producer, "begin_transaction"))
+        self.assertTrue(hasattr(producer, "commit_transaction"))
+        self.assertTrue(hasattr(producer, "abort_transaction"))
+        self.assertTrue(hasattr(producer, "send_offsets_to_transaction"))
+        self.assertTrue(hasattr(producer, "list_topics"))
+
+    def test_consumer_proxy_implemented_all_methods(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
 
         consumer = Consumer(
@@ -87,6 +105,26 @@ class TestConfluentKafka(TestBase):
         consumer = instrumentation.instrument_consumer(consumer)
         self.assertEqual(consumer.__class__, ProxiedConsumer)
         self.assertTrue(hasattr(consumer, "commit"))
+        self.assertTrue(hasattr(consumer, "assign"))
+        self.assertTrue(hasattr(consumer, "assignment"))
+        self.assertTrue(hasattr(consumer, "close"))
+        self.assertTrue(hasattr(consumer, "committed"))
+        self.assertTrue(hasattr(consumer, "consume"))
+        self.assertTrue(hasattr(consumer, "consumer_group_metadata"))
+        self.assertTrue(hasattr(consumer, "get_watermark_offsets"))
+        self.assertTrue(hasattr(consumer, "incremental_assign"))
+        self.assertTrue(hasattr(consumer, "incremental_unassign"))
+        self.assertTrue(hasattr(consumer, "list_topics"))
+        self.assertTrue(hasattr(consumer, "offsets_for_times"))
+        self.assertTrue(hasattr(consumer, "pause"))
+        self.assertTrue(hasattr(consumer, "poll"))
+        self.assertTrue(hasattr(consumer, "position"))
+        self.assertTrue(hasattr(consumer, "resume"))
+        self.assertTrue(hasattr(consumer, "seek"))
+        self.assertTrue(hasattr(consumer, "store_offsets"))
+        self.assertTrue(hasattr(consumer, "subscribe"))
+        self.assertTrue(hasattr(consumer, "unassign"))
+        self.assertTrue(hasattr(consumer, "unsubscribe"))
 
     def test_context_setter(self) -> None:
         context_setter = KafkaContextSetter()
