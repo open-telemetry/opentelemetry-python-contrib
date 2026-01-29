@@ -306,6 +306,9 @@ def failing_hook(msg):
     return hook
 
 
+SCOPE = "opentelemetry.instrumentation.asgi"
+
+
 # pylint: disable=too-many-public-methods
 class TestAsgiApplication(AsyncAsgiTestBase):
     def setUp(self):
@@ -340,7 +343,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
     def _assert_exemplars_present(
         self, metric_names: set[str], context: str = ""
     ):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
 
         found = {name: 0 for name in metric_names}
         for metric in metrics:
@@ -548,7 +551,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             self.assertDictEqual(dict(span.attributes), expected["attributes"])
             self.assertEqual(
                 span.instrumentation_scope.name,
-                "opentelemetry.instrumentation.asgi",
+                SCOPE,
             )
             if "events" in expected:
                 self.assertEqual(len(span.events), len(expected["events"]))
@@ -1462,37 +1465,22 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            scope_metrics = [
-                sm
-                for sm in resource_metric.scope_metrics
-                if sm.scope.name == "opentelemetry.instrumentation.asgi"
-            ]
-            self.assertTrue(len(scope_metrics) != 0)
-            for scope_metric in scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_old)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_old[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_old)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_old[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_new_semconv(self):
@@ -1507,38 +1495,27 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            scope_metrics = [
-                sm
-                for sm in resource_metric.scope_metrics
-                if sm.scope.name == "opentelemetry.instrumentation.asgi"
-            ]
-            self.assertTrue(len(scope_metrics) != 0)
-            for scope_metric in scope_metrics:
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            if metric.name == "http.server.request.duration":
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                                )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_new[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_new)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    if metric.name == "http.server.request.duration":
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                        )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_new[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_both_semconv(self):
@@ -1553,42 +1530,27 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            scope_metrics = [
-                sm
-                for sm in resource_metric.scope_metrics
-                if sm.scope.name == "opentelemetry.instrumentation.asgi"
-            ]
-            self.assertTrue(len(scope_metrics) != 0)
-            for scope_metric in scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_both)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            if metric.name == "http.server.request.duration":
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                                )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_both[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_both)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    if metric.name == "http.server.request.duration":
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                        )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_exemplars_expected_old_semconv(self):
@@ -1646,7 +1608,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             "http.scheme": "http",
             "http.flavor": "1.0",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         # pylint: disable=too-many-nested-blocks
         for metric in metrics:
             for point in list(metric.data.data_points):
@@ -1700,7 +1662,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 "http.scheme": "http",
                 "http.flavor": "1.0",
             }
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             # pylint: disable=too-many-nested-blocks
             for metric in metrics:
                 for point in list(metric.data.data_points):
@@ -1742,7 +1704,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             "http.request.method": "GET",
             "url.scheme": "http",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         # pylint: disable=too-many-nested-blocks
         for metric in metrics:
             for point in list(metric.data.data_points):
@@ -1795,7 +1757,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             "network.protocol.version": "1.0",
             "http.response.status_code": 200,
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         # pylint: disable=too-many-nested-blocks
         for metric in metrics:
             for point in list(metric.data.data_points):
@@ -1862,7 +1824,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         self.seed_app(app)
         await self.send_default_request()
         await self.get_all_output()
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         assertions = 0
         for metric in metrics:
             if metric.name == "http.server.active_requests":
@@ -1893,7 +1855,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_input({"type": "websocket.receive", "text": "ping"})
         await self.send_input({"type": "websocket.disconnect"})
         await self.get_all_output()
-        self.assertEqual(len(self.get_sorted_metrics()), 0)
+        self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
     async def test_excluded_urls(self):
         self.scope["path"] = "/test_excluded_urls"
