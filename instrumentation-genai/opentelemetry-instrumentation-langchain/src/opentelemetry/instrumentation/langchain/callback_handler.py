@@ -109,10 +109,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         input_messages: list[InputMessage] = []
         for sub_messages in messages:  # type: ignore[reportUnknownVariableType]
             for message in sub_messages:  # type: ignore[reportUnknownVariableType]
-                content = get_property_value(message, "content")  # type: ignore[reportUnknownVariableType]
-                role = get_property_value(message, "type")  # type: ignore[reportUnknownArgumentType, reportUnknownVariableType]
-                parts = [Text(content=content, type="text")]
-                input_messages.append(InputMessage(parts=parts, role=role))
+                content = message.content # type: ignore[reportUnknownVariableType]
+                role = message.type # type: ignore[reportUnknownVariableType]
+                parts = [Text(content=content, type="text")] # type: ignore[reportUnknownVariableType]
+                input_messages.append(InputMessage(parts=parts, role=role)) # type: ignore[reportUnknownVariableType]
 
         llm_invocation = LLMInvocation(
             request_model=request_model,
@@ -177,13 +177,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
                     # Get message content
                     parts = [
                         Text(
-                            content=get_property_value(
-                                chat_generation.message, "content"
-                            ),
+                            content=chat_generation.message.content,
                             type="text",
                         )
                     ]
-                    role = get_property_value(chat_generation.message, "type")
+                    role = chat_generation.message.type
                     output_message = OutputMessage(
                         role=role,
                         parts=parts,
@@ -249,12 +247,3 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):  # type: ignor
         )
         if not llm_invocation.span.is_recording():  # type: ignore[reportOptionalMemberAccess]
             self._invocation_manager.delete_invocation_state(run_id=run_id)
-
-
-def get_property_value(
-    obj: dict[str, Any] | object, property_name: str
-) -> Any:
-    if isinstance(obj, dict):
-        return obj.get(property_name, None)  # type: ignore[reportUnknownParameterType]
-
-    return getattr(obj, property_name, None)
