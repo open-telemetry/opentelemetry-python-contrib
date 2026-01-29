@@ -151,6 +151,9 @@ class CustomRoute(APIRoute):
         return super().matches(scope)
 
 
+SCOPE = "opentelemetry.instrumentation.fastapi"
+
+
 class TestBaseFastAPI(TestBase):
     def _create_app(self):
         app = self._create_fastapi_app()
@@ -454,7 +457,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             self.assertIn("GET /foobar", span.name)
             self.assertEqual(
                 span.instrumentation_scope.name,
-                "opentelemetry.instrumentation.fastapi",
+                SCOPE,
             )
 
     def test_uninstrument_app(self):
@@ -525,97 +528,66 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/foobar")
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
-        for resource_metric in metrics_list.resource_metrics:
-            scope_metrics = [
-                sm
-                for sm in resource_metric.scope_metrics
-                if sm.scope.name == "opentelemetry.instrumentation.fastapi"
-            ]
-            self.assertTrue(len(scope_metrics) == 1)
-            for scope_metric in scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) == 3)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_old)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_old[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) == 3)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_old)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_old[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_fastapi_metrics_new_semconv(self):
         self._client.get("/foobar")
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
-        for resource_metric in metrics_list.resource_metrics:
-            scope_metrics = [
-                sm
-                for sm in resource_metric.scope_metrics
-                if sm.scope.name == "opentelemetry.instrumentation.fastapi"
-            ]
-            self.assertTrue(len(scope_metrics) == 1)
-            for scope_metric in scope_metrics:
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_new[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) == 3)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_new)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_new[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_fastapi_metrics_both_semconv(self):
         self._client.get("/foobar")
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
-        for resource_metric in metrics_list.resource_metrics:
-            scope_metrics = [
-                sm
-                for sm in resource_metric.scope_metrics
-                if sm.scope.name == "opentelemetry.instrumentation.fastapi"
-            ]
-            self.assertTrue(len(scope_metrics) == 1)
-            for scope_metric in scope_metrics:
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_both)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_both[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) == 5)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_both)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_basic_metric_success(self):
@@ -639,7 +611,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_FLAVOR: "1.1",
             HTTP_SERVER_NAME: "testserver",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -671,7 +643,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "GET",
             URL_SCHEME: "https",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -726,7 +698,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "GET",
             URL_SCHEME: "https",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -798,7 +770,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_FLAVOR: "1.1",
             HTTP_SERVER_NAME: "testserver",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -830,7 +802,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "_OTHER",
             URL_SCHEME: "https",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -885,7 +857,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "_OTHER",
             URL_SCHEME: "https",
         }
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -944,7 +916,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration = max(round((default_timer() - start) * 1000), 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -967,7 +939,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration_s = max(default_timer() - start, 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -993,7 +965,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration_s = max(default_timer() - start, 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -1019,7 +991,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -1034,7 +1006,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._instrumentor.uninstrument()
         self._client.get("/foobar")
 
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
