@@ -8,7 +8,6 @@ from opentelemetry.instrumentation.asyncio.environment_variables import (
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
-
 SCOPE = "opentelemetry.instrumentation.asyncio"
 
 

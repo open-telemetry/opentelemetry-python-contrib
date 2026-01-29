@@ -10,7 +10,6 @@ from opentelemetry.test.test_base import TestBase
 
 from .celery_test_tasks import app, task_add
 
-
 SCOPE = "opentelemetry.instrumentation.celery"
 
 

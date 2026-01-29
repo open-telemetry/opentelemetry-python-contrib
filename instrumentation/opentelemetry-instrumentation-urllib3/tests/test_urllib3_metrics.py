@@ -30,7 +30,6 @@ from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 from opentelemetry.test.httptest import HttpTestBase
 from opentelemetry.test.test_base import TestBase
 
-
 SCOPE = "opentelemetry.instrumentation.urllib3"
 
 
