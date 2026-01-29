@@ -13,6 +13,7 @@
 # limitations under the License.
 # pylint: disable=too-many-lines
 
+import asyncio
 import copy
 import dataclasses
 import functools
@@ -45,6 +46,7 @@ from google.genai.types import (
     ToolListUnionDict,
     ToolUnionDict,
 )
+from mcp import ClientSession as McpClientSession
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -187,19 +189,10 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
-def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
     if isinstance(tool, dict):
         return tool
-    if hasattr(tool, "to_json_dict"):
-        try:
-            return tool.to_json_dict()
-        except TypeError:
-            pass
-    if hasattr(tool, "model_dump"):
-        try:
-            return tool.model_dump(exclude_none=True)
-        except TypeError:
-            pass
+
     if callable(tool) and hasattr(tool, "__name__"):
         doc = getattr(tool, "__doc__", "") or ""
         return {
@@ -208,12 +201,35 @@ def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
                 "description": doc.strip(),
             }
         }
+
+    if hasattr(tool, "model_dump"):
+        try:
+            return tool.model_dump(exclude_none=True)
+        except TypeError:
+            pass
+
     try:
-        return {"value": str(tool)}
+        return {"raw_definition": json.loads(json.dumps(tool))}
     except Exception:
         return {
             "error": f"failed to serialize tool definition, tool type={type(tool).__name__}"
         }
+
+
+def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+    if isinstance(tool, McpClientSession):
+        result = asyncio.run(tool.list_tools())
+        return [t.model_dump(exclude_none=True) for t in result.tools]
+
+    return _to_tool_definition_common(tool)
+
+
+async def _to_tool_definition_async(tool: ToolUnionDict) -> MessagePart:
+    if isinstance(tool, McpClientSession):
+        result = await tool.list_tools()
+        return [t.model_dump(exclude_none=True) for t in result.tools]
+
+    return _to_tool_definition_common(tool)
 
 
 def _create_request_attributes(
@@ -372,6 +388,7 @@ class _GenerateContentInstrumentationHelper:
         model: str,
         completion_hook: CompletionHook,
         generate_content_config_key_allowlist: Optional[AllowList] = None,
+        is_async: bool = False,
     ):
         self._start_time = time.time_ns()
         self._otel_wrapper = otel_wrapper
@@ -393,6 +410,7 @@ class _GenerateContentInstrumentationHelper:
         self._generate_content_config_key_allowlist = (
             generate_content_config_key_allowlist or AllowList()
         )
+        self._is_async = is_async
 
     def wrapped_config(
         self, config: Optional[GenerateContentConfigOrDict]
@@ -509,6 +527,40 @@ class _GenerateContentInstrumentationHelper:
         block_reason = response.prompt_feedback.block_reason.name.upper()
         self._error_type = f"BLOCKED_{block_reason}"
 
+    def _maybe_get_tool_definitions(self, config):
+        if (
+            self.sem_conv_opt_in_mode
+            != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ):
+            return None
+
+        tool_definitions = []
+        if tools := _config_to_tools(config):
+            for tool in tools:
+                definition = _to_tool_definition(tool)
+                if isinstance(definition, list):
+                    tool_definitions.extend(definition)
+                else:
+                    tool_definitions.append(definition)
+        return tool_definitions
+
+    async def _maybe_get_tool_definitions_async(self, config):
+        if (
+            self.sem_conv_opt_in_mode
+            != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ):
+            return None
+
+        tool_definitions = []
+        if tools := _config_to_tools(config):
+            for tool in tools:
+                definition = await _to_tool_definition_async(tool)
+                if isinstance(definition, list):
+                    tool_definitions.extend(definition)
+                else:
+                    tool_definitions.append(definition)
+        return tool_definitions
+
     def _maybe_log_completion_details(
         self,
         extra_attributes: dict[str, AttributeValue],
@@ -517,6 +569,7 @@ class _GenerateContentInstrumentationHelper:
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
+        tool_definitions: list[MessagePart] = None,
     ):
         if (
             self.sem_conv_opt_in_mode
@@ -532,10 +585,6 @@ class _GenerateContentInstrumentationHelper:
             contents=transformers.t_contents(request)
         )
         output_messages = to_output_messages(candidates=candidates)
-
-        tool_definitions = []
-        if tools := _config_to_tools(config):
-            tool_definitions = [_to_tool_definition(tool) for tool in tools]
 
         span = trace.get_current_span()
         event = LogRecord(
@@ -790,6 +839,7 @@ def _create_instrumented_generate_content(
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=False,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -827,6 +877,9 @@ def _create_instrumented_generate_content(
             finally:
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = helper._maybe_get_tool_definitions(
+                    config
+                )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
@@ -834,6 +887,7 @@ def _create_instrumented_generate_content(
                     contents,
                     candidates,
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -865,6 +919,7 @@ def _create_instrumented_generate_content_stream(
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=False,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -902,6 +957,9 @@ def _create_instrumented_generate_content_stream(
             finally:
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = helper._maybe_get_tool_definitions(
+                    config
+                )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
@@ -909,6 +967,7 @@ def _create_instrumented_generate_content_stream(
                     contents,
                     candidates,
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -939,6 +998,7 @@ def _create_instrumented_async_generate_content(
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=True,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -976,6 +1036,9 @@ def _create_instrumented_async_generate_content(
             finally:
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = (
+                    await helper._maybe_get_tool_definitions_async(config)
+                )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
@@ -983,6 +1046,7 @@ def _create_instrumented_async_generate_content(
                     contents,
                     candidates,
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -1014,6 +1078,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=True,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -1044,6 +1109,9 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 helper._record_token_usage_metric()
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = (
+                    await helper._maybe_get_tool_definitions_async(config)
+                )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
@@ -1051,6 +1119,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                     contents,
                     [],
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_duration_metric()
                 with trace.use_span(span, end_on_exit=True):
@@ -1078,6 +1147,11 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                     finally:
                         final_attributes = helper.create_final_attributes()
                         span.set_attributes(final_attributes)
+                        maybe_tool_definitions = (
+                            await helper._maybe_get_tool_definitions_async(
+                                config
+                            )
+                        )
                         helper._maybe_log_completion_details(
                             extra_attributes,
                             request_attributes,
@@ -1085,6 +1159,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                             contents,
                             candidates,
                             config,
+                            maybe_tool_definitions,
                         )
                         helper._record_token_usage_metric()
                         helper._record_duration_metric()
