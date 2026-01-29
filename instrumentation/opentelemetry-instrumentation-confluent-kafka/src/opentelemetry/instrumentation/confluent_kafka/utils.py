@@ -102,11 +102,13 @@ def _end_current_consume_span(instance):
 
 
 def _create_new_consume_span(instance, tracer, records):
+    ctx = propagate.extract(records[0].headers(), getter=_kafka_getter)
     links = _get_links_from_records(records)
     instance._current_consume_span = tracer.start_span(
         name=f"{records[0].topic()} process",
         links=links,
         kind=SpanKind.CONSUMER,
+        context=ctx,
     )
 
 

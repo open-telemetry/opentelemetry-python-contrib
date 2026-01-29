@@ -429,7 +429,6 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         ######
         records = func(*args, **kwargs)
 
-        # create a new span for each message
         if len(records) > 0:
             _create_new_consume_span(instance, tracer, records)
             _enrich_span(
