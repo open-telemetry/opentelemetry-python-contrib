@@ -120,11 +120,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             provider=provider,
             top_p=top_p,
             frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,  # type: ignore[reportPossiblyUnboundVariable]
-            stop_sequences=stop_sequences,  # type: ignore[reportPossiblyUnboundVariable]
-            seed=seed,  # type: ignore[reportPossiblyUnboundVariable]
-            temperature=temperature,  # type: ignore[reportPossiblyUnboundVariable]
-            max_tokens=max_tokens,  # type: ignore[reportPossiblyUnboundVariable]
+            presence_penalty=presence_penalty,
+            stop_sequences=stop_sequences,
+            seed=seed,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
         llm_invocation = self._telemetry_handler.start_llm(
             invocation=llm_invocation
