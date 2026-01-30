@@ -682,29 +682,28 @@ def _parse_host_port(address: str) -> tuple[str | None, int | None]:
     if not address:
         return None, None
 
+    host, port = address, None
+
     # [IPv6]:port
     if address.startswith("["):
         bracket_end = address.find("]")
-        if bracket_end < 0:
-            return address, None
-        host = address[1:bracket_end]
-        rest = address[bracket_end + 1 :]
-        if rest.startswith(":"):
-            try:
-                return host, int(rest[1:])
-            except ValueError:
-                return host, None
-        return host, None
-
-    # host:port — only split if exactly one colon to avoid IPv6 misparse
-    if address.count(":") == 1:
-        host, port_str = address.split(":", 1)
+        if bracket_end >= 0:
+            host = address[1:bracket_end]
+            rest = address[bracket_end + 1 :]
+            if rest.startswith(":"):
+                try:
+                    port = int(rest[1:])
+                except ValueError:
+                    pass
+    elif address.count(":") == 1:
+        # host:port — only split if exactly one colon to avoid IPv6 misparse
+        h, port_str = address.split(":", 1)
         try:
-            return host, int(port_str)
+            host, port = h, int(port_str)
         except ValueError:
-            return address, None
+            pass
 
-    return address, None
+    return host, port
 
 
 def _generate_span_name(

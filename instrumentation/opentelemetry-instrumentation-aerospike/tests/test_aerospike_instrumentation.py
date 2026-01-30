@@ -26,7 +26,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
 
-class TestAerospikeInstrumentation(TestBase):
+class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public-methods
     """Unit tests using TestBase for consistent test infrastructure."""
 
     instrumentor = None  # Will be set in _instrument()
