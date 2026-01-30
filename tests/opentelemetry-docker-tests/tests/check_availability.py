@@ -15,6 +15,7 @@ import logging
 import os
 import time
 
+import aerospike
 import mysql.connector
 import psycopg2
 import pymongo
@@ -37,6 +38,8 @@ POSTGRES_PORT = int(os.getenv("POSTGRESQL_PORT", "5432"))
 POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT ", "6379"))
+AEROSPIKE_HOST = os.getenv("AEROSPIKE_HOST", "localhost")
+AEROSPIKE_PORT = int(os.getenv("AEROSPIKE_PORT", "3000"))
 MSSQL_DB_NAME = os.getenv("MSSQL_DB_NAME", "opentelemetry-tests")
 MSSQL_HOST = os.getenv("MSSQL_HOST", "localhost")
 MSSQL_PORT = int(os.getenv("MSSQL_PORT", "1433"))
@@ -135,6 +138,14 @@ def setup_mssql_db():
     conn.close()
 
 
+@retryable
+def check_aerospike_connection():
+    client = aerospike.client(
+        {"hosts": [(AEROSPIKE_HOST, AEROSPIKE_PORT)]}
+    ).connect()
+    client.close()
+
+
 def check_docker_services_availability():
     # Check if Docker services accept connections
     check_pymongo_connection()
@@ -143,6 +154,7 @@ def check_docker_services_availability():
     check_redis_connection()
     check_mssql_connection()
     setup_mssql_db()
+    check_aerospike_connection()
 
 
 check_docker_services_availability()
