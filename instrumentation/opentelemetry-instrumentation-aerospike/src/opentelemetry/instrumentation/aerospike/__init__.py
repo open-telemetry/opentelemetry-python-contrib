@@ -697,9 +697,9 @@ def _parse_host_port(address: str) -> tuple[str | None, int | None]:
                     pass
     elif address.count(":") == 1:
         # host:port — only split if exactly one colon to avoid IPv6 misparse
-        h, port_str = address.split(":", 1)
+        host, port_str = address.split(":", 1)
         try:
-            host, port = h, int(port_str)
+            port = int(port_str)
         except ValueError:
             pass
 
