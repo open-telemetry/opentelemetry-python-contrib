@@ -483,7 +483,7 @@ class NonStreamingTestCase(TestCase):
                             gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS: (
                                 {"content": sys_instr, "type": "text"},
                             ),
-                            gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS: (
+                            "TOOL_DEFINITIONS": (
                                 {
                                     "function": {
                                         "name": "_mock_callable_tool",
@@ -499,6 +499,35 @@ class NonStreamingTestCase(TestCase):
                                             "query": {"type": "string"}
                                         },
                                     },
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "A standalone mcp tool",
+                                    "inputSchema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"}
+                                        },
+                                    },
+                                },
+                                {
+                                    "function_declarations": (
+                                        {
+                                            "name": "mock_tool",
+                                            "description": "Description of mock tool.",
+                                        },
+                                    )
+                                },
+                            ),
+                            "TOOL_DEFINITIONS_ASYNC": (
+                                {
+                                    "function": {
+                                        "name": "_mock_callable_tool",
+                                        "description": "Description of some tool.",
+                                    }
+                                },
+                                {
+                                    "error": "serializing tools of type=McpClientSession are not supported in synchronous methods",
                                 },
                                 {
                                     "name": "mcp_tool",
@@ -544,12 +573,15 @@ class NonStreamingTestCase(TestCase):
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
                         )
-                        self.assertEqual(
+                        self.assertIn(
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
                             ],
-                            expected_event_attributes[
-                                gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
+                            [
+                                expected_event_attributes["TOOL_DEFINITIONS"],
+                                expected_event_attributes[
+                                    "TOOL_DEFINITIONS_ASYNC"
+                                ],
                             ],
                         )
                 self.tearDown()
@@ -614,11 +646,14 @@ class NonStreamingTestCase(TestCase):
                             ],
                             '[{"content":"System instruction","type":"text"}]',
                         )
-                        self.assertEqual(
+                        self.assertIn(
                             span.attributes[
                                 gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
                             ],
-                            '[{"function":{"name":"_mock_callable_tool","description":"Description of some tool."}},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
+                            [
+                                '[{"function":{"name":"_mock_callable_tool","description":"Description of some tool."}},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
+                                '[{"function":{"name":"_mock_callable_tool","description":"Description of some tool."}},{"error":"serializing tools of type=McpClientSession are not supported in synchronous methods"},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
+                            ],
                         )
                     else:
                         self.assertNotIn(

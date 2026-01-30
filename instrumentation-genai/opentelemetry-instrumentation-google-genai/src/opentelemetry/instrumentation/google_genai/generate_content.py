@@ -13,7 +13,6 @@
 # limitations under the License.
 # pylint: disable=too-many-lines
 
-import asyncio
 import copy
 import dataclasses
 import functools
@@ -218,8 +217,9 @@ def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
 
 def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
     if isinstance(tool, McpClientSession):
-        result = asyncio.run(tool.list_tools())
-        return [t.model_dump(exclude_none=True) for t in result.tools]
+        return {
+            "error": "serializing tools of type=McpClientSession are not supported in synchronous methods"
+        }
 
     return _to_tool_definition_common(tool)
 
