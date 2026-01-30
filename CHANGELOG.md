@@ -142,6 +142,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-redis`: add missing copyright header for opentelemetry-instrumentation-redis
   ([#3976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3976))
 
+### Changed
+
+- Relax `wrapt` version constraint from `< 2.0.0` to `< 3.0.0` to allow wrapt 2.x
+  ([#3930](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3930))
+
 ### Fixed
 
 - `opentelemetry-instrumentation-botocore`: bedrock: Add safety check for bedrock ConverseStream responses
