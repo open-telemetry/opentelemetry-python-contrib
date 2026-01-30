@@ -430,9 +430,9 @@ class _GenerateContentInstrumentationHelper:
             response, "usage_metadata.candidates_token_count"
         )
         if input_tokens and isinstance(input_tokens, int):
-            self._input_tokens += input_tokens
+            self._input_tokens = input_tokens
         if output_tokens and isinstance(output_tokens, int):
-            self._output_tokens += output_tokens
+            self._output_tokens = output_tokens
 
     def _maybe_update_error_type(self, response: GenerateContentResponse):
         if response.candidates:
