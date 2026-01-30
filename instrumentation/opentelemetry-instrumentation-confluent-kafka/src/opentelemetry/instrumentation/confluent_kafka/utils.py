@@ -140,6 +140,11 @@ def _enrich_span(
     if partition is not None:
         span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
 
+    if offset is not None:
+        span.set_attribute(
+            SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET, offset
+        )
+
     span.set_attribute(
         SpanAttributes.MESSAGING_DESTINATION_KIND,
         MessagingDestinationKindValues.QUEUE.value,

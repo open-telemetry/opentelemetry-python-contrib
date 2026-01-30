@@ -64,7 +64,7 @@ class MockedProducer(Producer):
         self._queue.append(
             MockedMessage(
                 topic=kwargs.get("topic"),
-                partition=0,
+                partition=kwargs.get("partition"),
                 offset=0,
                 headers=[],
                 key=kwargs.get("key"),
