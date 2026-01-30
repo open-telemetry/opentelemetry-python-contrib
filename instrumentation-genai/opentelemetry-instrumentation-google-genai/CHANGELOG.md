@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
-- Fix bug in how tokens are counted when using the streaming `generateContent` method.  ([#3961](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3961)).
+- Fix bug in how tokens are counted when using the streaming `generateContent` method.  ([#4152](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4152)).
 
 ## Version 0.6b0 (2026-01-27)
 
