@@ -63,6 +63,31 @@ Aerospike Client Version Compatibility
    Methods removed in version 17.0.0 are not supported by this instrumentation.
    Use the replacement methods listed above.
 
+Captured Attributes
+-------------------
+
+The instrumentation captures the following attributes:
+
+**Standard Attributes:**
+
+* ``db.system.name``: Always "aerospike".
+* ``db.namespace``: Aerospike namespace.
+* ``db.collection.name``: Aerospike set name.
+* ``db.operation.name``: The operation being performed (e.g., "GET", "PUT", "QUERY").
+* ``db.user``: The user connected to the database (if configured).
+* ``server.address``: The hostname or IP address of the Aerospike node.
+* ``server.port``: The port of the Aerospike node.
+* ``db.operation.batch.size``: Number of keys in batch operations.
+
+**Aerospike-Specific Attributes:**
+
+* ``db.aerospike.key``: The record key (only if ``capture_key=True`` is enabled).
+* ``db.aerospike.bins``: List of bins being written or selected (for PUT/SELECT).
+* ``db.aerospike.generation``: Record generation (from GET results).
+* ``db.aerospike.ttl``: Record TTL (from GET results).
+* ``db.aerospike.udf.module``: UDF module name.
+* ``db.aerospike.udf.function``: UDF function name.
+
 References
 ----------
 
