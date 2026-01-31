@@ -329,7 +329,9 @@ class InstrumentedAerospikeClient:
 
     _QUERY_APPLY_METHODS = frozenset({"query_apply"})
 
-    _ADMIN_METHODS = frozenset({"truncate", "info_all"})
+    _ADMIN_METHODS = frozenset({"truncate"})
+
+    _INFO_METHODS = frozenset({"info_all"})
 
     def __init__(
         self,
@@ -396,11 +398,7 @@ class InstrumentedAerospikeClient:
                     _extra_attrs_batch_size,
                 )
             elif name in self._QUERY_SCAN_METHODS:
-                wrapped = self._create_traced_wrapper(
-                    attr,
-                    name.upper(),
-                    _ns_set_from_positional_args,
-                )
+                wrapped = self._create_query_scan_factory(attr, name.upper())
             elif name in self._UDF_METHODS:
                 wrapped = self._create_traced_wrapper(
                     attr,
@@ -428,6 +426,12 @@ class InstrumentedAerospikeClient:
                     name.upper(),
                     _ns_set_from_admin_args,
                 )
+            elif name in self._INFO_METHODS:
+                wrapped = self._create_traced_wrapper(
+                    attr,
+                    name.upper(),
+                    _ns_set_noop,
+                )
 
             if wrapped is not None:
                 object.__setattr__(self, name, wrapped)
@@ -450,13 +454,16 @@ class InstrumentedAerospikeClient:
             if not nodes:
                 return
             node = nodes[0]
-            if not hasattr(node, "name"):
-                return
-            host, port = _parse_host_port(str(node.name))
-            if host:
-                self._server_address = host
-                self._server_port = port or 3000
-        except (TypeError, AttributeError, IndexError):
+            # Handle tuple return (address, port, ...) from some client versions
+            if isinstance(node, tuple) and len(node) >= 2:
+                self._server_address = str(node[0])
+                self._server_port = int(node[1])
+            elif hasattr(node, "name"):
+                host, port = _parse_host_port(str(node.name))
+                if host:
+                    self._server_address = host
+                    self._server_port = port or 3000
+        except (TypeError, AttributeError, IndexError, ValueError):
             # If we can't get node info, keep the config-based values
             pass
 
@@ -474,6 +481,28 @@ class InstrumentedAerospikeClient:
             span.set_attribute(_SERVER_ADDRESS_ATTR, self._server_address)
             if self._server_port:
                 span.set_attribute(_SERVER_PORT_ATTR, self._server_port)
+
+    def _create_query_scan_factory(
+        self, method: Callable, operation: str
+    ) -> Callable:
+        """Create a factory wrapper for query/scan that defers tracing.
+
+        The factory itself (client.query / client.scan) only creates a
+        configuration object — no DB I/O happens until an execution method
+        (.results(), .foreach(), .execute_background()) is called on the
+        returned object.  This wrapper returns an InstrumentedQueryScan
+        proxy so that tracing occurs at execution time, not factory time.
+        """
+
+        @functools.wraps(method)
+        def wrapper(*args, **kwargs):
+            query_scan_obj = method(*args, **kwargs)
+            namespace, set_name = _ns_set_from_positional_args(args)
+            return InstrumentedQueryScan(
+                query_scan_obj, operation, namespace, set_name, self
+            )
+
+        return wrapper
 
     def _create_traced_wrapper(
         self,
@@ -568,6 +597,123 @@ class InstrumentedAerospikeClient:
         self._extra_attrs_capture_key(span, args)
 
 
+class InstrumentedQueryScan:
+    """Instrumented wrapper for Aerospike Query/Scan objects.
+
+    Query and Scan objects are created by client.query() / client.scan()
+    factory methods which perform no DB I/O.  Actual database work happens
+    when an execution method (.results(), .foreach(), .execute_background())
+    is called.  This proxy defers span creation to those execution methods
+    while passing configuration methods straight through.
+    """
+
+    _EXECUTION_METHODS = frozenset(
+        {"results", "foreach", "execute_background"}
+    )
+
+    def __init__(
+        self,
+        query_scan_obj: Any,
+        operation: str,
+        namespace: str | None,
+        set_name: str | None,
+        client: InstrumentedAerospikeClient,
+    ):
+        self._inner = query_scan_obj
+        self._operation = operation
+        self._namespace = namespace
+        self._set_name = set_name
+        self._client = client
+
+    def __getattr__(self, name: str) -> Any:
+        """Proxy attribute access, wrapping execution methods with tracing.
+
+        Execution methods (results, foreach, execute_background) are wrapped
+        with tracing.  Other callable methods are wrapped so that if they
+        return the inner object (for chaining), the proxy is returned instead.
+        """
+        attr = getattr(self._inner, name)
+
+        if callable(attr):
+            if name in self._EXECUTION_METHODS:
+                wrapped = self._create_execution_wrapper(attr)
+                object.__setattr__(self, name, wrapped)
+                return wrapped
+
+            # Wrap non-execution methods to preserve chaining
+            @functools.wraps(attr)
+            def chaining_wrapper(*args, **kwargs):
+                result = attr(*args, **kwargs)
+                # If the method returns the inner object (self-chaining),
+                # return the proxy instead so instrumentation is preserved.
+                if result is self._inner:
+                    return self
+                return result
+
+            return chaining_wrapper
+
+        return attr
+
+    def _create_execution_wrapper(self, method: Callable) -> Callable:
+        """Create a traced wrapper for a query/scan execution method."""
+
+        @functools.wraps(method)
+        def wrapper(*args, **kwargs) -> Any:
+            if not is_instrumentation_enabled():
+                return method(*args, **kwargs)
+
+            span_name = _generate_span_name(
+                self._operation, self._namespace, self._set_name
+            )
+
+            with self._client._tracer.start_as_current_span(  # noqa: SLF001
+                span_name,
+                kind=SpanKind.CLIENT,
+            ) as span:
+                if span.is_recording():
+                    span.set_attribute(_DB_SYSTEM_ATTR, _DB_SYSTEM)
+
+                    if self._namespace:
+                        span.set_attribute(_DB_NAMESPACE_ATTR, self._namespace)
+                    if self._set_name:
+                        span.set_attribute(
+                            _DB_COLLECTION_NAME_ATTR, self._set_name
+                        )
+
+                    span.set_attribute(
+                        _DB_OPERATION_NAME_ATTR, self._operation
+                    )
+                    self._client._set_connection_attributes(span)  # noqa: SLF001
+
+                if self._client._request_hook:  # noqa: SLF001
+                    self._client._request_hook(  # noqa: SLF001
+                        span, self._operation, args, kwargs
+                    )
+
+                try:
+                    result = method(*args, **kwargs)
+
+                    if self._client._response_hook:  # noqa: SLF001
+                        self._client._response_hook(  # noqa: SLF001
+                            span, self._operation, result
+                        )
+
+                    return result
+
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    if span.is_recording():
+                        _set_error_attributes(span, exc)
+
+                    if self._client._error_hook:  # noqa: SLF001
+                        self._client._error_hook(  # noqa: SLF001
+                            span, self._operation, exc
+                        )
+
+                    raise
+
+        return wrapper
+
+
 # -- Namespace/set extraction functions --
 
 
@@ -603,6 +749,13 @@ def _ns_set_from_admin_args(
     namespace = args[0] if args and isinstance(args[0], str) else None
     set_name = args[1] if len(args) > 1 and isinstance(args[1], str) else None
     return namespace, set_name
+
+
+def _ns_set_noop(
+    args: tuple,  # noqa: ARG001
+) -> tuple[str | None, str | None]:
+    """Return no namespace/set — used for info commands."""
+    return None, None
 
 
 # -- Extra attribute setters (module-level, no self needed) --
@@ -743,5 +896,6 @@ def _set_error_attributes(span: Span, exc: Exception) -> None:
 __all__ = [
     "AerospikeInstrumentor",
     "InstrumentedAerospikeClient",
+    "InstrumentedQueryScan",
     "__version__",
 ]

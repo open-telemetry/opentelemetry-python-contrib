@@ -149,23 +149,71 @@ class TestFunctionalAerospike(TestBase):
         for k in keys:
             self._client.remove(k)
 
-    def test_query(self):
-        """Test query object creation creates a span."""
+    def test_query_no_span_on_factory(self):
+        """Test that query factory alone does not create a span."""
         self._client.query("test", "demo")
+
+        spans = self._get_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_query(self):
+        """Test query.results() creates a span with actual data."""
+        key = ("test", "demo", "func_query")
+        self._client.put(key, {"name": "bob"})
+        self.memory_exporter.clear()
+
+        query = self._client.query("test", "demo")
+        records = query.results()
+
+        self.assertTrue(len(records) > 0)
 
         spans = self._get_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].name, "QUERY test.demo")
         self._assert_base_attrs(spans[0], "QUERY", "test", "demo")
 
+        self._client.remove(key)
+
+    def test_query_foreach(self):
+        """Test query.foreach() creates a span and invokes the callback."""
+        key = ("test", "demo", "func_qforeach")
+        self._client.put(key, {"name": "carol"})
+        self.memory_exporter.clear()
+
+        received = []
+
+        def callback(record):
+            received.append(record)
+
+        query = self._client.query("test", "demo")
+        query.foreach(callback)
+
+        self.assertTrue(len(received) > 0)
+
+        spans = self._get_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "QUERY test.demo")
+        self._assert_base_attrs(spans[0], "QUERY", "test", "demo")
+
+        self._client.remove(key)
+
     def test_scan(self):
-        """Test scan object creation creates a span."""
-        self._client.scan("test", "demo")
+        """Test scan.results() creates a span with actual data."""
+        key = ("test", "demo", "func_scan")
+        self._client.put(key, {"name": "dave"})
+        self.memory_exporter.clear()
+
+        scan = self._client.scan("test", "demo")
+        records = scan.results()
+
+        self.assertTrue(len(records) > 0)
 
         spans = self._get_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].name, "SCAN test.demo")
         self._assert_base_attrs(spans[0], "SCAN", "test", "demo")
+
+        self._client.remove(key)
 
     def test_apply_udf(self):
         """Test apply (single-record UDF) creates correct span."""

@@ -361,8 +361,8 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
         finally:
             self._uninstrument()
 
-    def test_query_operation(self):
-        """Test query operation creates correct span."""
+    def test_query_factory_no_span(self):
+        """Test that client.query() factory alone creates no span."""
         mock_query = MagicMock()
         self.mock_client.query.return_value = mock_query
         self._instrument()
@@ -370,6 +370,169 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
         try:
             client = self.mock_aerospike.client({})
             client.query("test", "users")
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 0)
+        finally:
+            self._uninstrument()
+
+    def test_query_results_creates_span(self):
+        """Test that query.results() creates the correct span."""
+        mock_query = MagicMock()
+        mock_query.results.return_value = []
+        self.mock_client.query.return_value = mock_query
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            query = client.query("test", "users")
+            query.results()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertEqual(span.name, "QUERY test.users")
+            self.assertEqual(span.attributes["db.operation.name"], "QUERY")
+            self.assertEqual(span.attributes["db.namespace"], "test")
+            self.assertEqual(span.attributes["db.collection.name"], "users")
+        finally:
+            self._uninstrument()
+
+    def test_query_foreach_creates_span(self):
+        """Test that query.foreach() creates the correct span."""
+        mock_query = MagicMock()
+        mock_query.foreach.return_value = None
+        self.mock_client.query.return_value = mock_query
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            query = client.query("test", "users")
+            query.foreach(lambda rec: None)
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertEqual(span.name, "QUERY test.users")
+            self.assertEqual(span.attributes["db.operation.name"], "QUERY")
+        finally:
+            self._uninstrument()
+
+    def test_query_config_methods_passthrough(self):
+        """Test that config methods (select, where) pass through without span."""
+        mock_query = MagicMock()
+        mock_query.select.return_value = None
+        mock_query.where.return_value = None
+        self.mock_client.query.return_value = mock_query
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            query = client.query("test", "users")
+            query.select("bin1", "bin2")
+            query.where(MagicMock())
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 0)
+
+            # Verify calls were forwarded to the inner object
+            mock_query.select.assert_called_once_with("bin1", "bin2")
+            mock_query.where.assert_called_once()
+        finally:
+            self._uninstrument()
+
+    def test_query_results_with_error(self):
+        """Test that errors during query.results() set span error status."""
+        mock_query = MagicMock()
+        error = RuntimeError("Query failed")
+        mock_query.results.side_effect = error
+        self.mock_client.query.return_value = mock_query
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            query = client.query("test", "users")
+
+            with self.assertRaises(RuntimeError):
+                query.results()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertEqual(span.status.status_code, StatusCode.ERROR)
+            self.assertEqual(span.attributes["error.type"], "RuntimeError")
+        finally:
+            self._uninstrument()
+
+    def test_query_results_hooks(self):
+        """Test that request/response/error hooks work with query.results()."""
+        mock_query = MagicMock()
+        mock_query.results.return_value = [("key", "meta", "bins")]
+        self.mock_client.query.return_value = mock_query
+
+        request_calls = []
+        response_calls = []
+
+        def request_hook(span, operation, args, kwargs):
+            request_calls.append(operation)
+
+        def response_hook(span, operation, result):
+            response_calls.append(operation)
+
+        self._instrument(
+            request_hook=request_hook, response_hook=response_hook
+        )
+
+        try:
+            client = self.mock_aerospike.client({})
+            query = client.query("test", "users")
+            query.results()
+
+            self.assertEqual(len(request_calls), 1)
+            self.assertEqual(request_calls[0], "QUERY")
+            self.assertEqual(len(response_calls), 1)
+            self.assertEqual(response_calls[0], "QUERY")
+        finally:
+            self._uninstrument()
+
+    def test_query_suppress_instrumentation(self):
+        """Test that suppress_instrumentation prevents query span creation."""
+        mock_query = MagicMock()
+        mock_query.results.return_value = []
+        self.mock_client.query.return_value = mock_query
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            query = client.query("test", "users")
+
+            with suppress_instrumentation():
+                query.results()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 0)
+        finally:
+            self._uninstrument()
+
+    def test_query_method_chaining(self):
+        """Test that chaining config methods preserves instrumentation."""
+        mock_query = MagicMock()
+        # select() returns the inner query object (self-chaining pattern)
+        mock_query.select.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.results.return_value = [("key", "meta", "bins")]
+        self.mock_client.query.return_value = mock_query
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            # This chain must produce a span on .results()
+            client.query("test", "users").select("bin1").where(
+                MagicMock()
+            ).results()
 
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 1)
@@ -515,15 +678,40 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
         finally:
             self._uninstrument()
 
-    def test_scan_operation(self):
-        """Test scan operation creates correct span."""
+    def test_scan_results_creates_span(self):
+        """Test that scan.results() creates the correct span."""
         mock_scan = MagicMock()
+        mock_scan.results.return_value = []
         self.mock_client.scan.return_value = mock_scan
         self._instrument()
 
         try:
             client = self.mock_aerospike.client({})
-            client.scan("test", "demo")
+            scan = client.scan("test", "demo")
+            scan.results()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertEqual(span.name, "SCAN test.demo")
+            self.assertEqual(span.attributes["db.operation.name"], "SCAN")
+            self.assertEqual(span.attributes["db.namespace"], "test")
+            self.assertEqual(span.attributes["db.collection.name"], "demo")
+        finally:
+            self._uninstrument()
+
+    def test_scan_foreach_creates_span(self):
+        """Test that scan.foreach() creates the correct span."""
+        mock_scan = MagicMock()
+        mock_scan.foreach.return_value = None
+        self.mock_client.scan.return_value = mock_scan
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            scan = client.scan("test", "demo")
+            scan.foreach(lambda rec: None)
 
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 1)
@@ -553,7 +741,7 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
             self._uninstrument()
 
     def test_info_all_admin_method(self):
-        """Test info_all admin operation creates correct span."""
+        """Test info_all admin operation creates correct span without namespace."""
         self.mock_client.info_all.return_value = {}
         self._instrument()
 
@@ -566,6 +754,8 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
 
             span = spans[0]
             self.assertEqual(span.attributes["db.operation.name"], "INFO_ALL")
+            # info_all takes a command string, not namespace — must not leak
+            self.assertNotIn("db.namespace", span.attributes)
         finally:
             self._uninstrument()
 
@@ -594,6 +784,21 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
             client.connect()
 
             self.assertEqual(client._server_address, "192.168.1.1")
+            self.assertEqual(client._server_port, 3000)
+        finally:
+            self._uninstrument()
+
+    def test_update_server_info_from_tuple_nodes(self):
+        """Test that server info handles tuple-style node return."""
+        self.mock_client.get_nodes.return_value = [("10.0.0.1", 3000)]
+
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+            client.connect()
+
+            self.assertEqual(client._server_address, "10.0.0.1")
             self.assertEqual(client._server_port, 3000)
         finally:
             self._uninstrument()
