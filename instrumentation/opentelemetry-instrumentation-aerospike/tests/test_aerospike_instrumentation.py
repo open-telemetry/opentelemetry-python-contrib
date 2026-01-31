@@ -85,7 +85,7 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
             span = spans[0]
             self.assertEqual(span.name, "GET test.demo")
             self.assertEqual(span.kind, SpanKind.CLIENT)
-            self.assertEqual(span.attributes["db.system"], "aerospike")
+            self.assertEqual(span.attributes["db.system.name"], "aerospike")
             self.assertEqual(span.attributes["db.namespace"], "test")
             self.assertEqual(span.attributes["db.collection.name"], "demo")
             self.assertEqual(span.attributes["db.operation.name"], "GET")

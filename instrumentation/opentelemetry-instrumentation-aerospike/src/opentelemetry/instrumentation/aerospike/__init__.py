@@ -190,7 +190,7 @@ from opentelemetry.trace import Span, SpanKind, Status, StatusCode, Tracer
 
 # Semantic convention constants
 _DB_SYSTEM = "aerospike"
-_DB_SYSTEM_ATTR = "db.system"
+_DB_SYSTEM_ATTR = "db.system.name"
 _DB_NAMESPACE_ATTR = "db.namespace"
 _DB_COLLECTION_NAME_ATTR = "db.collection.name"
 _DB_OPERATION_NAME_ATTR = "db.operation.name"
