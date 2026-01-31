@@ -65,7 +65,7 @@ class TestFunctionalAerospike(TestBase):
     ):
         """Assert common span attributes."""
         self.assertEqual(span.kind, SpanKind.CLIENT)
-        self.assertEqual(span.attributes["db.system"], "aerospike")
+        self.assertEqual(span.attributes["db.system.name"], "aerospike")
         self.assertEqual(span.attributes["db.operation.name"], operation)
         if namespace:
             self.assertEqual(span.attributes["db.namespace"], namespace)

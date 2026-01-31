@@ -207,6 +207,7 @@ _DB_AEROSPIKE_GENERATION_ATTR = "db.aerospike.generation"
 _DB_AEROSPIKE_TTL_ATTR = "db.aerospike.ttl"
 _DB_AEROSPIKE_UDF_MODULE_ATTR = "db.aerospike.udf.module"
 _DB_AEROSPIKE_UDF_FUNCTION_ATTR = "db.aerospike.udf.function"
+_DB_AEROSPIKE_BINS_ATTR = "db.aerospike.bins"
 
 
 class AerospikeInstrumentor(BaseInstrumentor):
@@ -375,9 +376,7 @@ class InstrumentedAerospikeClient:
     def _init_method_config(self):
         # Single record operations
         for method in [
-            "put",
             "get",
-            "select",
             "exists",
             "remove",
             "touch",
@@ -391,6 +390,15 @@ class InstrumentedAerospikeClient:
                 _ns_set_from_key_arg,
                 self._extra_attrs_capture_key,
                 _set_result_attributes if method == "get" else None,
+            )
+
+        # Operations with bins
+        for method in ["put", "select"]:
+            self._method_config[method] = (
+                method.upper(),
+                _ns_set_from_key_arg,
+                self._extra_attrs_bins,
+                None,
             )
 
         # Batch operations
@@ -530,6 +538,15 @@ class InstrumentedAerospikeClient:
             and key_tuple[2] is not None
         ):
             span.set_attribute(_DB_AEROSPIKE_KEY_ATTR, str(key_tuple[2]))
+
+    def _extra_attrs_bins(self, span: Span, args: tuple) -> None:
+        self._extra_attrs_capture_key(span, args)
+        if len(args) > 1:
+            bins = args[1]
+            if isinstance(bins, dict):
+                span.set_attribute(_DB_AEROSPIKE_BINS_ATTR, list(bins.keys()))
+            elif isinstance(bins, (list, tuple)):
+                span.set_attribute(_DB_AEROSPIKE_BINS_ATTR, list(bins))
 
     def _extra_attrs_udf_apply(self, span: Span, args: tuple) -> None:
         if len(args) > 1:

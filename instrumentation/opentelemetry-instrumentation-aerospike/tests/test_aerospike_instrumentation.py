@@ -899,3 +899,42 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
             self.assertEqual(span.attributes.get("db.user"), "test_user")
         finally:
             self._uninstrument()
+
+    def test_bins_attribute(self):
+        """Test that bins are captured for PUT and SELECT."""
+        self.mock_client.put.return_value = None
+        self.mock_client.select.return_value = (
+            ("test", "demo", "key1"),
+            {"gen": 1, "ttl": 100},
+            {"bin1": "value1"},
+        )
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client({})
+
+            # Test PUT with bins dict
+            client.put(
+                ("test", "demo", "key1"), {"bin1": "val1", "bin2": "val2"}
+            )
+            # Test SELECT with bins list
+            client.select(("test", "demo", "key1"), ["bin1", "bin2"])
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 2)
+
+            put_span = spans[0]
+            self.assertEqual(put_span.name, "PUT test.demo")
+            # Verify bins keys are captured
+            captured_bins = put_span.attributes.get("db.aerospike.bins")
+            self.assertIn("bin1", captured_bins)
+            self.assertIn("bin2", captured_bins)
+
+            select_span = spans[1]
+            self.assertEqual(select_span.name, "SELECT test.demo")
+            # Verify bins list is captured
+            captured_bins = select_span.attributes.get("db.aerospike.bins")
+            self.assertIn("bin1", captured_bins)
+            self.assertIn("bin2", captured_bins)
+        finally:
+            self._uninstrument()
