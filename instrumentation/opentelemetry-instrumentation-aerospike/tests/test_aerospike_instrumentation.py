@@ -876,3 +876,26 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
             self.assertIs(wrapper1, wrapper2)
         finally:
             self._uninstrument()
+
+    def test_user_attribute_from_config(self):
+        """Test that user attribute is captured from config."""
+        self.mock_client.get.return_value = (
+            ("test", "demo", "key1"),
+            {"gen": 1, "ttl": 100},
+            {"bin1": "value1"},
+        )
+
+        config = {"hosts": [("127.0.0.1", 3000)], "user": "test_user"}
+        self._instrument()
+
+        try:
+            client = self.mock_aerospike.client(config)
+            client.get(("test", "demo", "key1"))
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertEqual(span.attributes.get("db.user"), "test_user")
+        finally:
+            self._uninstrument()

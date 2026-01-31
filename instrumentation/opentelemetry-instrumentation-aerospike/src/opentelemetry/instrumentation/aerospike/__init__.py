@@ -198,6 +198,7 @@ _DB_OPERATION_BATCH_SIZE_ATTR = "db.operation.batch.size"
 _DB_RESPONSE_STATUS_CODE_ATTR = "db.response.status_code"
 _SERVER_ADDRESS_ATTR = "server.address"
 _SERVER_PORT_ATTR = "server.port"
+_DB_USER_ATTR = "db.user"
 _ERROR_TYPE_ATTR = "error.type"
 
 # Aerospike-specific attributes
@@ -346,6 +347,7 @@ class InstrumentedAerospikeClient:
         self._capture_key = capture_key
         self._server_address = None
         self._server_port = None
+        self._user = None
 
         if config and isinstance(config, dict):
             hosts = config.get("hosts", [])
@@ -359,6 +361,11 @@ class InstrumentedAerospikeClient:
                         )
                 except (TypeError, AttributeError, IndexError):
                     pass
+
+            if "user" in config:
+                self._user = str(config["user"])
+            elif "username" in config:
+                self._user = str(config["username"])
 
         # Configuration for method instrumentation:
         # method_name: (operation_name, extractor_func, extra_attrs_func, result_attrs_func)
@@ -496,6 +503,8 @@ class InstrumentedAerospikeClient:
             span.set_attribute(_SERVER_ADDRESS_ATTR, self._server_address)
             if self._server_port:
                 span.set_attribute(_SERVER_PORT_ATTR, self._server_port)
+        if self._user:
+            span.set_attribute(_DB_USER_ATTR, self._user)
 
     def _create_query_scan_factory(
         self, method: Callable, operation: str
