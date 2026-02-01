@@ -332,10 +332,13 @@ class MessageStreamManagerWrapper:
             # Handle error case
             self._handler.fail_llm(
                 self._invocation,
-                Error(message=str(exc_val) if exc_val else str(exc_type), type=exc_type),
+                Error(
+                    message=str(exc_val) if exc_val else str(exc_type),
+                    type=exc_type,
+                ),
             )
         # Always exit the underlying stream manager
-        return self._stream_manager.__exit__(exc_type, exc_val, exc_tb)
+        return self._stream_manager.__exit__(exc_type, exc_val, exc_tb)  # type: ignore[return-value]
 
     def _extract_telemetry_from_stream(self) -> None:
         """Extract telemetry data from the MessageStream's final message."""
@@ -356,8 +359,12 @@ class MessageStreamManagerWrapper:
                 self._invocation.finish_reasons = [final_message.stop_reason]
 
             if final_message.usage:
-                self._invocation.input_tokens = final_message.usage.input_tokens
-                self._invocation.output_tokens = final_message.usage.output_tokens
+                self._invocation.input_tokens = (
+                    final_message.usage.input_tokens
+                )
+                self._invocation.output_tokens = (
+                    final_message.usage.output_tokens
+                )
         except Exception:  # pylint: disable=broad-exception-caught
             # If we can't get the final message, we still want to end the span
             pass

@@ -43,7 +43,9 @@ def messages_create(
     """Wrap the `create` method of the `Messages` class to trace it."""
 
     def traced_method(
-        wrapped: Callable[..., Union["Message", "Stream[RawMessageStreamEvent]"]],
+        wrapped: Callable[
+            ..., Union["Message", "Stream[RawMessageStreamEvent]"]
+        ],
         instance: "Messages",
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
@@ -69,8 +71,8 @@ def messages_create(
         try:
             result = wrapped(*args, **kwargs)
             if is_streaming:
-                return StreamWrapper(result, handler, invocation)
-            wrapper = MessageWrapper(result, handler, invocation)
+                return StreamWrapper(result, handler, invocation)  # type: ignore[arg-type]
+            wrapper = MessageWrapper(result, handler, invocation)  # type: ignore[arg-type]
             return wrapper.message
         except Exception as exc:
             handler.fail_llm(
@@ -78,7 +80,7 @@ def messages_create(
             )
             raise
 
-    return traced_method
+    return traced_method  # type: ignore[return-value]
 
 
 def messages_stream(
@@ -118,4 +120,4 @@ def messages_stream(
             )
             raise
 
-    return traced_method
+    return traced_method  # type: ignore[return-value]
