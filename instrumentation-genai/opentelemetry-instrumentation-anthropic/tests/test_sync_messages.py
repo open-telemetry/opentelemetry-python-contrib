@@ -300,3 +300,247 @@ def test_multiple_instrument_uninstrument_cycles(
         meter_provider=meter_provider,
     )
     instrumentor.uninstrument()
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Test streaming message creation produces correct span."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    # Collect response data from stream
+    response_text = ""
+    response_id = None
+    response_model = None
+    stop_reason = None
+    input_tokens = None
+    output_tokens = None
+
+    with anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+        stream=True,
+    ) as stream:
+        for chunk in stream:
+            # Extract data from chunks for assertion
+            if chunk.type == "message_start":
+                message = getattr(chunk, "message", None)
+                if message:
+                    response_id = getattr(message, "id", None)
+                    response_model = getattr(message, "model", None)
+                    usage = getattr(message, "usage", None)
+                    if usage:
+                        input_tokens = getattr(usage, "input_tokens", None)
+            elif chunk.type == "content_block_delta":
+                delta = getattr(chunk, "delta", None)
+                if delta and hasattr(delta, "text"):
+                    response_text += delta.text
+            elif chunk.type == "message_delta":
+                delta = getattr(chunk, "delta", None)
+                if delta:
+                    stop_reason = getattr(delta, "stop_reason", None)
+                usage = getattr(chunk, "usage", None)
+                if usage:
+                    output_tokens = getattr(usage, "output_tokens", None)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    assert_span_attributes(
+        spans[0],
+        request_model=model,
+        response_id=response_id,
+        response_model=response_model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        finish_reasons=[stop_reason] if stop_reason else None,
+    )
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_streaming_iteration(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Test streaming with direct iteration (without context manager)."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hi."}]
+
+    stream = anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+        stream=True,
+    )
+
+    # Consume the stream by iterating
+    chunks = list(stream)
+    assert len(chunks) > 0
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    # Verify span has response attributes from streaming
+    assert GenAIAttributes.GEN_AI_RESPONSE_ID in span.attributes
+    assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
+
+
+def test_sync_messages_create_streaming_connection_error(
+    span_exporter, instrument_no_content
+):
+    """Test that connection errors during streaming are handled correctly."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Hello"}]
+
+    # Create client with invalid endpoint
+    client = Anthropic(base_url="http://localhost:9999")
+
+    with pytest.raises(APIConnectionError):
+        client.messages.create(
+            model=model,
+            max_tokens=100,
+            messages=messages,
+            stream=True,
+            timeout=0.1,
+        )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert ErrorAttributes.ERROR_TYPE in span.attributes
+    assert "APIConnectionError" in span.attributes[ErrorAttributes.ERROR_TYPE]
+
+
+# =============================================================================
+# Tests for Messages.stream() method
+# =============================================================================
+
+
+@pytest.mark.vcr()
+def test_sync_messages_stream_basic(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Test Messages.stream() produces correct span with context manager."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    with anthropic_client.messages.stream(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    ) as stream:
+        # Consume the stream using text_stream
+        response_text = "".join(stream.text_stream)
+        # Get the final message for assertions
+        final_message = stream.get_final_message()
+
+    assert response_text  # Should have some text
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    assert_span_attributes(
+        spans[0],
+        request_model=model,
+        response_id=final_message.id,
+        response_model=final_message.model,
+        input_tokens=final_message.usage.input_tokens,
+        output_tokens=final_message.usage.output_tokens,
+        finish_reasons=[final_message.stop_reason],
+    )
+
+
+@pytest.mark.vcr()
+def test_sync_messages_stream_with_params(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Test Messages.stream() with additional parameters."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hi."}]
+
+    with anthropic_client.messages.stream(
+        model=model,
+        max_tokens=50,
+        messages=messages,
+        temperature=0.7,
+        top_p=0.9,
+        top_k=40,
+    ) as stream:
+        # Consume the stream
+        _ = "".join(stream.text_stream)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] == 50
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == 0.7
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] == 0.9
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_K] == 40
+
+
+@pytest.mark.vcr()
+def test_sync_messages_stream_token_usage(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Test that Messages.stream() captures token usage correctly."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Count to 3."}]
+
+    with anthropic_client.messages.stream(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    ) as stream:
+        _ = "".join(stream.text_stream)
+        final_message = stream.get_final_message()
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
+    assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
+        == final_message.usage.input_tokens
+    )
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+        == final_message.usage.output_tokens
+    )
+
+
+def test_sync_messages_stream_connection_error(
+    span_exporter, instrument_no_content
+):
+    """Test that connection errors in Messages.stream() are handled correctly."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Hello"}]
+
+    # Create client with invalid endpoint
+    client = Anthropic(base_url="http://localhost:9999")
+
+    with pytest.raises(APIConnectionError):
+        with client.messages.stream(
+            model=model,
+            max_tokens=100,
+            messages=messages,
+            timeout=0.1,
+        ) as stream:
+            # Try to consume the stream
+            _ = "".join(stream.text_stream)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert ErrorAttributes.ERROR_TYPE in span.attributes
