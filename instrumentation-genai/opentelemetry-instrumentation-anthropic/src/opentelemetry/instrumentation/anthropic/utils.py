@@ -280,7 +280,9 @@ class AsyncStreamWrapper(AsyncIterator["RawMessageStreamEvent"]):
     async def __aenter__(self) -> "AsyncStreamWrapper":
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    async def __aexit__(
+        self, exc_type: Any, exc_val: Any, exc_tb: Any
+    ) -> bool:
         await self.close()
         return False
 
@@ -323,7 +325,9 @@ class AsyncMessageStreamManagerWrapper:
             )
             raise
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    async def __aexit__(
+        self, exc_type: Any, exc_val: Any, exc_tb: Any
+    ) -> bool:
         """Exit the async context, extract telemetry, and finalize the span."""
         # Extract telemetry from the final message before exiting
         if self._message_stream is not None and exc_type is None:
@@ -333,10 +337,13 @@ class AsyncMessageStreamManagerWrapper:
             # Handle error case
             self._handler.fail_llm(
                 self._invocation,
-                Error(message=str(exc_val) if exc_val else str(exc_type), type=exc_type),
+                Error(
+                    message=str(exc_val) if exc_val else str(exc_type),
+                    type=exc_type,
+                ),
             )
         # Always exit the underlying stream manager
-        return await self._stream_manager.__aexit__(exc_type, exc_val, exc_tb)
+        return await self._stream_manager.__aexit__(exc_type, exc_val, exc_tb)  # type: ignore[return-value]
 
     async def _extract_telemetry_from_stream(self) -> None:
         """Extract telemetry data from the AsyncMessageStream's final message."""
@@ -357,8 +364,12 @@ class AsyncMessageStreamManagerWrapper:
                 self._invocation.finish_reasons = [final_message.stop_reason]
 
             if final_message.usage:
-                self._invocation.input_tokens = final_message.usage.input_tokens
-                self._invocation.output_tokens = final_message.usage.output_tokens
+                self._invocation.input_tokens = (
+                    final_message.usage.input_tokens
+                )
+                self._invocation.output_tokens = (
+                    final_message.usage.output_tokens
+                )
         except Exception:  # pylint: disable=broad-exception-caught
             # If we can't get the final message, we still want to end the span
             pass

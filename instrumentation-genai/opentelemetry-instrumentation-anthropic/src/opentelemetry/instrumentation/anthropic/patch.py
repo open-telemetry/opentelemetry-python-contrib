@@ -95,7 +95,7 @@ def async_messages_stream(
         kwargs: dict[str, Any],
     ) -> AsyncMessageStreamManagerWrapper:
         params = extract_params(*args, **kwargs)
-        attributes = get_llm_request_attributes(params, instance)
+        attributes = get_llm_request_attributes(params, instance)  # type: ignore[arg-type]
         request_model = str(
             attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
             or params.model
@@ -113,34 +113,43 @@ def async_messages_stream(
         try:
             result = wrapped(*args, **kwargs)
             # Return wrapped AsyncMessageStreamManager
-            return AsyncMessageStreamManagerWrapper(result, handler, invocation)
+            return AsyncMessageStreamManagerWrapper(
+                result, handler, invocation
+            )
         except Exception as exc:
             handler.fail_llm(
                 invocation, Error(message=str(exc), type=type(exc))
             )
             raise
 
-    return traced_method
+    return traced_method  # type: ignore[return-value]
 
 
 def async_messages_create(
     handler: TelemetryHandler,
 ) -> Callable[
-    ..., Coroutine[Any, Any, Union["Message", "AsyncStream[RawMessageStreamEvent]"]]
+    ...,
+    Coroutine[
+        Any, Any, Union["Message", "AsyncStream[RawMessageStreamEvent]"]
+    ],
 ]:
     """Wrap the `create` method of the `AsyncMessages` class to trace it."""
 
     async def traced_method(
         wrapped: Callable[
             ...,
-            Coroutine[Any, Any, Union["Message", "AsyncStream[RawMessageStreamEvent]"]],
+            Coroutine[
+                Any,
+                Any,
+                Union["Message", "AsyncStream[RawMessageStreamEvent]"],
+            ],
         ],
         instance: "AsyncMessages",
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Union["Message", AsyncStreamWrapper]:
         params = extract_params(*args, **kwargs)
-        attributes = get_llm_request_attributes(params, instance)
+        attributes = get_llm_request_attributes(params, instance)  # type: ignore[arg-type]
         request_model = str(
             attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
             or params.model
@@ -160,8 +169,8 @@ def async_messages_create(
         try:
             result = await wrapped(*args, **kwargs)
             if is_streaming:
-                return AsyncStreamWrapper(result, handler, invocation)
-            wrapper = MessageWrapper(result, handler, invocation)
+                return AsyncStreamWrapper(result, handler, invocation)  # type: ignore[arg-type]
+            wrapper = MessageWrapper(result, handler, invocation)  # type: ignore[arg-type]
             return wrapper.message
         except Exception as exc:
             handler.fail_llm(
@@ -169,4 +178,4 @@ def async_messages_create(
             )
             raise
 
-    return traced_method
+    return traced_method  # type: ignore[return-value]
