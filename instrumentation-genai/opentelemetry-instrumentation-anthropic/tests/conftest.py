@@ -20,7 +20,7 @@ import os
 
 import pytest
 import yaml
-from anthropic import Anthropic
+from anthropic import Anthropic, AsyncAnthropic
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider
@@ -97,6 +97,12 @@ def environment():
 def anthropic_client():
     """Create and return an Anthropic client."""
     return Anthropic()
+
+
+@pytest.fixture
+def async_anthropic_client():
+    """Create and return an AsyncAnthropic client."""
+    return AsyncAnthropic()
 
 
 @pytest.fixture(scope="module")
