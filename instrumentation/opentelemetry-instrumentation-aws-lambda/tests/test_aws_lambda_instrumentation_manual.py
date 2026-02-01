@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=no-self-use
 
 import logging
 import os
@@ -25,7 +26,10 @@ from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
     _HANDLER,
     _X_AMZN_TRACE_ID,
+    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS,
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
+    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES,
+    OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH,
     AwsLambdaInstrumentor,
 )
 from opentelemetry.propagate import get_global_textmap
@@ -560,6 +564,118 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             ).load(),
             AwsLambdaInstrumentor,
         )
+
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_meter_provider")
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_tracer_provider")
+    def test_force_flush_default(
+        self, mock_get_tracer_provider, mock_get_meter_provider
+    ):
+        mock_tracer_provider = mock.Mock()
+        mock_meter_provider = mock.Mock()
+        mock_get_tracer_provider.return_value = mock_tracer_provider
+        mock_get_meter_provider.return_value = mock_meter_provider
+
+        AwsLambdaInstrumentor().instrument()
+        mock_execute_lambda()
+
+        mock_tracer_provider.force_flush.assert_called_once()
+        mock_meter_provider.force_flush.assert_called_once()
+
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_meter_provider")
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_tracer_provider")
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH: "false",
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS: "false",
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES: "false",
+        },
+    )
+    def test_force_flush_disabled_globally(
+        self, mock_get_tracer_provider, mock_get_meter_provider
+    ):
+        mock_tracer_provider = mock.Mock()
+        mock_meter_provider = mock.Mock()
+        mock_get_tracer_provider.return_value = mock_tracer_provider
+        mock_get_meter_provider.return_value = mock_meter_provider
+
+        AwsLambdaInstrumentor().instrument()
+        mock_execute_lambda()
+
+        mock_tracer_provider.force_flush.assert_not_called()
+        mock_meter_provider.force_flush.assert_not_called()
+
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_meter_provider")
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_tracer_provider")
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH: "false",
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES: "true",
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS: "false",
+        },
+    )
+    def test_force_flush_selective_traces(
+        self, mock_get_tracer_provider, mock_get_meter_provider
+    ):
+        mock_tracer_provider = mock.Mock()
+        mock_meter_provider = mock.Mock()
+        mock_get_tracer_provider.return_value = mock_tracer_provider
+        mock_get_meter_provider.return_value = mock_meter_provider
+
+        AwsLambdaInstrumentor().instrument()
+        mock_execute_lambda()
+
+        mock_tracer_provider.force_flush.assert_called_once()
+        mock_meter_provider.force_flush.assert_not_called()
+
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_meter_provider")
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_tracer_provider")
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH: "false",
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES: "false",
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS: "true",
+        },
+    )
+    def test_force_flush_selective_metrics(
+        self, mock_get_tracer_provider, mock_get_meter_provider
+    ):
+        mock_tracer_provider = mock.Mock()
+        mock_meter_provider = mock.Mock()
+        mock_get_tracer_provider.return_value = mock_tracer_provider
+        mock_get_meter_provider.return_value = mock_meter_provider
+
+        AwsLambdaInstrumentor().instrument()
+        mock_execute_lambda()
+
+        mock_tracer_provider.force_flush.assert_not_called()
+        mock_meter_provider.force_flush.assert_called_once()
+
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_meter_provider")
+    @mock.patch("opentelemetry.instrumentation.aws_lambda.get_tracer_provider")
+    @mock.patch.dict(
+        "os.environ", {OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH: "true"}
+    )
+    def test_force_flush_instrumentation_options_override(
+        self, mock_get_tracer_provider, mock_get_meter_provider
+    ):
+        mock_tracer_provider = mock.Mock()
+        mock_meter_provider = mock.Mock()
+        mock_get_tracer_provider.return_value = mock_tracer_provider
+        mock_get_meter_provider.return_value = mock_meter_provider
+
+        # Pass options that override the environment variable
+        AwsLambdaInstrumentor().instrument(
+            force_flush=False,
+            flush_metrics=True,
+            flush_traces=False,
+        )
+        mock_execute_lambda()
+
+        mock_tracer_provider.force_flush.assert_not_called()
+        mock_meter_provider.force_flush.assert_called_once()
 
 
 class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
