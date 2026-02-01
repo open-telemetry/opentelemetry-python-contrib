@@ -49,12 +49,11 @@ By default, the instrumentation force flushes both traces and metrics after each
 This behavior can be controlled with the following environment variables:
 
 * ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH``: Enables or disables force flushing for all signal types. Defaults to ``true``.
-* ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES``: Enables or disables force flushing for traces. Defaults to ``true``.
-* ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS``: Enables or disables force flushing for metrics. Defaults to ``true``.
+* ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES``: Enables or disables force flushing for traces. Defaults to the value of ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH``.
+* ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS``: Enables or disables force flushing for metrics. Defaults to the value of ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH``.
 * ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT``: The timeout in milliseconds for force flushing. Defaults to ``30000``.
 
-A specific signal type will be force flushed if either the general ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH``
-or the specific environment variable for that signal type is set to true.
+The default value for signal-specific options inherits from ``OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH``.
 
 API
 ---
@@ -65,8 +64,8 @@ The `instrument` method accepts the following keyword args:
 * ``meter_provider`` (MeterProvider) - an optional meter provider
 * ``event_context_extractor`` (Callable) - a function that returns an OTel Trace Context given the Lambda Event the AWS Lambda was invoked with this function signature is: def event_context_extractor(lambda_event: Any) -> Context
 * ``force_flush`` (bool) - enables or disables force flushing for all signal types. Defaults to True.
-* ``flush_traces`` (bool) - enables or disables force flushing for traces. Defaults to True.
-* ``flush_metrics`` (bool) - enables or disables force flushing for metrics. Defaults to True.
+* ``flush_traces`` (bool) - enables or disables force flushing for traces. Defaults to the value of ``force_flush``.
+* ``flush_metrics`` (bool) - enables or disables force flushing for metrics. Defaults to the value of ``force_flush``.
 
 Example usage:
 
@@ -155,7 +154,12 @@ def _get_env_bool(env_var: str, default: bool) -> bool:
     value = os.environ.get(env_var)
     if value is None:
         return default
-    return value.lower() in ("yes", "true", "1")
+    value = value.strip().lower()
+    if value in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    if value in ("n", "no", "f", "false", "off", "0"):
+        return False
+    return default
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:
@@ -306,7 +310,6 @@ def _instrument(
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
     meter_provider: MeterProvider = None,
-    force_flush: bool = True,
     flush_traces: bool = True,
     flush_metrics: bool = True,
 ):
@@ -426,25 +429,19 @@ def _instrument(
 
         now = time.time()
         _tracer_provider = tracer_provider or get_tracer_provider()
-        if (force_flush or flush_traces) and hasattr(
-            _tracer_provider, "force_flush"
-        ):
+        if flush_traces and hasattr(_tracer_provider, "force_flush"):
             try:
                 # NOTE: `force_flush` before function quit in case of Lambda freeze.
                 _tracer_provider.force_flush(flush_timeout)
             except Exception:  # pylint: disable=broad-except
                 logger.exception("TracerProvider failed to flush traces")
-        elif (force_flush or flush_traces) and not hasattr(
-            _tracer_provider, "force_flush"
-        ):
+        elif flush_traces and not hasattr(_tracer_provider, "force_flush"):
             logger.warning(
                 "TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
 
         _meter_provider = meter_provider or get_meter_provider()
-        if (force_flush or flush_metrics) and hasattr(
-            _meter_provider, "force_flush"
-        ):
+        if flush_metrics and hasattr(_meter_provider, "force_flush"):
             rem = flush_timeout - (time.time() - now) * 1000
             if rem > 0:
                 try:
@@ -452,9 +449,7 @@ def _instrument(
                     _meter_provider.force_flush(rem)
                 except Exception:  # pylint: disable=broad-except
                     logger.exception("MeterProvider failed to flush metrics")
-        elif (force_flush or flush_metrics) and not hasattr(
-            _meter_provider, "force_flush"
-        ):
+        elif flush_metrics and not hasattr(_meter_provider, "force_flush"):
             logger.warning(
                 "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
@@ -531,6 +526,11 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 flush_timeout_env,
             )
 
+        force_flush = kwargs.get(
+            "force_flush",
+            _get_env_bool(OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH, True),
+        )
+
         _instrument(
             self._wrapped_module_name,
             self._wrapped_function_name,
@@ -540,22 +540,16 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             ),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
-            force_flush=kwargs.get(
-                "force_flush",
-                _get_env_bool(
-                    OTEL_INSTRUMENTATION_AWS_LAMBDA_FORCE_FLUSH, True
-                ),
-            ),
             flush_traces=kwargs.get(
                 "flush_traces",
                 _get_env_bool(
-                    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES, True
+                    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TRACES, force_flush
                 ),
             ),
             flush_metrics=kwargs.get(
                 "flush_metrics",
                 _get_env_bool(
-                    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS, True
+                    OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_METRICS, force_flush
                 ),
             ),
         )
