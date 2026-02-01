@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add sync streaming support for `Messages.create(stream=True)` and `Messages.stream()`
+  ([#4155](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4155))
+  - `StreamWrapper` for handling `Messages.create(stream=True)` telemetry
+  - `MessageStreamManagerWrapper` for handling `Messages.stream()` telemetry
+  - `MessageWrapper` for non-streaming response telemetry extraction
 - Initial implementation of Anthropic instrumentation
   ([#3978](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3978))
 - Implement sync `Messages.create` instrumentation with GenAI semantic convention attributes
