@@ -1,38 +1,20 @@
 services:
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-      - JAEGER_UI_CONFIG={"monitor":{"menuEnabled":false},"theme":"light"}
-    ports:
-      - "16686:16686"  # Jaeger UI
-      - "4317:4317"    # OTLP gRPC
-      - "4318:4318"    # OTLP HTTP
-    networks:
-      - tracing-network
-
   app:
     build:
       context: ../..
       dockerfile: examples/tracing-langchain-openai/Dockerfile
     ports:
-      - "5001:5000" 
+      - "5001:5000"
+    env_file:
+      - .env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
-      - OPENAI_MODEL=gpt-5-nano
+      # Override to point to the ClickHouse collector
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-clickhouse-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      - OTEL_SERVICE_NAME=langchain-openai-demo
-      - OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
-      # Per-package capture mode configuration
-      - OTEL_INSTRUMENTATION_OPENAI_CAPTURE_MODE=metadata
-      - OTEL_INSTRUMENTATION_LANGGRAPH_CAPTURE_MODE=all
-    depends_on:
-      jaeger:
-        condition: service_started
     networks:
-      - tracing-network
+      - otel-clickhouse-network
 
 networks:
-  tracing-network:
-    driver: bridge
+  otel-clickhouse-network:
+    external: true
+    name: otel-clickhouse-network

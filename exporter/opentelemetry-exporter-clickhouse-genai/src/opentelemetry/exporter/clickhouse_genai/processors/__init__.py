@@ -12,22 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version: "3.8"
+"""Processors for OTLP Collector."""
 
-services:
-  cortex:
-    image: quay.io/cortexproject/cortex:v1.5.0
-    command:
-      - -config.file=./config/cortex-config.yml
-    volumes:
-      - ./cortex-config.yml:/config/cortex-config.yml:ro
-    ports:
-      - 9009:9009
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - 3000:3000
-  sample_app:
-    build:
-      context: ../
-      dockerfile: ./example/Dockerfile
+from opentelemetry.exporter.clickhouse_genai.processors.batch_processor import (
+    BatchProcessor,
+)
+from opentelemetry.exporter.clickhouse_genai.processors.transform import (
+    otlp_logs_to_rows,
+    otlp_metrics_to_rows,
+    otlp_spans_to_rows,
+)
+
+__all__ = [
+    "BatchProcessor",
+    "otlp_spans_to_rows",
+    "otlp_logs_to_rows",
+    "otlp_metrics_to_rows",
+]

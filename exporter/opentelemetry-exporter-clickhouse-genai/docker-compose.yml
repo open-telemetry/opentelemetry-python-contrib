@@ -1,0 +1,88 @@
+# Docker Compose for OTLP ClickHouse Collector
+#
+# Usage:
+#   docker-compose up -d              # Start ClickHouse and collector
+#   docker-compose logs -f collector  # View collector logs
+#   docker-compose down               # Stop all services
+#
+# Send telemetry to:
+#   - gRPC: localhost:4317
+#   - HTTP: localhost:4318
+#
+# Access ClickHouse:
+#   - Native: localhost:9000
+#   - HTTP: localhost:8123
+#
+# Query data:
+#   docker-compose exec clickhouse clickhouse-client -q "SELECT * FROM otel_genai.genai_traces LIMIT 10"
+
+version: "3.8"
+
+services:
+  # ClickHouse database for storing telemetry
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.1
+    container_name: clickhouse
+    ports:
+      - "8123:8123" # HTTP interface
+      - "9000:9000" # Native TCP interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=otel_genai
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # OTLP Collector that exports to ClickHouse
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: otel-clickhouse-collector
+    ports:
+      - "4317:4317" # gRPC OTLP receiver
+      - "4318:4318" # HTTP OTLP receiver
+    environment:
+      # Receiver settings
+      - OTEL_COLLECTOR_GRPC_ENDPOINT=0.0.0.0:4317
+      - OTEL_COLLECTOR_HTTP_ENDPOINT=0.0.0.0:4318
+      # ClickHouse settings
+      - OTEL_EXPORTER_CLICKHOUSE_ENDPOINT=clickhouse:9000
+      - OTEL_EXPORTER_CLICKHOUSE_DATABASE=otel_genai
+      - OTEL_EXPORTER_CLICKHOUSE_USERNAME=default
+      - OTEL_EXPORTER_CLICKHOUSE_PASSWORD=
+      - OTEL_EXPORTER_CLICKHOUSE_CREATE_SCHEMA=true
+      - OTEL_EXPORTER_CLICKHOUSE_TTL_DAYS=7
+      # Batch settings
+      - OTEL_EXPORTER_CLICKHOUSE_BATCH_SIZE=1000
+      - OTEL_COLLECTOR_BATCH_TIMEOUT_MS=5000
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    command:
+      - "--clickhouse-endpoint"
+      - "clickhouse:9000"
+      - "--clickhouse-database"
+      - "otel_genai"
+      - "-v"
+    restart: unless-stopped
+
+volumes:
+  clickhouse_data:
+  clickhouse_logs:
+
+networks:
+  default:
+    name: otel-clickhouse-network

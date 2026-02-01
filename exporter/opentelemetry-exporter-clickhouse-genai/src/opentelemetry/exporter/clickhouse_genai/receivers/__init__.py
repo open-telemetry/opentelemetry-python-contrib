@@ -12,4 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__version__ = "0.1b0"
+"""OTLP Receivers for ClickHouse Collector."""
+
+from opentelemetry.exporter.clickhouse_genai.receivers.grpc_receiver import (
+    OTLPGrpcReceiver,
+)
+from opentelemetry.exporter.clickhouse_genai.receivers.http_receiver import (
+    OTLPHttpReceiver,
+)
+
+__all__ = [
+    "OTLPGrpcReceiver",
+    "OTLPHttpReceiver",
+]

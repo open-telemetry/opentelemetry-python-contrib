@@ -20,7 +20,9 @@ from typing import Any, Optional
 from clickhouse_driver import Client
 from clickhouse_driver.errors import Error as ClickHouseError
 
-from opentelemetry.exporter.clickhouse_genai.config import ClickHouseGenAIConfig
+from opentelemetry.exporter.clickhouse_genai.config import (
+    ClickHouseGenAIConfig,
+)
 from opentelemetry.exporter.clickhouse_genai.schema import (
     CREATE_DATABASE_SQL,
     LOGS_TABLE_SQL,
@@ -179,7 +181,7 @@ class ClickHouseConnection:
                 rows,
                 types_check=True,
             )
-            logger.debug("Inserted %d trace rows", len(rows))
+            logger.info("Inserted %d trace rows", len(rows))
         except ClickHouseError as e:
             logger.error("Failed to insert traces: %s", e)
             raise

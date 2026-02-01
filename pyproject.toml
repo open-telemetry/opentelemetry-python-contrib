@@ -8,8 +8,6 @@ dependencies = [
   "opentelemetry-sdk",
   "opentelemetry-semantic-conventions",
   "opentelemetry-test-utils",
-  "opentelemetry-exporter-prometheus-remote-write",
-  "opentelemetry-exporter-richconsole",
   "opentelemetry-instrumentation",
   "opentelemetry-instrumentation-aio-pika[instruments]",
   "opentelemetry-instrumentation-aiohttp-client[instruments]",
@@ -81,8 +79,6 @@ opentelemetry-api = { git = "https://github.com/open-telemetry/opentelemetry-pyt
 opentelemetry-sdk = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-sdk" }
 opentelemetry-semantic-conventions = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-semantic-conventions" }
 opentelemetry-test-utils = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "tests/opentelemetry-test-utils" }
-opentelemetry-exporter-prometheus-remote-write = { workspace = true }
-opentelemetry-exporter-richconsole = { workspace = true }
 opentelemetry-instrumentation = { workspace = true }
 opentelemetry-instrumentation-aio-pika = { workspace = true }
 opentelemetry-instrumentation-aiohttp-client = { workspace = true }
@@ -209,7 +205,6 @@ include = [
   "instrumentation-genai/opentelemetry-instrumentation-langchain",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate",
   "util/opentelemetry-util-genai",
-  "exporter/opentelemetry-exporter-credential-provider-gcp",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.

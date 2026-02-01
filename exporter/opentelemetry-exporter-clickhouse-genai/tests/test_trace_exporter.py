@@ -16,16 +16,7 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.sdk.trace.export import SpanExportResult
-from opentelemetry.trace import SpanContext, SpanKind
-from opentelemetry.trace.status import Status, StatusCode
-
 from opentelemetry.exporter.clickhouse_genai import (
-    ClickHouseGenAIConfig,
     ClickHouseGenAISpanExporter,
 )
 from opentelemetry.exporter.clickhouse_genai.utils import (
@@ -33,6 +24,11 @@ from opentelemetry.exporter.clickhouse_genai.utils import (
     format_span_id_fixed,
     format_trace_id_fixed,
 )
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.sdk.trace.export import SpanExportResult
+from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import Status, StatusCode
 
 
 class TestFormatFunctions:
@@ -129,7 +125,9 @@ class TestClickHouseGenAISpanExporter:
     @patch(
         "opentelemetry.exporter.clickhouse_genai.trace_exporter.ClickHouseConnection"
     )
-    def test_export_spans(self, mock_connection_class, config, genai_span_attributes):
+    def test_export_spans(
+        self, mock_connection_class, config, genai_span_attributes
+    ):
         """Test exporting spans."""
         mock_connection = MagicMock()
         mock_connection_class.return_value = mock_connection
@@ -154,7 +152,9 @@ class TestClickHouseGenAISpanExporter:
         span.links = []
         span.resource = Resource.create({"service.name": "test-service"})
         span.instrumentation_scope = MagicMock()
-        span.instrumentation_scope.name = "opentelemetry.instrumentation.openai"
+        span.instrumentation_scope.name = (
+            "opentelemetry.instrumentation.openai"
+        )
         span.instrumentation_scope.version = "0.1.0"
 
         result = exporter.export([span])
@@ -181,7 +181,9 @@ class TestClickHouseGenAISpanExporter:
     def test_export_failure(self, mock_connection_class, config):
         """Test export failure handling."""
         mock_connection = MagicMock()
-        mock_connection.insert_traces.side_effect = Exception("Connection failed")
+        mock_connection.insert_traces.side_effect = Exception(
+            "Connection failed"
+        )
         mock_connection_class.return_value = mock_connection
 
         exporter = ClickHouseGenAISpanExporter(config)

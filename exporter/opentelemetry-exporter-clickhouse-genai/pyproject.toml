@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "opentelemetry-exporter-clickhouse-genai"
 version = "0.1.0"
-description = "ClickHouse exporter for OpenTelemetry GenAI instrumentation"
+description = "ClickHouse exporter and OTLP collector for OpenTelemetry GenAI instrumentation"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.9"
@@ -27,7 +27,13 @@ classifiers = [
 dependencies = [
     "opentelemetry-api ~= 1.20",
     "opentelemetry-sdk ~= 1.20",
+    "opentelemetry-proto ~= 1.20",
     "clickhouse-driver >= 0.2.7",
+    "grpcio >= 1.50.0",
+    "aiohttp >= 3.8.0",
+    "protobuf >= 3.19.0",
+    "lz4 >= 4.0.0",
+    "clickhouse-cityhash >= 1.0.2",
 ]
 
 [project.optional-dependencies]
@@ -35,6 +41,10 @@ test = [
     "pytest >= 7.0",
     "pytest-asyncio >= 0.21",
 ]
+dev = []
+
+[project.scripts]
+otel-clickhouse-collector = "opentelemetry.exporter.clickhouse_genai.cli:main"
 
 [project.entry-points.opentelemetry_traces_exporter]
 clickhouse_genai = "opentelemetry.exporter.clickhouse_genai:ClickHouseGenAISpanExporter"
@@ -50,3 +60,8 @@ include = ["/src"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.14",
+]

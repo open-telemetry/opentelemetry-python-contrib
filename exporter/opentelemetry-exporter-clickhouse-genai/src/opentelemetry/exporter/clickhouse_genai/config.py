@@ -108,3 +108,73 @@ class ClickHouseGenAIConfig:
                 f"Invalid compression: {self.compression}. "
                 "Must be one of: lz4, zstd, none"
             )
+
+
+@dataclass
+class CollectorConfig(ClickHouseGenAIConfig):
+    """Configuration for OTLP Collector with ClickHouse export.
+
+    Extends ClickHouseGenAIConfig with receiver settings for running
+    as an OTLP collector service.
+
+    Attributes:
+        grpc_endpoint: gRPC receiver endpoint (host:port).
+        http_endpoint: HTTP receiver endpoint (host:port).
+        enable_grpc: Whether to enable gRPC receiver.
+        enable_http: Whether to enable HTTP receiver.
+        grpc_max_workers: Maximum worker threads for gRPC server.
+        batch_timeout_ms: Timeout before flushing incomplete batch (ms).
+        max_queue_size: Maximum items in processing queue before dropping.
+    """
+
+    grpc_endpoint: str = field(
+        default_factory=lambda: environ.get(
+            "OTEL_COLLECTOR_GRPC_ENDPOINT", "0.0.0.0:4317"
+        )
+    )
+    http_endpoint: str = field(
+        default_factory=lambda: environ.get(
+            "OTEL_COLLECTOR_HTTP_ENDPOINT", "0.0.0.0:4318"
+        )
+    )
+    enable_grpc: bool = field(
+        default_factory=lambda: environ.get(
+            "OTEL_COLLECTOR_ENABLE_GRPC", "true"
+        ).lower()
+        == "true"
+    )
+    enable_http: bool = field(
+        default_factory=lambda: environ.get(
+            "OTEL_COLLECTOR_ENABLE_HTTP", "true"
+        ).lower()
+        == "true"
+    )
+    grpc_max_workers: int = field(
+        default_factory=lambda: int(
+            environ.get("OTEL_COLLECTOR_GRPC_MAX_WORKERS", "10")
+        )
+    )
+    batch_timeout_ms: int = field(
+        default_factory=lambda: int(
+            environ.get("OTEL_COLLECTOR_BATCH_TIMEOUT_MS", "5000")
+        )
+    )
+    max_queue_size: int = field(
+        default_factory=lambda: int(
+            environ.get("OTEL_COLLECTOR_MAX_QUEUE_SIZE", "10000")
+        )
+    )
+
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        super().__post_init__()
+        if not self.enable_grpc and not self.enable_http:
+            raise ValueError(
+                "At least one receiver (gRPC or HTTP) must be enabled"
+            )
+        if self.grpc_max_workers < 1:
+            raise ValueError("gRPC max workers must be at least 1")
+        if self.batch_timeout_ms < 100:
+            raise ValueError("Batch timeout must be at least 100ms")
+        if self.max_queue_size < 100:
+            raise ValueError("Max queue size must be at least 100")

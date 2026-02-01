@@ -16,7 +16,7 @@
 
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from opentelemetry.trace import format_span_id, format_trace_id
 
@@ -112,7 +112,9 @@ def extract_genai_attributes(attrs: dict[str, Any]) -> dict[str, Any]:
             "gen_ai.usage.output_tokens_details.reasoning", 0
         )
         or 0,
-        "EmbeddingDimensions": attrs.pop("gen_ai.embeddings.dimension.count", 0)
+        "EmbeddingDimensions": attrs.pop(
+            "gen_ai.embeddings.dimension.count", 0
+        )
         or 0,
         # Request parameters
         "Temperature": attrs.pop("gen_ai.request.temperature", 0) or 0,
@@ -120,12 +122,17 @@ def extract_genai_attributes(attrs: dict[str, Any]) -> dict[str, Any]:
         "MaxTokens": attrs.pop("gen_ai.request.max_tokens", 0) or 0,
         "FrequencyPenalty": attrs.pop("gen_ai.request.frequency_penalty", 0)
         or 0,
-        "PresencePenalty": attrs.pop("gen_ai.request.presence_penalty", 0) or 0,
+        "PresencePenalty": attrs.pop("gen_ai.request.presence_penalty", 0)
+        or 0,
         "Seed": attrs.pop("gen_ai.request.seed", 0) or 0,
         "ChoiceCount": attrs.pop("gen_ai.request.choice_count", 1) or 1,
-        "IsStreaming": 1 if attrs.pop("gen_ai.request.streaming", False) else 0,
+        "IsStreaming": 1
+        if attrs.pop("gen_ai.request.streaming", False)
+        else 0,
         "StopSequences": attrs.pop("gen_ai.request.stop_sequences", []) or [],
-        "ReasoningEffort": attrs.pop("gen_ai.openai.request.reasoning_effort", "")
+        "ReasoningEffort": attrs.pop(
+            "gen_ai.openai.request.reasoning_effort", ""
+        )
         or "",
         # Response info
         "FinishReasons": attrs.pop("gen_ai.response.finish_reasons", []) or [],
@@ -145,7 +152,8 @@ def extract_genai_attributes(attrs: dict[str, Any]) -> dict[str, Any]:
         "ApiBaseUrl": attrs.pop("gen_ai.openai.api_base", "") or "",
         "ApiVersion": attrs.pop("gen_ai.openai.api_version", "") or "",
         # Tool calling
-        "AvailableTools": attrs.pop("gen_ai.request.available_tools", []) or [],
+        "AvailableTools": attrs.pop("gen_ai.request.available_tools", [])
+        or [],
         # Error info
         "ErrorType": attrs.pop("error.type", "") or "",
         # User context
@@ -163,7 +171,10 @@ def extract_genai_attributes(attrs: dict[str, Any]) -> dict[str, Any]:
 
     # Calculate derived fields
     extracted["HasToolCalls"] = (
-        1 if extracted["AvailableTools"] or "tool_calls" in str(extracted.get("FinishReasons", [])) else 0
+        1
+        if extracted["AvailableTools"]
+        or "tool_calls" in str(extracted.get("FinishReasons", []))
+        else 0
     )
     extracted["ToolCallCount"] = len(extracted["AvailableTools"])
     extracted["HasError"] = 1 if extracted["ErrorType"] else 0
@@ -172,7 +183,7 @@ def extract_genai_attributes(attrs: dict[str, Any]) -> dict[str, Any]:
 
 
 def extract_resource_attributes(
-    resource_attrs: dict[str, Any]
+    resource_attrs: dict[str, Any],
 ) -> dict[str, Any]:
     """Extract resource attributes into dedicated fields.
 

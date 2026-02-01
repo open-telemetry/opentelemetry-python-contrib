@@ -25,11 +25,12 @@ Features:
 - Comprehensive indexing for all query patterns
 - Native TCP protocol for best performance
 - Auto-schema creation with configurable TTL
+- **OTLP Collector mode**: Run as a standalone service with gRPC/HTTP receivers
 
 Installation:
     pip install opentelemetry-exporter-clickhouse-genai
 
-Basic usage for traces:
+Basic usage for traces (SDK Exporter mode):
 
     >>> from opentelemetry import trace
     >>> from opentelemetry.sdk.trace import TracerProvider
@@ -49,6 +50,27 @@ Basic usage for traces:
     >>> provider.add_span_processor(BatchSpanProcessor(exporter))
     >>> trace.set_tracer_provider(provider)
 
+Usage as OTLP Collector (Collector mode):
+
+    >>> from opentelemetry.exporter.clickhouse_genai import (
+    ...     OTLPClickHouseCollector,
+    ...     CollectorConfig,
+    ... )
+    >>>
+    >>> config = CollectorConfig(
+    ...     grpc_endpoint="0.0.0.0:4317",
+    ...     http_endpoint="0.0.0.0:4318",
+    ...     endpoint="localhost:9000",
+    ...     database="otel_genai",
+    ... )
+    >>> collector = OTLPClickHouseCollector(config)
+    >>> collector.start()
+    >>> # Collector is now running, accepting OTLP data...
+    >>> collector.stop()
+
+Or via CLI:
+    otel-clickhouse-collector --clickhouse-endpoint localhost:9000
+
 Configuration via environment variables:
     - OTEL_EXPORTER_CLICKHOUSE_ENDPOINT: ClickHouse endpoint (default: localhost:9000)
     - OTEL_EXPORTER_CLICKHOUSE_DATABASE: Database name (default: otel_genai)
@@ -56,10 +78,20 @@ Configuration via environment variables:
     - OTEL_EXPORTER_CLICKHOUSE_PASSWORD: Password (default: empty)
     - OTEL_EXPORTER_CLICKHOUSE_TTL_DAYS: Data retention in days (default: 7)
     - OTEL_EXPORTER_CLICKHOUSE_CREATE_SCHEMA: Auto-create tables (default: true)
+    - OTEL_COLLECTOR_GRPC_ENDPOINT: gRPC receiver endpoint (default: 0.0.0.0:4317)
+    - OTEL_COLLECTOR_HTTP_ENDPOINT: HTTP receiver endpoint (default: 0.0.0.0:4318)
 """
 
-from opentelemetry.exporter.clickhouse_genai.config import ClickHouseGenAIConfig
-from opentelemetry.exporter.clickhouse_genai.connection import ClickHouseConnection
+from opentelemetry.exporter.clickhouse_genai.collector import (
+    OTLPClickHouseCollector,
+)
+from opentelemetry.exporter.clickhouse_genai.config import (
+    ClickHouseGenAIConfig,
+    CollectorConfig,
+)
+from opentelemetry.exporter.clickhouse_genai.connection import (
+    ClickHouseConnection,
+)
 from opentelemetry.exporter.clickhouse_genai.logs_exporter import (
     ClickHouseGenAILogsExporter,
 )
@@ -72,10 +104,16 @@ from opentelemetry.exporter.clickhouse_genai.trace_exporter import (
 from opentelemetry.exporter.clickhouse_genai.version import __version__
 
 __all__ = [
+    # Configuration
     "ClickHouseGenAIConfig",
+    "CollectorConfig",
+    # SDK Exporters
     "ClickHouseGenAISpanExporter",
     "ClickHouseGenAIMetricsExporter",
     "ClickHouseGenAILogsExporter",
+    # OTLP Collector
+    "OTLPClickHouseCollector",
+    # Utilities
     "ClickHouseConnection",
     "__version__",
 ]

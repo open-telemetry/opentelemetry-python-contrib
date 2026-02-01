@@ -61,3 +61,4 @@ target
 
 # Benchmark result files
 *-benchmark.json
+.env

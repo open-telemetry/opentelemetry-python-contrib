@@ -17,11 +17,12 @@
 import logging
 from typing import Any, Sequence
 
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-
-from opentelemetry.exporter.clickhouse_genai.config import ClickHouseGenAIConfig
-from opentelemetry.exporter.clickhouse_genai.connection import ClickHouseConnection
+from opentelemetry.exporter.clickhouse_genai.config import (
+    ClickHouseGenAIConfig,
+)
+from opentelemetry.exporter.clickhouse_genai.connection import (
+    ClickHouseConnection,
+)
 from opentelemetry.exporter.clickhouse_genai.utils import (
     extract_genai_attributes,
     extract_resource_attributes,
@@ -30,6 +31,8 @@ from opentelemetry.exporter.clickhouse_genai.utils import (
     ns_to_datetime,
     safe_json_dumps,
 )
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +124,9 @@ class ClickHouseGenAISpanExporter(SpanExporter):
         attrs = dict(span.attributes or {})
 
         # Extract resource attributes
-        resource_attrs = dict(span.resource.attributes) if span.resource else {}
+        resource_attrs = (
+            dict(span.resource.attributes) if span.resource else {}
+        )
         resource_fields = extract_resource_attributes(resource_attrs)
 
         # Extract GenAI-specific attributes
@@ -137,7 +142,9 @@ class ClickHouseGenAISpanExporter(SpanExporter):
                 if span.parent
                 else "0" * 16
             ),
-            "TraceState": str(span.context.trace_state) if span.context.trace_state else "",
+            "TraceState": str(span.context.trace_state)
+            if span.context.trace_state
+            else "",
             # Timing
             "Timestamp": ns_to_datetime(span.start_time or 0),
             "EndTimestamp": ns_to_datetime(span.end_time or 0),
@@ -185,11 +192,15 @@ class ClickHouseGenAISpanExporter(SpanExporter):
                 for link in (span.links or [])
             ],
             "Links.TraceState": [
-                str(link.context.trace_state) if link.context.trace_state else ""
+                str(link.context.trace_state)
+                if link.context.trace_state
+                else ""
                 for link in (span.links or [])
             ],
             "Links.Attributes": [
-                safe_json_dumps(dict(link.attributes) if link.attributes else {})
+                safe_json_dumps(
+                    dict(link.attributes) if link.attributes else {}
+                )
                 for link in (span.links or [])
             ],
             # Overflow attributes (remaining after extraction)

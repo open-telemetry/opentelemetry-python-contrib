@@ -17,11 +17,12 @@
 import logging
 from typing import Any, Sequence
 
-from opentelemetry.sdk._logs import LogData, LogRecord
-from opentelemetry.sdk._logs.export import LogExporter, LogExportResult
-
-from opentelemetry.exporter.clickhouse_genai.config import ClickHouseGenAIConfig
-from opentelemetry.exporter.clickhouse_genai.connection import ClickHouseConnection
+from opentelemetry.exporter.clickhouse_genai.config import (
+    ClickHouseGenAIConfig,
+)
+from opentelemetry.exporter.clickhouse_genai.connection import (
+    ClickHouseConnection,
+)
 from opentelemetry.exporter.clickhouse_genai.utils import (
     extract_log_genai_attributes,
     extract_resource_attributes,
@@ -30,11 +31,16 @@ from opentelemetry.exporter.clickhouse_genai.utils import (
     ns_to_datetime,
     safe_json_dumps,
 )
+from opentelemetry.sdk._logs import ReadableLogRecord
+from opentelemetry.sdk._logs.export import (
+    LogRecordExporter,
+    LogRecordExportResult,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class ClickHouseGenAILogsExporter(LogExporter):
+class ClickHouseGenAILogsExporter(LogRecordExporter):
     """ClickHouse logs exporter for GenAI log events.
 
     This exporter sends OpenTelemetry log records to ClickHouse with a schema
@@ -81,46 +87,45 @@ class ClickHouseGenAILogsExporter(LogExporter):
 
         self._initialized = True
 
-    def export(self, batch: Sequence[LogData]) -> LogExportResult:
+    def export(
+        self, batch: Sequence[ReadableLogRecord]
+    ) -> LogRecordExportResult:
         """Export log records to ClickHouse.
 
         Args:
-            batch: Sequence of log data to export.
+            batch: Sequence of log records to export.
 
         Returns:
-            LogExportResult indicating success or failure.
+            LogRecordExportResult indicating success or failure.
         """
         if not batch:
-            return LogExportResult.SUCCESS
+            return LogRecordExportResult.SUCCESS
 
         try:
             self._ensure_initialized()
-            rows = [self._log_to_row(log_data) for log_data in batch]
+            rows = [self._log_to_row(log_record) for log_record in batch]
             self._connection.insert_logs(rows)
             logger.debug("Exported %d log records to ClickHouse", len(batch))
-            return LogExportResult.SUCCESS
+            return LogRecordExportResult.SUCCESS
         except Exception as e:
             logger.error("Failed to export logs: %s", e)
-            return LogExportResult.FAILURE
+            return LogRecordExportResult.FAILURE
 
-    def _log_to_row(self, log_data: LogData) -> dict[str, Any]:
+    def _log_to_row(self, log_record: ReadableLogRecord) -> dict[str, Any]:
         """Convert OTel log record to ClickHouse row.
 
         Args:
-            log_data: OpenTelemetry log data.
+            log_record: OpenTelemetry readable log record.
 
         Returns:
             Dictionary representing a ClickHouse row.
         """
-        log_record = log_data.log_record
-
         # Make a copy of attributes to extract from
         attrs = dict(log_record.attributes) if log_record.attributes else {}
 
         # Extract resource attributes
-        resource_attrs = (
-            dict(log_data.resource.attributes) if log_data.resource else {}
-        )
+        resource = getattr(log_record, "resource", None)
+        resource_attrs = dict(resource.attributes) if resource else {}
         resource_fields = extract_resource_attributes(resource_attrs)
 
         # Extract GenAI-specific attributes from log record
@@ -132,6 +137,14 @@ class ClickHouseGenAILogsExporter(LogExporter):
         if not event_name:
             # Try to get from instrumentation info
             event_name = getattr(log_record, "event_name", "") or ""
+
+        # Get instrumentation scope name
+        instrumentation_scope = getattr(
+            log_record, "instrumentation_scope", None
+        )
+        scope_name = (
+            instrumentation_scope.name if instrumentation_scope else ""
+        )
 
         row = {
             # Timing
@@ -152,11 +165,7 @@ class ClickHouseGenAILogsExporter(LogExporter):
             ),
             "TraceFlags": log_record.trace_flags or 0,
             # Scope
-            "InstrumentationScopeName": (
-                log_data.instrumentation_scope.name
-                if log_data.instrumentation_scope
-                else ""
-            ),
+            "InstrumentationScopeName": scope_name,
             # Log record
             "SeverityText": log_record.severity_text or "",
             "SeverityNumber": (
@@ -168,7 +177,9 @@ class ClickHouseGenAILogsExporter(LogExporter):
             "EventName": event_name,
             # Raw body
             "Body": str(body) if isinstance(body, str) else "",
-            "BodyJson": safe_json_dumps(body) if isinstance(body, dict) else "{}",
+            "BodyJson": safe_json_dumps(body)
+            if isinstance(body, dict)
+            else "{}",
             # Overflow
             "LogAttributesJson": safe_json_dumps(attrs),
             "ResourceAttributesJson": safe_json_dumps(resource_attrs),

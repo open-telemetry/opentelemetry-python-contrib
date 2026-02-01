@@ -9,6 +9,7 @@ This package provides exporters for sending OpenTelemetry traces, metrics, and l
 - **Native TCP protocol** - Uses `clickhouse-driver` for best insert performance
 - **Auto-schema creation** - Tables created automatically on startup (can be disabled)
 - **Configurable TTL** - Data retention with automatic cleanup
+- **OTLP Collector mode** - Run as a standalone service with gRPC/HTTP receivers
 
 ## Installation
 
@@ -75,6 +76,90 @@ provider = LoggerProvider()
 provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 ```
 
+### OTLP Collector Mode
+
+Run as a standalone OTLP collector that receives telemetry via gRPC/HTTP and exports to ClickHouse:
+
+```python
+from opentelemetry.exporter.clickhouse_genai import (
+    OTLPClickHouseCollector,
+    CollectorConfig,
+)
+
+config = CollectorConfig(
+    grpc_endpoint="0.0.0.0:4317",
+    http_endpoint="0.0.0.0:4318",
+    endpoint="localhost:9000",
+    database="otel_genai",
+)
+
+collector = OTLPClickHouseCollector(config)
+collector.start()
+# Collector is now running, accepting OTLP data on ports 4317 (gRPC) and 4318 (HTTP)
+# Press Ctrl+C or call collector.stop() to shutdown
+```
+
+Or via CLI:
+
+```bash
+otel-clickhouse-collector \
+  --grpc-endpoint 0.0.0.0:4317 \
+  --http-endpoint 0.0.0.0:4318 \
+  --clickhouse-endpoint localhost:9000 \
+  --clickhouse-database otel_genai \
+  -v
+```
+
+## Running with Docker Compose
+
+The easiest way to run the collector with ClickHouse:
+
+```bash
+# Start ClickHouse and the collector
+docker-compose up -d
+
+# View collector logs
+docker-compose logs -f collector
+
+# Stop all services
+docker-compose down
+```
+
+This starts:
+- **ClickHouse** on ports 8123 (HTTP) and 9000 (native)
+- **OTLP Collector** on ports 4317 (gRPC) and 4318 (HTTP)
+
+### Send Test Data
+
+```bash
+# Send traces via HTTP
+curl -X POST http://localhost:4318/v1/traces \
+  -H "Content-Type: application/json" \
+  -d '{"resourceSpans":[]}'
+
+# Query data in ClickHouse
+docker-compose exec clickhouse clickhouse-client \
+  -q "SELECT * FROM otel_genai.genai_traces LIMIT 10"
+```
+
+### Configure Your Application
+
+Point your OTLP exporter to the collector:
+
+```python
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+# Export to the collector via gRPC
+exporter = OTLPSpanExporter(endpoint="localhost:4317", insecure=True)
+```
+
+Or via environment variables:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+```
+
 ## Configuration
 
 ### Environment Variables
@@ -90,6 +175,12 @@ provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 | `OTEL_EXPORTER_CLICKHOUSE_TTL_DAYS` | `7` | Data retention days |
 | `OTEL_EXPORTER_CLICKHOUSE_BATCH_SIZE` | `1000` | Insert batch size |
 | `OTEL_EXPORTER_CLICKHOUSE_COMPRESSION` | `lz4` | Compression (lz4, zstd, none) |
+| `OTEL_COLLECTOR_GRPC_ENDPOINT` | `0.0.0.0:4317` | gRPC receiver endpoint |
+| `OTEL_COLLECTOR_HTTP_ENDPOINT` | `0.0.0.0:4318` | HTTP receiver endpoint |
+| `OTEL_COLLECTOR_ENABLE_GRPC` | `true` | Enable gRPC receiver |
+| `OTEL_COLLECTOR_ENABLE_HTTP` | `true` | Enable HTTP receiver |
+| `OTEL_COLLECTOR_BATCH_TIMEOUT_MS` | `5000` | Batch flush timeout (ms) |
+| `OTEL_COLLECTOR_MAX_QUEUE_SIZE` | `10000` | Max items in queue |
 
 ### Programmatic Configuration
 

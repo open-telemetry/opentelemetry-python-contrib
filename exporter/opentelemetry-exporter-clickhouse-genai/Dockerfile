@@ -12,4 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-_instruments = ("crewai >= 0.70.0",)
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+
+# Install the package
+RUN pip install --no-cache-dir .
+
+# Expose OTLP receiver ports
+EXPOSE 4317 4318
+
+# Default command
+ENTRYPOINT ["otel-clickhouse-collector"]
+CMD ["--grpc-endpoint", "0.0.0.0:4317", "--http-endpoint", "0.0.0.0:4318"]

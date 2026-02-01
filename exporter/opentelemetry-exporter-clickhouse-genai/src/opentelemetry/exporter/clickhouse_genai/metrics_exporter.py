@@ -17,6 +17,20 @@
 import logging
 from typing import Any
 
+from opentelemetry.exporter.clickhouse_genai.config import (
+    ClickHouseGenAIConfig,
+)
+from opentelemetry.exporter.clickhouse_genai.connection import (
+    ClickHouseConnection,
+)
+from opentelemetry.exporter.clickhouse_genai.utils import (
+    extract_metric_genai_attributes,
+    extract_resource_attributes,
+    format_span_id_fixed,
+    format_trace_id_fixed,
+    ns_to_datetime,
+    safe_json_dumps,
+)
 from opentelemetry.sdk.metrics.export import (
     AggregationTemporality,
     Gauge,
@@ -25,17 +39,6 @@ from opentelemetry.sdk.metrics.export import (
     MetricExportResult,
     MetricsData,
     Sum,
-)
-
-from opentelemetry.exporter.clickhouse_genai.config import ClickHouseGenAIConfig
-from opentelemetry.exporter.clickhouse_genai.connection import ClickHouseConnection
-from opentelemetry.exporter.clickhouse_genai.utils import (
-    extract_metric_genai_attributes,
-    extract_resource_attributes,
-    format_span_id_fixed,
-    format_trace_id_fixed,
-    ns_to_datetime,
-    safe_json_dumps,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +70,8 @@ class ClickHouseGenAIMetricsExporter(MetricExporter):
     def __init__(
         self,
         config: ClickHouseGenAIConfig,
-        preferred_temporality: dict[type, AggregationTemporality] | None = None,
+        preferred_temporality: dict[type, AggregationTemporality]
+        | None = None,
         preferred_aggregation: dict | None = None,
     ):
         """Initialize ClickHouse metrics exporter.
@@ -132,7 +136,9 @@ class ClickHouseGenAIMetricsExporter(MetricExporter):
                         scope_metrics.scope.name if scope_metrics.scope else ""
                     )
                     scope_version = (
-                        scope_metrics.scope.version if scope_metrics.scope else ""
+                        scope_metrics.scope.version
+                        if scope_metrics.scope
+                        else ""
                     )
 
                     for metric in scope_metrics.metrics:
@@ -147,7 +153,9 @@ class ClickHouseGenAIMetricsExporter(MetricExporter):
 
             if rows:
                 self._connection.insert_metrics(rows)
-                logger.debug("Exported %d metric rows to ClickHouse", len(rows))
+                logger.debug(
+                    "Exported %d metric rows to ClickHouse", len(rows)
+                )
 
             return MetricExportResult.SUCCESS
         except Exception as e:
@@ -179,7 +187,9 @@ class ClickHouseGenAIMetricsExporter(MetricExporter):
 
         for data_point in metric.data.data_points:
             # Make a copy of attributes to extract from
-            attrs = dict(data_point.attributes) if data_point.attributes else {}
+            attrs = (
+                dict(data_point.attributes) if data_point.attributes else {}
+            )
             genai_fields = extract_metric_genai_attributes(attrs)
 
             row = {
