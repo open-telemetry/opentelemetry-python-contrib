@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -50,9 +50,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         messages: list[list[BaseMessage]],
         *,
         run_id: UUID,
-        tags: list[str] | None,
-        parent_run_id: UUID | None,
-        metadata: dict[str, Any] | None,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         # Other providers/LLMs may be supported in the future and telemetry for them is skipped for now.
@@ -83,35 +83,54 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         if request_model == "unknown":
             return
 
+        # Initialize variables with default values to avoid "possibly unbound" errors
+        top_p = None
+        frequency_penalty = None
+        presence_penalty = None
+        stop_sequences = None
+        seed = None
+        temperature = None
+        max_tokens = None
+
         if params is not None:
             top_p = params.get("top_p")
             frequency_penalty = params.get("frequency_penalty")
             presence_penalty = params.get("presence_penalty")
             stop_sequences = params.get("stop")
             seed = params.get("seed")
-
-            # ChatOpenAI
             temperature = params.get("temperature")
-
-            # ChatOpenAI
             max_tokens = params.get("max_completion_tokens")
 
         provider = "unknown"
         if metadata is not None:
-            provider = metadata.get("ls_provider")
+            provider = metadata.get("ls_provider", "unknown")
 
-            # ChatBedrock
-            temperature = metadata.get("ls_temperature")
-
-            # ChatBedrock
-            max_tokens = metadata.get("ls_max_tokens")
+            # Override with ChatBedrock values if present
+            if "ls_temperature" in metadata:
+                temperature = metadata.get("ls_temperature")
+            if "ls_max_tokens" in metadata:
+                max_tokens = metadata.get("ls_max_tokens")
 
         input_messages: list[InputMessage] = []
         for sub_messages in messages:
             for message in sub_messages:
-                content = message.content  # pyright: ignore[reportUnknownMemberType]
+                # Cast to Any to avoid type checking issues with LangChain's complex content type
+                raw_content: Any = message.content # type: ignore[misc]
                 role = message.type
-                parts = [Text(content=content, type="text")]
+                parts: list[Text] = []
+
+                if isinstance(raw_content, str):
+                    parts = [Text(content=raw_content, type="text")]
+                elif isinstance(raw_content, list):
+                    for item in raw_content: # type: ignore[misc]
+                        if isinstance(item, str):
+                            parts.append(Text(content=item, type="text"))
+                        elif isinstance(item, dict):
+                            # Safely extract text content from dict
+                            text_value = item.get("text") # type: ignore[misc]
+                            if isinstance(text_value, str) and text_value:
+                                parts.append(Text(content=text_value, type="text"))
+
                 input_messages.append(InputMessage(parts=parts, role=role))
 
         llm_invocation = LLMInvocation(
@@ -140,7 +159,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         response: LLMResult,
         *,
         run_id: UUID,
-        parent_run_id: UUID | None,
+        parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
@@ -154,6 +173,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         for generation in getattr(response, "generations", []):
             for chat_generation in generation:
                 # Get finish reason
+                finish_reason = "unknown"  # Default value
                 generation_info = getattr(
                     chat_generation, "generation_info", None
                 )
@@ -230,7 +250,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         error: BaseException,
         *,
         run_id: UUID,
-        parent_run_id: UUID | None,
+        parent_run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
