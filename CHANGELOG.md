@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-confluent-kafka`: Fix incorrect attribute mapping for message offset and partition. Ensure partition is correctly extracted and recorded in producer spans. Fix produce span operation type. Remove extraneous `recv` spans from consumer to align with semantic conventions. Create span only after record is received while polling.
+
+
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
   ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
 - `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
