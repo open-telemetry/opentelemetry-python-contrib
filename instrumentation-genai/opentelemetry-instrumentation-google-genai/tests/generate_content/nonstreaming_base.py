@@ -490,10 +490,8 @@ class NonStreamingTestCase(TestCase):
                             ),
                             "TOOL_DEFINITIONS": (
                                 {
-                                    "function": {
-                                        "name": "_mock_callable_tool",
-                                        "description": "Description of some tool.",
-                                    }
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
                                 },
                                 {
                                     "name": "mcp_tool",
@@ -516,10 +514,8 @@ class NonStreamingTestCase(TestCase):
                             ),
                             "TOOL_DEFINITIONS_ASYNC": (
                                 {
-                                    "function": {
-                                        "name": "_mock_callable_tool",
-                                        "description": "Description of some tool.",
-                                    }
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
                                 },
                                 {
                                     "name": "mcp_tool",
@@ -653,8 +649,8 @@ class NonStreamingTestCase(TestCase):
                                 gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
                             ],
                             [
-                                '[{"function":{"name":"_mock_callable_tool","description":"Description of some tool."}},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
-                                '[{"function":{"name":"_mock_callable_tool","description":"Description of some tool."}},{"error":"serializing tools of type=McpClientSession are not supported in synchronous methods"},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
+                                '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
+                                '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
                             ],
                         )
                     else:

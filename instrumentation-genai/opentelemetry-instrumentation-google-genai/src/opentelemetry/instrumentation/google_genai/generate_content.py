@@ -203,10 +203,8 @@ def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
     if callable(tool):
         doc = getattr(tool, "__doc__", "") or ""
         return {
-            "function": {
-                "name": getattr(tool, "__name__", type(tool).__name__),
-                "description": doc.strip(),
-            }
+            "name": getattr(tool, "__name__", type(tool).__name__),
+            "description": doc.strip(),
         }
 
     if isinstance(tool, McpTool):
