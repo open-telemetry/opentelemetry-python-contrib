@@ -54,22 +54,18 @@ def _get_llm_common_attributes(
 
     Returns a dictionary of attributes.
     """
-    attributes: dict[str, Any] = {}
-    attributes[GenAI.GEN_AI_OPERATION_NAME] = invocation.operation_name
-    if invocation.request_model:
-        attributes[GenAI.GEN_AI_REQUEST_MODEL] = invocation.request_model
-    if invocation.provider is not None:
-        # TODO: clean provider name to match GenAiProviderNameValues?
-        attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
+    # TODO: clean provider name to match GenAiProviderNameValues?
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),
+        (GenAI.GEN_AI_PROVIDER_NAME, invocation.provider),
+        (server_attributes.SERVER_ADDRESS, invocation.server_address),
+        (server_attributes.SERVER_PORT, invocation.server_port),
+    )
 
-    if invocation.server_address:
-        attributes[server_attributes.SERVER_ADDRESS] = (
-            invocation.server_address
-        )
-    if invocation.server_port:
-        attributes[server_attributes.SERVER_PORT] = invocation.server_port
-
-    return attributes
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+        **{key: value for key, value in optional_attrs if value is not None},
+    }
 
 
 def _get_llm_span_name(invocation: LLMInvocation) -> str:
@@ -86,25 +82,34 @@ def _get_llm_messages_attributes_for_span(
 
     Returns empty dict if not in experimental mode or content capturing is disabled.
     """
-    attributes: dict[str, Any] = {}
     if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.SPAN_ONLY,
         ContentCapturingMode.SPAN_AND_EVENT,
     ):
-        return attributes
-    if input_messages:
-        attributes[GenAI.GEN_AI_INPUT_MESSAGES] = gen_ai_json_dumps(
-            [asdict(message) for message in input_messages]
-        )
-    if output_messages:
-        attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = gen_ai_json_dumps(
-            [asdict(message) for message in output_messages]
-        )
-    if system_instruction:
-        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
-            [asdict(part) for part in system_instruction]
-        )
-    return attributes
+        return {}
+
+    optional_attrs = (
+        (
+            GenAI.GEN_AI_INPUT_MESSAGES,
+            gen_ai_json_dumps([asdict(m) for m in input_messages])
+            if input_messages
+            else None,
+        ),
+        (
+            GenAI.GEN_AI_OUTPUT_MESSAGES,
+            gen_ai_json_dumps([asdict(m) for m in output_messages])
+            if output_messages
+            else None,
+        ),
+        (
+            GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
+            gen_ai_json_dumps([asdict(p) for p in system_instruction])
+            if system_instruction
+            else None,
+        ),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
 
 
 def _get_llm_messages_attributes_for_event(
@@ -116,25 +121,30 @@ def _get_llm_messages_attributes_for_event(
 
     Returns empty dict if not in experimental mode or content capturing is disabled.
     """
-    attributes: dict[str, Any] = {}
     if not is_experimental_mode() or get_content_capturing_mode() not in (
         ContentCapturingMode.EVENT_ONLY,
         ContentCapturingMode.SPAN_AND_EVENT,
     ):
-        return attributes
-    if input_messages:
-        attributes[GenAI.GEN_AI_INPUT_MESSAGES] = [
-            asdict(message) for message in input_messages
-        ]
-    if output_messages:
-        attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = [
-            asdict(message) for message in output_messages
-        ]
-    if system_instruction:
-        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = [
-            asdict(part) for part in system_instruction
-        ]
-    return attributes
+        return {}
+
+    optional_attrs = (
+        (
+            GenAI.GEN_AI_INPUT_MESSAGES,
+            [asdict(m) for m in input_messages] if input_messages else None,
+        ),
+        (
+            GenAI.GEN_AI_OUTPUT_MESSAGES,
+            [asdict(m) for m in output_messages] if output_messages else None,
+        ),
+        (
+            GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
+            [asdict(p) for p in system_instruction]
+            if system_instruction
+            else None,
+        ),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
 
 
 def _maybe_emit_llm_event(
@@ -221,36 +231,23 @@ def _get_llm_request_attributes(
     invocation: LLMInvocation,
 ) -> dict[str, Any]:
     """Get GenAI request semantic convention attributes."""
-    attributes: dict[str, Any] = {}
-    if invocation.temperature is not None:
-        attributes[GenAI.GEN_AI_REQUEST_TEMPERATURE] = invocation.temperature
-    if invocation.top_p is not None:
-        attributes[GenAI.GEN_AI_REQUEST_TOP_P] = invocation.top_p
-    if invocation.frequency_penalty is not None:
-        attributes[GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
-            invocation.frequency_penalty
-        )
-    if invocation.presence_penalty is not None:
-        attributes[GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY] = (
-            invocation.presence_penalty
-        )
-    if invocation.max_tokens is not None:
-        attributes[GenAI.GEN_AI_REQUEST_MAX_TOKENS] = invocation.max_tokens
-    if invocation.stop_sequences is not None:
-        attributes[GenAI.GEN_AI_REQUEST_STOP_SEQUENCES] = (
-            invocation.stop_sequences
-        )
-    if invocation.seed is not None:
-        attributes[GenAI.GEN_AI_REQUEST_SEED] = invocation.seed
-    return attributes
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_TEMPERATURE, invocation.temperature),
+        (GenAI.GEN_AI_REQUEST_TOP_P, invocation.top_p),
+        (GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, invocation.frequency_penalty),
+        (GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, invocation.presence_penalty),
+        (GenAI.GEN_AI_REQUEST_MAX_TOKENS, invocation.max_tokens),
+        (GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, invocation.stop_sequences),
+        (GenAI.GEN_AI_REQUEST_SEED, invocation.seed),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
 
 
 def _get_llm_response_attributes(
     invocation: LLMInvocation,
 ) -> dict[str, Any]:
     """Get GenAI response semantic convention attributes."""
-    attributes: dict[str, Any] = {}
-
     finish_reasons: list[str] | None
     if invocation.finish_reasons is not None:
         finish_reasons = invocation.finish_reasons
@@ -263,26 +260,23 @@ def _get_llm_response_attributes(
     else:
         finish_reasons = None
 
-    if finish_reasons:
-        # De-duplicate finish reasons
-        unique_finish_reasons = sorted(set(finish_reasons))
-        if unique_finish_reasons:
-            attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] = (
-                unique_finish_reasons
-            )
+    # De-duplicate finish reasons
+    unique_finish_reasons = (
+        sorted(set(finish_reasons)) if finish_reasons else None
+    )
 
-    if invocation.response_model_name is not None:
-        attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
-            invocation.response_model_name
-        )
-    if invocation.response_id is not None:
-        attributes[GenAI.GEN_AI_RESPONSE_ID] = invocation.response_id
-    if invocation.input_tokens is not None:
-        attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] = invocation.input_tokens
-    if invocation.output_tokens is not None:
-        attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] = invocation.output_tokens
+    optional_attrs = (
+        (
+            GenAI.GEN_AI_RESPONSE_FINISH_REASONS,
+            unique_finish_reasons if unique_finish_reasons else None,
+        ),
+        (GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name),
+        (GenAI.GEN_AI_RESPONSE_ID, invocation.response_id),
+        (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
+        (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens),
+    )
 
-    return attributes
+    return {key: value for key, value in optional_attrs if value is not None}
 
 
 __all__ = [
