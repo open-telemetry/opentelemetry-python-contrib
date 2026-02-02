@@ -19,8 +19,10 @@ from unittest.mock import MagicMock, patch
 from opentelemetry.exporter.clickhouse_genai import (
     ClickHouseGenAISpanExporter,
 )
-from opentelemetry.exporter.clickhouse_genai.utils import (
+from opentelemetry.exporter.clickhouse_genai.extractors import (
     extract_genai_attributes,
+)
+from opentelemetry.exporter.clickhouse_genai.utils import (
     format_span_id_fixed,
     format_trace_id_fixed,
 )
@@ -67,26 +69,19 @@ class TestExtractGenAiAttributes:
         attrs = genai_span_attributes.copy()
         extracted = extract_genai_attributes(attrs)
 
-        # Check extracted values
-        assert extracted["GenAiOperationName"] == "chat"
-        assert extracted["GenAiSystem"] == "openai"
-        assert extracted["GenAiRequestModel"] == "gpt-4o"
-        assert extracted["GenAiResponseModel"] == "gpt-4o-2024-05-13"
+        # Check extracted values (new column names)
+        assert extracted["OperationType"] == "chat"
+        assert extracted["Provider"] == "openai"
+        assert extracted["RequestModel"] == "gpt-4o"
+        assert extracted["ResponseModel"] == "gpt-4o-2024-05-13"
         assert extracted["InputTokens"] == 100
         assert extracted["OutputTokens"] == 50
         assert extracted["TotalTokens"] == 150
-        assert extracted["Temperature"] == 0.7
-        assert extracted["MaxTokens"] == 1000
-        assert extracted["IsStreaming"] == 1
-        assert extracted["FinishReasons"] == ["stop"]
-        assert extracted["AvailableTools"] == ["get_weather", "search"]
-        assert extracted["ServerAddress"] == "api.openai.com"
-        assert extracted["ServerPort"] == 443
+        assert extracted["FinishReason"] == "stop"
 
         # Check derived fields
         assert extracted["HasToolCalls"] == 1
         assert extracted["ToolCallCount"] == 2
-        assert extracted["HasError"] == 0
 
         # Check attributes were popped
         assert "gen_ai.operation.name" not in attrs
@@ -97,17 +92,17 @@ class TestExtractGenAiAttributes:
         attrs = {}
         extracted = extract_genai_attributes(attrs)
 
-        assert extracted["GenAiOperationName"] == ""
+        assert extracted["OperationType"] == ""
         assert extracted["InputTokens"] == 0
-        assert extracted["HasError"] == 0
+        assert extracted["HasToolCalls"] == 0
 
     def test_extract_genai_attributes_with_error(self):
-        """Test extracting attributes with error."""
-        attrs = {"error.type": "APIConnectionError"}
+        """Test extracting attributes with error - error extraction is separate."""
+        # Note: error extraction is now handled by extract_error_attributes
+        attrs = {}
         extracted = extract_genai_attributes(attrs)
-
-        assert extracted["ErrorType"] == "APIConnectionError"
-        assert extracted["HasError"] == 1
+        # GenAI extractor doesn't handle errors anymore
+        assert extracted["OperationType"] == ""
 
 
 class TestClickHouseGenAISpanExporter:
@@ -135,7 +130,7 @@ class TestClickHouseGenAISpanExporter:
         exporter = ClickHouseGenAISpanExporter(config)
         exporter._initialized = True  # Skip initialization
 
-        # Create a mock span
+        # Create a mock span with GenAI attributes (routes to genai_spans table)
         span = MagicMock(spec=ReadableSpan)
         span.context = MagicMock()
         span.context.trace_id = 0x1234567890ABCDEF1234567890ABCDEF
@@ -160,18 +155,20 @@ class TestClickHouseGenAISpanExporter:
         result = exporter.export([span])
 
         assert result == SpanExportResult.SUCCESS
-        mock_connection.insert_traces.assert_called_once()
+        # GenAI spans are routed to insert_genai_spans (new API)
+        mock_connection.insert_genai_spans.assert_called_once()
 
         # Verify the row structure
-        rows = mock_connection.insert_traces.call_args[0][0]
+        rows = mock_connection.insert_genai_spans.call_args[0][0]
         assert len(rows) == 1
         row = rows[0]
 
         assert row["TraceId"] == "1234567890abcdef1234567890abcdef"
         assert row["SpanId"] == "1234567890abcdef"
         assert row["SpanName"] == "chat gpt-4o"
-        assert row["GenAiSystem"] == "openai"
-        assert row["GenAiRequestModel"] == "gpt-4o"
+        # New column names
+        assert row["Provider"] == "openai"
+        assert row["RequestModel"] == "gpt-4o"
         assert row["InputTokens"] == 100
         assert row["OutputTokens"] == 50
 
@@ -181,7 +178,11 @@ class TestClickHouseGenAISpanExporter:
     def test_export_failure(self, mock_connection_class, config):
         """Test export failure handling."""
         mock_connection = MagicMock()
-        mock_connection.insert_traces.side_effect = Exception(
+        # Both insert methods should fail
+        mock_connection.insert_genai_spans.side_effect = Exception(
+            "Connection failed"
+        )
+        mock_connection.insert_spans.side_effect = Exception(
             "Connection failed"
         )
         mock_connection_class.return_value = mock_connection
@@ -189,6 +190,7 @@ class TestClickHouseGenAISpanExporter:
         exporter = ClickHouseGenAISpanExporter(config)
         exporter._initialized = True
 
+        # Create a span that will be classified as genai (has gen_ai.system)
         span = MagicMock(spec=ReadableSpan)
         span.context = MagicMock()
         span.context.trace_id = 0x1234567890ABCDEF1234567890ABCDEF
@@ -200,7 +202,7 @@ class TestClickHouseGenAISpanExporter:
         span.start_time = 1700000000000000000
         span.end_time = 1700000001000000000
         span.status = Status(StatusCode.OK)
-        span.attributes = {}
+        span.attributes = {"gen_ai.system": "openai"}  # Make it a GenAI span
         span.events = []
         span.links = []
         span.resource = Resource.create({})

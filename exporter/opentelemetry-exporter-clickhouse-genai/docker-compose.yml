@@ -21,7 +21,7 @@ version: "3.8"
 services:
   # ClickHouse database for storing telemetry
   clickhouse:
-    image: clickhouse/clickhouse-server:24.1
+    image: clickhouse/clickhouse-server:24.8
     container_name: clickhouse
     ports:
       - "8123:8123" # HTTP interface
@@ -29,11 +29,13 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
+      - ./clickhouse-config/users.d/enable_full_text.xml:/etc/clickhouse-server/users.d/enable_full_text.xml:ro
     environment:
       - CLICKHOUSE_DB=otel_genai
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+      - CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS=true
     ulimits:
       nofile:
         soft: 262144

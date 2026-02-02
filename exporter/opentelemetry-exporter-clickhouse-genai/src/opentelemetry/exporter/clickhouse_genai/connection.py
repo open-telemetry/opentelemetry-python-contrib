@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""ClickHouse connection manager for GenAI exporter."""
+"""ClickHouse connection manager for GenAI exporter.
+
+Manages connections and provides insert methods for all tables:
+- genai_spans: LLM/AI interactions
+- spans: General purpose spans (db, http, messaging, rpc)
+- genai_tool_calls: Tool/function executions
+- genai_retrievals: RAG/vector DB queries
+- genai_sessions: Session tracking
+- genai_messages: Message-level tracking
+- genai_metrics: Metrics
+"""
 
 import logging
 from typing import Any, Optional
@@ -25,9 +35,21 @@ from opentelemetry.exporter.clickhouse_genai.config import (
 )
 from opentelemetry.exporter.clickhouse_genai.schema import (
     CREATE_DATABASE_SQL,
-    LOGS_TABLE_SQL,
+    # Table name constants
+    GENAI_SPANS_TABLE,
+    GENAI_SPANS_TABLE_SQL,
+    MESSAGES_TABLE,
+    MESSAGES_TABLE_SQL,
+    METRICS_TABLE,
     METRICS_TABLE_SQL,
-    TRACES_TABLE_SQL,
+    RETRIEVALS_TABLE,
+    RETRIEVALS_TABLE_SQL,
+    SESSIONS_TABLE,
+    SESSIONS_TABLE_SQL,
+    SPANS_TABLE,
+    SPANS_TABLE_SQL,
+    TOOL_CALLS_TABLE,
+    TOOL_CALLS_TABLE_SQL,
 )
 
 logger = logging.getLogger(__name__)
@@ -112,79 +134,146 @@ class ClickHouseConnection:
         finally:
             temp_client.disconnect()
 
-    def create_traces_table(self) -> None:
-        """Create traces table with TTL and indexes."""
-        sql = TRACES_TABLE_SQL.format(
+    def create_all_tables(self) -> None:
+        """Create all tables required for the new schema."""
+        self.create_genai_spans_table()
+        self.create_spans_table()
+        self.create_tool_calls_table()
+        self.create_retrievals_table()
+        self.create_sessions_table()
+        self.create_messages_table()
+        self.create_metrics_table()
+
+    def create_genai_spans_table(self) -> None:
+        """Create genai_spans table for LLM interactions."""
+        sql = GENAI_SPANS_TABLE_SQL.format(
             database=self.config.database,
-            table=self.config.traces_table,
+            table=GENAI_SPANS_TABLE,
             ttl_days=self.config.ttl_days,
         )
-        try:
-            self.client.execute(sql)
-            logger.info(
-                "Traces table %s.%s created",
-                self.config.database,
-                self.config.traces_table,
-            )
-        except ClickHouseError as e:
-            logger.error("Failed to create traces table: %s", e)
-            raise
+        self._execute_create_table(sql, GENAI_SPANS_TABLE)
+
+    def create_spans_table(self) -> None:
+        """Create spans table for general purpose spans."""
+        sql = SPANS_TABLE_SQL.format(
+            database=self.config.database,
+            table=SPANS_TABLE,
+            ttl_days=self.config.ttl_days,
+        )
+        self._execute_create_table(sql, SPANS_TABLE)
+
+    def create_tool_calls_table(self) -> None:
+        """Create genai_tool_calls table."""
+        sql = TOOL_CALLS_TABLE_SQL.format(
+            database=self.config.database,
+            table=TOOL_CALLS_TABLE,
+            ttl_days=self.config.ttl_days,
+        )
+        self._execute_create_table(sql, TOOL_CALLS_TABLE)
+
+    def create_retrievals_table(self) -> None:
+        """Create genai_retrievals table."""
+        sql = RETRIEVALS_TABLE_SQL.format(
+            database=self.config.database,
+            table=RETRIEVALS_TABLE,
+            ttl_days=self.config.ttl_days,
+        )
+        self._execute_create_table(sql, RETRIEVALS_TABLE)
+
+    def create_sessions_table(self) -> None:
+        """Create genai_sessions table."""
+        sql = SESSIONS_TABLE_SQL.format(
+            database=self.config.database,
+            table=SESSIONS_TABLE,
+            ttl_days=self.config.ttl_days,
+        )
+        self._execute_create_table(sql, SESSIONS_TABLE)
+
+    def create_messages_table(self) -> None:
+        """Create genai_messages table."""
+        sql = MESSAGES_TABLE_SQL.format(
+            database=self.config.database,
+            table=MESSAGES_TABLE,
+            ttl_days=self.config.ttl_days,
+        )
+        self._execute_create_table(sql, MESSAGES_TABLE)
 
     def create_metrics_table(self) -> None:
-        """Create metrics table."""
+        """Create genai_metrics table."""
         sql = METRICS_TABLE_SQL.format(
             database=self.config.database,
-            table=self.config.metrics_table,
+            table=METRICS_TABLE,
             ttl_days=self.config.ttl_days,
         )
+        self._execute_create_table(sql, METRICS_TABLE)
+
+    def _execute_create_table(self, sql: str, table_name: str) -> None:
+        """Execute create table SQL with error handling."""
         try:
             self.client.execute(sql)
             logger.info(
-                "Metrics table %s.%s created",
+                "Table %s.%s created/verified",
                 self.config.database,
-                self.config.metrics_table,
+                table_name,
             )
         except ClickHouseError as e:
-            logger.error("Failed to create metrics table: %s", e)
+            logger.error("Failed to create table %s: %s", table_name, e)
             raise
 
-    def create_logs_table(self) -> None:
-        """Create logs table."""
-        sql = LOGS_TABLE_SQL.format(
-            database=self.config.database,
-            table=self.config.logs_table,
-            ttl_days=self.config.ttl_days,
-        )
-        try:
-            self.client.execute(sql)
-            logger.info(
-                "Logs table %s.%s created",
-                self.config.database,
-                self.config.logs_table,
-            )
-        except ClickHouseError as e:
-            logger.error("Failed to create logs table: %s", e)
-            raise
+    # =========================================================================
+    # INSERT METHODS
+    # =========================================================================
 
-    def insert_traces(self, rows: list[dict[str, Any]]) -> None:
-        """Batch insert trace rows using native protocol.
+    def insert_genai_spans(self, rows: list[dict[str, Any]]) -> None:
+        """Batch insert genai_spans rows.
 
         Args:
-            rows: List of trace row dictionaries.
+            rows: List of genai span row dictionaries.
         """
-        if not rows:
-            return
+        self._insert_rows(GENAI_SPANS_TABLE, rows, "genai_spans")
 
-        try:
-            self.client.execute(
-                f"INSERT INTO {self.config.database}.{self.config.traces_table} VALUES",
-                rows,
-                types_check=True,
-            )
-            logger.info("Inserted %d trace rows", len(rows))
-        except ClickHouseError as e:
-            logger.error("Failed to insert traces: %s", e)
-            raise
+    def insert_spans(self, rows: list[dict[str, Any]]) -> None:
+        """Batch insert spans rows (general purpose spans).
+
+        Args:
+            rows: List of span row dictionaries.
+        """
+        self._insert_rows(SPANS_TABLE, rows, "spans")
+
+    def insert_tool_calls(self, rows: list[dict[str, Any]]) -> None:
+        """Batch insert tool_calls rows.
+
+        Args:
+            rows: List of tool call row dictionaries.
+        """
+        self._insert_rows(TOOL_CALLS_TABLE, rows, "tool_calls")
+
+    def insert_retrievals(self, rows: list[dict[str, Any]]) -> None:
+        """Batch insert retrievals rows.
+
+        Args:
+            rows: List of retrieval row dictionaries.
+        """
+        self._insert_rows(RETRIEVALS_TABLE, rows, "retrievals")
+
+    def insert_sessions(self, rows: list[dict[str, Any]]) -> None:
+        """Batch insert/update sessions rows.
+
+        Note: genai_sessions uses ReplacingMergeTree, so inserts
+        with the same SessionId will eventually merge (deduplicate).
+
+        Args:
+            rows: List of session row dictionaries.
+        """
+        self._insert_rows(SESSIONS_TABLE, rows, "sessions")
+
+    def insert_messages(self, rows: list[dict[str, Any]]) -> None:
+        """Batch insert messages rows.
+
+        Args:
+            rows: List of message row dictionaries.
+        """
+        self._insert_rows(MESSAGES_TABLE, rows, "messages")
 
     def insert_metrics(self, rows: list[dict[str, Any]]) -> None:
         """Batch insert metric rows.
@@ -192,39 +281,58 @@ class ClickHouseConnection:
         Args:
             rows: List of metric row dictionaries.
         """
-        if not rows:
-            return
+        self._insert_rows(METRICS_TABLE, rows, "metrics")
 
-        try:
-            self.client.execute(
-                f"INSERT INTO {self.config.database}.{self.config.metrics_table} VALUES",
-                rows,
-                types_check=True,
-            )
-            logger.debug("Inserted %d metric rows", len(rows))
-        except ClickHouseError as e:
-            logger.error("Failed to insert metrics: %s", e)
-            raise
-
-    def insert_logs(self, rows: list[dict[str, Any]]) -> None:
-        """Batch insert log rows.
+    def _insert_rows(
+        self, table: str, rows: list[dict[str, Any]], log_name: str
+    ) -> None:
+        """Generic row insertion with error handling.
 
         Args:
-            rows: List of log row dictionaries.
+            table: Table name.
+            rows: List of row dictionaries.
+            log_name: Name for logging purposes.
         """
         if not rows:
             return
 
         try:
+            # Log the first row's keys for debugging
+            if rows:
+                logger.debug("Inserting into %s with columns: %s", table, list(rows[0].keys()))
             self.client.execute(
-                f"INSERT INTO {self.config.database}.{self.config.logs_table} VALUES",
+                f"INSERT INTO {self.config.database}.{table} VALUES",
                 rows,
                 types_check=True,
             )
-            logger.debug("Inserted %d log rows", len(rows))
-        except ClickHouseError as e:
-            logger.error("Failed to insert logs: %s", e)
+            logger.debug("Inserted %d %s rows", len(rows), log_name)
+        except Exception as e:
+            logger.error("Failed to insert %s: %s", log_name, e)
             raise
+
+    # =========================================================================
+    # LEGACY METHODS (for backward compatibility)
+    # =========================================================================
+
+    def create_traces_table(self) -> None:
+        """Create traces table (legacy alias for genai_spans)."""
+        self.create_genai_spans_table()
+
+    def create_logs_table(self) -> None:
+        """Create logs table (legacy alias for messages)."""
+        self.create_messages_table()
+
+    def insert_traces(self, rows: list[dict[str, Any]]) -> None:
+        """Insert traces (legacy alias for genai_spans)."""
+        self.insert_genai_spans(rows)
+
+    def insert_logs(self, rows: list[dict[str, Any]]) -> None:
+        """Insert logs (legacy alias for messages)."""
+        self.insert_messages(rows)
+
+    # =========================================================================
+    # CONNECTION MANAGEMENT
+    # =========================================================================
 
     def close(self) -> None:
         """Close the connection."""

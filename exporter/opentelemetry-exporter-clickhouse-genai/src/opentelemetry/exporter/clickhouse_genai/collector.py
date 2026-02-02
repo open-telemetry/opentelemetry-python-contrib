@@ -32,6 +32,10 @@ from opentelemetry.exporter.clickhouse_genai.receivers.grpc_receiver import (
 from opentelemetry.exporter.clickhouse_genai.receivers.http_receiver import (
     OTLPHttpReceiver,
 )
+from opentelemetry.exporter.clickhouse_genai.schema import (
+    GENAI_SPANS_COLUMNS,
+    SPANS_COLUMNS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -129,10 +133,8 @@ class OTLPClickHouseCollector:
         if self.config.create_schema:
             logger.info("Creating ClickHouse schema...")
             self._connection.ensure_database()
-            self._connection.create_traces_table()
-            self._connection.create_logs_table()
-            self._connection.create_metrics_table()
-            logger.info("ClickHouse schema created")
+            self._connection.create_all_tables()
+            logger.info("ClickHouse schema created (all 7 tables)")
 
         # Start batch processors
         self._trace_processor.start()
@@ -211,13 +213,56 @@ class OTLPClickHouseCollector:
         logger.info("OTLP ClickHouse Collector stopped")
 
     def _export_traces(self, rows: List[Dict[str, Any]]) -> None:
-        """Export trace rows to ClickHouse.
+        """Export trace rows to ClickHouse with smart routing.
+
+        Routes spans to appropriate tables based on their SpanCategory:
+        - genai_spans: Rows with SpanCategory='genai' or Provider/OperationType set
+        - spans: All other rows (db, http, messaging, rpc, other)
 
         Args:
             rows: List of trace row dictionaries.
         """
+        if not rows:
+            return
+
         try:
-            self._connection.insert_traces(rows)
+            # Classify rows based on SpanCategory
+            genai_rows = []
+            span_rows = []
+
+            for row in rows:
+                span_category = row.get("SpanCategory", "")
+                # Route GenAI spans to genai_spans table
+                if span_category == "genai" or row.get("Provider") or row.get("OperationType"):
+                    genai_rows.append(row)
+                # Route infrastructure spans to spans table
+                elif span_category in ("db", "http", "messaging", "rpc", "faas"):
+                    span_rows.append(row)
+                # Default: check for category-specific indicators
+                elif row.get("DbSystem") or row.get("HttpMethod") or row.get("MessagingSystem") or row.get("RpcSystem"):
+                    span_rows.append(row)
+                else:
+                    # Default to spans table for unknown categories (more generic schema)
+                    span_rows.append(row)
+
+            if genai_rows:
+                # Filter rows to only include genai_spans table columns
+                filtered_genai_rows = [
+                    {k: v for k, v in row.items() if k in GENAI_SPANS_COLUMNS}
+                    for row in genai_rows
+                ]
+                self._connection.insert_genai_spans(filtered_genai_rows)
+                logger.debug("Exported %d GenAI spans", len(filtered_genai_rows))
+
+            if span_rows:
+                # Filter rows to only include spans table columns
+                filtered_span_rows = [
+                    {k: v for k, v in row.items() if k in SPANS_COLUMNS}
+                    for row in span_rows
+                ]
+                self._connection.insert_spans(filtered_span_rows)
+                logger.debug("Exported %d general spans", len(filtered_span_rows))
+
         except Exception as e:
             logger.error("Failed to export traces to ClickHouse: %s", e)
             raise

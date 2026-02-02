@@ -17,11 +17,21 @@
 from datetime import datetime
 from typing import Any, Dict, List
 
-from opentelemetry.exporter.clickhouse_genai.utils import (
+from opentelemetry.exporter.clickhouse_genai.extractors import (
+    extract_agent_attributes,
+    extract_db_attributes,
+    extract_error_attributes,
     extract_genai_attributes,
+    extract_http_attributes,
+    extract_messaging_attributes,
+    extract_network_attributes,
+    extract_resource_attributes,
+    extract_rpc_attributes,
+    extract_session_attributes,
+)
+from opentelemetry.exporter.clickhouse_genai.utils import (
     extract_log_genai_attributes,
     extract_metric_genai_attributes,
-    extract_resource_attributes,
     safe_json_dumps,
 )
 from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import (
@@ -38,6 +48,23 @@ from opentelemetry.proto.metrics.v1.metrics_pb2 import (
     Metric,
 )
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
+
+
+def _ensure_int(value: Any, default: int = 0) -> int:
+    """Ensure value is an integer."""
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _ensure_str(value: Any, default: str = "") -> str:
+    """Ensure value is a string."""
+    if value is None:
+        return default
+    return str(value)
 
 
 def _get_any_value(value: AnyValue) -> Any:
@@ -130,17 +157,20 @@ def _span_kind_to_string(kind: int) -> str:
         kind: OTLP SpanKind value.
 
     Returns:
-        String representation.
+        String representation matching ClickHouse enum.
     """
+    # OTLP SpanKind values:
+    # 0 = UNSPECIFIED, 1 = INTERNAL, 2 = SERVER, 3 = CLIENT, 4 = PRODUCER, 5 = CONSUMER
+    # ClickHouse enum: 'INTERNAL'=0, 'SERVER'=1, 'CLIENT'=2, 'PRODUCER'=3, 'CONSUMER'=4
     mapping = {
-        0: "UNSPECIFIED",
+        0: "INTERNAL",  # Map UNSPECIFIED to INTERNAL
         1: "INTERNAL",
         2: "SERVER",
         3: "CLIENT",
         4: "PRODUCER",
         5: "CONSUMER",
     }
-    return mapping.get(kind, "UNSPECIFIED")
+    return mapping.get(kind, "INTERNAL")
 
 
 def _status_code_to_string(code: int) -> str:
@@ -188,78 +218,153 @@ def otlp_spans_to_rows(
     for resource_spans in request.resource_spans:
         resource = resource_spans.resource
         resource_attrs = _extract_resource_attrs(resource)
-        resource_fields = extract_resource_attributes(resource_attrs)
+        resource_fields = extract_resource_attributes(dict(resource_attrs))
 
         for scope_spans in resource_spans.scope_spans:
             scope = scope_spans.scope
             scope_name = scope.name if scope else ""
-            scope_version = scope.version if scope else ""
 
             for span in scope_spans.spans:
-                # Extract span attributes
+                # Extract span attributes (make a mutable copy)
                 span_attrs = _kvlist_to_dict(span.attributes)
+
+                # Extract structured fields using the new extractors
                 genai_fields = extract_genai_attributes(span_attrs)
+                session_fields = extract_session_attributes(span_attrs)
+                agent_fields = extract_agent_attributes(span_attrs)
+                error_fields = extract_error_attributes(span_attrs)
+                network_fields = extract_network_attributes(span_attrs)
 
-                # Process events
-                event_timestamps = []
-                event_names = []
-                event_attributes = []
-                for event in span.events:
-                    event_timestamps.append(
-                        _nanos_to_datetime(event.time_unix_nano)
-                    )
-                    event_names.append(event.name)
-                    event_attrs = _kvlist_to_dict(event.attributes)
-                    event_attributes.append(safe_json_dumps(event_attrs))
+                # Extract category-specific fields for routing
+                db_fields = extract_db_attributes(span_attrs)
+                http_fields = extract_http_attributes(span_attrs)
+                messaging_fields = extract_messaging_attributes(span_attrs)
+                rpc_fields = extract_rpc_attributes(span_attrs)
 
-                # Process links
-                link_trace_ids = []
-                link_span_ids = []
-                link_trace_states = []
-                link_attributes = []
-                for link in span.links:
-                    link_trace_ids.append(_format_trace_id(link.trace_id))
-                    link_span_ids.append(_format_span_id(link.span_id))
-                    link_trace_states.append(link.trace_state)
-                    link_attrs = _kvlist_to_dict(link.attributes)
-                    link_attributes.append(safe_json_dumps(link_attrs))
+                # Calculate duration in milliseconds
+                duration_ns = span.end_time_unix_nano - span.start_time_unix_nano
+                duration_ms = int(duration_ns / 1_000_000) if duration_ns > 0 else 0
 
+                # Determine span category based on extracted fields
+                span_category = ""
+                if genai_fields.get("Provider") or genai_fields.get("OperationType"):
+                    span_category = "genai"
+                elif db_fields.get("DbSystem"):
+                    span_category = "db"
+                elif http_fields.get("HttpMethod"):
+                    span_category = "http"
+                elif messaging_fields.get("MessagingSystem"):
+                    span_category = "messaging"
+                elif rpc_fields.get("RpcSystem"):
+                    span_category = "rpc"
+                else:
+                    span_category = "other"
+
+                # Extract workflow fields before they get lost
+                workflow_id = _ensure_str(span_attrs.pop("workflow.id", None) or span_attrs.pop("gen_ai.workflow.id", None))
+                workflow_run_id = _ensure_str(span_attrs.pop("workflow.run_id", None) or span_attrs.pop("gen_ai.workflow.run_id", None))
+                parent_agent_span_id = _ensure_str(span_attrs.pop("agent.parent_span_id", None) or span_attrs.pop("gen_ai.agent.parent_span_id", None))
+
+                # Build row with all required fields (defaults match schema)
+                # Use _ensure_int and _ensure_str for type safety
                 row = {
                     # Identifiers
                     "TraceId": _format_trace_id(span.trace_id),
                     "SpanId": _format_span_id(span.span_id),
                     "ParentSpanId": _format_span_id(span.parent_span_id),
-                    "TraceState": span.trace_state,
-                    # Timing
+                    "TraceState": _ensure_str(span.trace_state),
+                    # Session/Workflow context
+                    "SessionId": _ensure_str(session_fields.get("SessionId")),
+                    "WorkflowId": workflow_id,
+                    "WorkflowRunId": workflow_run_id,
+                    # Timing (milliseconds)
                     "Timestamp": _nanos_to_datetime(span.start_time_unix_nano),
-                    "EndTimestamp": _nanos_to_datetime(
-                        span.end_time_unix_nano
-                    ),
-                    "DurationNs": span.end_time_unix_nano
-                    - span.start_time_unix_nano,
+                    "EndTimestamp": _nanos_to_datetime(span.end_time_unix_nano),
+                    "DurationMs": _ensure_int(duration_ms),
                     # Span info
-                    "SpanName": span.name,
+                    "SpanName": _ensure_str(span.name),
                     "SpanKind": _span_kind_to_string(span.kind),
                     "StatusCode": _status_code_to_string(span.status.code),
-                    "StatusMessage": span.status.message,
-                    "InstrumentationScopeName": scope_name,
-                    "InstrumentationScopeVersion": scope_version,
-                    # Events
-                    "Events.Timestamp": event_timestamps,
-                    "Events.Name": event_names,
-                    "Events.Attributes": event_attributes,
-                    "EventCount": len(span.events),
-                    # Links
-                    "Links.TraceId": link_trace_ids,
-                    "Links.SpanId": link_span_ids,
-                    "Links.TraceState": link_trace_states,
-                    "Links.Attributes": link_attributes,
-                    # Overflow attributes
-                    "SpanAttributesJson": safe_json_dumps(span_attrs),
-                    "ResourceAttributesJson": safe_json_dumps(resource_attrs),
-                    # Merge resource and genai fields
-                    **resource_fields,
-                    **genai_fields,
+                    "StatusMessage": _ensure_str(span.status.message),
+                    "InstrumentationScope": _ensure_str(scope_name),
+                    # Span category (for routing)
+                    "SpanCategory": _ensure_str(span_category),
+                    # GenAI fields (with defaults for schema)
+                    "OperationType": _ensure_str(genai_fields.get("OperationType")),
+                    "Provider": _ensure_str(genai_fields.get("Provider")),
+                    "RequestModel": _ensure_str(genai_fields.get("RequestModel")),
+                    "ResponseModel": _ensure_str(genai_fields.get("ResponseModel")),
+                    "ResponseId": _ensure_str(genai_fields.get("ResponseId")),
+                    "InputTokens": _ensure_int(genai_fields.get("InputTokens")),
+                    "OutputTokens": _ensure_int(genai_fields.get("OutputTokens")),
+                    "TotalTokens": _ensure_int(genai_fields.get("TotalTokens")),
+                    "EstimatedCostUsd": 0.0,  # Placeholder for cost tracking
+                    "FinishReason": _ensure_str(genai_fields.get("FinishReason")),
+                    "HasToolCalls": _ensure_int(genai_fields.get("HasToolCalls")),
+                    "ToolCallCount": _ensure_int(genai_fields.get("ToolCallCount")),
+                    "RequestContent": _ensure_str(genai_fields.get("RequestContent")),
+                    "ResponseContent": _ensure_str(genai_fields.get("ResponseContent")),
+                    "SystemPrompt": _ensure_str(genai_fields.get("SystemPrompt")),
+                    "RequestParams": _ensure_str(genai_fields.get("RequestParams")) or "{}",
+                    "ResponseMeta": _ensure_str(genai_fields.get("ResponseMeta")) or "{}",
+                    "TokenDetails": _ensure_str(genai_fields.get("TokenDetails")) or "{}",
+                    # Session/Agent context
+                    "UserId": _ensure_str(session_fields.get("UserId")),
+                    "TenantId": _ensure_str(session_fields.get("TenantId")),
+                    "AgentName": _ensure_str(agent_fields.get("AgentName")),
+                    "AgentType": _ensure_str(agent_fields.get("AgentType")),
+                    "AgentStep": _ensure_int(agent_fields.get("AgentStep")),
+                    "AgentIteration": _ensure_int(agent_fields.get("AgentIteration")),
+                    "ParentAgentSpanId": parent_agent_span_id,
+                    # Error tracking
+                    "HasError": _ensure_int(error_fields.get("HasError")),
+                    "ErrorType": _ensure_str(error_fields.get("ErrorType")),
+                    "ErrorMessage": _ensure_str(error_fields.get("ErrorMessage")),
+                    # Network fields (for spans table)
+                    "NetPeerName": _ensure_str(network_fields.get("NetPeerName")),
+                    "NetPeerPort": _ensure_int(network_fields.get("NetPeerPort")),
+                    "NetTransport": _ensure_str(network_fields.get("NetTransport")),
+                    "ServerAddress": _ensure_str(network_fields.get("ServerAddress")),
+                    "ServerPort": _ensure_int(network_fields.get("ServerPort")),
+                    # Category-specific fields (for spans table)
+                    "DbSystem": _ensure_str(db_fields.get("DbSystem")),
+                    "DbName": _ensure_str(db_fields.get("DbName")),
+                    "DbStatement": _ensure_str(db_fields.get("DbStatement")),
+                    "DbOperation": _ensure_str(db_fields.get("DbOperation")),
+                    "DbUser": _ensure_str(db_fields.get("DbUser")),
+                    "DbRedisDbIndex": _ensure_int(db_fields.get("DbRedisDbIndex")),
+                    "DbMongoCollection": _ensure_str(db_fields.get("DbMongoCollection")),
+                    "HttpMethod": _ensure_str(http_fields.get("HttpMethod")),
+                    "HttpUrl": _ensure_str(http_fields.get("HttpUrl")),
+                    "HttpRoute": _ensure_str(http_fields.get("HttpRoute")),
+                    "HttpTarget": _ensure_str(http_fields.get("HttpTarget")),
+                    "HttpStatusCode": _ensure_int(http_fields.get("HttpStatusCode")),
+                    "HttpRequestBodySize": _ensure_int(http_fields.get("HttpRequestBodySize")),
+                    "HttpResponseBodySize": _ensure_int(http_fields.get("HttpResponseBodySize")),
+                    "HttpUserAgent": _ensure_str(http_fields.get("HttpUserAgent")),
+                    "MessagingSystem": _ensure_str(messaging_fields.get("MessagingSystem")),
+                    "MessagingDestination": _ensure_str(messaging_fields.get("MessagingDestination")),
+                    "MessagingDestinationKind": _ensure_str(messaging_fields.get("MessagingDestinationKind")),
+                    "MessagingOperation": _ensure_str(messaging_fields.get("MessagingOperation")),
+                    "MessagingMessageId": _ensure_str(messaging_fields.get("MessagingMessageId")),
+                    "MessagingKafkaPartition": _ensure_int(messaging_fields.get("MessagingKafkaPartition"), -1),
+                    "MessagingKafkaOffset": _ensure_int(messaging_fields.get("MessagingKafkaOffset"), -1),
+                    "MessagingKafkaConsumerGroup": _ensure_str(messaging_fields.get("MessagingKafkaConsumerGroup")),
+                    "RpcSystem": _ensure_str(rpc_fields.get("RpcSystem")),
+                    "RpcService": _ensure_str(rpc_fields.get("RpcService")),
+                    "RpcMethod": _ensure_str(rpc_fields.get("RpcMethod")),
+                    "RpcGrpcStatusCode": _ensure_int(rpc_fields.get("RpcGrpcStatusCode"), -1),
+                    "CloudRegion": _ensure_str(rpc_fields.get("CloudRegion")),
+                    "CloudProvider": _ensure_str(rpc_fields.get("CloudProvider")),
+                    "AwsRequestId": _ensure_str(rpc_fields.get("AwsRequestId")),
+                    # Service info
+                    "ServiceName": _ensure_str(resource_fields.get("ServiceName")) or "unknown",
+                    "ServiceVersion": _ensure_str(resource_fields.get("ServiceVersion")),
+                    "DeploymentEnvironment": _ensure_str(resource_fields.get("DeploymentEnvironment")),
+                    # Overflow attributes (remaining after extraction)
+                    "SpanAttributes": safe_json_dumps(span_attrs),
+                    "ResourceAttributes": safe_json_dumps(resource_attrs),
+                    "Attributes": safe_json_dumps(span_attrs),  # Alias for spans table
                 }
                 rows.append(row)
 

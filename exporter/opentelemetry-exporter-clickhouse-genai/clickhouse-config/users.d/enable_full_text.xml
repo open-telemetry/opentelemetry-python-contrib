@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <profiles>
+        <default>
+            <allow_experimental_full_text_index>1</allow_experimental_full_text_index>
+        </default>
+    </profiles>
+</clickhouse>
