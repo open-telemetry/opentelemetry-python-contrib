@@ -17,9 +17,15 @@ import unittest
 from unittest.mock import AsyncMock, create_autospec, patch
 
 import pytest
-from google.genai.types import GenerateContentConfig, Part
+from google.genai.types import (
+    FunctionDeclarationDict,
+    GenerateContentConfig,
+    Part,
+    ToolDict,
+)
 from mcp import ClientSession as McpClientSession
-from mcp import types as mcp_types
+from mcp import ListToolsResult as McpListToolsResult
+from mcp import Tool as McpTool
 from pydantic import BaseModel, Field
 
 from opentelemetry import context as context_api
@@ -49,7 +55,7 @@ def _mock_callable_tool():
 def _mock_mcp_client_session() -> McpClientSession:
     mock_session = create_autospec(spec=McpClientSession, instance=True)
 
-    mock_tool_obj = mcp_types.Tool(
+    mock_tool_obj = McpTool(
         name="mcp_tool",
         description="Tool from session",
         inputSchema={
@@ -57,7 +63,7 @@ def _mock_mcp_client_session() -> McpClientSession:
             "properties": {"query": {"type": "string"}},
         },
     )
-    mock_result = create_autospec(mcp_types.ListToolsResult, instance=True)
+    mock_result = create_autospec(McpListToolsResult, instance=True)
     mock_result.tools = [mock_tool_obj]
 
     mock_session.list_tools = AsyncMock(return_value=mock_result)
@@ -65,8 +71,8 @@ def _mock_mcp_client_session() -> McpClientSession:
     return mock_session
 
 
-def _mock_mcp_tool() -> mcp_types.Tool:
-    return mcp_types.Tool(
+def _mock_mcp_tool() -> McpTool:
+    return McpTool(
         name="mcp_tool",
         description="A standalone mcp tool",
         inputSchema={
@@ -76,15 +82,14 @@ def _mock_mcp_tool() -> mcp_types.Tool:
     )
 
 
-def _mock_tool_dict():
-    return {
-        "function_declarations": [
-            {
-                "name": "mock_tool",
-                "description": "Description of mock tool.",
-            }
+def _mock_tool_dict() -> ToolDict:
+    return ToolDict(
+        function_declarations=[
+            FunctionDeclarationDict(
+                name="mock_tool", description="Description of mock tool."
+            ),
         ]
-    }
+    )
 
 
 class ExampleResponseSchema(BaseModel):
@@ -492,16 +497,6 @@ class NonStreamingTestCase(TestCase):
                                 },
                                 {
                                     "name": "mcp_tool",
-                                    "description": "Tool from session",
-                                    "inputSchema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "query": {"type": "string"}
-                                        },
-                                    },
-                                },
-                                {
-                                    "name": "mcp_tool",
                                     "description": "A standalone mcp tool",
                                     "inputSchema": {
                                         "type": "object",
@@ -527,7 +522,14 @@ class NonStreamingTestCase(TestCase):
                                     }
                                 },
                                 {
-                                    "error": "serializing tools of type=McpClientSession are not supported in synchronous methods",
+                                    "name": "mcp_tool",
+                                    "description": "Tool from session",
+                                    "inputSchema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "query": {"type": "string"}
+                                        },
+                                    },
                                 },
                                 {
                                     "name": "mcp_tool",

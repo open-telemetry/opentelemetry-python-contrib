@@ -42,10 +42,12 @@ from google.genai.types import (
     GenerateContentConfig,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
+    Tool,
     ToolListUnionDict,
     ToolUnionDict,
 )
 from mcp import ClientSession as McpClientSession
+from mcp import Tool as McpTool
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -192,20 +194,30 @@ def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
     if isinstance(tool, dict):
         return tool
 
-    if callable(tool) and hasattr(tool, "__name__"):
+    if isinstance(tool, Tool):
+        if hasattr(tool, "model_dump"):
+            return tool.model_dump(exclude_none=True)
+
+        return str(tool)
+
+    if callable(tool):
         doc = getattr(tool, "__doc__", "") or ""
         return {
             "function": {
-                "name": getattr(tool, "__name__", str(type(tool))),
+                "name": getattr(tool, "__name__", type(tool).__name__),
                 "description": doc.strip(),
             }
         }
 
-    if hasattr(tool, "model_dump"):
-        try:
+    if isinstance(tool, McpTool):
+        if hasattr(tool, "model_dump"):
             return tool.model_dump(exclude_none=True)
-        except TypeError:
-            pass
+
+        return {
+            "name": getattr(tool, "name", type(tool).__name__),
+            "description": getattr(tool, "description", "") or "",
+            "input_schema": getattr(tool, "input_schema", {}),
+        }
 
     try:
         return {"raw_definition": json.loads(json.dumps(tool))}
@@ -217,9 +229,7 @@ def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
 
 def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
     if isinstance(tool, McpClientSession):
-        return {
-            "error": "serializing tools of type=McpClientSession are not supported in synchronous methods"
-        }
+        return None
 
     return _to_tool_definition_common(tool)
 
@@ -538,6 +548,8 @@ class _GenerateContentInstrumentationHelper:
         if tools := _config_to_tools(config):
             for tool in tools:
                 definition = _to_tool_definition(tool)
+                if definition is None:
+                    continue
                 if isinstance(definition, list):
                     tool_definitions.extend(definition)
                 else:
@@ -555,6 +567,8 @@ class _GenerateContentInstrumentationHelper:
         if tools := _config_to_tools(config):
             for tool in tools:
                 definition = await _to_tool_definition_async(tool)
+                if definition is None:
+                    continue
                 if isinstance(definition, list):
                     tool_definitions.extend(definition)
                 else:
