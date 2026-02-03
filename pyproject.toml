@@ -22,7 +22,7 @@ dependencies = [
   "opentelemetry-instrumentation-aws-lambda[instruments]",
   "opentelemetry-instrumentation-boto[instruments]",
   "opentelemetry-instrumentation-boto3sqs[instruments]",
-  "opentelemetry-instrumentation-botocore[instruments]",
+  "opentelemetry-instrumentation-botocore[instruments-any]",
   "opentelemetry-instrumentation-cassandra[instruments]",
   "opentelemetry-instrumentation-celery[instruments]",
   "opentelemetry-instrumentation-click[instruments]",
