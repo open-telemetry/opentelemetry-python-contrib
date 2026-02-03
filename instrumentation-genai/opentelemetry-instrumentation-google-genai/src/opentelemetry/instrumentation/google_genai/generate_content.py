@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import time
+import typing
 from typing import (
     Any,
     AsyncIterator,
@@ -46,8 +47,6 @@ from google.genai.types import (
     ToolListUnionDict,
     ToolUnionDict,
 )
-from mcp import ClientSession as McpClientSession
-from mcp import Tool as McpTool
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -87,8 +86,29 @@ from .message import (
 from .otel_wrapper import OTelWrapper
 from .tool_call_wrapper import wrapped as wrapped_tool
 
+_is_mcp_imported = False
+if typing.TYPE_CHECKING:
+    from mcp import ClientSession as McpClientSession
+    from mcp import Tool as McpTool
+
+    is_mcp_imported = True
+else:
+    McpClientSession: typing.Type = Any
+    McpTool: typing.Type = Any
+    try:
+        from mcp import ClientSession as McpClientSession
+        from mcp import Tool as McpTool
+
+        _is_mcp_imported = True
+    except ImportError:
+        McpClientSession = None
+        McpTool = None
+
 _logger = logging.getLogger(__name__)
 
+GEN_AI_TOOL_DEFINITIONS = getattr(
+    gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
+)
 
 # Constant used to make the absence of content more understandable.
 _CONTENT_ELIDED = "<elided>"
@@ -190,50 +210,62 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
+def _tool_to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+    if hasattr(tool, "model_dump"):
+        return tool.model_dump(exclude_none=True)
+
+    return str(tool)
+
+
+def _callable_tool_to_tool_definition(tool: Any) -> MessagePart:
+    doc = getattr(tool, "__doc__", "") or ""
+    return {
+        "name": getattr(tool, "__name__", type(tool).__name__),
+        "description": doc.strip(),
+    }
+
+
+def _mcp_tool_to_tool_definition(tool: McpTool) -> MessagePart:
+    if hasattr(tool, "model_dump"):
+        return tool.model_dump(exclude_none=True)
+
+    return {
+        "name": getattr(tool, "name", type(tool).__name__),
+        "description": getattr(tool, "description", "") or "",
+        "input_schema": getattr(tool, "input_schema", {}),
+    }
+
+
 def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
     if isinstance(tool, dict):
         return tool
 
     if isinstance(tool, Tool):
-        if hasattr(tool, "model_dump"):
-            return tool.model_dump(exclude_none=True)
-
-        return str(tool)
+        return _tool_to_tool_definition(tool)
 
     if callable(tool):
-        doc = getattr(tool, "__doc__", "") or ""
-        return {
-            "name": getattr(tool, "__name__", type(tool).__name__),
-            "description": doc.strip(),
-        }
+        return _callable_tool_to_tool_definition(tool)
 
-    if isinstance(tool, McpTool):
-        if hasattr(tool, "model_dump"):
-            return tool.model_dump(exclude_none=True)
-
-        return {
-            "name": getattr(tool, "name", type(tool).__name__),
-            "description": getattr(tool, "description", "") or "",
-            "input_schema": getattr(tool, "input_schema", {}),
-        }
+    if _is_mcp_imported and isinstance(tool, McpTool):
+        return _mcp_tool_to_tool_definition(tool)
 
     try:
         return {"raw_definition": json.loads(json.dumps(tool))}
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         return {
             "error": f"failed to serialize tool definition, tool type={type(tool).__name__}"
         }
 
 
 def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
-    if isinstance(tool, McpClientSession):
+    if _is_mcp_imported and isinstance(tool, McpClientSession):
         return None
 
     return _to_tool_definition_common(tool)
 
 
 async def _to_tool_definition_async(tool: ToolUnionDict) -> MessagePart:
-    if isinstance(tool, McpClientSession):
+    if _is_mcp_imported and isinstance(tool, McpClientSession):
         result = await tool.list_tools()
         return [t.model_dump(exclude_none=True) for t in result.tools]
 
@@ -374,9 +406,7 @@ def _create_completion_details_attributes(
         ]
 
     if tool_definitions:
-        attributes[gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS] = (
-            tool_definitions
-        )
+        attributes[GEN_AI_TOOL_DEFINITIONS] = tool_definitions
 
     return attributes
 

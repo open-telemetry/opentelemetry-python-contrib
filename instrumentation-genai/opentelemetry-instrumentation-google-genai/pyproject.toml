@@ -41,7 +41,7 @@ dependencies = [
   "opentelemetry-instrumentation >=0.58b0, <2",
   "opentelemetry-semantic-conventions >=0.58b0, <2",
   "opentelemetry-util-genai >= 0.2b0, <0.3b0",
-  "mcp"
+  "mcp; python_version >= '3.10'",
 ]
 
 [project.optional-dependencies]

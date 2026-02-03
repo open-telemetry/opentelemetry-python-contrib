@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import typing
 import unittest
 from unittest.mock import AsyncMock, create_autospec, patch
 
@@ -23,9 +24,6 @@ from google.genai.types import (
     Part,
     ToolDict,
 )
-from mcp import ClientSession as McpClientSession
-from mcp import ListToolsResult as McpListToolsResult
-from mcp import Tool as McpTool
 from pydantic import BaseModel, Field
 
 from opentelemetry import context as context_api
@@ -44,7 +42,32 @@ from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .base import TestCase
 
+_is_mcp_imported = False
+if typing.TYPE_CHECKING:
+    from mcp import ClientSession as McpClientSession
+    from mcp import ListToolsResult as McpListToolsResult
+    from mcp import Tool as McpTool
+
+    _is_mcp_imported = True
+else:
+    McpClientSession: typing.Type = typing.Any
+    McpTool: typing.Type = typing.Any
+    McpListToolsResult: typing.Type = typing.Any
+    try:
+        from mcp import ClientSession as McpClientSession
+        from mcp import ListToolsResult as McpListToolsResult
+        from mcp import Tool as McpTool
+
+        _is_mcp_imported = True
+    except ImportError:
+        McpClientSession = None
+        McpListToolsResult = None
+        McpTool = None
 # pylint: disable=too-many-public-methods
+
+GEN_AI_TOOL_DEFINITIONS = getattr(
+    gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
+)
 
 
 def _mock_callable_tool():
@@ -71,7 +94,7 @@ def _mock_mcp_client_session() -> McpClientSession:
     return mock_session
 
 
-def _mock_mcp_tool() -> McpTool:
+def _mock_mcp_tool():
     return McpTool(
         name="mcp_tool",
         description="A standalone mcp tool",
@@ -414,10 +437,11 @@ class NonStreamingTestCase(TestCase):
             sys_instr = "System instruction"
             tools = [
                 _mock_callable_tool,
-                _mock_mcp_client_session(),
-                _mock_mcp_tool(),
                 _mock_tool_dict(),
             ]
+            if _is_mcp_imported:
+                tools.append(_mock_mcp_client_session())
+                tools.append(_mock_mcp_tool())
             with self.subTest(
                 f"mode: {mode}", patched_environ=patched_environ
             ):
@@ -462,7 +486,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes,
                         )
                         self.assertNotIn(
-                            gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS,
+                            GEN_AI_TOOL_DEFINITIONS,
                             event.attributes,
                         )
 
@@ -494,6 +518,14 @@ class NonStreamingTestCase(TestCase):
                                     "description": "Description of some tool.",
                                 },
                                 {
+                                    "function_declarations": (
+                                        {
+                                            "name": "mock_tool",
+                                            "description": "Description of mock tool.",
+                                        },
+                                    )
+                                },
+                                {
                                     "name": "mcp_tool",
                                     "description": "A standalone mcp tool",
                                     "inputSchema": {
@@ -503,6 +535,12 @@ class NonStreamingTestCase(TestCase):
                                         },
                                     },
                                 },
+                            ),
+                            "TOOL_DEFINITIONS_ASYNC": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
+                                },
                                 {
                                     "function_declarations": (
                                         {
@@ -510,12 +548,6 @@ class NonStreamingTestCase(TestCase):
                                             "description": "Description of mock tool.",
                                         },
                                     )
-                                },
-                            ),
-                            "TOOL_DEFINITIONS_ASYNC": (
-                                {
-                                    "name": "_mock_callable_tool",
-                                    "description": "Description of some tool.",
                                 },
                                 {
                                     "name": "mcp_tool",
@@ -536,6 +568,12 @@ class NonStreamingTestCase(TestCase):
                                             "id": {"type": "integer"}
                                         },
                                     },
+                                },
+                            ),
+                            "TOOL_DEFINITIONS_NO_MCP": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
                                 },
                                 {
                                     "function_declarations": (
@@ -571,17 +609,27 @@ class NonStreamingTestCase(TestCase):
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
                         )
-                        self.assertIn(
-                            event.attributes[
-                                gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
-                            ],
-                            [
-                                expected_event_attributes["TOOL_DEFINITIONS"],
-                                expected_event_attributes[
-                                    "TOOL_DEFINITIONS_ASYNC"
+                        if _is_mcp_imported:
+                            self.assertIn(
+                                event.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS"
+                                    ],
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS_ASYNC"
+                                    ],
                                 ],
-                            ],
-                        )
+                            )
+                        else:
+                            self.assertIn(
+                                event.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS_NO_MCP"
+                                    ],
+                                ],
+                            )
                 self.tearDown()
 
     def test_new_semconv_record_completion_in_span(self):
@@ -599,6 +647,14 @@ class NonStreamingTestCase(TestCase):
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 },
             )
+            tools = [
+                _mock_callable_tool,
+                _mock_tool_dict(),
+            ]
+            if _is_mcp_imported:
+                tools.append(_mock_mcp_client_session())
+                tools.append(_mock_mcp_tool())
+
             with self.subTest(
                 f"mode: {mode}", patched_environ=patched_environ
             ):
@@ -611,12 +667,7 @@ class NonStreamingTestCase(TestCase):
                         config=GenerateContentConfig(
                             system_instruction="System instruction",
                             response_schema=ExampleResponseSchema,
-                            tools=[
-                                _mock_callable_tool,
-                                _mock_mcp_client_session(),
-                                _mock_mcp_tool(),
-                                _mock_tool_dict(),
-                            ],
+                            tools=tools,
                         ),
                     )
                     span = self.otel.get_span_named(
@@ -644,15 +695,19 @@ class NonStreamingTestCase(TestCase):
                             ],
                             '[{"content":"System instruction","type":"text"}]',
                         )
-                        self.assertIn(
-                            span.attributes[
-                                gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS
-                            ],
-                            [
-                                '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
-                                '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
-                            ],
-                        )
+                        if _is_mcp_imported:
+                            self.assertIn(
+                                span.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}}]',
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}}]',
+                                ],
+                            )
+                        else:
+                            self.assertEqual(
+                                span.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
+                            )
                     else:
                         self.assertNotIn(
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES,
@@ -667,7 +722,7 @@ class NonStreamingTestCase(TestCase):
                             span.attributes,
                         )
                         self.assertNotIn(
-                            gen_ai_attributes.GEN_AI_TOOL_DEFINITIONS,
+                            GEN_AI_TOOL_DEFINITIONS,
                             span.attributes,
                         )
 
