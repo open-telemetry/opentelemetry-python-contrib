@@ -18,6 +18,7 @@
 
 > [!NOTE]
 > Per-package release is supported for the following packages only:
+> - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
@@ -85,6 +86,7 @@ The workflow will create a pull request that should be merged in order to procee
 
 > [!NOTE]
 > Per-package patch release is supported for the following packages only:
+> - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
