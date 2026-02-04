@@ -3253,7 +3253,6 @@ provides-extras = ["instruments"]
 name = "opentelemetry-instrumentation-google-genai"
 source = { editable = "instrumentation-genai/opentelemetry-instrumentation-google-genai" }
 dependencies = [
-    { name = "mcp", marker = "python_full_version >= '3.10'" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions" },
@@ -3268,7 +3267,6 @@ instruments = [
 [package.metadata]
 requires-dist = [
     { name = "google-genai", marker = "extra == 'instruments'", specifier = ">=1.32.0" },
-    { name = "mcp", marker = "python_full_version >= '3.10'" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
