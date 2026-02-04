@@ -80,6 +80,18 @@ from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
 from opentelemetry.context.context import Context
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _set_http_method,
+    _set_http_net_host,
+    _set_http_scheme,
+    _set_http_status_code,
+    _set_http_target,
+    _set_http_user_agent,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -95,15 +107,7 @@ from opentelemetry.semconv._incubating.attributes.faas_attributes import (
     FAAS_TRIGGER,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
-    HTTP_METHOD,
     HTTP_ROUTE,
-    HTTP_SCHEME,
-    HTTP_STATUS_CODE,
-    HTTP_TARGET,
-    HTTP_USER_AGENT,
-)
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_HOST_NAME,
 )
 from opentelemetry.trace import (
     Span,
@@ -113,6 +117,10 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.http import (
+    _parse_url_query,
+    sanitize_method,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -181,69 +189,105 @@ def _determine_parent_context(
 
 
 def _set_api_gateway_v1_proxy_attributes(
-    lambda_event: Any, span: Span
+    lambda_event: Any,
+    span: Span,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> Span:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
     """
-    span.set_attribute(HTTP_METHOD, lambda_event.get("httpMethod"))
+    http_method = lambda_event.get("httpMethod")
+    if not http_method:
+        http_method = (
+            lambda_event.get("requestContext", {})
+            .get("http", {})
+            .get("method")
+        )
+    span_attributes = {}
+    _set_http_method(
+        span_attributes, http_method, sanitize_method(http_method), sem_conv_opt_in_mode
+    )
 
     if lambda_event.get("headers"):
         if "User-Agent" in lambda_event["headers"]:
-            span.set_attribute(
-                HTTP_USER_AGENT,
+            _set_http_user_agent(
+                span_attributes,
                 lambda_event["headers"]["User-Agent"],
+                sem_conv_opt_in_mode,
             )
         if "X-Forwarded-Proto" in lambda_event["headers"]:
-            span.set_attribute(
-                HTTP_SCHEME,
+            _set_http_scheme(
+                span_attributes,
                 lambda_event["headers"]["X-Forwarded-Proto"],
+                sem_conv_opt_in_mode,
             )
         if "Host" in lambda_event["headers"]:
-            span.set_attribute(
-                NET_HOST_NAME,
-                lambda_event["headers"]["Host"],
-            )
+            host = lambda_event["headers"]["Host"]
+            _set_http_net_host(span_attributes, host, sem_conv_opt_in_mode)
     if "resource" in lambda_event:
         span.set_attribute(HTTP_ROUTE, lambda_event["resource"])
 
         if lambda_event.get("queryStringParameters"):
-            span.set_attribute(
-                HTTP_TARGET,
-                f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}",
+            http_target = f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}"
+            path, query = _parse_url_query(http_target)
+            _set_http_target(
+                span_attributes,
+                http_target,
+                path,
+                query,
+                sem_conv_opt_in_mode,
             )
         else:
-            span.set_attribute(HTTP_TARGET, lambda_event["resource"])
+            res = lambda_event["resource"]
+            path, query = _parse_url_query(res)
+            _set_http_target(
+                span_attributes,
+                res,
+                path,
+                query,
+                sem_conv_opt_in_mode,
+            )
+
+    for key, value in span_attributes.items():
+        span.set_attribute(key, value)
 
     return span
 
 
 def _set_api_gateway_v2_proxy_attributes(
-    lambda_event: Any, span: Span
+    lambda_event: Any,
+    span: Span,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> Span:
     """Sets HTTP attributes for v2 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
+    span_attributes = {}
     if "domainName" in lambda_event["requestContext"]:
-        span.set_attribute(
-            NET_HOST_NAME,
+        _set_http_net_host(
+            span_attributes,
             lambda_event["requestContext"]["domainName"],
+            sem_conv_opt_in_mode,
         )
 
     if lambda_event["requestContext"].get("http"):
         if "method" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                HTTP_METHOD,
-                lambda_event["requestContext"]["http"]["method"],
+            http_method = lambda_event["requestContext"]["http"]["method"]
+            _set_http_method(
+                span_attributes,
+                http_method,
+                sanitize_method(http_method),
+                sem_conv_opt_in_mode,
             )
         if "userAgent" in lambda_event["requestContext"]["http"]:
-            span.set_attribute(
-                HTTP_USER_AGENT,
+            _set_http_user_agent(
+                span_attributes,
                 lambda_event["requestContext"]["http"]["userAgent"],
+                sem_conv_opt_in_mode,
             )
         if "path" in lambda_event["requestContext"]["http"]:
             span.set_attribute(
@@ -251,15 +295,28 @@ def _set_api_gateway_v2_proxy_attributes(
                 lambda_event["requestContext"]["http"]["path"],
             )
             if lambda_event.get("rawQueryString"):
-                span.set_attribute(
-                    HTTP_TARGET,
-                    f"{lambda_event['requestContext']['http']['path']}?{lambda_event['rawQueryString']}",
+                http_target = f"{lambda_event['requestContext']['http']['path']}?{lambda_event['rawQueryString']}"
+                path, query = _parse_url_query(http_target)
+                _set_http_target(
+                    span_attributes,
+                    http_target,
+                    path,
+                    query,
+                    sem_conv_opt_in_mode,
                 )
             else:
-                span.set_attribute(
-                    HTTP_TARGET,
-                    lambda_event["requestContext"]["http"]["path"],
+                http_target = lambda_event["requestContext"]["http"]["path"]
+                path, query = _parse_url_query(http_target)
+                _set_http_target(
+                    span_attributes,
+                    http_target,
+                    path,
+                    query,
+                    sem_conv_opt_in_mode,
                 )
+
+    for key, value in span_attributes.items():
+        span.set_attribute(key, value)
 
     return span
 
@@ -272,6 +329,7 @@ def _instrument(
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
     meter_provider: MeterProvider = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
@@ -314,7 +372,7 @@ def _instrument(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url(sem_conv_opt_in_mode),
         )
 
         token = context_api.attach(parent_context)
@@ -371,18 +429,22 @@ def _instrument(
 
                     if lambda_event.get("version") == "2.0":
                         _set_api_gateway_v2_proxy_attributes(
-                            lambda_event, span
+                            lambda_event, span, sem_conv_opt_in_mode
                         )
                     else:
                         _set_api_gateway_v1_proxy_attributes(
-                            lambda_event, span
+                            lambda_event, span, sem_conv_opt_in_mode
                         )
 
                     if isinstance(result, dict) and result.get("statusCode"):
-                        span.set_attribute(
-                            HTTP_STATUS_CODE,
+                        attribute = {}
+                        _set_http_status_code(
+                            attribute,
                             result.get("statusCode"),
+                            sem_conv_opt_in_mode,
                         )
+                        for key, value in attribute.items():
+                            span.set_attribute(key, value)
         finally:
             if token:
                 context_api.detach(token)
@@ -480,6 +542,10 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
                 flush_timeout_env,
             )
 
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+
         _instrument(
             self._wrapped_module_name,
             self._wrapped_function_name,
@@ -489,6 +555,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             ),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
 
     def _uninstrument(self, **kwargs):
