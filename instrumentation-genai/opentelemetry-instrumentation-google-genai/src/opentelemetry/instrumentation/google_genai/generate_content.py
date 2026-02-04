@@ -93,8 +93,6 @@ if typing.TYPE_CHECKING:
 
     is_mcp_imported = True
 else:
-    McpClientSession: typing.Type = Any
-    McpTool: typing.Type = Any
     try:
         from mcp import ClientSession as McpClientSession
         from mcp import Tool as McpTool
