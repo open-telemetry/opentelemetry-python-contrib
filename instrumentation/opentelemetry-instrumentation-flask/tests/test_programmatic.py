@@ -146,6 +146,8 @@ _recommended_metrics_attrs_both = {
     "http.server.request.duration": _server_duration_attrs_new_copy,
 }
 
+SCOPE = "opentelemetry.instrumentation.flask"
+
 
 # pylint: disable=too-many-public-methods
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
@@ -497,7 +499,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/321")
         self.client.get("/hello/756")
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
         self.assertTrue(len(metrics) != 0)
@@ -525,7 +527,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/321")
         self.client.get("/hello/756")
         duration_s = max(default_timer() - start, 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
         self.assertTrue(len(metrics) != 0)
@@ -557,7 +559,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.post("/hello/756")
         self.client.post("/hello/756")
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -573,7 +575,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_histogram_explicit_bounds=None,
     ):
         # pylint: disable=too-many-nested-blocks
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
