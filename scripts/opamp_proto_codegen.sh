@@ -32,24 +32,17 @@ set -e
 OPAMP_SPEC_REPO_DIR=${OPAMP_SPEC_REPO_DIR:-"/tmp/opamp-spec"}
 # root of opentelemetry-python repo
 repo_root="$(git rev-parse --show-toplevel)"
-venv_dir="/tmp/opamp_proto_codegen_venv"
 proto_output_dir="$repo_root/opamp/opentelemetry-opamp-client/src/opentelemetry/_opamp/proto"
 
-# run on exit even if crash
-cleanup() {
-    echo "Deleting $venv_dir"
-    rm -rf $venv_dir
+protoc() {
+    uvx -c $repo_root/opamp-gen-requirements.txt \
+        --python 3.12 \
+        --from grpcio-tools \
+        --with mypy-protobuf \
+        python -m grpc_tools.protoc "$@"
 }
-trap cleanup EXIT
 
-echo "Creating temporary virtualenv at $venv_dir using $(python3 --version)"
-python3 -m venv $venv_dir
-source $venv_dir/bin/activate
-python -m pip install \
-    -c $repo_root/opamp-gen-requirements.txt \
-    grpcio-tools mypy-protobuf
-echo 'python -m grpc_tools.protoc --version'
-python -m grpc_tools.protoc --version
+protoc --version
 
 # Clone the proto repo if it doesn't exist
 if [ ! -d "$OPAMP_SPEC_REPO_DIR" ]; then
@@ -72,7 +65,7 @@ find . -regex ".*_pb2.*\.pyi?" -exec rm {} +
 
 # generate proto code for all protos
 all_protos=$(find $OPAMP_SPEC_REPO_DIR/ -name "*.proto")
-python -m grpc_tools.protoc \
+protoc \
     -I $OPAMP_SPEC_REPO_DIR/proto \
     --python_out=. \
     --mypy_out=. \
