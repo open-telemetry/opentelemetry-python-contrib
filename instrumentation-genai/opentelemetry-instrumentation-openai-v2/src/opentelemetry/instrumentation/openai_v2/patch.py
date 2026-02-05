@@ -31,8 +31,8 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
-from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.trace.propagation import set_span_in_context
+from opentelemetry.trace.status import Status, StatusCode
 
 from .instruments import Instruments
 from .utils import (
@@ -428,7 +428,9 @@ def _get_span_name(span_attributes):
         GenAIAttributes.GEN_AI_OPERATION_NAME,
         GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
     )
-    model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown")
+    model = span_attributes.get(
+        GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown"
+    )
     return f"{operation} {model}"
 
 
@@ -951,7 +953,9 @@ class ResponseStreamWrapper:
         self.instruments = instruments
         self.request_attributes = request_attributes
         self.operation_name = operation_name
-        self.start_time = start_time if start_time is not None else default_timer()
+        self.start_time = (
+            start_time if start_time is not None else default_timer()
+        )
         self._span_ended = False
         self._span_name_updated = False
 
@@ -1061,16 +1065,18 @@ class ResponseStreamWrapper:
             not in self.request_attributes
             and getattr(response, "model", None)
         ):
-            self.request_attributes[
-                GenAIAttributes.GEN_AI_REQUEST_MODEL
-            ] = response.model
+            self.request_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = (
+                response.model
+            )
             if self.span.is_recording():
                 set_span_attribute(
                     self.span,
                     GenAIAttributes.GEN_AI_REQUEST_MODEL,
                     response.model,
                 )
-            if not self._span_name_updated and hasattr(self.span, "update_name"):
+            if not self._span_name_updated and hasattr(
+                self.span, "update_name"
+            ):
                 self.span.update_name(
                     f"{self.operation_name} {response.model}"
                 )
