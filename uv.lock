@@ -82,7 +82,7 @@ members = [
 
 [[package]]
 name = "aio-pika"
-version = "9.5.6"
+version = "9.5.5"
 source = { registry = "https://us-python.pkg.dev/artifact-foundry-prod/ah-3p-staging-python/simple/" }
 dependencies = [
     { name = "aiormq" },
