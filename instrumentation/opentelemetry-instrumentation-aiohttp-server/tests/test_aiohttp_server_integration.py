@@ -52,6 +52,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
     HTTP_RESPONSE_STATUS_CODE,
@@ -105,9 +106,12 @@ SCOPE = "opentelemetry.instrumentation.aiohttp_server"
 def fixture_test_base():
     test_base = TestBase()
     test_base.setUp()
+    _OpenTelemetrySemanticConventionStability._initialized = False
     try:
         yield test_base
     finally:
+        # Reset semconv stability state otherwise tests can interfere with each other
+        _OpenTelemetrySemanticConventionStability._initialized = False
         test_base.tearDown()
 
 
@@ -215,7 +219,6 @@ async def test_remove_sensitive_params(
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
     )
-    _OpenTelemetrySemanticConventionStability._initialized = False
 
     # Set up instrumentation
     AioHttpServerInstrumentor().instrument()
@@ -263,7 +266,6 @@ async def test_remove_sensitive_params_new(
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
     )
-    _OpenTelemetrySemanticConventionStability._initialized = False
 
     # Set up instrumentation
     AioHttpServerInstrumentor().instrument()
@@ -505,7 +507,6 @@ async def test_semantic_conventions_metrics_old_default(
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.DEFAULT.value
     )
-    _OpenTelemetrySemanticConventionStability._initialized = False
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
@@ -579,7 +580,6 @@ async def test_semantic_conventions_metrics_new(
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
     )
-    _OpenTelemetrySemanticConventionStability._initialized = False
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
@@ -662,7 +662,6 @@ async def test_semantic_conventions_metrics_both(
     monkeypatch.setenv(
         OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP_DUP.value
     )
-    _OpenTelemetrySemanticConventionStability._initialized = False
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
@@ -744,35 +743,355 @@ async def test_semantic_conventions_metrics_both(
 
 
 @pytest.mark.asyncio
-async def test_http_found_redirect_no_error(
-    test_base: TestBase, aiohttp_server, monkeypatch
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPOk, 200),
+        (aiohttp.web.HTTPCreated, 201),
+    ],
+)
+async def test_http_successful_no_error(
+    test_base: TestBase, aiohttp_server, exception_class, expected_status
 ):
     AioHttpServerInstrumentor().instrument()
 
     app = aiohttp.web.Application()
 
-    async def redirect_handler(request):
-        raise aiohttp.web.HTTPFound(location="/destination")
+    async def handler(request):
+        raise exception_class()
 
-    async def destination_handler(request):
-        return aiohttp.web.Response(text="destination")
-
-    app.router.add_get("/redirect", redirect_handler)
-    app.router.add_get("/destination", destination_handler)
+    app.router.add_get("/test", handler)
 
     server = await aiohttp_server(app)
 
-    url = f"http://{server.host}:{server.port}/redirect"
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status,kwargs",
+    [
+        (aiohttp.web.HTTPMovedPermanently, 301, {"location": "/destination"}),
+        (aiohttp.web.HTTPFound, 302, {"location": "/destination"}),
+    ],
+)
+async def test_http_redirection_no_error(
+    test_base: TestBase,
+    aiohttp_server,
+    exception_class,
+    expected_status,
+    kwargs,
+):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(**kwargs)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
     async with aiohttp.ClientSession() as session:
         async with session.get(url, allow_redirects=False) as response:
-            assert response.status == 302
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status,kwargs",
+    [
+        (aiohttp.web.HTTPMovedPermanently, 301, {"location": "/destination"}),
+        (aiohttp.web.HTTPFound, 302, {"location": "/destination"}),
+    ],
+)
+async def test_http_redirection_no_error_new_semconv(
+    test_base: TestBase,
+    aiohttp_server,
+    monkeypatch,
+    exception_class,
+    expected_status,
+    kwargs,
+):
+    # Use new semconv
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
+    )
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(**kwargs)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, allow_redirects=False) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPBadRequest, 400),
+        (aiohttp.web.HTTPNotFound, 404),
+    ],
+)
+async def test_http_client_error_no_error(
+    test_base: TestBase, aiohttp_server, exception_class, expected_status
+):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class()
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.UNSET
+    assert len(span.events) == 0
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPInternalServerError, 500),
+        (aiohttp.web.HTTPBadGateway, 502),
+    ],
+)
+async def test_http_server_error_records_error(
+    test_base: TestBase, aiohttp_server, exception_class, expected_status
+):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class()
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes.get(HTTP_STATUS_CODE) == expected_status
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.events[0].name == "exception"
+    assert (
+        span.events[0].attributes["exception.type"]
+        == f"aiohttp.web_exceptions.{exception_class.__name__}"
+    )
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,message",
+    [
+        (ValueError, "Something went wrong"),
+        (RuntimeError, "Unexpected runtime error"),
+    ],
+)
+async def test_generic_exception_records_error(
+    test_base: TestBase, aiohttp_server, exception_class, message
+):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(message)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 500
 
     spans = test_base.get_finished_spans()
     assert len(spans) == 1
 
     span = spans[0]
 
-    assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 302
-    assert span.status.status_code == StatusCode.UNSET
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.events[0].name == "exception"
+    assert (
+        span.events[0].attributes["exception.type"]
+        == exception_class.__qualname__
+    )
+    assert span.events[0].attributes["exception.message"] == message
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,expected_status",
+    [
+        (aiohttp.web.HTTPInternalServerError, 500),
+        (aiohttp.web.HTTPBadGateway, 502),
+    ],
+)
+async def test_http_server_error_records_error_new_semconv(
+    test_base: TestBase,
+    aiohttp_server,
+    monkeypatch,
+    exception_class,
+    expected_status,
+):
+    # Use new semconv
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
+    )
+
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class()
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == expected_status
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.attributes[ERROR_TYPE] == str(expected_status)
+    assert span.events[0].name == "exception"
+    assert (
+        span.events[0].attributes["exception.type"]
+        == f"aiohttp.web_exceptions.{exception_class.__name__}"
+    )
+
+    AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception_class,message",
+    [
+        (ValueError, "Something went wrong"),
+        (RuntimeError, "Unexpected runtime error"),
+    ],
+)
+async def test_generic_exception_records_error_new_semconv(
+    test_base: TestBase, aiohttp_server, monkeypatch, exception_class, message
+):
+    # Use new semconv
+    monkeypatch.setenv(
+        OTEL_SEMCONV_STABILITY_OPT_IN, _StabilityMode.HTTP.value
+    )
+
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def handler(request):
+        raise exception_class(message)
+
+    app.router.add_get("/test", handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/test"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            assert response.status == 500
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    print(span.to_json())
+    assert span.status.status_code == StatusCode.ERROR
+    assert len(span.events) == 1
+    assert span.attributes[ERROR_TYPE] == exception_class.__qualname__
+    assert span.events[0].name == "exception"
+    assert (
+        span.events[0].attributes["exception.type"]
+        == exception_class.__qualname__
+    )
 
     AioHttpServerInstrumentor().uninstrument()
