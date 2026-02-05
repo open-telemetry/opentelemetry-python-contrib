@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import openai
 import pytest
+from packaging.version import Version
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
@@ -20,7 +22,17 @@ from opentelemetry.semconv._incubating.attributes import (
 
 from .test_utils import assert_all_attributes
 
+# The Responses API was introduced in openai>=1.66.0
+# https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
+OPENAI_VERSION = Version(openai.__version__)
+RESPONSES_API_MIN_VERSION = Version("1.66.0")
+skip_if_no_responses_api = pytest.mark.skipif(
+    OPENAI_VERSION < RESPONSES_API_MIN_VERSION,
+    reason=f"Responses API requires openai >= {RESPONSES_API_MIN_VERSION}, got {OPENAI_VERSION}",
+)
 
+
+@skip_if_no_responses_api
 @pytest.mark.vcr()
 def test_responses_create(
     span_exporter, openai_client, instrument_with_content
@@ -49,6 +61,7 @@ def test_responses_create(
     )
 
 
+@skip_if_no_responses_api
 @pytest.mark.vcr()
 def test_responses_stream_new_response(
     span_exporter, openai_client, instrument_with_content
@@ -87,6 +100,7 @@ def test_responses_stream_new_response(
     )
 
 
+@skip_if_no_responses_api
 @pytest.mark.vcr()
 def test_responses_stream_existing_response(
     span_exporter, openai_client, instrument_with_content

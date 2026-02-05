@@ -130,21 +130,27 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
-        wrap_function_wrapper(
-            module="openai.resources.responses.responses",
-            name="Responses.create",
-            wrapper=responses_create(
-                tracer, logger, instruments, is_content_enabled()
-            ),
-        )
+        # Responses API is only available in openai>=1.66.0
+        # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
+        try:
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="Responses.create",
+                wrapper=responses_create(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
 
-        wrap_function_wrapper(
-            module="openai.resources.responses.responses",
-            name="Responses.stream",
-            wrapper=responses_stream(
-                tracer, logger, instruments, is_content_enabled()
-            ),
-        )
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="Responses.stream",
+                wrapper=responses_stream(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+        except ModuleNotFoundError:
+            # Responses API not available in this version of openai
+            pass
 
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
@@ -153,5 +159,12 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
-        unwrap(openai.resources.responses.responses.Responses, "create")
-        unwrap(openai.resources.responses.responses.Responses, "stream")
+
+        # Responses API is only available in openai>=1.66.0
+        # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
+        try:
+            unwrap(openai.resources.responses.responses.Responses, "create")
+            unwrap(openai.resources.responses.responses.Responses, "stream")
+        except (AttributeError, ModuleNotFoundError):
+            # Responses API not available in this version of openai
+            pass
