@@ -2,6 +2,7 @@ from typing import Optional
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
+from openai import AuthenticationError
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
@@ -75,8 +76,6 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error(
         response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
     except Exception as e:
         # For this test, to get error, cassettes were recorded with no OPENAI_API_KEY, so an error is expected here.
-        from openai import AuthenticationError
-
         assert isinstance(e, AuthenticationError)
 
     assert response is None
