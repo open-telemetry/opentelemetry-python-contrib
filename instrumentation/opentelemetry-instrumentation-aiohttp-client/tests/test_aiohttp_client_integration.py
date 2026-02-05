@@ -1315,7 +1315,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         return finished_spans
 
     def _assert_metrics(self, num_metrics: int = 1):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), num_metrics)
         return metrics
 
