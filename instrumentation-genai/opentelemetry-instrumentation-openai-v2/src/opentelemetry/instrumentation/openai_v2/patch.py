@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
 
 from timeit import default_timer
 from typing import Any, Optional
@@ -30,8 +31,8 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
-from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.trace.propagation import set_span_in_context
 
 from .instruments import Instruments
 from .utils import (
@@ -289,6 +290,7 @@ def responses_create(
     capture_content: bool,
 ):
     """Wrap the `create` method of the `Responses` class to trace it."""
+    # https://github.com/openai/openai-python/blob/dc68b90655912886bd7a6c7787f96005452ebfc9/src/openai/resources/responses/responses.py#L828
     # TODO: Consider migrating Responses instrumentation to TelemetryHandler
     # once content capture and streaming hooks are available.
 
@@ -365,6 +367,7 @@ def responses_stream(
     capture_content: bool,
 ):
     """Wrap the `stream` method of the `Responses` class to trace it."""
+    # https://github.com/openai/openai-python/blob/dc68b90655912886bd7a6c7787f96005452ebfc9/src/openai/resources/responses/responses.py#L966
 
     def traced_method(wrapped, instance, args, kwargs):
         # If this is creating a new response, the create() wrapper will handle tracing.
@@ -425,9 +428,7 @@ def _get_span_name(span_attributes):
         GenAIAttributes.GEN_AI_OPERATION_NAME,
         GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
     )
-    model = span_attributes.get(
-        GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown"
-    )
+    model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown")
     return f"{operation} {model}"
 
 
@@ -436,7 +437,7 @@ def _get_embeddings_span_name(span_attributes):
     return _get_span_name(span_attributes)
 
 
-def _record_metrics(
+def _record_metrics(  # pylint: disable=too-many-branches
     instruments: Instruments,
     duration: float,
     result,
@@ -950,9 +951,7 @@ class ResponseStreamWrapper:
         self.instruments = instruments
         self.request_attributes = request_attributes
         self.operation_name = operation_name
-        self.start_time = (
-            start_time if start_time is not None else default_timer()
-        )
+        self.start_time = start_time if start_time is not None else default_timer()
         self._span_ended = False
         self._span_name_updated = False
 
@@ -1062,18 +1061,16 @@ class ResponseStreamWrapper:
             not in self.request_attributes
             and getattr(response, "model", None)
         ):
-            self.request_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = (
-                response.model
-            )
+            self.request_attributes[
+                GenAIAttributes.GEN_AI_REQUEST_MODEL
+            ] = response.model
             if self.span.is_recording():
                 set_span_attribute(
                     self.span,
                     GenAIAttributes.GEN_AI_REQUEST_MODEL,
                     response.model,
                 )
-            if not self._span_name_updated and hasattr(
-                self.span, "update_name"
-            ):
+            if not self._span_name_updated and hasattr(self.span, "update_name"):
                 self.span.update_name(
                     f"{self.operation_name} {response.model}"
                 )

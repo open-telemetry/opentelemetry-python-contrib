@@ -1,3 +1,6 @@
+# pylint: disable=no-member
+# The responses API is only available in openai>=1.66.0
+# https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
 import os
 
 from openai import OpenAI
