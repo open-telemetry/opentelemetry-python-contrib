@@ -40,7 +40,6 @@ from opentelemetry.semconv.metrics.http_metrics import (
 )
 from opentelemetry.test.test_base import TestBase
 
-
 SCOPE = "opentelemetry.instrumentation.urllib"
 
 

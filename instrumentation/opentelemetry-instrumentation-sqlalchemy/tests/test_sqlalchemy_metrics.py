@@ -18,7 +18,6 @@ from sqlalchemy.pool import QueuePool
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
 
-
 SCOPE = "opentelemetry.instrumentation.sqlalchemy"
 
 
