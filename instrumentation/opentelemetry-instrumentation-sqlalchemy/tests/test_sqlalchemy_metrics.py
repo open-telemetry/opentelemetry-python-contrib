@@ -19,6 +19,9 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.test.test_base import TestBase
 
 
+SCOPE = "opentelemetry.instrumentation.sqlalchemy"
+
+
 class TestSqlalchemyMetricsInstrumentation(TestBase):
     def setUp(self):
         super().setUp()
@@ -31,7 +34,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
         SQLAlchemyInstrumentor().uninstrument()
 
     def assert_pool_idle_used_expected(self, pool_name, idle, used):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 1)
         self.assert_metric_expected(
             metrics[0],
@@ -56,7 +59,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+        self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
         with engine.connect():
             self.assert_pool_idle_used_expected(
@@ -77,7 +80,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+        self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
         with engine.connect():
             self.assert_pool_idle_used_expected(
@@ -98,7 +101,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+        self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
         with engine.connect():
             with engine.connect():
@@ -119,7 +122,7 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
             pool_logging_name=pool_name,
         )
 
-        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+        self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)
 
         with engine.connect():
             with engine.connect():
@@ -152,4 +155,4 @@ class TestSqlalchemyMetricsInstrumentation(TestBase):
 
         engine.connect()
 
-        self.assertIsNone(self.memory_metrics_reader.get_metrics_data())
+        self.assertEqual(len(self.get_sorted_metrics(SCOPE)), 0)

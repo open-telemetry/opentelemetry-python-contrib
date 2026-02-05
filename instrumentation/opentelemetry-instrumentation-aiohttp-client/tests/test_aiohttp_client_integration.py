@@ -91,6 +91,9 @@ def run_with_test_server(
     return loop.run_until_complete(do_request())
 
 
+SCOPE = "opentelemetry.instrumentation.aiohttp_client"
+
+
 # pylint: disable=too-many-public-methods
 class TestAioHttpIntegration(TestBase):
     _test_status_codes = (
@@ -122,7 +125,7 @@ class TestAioHttpIntegration(TestBase):
         )
 
     def _assert_metrics(self, num_metrics: int = 1):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), num_metrics)
         return metrics
 

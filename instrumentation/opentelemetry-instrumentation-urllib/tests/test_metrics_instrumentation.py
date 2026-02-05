@@ -41,6 +41,9 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.test.test_base import TestBase
 
 
+SCOPE = "opentelemetry.instrumentation.urllib"
+
+
 class TestUrllibMetricsInstrumentation(TestBase):
     URL = "http://mock/status/200"
     URL_POST = "http://mock/post"
@@ -96,7 +99,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL) as result:
             client_duration_estimated = (default_timer() - start_time) * 1000
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -162,7 +165,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL) as result:
             duration_s = default_timer() - start_time
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -227,7 +230,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
             duration_s = default_timer() - start_time
             duration = max(round(duration_s * 1000), 0)
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 6)
 
             (
@@ -349,7 +352,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL_POST, data=data_encoded) as result:
             client_duration_estimated = (default_timer() - start_time) * 1000
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -414,7 +417,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -438,7 +441,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
             )
 
         with request.urlopen(self.URL):
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
 
             self.assertEqual(len(metrics), 3)
 
@@ -464,7 +467,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         URLLibInstrumentor().uninstrument()
 
         with request.urlopen(self.URL):
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
 
             self.assertEqual(len(metrics), 3)
 
