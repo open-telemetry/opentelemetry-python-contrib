@@ -35,7 +35,7 @@ def test_add_invocation_state_without_parent(
     assert invocation_manager._invocations[run_id].children == []
 
 
-def test_add_invocation_state_with_parent(invocation_manager, mock_invocation):
+def test_add_invocation_state_with_parent(invocation_manager):
     parent_id = uuid.uuid4()
     child_id = uuid.uuid4()
     parent_invocation = mock.Mock(spec=GenAIInvocation)

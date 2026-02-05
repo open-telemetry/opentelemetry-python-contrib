@@ -115,21 +115,23 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         for sub_messages in messages:
             for message in sub_messages:
                 # Cast to Any to avoid type checking issues with LangChain's complex content type
-                raw_content: Any = message.content # type: ignore[misc]
+                raw_content: Any = message.content  # type: ignore[misc]
                 role = message.type
                 parts: list[Text] = []
 
                 if isinstance(raw_content, str):
                     parts = [Text(content=raw_content, type="text")]
                 elif isinstance(raw_content, list):
-                    for item in raw_content: # type: ignore[misc]
+                    for item in raw_content:  # type: ignore[misc]
                         if isinstance(item, str):
                             parts.append(Text(content=item, type="text"))
                         elif isinstance(item, dict):
                             # Safely extract text content from dict
-                            text_value = item.get("text") # type: ignore[misc]
+                            text_value = item.get("text")  # type: ignore[misc]
                             if isinstance(text_value, str) and text_value:
-                                parts.append(Text(content=text_value, type="text"))
+                                parts.append(
+                                    Text(content=text_value, type="text")
+                                )
 
                 input_messages.append(InputMessage(parts=parts, role=role))
 

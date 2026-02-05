@@ -17,7 +17,7 @@ from __future__ import annotations
 from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal, Type, Union, Dict
+from typing import Any, Dict, Literal, Type, Union
 
 from typing_extensions import TypeAlias
 
