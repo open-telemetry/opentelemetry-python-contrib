@@ -150,11 +150,6 @@ members = [
   "util/*",
 ]
 
-[[tool.uv.index]]
-name = "pypi"
-url = "https://pypi.org/simple"
-default = true
-
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
 target-version = "py39"
