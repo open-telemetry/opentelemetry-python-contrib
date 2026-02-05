@@ -15,7 +15,8 @@
 # This variant of the requirements aims to test the system using
 # the oldest supported version of external dependencies.
 
-openai[datalib]==1.26.0
+openai==1.26.0
+numpy==2.0.2
 pydantic==2.8.2
 httpx==0.27.2
 Deprecated==1.2.14
