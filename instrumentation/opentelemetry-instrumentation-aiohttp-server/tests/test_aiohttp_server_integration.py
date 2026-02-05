@@ -72,6 +72,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -740,3 +741,38 @@ async def test_semantic_conventions_metrics_both(
     finally:
         await client_session.close()
         AioHttpServerInstrumentor().uninstrument()
+
+
+@pytest.mark.asyncio
+async def test_http_found_redirect_no_error(
+    test_base: TestBase, aiohttp_server, monkeypatch
+):
+    AioHttpServerInstrumentor().instrument()
+
+    app = aiohttp.web.Application()
+
+    async def redirect_handler(request):
+        raise aiohttp.web.HTTPFound(location="/destination")
+
+    async def destination_handler(request):
+        return aiohttp.web.Response(text="destination")
+
+    app.router.add_get("/redirect", redirect_handler)
+    app.router.add_get("/destination", destination_handler)
+
+    server = await aiohttp_server(app)
+
+    url = f"http://{server.host}:{server.port}/redirect"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, allow_redirects=False) as response:
+            assert response.status == 302
+
+    spans = test_base.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+
+    assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 302
+    assert span.status.status_code == StatusCode.UNSET
+
+    AioHttpServerInstrumentor().uninstrument()
