@@ -59,6 +59,8 @@ from .patch import (
     async_embeddings_create,
     chat_completions_create,
     embeddings_create,
+    responses_create,
+    responses_stream,
 )
 
 
@@ -128,6 +130,22 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
+        wrap_function_wrapper(
+            module="openai.resources.responses.responses",
+            name="Responses.create",
+            wrapper=responses_create(
+                tracer, logger, instruments, is_content_enabled()
+            ),
+        )
+
+        wrap_function_wrapper(
+            module="openai.resources.responses.responses",
+            name="Responses.stream",
+            wrapper=responses_stream(
+                tracer, logger, instruments, is_content_enabled()
+            ),
+        )
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
@@ -135,3 +153,5 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
+        unwrap(openai.resources.responses.responses.Responses, "create")
+        unwrap(openai.resources.responses.responses.Responses, "stream")

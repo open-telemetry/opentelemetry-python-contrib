@@ -202,8 +202,11 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
     }
 
-    # Add chat-specific attributes only for chat operations
-    if operation_name == GenAIAttributes.GenAiOperationNameValues.CHAT.value:
+    # Add chat-like attributes for chat and generate-content operations
+    if operation_name in (
+        GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+        GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
+    ):
         attributes.update(
             {
                 GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get(
@@ -213,7 +216,8 @@ def get_llm_request_attributes(
                 or kwargs.get("top_p"),
                 GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get(
                     "max_tokens"
-                ),
+                )
+                or kwargs.get("max_output_tokens"),
                 GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
                     "presence_penalty"
                 ),
