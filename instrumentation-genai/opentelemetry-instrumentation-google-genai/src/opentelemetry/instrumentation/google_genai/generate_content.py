@@ -653,10 +653,6 @@ class _GenerateContentInstrumentationHelper:
     async def _maybe_get_tool_definitions_async(
         self, config
     ) -> list[ToolDefinition]:
-        if (
-            self.sem_conv_opt_in_mode
-            != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-        ):
             return []
 
         tool_definitions = []
