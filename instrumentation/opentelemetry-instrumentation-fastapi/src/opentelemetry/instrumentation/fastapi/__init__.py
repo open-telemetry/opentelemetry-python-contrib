@@ -265,6 +265,8 @@ class FastAPIInstrumentor(BaseInstrumentor):
             http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
             exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
         """
+        # unwraps any middleware to get to the FastAPI or Starlette app
+        app = _unwrap_middleware(app)
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
 
@@ -391,6 +393,12 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     app=otel_middleware,
                 )
 
+            # add check if the app object has build_middleware_stack method
+            if not hasattr(app, "build_middleware_stack"):
+                _logger.error(
+                    "Skipping FastAPI instrumentation due to missing build_middleware_stack method on app object."
+                )
+                return
             app._original_build_middleware_stack = app.build_middleware_stack
             app.build_middleware_stack = types.MethodType(
                 functools.wraps(app.build_middleware_stack)(
@@ -409,6 +417,9 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI):
+        # Unwraps any middleware to get to the FastAPI or Starlette app
+        app = _unwrap_middleware(app)
+
         original_build_middleware_stack = getattr(
             app, "_original_build_middleware_stack", None
         )
@@ -514,3 +525,17 @@ def _get_default_span_details(scope):
     else:  # fallback
         span_name = method
     return span_name, attributes
+
+
+def _unwrap_middleware(app):
+    """
+    Unwraps the middleware stack to find the underlying FastAPI or Starlette app.
+
+    Args:
+        app: The ASGI application potentially wrapped in middleware.
+    Returns:
+        The unwrapped FastAPI or Starlette application.
+    """
+    while hasattr(app, "app"):
+        app = app.app
+    return app
