@@ -300,7 +300,7 @@ def responses_create(
             instance,
             GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
         )
-        span_name = _get_span_name(span_attributes)
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
         streaming = is_streaming(kwargs)
 
         with tracer.start_as_current_span(
@@ -379,7 +379,7 @@ def responses_stream(
             instance,
             GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
         )
-        span_name = _get_span_name(span_attributes)
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
 
         with tracer.start_as_current_span(
             name=span_name,
@@ -422,21 +422,9 @@ def responses_stream(
     return traced_method
 
 
-def _get_span_name(span_attributes):
-    """Get span name for LLM operations."""
-    operation = span_attributes.get(
-        GenAIAttributes.GEN_AI_OPERATION_NAME,
-        GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
-    )
-    model = span_attributes.get(
-        GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown"
-    )
-    return f"{operation} {model}"
-
-
 def _get_embeddings_span_name(span_attributes):
     """Get span name for embeddings operations."""
-    return _get_span_name(span_attributes)
+    return f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
 
 
 def _record_metrics(  # pylint: disable=too-many-branches
