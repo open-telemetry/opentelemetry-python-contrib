@@ -166,6 +166,16 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
+                    ResourceAttributes.CLOUD_ACCOUNT_ID: "111122223333",
+                    ResourceAttributes.CLOUD_AVAILABILITY_ZONE: "us-west-2d",
+                    ResourceAttributes.CLOUD_REGION: "us-west-2",
+                    ResourceAttributes.CLOUD_RESOURCE_ID: "arn:aws:ecs:us-west-2:111122223333:container/0206b271-b33f-47ab-86c6-a0ba208a70a9",
+                    ResourceAttributes.AWS_ECS_CONTAINER_ARN: "arn:aws:ecs:us-west-2:111122223333:container/0206b271-b33f-47ab-86c6-a0ba208a70a9",
+                    ResourceAttributes.AWS_ECS_CLUSTER_ARN: "arn:aws:ecs:us-west-2:111122223333:cluster/default",
+                    ResourceAttributes.AWS_ECS_LAUNCHTYPE: "ec2",
+                    ResourceAttributes.AWS_ECS_TASK_ARN: "arn:aws:ecs:us-west-2:111122223333:task/default/158d1c8083dd49d6b527399fd6414f5c",
+                    ResourceAttributes.AWS_ECS_TASK_FAMILY: "curltest",
+                    ResourceAttributes.AWS_ECS_TASK_REVISION: "26",
                     ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/metadata",),
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata",
@@ -176,12 +186,6 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
                     ResourceAttributes.AWS_LOG_STREAM_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata:log-stream:ecs/curl/8f03e41243824aea923aca126495f665",
                     ),
-                    ResourceAttributes.AWS_ECS_CONTAINER_ARN: "arn:aws:ecs:us-west-2:111122223333:container/0206b271-b33f-47ab-86c6-a0ba208a70a9",
-                    ResourceAttributes.AWS_ECS_CLUSTER_ARN: "arn:aws:ecs:us-west-2:111122223333:cluster/default",
-                    ResourceAttributes.AWS_ECS_LAUNCHTYPE: "ec2",
-                    ResourceAttributes.AWS_ECS_TASK_ARN: "arn:aws:ecs:us-west-2:111122223333:task/default/158d1c8083dd49d6b527399fd6414f5c",
-                    ResourceAttributes.AWS_ECS_TASK_FAMILY: "curltest",
-                    ResourceAttributes.AWS_ECS_TASK_REVISION: "26",
                 }
             ),
         )
@@ -230,6 +234,16 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
+                    ResourceAttributes.CLOUD_ACCOUNT_ID: "111122223333",
+                    ResourceAttributes.CLOUD_AVAILABILITY_ZONE: "us-west-2a",
+                    ResourceAttributes.CLOUD_REGION: "us-west-2",
+                    ResourceAttributes.CLOUD_RESOURCE_ID: "arn:aws:ecs:us-west-2:111122223333:container/05966557-f16c-49cb-9352-24b3a0dcd0e1",
+                    ResourceAttributes.AWS_ECS_CONTAINER_ARN: "arn:aws:ecs:us-west-2:111122223333:container/05966557-f16c-49cb-9352-24b3a0dcd0e1",
+                    ResourceAttributes.AWS_ECS_CLUSTER_ARN: "arn:aws:ecs:us-west-2:111122223333:cluster/default",
+                    ResourceAttributes.AWS_ECS_LAUNCHTYPE: "fargate",
+                    ResourceAttributes.AWS_ECS_TASK_ARN: "arn:aws:ecs:us-west-2:111122223333:task/default/e9028f8d5d8e4f258373e7b93ce9a3c3",
+                    ResourceAttributes.AWS_ECS_TASK_FAMILY: "curltest",
+                    ResourceAttributes.AWS_ECS_TASK_REVISION: "3",
                     ResourceAttributes.AWS_LOG_GROUP_NAMES: (
                         "/ecs/containerlogs",
                     ),
@@ -242,12 +256,6 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
                     ResourceAttributes.AWS_LOG_STREAM_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/containerlogs:log-stream:ecs/curl/cd189a933e5849daa93386466019ab50",
                     ),
-                    ResourceAttributes.AWS_ECS_CONTAINER_ARN: "arn:aws:ecs:us-west-2:111122223333:container/05966557-f16c-49cb-9352-24b3a0dcd0e1",
-                    ResourceAttributes.AWS_ECS_CLUSTER_ARN: "arn:aws:ecs:us-west-2:111122223333:cluster/default",
-                    ResourceAttributes.AWS_ECS_LAUNCHTYPE: "fargate",
-                    ResourceAttributes.AWS_ECS_TASK_ARN: "arn:aws:ecs:us-west-2:111122223333:task/default/e9028f8d5d8e4f258373e7b93ce9a3c3",
-                    ResourceAttributes.AWS_ECS_TASK_FAMILY: "curltest",
-                    ResourceAttributes.AWS_ECS_TASK_REVISION: "3",
                 }
             ),
         )

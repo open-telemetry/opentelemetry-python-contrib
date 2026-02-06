@@ -864,6 +864,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2132](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2132))
 - `opentelemetry-resource-detector-azure` Changed timeout to 4 seconds due to [timeout bug](https://github.com/open-telemetry/opentelemetry-python/issues/3644)
   ([#2136](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2136))
+- `opentelemetry/sdk/extension/aws` Implement `cloud.account.id`, `cloud.availability_zone`, `cloud.region` and `cloud.resource_id` resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
+  ([#2141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2141))
 - `opentelemetry-resource-detector-azure` Suppress instrumentation for `urllib` call
   ([#2178](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2178))
 - AwsLambdaInstrumentor handles and re-raises function exception
