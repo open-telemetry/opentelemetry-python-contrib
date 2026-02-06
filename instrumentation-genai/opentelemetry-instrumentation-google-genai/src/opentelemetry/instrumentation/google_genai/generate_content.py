@@ -563,12 +563,12 @@ class _GenerateContentInstrumentationHelper:
         block_reason = response.prompt_feedback.block_reason.name.upper()
         self._error_type = f"BLOCKED_{block_reason}"
 
-    def _maybe_get_tool_definitions(self, config):
+    def _maybe_get_tool_definitions(self, config) -> list[MessagePart]:
         if (
             self.sem_conv_opt_in_mode
             != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         ):
-            return None
+            return []
 
         tool_definitions = []
         if tools := _config_to_tools(config):
@@ -582,12 +582,14 @@ class _GenerateContentInstrumentationHelper:
                     tool_definitions.append(definition)
         return tool_definitions
 
-    async def _maybe_get_tool_definitions_async(self, config):
+    async def _maybe_get_tool_definitions_async(
+        self, config
+    ) -> list[MessagePart]:
         if (
             self.sem_conv_opt_in_mode
             != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         ):
-            return None
+            return []
 
         tool_definitions = []
         if tools := _config_to_tools(config):
@@ -609,7 +611,7 @@ class _GenerateContentInstrumentationHelper:
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
-        tool_definitions: list[MessagePart] = None,
+        tool_definitions: list[MessagePart] = [],
     ):
         if (
             self.sem_conv_opt_in_mode
@@ -637,6 +639,7 @@ class _GenerateContentInstrumentationHelper:
             inputs=input_messages,
             outputs=output_messages,
             system_instruction=system_instructions,
+            tool_definitions=tool_definitions or [],
             span=span,
             log_record=event,
         )

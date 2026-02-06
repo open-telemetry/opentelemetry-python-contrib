@@ -61,6 +61,8 @@ class CompletionHook(Protocol):
         outputs: The outputs of the GenAI interaction.
         system_instruction: The system instruction of the GenAI
             interaction.
+        tool_definitions: The list of source system tool definitions
+        available to the GenAI agent or model.
         span: The span associated with the GenAI interaction.
         log_record: The event log associated with the GenAI
             interaction.
@@ -72,6 +74,7 @@ class CompletionHook(Protocol):
         inputs: list[types.InputMessage],
         outputs: list[types.OutputMessage],
         system_instruction: list[types.MessagePart],
+        tool_definitions: list[types.MessagePart],
         span: Span | None = None,
         log_record: LogRecord | None = None,
     ) -> None: ...
