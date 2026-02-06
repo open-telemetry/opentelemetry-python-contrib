@@ -17,7 +17,7 @@ import types
 from unittest import IsolatedAsyncioTestCase, mock
 
 import psycopg
-from psycopg.sql import SQL, Composed, Identifier
+from psycopg.sql import SQL, Composed
 
 import opentelemetry.instrumentation.psycopg
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
@@ -371,7 +371,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
 
     def test_instrument_connection_composed_query(self):
         cnx = psycopg.connect(database="test")
-        query: Composed = SQL("SELECT * FROM {}").format(Identifier("test"))
+        query: Composed = SQL("SELECT * FROM test").format()
 
         cnx = PsycopgInstrumentor().instrument_connection(cnx)
         self.assertTrue(issubclass(cnx.cursor_factory, MockCursor))
@@ -383,7 +383,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(len(spans_list), 1)
         self.assertEqual(spans_list[0].name, "SELECT")
         self.assertEqual(
-            spans_list[0].attributes["db.statement"], 'SELECT * FROM "test"'
+            spans_list[0].attributes["db.statement"], "SELECT * FROM test"
         )
 
     # pylint: disable=unused-argument
