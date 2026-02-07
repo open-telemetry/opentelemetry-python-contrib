@@ -371,6 +371,7 @@ def responses_stream(
 
     def traced_method(wrapped, instance, args, kwargs):
         # If this is creating a new response, the create() wrapper will handle tracing.
+        # This is done to avoid duplicate span creation. https://github.com/openai/openai-python/blob/dc68b90655912886bd7a6c7787f96005452ebfc9/src/openai/resources/responses/responses.py#L1036
         if "response_id" not in kwargs and "starting_after" not in kwargs:
             return wrapped(*args, **kwargs)
 
@@ -379,7 +380,7 @@ def responses_stream(
             instance,
             GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
         )
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL, 'unknown')}"
 
         with tracer.start_as_current_span(
             name=span_name,
@@ -435,13 +436,12 @@ def _record_metrics(  # pylint: disable=too-many-branches
     error_type: Optional[str],
     operation_name: str,
 ):
-    request_model = request_attributes.get(
-        GenAIAttributes.GEN_AI_REQUEST_MODEL, "unknown"
-    )
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_model,
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_attributes[
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        ],
     }
 
     if "gen_ai.embeddings.dimension.count" in request_attributes:
