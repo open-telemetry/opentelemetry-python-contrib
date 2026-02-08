@@ -9,7 +9,6 @@ an OTLP compatible endpoint.
 """
 
 import anyio
-
 from claude_agent_sdk import (
     AgentDefinition,
     AssistantMessage,

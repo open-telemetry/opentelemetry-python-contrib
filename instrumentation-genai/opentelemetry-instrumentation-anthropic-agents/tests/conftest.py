@@ -80,7 +80,9 @@ def meter_provider(metric_reader):
 
 
 @pytest.fixture
-def instrument_anthropic_agents(tracer_provider, logger_provider, meter_provider):
+def instrument_anthropic_agents(
+    tracer_provider, logger_provider, meter_provider
+):
     """Fixture to instrument Anthropic Agents with test providers."""
     # pylint: disable=import-outside-toplevel
     from opentelemetry.instrumentation.anthropic_agents import (  # noqa: PLC0415

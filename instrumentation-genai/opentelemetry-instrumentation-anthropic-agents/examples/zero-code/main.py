@@ -9,7 +9,6 @@ the ``opentelemetry-instrument`` CLI — no OpenTelemetry setup code needed.
 """
 
 import anyio
-
 from claude_agent_sdk import (
     AgentDefinition,
     AssistantMessage,

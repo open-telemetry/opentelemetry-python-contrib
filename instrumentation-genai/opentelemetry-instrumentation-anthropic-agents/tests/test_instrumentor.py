@@ -14,7 +14,9 @@
 
 """Tests for the AnthropicAgentsInstrumentor class."""
 
-from opentelemetry.instrumentation.anthropic_agents import AnthropicAgentsInstrumentor
+from opentelemetry.instrumentation.anthropic_agents import (
+    AnthropicAgentsInstrumentor,
+)
 
 
 def test_instrumentor_instantiation():
