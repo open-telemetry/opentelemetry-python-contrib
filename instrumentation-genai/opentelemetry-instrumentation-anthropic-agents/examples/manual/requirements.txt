@@ -1,5 +1,6 @@
-anthropic>=0.16.0
-opentelemetry-sdk~=1.36.0
-opentelemetry-instrumentation-anthropic-agents #TODO: update to 2.1b0 when released
-opentelemetry-exporter-otlp-proto-grpc~=1.36.0
+claude-agent-sdk>=0.1.14
+anyio>=4.0
 
+opentelemetry-sdk~=1.36.0
+opentelemetry-exporter-otlp-proto-grpc~=1.36.0
+opentelemetry-instrumentation-anthropic-agents~=2.1b0

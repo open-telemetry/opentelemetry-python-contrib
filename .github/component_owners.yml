@@ -57,3 +57,6 @@ components:
 
   instrumentation-genai/opentelemetry-instrumentation-anthropic:
     - vasantteja
+
+  instrumentation-genai/opentelemetry-instrumentation-anthropic-agents:
+    - vasantteja

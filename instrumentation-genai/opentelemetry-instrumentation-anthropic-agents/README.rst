@@ -7,7 +7,7 @@ OpenTelemetry Anthropic Agents Instrumentation
    :target: https://pypi.org/project/opentelemetry-instrumentation-anthropic-agents/
 
 This library allows tracing LLM requests made by the
-`Anthropic Python SDK <https://pypi.org/project/anthropic/>`_ Agents.
+`Claude Agent SDK <https://github.com/anthropics/claude-agent-sdk-python>`_.
 
 Installation
 ------------
@@ -16,7 +16,7 @@ Installation
 
     pip install opentelemetry-instrumentation-anthropic-agents
 
-If you don't have an Anthropic application yet, try our `examples <examples>`_
+If you don't have a Claude Agent SDK application yet, try our `examples <examples>`_
 which only need a valid Anthropic API key.
 
 Check out the `zero-code example <examples/zero-code>`_ for a quick start.
@@ -30,20 +30,36 @@ Check out the `manual example <examples/manual>`_ for more details.
 .. code-block:: python
 
     from opentelemetry.instrumentation.anthropic_agents import AnthropicAgentsInstrumentor
-    import anthropic
+    from claude_agent_sdk import ClaudeAgentOptions, AgentDefinition, AssistantMessage, TextBlock, query
 
-    # Instrument Anthropic
+    # Instrument Anthropic Agents
     AnthropicAgentsInstrumentor().instrument()
 
-    # Use Anthropic client as normal
-    client = anthropic.Anthropic()
-    response = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
-        max_tokens=1024,
-        messages=[
-            {"role": "user", "content": "Hello, Claude!"}
-        ]
-    )
+    # Use Claude Agent SDK as normal
+    import anyio
+
+    async def main():
+        options = ClaudeAgentOptions(
+            agents={
+                "assistant": AgentDefinition(
+                    description="A helpful assistant",
+                    prompt="You are a helpful assistant.",
+                    tools=["Read"],
+                    model="sonnet",
+                ),
+            },
+        )
+
+        async for message in query(
+            prompt="Hello, Claude!",
+            options=options,
+        ):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        print(block.text)
+
+    anyio.run(main)
 
 
 Configuration
@@ -64,4 +80,5 @@ References
 ----------
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
+* `Claude Agent SDK (Python) <https://github.com/anthropics/claude-agent-sdk-python>`_
 * `Anthropic Documentation <https://docs.anthropic.com/>`_

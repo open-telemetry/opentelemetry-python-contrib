@@ -16,7 +16,8 @@
 OpenTelemetry Anthropic Agents Instrumentation
 ===============================================
 
-Instrumentation for the Anthropic Python SDK Agents.
+Instrumentation for the `Claude Agent SDK
+<https://github.com/anthropics/claude-agent-sdk-python>`_.
 
 Usage
 -----
@@ -24,18 +25,33 @@ Usage
 .. code-block:: python
 
     from opentelemetry.instrumentation.anthropic_agents import AnthropicAgentsInstrumentor
-    import anthropic
+    from claude_agent_sdk import ClaudeAgentOptions, AgentDefinition, AssistantMessage, TextBlock, query
 
     # Enable instrumentation
     AnthropicAgentsInstrumentor().instrument()
 
-    # Use Anthropic client normally
-    client = anthropic.Anthropic()
-    response = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": "Hello!"}]
-    )
+    # Use Claude Agent SDK normally
+    import anyio
+
+    async def main():
+        options = ClaudeAgentOptions(
+            agents={
+                "assistant": AgentDefinition(
+                    description="A helpful assistant",
+                    prompt="You are a helpful assistant.",
+                    tools=["Read"],
+                    model="sonnet",
+                ),
+            },
+        )
+
+        async for message in query(prompt="Hello!", options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        print(block.text)
+
+    anyio.run(main)
 
 Configuration
 -------------

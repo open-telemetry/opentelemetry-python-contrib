@@ -80,6 +80,10 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-anthropic",
+    # Anthropic Agents instrumentation is currently excluded because it is still in early
+    # development. This filter will get removed once it is further along in its
+    # development lifecycle and ready to be included by default.
+    "opentelemetry-instrumentation-anthropic-agents",
 ]
 
 # Static version specifiers for instrumentations that are released independently
