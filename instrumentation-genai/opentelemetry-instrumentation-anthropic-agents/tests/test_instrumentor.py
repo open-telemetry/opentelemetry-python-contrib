@@ -31,7 +31,7 @@ def test_instrumentation_dependencies():
 
     assert dependencies is not None
     assert len(dependencies) > 0
-    assert "anthropic >= 0.16.0" in dependencies
+    assert "claude-agent-sdk >= 0.1.14" in dependencies
 
 
 def test_instrument_uninstrument_cycle(
@@ -93,24 +93,12 @@ def test_uninstrument_without_instrument():
     instrumentor.uninstrument()
 
 
-def test_instrument_with_no_providers(
-    tracer_provider, logger_provider, meter_provider
-):
-    """Test that instrument() works without explicit providers.
-
-    Note: We still pass providers to ensure a clean test environment,
-    but this tests that the instrumentor can be called and cleaned up.
-    In a real scenario without explicit providers, it would use the
-    global (no-op) providers.
-    """
+def test_instrument_with_no_providers():
+    """Test that instrument() works without explicit providers."""
     instrumentor = AnthropicAgentsInstrumentor()
 
-    # Test that instrument/uninstrument cycle works
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-    )
+    # Should use global providers
+    instrumentor.instrument()
 
     # Clean up
     instrumentor.uninstrument()

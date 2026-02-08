@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "anthropic >= 0.16.0",
+  "claude-agent-sdk >= 0.1.14",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
