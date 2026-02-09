@@ -14,15 +14,8 @@
 
 """Tests for async AsyncMessages.create and AsyncMessages.stream instrumentation."""
 
-from types import SimpleNamespace
-
 import pytest
 from anthropic import APIConnectionError, AsyncAnthropic, NotFoundError
-
-from opentelemetry.instrumentation.anthropic.utils import (
-    AsyncStreamWrapper,
-    MessageWrapper,
-)
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -32,7 +25,6 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-from opentelemetry.util.genai.types import LLMInvocation
 
 
 def normalize_stop_reason(stop_reason):
@@ -204,6 +196,14 @@ async def test_async_messages_create_token_usage(
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
         == response.usage.output_tokens
+    )
+    assert (
+        span.attributes["gen_ai.usage.cache_creation.input_tokens"]
+        == (response.usage.cache_creation_input_tokens or 0)
+    )
+    assert (
+        span.attributes["gen_ai.usage.cache_read.input_tokens"]
+        == (response.usage.cache_read_input_tokens or 0)
     )
 
 
@@ -517,6 +517,14 @@ async def test_async_messages_stream_token_usage(
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
         == final_message.usage.output_tokens
     )
+    assert (
+        span.attributes["gen_ai.usage.cache_creation.input_tokens"]
+        == (final_message.usage.cache_creation_input_tokens or 0)
+    )
+    assert (
+        span.attributes["gen_ai.usage.cache_read.input_tokens"]
+        == (final_message.usage.cache_read_input_tokens or 0)
+    )
 
 
 @pytest.mark.asyncio
@@ -549,121 +557,3 @@ async def test_async_messages_stream_connection_error(
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
     assert ErrorAttributes.ERROR_TYPE in span.attributes
     assert "APIConnectionError" in span.attributes[ErrorAttributes.ERROR_TYPE]
-
-
-@pytest.mark.asyncio
-async def test_message_wrapper_aggregates_cache_tokens():
-    """MessageWrapper should aggregate cache token fields into input tokens."""
-
-    class FakeHandler:
-        def stop_llm(self, invocation):
-            return invocation
-
-    usage = SimpleNamespace(
-        input_tokens=10,
-        cache_creation_input_tokens=3,
-        cache_read_input_tokens=7,
-        output_tokens=5,
-    )
-    message = SimpleNamespace(
-        model="claude-sonnet-4-20250514",
-        id="msg_123",
-        stop_reason="end_turn",
-        usage=usage,
-    )
-    invocation = LLMInvocation(
-        request_model="claude-sonnet-4-20250514",
-        provider="anthropic",
-    )
-
-    MessageWrapper(message, FakeHandler(), invocation)  # type: ignore[arg-type]
-
-    assert invocation.input_tokens == 20
-    assert invocation.output_tokens == 5
-    assert invocation.finish_reasons == ["stop"]
-    assert (
-        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 3
-    )
-    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 7
-
-
-@pytest.mark.asyncio
-async def test_async_stream_wrapper_aggregates_cache_tokens():
-    """AsyncStreamWrapper should aggregate cache token fields from chunks."""
-
-    class FakeHandler:
-        def __init__(self):
-            self.stop_calls = 0
-            self.fail_calls = 0
-
-        def stop_llm(self, invocation):
-            self.stop_calls += 1
-            return invocation
-
-        def fail_llm(self, invocation, error):
-            self.fail_calls += 1
-            return invocation
-
-    message_start = SimpleNamespace(
-        type="message_start",
-        message=SimpleNamespace(
-            id="msg_1",
-            model="claude-sonnet-4-20250514",
-            usage=SimpleNamespace(
-                input_tokens=9,
-                cache_creation_input_tokens=1,
-                cache_read_input_tokens=2,
-            ),
-        ),
-    )
-    message_delta = SimpleNamespace(
-        type="message_delta",
-        delta=SimpleNamespace(stop_reason="end_turn"),
-        usage=SimpleNamespace(
-            input_tokens=10,
-            cache_creation_input_tokens=3,
-            cache_read_input_tokens=4,
-            output_tokens=8,
-        ),
-    )
-
-    class FakeAsyncStream:
-        def __init__(self):
-            self._chunks = [message_start, message_delta]
-            self._index = 0
-
-        def __aiter__(self):
-            return self
-
-        async def __anext__(self):
-            if self._index >= len(self._chunks):
-                raise StopAsyncIteration
-            value = self._chunks[self._index]
-            self._index += 1
-            return value
-
-        async def close(self):
-            return None
-
-    invocation = LLMInvocation(
-        request_model="claude-sonnet-4-20250514",
-        provider="anthropic",
-    )
-    handler = FakeHandler()
-    wrapper = AsyncStreamWrapper(
-        FakeAsyncStream(), handler, invocation
-    )  # type: ignore[arg-type]
-
-    async for _ in wrapper:
-        pass
-    await wrapper.close()
-
-    assert invocation.input_tokens == 17
-    assert invocation.output_tokens == 8
-    assert invocation.finish_reasons == ["stop"]
-    assert (
-        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 3
-    )
-    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 4
-    assert handler.stop_calls == 1
-    assert handler.fail_calls == 0
