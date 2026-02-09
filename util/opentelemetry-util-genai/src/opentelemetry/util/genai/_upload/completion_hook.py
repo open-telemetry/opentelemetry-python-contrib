@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import posixpath
 import threading
@@ -85,12 +86,42 @@ JsonEncodeable = list[dict[str, Any]]
 UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
 
 
-def is_message_part_list_hashable(
-    message_parts: list[types.MessagePart] | None,
+def is_system_instructions_hashable(
+    system_instruction: list[types.MessagePart] | None,
 ) -> bool:
-    return bool(message_parts) and all(
-        isinstance(x, types.Text) for x in message_parts
+    return bool(system_instruction) and all(
+        isinstance(x, types.Text) for x in system_instruction
     )
+
+
+def is_tool_definitions_hashable(
+    tool_definitions: list[types.MessagePart] | None,
+) -> bool:
+    return bool(tool_definitions) and all(
+        isinstance(x, (dict, str)) for x in tool_definitions
+    )
+
+
+def hash_tool_definitions(tool_definitions: list[types.MessagePart]) -> str:
+    print("DEBUG: hello")
+
+    serialized_parts = []
+
+    for tool in tool_definitions:
+        if tool is None:
+            continue
+
+        if isinstance(tool, dict):
+            serialized_parts.append(json.dumps(tool, sort_keys=True))
+        else:
+            serialized_parts.append(str(tool))
+
+    combined_string = "\n".join(serialized_parts)
+
+    return hashlib.sha256(
+        combined_string.encode("utf-8"),
+        usedforsecurity=False,
+    ).hexdigest()
 
 
 class UploadCompletionHook(CompletionHook):
@@ -180,7 +211,7 @@ class UploadCompletionHook(CompletionHook):
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
         system_instruction_hash = None
-        if is_message_part_list_hashable(system_instruction):
+        if is_system_instructions_hashable(system_instruction):
             # Get a hash of the text.
             system_instruction_hash = hashlib.sha256(
                 "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
@@ -190,14 +221,12 @@ class UploadCompletionHook(CompletionHook):
             ).hexdigest()
 
         tool_definitions_hash = None
-        if is_message_part_list_hashable(tool_definitions):
-            # Get a hash of the text.
-            tool_definitions_hash = hashlib.sha256(
-                "\n".join(x.content for x in tool_definitions).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
-                    "utf-8"
-                ),
-                usedforsecurity=False,
-            ).hexdigest()
+        if is_tool_definitions_hashable(tool_definitions):
+            tool_definitions_hash = hash_tool_definitions(tool_definitions)
+            print(
+                "DEBUG: Tool definitions hashable, hash is %s",
+                tool_definitions_hash,
+            )
 
         uuid_str = str(uuid4())
         return CompletionRefs(
@@ -213,7 +242,7 @@ class UploadCompletionHook(CompletionHook):
             ),
             tool_definitions_ref=posixpath.join(
                 self._base_path,
-                f"{tool_definitions_hash or uuid_str}_tool_definitions.{self._format}",
+                f"{tool_definitions_hash or uuid_str}_tool.definitions.{self._format}",
             ),
         )
 
@@ -297,7 +326,7 @@ class UploadCompletionHook(CompletionHook):
         ) -> JsonEncodeable:
             response = []
             for dc in dataclass_list:
-                if isinstance(dc, dict):
+                if isinstance(dc, (dict, str)):
                     response.append(dc)
                 else:
                     response.append(asdict(dc))
@@ -322,7 +351,7 @@ class UploadCompletionHook(CompletionHook):
                     ref_names.system_instruction_ref,
                     completion.system_instruction,
                     GEN_AI_SYSTEM_INSTRUCTIONS_REF,
-                    is_message_part_list_hashable(
+                    is_system_instructions_hashable(
                         completion.system_instruction
                     ),
                 ),
@@ -330,7 +359,7 @@ class UploadCompletionHook(CompletionHook):
                     ref_names.tool_definitions_ref,
                     completion.tool_definitions,
                     GEN_AI_TOOL_DEFINITIONS_REF,
-                    is_message_part_list_hashable(completion.tool_definitions),
+                    is_tool_definitions_hashable(completion.tool_definitions),
                 ),
             ]
             if ref  # Filter out empty input/output/sys instruction
