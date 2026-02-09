@@ -16,6 +16,7 @@
 
 import pytest
 from anthropic import APIConnectionError, AsyncAnthropic, NotFoundError
+
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -189,21 +190,18 @@ async def test_async_messages_create_token_usage(
     span = spans[0]
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == expected_input_tokens(response.usage)
-    )
+    assert span.attributes[
+        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+    ] == expected_input_tokens(response.usage)
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
         == response.usage.output_tokens
     )
-    assert (
-        span.attributes["gen_ai.usage.cache_creation.input_tokens"]
-        == (response.usage.cache_creation_input_tokens or 0)
+    assert span.attributes["gen_ai.usage.cache_creation.input_tokens"] == (
+        response.usage.cache_creation_input_tokens or 0
     )
-    assert (
-        span.attributes["gen_ai.usage.cache_read.input_tokens"]
-        == (response.usage.cache_read_input_tokens or 0)
+    assert span.attributes["gen_ai.usage.cache_read.input_tokens"] == (
+        response.usage.cache_read_input_tokens or 0
     )
 
 
@@ -509,21 +507,18 @@ async def test_async_messages_stream_token_usage(
     span = spans[0]
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == expected_input_tokens(final_message.usage)
-    )
+    assert span.attributes[
+        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+    ] == expected_input_tokens(final_message.usage)
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
         == final_message.usage.output_tokens
     )
-    assert (
-        span.attributes["gen_ai.usage.cache_creation.input_tokens"]
-        == (final_message.usage.cache_creation_input_tokens or 0)
+    assert span.attributes["gen_ai.usage.cache_creation.input_tokens"] == (
+        final_message.usage.cache_creation_input_tokens or 0
     )
-    assert (
-        span.attributes["gen_ai.usage.cache_read.input_tokens"]
-        == (final_message.usage.cache_read_input_tokens or 0)
+    assert span.attributes["gen_ai.usage.cache_read.input_tokens"] == (
+        final_message.usage.cache_read_input_tokens or 0
     )
 
 

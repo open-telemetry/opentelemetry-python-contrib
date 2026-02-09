@@ -55,9 +55,7 @@ class MessageRequestParams:
 _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
     "gen_ai.usage.cache_creation.input_tokens"
 )
-_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = (
-    "gen_ai.usage.cache_read.input_tokens"
-)
+_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 def _normalize_finish_reason(stop_reason: str | None) -> str | None:
@@ -474,9 +472,7 @@ class AsyncMessageStreamManagerWrapper:
             if final_message.id:
                 self._invocation.response_id = final_message.id
 
-            finish_reason = _normalize_finish_reason(
-                final_message.stop_reason
-            )
+            finish_reason = _normalize_finish_reason(final_message.stop_reason)
             if finish_reason:
                 self._invocation.finish_reasons = [finish_reason]
 
