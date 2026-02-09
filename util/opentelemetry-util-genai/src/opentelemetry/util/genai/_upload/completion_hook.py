@@ -314,18 +314,18 @@ class UploadCompletionHook(CompletionHook):
         )
 
         def to_dict(
-            input_list: list[types.InputMessage]
+            data_list: list[types.InputMessage]
             | list[types.OutputMessage]
             | list[types.MessagePart],
         ) -> JsonEncodeable:
             response: JsonEncodeable = []
-            for x in input_list:
-                if isinstance(x, dict):
-                    response.append(x)  # type: ignore
-                elif isinstance(x, str):
-                    response.append({"content": x})
+            for data in data_list:
+                if isinstance(data, dict):
+                    response.append(data)  # type: ignore
+                elif isinstance(data, str):
+                    response.append({"content": data})
                 else:
-                    response.append(asdict(x))
+                    response.append(asdict(data))
             return response
 
         references = [
