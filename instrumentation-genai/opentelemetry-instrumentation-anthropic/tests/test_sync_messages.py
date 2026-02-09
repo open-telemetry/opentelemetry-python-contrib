@@ -24,7 +24,6 @@ from opentelemetry.instrumentation.anthropic.utils import (
     MessageWrapper,
     StreamWrapper,
 )
-from opentelemetry.util.genai.types import LLMInvocation
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -34,6 +33,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.util.genai.types import LLMInvocation
 
 
 def normalize_stop_reason(stop_reason):
@@ -54,7 +54,7 @@ def expected_input_tokens(usage):
     return base + cache_creation + cache_read
 
 
-def assert_span_attributes(
+def assert_span_attributes(  # pylint: disable=too-many-positional-arguments
     span,
     request_model,
     response_id=None,
@@ -190,10 +190,9 @@ def test_sync_messages_create_token_usage(
     span = spans[0]
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == expected_input_tokens(response.usage)
-    )
+    assert span.attributes[
+        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+    ] == expected_input_tokens(response.usage)
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
         == response.usage.output_tokens
@@ -527,7 +526,7 @@ def test_stream_wrapper_finalize_idempotent():
             self._index += 1
             return value
 
-        def close(self):
+        def close(self):  # pylint: disable=no-self-use
             return None
 
     handler = FakeHandler()
@@ -544,7 +543,7 @@ def test_message_wrapper_aggregates_cache_tokens():
     """MessageWrapper should aggregate cache token fields into input tokens."""
 
     class FakeHandler:
-        def stop_llm(self, invocation):
+        def stop_llm(self, invocation):  # pylint: disable=no-self-use
             return invocation
 
     usage = SimpleNamespace(
@@ -579,10 +578,10 @@ def test_stream_wrapper_aggregates_cache_tokens():
     """StreamWrapper should aggregate cache token fields from stream chunks."""
 
     class FakeHandler:
-        def stop_llm(self, invocation):
+        def stop_llm(self, invocation):  # pylint: disable=no-self-use
             return invocation
 
-        def fail_llm(self, invocation, error):
+        def fail_llm(self, invocation, error):  # pylint: disable=no-self-use
             return invocation
 
     message_start = SimpleNamespace(
@@ -623,7 +622,7 @@ def test_stream_wrapper_aggregates_cache_tokens():
             self._index += 1
             return value
 
-        def close(self):
+        def close(self):  # pylint: disable=no-self-use
             return None
 
     invocation = LLMInvocation(
@@ -694,10 +693,9 @@ def test_sync_messages_stream_token_usage(
     span = spans[0]
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == expected_input_tokens(final_message.usage)
-    )
+    assert span.attributes[
+        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+    ] == expected_input_tokens(final_message.usage)
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
         == final_message.usage.output_tokens
