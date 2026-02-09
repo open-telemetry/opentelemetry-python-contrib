@@ -86,11 +86,11 @@ JsonEncodeable = list[dict[str, Any]]
 UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
 
 
-def is_message_part_list_hashable(
-    message_parts: list[types.MessagePart] | None,
+def is_system_instructions_hashable(
+    system_instruction: list[types.MessagePart] | None,
 ) -> bool:
-    return bool(message_parts) and all(
-        isinstance(x, types.Text) for x in message_parts
+    return bool(system_instruction) and all(
+        isinstance(x, types.Text) for x in system_instruction
     )
 
 
@@ -209,7 +209,7 @@ class UploadCompletionHook(CompletionHook):
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
         system_instruction_hash = None
-        if is_message_part_list_hashable(system_instruction):
+        if is_system_instructions_hashable(system_instruction):
             # Get a hash of the text.
             system_instruction_hash = hashlib.sha256(
                 "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType, reportCallIssue, reportArgumentType]
@@ -347,7 +347,7 @@ class UploadCompletionHook(CompletionHook):
                     ref_names.system_instruction_ref,
                     completion.system_instruction,
                     GEN_AI_SYSTEM_INSTRUCTIONS_REF,
-                    is_message_part_list_hashable(
+                    is_system_instructions_hashable(
                         completion.system_instruction
                     ),
                 ),
