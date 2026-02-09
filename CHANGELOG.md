@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-sdk-extension-aws`: Read `cloud.account.id` from symlink created by the OTel Lambda Extension in the Lambda resource detector
+  ([#4183](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4183))
 - `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
   ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
 - `opentelemetry-instrumentation-wsgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
