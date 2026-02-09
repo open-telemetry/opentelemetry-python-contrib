@@ -37,6 +37,9 @@ if TYPE_CHECKING:
     from anthropic.types import Message, RawMessageStreamEvent
 
 
+ANTHROPIC = "anthropic"
+
+
 def messages_create(
     handler: TelemetryHandler,
 ) -> Callable[..., Union["Message", "Stream[RawMessageStreamEvent]"]]:
@@ -52,15 +55,18 @@ def messages_create(
     ) -> Union["Message", StreamWrapper]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
-        request_model = str(
-            attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
-            or params.model
-            or "unknown"
+        request_model_attribute = attributes.get(
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        )
+        request_model = (
+            request_model_attribute
+            if isinstance(request_model_attribute, str)
+            else params.model or ""
         )
 
         invocation = LLMInvocation(
             request_model=request_model,
-            provider="anthropic",
+            provider=ANTHROPIC,
             attributes=attributes,
         )
 
@@ -96,15 +102,18 @@ def messages_stream(
     ) -> MessageStreamManagerWrapper:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
-        request_model = str(
-            attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
-            or params.model
-            or "unknown"
+        request_model_attribute = attributes.get(
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        )
+        request_model = (
+            request_model_attribute
+            if isinstance(request_model_attribute, str)
+            else params.model or ""
         )
 
         invocation = LLMInvocation(
             request_model=request_model,
-            provider="anthropic",
+            provider=ANTHROPIC,
             attributes=attributes,
         )
 

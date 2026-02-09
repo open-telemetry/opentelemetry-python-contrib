@@ -52,6 +52,76 @@ class MessageRequestParams:
     stop_sequences: Sequence[str] | None = None
 
 
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
+)
+_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = (
+    "gen_ai.usage.cache_read.input_tokens"
+)
+
+
+def _normalize_finish_reason(stop_reason: str | None) -> str | None:
+    """Map Anthropic stop reasons to GenAI semantic convention values."""
+    if stop_reason is None:
+        return None
+
+    normalized = {
+        "end_turn": "stop",
+        "stop_sequence": "stop",
+        "max_tokens": "length",
+        "tool_use": "tool_calls",
+    }.get(stop_reason)
+    return normalized or stop_reason
+
+
+def _as_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    return None
+
+
+def _extract_usage_tokens(
+    usage: Any | None,
+) -> tuple[int | None, int | None, int | None, int | None]:
+    """Extract Anthropic usage fields and compute semconv input tokens.
+
+    Returns `(total_input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens)`.
+    """
+    if usage is None:
+        return None, None, None, None
+
+    input_tokens = _as_int(getattr(usage, "input_tokens", None))
+    cache_creation_input_tokens = _as_int(
+        getattr(usage, "cache_creation_input_tokens", None)
+    )
+    cache_read_input_tokens = _as_int(
+        getattr(usage, "cache_read_input_tokens", None)
+    )
+    output_tokens = _as_int(getattr(usage, "output_tokens", None))
+
+    if (
+        input_tokens is None
+        and cache_creation_input_tokens is None
+        and cache_read_input_tokens is None
+    ):
+        total_input_tokens = None
+    else:
+        total_input_tokens = (
+            (input_tokens or 0)
+            + (cache_creation_input_tokens or 0)
+            + (cache_read_input_tokens or 0)
+        )
+
+    return (
+        total_input_tokens,
+        output_tokens,
+        cache_creation_input_tokens,
+        cache_read_input_tokens,
+    )
+
+
 # Use parameter signature from
 # https://github.com/anthropics/anthropic-sdk-python/blob/9b5ab24ba17bcd5e762e5a5fd69bb3c17b100aaa/src/anthropic/resources/messages/messages.py#L896
 # https://github.com/anthropics/anthropic-sdk-python/blob/9b5ab24ba17bcd5e762e5a5fd69bb3c17b100aaa/src/anthropic/resources/messages/messages.py#L963
@@ -180,12 +250,27 @@ class MessageWrapper:
         if self._message.id:
             invocation.response_id = self._message.id
 
-        if self._message.stop_reason:
-            invocation.finish_reasons = [self._message.stop_reason]
+        finish_reason = _normalize_finish_reason(self._message.stop_reason)
+        if finish_reason:
+            invocation.finish_reasons = [finish_reason]
 
         if self._message.usage:
-            invocation.input_tokens = self._message.usage.input_tokens
-            invocation.output_tokens = self._message.usage.output_tokens
+            (
+                input_tokens,
+                output_tokens,
+                cache_creation_input_tokens,
+                cache_read_input_tokens,
+            ) = _extract_usage_tokens(self._message.usage)
+            invocation.input_tokens = input_tokens
+            invocation.output_tokens = output_tokens
+            if cache_creation_input_tokens is not None:
+                invocation.attributes[
+                    _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+                ] = cache_creation_input_tokens
+            if cache_read_input_tokens is not None:
+                invocation.attributes[
+                    _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
+                ] = cache_read_input_tokens
 
         handler.stop_llm(invocation)
 
@@ -218,6 +303,25 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
         self._stop_reason: Optional[str] = None
         self._input_tokens: Optional[int] = None
         self._output_tokens: Optional[int] = None
+        self._cache_creation_input_tokens: Optional[int] = None
+        self._cache_read_input_tokens: Optional[int] = None
+        self._finalized = False
+
+    def _update_usage(self, usage: Any | None) -> None:
+        (
+            input_tokens,
+            output_tokens,
+            cache_creation_input_tokens,
+            cache_read_input_tokens,
+        ) = _extract_usage_tokens(usage)
+        if input_tokens is not None:
+            self._input_tokens = input_tokens
+        if output_tokens is not None:
+            self._output_tokens = output_tokens
+        if cache_creation_input_tokens is not None:
+            self._cache_creation_input_tokens = cache_creation_input_tokens
+        if cache_read_input_tokens is not None:
+            self._cache_read_input_tokens = cache_read_input_tokens
 
     def _process_chunk(self, chunk: "RawMessageStreamEvent") -> None:
         """Extract telemetry data from a streaming chunk."""
@@ -231,21 +335,22 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
                     self._response_model = message.model
                 # message_start also contains initial usage with input_tokens
                 if hasattr(message, "usage") and message.usage:
-                    if hasattr(message.usage, "input_tokens"):
-                        self._input_tokens = message.usage.input_tokens
+                    self._update_usage(message.usage)
 
         # Handle message_delta event - contains stop_reason and output token usage
         elif chunk.type == "message_delta":
             delta = getattr(chunk, "delta", None)
             if delta and hasattr(delta, "stop_reason") and delta.stop_reason:
-                self._stop_reason = delta.stop_reason
-            # message_delta contains usage with output_tokens
+                self._stop_reason = _normalize_finish_reason(delta.stop_reason)
+            # message_delta contains usage with output_tokens (and may repeat input_tokens)
             usage = getattr(chunk, "usage", None)
-            if usage and hasattr(usage, "output_tokens"):
-                self._output_tokens = usage.output_tokens
+            self._update_usage(usage)
 
     def _finalize_invocation(self) -> None:
         """Update invocation with collected data and stop the span."""
+        if self._finalized:
+            return
+
         if self._response_model:
             self._invocation.response_model_name = self._response_model
         if self._response_id:
@@ -256,8 +361,17 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             self._invocation.input_tokens = self._input_tokens
         if self._output_tokens is not None:
             self._invocation.output_tokens = self._output_tokens
+        if self._cache_creation_input_tokens is not None:
+            self._invocation.attributes[
+                _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+            ] = self._cache_creation_input_tokens
+        if self._cache_read_input_tokens is not None:
+            self._invocation.attributes[
+                _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
+            ] = self._cache_read_input_tokens
 
         self._handler.stop_llm(self._invocation)
+        self._finalized = True
 
     def __iter__(self) -> "StreamWrapper":
         return self
@@ -355,16 +469,29 @@ class MessageStreamManagerWrapper:
             if final_message.id:
                 self._invocation.response_id = final_message.id
 
-            if final_message.stop_reason:
-                self._invocation.finish_reasons = [final_message.stop_reason]
+            finish_reason = _normalize_finish_reason(
+                final_message.stop_reason
+            )
+            if finish_reason:
+                self._invocation.finish_reasons = [finish_reason]
 
             if final_message.usage:
-                self._invocation.input_tokens = (
-                    final_message.usage.input_tokens
-                )
-                self._invocation.output_tokens = (
-                    final_message.usage.output_tokens
-                )
+                (
+                    input_tokens,
+                    output_tokens,
+                    cache_creation_input_tokens,
+                    cache_read_input_tokens,
+                ) = _extract_usage_tokens(final_message.usage)
+                self._invocation.input_tokens = input_tokens
+                self._invocation.output_tokens = output_tokens
+                if cache_creation_input_tokens is not None:
+                    self._invocation.attributes[
+                        _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+                    ] = cache_creation_input_tokens
+                if cache_read_input_tokens is not None:
+                    self._invocation.attributes[
+                        _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
+                    ] = cache_read_input_tokens
         except Exception:  # pylint: disable=broad-exception-caught
             # If we can't get the final message, we still want to end the span
             pass

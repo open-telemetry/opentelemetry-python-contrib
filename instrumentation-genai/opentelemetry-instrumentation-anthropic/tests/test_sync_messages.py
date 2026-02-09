@@ -14,10 +14,17 @@
 
 """Tests for sync Messages.create instrumentation."""
 
+from types import SimpleNamespace
+
 import pytest
 from anthropic import Anthropic, APIConnectionError, NotFoundError
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+from opentelemetry.instrumentation.anthropic.utils import (
+    MessageWrapper,
+    StreamWrapper,
+)
+from opentelemetry.util.genai.types import LLMInvocation
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -27,6 +34,24 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+
+
+def normalize_stop_reason(stop_reason):
+    """Map Anthropic stop reasons to GenAI semconv values."""
+    return {
+        "end_turn": "stop",
+        "stop_sequence": "stop",
+        "max_tokens": "length",
+        "tool_use": "tool_calls",
+    }.get(stop_reason, stop_reason)
+
+
+def expected_input_tokens(usage):
+    """Compute semconv input tokens from Anthropic usage."""
+    base = getattr(usage, "input_tokens", 0) or 0
+    cache_creation = getattr(usage, "cache_creation_input_tokens", 0) or 0
+    cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+    return base + cache_creation + cache_read
 
 
 def assert_span_attributes(
@@ -108,9 +133,9 @@ def test_sync_messages_create_basic(
         request_model=model,
         response_id=response.id,
         response_model=response.model,
-        input_tokens=response.usage.input_tokens,
+        input_tokens=expected_input_tokens(response.usage),
         output_tokens=response.usage.output_tokens,
-        finish_reasons=[response.stop_reason],
+        finish_reasons=[normalize_stop_reason(response.stop_reason)],
     )
 
 
@@ -167,7 +192,7 @@ def test_sync_messages_create_token_usage(
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == response.usage.input_tokens
+        == expected_input_tokens(response.usage)
     )
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
@@ -195,7 +220,7 @@ def test_sync_messages_create_stop_reason(
     span = spans[0]
     # Anthropic's stop_reason should be wrapped in a tuple (OTel converts lists)
     assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
-        response.stop_reason,
+        normalize_stop_reason(response.stop_reason),
     )
 
 
@@ -356,7 +381,9 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
         response_model=response_model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        finish_reasons=[stop_reason] if stop_reason else None,
+        finish_reasons=[normalize_stop_reason(stop_reason)]
+        if stop_reason
+        else None,
     )
 
 
@@ -450,10 +477,169 @@ def test_sync_messages_stream_basic(
         request_model=model,
         response_id=final_message.id,
         response_model=final_message.model,
-        input_tokens=final_message.usage.input_tokens,
+        input_tokens=expected_input_tokens(final_message.usage),
         output_tokens=final_message.usage.output_tokens,
-        finish_reasons=[final_message.stop_reason],
+        finish_reasons=[normalize_stop_reason(final_message.stop_reason)],
     )
+
+
+def test_stream_wrapper_finalize_idempotent():
+    """StreamWrapper should stop telemetry exactly once."""
+
+    class FakeHandler:
+        def __init__(self):
+            self.stop_calls = 0
+            self.fail_calls = 0
+
+        def stop_llm(self, invocation):
+            self.stop_calls += 1
+            return invocation
+
+        def fail_llm(self, invocation, error):
+            self.fail_calls += 1
+            return invocation
+
+    class FakeInvocation:
+        response_model_name = None
+        response_id = None
+        finish_reasons = None
+        input_tokens = None
+        output_tokens = None
+        attributes = {}
+
+    class FakeChunk:
+        def __init__(self):
+            self.type = "message_start"
+            self.message = None
+
+    class FakeStream:
+        def __init__(self):
+            self._chunks = [FakeChunk()]
+            self._index = 0
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if self._index >= len(self._chunks):
+                raise StopIteration
+            value = self._chunks[self._index]
+            self._index += 1
+            return value
+
+        def close(self):
+            return None
+
+    handler = FakeHandler()
+    wrapper = StreamWrapper(FakeStream(), handler, FakeInvocation())  # type: ignore[arg-type]
+
+    list(wrapper)
+    wrapper.close()
+
+    assert handler.stop_calls == 1
+    assert handler.fail_calls == 0
+
+
+def test_message_wrapper_aggregates_cache_tokens():
+    """MessageWrapper should aggregate cache token fields into input tokens."""
+
+    class FakeHandler:
+        def stop_llm(self, invocation):
+            return invocation
+
+    usage = SimpleNamespace(
+        input_tokens=10,
+        cache_creation_input_tokens=3,
+        cache_read_input_tokens=7,
+        output_tokens=5,
+    )
+    message = SimpleNamespace(
+        model="claude-sonnet-4-20250514",
+        id="msg_123",
+        stop_reason="end_turn",
+        usage=usage,
+    )
+    invocation = LLMInvocation(
+        request_model="claude-sonnet-4-20250514",
+        provider="anthropic",
+    )
+
+    MessageWrapper(message, FakeHandler(), invocation)  # type: ignore[arg-type]
+
+    assert invocation.input_tokens == 20
+    assert invocation.output_tokens == 5
+    assert invocation.finish_reasons == ["stop"]
+    assert (
+        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 3
+    )
+    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 7
+
+
+def test_stream_wrapper_aggregates_cache_tokens():
+    """StreamWrapper should aggregate cache token fields from stream chunks."""
+
+    class FakeHandler:
+        def stop_llm(self, invocation):
+            return invocation
+
+        def fail_llm(self, invocation, error):
+            return invocation
+
+    message_start = SimpleNamespace(
+        type="message_start",
+        message=SimpleNamespace(
+            id="msg_1",
+            model="claude-sonnet-4-20250514",
+            usage=SimpleNamespace(
+                input_tokens=9,
+                cache_creation_input_tokens=1,
+                cache_read_input_tokens=2,
+            ),
+        ),
+    )
+    message_delta = SimpleNamespace(
+        type="message_delta",
+        delta=SimpleNamespace(stop_reason="end_turn"),
+        usage=SimpleNamespace(
+            input_tokens=10,
+            cache_creation_input_tokens=3,
+            cache_read_input_tokens=4,
+            output_tokens=8,
+        ),
+    )
+
+    class FakeStream:
+        def __init__(self):
+            self._chunks = [message_start, message_delta]
+            self._index = 0
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            if self._index >= len(self._chunks):
+                raise StopIteration
+            value = self._chunks[self._index]
+            self._index += 1
+            return value
+
+        def close(self):
+            return None
+
+    invocation = LLMInvocation(
+        request_model="claude-sonnet-4-20250514",
+        provider="anthropic",
+    )
+    wrapper = StreamWrapper(FakeStream(), FakeHandler(), invocation)  # type: ignore[arg-type]
+    list(wrapper)
+
+    assert invocation.input_tokens == 17
+    assert invocation.output_tokens == 8
+    assert invocation.finish_reasons == ["stop"]
+    assert (
+        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 3
+    )
+    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 4
 
 
 @pytest.mark.vcr()
@@ -510,7 +696,7 @@ def test_sync_messages_stream_token_usage(
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == final_message.usage.input_tokens
+        == expected_input_tokens(final_message.usage)
     )
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
