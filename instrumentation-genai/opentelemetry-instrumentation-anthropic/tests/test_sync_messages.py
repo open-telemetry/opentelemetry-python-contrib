@@ -484,7 +484,7 @@ def test_sync_messages_stream_basic(
 
 @pytest.mark.vcr()
 def test_stream_wrapper_finalize_idempotent(
-    span_exporter, anthropic_client, instrument_no_content
+    span_exporter, anthropic_client, instrument_no_content  # pylint: disable=too-many-locals
 ):
     """Fully consumed stream plus explicit close should still yield one span."""
     model = "claude-sonnet-4-20250514"
