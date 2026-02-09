@@ -423,6 +423,102 @@ def responses_stream(
     return traced_method
 
 
+def responses_retrieve(
+    tracer: Tracer,
+    logger: Logger,
+    instruments: Instruments,
+    capture_content: bool,
+):
+    """Wrap the `retrieve` method of the `Responses` class to trace it."""
+    retrieval_enum = getattr(
+        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
+    )
+    operation_name = retrieval_enum.value if retrieval_enum else "retrieval"
+
+    def traced_method(wrapped, instance, args, kwargs):
+        span_attributes = get_llm_request_attributes(
+            {},
+            instance,
+            operation_name,
+        )
+        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL, 'unknown')}"
+        streaming = is_streaming(kwargs)
+
+        with tracer.start_as_current_span(
+            name=span_name,
+            kind=SpanKind.CLIENT,
+            attributes=span_attributes,
+            end_on_exit=False,
+        ) as span:
+            start = default_timer()
+            result = None
+            error_type = None
+            try:
+                result = wrapped(*args, **kwargs)
+                if hasattr(result, "parse"):
+                    parsed_result = result.parse()
+                else:
+                    parsed_result = result
+
+                if streaming:
+                    return ResponseStreamWrapper(
+                        parsed_result,
+                        span,
+                        logger,
+                        capture_content,
+                        record_metrics=True,
+                        instruments=instruments,
+                        request_attributes=span_attributes,
+                        operation_name=operation_name,
+                        start_time=start,
+                    )
+
+                if (
+                    GenAIAttributes.GEN_AI_REQUEST_MODEL
+                    not in span_attributes
+                    and getattr(parsed_result, "model", None)
+                ):
+                    span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = (
+                        parsed_result.model
+                    )
+                    if span.is_recording():
+                        set_span_attribute(
+                            span,
+                            GenAIAttributes.GEN_AI_REQUEST_MODEL,
+                            parsed_result.model,
+                        )
+                    if hasattr(span, "update_name"):
+                        span.update_name(
+                            f"{operation_name} {parsed_result.model}"
+                        )
+
+                if span.is_recording():
+                    _set_responses_response_attributes(
+                        span, parsed_result, capture_content
+                    )
+
+                span.end()
+                return result
+
+            except Exception as error:
+                error_type = type(error).__qualname__
+                handle_span_exception(span, error)
+                raise
+            finally:
+                if not streaming or result is None:
+                    duration = max((default_timer() - start), 0)
+                    _record_metrics(
+                        instruments,
+                        duration,
+                        result,
+                        span_attributes,
+                        error_type,
+                        operation_name,
+                    )
+
+    return traced_method
+
+
 def _get_embeddings_span_name(span_attributes):
     """Get span name for embeddings operations."""
     return f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
@@ -439,10 +535,11 @@ def _record_metrics(  # pylint: disable=too-many-branches
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_attributes[
-            GenAIAttributes.GEN_AI_REQUEST_MODEL
-        ],
     }
+    if request_model := request_attributes.get(
+        GenAIAttributes.GEN_AI_REQUEST_MODEL
+    ):
+        common_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = request_model
 
     if "gen_ai.embeddings.dimension.count" in request_attributes:
         common_attributes["gen_ai.embeddings.dimension.count"] = (

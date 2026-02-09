@@ -137,7 +137,31 @@ def test_responses_stream_existing_response(
     assert final_response is not None
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == span_count + 1
+    assert len(spans) == span_count + 2
+
+    stream_and_retrieve_spans = spans[span_count:]
+    operation_names = {
+        span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME)
+        for span in stream_and_retrieve_spans
+    }
+    retrieval_operation = getattr(
+        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
+    )
+    retrieval_operation_name = (
+        retrieval_operation.value
+        if retrieval_operation is not None
+        else "retrieval"
+    )
+    assert operation_names == {
+        GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
+        retrieval_operation_name,
+    }
+    stream_span = next(
+        span
+        for span in stream_and_retrieve_spans
+        if span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME)
+        == GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value
+    )
 
     input_tokens = (
         final_response.usage.input_tokens if final_response.usage else None
@@ -147,12 +171,119 @@ def test_responses_stream_existing_response(
     )
 
     assert_all_attributes(
-        spans[-1],
+        stream_span,
         final_response.model,
         final_response.id,
         final_response.model,
         input_tokens,
         output_tokens,
         operation_name=GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
+        response_service_tier=final_response.service_tier,
+    )
+
+
+@skip_if_no_responses_api
+@pytest.mark.vcr()
+def test_responses_retrieve(
+    span_exporter, openai_client, instrument_with_content
+):
+    create_response = openai_client.responses.create(
+        model="gpt-4o-mini",
+        input="Say this is a test",
+        stream=False,
+    )
+
+    span_count = len(span_exporter.get_finished_spans())
+
+    response = openai_client.responses.retrieve(create_response.id)
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == span_count + 1
+
+    input_tokens = response.usage.input_tokens if response.usage else None
+    output_tokens = response.usage.output_tokens if response.usage else None
+    retrieval_operation = getattr(
+        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
+    )
+    operation_name = (
+        retrieval_operation.value
+        if retrieval_operation is not None
+        else "retrieval"
+    )
+
+    assert_all_attributes(
+        spans[-1],
+        response.model,
+        response.id,
+        response.model,
+        input_tokens,
+        output_tokens,
+        operation_name=operation_name,
+        response_service_tier=response.service_tier,
+    )
+
+
+@skip_if_no_responses_api
+@pytest.mark.vcr()
+def test_responses_retrieve_stream_existing_response(
+    span_exporter, openai_client, instrument_with_content
+):
+    response_id = None
+    starting_after = None
+
+    with openai_client.responses.stream(
+        model="gpt-4o-mini",
+        input="Say this is a test",
+        background=True,
+    ) as stream:
+        for event in stream:
+            if event.type == "response.created":
+                response_id = event.response.id
+            starting_after = event.sequence_number
+            if response_id is not None and starting_after is not None:
+                break
+
+    assert response_id is not None
+    assert starting_after is not None
+    span_count = len(span_exporter.get_finished_spans())
+
+    with openai_client.responses.retrieve(
+        response_id=response_id,
+        starting_after=starting_after,
+        stream=True,
+    ) as stream:
+        final_response = None
+        for event in stream:
+            if event.type == "response.completed":
+                final_response = event.response
+                break
+
+    assert final_response is not None
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == span_count + 1
+
+    input_tokens = (
+        final_response.usage.input_tokens if final_response.usage else None
+    )
+    output_tokens = (
+        final_response.usage.output_tokens if final_response.usage else None
+    )
+    retrieval_operation = getattr(
+        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
+    )
+    operation_name = (
+        retrieval_operation.value
+        if retrieval_operation is not None
+        else "retrieval"
+    )
+
+    assert_all_attributes(
+        spans[-1],
+        final_response.model,
+        final_response.id,
+        final_response.model,
+        input_tokens,
+        output_tokens,
+        operation_name=operation_name,
         response_service_tier=final_response.service_tier,
     )

@@ -60,6 +60,7 @@ from .patch import (
     chat_completions_create,
     embeddings_create,
     responses_create,
+    responses_retrieve,
     responses_stream,
 )
 
@@ -148,7 +149,15 @@ class OpenAIInstrumentor(BaseInstrumentor):
                     tracer, logger, instruments, is_content_enabled()
                 ),
             )
-        except ModuleNotFoundError:
+
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="Responses.retrieve",
+                wrapper=responses_retrieve(
+                    tracer, logger, instruments, is_content_enabled()
+                ),
+            )
+        except (AttributeError, ModuleNotFoundError):
             # Responses API not available in this version of openai
             pass
 
@@ -165,6 +174,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         try:
             unwrap(openai.resources.responses.responses.Responses, "create")
             unwrap(openai.resources.responses.responses.Responses, "stream")
+            unwrap(openai.resources.responses.responses.Responses, "retrieve")
         except (AttributeError, ModuleNotFoundError):
             # Responses API not available in this version of openai
             pass
