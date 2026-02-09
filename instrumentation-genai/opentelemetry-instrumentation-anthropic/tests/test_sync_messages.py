@@ -54,7 +54,7 @@ def expected_input_tokens(usage):
     return base + cache_creation + cache_read
 
 
-def assert_span_attributes(  # pylint: disable=too-many-positional-arguments
+def assert_span_attributes(  # pylint: disable=too-many-arguments
     span,
     request_model,
     response_id=None,
