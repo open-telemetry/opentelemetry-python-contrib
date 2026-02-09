@@ -352,7 +352,6 @@ def create_chat_invocation(
             stop_sequences = [stop_sequences]
         llm_invocation.stop_sequences = stop_sequences
 
-    llm_invocation.server_address
     address, port = get_server_address_and_port(client_instance)
     if address:
         llm_invocation.server_address = address
