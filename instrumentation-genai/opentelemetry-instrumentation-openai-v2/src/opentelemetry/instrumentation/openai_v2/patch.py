@@ -521,6 +521,11 @@ def _set_response_properties(
                 OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier
             },
         )
+        chat_invocation.metric_attributes.update(
+            {
+                OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier
+            },
+        )
 
     if getattr(result, "usage", None):
         chat_invocation.input_tokens = result.usage.prompt_tokens
@@ -528,6 +533,11 @@ def _set_response_properties(
 
     if getattr(result, "system_fingerprint", None):
         chat_invocation.attributes.update(
+            {
+                OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint
+            },
+        )
+        chat_invocation.metric_attributes.update(
             {
                 OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint
             },

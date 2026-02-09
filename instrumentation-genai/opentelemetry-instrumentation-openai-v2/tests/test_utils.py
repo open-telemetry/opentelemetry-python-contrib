@@ -154,6 +154,7 @@ def assert_all_attributes(
 
 
 def assert_log_parent(log, span):
+    """Assert that the log record has the correct parent span context"""
     if span:
         assert log.log_record.trace_id == span.get_span_context().trace_id
         assert log.log_record.span_id == span.get_span_context().span_id

@@ -75,7 +75,6 @@ def assert_all_metric_attributes(data_point, latest_experimental_enabled):
         == "gpt-4o-mini-2024-07-18"
     )
 
-    # TODO: utils don't allow to pass extra attributes yet
     system_fingerprint_attr_key = (
         OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT
         if latest_experimental_enabled
@@ -92,17 +91,13 @@ def assert_all_metric_attributes(data_point, latest_experimental_enabled):
         else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
     )
 
-    if not latest_experimental_enabled:
-        assert system_fingerprint_attr_key in data_point.attributes
-        assert (
-            data_point.attributes[system_fingerprint_attr_key]
-            == "fp_0ba0d124f1"
-        )
-        assert request_service_tier_attr_key not in data_point.attributes
-        assert response_service_tier_attr_key in data_point.attributes
-        assert (
-            data_point.attributes[response_service_tier_attr_key] == "default"
-        )
+    assert system_fingerprint_attr_key in data_point.attributes
+    assert (
+        data_point.attributes[system_fingerprint_attr_key] == "fp_0ba0d124f1"
+    )
+    assert request_service_tier_attr_key not in data_point.attributes
+    assert response_service_tier_attr_key in data_point.attributes
+    assert data_point.attributes[response_service_tier_attr_key] == "default"
     assert (
         data_point.attributes[ServerAttributes.SERVER_ADDRESS]
         == "api.openai.com"

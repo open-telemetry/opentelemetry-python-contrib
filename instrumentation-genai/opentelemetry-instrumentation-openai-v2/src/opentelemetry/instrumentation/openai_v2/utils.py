@@ -92,23 +92,27 @@ def extract_tool_calls(item, capture_content):
     return calls
 
 
-def set_server_address_and_port(client_instance, attributes):
+def get_server_address_and_port(
+    client_instance,
+) -> tuple[str | None, int | None]:
     base_client = getattr(client_instance, "_client", None)
     base_url = getattr(base_client, "base_url", None)
     if not base_url:
-        return
-
-    port = -1
+        return None, None
+    address = None
+    port = None
     if isinstance(base_url, URL):
-        attributes[ServerAttributes.SERVER_ADDRESS] = base_url.host
+        address = base_url.host
         port = base_url.port
     elif isinstance(base_url, str):
         url = urlparse(base_url)
-        attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
+        address = url.hostname
         port = url.port
 
-    if port and port != 443 and port > 0:
-        attributes[ServerAttributes.SERVER_PORT] = port
+    if port == 443:
+        port = None
+
+    return address, port
 
 
 def get_property_value(obj, property_name):
@@ -314,7 +318,11 @@ def get_llm_request_attributes(
                 kwargs["encoding_format"]
             ]
 
-    set_server_address_and_port(client_instance, attributes)
+    address, port = get_server_address_and_port(client_instance)
+    if address:
+        attributes[ServerAttributes.SERVER_ADDRESS] = address
+    if port:
+        attributes[ServerAttributes.SERVER_PORT] = port
 
     # filter out values not set
     return {k: v for k, v in attributes.items() if value_is_set(v)}
@@ -344,9 +352,14 @@ def create_chat_invocation(
             stop_sequences = [stop_sequences]
         llm_invocation.stop_sequences = stop_sequences
 
-    attributes = {}
-    set_server_address_and_port(client_instance, attributes)
+    llm_invocation.server_address
+    address, port = get_server_address_and_port(client_instance)
+    if address:
+        llm_invocation.server_address = address
+    if port:
+        llm_invocation.server_port = port
 
+    attributes = {}
     if (choice_count := get_value(kwargs.get("n"))) is not None:
         # Only add non default, meaningful values
         if isinstance(choice_count, int) and choice_count != 1:
