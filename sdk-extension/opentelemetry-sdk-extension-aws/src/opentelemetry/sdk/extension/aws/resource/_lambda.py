@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from os import environ
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
@@ -24,6 +25,8 @@ from opentelemetry.semconv.resource import (
 
 logger = logging.getLogger(__name__)
 
+_ACCOUNT_ID_SYMLINK_PATH = "/tmp/.otel-account-id"
+
 
 class AwsLambdaResourceDetector(ResourceDetector):
     """Detects attribute values only available when the app is running on AWS
@@ -34,25 +37,31 @@ class AwsLambdaResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            return Resource(
-                {
-                    ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
-                    ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_LAMBDA.value,
-                    ResourceAttributes.CLOUD_REGION: environ["AWS_REGION"],
-                    ResourceAttributes.FAAS_NAME: environ[
-                        "AWS_LAMBDA_FUNCTION_NAME"
-                    ],
-                    ResourceAttributes.FAAS_VERSION: environ[
-                        "AWS_LAMBDA_FUNCTION_VERSION"
-                    ],
-                    ResourceAttributes.FAAS_INSTANCE: environ[
-                        "AWS_LAMBDA_LOG_STREAM_NAME"
-                    ],
-                    ResourceAttributes.FAAS_MAX_MEMORY: int(
-                        environ["AWS_LAMBDA_FUNCTION_MEMORY_SIZE"]
-                    ),
-                }
-            )
+            attributes = {
+                ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
+                ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_LAMBDA.value,
+                ResourceAttributes.CLOUD_REGION: environ["AWS_REGION"],
+                ResourceAttributes.FAAS_NAME: environ[
+                    "AWS_LAMBDA_FUNCTION_NAME"
+                ],
+                ResourceAttributes.FAAS_VERSION: environ[
+                    "AWS_LAMBDA_FUNCTION_VERSION"
+                ],
+                ResourceAttributes.FAAS_INSTANCE: environ[
+                    "AWS_LAMBDA_LOG_STREAM_NAME"
+                ],
+                ResourceAttributes.FAAS_MAX_MEMORY: int(
+                    environ["AWS_LAMBDA_FUNCTION_MEMORY_SIZE"]
+                ),
+            }
+
+            try:
+                account_id = os.readlink(_ACCOUNT_ID_SYMLINK_PATH)
+                attributes[ResourceAttributes.CLOUD_ACCOUNT_ID] = account_id
+            except OSError:
+                pass
+
+            return Resource(attributes)
         # pylint: disable=broad-except
         except Exception as exception:
             if self.raise_on_error:
