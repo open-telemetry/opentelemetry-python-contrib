@@ -482,61 +482,61 @@ def test_sync_messages_stream_basic(
     )
 
 
-def test_stream_wrapper_finalize_idempotent():
-    """StreamWrapper should stop telemetry exactly once."""
+@pytest.mark.vcr()
+def test_stream_wrapper_finalize_idempotent(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Fully consumed stream plus explicit close should still yield one span."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
 
-    class FakeHandler:
-        def __init__(self):
-            self.stop_calls = 0
-            self.fail_calls = 0
+    stream = anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+        stream=True,
+    )
 
-        def stop_llm(self, invocation):
-            self.stop_calls += 1
-            return invocation
+    response_id = None
+    response_model = None
+    stop_reason = None
+    input_tokens = None
+    output_tokens = None
 
-        def fail_llm(self, invocation, error):
-            self.fail_calls += 1
-            return invocation
+    # Consume the stream fully, then call close() to verify idempotent finalization.
+    for chunk in stream:
+        if chunk.type == "message_start":
+            message = getattr(chunk, "message", None)
+            if message:
+                response_id = getattr(message, "id", None)
+                response_model = getattr(message, "model", None)
+                usage = getattr(message, "usage", None)
+                if usage:
+                    input_tokens = expected_input_tokens(usage)
+        elif chunk.type == "message_delta":
+            delta = getattr(chunk, "delta", None)
+            if delta:
+                stop_reason = getattr(delta, "stop_reason", None)
+            usage = getattr(chunk, "usage", None)
+            if usage:
+                output_tokens = getattr(usage, "output_tokens", None)
+                input_tokens = expected_input_tokens(usage)
 
-    class FakeInvocation:
-        response_model_name = None
-        response_id = None
-        finish_reasons = None
-        input_tokens = None
-        output_tokens = None
-        attributes = {}
+    stream.close()
 
-    class FakeChunk:
-        def __init__(self):
-            self.type = "message_start"
-            self.message = None
-
-    class FakeStream:
-        def __init__(self):
-            self._chunks = [FakeChunk()]
-            self._index = 0
-
-        def __iter__(self):
-            return self
-
-        def __next__(self):
-            if self._index >= len(self._chunks):
-                raise StopIteration
-            value = self._chunks[self._index]
-            self._index += 1
-            return value
-
-        def close(self):  # pylint: disable=no-self-use
-            return None
-
-    handler = FakeHandler()
-    wrapper = StreamWrapper(FakeStream(), handler, FakeInvocation())  # type: ignore[arg-type]
-
-    list(wrapper)
-    wrapper.close()
-
-    assert handler.stop_calls == 1
-    assert handler.fail_calls == 0
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert_span_attributes(
+        spans[0],
+        request_model=model,
+        response_id=response_id,
+        response_model=response_model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        finish_reasons=[normalize_stop_reason(stop_reason)]
+        if stop_reason
+        else None,
+    )
 
 
 def test_message_wrapper_aggregates_cache_tokens():
