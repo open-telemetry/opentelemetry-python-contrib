@@ -74,7 +74,7 @@ class CompletionHook(Protocol):
         inputs: list[types.InputMessage],
         outputs: list[types.OutputMessage],
         system_instruction: list[types.MessagePart],
-        tool_definitions: list[types.MessagePart],
+        tool_definitions: list[types.MessagePart] | None = None,
         span: Span | None = None,
         log_record: LogRecord | None = None,
     ) -> None: ...

@@ -103,9 +103,7 @@ def is_tool_definitions_hashable(
 
 
 def hash_tool_definitions(tool_definitions: list[types.MessagePart]) -> str:
-    print("DEBUG: hello")
-
-    serialized_parts = []
+    serialized_parts: list[str] = []
 
     for tool in tool_definitions:
         if tool is None:
@@ -206,7 +204,7 @@ class UploadCompletionHook(CompletionHook):
     def _calculate_ref_path(
         self,
         system_instruction: list[types.MessagePart],
-        tool_definitions: list[types.MessagePart],
+        tool_definitions: list[types.MessagePart] | None = None,
     ) -> CompletionRefs:
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
@@ -221,12 +219,8 @@ class UploadCompletionHook(CompletionHook):
             ).hexdigest()
 
         tool_definitions_hash = None
-        if is_tool_definitions_hashable(tool_definitions):
+        if tool_definitions and is_tool_definitions_hashable(tool_definitions):
             tool_definitions_hash = hash_tool_definitions(tool_definitions)
-            print(
-                "DEBUG: Tool definitions hashable, hash is %s",
-                tool_definitions_hash,
-            )
 
         uuid_str = str(uuid4())
         return CompletionRefs(
@@ -300,7 +294,7 @@ class UploadCompletionHook(CompletionHook):
         inputs: list[types.InputMessage],
         outputs: list[types.OutputMessage],
         system_instruction: list[types.MessagePart],
-        tool_definitions: list[types.MessagePart],
+        tool_definitions: list[types.MessagePart] | None = None,
         span: Span | None = None,
         log_record: LogRecord | None = None,
         **kwargs: Any,
@@ -320,16 +314,18 @@ class UploadCompletionHook(CompletionHook):
         )
 
         def to_dict(
-            dataclass_list: list[types.InputMessage]
+            input_list: list[types.InputMessage]
             | list[types.OutputMessage]
             | list[types.MessagePart],
         ) -> JsonEncodeable:
-            response = []
-            for dc in dataclass_list:
-                if isinstance(dc, (dict, str)):
-                    response.append(dc)
+            response: JsonEncodeable = []
+            for x in input_list:
+                if isinstance(x, dict):
+                    response.append(x)  # type: ignore
+                elif isinstance(x, str):
+                    response.append({"content": x})
                 else:
-                    response.append(asdict(dc))
+                    response.append(asdict(x))
             return response
 
         references = [

@@ -611,7 +611,7 @@ class _GenerateContentInstrumentationHelper:
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
-        tool_definitions: list[MessagePart] = [],
+        tool_definitions: list[MessagePart] = None,
     ):
         if (
             self.sem_conv_opt_in_mode
