@@ -27,49 +27,51 @@ interactions:
         "top_p": 0.9
       }
     headers:
-      accept:
+      Accept:
       - application/json
-      accept-encoding:
+      Accept-Encoding:
       - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '316'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.16.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.16.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.13.5
       authorization:
       - Bearer test_openai_api_key
-      connection:
-      - keep-alive
-      content-length:
-      - '316'
-      content-type:
-      - application/json
-      host:
-      - api.openai.com
-      user-agent:
-      - OpenAI/Python 1.106.1
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - 'false'
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 1.106.1
-      x-stainless-raw-response:
-      - 'true'
+      cookie:
+      - test_cookie
       x-stainless-retry-count:
       - '0'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.13.5
     method: POST
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
       string: |-
         {
-          "id": "chatcmpl-CCAQbtjsmG2294sQ6utRc16OQWeol",
+          "id": "chatcmpl-D5js6XcubHki2LoPJ6cG4o0tPn8LV",
           "object": "chat.completion",
-          "created": 1757016057,
+          "created": 1770260342,
           "model": "gpt-3.5-turbo-0125",
           "choices": [
             {
@@ -104,13 +106,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 97a01376ad4d2af1-LAX
+      - 9c8f263d4d5fa6c4-SJC
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 04 Sep 2025 20:00:57 GMT
+      - Thu, 05 Feb 2026 02:59:02 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -130,27 +132,27 @@ interactions:
       - '822'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '282'
+      - '195'
       openai-project:
-      - proj_GLiYlAc06hF0Fm06IMReZLy4
+      - proj_3o0Aqh32nPiGbrex8BJtPTCm
       openai-version:
       - '2020-10-01'
-      x-envoy-upstream-service-time:
-      - '287'
+      x-openai-proxy-wasm:
+      - v0.1
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
-      - '200000'
+      - '10000000'
       x-ratelimit-remaining-requests:
       - '9999'
       x-ratelimit-remaining-tokens:
-      - '199982'
+      - '9999981'
       x-ratelimit-reset-requests:
-      - 8.64s
+      - 6ms
       x-ratelimit-reset-tokens:
-      - 5ms
+      - 0s
       x-request-id:
-      - req_0e343602788d4f33869d09afcc7d4819
+      - req_11889cdfe9f548169adad4e04412b63c
     status:
       code: 200
       message: OK
