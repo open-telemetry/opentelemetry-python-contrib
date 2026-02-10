@@ -2,6 +2,9 @@ sphinx==7.1.2
 sphinx-rtd-theme==2.0.0rc4
 sphinx-autodoc-typehints==1.25.2
 
+# Required to avoid breakages for pyramid and cassandra packages
+setuptools<82.0.0
+
 # Required by opentelemetry-instrumentation
 fastapi>=0.65.2
 pymemcache~=1.3

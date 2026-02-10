@@ -10,9 +10,10 @@ repos:
       - id: ruff-format
   - repo: https://github.com/astral-sh/uv-pre-commit
     # uv version.
-    rev: 0.6.0
+    rev: 1ce7e7fa8aa6eda60e54755509a9380b0f1c5d08 # frozen: v0.9.30
     hooks:
       - id: uv-lock
+        args: ["--index-url", "https://pypi.org/simple/"]
   - repo: https://github.com/rstcheck/rstcheck
     rev: 77490ffa33bfc0928975ae3cf904219903db755d # frozen: v6.2.5
     hooks:
