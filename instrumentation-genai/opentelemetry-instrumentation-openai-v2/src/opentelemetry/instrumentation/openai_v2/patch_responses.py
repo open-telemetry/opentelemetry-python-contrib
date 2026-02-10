@@ -26,8 +26,8 @@ from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.status import Status, StatusCode
 
 from .instruments import Instruments
-from .patch import _record_metrics
 from .utils import (
+    _record_metrics,
     get_llm_request_attributes,
     handle_span_exception,
     is_streaming,
@@ -227,8 +227,7 @@ def responses_retrieve(
                     )
 
                 if (
-                    GenAIAttributes.GEN_AI_REQUEST_MODEL
-                    not in span_attributes
+                    GenAIAttributes.GEN_AI_REQUEST_MODEL not in span_attributes
                     and getattr(parsed_result, "model", None)
                 ):
                     span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = (

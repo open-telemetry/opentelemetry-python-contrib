@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from os import environ
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping, Optional
 from urllib.parse import urlparse
 
 from httpx import URL
@@ -36,6 +36,9 @@ from opentelemetry.trace.status import Status, StatusCode
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
+
+if TYPE_CHECKING:
+    from .instruments import Instruments
 
 
 def is_content_enabled() -> bool:
@@ -286,6 +289,94 @@ def get_llm_request_attributes(
 
     # filter out values not set
     return {k: v for k, v in attributes.items() if value_is_set(v)}
+
+
+def _record_metrics(  # pylint: disable=too-many-branches
+    instruments: Instruments,
+    duration: float,
+    result,
+    request_attributes: dict,
+    error_type: Optional[str],
+    operation_name: str,
+):
+    common_attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+    }
+    if request_model := request_attributes.get(
+        GenAIAttributes.GEN_AI_REQUEST_MODEL
+    ):
+        common_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = request_model
+
+    if "gen_ai.embeddings.dimension.count" in request_attributes:
+        common_attributes["gen_ai.embeddings.dimension.count"] = (
+            request_attributes["gen_ai.embeddings.dimension.count"]
+        )
+
+    if error_type:
+        common_attributes["error.type"] = error_type
+
+    if result and getattr(result, "model", None):
+        common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = result.model
+
+    if result and getattr(result, "service_tier", None):
+        common_attributes[
+            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
+        ] = result.service_tier
+
+    if result and getattr(result, "system_fingerprint", None):
+        common_attributes["gen_ai.openai.response.system_fingerprint"] = (
+            result.system_fingerprint
+        )
+
+    if ServerAttributes.SERVER_ADDRESS in request_attributes:
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = (
+            request_attributes[ServerAttributes.SERVER_ADDRESS]
+        )
+
+    if ServerAttributes.SERVER_PORT in request_attributes:
+        common_attributes[ServerAttributes.SERVER_PORT] = request_attributes[
+            ServerAttributes.SERVER_PORT
+        ]
+
+    instruments.operation_duration_histogram.record(
+        duration,
+        attributes=common_attributes,
+    )
+
+    if result and getattr(result, "usage", None):
+        usage = result.usage
+        input_tokens = getattr(usage, "prompt_tokens", None)
+        if input_tokens is None:
+            input_tokens = getattr(usage, "input_tokens", None)
+        output_tokens = getattr(usage, "completion_tokens", None)
+        if output_tokens is None:
+            output_tokens = getattr(usage, "output_tokens", None)
+
+        # Always record input tokens
+        input_attributes = {
+            **common_attributes,
+            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
+        }
+        if input_tokens is not None:
+            instruments.token_usage_histogram.record(
+                input_tokens,
+                attributes=input_attributes,
+            )
+
+        # For embeddings, don't record output tokens as all tokens are input tokens
+        if (
+            operation_name
+            != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
+        ):
+            output_attributes = {
+                **common_attributes,
+                GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+            }
+            if output_tokens is not None:
+                instruments.token_usage_histogram.record(
+                    output_tokens, attributes=output_attributes
+                )
 
 
 def handle_span_exception(span, error):

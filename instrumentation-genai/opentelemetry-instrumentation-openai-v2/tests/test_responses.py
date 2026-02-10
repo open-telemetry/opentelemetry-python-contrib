@@ -140,10 +140,6 @@ def test_responses_stream_existing_response(
     assert len(spans) == span_count + 2
 
     stream_and_retrieve_spans = spans[span_count:]
-    operation_names = {
-        span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME)
-        for span in stream_and_retrieve_spans
-    }
     retrieval_operation = getattr(
         GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
     )
@@ -152,7 +148,10 @@ def test_responses_stream_existing_response(
         if retrieval_operation is not None
         else "retrieval"
     )
-    assert operation_names == {
+    assert {
+        span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME)
+        for span in stream_and_retrieve_spans
+    } == {
         GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
         retrieval_operation_name,
     }
@@ -163,20 +162,13 @@ def test_responses_stream_existing_response(
         == GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value
     )
 
-    input_tokens = (
-        final_response.usage.input_tokens if final_response.usage else None
-    )
-    output_tokens = (
-        final_response.usage.output_tokens if final_response.usage else None
-    )
-
     assert_all_attributes(
         stream_span,
         final_response.model,
         final_response.id,
         final_response.model,
-        input_tokens,
-        output_tokens,
+        final_response.usage.input_tokens if final_response.usage else None,
+        final_response.usage.output_tokens if final_response.usage else None,
         operation_name=GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
         response_service_tier=final_response.service_tier,
     )
