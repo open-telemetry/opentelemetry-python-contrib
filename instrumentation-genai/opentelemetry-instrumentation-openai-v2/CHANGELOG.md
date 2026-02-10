@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fix `StreamWrapper` missing `.headers` and other attributes when using `with_raw_response` streaming
+  ([#4113](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4113))
+
 ## Version 2.3b0 (2025-12-24)
 
 - Fix `AttributeError` when handling `LegacyAPIResponse` (from `with_raw_response`)
