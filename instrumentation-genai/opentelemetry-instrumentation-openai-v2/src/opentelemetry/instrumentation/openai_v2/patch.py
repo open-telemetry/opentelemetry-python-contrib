@@ -44,6 +44,8 @@ from .utils import (
     set_span_attribute,
 )
 
+# TODO: Consider migrating Responses instrumentation to TelemetryHandler
+# once content capture and streaming hooks are available.
 
 def chat_completions_create(
     tracer: Tracer,
@@ -430,6 +432,7 @@ def responses_retrieve(
     capture_content: bool,
 ):
     """Wrap the `retrieve` method of the `Responses` class to trace it."""
+    # https://github.com/openai/openai-python/blob/dc68b90655912886bd7a6c7787f96005452ebfc9/src/openai/resources/responses/responses.py#L1417C9-L1417C17
     retrieval_enum = getattr(
         GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
     )
