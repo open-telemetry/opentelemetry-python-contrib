@@ -31,6 +31,9 @@ from opentelemetry.instrumentation.sqlalchemy import (
     EngineTracer,
     SQLAlchemyInstrumentor,
 )
+from opentelemetry.instrumentation.sqlalchemy.engine import (
+    _get_db_name_from_cursor,
+)
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider, export
@@ -956,3 +959,36 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         metric_list = self.get_sorted_metrics()
         self.assertEqual(len(metric_list), 0)
+
+    def test_get_db_name_from_cursor_postgresql_success(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_info = mock.Mock()
+        mock_info.dbname = "test_database"
+        mock_connection.info = mock_info
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor("postgresql", mock_cursor)
+        self.assertEqual(result, "test_database")
+
+    def test_get_db_name_from_cursor_postgresql_no_connection(self):
+        mock_cursor = mock.Mock()
+        mock_cursor.connection = None
+        result = _get_db_name_from_cursor("postgresql", mock_cursor)
+        self.assertIsNone(result)
+
+    def test_get_db_name_from_cursor_postgresql_no_dbname(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_info = mock.Mock()
+        mock_info.dbname = None
+        mock_connection.info = mock_info
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor("postgresql", mock_cursor)
+        self.assertIsNone(result)
+
+    def test_get_db_name_from_cursor_unknown_vendor(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor("unknown_db", mock_cursor)
+        self.assertIsNone(result)

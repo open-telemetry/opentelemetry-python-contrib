@@ -37,17 +37,19 @@ from opentelemetry.instrumentation.utils import (
     _get_opentelemetry_values,
     is_instrumentation_enabled,
 )
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_NAME,
-)
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_TRANSPORT,
     NetTransportValues,
 )
-from opentelemetry.semconv.attributes.db_attributes import (
-    DB_NAMESPACE,
-)
 from opentelemetry.trace.status import Status, StatusCode
+
+
+def _get_db_name_from_cursor(vendor, cursor):
+    if vendor == "postgresql":
+        info = getattr(getattr(cursor, "connection", None), "info", None)
+        if info and info.dbname:
+            return info.dbname
+    return None
 
 
 def _normalize_vendor(vendor):
@@ -339,8 +341,10 @@ class EngineTracer:
             )
 
         # Extract db_name for operation name
-        # Prefer old semconv (db.name) over new semconv (db.namespace) for backwards compatibility
-        db_name = attrs.get(DB_NAME) or attrs.get(DB_NAMESPACE) or ""
+        if self.vendor == "sqlite":
+            db_name = conn.engine.url.database
+        else:
+            db_name = _get_db_name_from_cursor(self.vendor, cursor)
 
         span = self.tracer.start_span(
             self._operation_name(db_name, statement),
@@ -433,7 +437,8 @@ def _get_attributes_from_cursor(
         if not info:
             return attrs
 
-        _set_db_name(attrs, info.dbname, sem_conv_opt_in_mode_db)
+        db_name = _get_db_name_from_cursor(vendor, cursor)
+        _set_db_name(attrs, db_name, sem_conv_opt_in_mode_db)
         is_unix_socket = info.host and info.host.startswith("/")
 
         if is_unix_socket:
@@ -454,6 +459,10 @@ def _get_attributes_from_cursor(
                 _set_http_peer_port_client(
                     attrs, int(info.port), sem_conv_opt_in_mode_http
                 )
+    elif vendor == "sqlite":
+        db_name = _get_db_name_from_cursor(vendor, cursor)
+        _set_db_name(attrs, db_name, sem_conv_opt_in_mode_db)
+        # SQLite has no network attributes
     return attrs
 
 
