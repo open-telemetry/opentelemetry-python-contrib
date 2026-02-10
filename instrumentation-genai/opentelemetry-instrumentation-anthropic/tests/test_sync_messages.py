@@ -702,6 +702,29 @@ def test_sync_messages_stream_token_usage(
     )
 
 
+@pytest.mark.vcr()
+def test_sync_messages_stream_double_exit_idempotent(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Calling __exit__ twice should still emit only one span."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hi in one word."}]
+
+    manager = anthropic_client.messages.stream(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    )
+    stream = manager.__enter__()
+    _ = "".join(stream.text_stream)
+    manager.__exit__(None, None, None)
+    manager.__exit__(None, None, None)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+
+
 def test_sync_messages_stream_connection_error(
     span_exporter, instrument_no_content
 ):

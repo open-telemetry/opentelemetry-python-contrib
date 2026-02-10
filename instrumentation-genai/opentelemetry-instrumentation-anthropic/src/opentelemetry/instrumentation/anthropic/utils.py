@@ -348,6 +348,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
         """Update invocation with collected data and stop the span."""
         if self._finalized:
             return
+        self._finalized = True
 
         if self._response_model:
             self._invocation.response_model_name = self._response_model
@@ -369,7 +370,6 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             ] = self._cache_read_input_tokens
 
         self._handler.stop_llm(self._invocation)
-        self._finalized = True
 
     def __iter__(self) -> "StreamWrapper":
         return self
@@ -420,6 +420,25 @@ class MessageStreamManagerWrapper:
         self._handler = handler
         self._invocation = invocation
         self._message_stream: Optional["MessageStream"] = None
+        self._finalized = False
+
+    def _finalize_success(self) -> None:
+        if self._finalized:
+            return
+        self._finalized = True
+        self._handler.stop_llm(self._invocation)
+
+    def _finalize_error(self, exc_type: Any, exc_val: Any) -> None:
+        if self._finalized:
+            return
+        self._finalized = True
+        self._handler.fail_llm(
+            self._invocation,
+            Error(
+                message=str(exc_val) if exc_val else str(exc_type),
+                type=exc_type,
+            ),
+        )
 
     def __enter__(self) -> "MessageStream":
         """Enter the context and return the underlying MessageStream."""
@@ -428,10 +447,7 @@ class MessageStreamManagerWrapper:
             return self._message_stream
         except Exception as exc:
             # Handle errors during context entry (e.g., connection errors)
-            self._handler.fail_llm(
-                self._invocation,
-                Error(message=str(exc), type=type(exc)),
-            )
+            self._finalize_error(type(exc), exc)
             raise
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
@@ -439,16 +455,10 @@ class MessageStreamManagerWrapper:
         # Extract telemetry from the final message before exiting
         if self._message_stream is not None and exc_type is None:
             self._extract_telemetry_from_stream()
-            self._handler.stop_llm(self._invocation)
+            self._finalize_success()
         elif exc_type is not None:
             # Handle error case
-            self._handler.fail_llm(
-                self._invocation,
-                Error(
-                    message=str(exc_val) if exc_val else str(exc_type),
-                    type=exc_type,
-                ),
-            )
+            self._finalize_error(exc_type, exc_val)
         # Always exit the underlying stream manager
         return self._stream_manager.__exit__(exc_type, exc_val, exc_tb)  # type: ignore[return-value]
 
