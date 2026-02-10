@@ -85,11 +85,11 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-click==0.61b0.dev",
     },
     {
-        "library": "confluent-kafka >= 1.8.2, <= 2.11.0",
+        "library": "confluent-kafka >= 1.8.2, <= 2.13.0",
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.61b0.dev",
     },
     {
-        "library": "django >= 1.10",
+        "library": "django >= 2.0",
         "instrumentation": "opentelemetry-instrumentation-django==0.61b0.dev",
     },
     {
