@@ -17,6 +17,7 @@ import types
 from unittest import IsolatedAsyncioTestCase, mock
 
 import psycopg
+from psycopg.sql import SQL, Composed
 
 import opentelemetry.instrumentation.psycopg
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
@@ -33,6 +34,8 @@ class MockCursor:
 
     callproc = mock.MagicMock(spec=types.MethodType)
     callproc.__name__ = "callproc"
+
+    connection = None
 
     rowcount = "SomeRowCount"
 
@@ -347,6 +350,41 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_typed_sql_query(self):
+        cnx = psycopg.connect(database="test")
+        query = SQL("SELECT * FROM test")
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+
+        self.assertTrue(issubclass(cnx.cursor_factory, MockCursor))
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        self.assertEqual(
+            spans_list[0].attributes["db.statement"], "SELECT * FROM test"
+        )
+
+    def test_instrument_connection_composed_query(self):
+        cnx = psycopg.connect(database="test")
+        query: Composed = SQL("SELECT * FROM test").format()
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+        self.assertTrue(issubclass(cnx.cursor_factory, MockCursor))
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        self.assertEqual(
+            spans_list[0].attributes["db.statement"], "SELECT * FROM test"
+        )
 
     # pylint: disable=unused-argument
     def test_instrument_connection_with_instrument(self):

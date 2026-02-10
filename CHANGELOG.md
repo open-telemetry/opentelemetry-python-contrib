@@ -104,6 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3922))
 - `opentelemetry-instrumentation-urllib3`: fix multiple arguments error
   ([#4144](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4144))
+- `opentelemetry-instrumentation-psycopg`: Fix instrument of typed psycopg sql
+  ([#4078](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4171))
 - `opentelemetry-instrumentation-aiohttp-server`: fix HTTP error inconsistencies
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
 
@@ -112,7 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-logging`: Inject span context attributes into logging LogRecord only if configured to do so
   ([#4112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4112))
 - `opentelemetry-instrumentation-django`: Drop support for Django < 2.0
-  ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
+  ([#4083](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
