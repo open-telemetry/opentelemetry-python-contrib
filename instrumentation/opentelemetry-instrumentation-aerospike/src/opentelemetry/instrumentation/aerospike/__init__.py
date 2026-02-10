@@ -173,6 +173,7 @@ API
 from __future__ import annotations
 
 import functools
+import logging
 from collections.abc import Callable, Collection
 from typing import Any
 
@@ -187,6 +188,8 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.trace import Span, SpanKind, Status, StatusCode, Tracer
+
+_logger = logging.getLogger(__name__)
 
 # Semantic convention constants
 _DB_SYSTEM = "aerospike"
@@ -304,16 +307,22 @@ def _traced_method(
                     set_extra_attrs(span, args)
 
             if client_instance._request_hook:  # noqa: SLF001
-                client_instance._request_hook(  # noqa: SLF001
-                    span, operation, args, kwargs
-                )
+                try:
+                    client_instance._request_hook(  # noqa: SLF001
+                        span, operation, args, kwargs
+                    )
+                except Exception:  # noqa: BLE001
+                    _logger.exception("Error executing request_hook")
 
             try:
                 result = method(*args, **kwargs)
                 if client_instance._response_hook:  # noqa: SLF001
-                    client_instance._response_hook(  # noqa: SLF001
-                        span, operation, result
-                    )
+                    try:
+                        client_instance._response_hook(  # noqa: SLF001
+                            span, operation, result
+                        )
+                    except Exception:  # noqa: BLE001
+                        _logger.exception("Error executing response_hook")
                 if set_result_attrs and span.is_recording():
                     set_result_attrs(span, result)
                 return result
@@ -321,7 +330,10 @@ def _traced_method(
                 if span.is_recording():
                     _set_error_attributes(span, exc)
                 if client_instance._error_hook:  # noqa: SLF001
-                    client_instance._error_hook(span, operation, exc)  # noqa: SLF001
+                    try:
+                        client_instance._error_hook(span, operation, exc)  # noqa: SLF001
+                    except Exception:  # noqa: BLE001
+                        _logger.exception("Error executing error_hook")
                 raise
 
     return wrapper

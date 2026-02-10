@@ -900,6 +900,81 @@ class TestAerospikeInstrumentation(TestBase):  # pylint: disable=too-many-public
         finally:
             self._uninstrument()
 
+    def test_request_hook_exception_does_not_break_operation(self):
+        """Test that request_hook exception does not break the operation."""
+        self.mock_client.put.return_value = None
+
+        def bad_request_hook(span, operation, args, kwargs):
+            raise RuntimeError("request_hook failed")
+
+        self._instrument(request_hook=bad_request_hook)
+
+        try:
+            client = self.mock_aerospike.client({})
+            # Should NOT raise despite hook failure
+            client.put(("test", "demo", "key1"), {"bin": "value"})
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].name, "PUT test.demo")
+            # Verify the underlying method was still called
+            self.mock_client.put.assert_called_once()
+        finally:
+            self._uninstrument()
+
+    def test_response_hook_exception_does_not_break_operation(self):
+        """Test that response_hook exception does not break the operation."""
+        self.mock_client.get.return_value = (
+            ("test", "demo", "key1"),
+            {"gen": 1, "ttl": 100},
+            {"bin1": "value1"},
+        )
+
+        def bad_response_hook(span, operation, result):
+            raise RuntimeError("response_hook failed")
+
+        self._instrument(response_hook=bad_response_hook)
+
+        try:
+            client = self.mock_aerospike.client({})
+            # Should NOT raise despite hook failure
+            result = client.get(("test", "demo", "key1"))
+
+            # Verify result is returned correctly
+            self.assertIsNotNone(result)
+            self.assertEqual(result[2], {"bin1": "value1"})
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].name, "GET test.demo")
+        finally:
+            self._uninstrument()
+
+    def test_error_hook_exception_does_not_break_operation(self):
+        """Test that error_hook exception does not suppress the original error."""
+        original_error = ValueError("Record not found")
+        original_error.code = 2
+        self.mock_client.get.side_effect = original_error
+
+        def bad_error_hook(span, operation, exception):
+            raise RuntimeError("error_hook failed")
+
+        self._instrument(error_hook=bad_error_hook)
+
+        try:
+            client = self.mock_aerospike.client({})
+            # Should raise the ORIGINAL error, not the hook error
+            with self.assertRaises(ValueError) as ctx:
+                client.get(("test", "demo", "key1"))
+
+            self.assertEqual(str(ctx.exception), "Record not found")
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
+        finally:
+            self._uninstrument()
+
     def test_bins_attribute(self):
         """Test that bins are captured for PUT and SELECT."""
         self.mock_client.put.return_value = None
