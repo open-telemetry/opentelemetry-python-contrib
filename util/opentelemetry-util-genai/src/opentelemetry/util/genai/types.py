@@ -191,7 +191,7 @@ class LLMInvocation(GenAIInvocation):
     set by the TelemetryHandler.
     """
 
-    request_model: str
+    request_model: str | None = None
     # Chat by default
     operation_name: str = GenAI.GenAiOperationNameValues.CHAT.value
     input_messages: list[InputMessage] = field(
