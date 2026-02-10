@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-cassandra`: fix instrumentation metadata to instrumentation cassandra-driver OR scylla-driver
+- `opentelemetry-instrumentation-cassandra`: fix instrumentation metadata to instrument cassandra-driver OR scylla-driver
   ([#4180](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4180))
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
   ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
