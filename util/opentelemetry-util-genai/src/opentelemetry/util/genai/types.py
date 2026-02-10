@@ -177,7 +177,14 @@ def _new_str_any_dict() -> dict[str, Any]:
 
 
 @dataclass
-class LLMInvocation:
+class GenAIInvocation:
+    context_token: ContextToken | None = None
+    span: Span | None = None
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+
+
+@dataclass
+class LLMInvocation(GenAIInvocation):
     """
     Represents a single LLM call invocation. When creating an LLMInvocation object,
     only update the data attributes. The span and context_token attributes are
@@ -187,8 +194,6 @@ class LLMInvocation:
     request_model: str
     # Chat by default
     operation_name: str = GenAI.GenAiOperationNameValues.CHAT.value
-    context_token: ContextToken | None = None
-    span: Span | None = None
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
     )

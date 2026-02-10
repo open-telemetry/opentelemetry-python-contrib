@@ -39,12 +39,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4099](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4099))
 - `opentelemetry-instrumentation-aiohttp-server` Implement new semantic convention opt-in migration
   ([#3980](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3980))
+- `opentelemetry-instrumentation-falcon`: pass request attributes at span creation
+  ([#4119](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4119))
 - `opentelemetry-instrumentation`: add database stability attribute setters in `_semconv` utilities
   ([#4108](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4108))
+- `opentelemetry-instrumentation-aiohttp-server`: pass request attributes at span creation
+  ([#4118](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4118))
 - `opentelemetry-instrumentation-tornado`: Implement new semantic convention opt-in migration
   ([#3993](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3993))
+- `opentelemetry-instrumentation-tornado`: pass request attributes at span creation
+  ([#4140](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4140))
 - `opentelemetry-instrumentation-pyramid` Implement new semantic convention opt-in migration
   ([#3982](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3982))
+- `opentelemetry-instrumentation-tortoiseorm` Add unit tests for Tortoise ORM instrumentation
+  ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
+- `opentelemetry-instrumentation-pyramid`: pass request attributes at span creation
+  ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 
 ### Fixed
 
@@ -56,11 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
 - `opentelemetry-instrumentation-psycopg`: Fix `instrument_connection` method to use `_new_cursor_async_factory` on async connections.
   ([#3956](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3956))
-- `opentelemetry-instrumentation-dbapi`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-dbapi`: Replace SpanAttributes with semconv constants where applicable
   ([#4058](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4058))
-- `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable
   ([#4059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4059))
-- `opentelemetry-instrumentation-botocore`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-botocore`: Replace SpanAttributes with semconv constants where applicable
   ([#4063](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4063))
 - `opentelemetry-instrumentation-celery`: Replace SpanAttributes with semconv constants where applicable
   ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
@@ -88,6 +98,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4081](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4081))
 - `opentelemetry-instrumentation-system-metrics`: Use proper numeric `cpython.gc.generation` attribute in CPython metrics, out of spec `generation` attribute is deprecated and will be removed in the future
   ([#4092](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4092))
+- `opentelemetry-instrumentation-dbapi`: Fix sqlcomment calculation of mysql_client_version field if connection reassignment, with "unknown" fallback
+  ([#3729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3729))
+- `opentelemetry-instrumentation-confluent-kafka`: Fix incorrect number of argument to `_inner_wrap_close`
+  ([#3922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3922))
+- `opentelemetry-instrumentation-urllib3`: fix multiple arguments error
+  ([#4144](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4144))
+- `opentelemetry-instrumentation-aiohttp-server`: fix HTTP error inconsistencies
+  ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
 
 ### Breaking changes
 
