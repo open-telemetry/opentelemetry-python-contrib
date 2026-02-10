@@ -57,6 +57,8 @@ from .test_instrumentation import (  # pylint: disable=no-name-in-module,import-
 )
 from .tornado_test_app import make_app
 
+SCOPE = "opentelemetry.instrumentation.tornado"
+
 
 class TestTornadoMetricsInstrumentation(TornadoTest):
     # Return Sequence with one histogram
@@ -72,7 +74,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         response = self.fetch("/")
         client_duration_estimated = (default_timer() - start_time) * 1000
 
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 7)
 
         (
@@ -209,7 +211,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         req2 = self.http_client.fetch(self.get_url("/async"))
         await asyncio.gather(req1, req2)
 
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 7)
 
         client_duration = metrics[0]
@@ -277,7 +279,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         TornadoInstrumentor().uninstrument()
         self.fetch("/")
 
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 7)
 
         for metric in metrics:
@@ -290,7 +292,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
             self.fetch(path)
 
             # Verify no server metrics written (only client ones should exist)
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             for metric in metrics:
                 self.assertTrue("http.server" not in metric.name, metric)
             self.assertEqual(len(metrics), 3, metrics)
@@ -378,21 +380,18 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
         """Test that server metrics use old semantic conventions by default."""
         response = self.fetch("/")
         self.assertEqual(response.code, 201)
-        metrics = self.memory_metrics_reader.get_metrics_data()
-        resource_metrics = metrics.resource_metrics
+        metrics = self.get_sorted_metrics(SCOPE)
 
         # Find old semconv metrics
         old_duration_found = False
         new_duration_found = False
-        for rm in resource_metrics:
-            for sm in rm.scope_metrics:
-                for metric in sm.metrics:
-                    if metric.name == "http.server.duration":
-                        old_duration_found = True
-                        # Verify unit is milliseconds for old semconv
-                        self.assertEqual(metric.unit, "ms")
-                    elif metric.name == "http.server.request.duration":
-                        new_duration_found = True
+        for metric in metrics:
+            if metric.name == "http.server.duration":
+                old_duration_found = True
+                # Verify unit is milliseconds for old semconv
+                self.assertEqual(metric.unit, "ms")
+            elif metric.name == "http.server.request.duration":
+                new_duration_found = True
         self.assertTrue(old_duration_found, "Old semconv metric not found")
         self.assertFalse(
             new_duration_found, "New semconv metric should not be present"
@@ -456,21 +455,18 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
         """Test that server metrics use new semantic conventions in http mode."""
         response = self.fetch("/")
         self.assertEqual(response.code, 201)
-        metrics = self.memory_metrics_reader.get_metrics_data()
-        resource_metrics = metrics.resource_metrics
+        metrics = self.get_sorted_metrics(SCOPE)
 
         # Find new semconv metrics
         old_duration_found = False
         new_duration_found = False
-        for rm in resource_metrics:
-            for sm in rm.scope_metrics:
-                for metric in sm.metrics:
-                    if metric.name == "http.server.duration":
-                        old_duration_found = True
-                    elif metric.name == "http.server.request.duration":
-                        new_duration_found = True
-                        # Verify unit is seconds for new semconv
-                        self.assertEqual(metric.unit, "s")
+        for metric in metrics:
+            if metric.name == "http.server.duration":
+                old_duration_found = True
+            elif metric.name == "http.server.request.duration":
+                new_duration_found = True
+                # Verify unit is seconds for new semconv
+                self.assertEqual(metric.unit, "s")
         self.assertFalse(
             old_duration_found, "Old semconv metric should not be present"
         )
@@ -580,21 +576,18 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
     def test_server_metrics_both_semconv(self):
         response = self.fetch("/")
         self.assertEqual(response.code, 201)
-        metrics = self.memory_metrics_reader.get_metrics_data()
-        resource_metrics = metrics.resource_metrics
+        metrics = self.get_sorted_metrics(SCOPE)
 
         # Find both old and new semconv metrics
         old_duration_found = False
         new_duration_found = False
-        for rm in resource_metrics:
-            for sm in rm.scope_metrics:
-                for metric in sm.metrics:
-                    if metric.name == "http.server.duration":
-                        old_duration_found = True
-                        self.assertEqual(metric.unit, "ms")
-                    elif metric.name == "http.server.request.duration":
-                        new_duration_found = True
-                        self.assertEqual(metric.unit, "s")
+        for metric in metrics:
+            if metric.name == "http.server.duration":
+                old_duration_found = True
+                self.assertEqual(metric.unit, "ms")
+            elif metric.name == "http.server.request.duration":
+                new_duration_found = True
+                self.assertEqual(metric.unit, "s")
         self.assertTrue(old_duration_found, "Old semconv metric not found")
         self.assertTrue(new_duration_found, "New semconv metric not found")
 
@@ -623,21 +616,18 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
     def test_client_metrics_both_semconv(self):
         response = self.fetch("/")
         self.assertEqual(response.code, 201)
-        metrics = self.memory_metrics_reader.get_metrics_data()
-        resource_metrics = metrics.resource_metrics
+        metrics = self.get_sorted_metrics(SCOPE)
 
         # Find both old and new semconv metrics
         old_duration_found = False
         new_duration_found = False
-        for rm in resource_metrics:
-            for sm in rm.scope_metrics:
-                for metric in sm.metrics:
-                    if metric.name == "http.client.duration":
-                        old_duration_found = True
-                        self.assertEqual(metric.unit, "ms")
-                    elif metric.name == "http.client.request.duration":
-                        new_duration_found = True
-                        self.assertEqual(metric.unit, "s")
+        for metric in metrics:
+            if metric.name == "http.client.duration":
+                old_duration_found = True
+                self.assertEqual(metric.unit, "ms")
+            elif metric.name == "http.client.request.duration":
+                new_duration_found = True
+                self.assertEqual(metric.unit, "s")
         self.assertTrue(
             old_duration_found, "Old semconv client metric not found"
         )
