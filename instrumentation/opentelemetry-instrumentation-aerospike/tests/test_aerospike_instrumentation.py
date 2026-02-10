@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=import-outside-toplevel,no-self-use,redefined-outer-name,unused-variable
+# pylint: disable=import-outside-toplevel,no-self-use,redefined-outer-name,unused-variable,too-many-lines
 # ruff: noqa: PLC0415
 
 """Unit tests for OpenTelemetry Aerospike Instrumentation."""

@@ -272,6 +272,15 @@ def _create_client_wrapper(
     return client_wrapper
 
 
+def _safe_call_hook(hook, *args):
+    """Call a hook safely, logging any exceptions."""
+    if hook:
+        try:
+            hook(*args)
+        except Exception:  # pylint: disable=broad-exception-caught
+            _logger.exception("Error executing hook")
+
+
 def _traced_method(
     tracer: Tracer,
     method: Callable,
@@ -306,34 +315,34 @@ def _traced_method(
                 if set_extra_attrs:
                     set_extra_attrs(span, args)
 
-            if client_instance._request_hook:  # noqa: SLF001
-                try:
-                    client_instance._request_hook(  # noqa: SLF001
-                        span, operation, args, kwargs
-                    )
-                except Exception:  # noqa: BLE001
-                    _logger.exception("Error executing request_hook")
+            _safe_call_hook(
+                client_instance._request_hook,  # noqa: SLF001
+                span,
+                operation,
+                args,
+                kwargs,
+            )
 
             try:
                 result = method(*args, **kwargs)
-                if client_instance._response_hook:  # noqa: SLF001
-                    try:
-                        client_instance._response_hook(  # noqa: SLF001
-                            span, operation, result
-                        )
-                    except Exception:  # noqa: BLE001
-                        _logger.exception("Error executing response_hook")
+                _safe_call_hook(
+                    client_instance._response_hook,  # noqa: SLF001
+                    span,
+                    operation,
+                    result,
+                )
                 if set_result_attrs and span.is_recording():
                     set_result_attrs(span, result)
                 return result
             except Exception as exc:
                 if span.is_recording():
                     _set_error_attributes(span, exc)
-                if client_instance._error_hook:  # noqa: SLF001
-                    try:
-                        client_instance._error_hook(span, operation, exc)  # noqa: SLF001
-                    except Exception:  # noqa: BLE001
-                        _logger.exception("Error executing error_hook")
+                _safe_call_hook(
+                    client_instance._error_hook,  # noqa: SLF001
+                    span,
+                    operation,
+                    exc,
+                )
                 raise
 
     return wrapper
