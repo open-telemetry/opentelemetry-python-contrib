@@ -18,9 +18,6 @@ import wrapt
 from aio_pika import Exchange, Queue
 
 from opentelemetry.instrumentation.aio_pika import AioPikaInstrumentor
-from opentelemetry.instrumentation.aio_pika.package import (
-    _instrumentation_name,
-)
 from opentelemetry.test.test_base import TestBase
 
 from .consts import (
@@ -29,6 +26,7 @@ from .consts import (
     CHANNEL_8,
     CONNECTION_7,
     EXCHANGE_NAME,
+    INSTRUMENTATION_NAME,
     MESSAGE,
     ROUTING_KEY,
 )
@@ -65,6 +63,7 @@ class TestInstrumentationScopeName(TestBase):
 
     def test_instrumentation_scope_name(self):
         """Verify instrumentation scope via the real instrument() path."""
+
         async def _noop_publish(self, *args, **kwargs):
             return None
 
@@ -75,10 +74,12 @@ class TestInstrumentationScopeName(TestBase):
             major = AIOPIKA_VERSION_INFO[0]
             if major == 7:
                 exchange = Exchange(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
-            elif major == 8:
+            elif major in (8, 9):
                 exchange = Exchange(CHANNEL_8, EXCHANGE_NAME)
             else:
-                self.fail(f"Unsupported aio-pika version: {AIOPIKA_VERSION_INFO}")
+                self.fail(
+                    f"Unsupported aio-pika major version {major} (supported: 7-9, <10)"
+                )
             self.loop.run_until_complete(
                 exchange.publish(MESSAGE, ROUTING_KEY)
             )
@@ -86,5 +87,6 @@ class TestInstrumentationScopeName(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(
-            spans[0].instrumentation_scope.name, _instrumentation_name
+            spans[0].instrumentation_scope.name,
+            INSTRUMENTATION_NAME,
         )
