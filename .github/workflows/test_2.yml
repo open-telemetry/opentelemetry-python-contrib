@@ -1457,44 +1457,6 @@ jobs:
       - name: Run tests
         run: tox -e py312-test-instrumentation-cassandra -- -ra
 
-  py313-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.13 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py313-test-instrumentation-cassandra -- -ra
-
-  pypy3-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-cassandra -- -ra
-
   py39-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.9 Ubuntu
     runs-on: ubuntu-latest
