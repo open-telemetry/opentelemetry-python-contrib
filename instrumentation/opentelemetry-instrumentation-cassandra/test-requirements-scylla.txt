@@ -2,7 +2,7 @@ asgiref==3.8.1
 pyasyncore==1.0.4  # for python 3.13 (should removed when cassandra-driver replaces asyncore with recommended asyncio)
 click==8.1.7
 Deprecated==1.2.14
-geomet==1.1
+geomet==0.2.1.post1
 iniconfig==2.0.0
 packaging==24.0
 pluggy==1.5.0
@@ -10,7 +10,7 @@ py-cpuinfo==9.0.0
 pytest==7.4.4
 python-snappy==0.7.3
 PyYAML==6.0.1
-scylla-driver==3.29.7
+scylla-driver==3.26.6
 six==1.16.0
 tomli==2.0.1
 typing_extensions==4.12.2
