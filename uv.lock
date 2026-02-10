@@ -3870,21 +3870,21 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-instruments = [
+instruments-any = [
     { name = "cassandra-driver" },
     { name = "scylla-driver" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "cassandra-driver", marker = "extra == 'instruments'", specifier = "~=3.25" },
+    { name = "cassandra-driver", marker = "extra == 'instruments-any'", specifier = "~=3.25" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "scylla-driver", marker = "extra == 'instruments'", specifier = "~=3.25" },
+    { name = "scylla-driver", marker = "extra == 'instruments-any'", specifier = "~=3.25" },
     { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
 ]
-provides-extras = ["instruments"]
+provides-extras = ["instruments", "instruments-any"]
 
 [[package]]
 name = "opentelemetry-instrumentation-celery"
@@ -4975,7 +4975,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-boto", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-boto3sqs", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-botocore", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-cassandra", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-cassandra" },
     { name = "opentelemetry-instrumentation-celery", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-click", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-confluent-kafka", extra = ["instruments"] },
