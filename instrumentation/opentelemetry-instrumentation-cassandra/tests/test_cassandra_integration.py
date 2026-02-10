@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest import mock
+from importlib.metadata import PackageNotFoundError
+from unittest import TestCase, mock
+from unittest.mock import call, patch
 
 import cassandra.cluster
 from wrapt import BoundFunctionWrapper
@@ -20,6 +22,10 @@ from wrapt import BoundFunctionWrapper
 import opentelemetry.instrumentation.cassandra
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.cassandra import CassandraInstrumentor
+from opentelemetry.instrumentation.cassandra.package import (
+    _instruments_cassandra_driver,
+    _instruments_scylla_driver,
+)
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -137,3 +143,95 @@ class TestCassandraIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+
+class TestCassandraInstrumentationDependencies(TestCase):
+    @patch("opentelemetry.instrumentation.cassandra.distribution")
+    def test_instrumentation_dependencies_cassandra_driver_installed(
+        self, mock_distribution
+    ) -> None:
+        instrumentation = CassandraInstrumentor()
+
+        def _distribution(name):
+            if name == "cassandra-driver":
+                return None
+            raise PackageNotFoundError
+
+        mock_distribution.side_effect = _distribution
+        package_to_instrument = instrumentation.instrumentation_dependencies()
+        self.assertEqual(mock_distribution.call_count, 1)
+        self.assertEqual(
+            mock_distribution.mock_calls,
+            [
+                call("cassandra-driver"),
+            ],
+        )
+        self.assertEqual(
+            package_to_instrument, (_instruments_cassandra_driver,)
+        )
+
+    @patch("opentelemetry.instrumentation.cassandra.distribution")
+    def test_instrumentation_dependencies_scylla_driver_installed(
+        self, mock_distribution
+    ) -> None:
+        instrumentation = CassandraInstrumentor()
+
+        def _distribution(name):
+            if name == "scylla-driver":
+                return None
+            raise PackageNotFoundError
+
+        mock_distribution.side_effect = _distribution
+        package_to_instrument = instrumentation.instrumentation_dependencies()
+        self.assertEqual(mock_distribution.call_count, 2)
+        self.assertEqual(
+            mock_distribution.mock_calls,
+            [
+                call("cassandra-driver"),
+                call("scylla-driver"),
+            ],
+        )
+        self.assertEqual(package_to_instrument, (_instruments_scylla_driver,))
+
+    @patch("opentelemetry.instrumentation.cassandra.distribution")
+    def test_instrumentation_dependencies_both_installed(
+        self, mock_distribution
+    ) -> None:
+        instrumentation = CassandraInstrumentor()
+
+        def _distribution(name):
+            return None
+
+        mock_distribution.side_effect = _distribution
+        package_to_instrument = instrumentation.instrumentation_dependencies()
+        self.assertEqual(mock_distribution.call_count, 1)
+        self.assertEqual(
+            mock_distribution.mock_calls, [call("cassandra-driver")]
+        )
+        self.assertEqual(
+            package_to_instrument, (_instruments_cassandra_driver,)
+        )
+
+    @patch("opentelemetry.instrumentation.cassandra.distribution")
+    def test_instrumentation_dependencies_none_installed(
+        self, mock_distribution
+    ) -> None:
+        instrumentation = CassandraInstrumentor()
+
+        def _distribution(name):
+            raise PackageNotFoundError
+
+        mock_distribution.side_effect = _distribution
+        package_to_instrument = instrumentation.instrumentation_dependencies()
+        self.assertEqual(mock_distribution.call_count, 2)
+        self.assertEqual(
+            mock_distribution.mock_calls,
+            [
+                call("cassandra-driver"),
+                call("scylla-driver"),
+            ],
+        )
+        self.assertEqual(
+            package_to_instrument,
+            (_instruments_cassandra_driver, _instruments_scylla_driver),
+        )
