@@ -23,7 +23,6 @@ import opentelemetry.instrumentation.cassandra
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.cassandra import CassandraInstrumentor
 from opentelemetry.instrumentation.cassandra.package import (
-    _instruments_any,
     _instruments_cassandra_driver,
     _instruments_scylla_driver,
 )
@@ -201,9 +200,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
                 call("scylla-driver"),
             ],
         )
-        self.assertEqual(
-            package_to_instrument, (_instruments_scylla_driver,)
-        )
+        self.assertEqual(package_to_instrument, (_instruments_scylla_driver,))
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
     def test_instrumentation_dependencies_both_installed(
