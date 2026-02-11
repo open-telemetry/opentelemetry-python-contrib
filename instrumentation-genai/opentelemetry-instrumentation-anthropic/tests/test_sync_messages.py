@@ -14,6 +14,7 @@
 
 """Tests for sync Messages.create instrumentation."""
 
+import inspect
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,18 @@ import pytest
 from anthropic import Anthropic, APIConnectionError, NotFoundError
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+
+# Detect whether the installed anthropic SDK supports tools / thinking params.
+# Older SDK versions (e.g. 0.16.0) do not accept these keyword arguments.
+try:
+    from anthropic.resources.messages import Messages as _Messages
+
+    _create_params = set(inspect.signature(_Messages.create).parameters)
+except Exception:  # pylint: disable=broad-except
+    _create_params = set()
+
+_has_tools_param = "tools" in _create_params
+_has_thinking_param = "thinking" in _create_params
 from opentelemetry.instrumentation.anthropic.utils import (
     MessageWrapper,
     StreamWrapper,
@@ -594,6 +607,10 @@ def test_sync_messages_stream_captures_content(
 
 
 @pytest.mark.vcr()
+@pytest.mark.skipif(
+    not _has_tools_param,
+    reason="anthropic SDK too old to support 'tools' parameter",
+)
 def test_sync_messages_create_captures_tool_use_content(
     request, span_exporter, anthropic_client, instrument_with_content
 ):
@@ -635,6 +652,10 @@ def test_sync_messages_create_captures_tool_use_content(
 
 
 @pytest.mark.vcr()
+@pytest.mark.skipif(
+    not _has_thinking_param,
+    reason="anthropic SDK too old to support 'thinking' parameter",
+)
 def test_sync_messages_create_captures_thinking_content(
     request, span_exporter, anthropic_client, instrument_with_content
 ):
