@@ -611,7 +611,7 @@ class _GenerateContentInstrumentationHelper:
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
-        tool_definitions: list[MessagePart] = [],
+        tool_definitions: Optional[list[MessagePart]] = None,
     ):
         if (
             self.sem_conv_opt_in_mode
@@ -647,7 +647,7 @@ class _GenerateContentInstrumentationHelper:
             input_messages,
             output_messages,
             system_instructions,
-            tool_definitions,
+            tool_definitions or [],
         )
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
