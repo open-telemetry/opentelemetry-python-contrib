@@ -22,20 +22,9 @@ from types import SimpleNamespace
 
 import pytest
 from anthropic import Anthropic, APIConnectionError, NotFoundError
+from anthropic.resources.messages import Messages as _Messages
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
-
-# Detect whether the installed anthropic SDK supports tools / thinking params.
-# Older SDK versions (e.g. 0.16.0) do not accept these keyword arguments.
-try:
-    from anthropic.resources.messages import Messages as _Messages
-
-    _create_params = set(inspect.signature(_Messages.create).parameters)
-except Exception:  # pylint: disable=broad-except
-    _create_params = set()
-
-_has_tools_param = "tools" in _create_params
-_has_thinking_param = "thinking" in _create_params
 from opentelemetry.instrumentation.anthropic.utils import (
     MessageWrapper,
     StreamWrapper,
@@ -50,6 +39,12 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.util.genai.types import LLMInvocation
+
+# Detect whether the installed anthropic SDK supports tools / thinking params.
+# Older SDK versions (e.g. 0.16.0) do not accept these keyword arguments.
+_create_params = set(inspect.signature(_Messages.create).parameters)
+_has_tools_param = "tools" in _create_params
+_has_thinking_param = "thinking" in _create_params
 
 
 def normalize_stop_reason(stop_reason):
@@ -194,7 +189,9 @@ def test_sync_messages_create_captures_content(
     assert len(spans) == 1
     span = spans[0]
 
-    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    input_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
+    )
     output_messages = _load_span_messages(
         span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
     )
@@ -473,7 +470,9 @@ def test_sync_messages_create_streaming_captures_content(
     assert len(spans) == 1
     span = spans[0]
 
-    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    input_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
+    )
     output_messages = _load_span_messages(
         span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
     )
@@ -597,7 +596,9 @@ def test_sync_messages_stream_captures_content(
     assert len(spans) == 1
     span = spans[0]
 
-    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    input_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
+    )
     output_messages = _load_span_messages(
         span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
     )
@@ -687,7 +688,9 @@ def test_sync_messages_create_captures_thinking_content(
 
 @pytest.mark.vcr()
 def test_stream_wrapper_finalize_idempotent(
-    span_exporter, anthropic_client, instrument_no_content  # pylint: disable=too-many-locals
+    span_exporter,
+    anthropic_client,
+    instrument_no_content,  # pylint: disable=too-many-locals
 ):
     """Fully consumed stream plus explicit close should still yield one span."""
     model = "claude-sonnet-4-20250514"
