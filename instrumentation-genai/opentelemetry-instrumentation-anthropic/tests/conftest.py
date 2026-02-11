@@ -244,6 +244,16 @@ def fixture_vcr(vcr):
     return vcr
 
 
+_SCRUBBED_RESPONSE_HEADERS = frozenset(
+    {
+        "anthropic-organization-id",
+    }
+)
+
+
 def scrub_response_headers(response):
-    """Scrub sensitive response headers."""
+    """Scrub sensitive headers from recorded responses."""
+    headers = response.get("headers", {})
+    for header in _SCRUBBED_RESPONSE_HEADERS:
+        headers.pop(header, None)
     return response

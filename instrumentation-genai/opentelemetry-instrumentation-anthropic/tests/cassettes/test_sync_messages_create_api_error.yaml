@@ -227,8 +227,6 @@ interactions:
       - cloudflare
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       request-id:
@@ -321,8 +319,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -417,8 +413,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -515,8 +509,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -707,8 +699,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -805,8 +795,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -903,8 +891,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -1001,8 +987,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -1099,8 +1083,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:
@@ -1197,8 +1179,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       cf-cache-status:
       - DYNAMIC
       content-length:

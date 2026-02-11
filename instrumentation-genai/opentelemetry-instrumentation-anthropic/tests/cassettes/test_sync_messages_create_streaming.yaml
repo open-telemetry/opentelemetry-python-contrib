@@ -96,8 +96,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       anthropic-ratelimit-input-tokens-limit:
       - '30000'
       anthropic-ratelimit-input-tokens-remaining:
@@ -325,8 +323,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       anthropic-ratelimit-input-tokens-limit:
       - '450000'
       anthropic-ratelimit-input-tokens-remaining:
@@ -459,8 +455,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       anthropic-ratelimit-input-tokens-limit:
       - '450000'
       anthropic-ratelimit-input-tokens-remaining:
@@ -593,8 +587,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       anthropic-ratelimit-input-tokens-limit:
       - '450000'
       anthropic-ratelimit-input-tokens-remaining:
@@ -727,8 +719,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       anthropic-ratelimit-input-tokens-limit:
       - '450000'
       anthropic-ratelimit-input-tokens-remaining:
@@ -861,8 +851,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       anthropic-ratelimit-input-tokens-limit:
       - '450000'
       anthropic-ratelimit-input-tokens-remaining:
@@ -995,8 +983,6 @@ interactions:
       - chunked
       X-Robots-Tag:
       - none
-      anthropic-organization-id:
-      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
       anthropic-ratelimit-input-tokens-limit:
       - '450000'
       anthropic-ratelimit-input-tokens-remaining:
