@@ -62,7 +62,7 @@ class CompletionHook(Protocol):
         system_instruction: The system instruction of the GenAI
             interaction.
         tool_definitions: The list of source system tool definitions
-        available to the GenAI agent or model.
+            available to the GenAI agent or model.
         span: The span associated with the GenAI interaction.
         log_record: The event log associated with the GenAI
             interaction.
