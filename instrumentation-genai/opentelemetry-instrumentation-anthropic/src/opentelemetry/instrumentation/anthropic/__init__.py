@@ -92,11 +92,12 @@ class AnthropicInstrumentor(BaseInstrumentor):
         # Get providers from kwargs
         tracer_provider = kwargs.get("tracer_provider")
         meter_provider = kwargs.get("meter_provider")
+        logger_provider = kwargs.get("logger_provider")
 
-        # TODO: Add logger_provider to TelemetryHandler to capture content events.
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            logger_provider=logger_provider,
         )
 
         # Patch Messages.create

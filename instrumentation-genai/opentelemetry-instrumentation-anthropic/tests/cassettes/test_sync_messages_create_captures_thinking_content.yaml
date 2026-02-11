@@ -1,0 +1,250 @@
+interactions:
+- request:
+    body: |-
+      {
+        "max_tokens": 16000,
+        "messages": [
+          {
+            "role": "user",
+            "content": "What is 17*19? Think first."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "thinking": {
+          "type": "enabled",
+          "budget_tokens": 10000
+        }
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '195'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01ThinkingTest123",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "thinking",
+              "thinking": "Let me calculate 17 times 19. I can break this down: 17 * 19 = 17 * 20 - 17 = 340 - 17 = 323."
+            },
+            {
+              "type": "text",
+              "text": "17 \u00d7 19 = **323**"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 18,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "output_tokens": 42,
+            "service_tier": "standard"
+          }
+        }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 11 Feb 2026 04:00:00 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      content-length:
+      - '580'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 16000,
+        "messages": [
+          {
+            "role": "user",
+            "content": "What is 17*19? Think first."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "thinking": {
+          "type": "enabled",
+          "budget_tokens": 10000
+        }
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '176'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01R2Wyw6D8vK1yD6jBK1g9C7",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "thinking",
+              "thinking": "I need to calculate 17 * 19.\n\nLet me think about this step by step.\n\nOne way is to use the standard multiplication:\n17 * 19\n\nI can break this down:\n17 * 19 = 17 * (20 - 1) = 17 * 20 - 17 * 1 = 340 - 17 = 323\n\nLet me double-check this another way:\n19 * 17 = 19 * (10 + 7) = 19 * 10 + 19 * 7 = 190 + 133\n\nNow I need to calculate 19 * 7:\n19 * 7 = (20 - 1) * 7 = 20 * 7 - 1 * 7 = 140 - 7 = 133\n\nSo 19 * 17 = 190 + 133 = 323\n\nBoth methods give me 323, so that should be correct.",
+              "signature": "EoIFCkYICxgCKkAzrBHkSvp2t+O6FeldCSOZG6sRsBctId9L5ZKp7KPHthia6QKTS11mYuN5Uyb2Yx4WV7FIHtbUSbkEqbPqnjRGEgxzQGA5fiVU00cGq0UaDLQ1BTDI8043Aw1W1CIwgE/ounmA8v9rxn+Pnyf0hdd0FvMOC57oedMKS8aAm8uf3hlbqAnYkvwf4SxHIbDXKukD/m9nFQLSY0yZBzfIoI8w9OMD3SldlcEo3HofmOq2huaOMBY6YZXY5MDulFXMJiGHS267Le+NVB0OmS5r3dih0dIuUXnpgP9DXH8YuP4QSVwFnmDtfWMQWGx8FzpaH2Miq/JWp1wN2Ulu7vFxGnnt9uOORCj0LXII9QAXBmNVEFGY8eZTO9OjvZY6AGswnlOWrlQZKzIkt9wVpCprcOcFarIhxnQhNIR115PG+iH4OhedCuXzKVaD/MyEV2k5CIdpHZFLWz2y2xyUQV5XZv3m0nXB4u+GlRbHMTLcl5Do5LbhcKiU30PLxdwsawGN2LKJY+n2fjrQjX7xcmEQvStOOTlNzCrAd63H8sa+GzVpFGd3wnG3RK5bOxMI2GuNXKI1XOHGd1ODqQcjm67nB1vmUkR8BVbm94k5u4hspYCiRePqGtfkIFyMa4W93YfFKszviMlOBHSGbEulQZhIoQ0e5+y7ftF5VtSJijGH93K5I4WrVI+/pHh5j5RsjUX7wIU+Zq3brBttE+mHZnGnSiB73m8qk0H/woW/9Ck83leRw2Zuy44U4Wto9gQaNaWRjq0AsUxhx9s6MqpOoNrDDjIKFpZHScMMU6AL9rKPinWwA581af5tCMXXQCg58+OUCyxKPBBYIXfqAswFGAE="
+            },
+            {
+              "type": "text",
+              "text": "I need to calculate 17 \u00d7 19.\n\nLet me use the distributive property to make this easier:\n17 \u00d7 19 = 17 \u00d7 (20 - 1) = 17 \u00d7 20 - 17 \u00d7 1 = 340 - 17 = 323\n\nLet me verify with another approach:\n19 \u00d7 17 = 19 \u00d7 (10 + 7) = 190 + (19 \u00d7 7) = 190 + 133 = 323\n\nTherefore, 17 \u00d7 19 = 323."
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 46,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 380,
+            "service_tier": "standard",
+            "inference_geo": "not_available"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9cc0d5b61a4c643e-EWR
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 11 Feb 2026 03:42:15 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-organization-id:
+      - 455ea6be-bd92-4199-83ec-0c6b39c5c169
+      anthropic-ratelimit-input-tokens-limit:
+      - '450000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '450000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-02-11T03:42:11Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '90000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '90000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-02-11T03:42:15Z'
+      anthropic-ratelimit-requests-limit:
+      - '1000'
+      anthropic-ratelimit-requests-remaining:
+      - '999'
+      anthropic-ratelimit-requests-reset:
+      - '2026-02-11T03:42:11Z'
+      anthropic-ratelimit-tokens-limit:
+      - '540000'
+      anthropic-ratelimit-tokens-remaining:
+      - '540000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-02-11T03:42:11Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2129'
+      request-id:
+      - req_011CY1bANHDGDVtTXtSLNAXN
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '4812'
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -14,6 +14,9 @@
 
 """Tests for sync Messages.create instrumentation."""
 
+import json
+import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -111,6 +114,27 @@ def assert_span_attributes(  # pylint: disable=too-many-arguments
         )
 
 
+def _load_span_messages(span, attribute):
+    value = span.attributes.get(attribute)
+    assert value is not None
+    assert isinstance(value, str)
+    parsed = json.loads(value)
+    assert isinstance(parsed, list)
+    return parsed
+
+
+def _skip_if_cassette_missing_and_no_real_key(request):
+    cassette_path = (
+        Path(__file__).parent / "cassettes" / f"{request.node.name}.yaml"
+    )
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not cassette_path.exists() and api_key == "test_anthropic_api_key":
+        pytest.skip(
+            f"Cassette {cassette_path.name} is missing. "
+            "Set a real ANTHROPIC_API_KEY to record it."
+        )
+
+
 @pytest.mark.vcr()
 def test_sync_messages_create_basic(
     span_exporter, anthropic_client, instrument_no_content
@@ -137,6 +161,35 @@ def test_sync_messages_create_basic(
         output_tokens=response.usage.output_tokens,
         finish_reasons=[normalize_stop_reason(response.stop_reason)],
     )
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_captures_content(
+    span_exporter, anthropic_client, instrument_with_content
+):
+    """Test content capture on non-streaming create."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+
+    assert input_messages[0]["role"] == "user"
+    assert input_messages[0]["parts"][0]["type"] == "text"
+    assert output_messages[0]["role"] == "assistant"
+    assert output_messages[0]["parts"][0]["type"] == "text"
 
 
 @pytest.mark.vcr()
@@ -387,6 +440,36 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
 
 
 @pytest.mark.vcr()
+def test_sync_messages_create_streaming_captures_content(
+    span_exporter, anthropic_client, instrument_with_content
+):
+    """Test content capture on create(stream=True)."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    with anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+        stream=True,
+    ) as stream:
+        for _ in stream:
+            pass
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+    assert input_messages[0]["role"] == "user"
+    assert output_messages[0]["role"] == "assistant"
+    assert output_messages[0]["parts"]
+
+
+@pytest.mark.vcr()
 def test_sync_messages_create_streaming_iteration(
     span_exporter, anthropic_client, instrument_no_content
 ):
@@ -483,6 +566,105 @@ def test_sync_messages_stream_basic(
 
 
 @pytest.mark.vcr()
+def test_sync_messages_stream_captures_content(
+    span_exporter, anthropic_client, instrument_with_content
+):
+    """Test content capture on Messages.stream()."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    with anthropic_client.messages.stream(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    ) as stream:
+        _ = "".join(stream.text_stream)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+    assert input_messages[0]["role"] == "user"
+    assert output_messages[0]["role"] == "assistant"
+    assert output_messages[0]["parts"]
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_captures_tool_use_content(
+    request, span_exporter, anthropic_client, instrument_with_content
+):
+    """Test that tool_use blocks are captured as tool_call parts."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "What is the weather in SF?"}]
+
+    anthropic_client.messages.create(
+        model=model,
+        max_tokens=256,
+        messages=messages,
+        tools=[
+            {
+                "name": "get_weather",
+                "description": "Get weather by city",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"city": {"type": "string"}},
+                    "required": ["city"],
+                },
+            }
+        ],
+        tool_choice={"type": "tool", "name": "get_weather"},
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+
+    assert any(
+        part.get("type") == "tool_call"
+        for message in output_messages
+        for part in message.get("parts", [])
+    )
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_captures_thinking_content(
+    request, span_exporter, anthropic_client, instrument_with_content
+):
+    """Test that thinking blocks are captured as reasoning parts."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "What is 17*19? Think first."}]
+
+    anthropic_client.messages.create(
+        model=model,
+        max_tokens=16000,
+        messages=messages,
+        thinking={"type": "enabled", "budget_tokens": 10000},
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+
+    assert any(
+        part.get("type") == "reasoning"
+        for message in output_messages
+        for part in message.get("parts", [])
+    )
+
+
+@pytest.mark.vcr()
 def test_stream_wrapper_finalize_idempotent(
     span_exporter, anthropic_client, instrument_no_content  # pylint: disable=too-many-locals
 ):
@@ -542,10 +724,6 @@ def test_stream_wrapper_finalize_idempotent(
 def test_message_wrapper_aggregates_cache_tokens():
     """MessageWrapper should aggregate cache token fields into input tokens."""
 
-    class FakeHandler:
-        def stop_llm(self, invocation):  # pylint: disable=no-self-use
-            return invocation
-
     usage = SimpleNamespace(
         input_tokens=10,
         cache_creation_input_tokens=3,
@@ -563,7 +741,7 @@ def test_message_wrapper_aggregates_cache_tokens():
         provider="anthropic",
     )
 
-    MessageWrapper(message, FakeHandler(), invocation)  # type: ignore[arg-type]
+    MessageWrapper(message).extract_into(invocation)  # type: ignore[arg-type]
 
     assert invocation.input_tokens == 20
     assert invocation.output_tokens == 5

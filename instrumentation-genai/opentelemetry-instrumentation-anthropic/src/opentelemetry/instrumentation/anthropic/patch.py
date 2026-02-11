@@ -27,7 +27,10 @@ from .utils import (
     MessageWrapper,
     StreamWrapper,
     extract_params,
+    get_input_messages,
     get_llm_request_attributes,
+    get_system_instruction,
+    should_capture_content,
 )
 
 if TYPE_CHECKING:
@@ -64,9 +67,16 @@ def messages_create(
             else params.model or ""
         )
 
+        capture_content = should_capture_content()
         invocation = LLMInvocation(
             request_model=request_model,
             provider=ANTHROPIC,
+            input_messages=get_input_messages(params.messages)
+            if capture_content
+            else [],
+            system_instruction=get_system_instruction(params.system)
+            if capture_content
+            else [],
             attributes=attributes,
         )
 
@@ -78,7 +88,9 @@ def messages_create(
             result = wrapped(*args, **kwargs)
             if is_streaming:
                 return StreamWrapper(result, handler, invocation)  # type: ignore[arg-type]
-            wrapper = MessageWrapper(result, handler, invocation)  # type: ignore[arg-type]
+            wrapper = MessageWrapper(result)  # type: ignore[arg-type]
+            wrapper.extract_into(invocation)
+            handler.stop_llm(invocation)
             return wrapper.message
         except Exception as exc:
             handler.fail_llm(
@@ -111,9 +123,16 @@ def messages_stream(
             else params.model or ""
         )
 
+        capture_content = should_capture_content()
         invocation = LLMInvocation(
             request_model=request_model,
             provider=ANTHROPIC,
+            input_messages=get_input_messages(params.messages)
+            if capture_content
+            else [],
+            system_instruction=get_system_instruction(params.system)
+            if capture_content
+            else [],
             attributes=attributes,
         )
 
