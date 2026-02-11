@@ -19,6 +19,8 @@ import threading
 from enum import Enum
 from typing import Container, Mapping, MutableMapping
 
+from packaging import version as package_version
+
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
@@ -176,6 +178,9 @@ _server_active_requests_count_attrs_new = [
 ]
 
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
+
+# Legacy/default schema version when schema_url was first introduced
+_LEGACY_SCHEMA_VERSION = "1.11.0"
 
 
 class _OpenTelemetryStabilitySignalType(Enum):
@@ -634,8 +639,57 @@ def _set_status(
             span.set_status(Status(status))
 
 
-# Get schema version based off of opt-in mode
 def _get_schema_url(mode: _StabilityMode) -> str:
+    """Get schema version URL for a single signal type's opt-in mode (backwards compatible).
+
+    For new instrumentations using multiple signal types, use
+    _get_schema_url_for_signal_types()
+    """
     if mode is _StabilityMode.DEFAULT:
-        return "https://opentelemetry.io/schemas/1.11.0"
+        return f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}"
     return Schemas.V1_21_0.value
+
+
+def _get_schema_version_for_opt_in_mode(
+    signal_type: _OpenTelemetryStabilitySignalType,
+    mode: _StabilityMode,
+) -> str:
+    """Get the schema version for a specific signal type and opt-in mode."""
+    if mode == _StabilityMode.DEFAULT:
+        return _LEGACY_SCHEMA_VERSION
+
+    signal_versions = {
+        _OpenTelemetryStabilitySignalType.HTTP: "1.21.0",
+        _OpenTelemetryStabilitySignalType.DATABASE: "1.25.0",
+        _OpenTelemetryStabilitySignalType.GEN_AI: "1.26.0",
+    }
+    return signal_versions.get(signal_type, _LEGACY_SCHEMA_VERSION)
+
+
+def _get_schema_url_for_signal_types(
+    signal_types: list[_OpenTelemetryStabilitySignalType],
+) -> str:
+    """Get the highest applicable schema URL for multiple signal types.
+
+    Note:
+        Instrumentors should call _OpenTelemetrySemanticConventionStability._initialize()
+        before using this function to ensure proper initialization of stability modes.
+
+    Args:
+        signal_types: List of signal types used by the instrumentation
+
+    Returns:
+        Schema URL string representing the highest applicable semconv version
+    """
+    highest_schema_version = _LEGACY_SCHEMA_VERSION
+    for signal_type in signal_types:
+        mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal_type
+        )
+        schema_version = _get_schema_version_for_opt_in_mode(signal_type, mode)
+        # Keep the highest for all signals
+        if package_version.Version(schema_version) > package_version.Version(
+            highest_schema_version
+        ):
+            highest_schema_version = schema_version
+    return f"https://opentelemetry.io/schemas/{highest_schema_version}"

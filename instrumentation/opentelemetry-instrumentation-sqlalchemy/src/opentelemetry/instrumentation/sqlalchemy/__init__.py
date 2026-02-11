@@ -142,7 +142,7 @@ from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
 from opentelemetry.instrumentation._semconv import (
-    _get_schema_url,
+    _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
 )
@@ -188,8 +188,14 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         """
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
-        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.DATABASE,
+
+        # Determine schema URL based on both DATABASE and HTTP signal types
+        # and semconv opt-in mode
+        schema_url = _get_schema_url_for_signal_types(
+            [
+                _OpenTelemetryStabilitySignalType.DATABASE,
+                _OpenTelemetryStabilitySignalType.HTTP,
+            ]
         )
 
         tracer_provider = kwargs.get("tracer_provider")
@@ -197,7 +203,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             tracer_provider,
-            schema_url=_get_schema_url(sem_conv_opt_in_mode),
+            schema_url=schema_url,
         )
 
         meter_provider = kwargs.get("meter_provider")
@@ -205,7 +211,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
-            schema_url=_get_schema_url(sem_conv_opt_in_mode),
+            schema_url=schema_url,
         )
 
         connections_usage = meter.create_up_down_counter(
