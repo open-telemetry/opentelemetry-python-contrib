@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -27,7 +28,151 @@ from .utils import (
     is_streaming,
 )
 
+_logger = logging.getLogger(__name__)
+
 OPENAI = GenAIAttributes.GenAiSystemValues.OPENAI.value
+
+
+# ---------------------------------------------------------------------------
+# Content capture helpers
+# ---------------------------------------------------------------------------
+
+
+def _should_capture_content() -> bool:
+    """Return True when content conversion should be performed.
+
+    Mirrors the Anthropic instrumentation pattern: only extract content when
+    experimental mode is active and a content-capturing mode is set.
+    """
+    from opentelemetry.util.genai.utils import (  # pylint: disable=import-outside-toplevel
+        ContentCapturingMode,
+        get_content_capturing_mode,
+        is_experimental_mode,
+        should_emit_event,
+    )
+
+    if not is_experimental_mode():
+        return False
+    mode = get_content_capturing_mode()
+    if mode == ContentCapturingMode.NO_CONTENT:
+        return False
+    if mode == ContentCapturingMode.EVENT_ONLY and not should_emit_event():
+        return False
+    return True
+
+
+def _extract_system_instruction(kwargs: dict):
+    """Extract system instruction from the ``instructions`` parameter."""
+    from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
+        Text,
+    )
+
+    instructions = kwargs.get("instructions")
+    if instructions is None:
+        return []
+    if isinstance(instructions, str):
+        return [Text(content=instructions)]
+    return []
+
+
+def _extract_input_messages(kwargs: dict):
+    """Extract input messages from Responses API kwargs.
+
+    The Responses API ``input`` parameter can be:
+    - A string (simple text input)
+    - A list of message items (with role and content)
+    """
+    from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
+        InputMessage,
+        Text,
+    )
+
+    raw_input = kwargs.get("input")
+    if raw_input is None:
+        return []
+
+    if isinstance(raw_input, str):
+        return [InputMessage(role="user", parts=[Text(content=raw_input)])]
+
+    messages = []
+    if isinstance(raw_input, list):
+        for item in raw_input:
+            role = getattr(item, "role", None) or (
+                item.get("role") if isinstance(item, dict) else None
+            )
+            if not role:
+                continue
+            content = getattr(item, "content", None) or (
+                item.get("content") if isinstance(item, dict) else None
+            )
+            if isinstance(content, str):
+                messages.append(
+                    InputMessage(role=role, parts=[Text(content=content)])
+                )
+            elif isinstance(content, list):
+                parts = []
+                for part in content:
+                    text = getattr(part, "text", None) or (
+                        part.get("text") if isinstance(part, dict) else None
+                    )
+                    if text:
+                        parts.append(Text(content=text))
+                if parts:
+                    messages.append(InputMessage(role=role, parts=parts))
+    return messages
+
+
+def _extract_output_messages(result: Any):
+    """Extract output messages from a Responses API result.
+
+    The response ``output`` field is a list of output items. Items with
+    type ``"message"`` contain content blocks (output_text, refusal, etc.).
+    """
+    from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
+        OutputMessage,
+        Text,
+    )
+
+    if result is None:
+        return []
+
+    output_items = getattr(result, "output", None)
+    if not output_items:
+        return []
+
+    messages = []
+    for item in output_items:
+        item_type = getattr(item, "type", None)
+        if item_type != "message":
+            continue
+
+        role = getattr(item, "role", "assistant")
+        status = getattr(item, "status", None)
+        finish_reason = "stop" if status == "completed" else (status or "stop")
+
+        content_blocks = getattr(item, "content", [])
+        parts = []
+        for block in content_blocks:
+            block_type = getattr(block, "type", None)
+            if block_type == "output_text":
+                text = getattr(block, "text", None)
+                if text:
+                    parts.append(Text(content=text))
+            elif block_type == "refusal":
+                refusal = getattr(block, "refusal", None)
+                if refusal:
+                    parts.append(Text(content=refusal))
+
+        messages.append(
+            OutputMessage(role=role, parts=parts, finish_reason=finish_reason)
+        )
+
+    return messages
+
+
+# ---------------------------------------------------------------------------
+# Patch functions
+# ---------------------------------------------------------------------------
 
 
 def responses_create(
@@ -44,7 +189,7 @@ def responses_create(
         )
 
         operation_name = (
-            GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value
+            GenAIAttributes.GenAiOperationNameValues.CHAT.value
         )
         span_attributes = get_llm_request_attributes(
             kwargs,
@@ -56,11 +201,19 @@ def responses_create(
             or "unknown"
         )
         streaming = is_streaming(kwargs)
+
+        capture_content = _should_capture_content()
         invocation = handler.start_llm(
             LLMInvocation(
                 request_model=request_model,
                 operation_name=operation_name,
                 provider=OPENAI,
+                input_messages=_extract_input_messages(kwargs)
+                if capture_content
+                else [],
+                system_instruction=_extract_system_instruction(kwargs)
+                if capture_content
+                else [],
                 attributes=span_attributes.copy(),
                 metric_attributes={
                     GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name
@@ -126,6 +279,7 @@ def responses_retrieve(
         )
         streaming = is_streaming(kwargs)
 
+        capture_content = _should_capture_content()
         invocation = handler.start_llm(
             LLMInvocation(
                 request_model=request_model,
@@ -168,12 +322,16 @@ def responses_retrieve(
     return traced_method
 
 
+# ---------------------------------------------------------------------------
+# Response attribute extraction
+# ---------------------------------------------------------------------------
+
+
 def _set_invocation_response_attributes(
     invocation: "LLMInvocation",
     result: Any,
     capture_content: bool,
 ):
-    del capture_content
     if result is None:
         return
 
@@ -205,6 +363,16 @@ def _set_invocation_response_attributes(
             output_tokens = getattr(result.usage, "completion_tokens", None)
         invocation.output_tokens = output_tokens
 
+    if capture_content:
+        output_messages = _extract_output_messages(result)
+        if output_messages:
+            invocation.output_messages = output_messages
+
+
+# ---------------------------------------------------------------------------
+# Stream wrappers
+# ---------------------------------------------------------------------------
+
 
 class _ResponseProxy:
     def __init__(self, response, finalize):
@@ -234,7 +402,7 @@ class ResponseStreamWrapper:
         self.stream = stream
         self.handler = handler
         self.invocation = invocation
-        self.capture_content = capture_content
+        self._capture_content = capture_content
         self._finalized = False
 
     def __enter__(self):
@@ -297,9 +465,7 @@ class ResponseStreamWrapper:
         if self._finalized:
             return
         _set_invocation_response_attributes(
-            self.invocation,
-            result,
-            self.capture_content,
+            self.invocation, result, self._capture_content
         )
         self.handler.stop_llm(self.invocation)
         self._finalized = True
@@ -334,9 +500,7 @@ class ResponseStreamWrapper:
 
         if event_type in {"response.failed", "response.incomplete"}:
             _set_invocation_response_attributes(
-                self.invocation,
-                response,
-                self.capture_content,
+                self.invocation, response, self._capture_content
             )
             self._fail(event_type, RuntimeError)
             return

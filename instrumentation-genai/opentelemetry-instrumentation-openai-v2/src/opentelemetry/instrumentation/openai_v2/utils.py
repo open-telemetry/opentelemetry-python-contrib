@@ -205,10 +205,9 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
     }
 
-    # Add chat-like attributes for chat and generate-content operations
+    # Add chat-like attributes for chat operations
     if operation_name in (
         GenAIAttributes.GenAiOperationNameValues.CHAT.value,
-        GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
     ):
         attributes.update(
             {

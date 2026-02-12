@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 import openai
 import pytest
 from packaging.version import Version
@@ -21,6 +23,16 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 
 from .test_utils import assert_all_attributes
+
+
+def _load_span_messages(span, attribute):
+    """Load and parse JSON message content from a span attribute."""
+    value = span.attributes.get(attribute)
+    assert value is not None, f"Expected attribute {attribute} to be present"
+    assert isinstance(value, str), f"Expected {attribute} to be a JSON string"
+    parsed = json.loads(value)
+    assert isinstance(parsed, list), f"Expected {attribute} to be a JSON list"
+    return parsed
 
 # The Responses API was introduced in openai>=1.66.0
 # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
@@ -56,7 +68,7 @@ def test_responses_create(
         response.model,
         input_tokens,
         output_tokens,
-        operation_name=GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
+        operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         response_service_tier=response.service_tier,
     )
 
@@ -95,7 +107,7 @@ def test_responses_stream_new_response(
         final_response.model,
         input_tokens,
         output_tokens,
-        operation_name=GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
+        operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         response_service_tier=final_response.service_tier,
     )
 
@@ -273,3 +285,157 @@ def test_responses_retrieve_stream_existing_response(
         operation_name=operation_name,
         response_service_tier=final_response.service_tier,
     )
+
+
+# =============================================================================
+# Content capture tests (experimental mode)
+# =============================================================================
+
+
+@skip_if_no_responses_api
+@pytest.mark.vcr("test_responses_create.yaml")
+def test_responses_create_captures_content(
+    span_exporter, openai_client, instrument_with_experimental_content
+):
+    """Test that input and output content is captured in span attributes."""
+    openai_client.responses.create(
+        model="gpt-4o-mini",
+        input="Say this is a test",
+        stream=False,
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    input_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
+    )
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+
+    # Input: string input should become a user message with text part
+    assert len(input_messages) == 1
+    assert input_messages[0]["role"] == "user"
+    assert input_messages[0]["parts"][0]["type"] == "text"
+    assert "test" in input_messages[0]["parts"][0]["content"]
+
+    # Output: should have an assistant message with text part
+    assert len(output_messages) >= 1
+    assert output_messages[0]["role"] == "assistant"
+    assert output_messages[0]["parts"][0]["type"] == "text"
+    assert len(output_messages[0]["parts"][0]["content"]) > 0
+
+
+@skip_if_no_responses_api
+@pytest.mark.vcr("test_responses_stream_new_response.yaml")
+def test_responses_stream_captures_content(
+    span_exporter, openai_client, instrument_with_experimental_content
+):
+    """Test that streaming responses capture content in span attributes."""
+    with openai_client.responses.stream(
+        model="gpt-4o-mini",
+        input="Say this is a test",
+    ) as stream:
+        for event in stream:
+            if event.type == "response.completed":
+                break
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    input_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
+    )
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+
+    assert input_messages[0]["role"] == "user"
+    assert output_messages[0]["role"] == "assistant"
+    assert output_messages[0]["parts"]
+    assert output_messages[0]["parts"][0]["type"] == "text"
+
+
+@skip_if_no_responses_api
+@pytest.mark.vcr("test_responses_create.yaml")
+def test_responses_create_no_content_in_experimental_mode(
+    span_exporter, openai_client, instrument_with_experimental_no_content
+):
+    """Test that NO_CONTENT mode does not capture messages in span attributes."""
+    openai_client.responses.create(
+        model="gpt-4o-mini",
+        input="Say this is a test",
+        stream=False,
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    # Content should NOT be in span attributes under NO_CONTENT
+    assert GenAIAttributes.GEN_AI_INPUT_MESSAGES not in span.attributes
+    assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES not in span.attributes
+
+    # Basic span attributes should still be present
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
+    assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
+    assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
+    assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
+
+
+@skip_if_no_responses_api
+@pytest.mark.vcr("test_responses_create.yaml")
+def test_responses_create_captures_system_instruction(
+    span_exporter, openai_client, instrument_with_experimental_content
+):
+    """Test that system instructions are captured in span attributes."""
+    openai_client.responses.create(
+        model="gpt-4o-mini",
+        input="Say this is a test",
+        instructions="You are a helpful assistant.",
+        stream=False,
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    system_instructions = span.attributes.get(
+        GenAIAttributes.GEN_AI_SYSTEM_INSTRUCTIONS
+    )
+    assert system_instructions is not None
+    parsed = json.loads(system_instructions)
+    assert isinstance(parsed, list)
+    assert len(parsed) >= 1
+    assert parsed[0]["type"] == "text"
+    assert "helpful assistant" in parsed[0]["content"]
+
+
+@skip_if_no_responses_api
+@pytest.mark.vcr("test_responses_stream_new_response.yaml")
+def test_responses_stream_no_content_in_experimental_mode(
+    span_exporter, openai_client, instrument_with_experimental_no_content
+):
+    """Test that streaming with NO_CONTENT mode does not capture messages."""
+    with openai_client.responses.stream(
+        model="gpt-4o-mini",
+        input="Say this is a test",
+    ) as stream:
+        for event in stream:
+            if event.type == "response.completed":
+                break
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    # Content should NOT be in span attributes
+    assert GenAIAttributes.GEN_AI_INPUT_MESSAGES not in span.attributes
+    assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES not in span.attributes
+
+    # Basic span attributes should still be present
+    assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
+    assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes

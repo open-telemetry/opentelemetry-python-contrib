@@ -145,13 +145,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
                 name="Responses.create",
-                wrapper=responses_create(handler, is_content_enabled()),
+                wrapper=responses_create(handler),
             )
 
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
                 name="Responses.retrieve",
-                wrapper=responses_retrieve(handler, is_content_enabled()),
+                wrapper=responses_retrieve(handler),
             )
         except (AttributeError, ModuleNotFoundError):
             # Responses API or TelemetryHandler not available
