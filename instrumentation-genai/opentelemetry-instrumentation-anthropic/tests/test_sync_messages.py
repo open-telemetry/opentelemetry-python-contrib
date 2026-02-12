@@ -993,7 +993,4 @@ def test_sync_messages_create_event_only_no_content_in_span(
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1
     log_record = logs[0].log_record
-    assert (
-        log_record.event_name
-        == "gen_ai.client.inference.operation.details"
-    )
+    assert log_record.event_name == "gen_ai.client.inference.operation.details"
