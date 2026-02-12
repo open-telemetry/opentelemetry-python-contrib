@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add support for OpenAI Responses API instrumentation
   ([#4166](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4166))
+- Fix `StreamWrapper` missing `.headers` and other attributes when using `with_raw_response` streaming
+  ([#4113](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4113))
 
 ## Version 2.3b0 (2025-12-24)
 
