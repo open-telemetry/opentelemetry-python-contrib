@@ -41,6 +41,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 
 
@@ -160,6 +161,31 @@ def instrument_with_content(tracer_provider, logger_provider, meter_provider):
     yield instrumentor
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
     os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+    instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_event_only(tracer_provider, logger_provider, meter_provider):
+    """Instrument Anthropic with EVENT_ONLY content capture."""
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "EVENT_ONLY",
+            OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT: "true",
+        }
+    )
+    instrumentor = AnthropicInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT, None)
     instrumentor.uninstrument()
 
 

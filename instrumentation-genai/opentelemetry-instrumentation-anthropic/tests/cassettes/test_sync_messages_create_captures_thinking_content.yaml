@@ -245,4 +245,149 @@ interactions:
     status:
       code: 200
       message: OK
+- request:
+    body: |-
+      {
+        "max_tokens": 16000,
+        "messages": [
+          {
+            "role": "user",
+            "content": "What is 17*19? Think first."
+          }
+        ],
+        "model": "claude-sonnet-4-20250514",
+        "thinking": {
+          "type": "enabled",
+          "budget_tokens": 10000
+        }
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      anthropic-version:
+      - '2023-06-01'
+      connection:
+      - keep-alive
+      content-length:
+      - '176'
+      content-type:
+      - application/json
+      host:
+      - api.anthropic.com
+      user-agent:
+      - Anthropic/Python 0.75.0
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 0.75.0
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.9.6
+      x-stainless-timeout:
+      - '600'
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "model": "claude-sonnet-4-20250514",
+          "id": "msg_01QZXwbxRaiRGHtU7xxooHTc",
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "thinking",
+              "thinking": "I need to calculate 17 \u00d7 19.\n\nLet me think about this step by step. I can use the standard multiplication method or look for patterns.\n\nOne approach is to use the fact that both numbers are close to 20:\n17 \u00d7 19 = (20 - 3) \u00d7 (20 - 1)\n= 20\u00b2 - 20\u00d71 - 20\u00d73 + 3\u00d71\n= 400 - 20 - 60 + 3\n= 400 - 80 + 3\n= 320 + 3\n= 323\n\nLet me double-check this with standard multiplication:\n    17\n  \u00d7 19\n  ----\n   153  (17 \u00d7 9)\n  170   (17 \u00d7 10, shifted one place)\n  ----\n  323\n\nLet me verify the first line: 17 \u00d7 9\n17 \u00d7 9 = 17 \u00d7 (10 - 1) = 170 - 17 = 153 \u2713\n\nAnd 17 \u00d7 10 = 170 \u2713\n\nSo 153 + 170 = 323 \u2713\n\nBoth methods give me 323.",
+              "signature": "EpgGCkYICxgCKkC23dGy4G89aOB/G0AEgl/YoxyYjLLQNjXsCMrWZqc/ZMQq9gAOMRpteSezIYWTc07F31ORVASHDaLNe2Ty0sGkEgwQprMbHAucH973U0waDBkRzLZZgddLcuk5QCIwuuII2T6wylsLsD4fRwA3CHaSCZrO4LJiK874yGjSa2acy10XGjwXXS3tVOQbxwETKv8EBeIp6G7y5QRorylUQVwMQxo6ZUpk6KQObHK8nJRqltBxsrYkvCpCI/102k+2Liq/5cZEXWHt0rbozb4J3qfn0YsMprV2WoiO5D0bllZBt9DzoVnxarTWv1thNbrwoUMcPgb50uNarNGC4S/hKSWrgv/uA0HaGFHnXHLTTIpCLvjLIaVNHeYG9NRFJcbYf1Y5CwP6V1JlKIuFO7y+9dkAQySneuyg1UkhxJptEs498MN62OQVul7MffRdmOiqkqxArtNIz9eLQDAx0O15E/5MY1YR3q/vtv2swtVWBvL4D+DaDKvIjiA81aLzVaUP9EHPe5Jy/aHzKxLodgl0+lAH3t9MNoapk40UQALM85hU+rkSFbWUWXG0ViTLAhZIC4LtZZpbXw5GucGgHqkwy7xVUI46ebuePM1ejTgLIkJOqEAvHsR+7W2s4gy1eehC4bA3dU/9V9fEVuEm8V4NjnRWEVvj3fL5Qio1lO9yXzNlkRx2CNP8BOsk3qYPZDa+1fxUNI9mFtMs9vsPUdoSQ1VGc+RPp6QSUaBIa2p5dmdaaWLBU9IVmh7Dke5I7digHFj2Y9JfP/4cL/p71xDp5ylj+GjTzejPRsyvhewiLMcTseV9+zFXeAK6LnvON63MxBAp2YbEoKKTpVo/wcff5Syg6QKLunKZo15wl8OKcYMxdfmpNqvDz3XNcDOvvanuC7gID2jWJut4gnQjVp0kjUGTZCEnum8Or17xTI6mirb+WGF+Bt1Zng/4JqBR60iN9y2m+n2LI3/ofDe5xcxfa7ZuYvRqrPcVBX+/wfQQfM+gyYsB9vCw365/A2GwYEzohwSY9oMxlScJTBr9CAzNJT9NGAE="
+            },
+            {
+              "type": "text",
+              "text": "Let me work through 17 \u00d7 19 step by step.\n\nI can use the standard multiplication method:\n```\n    17\n  \u00d7 19\n  ----\n   153  (17 \u00d7 9)\n  170   (17 \u00d7 10)\n  ----\n  323\n```\n\nOr I can use the fact that both numbers are close to 20:\n17 \u00d7 19 = (20 - 3) \u00d7 (20 - 1) = 400 - 20 - 60 + 3 = 323\n\nTherefore, 17 \u00d7 19 = 323."
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "usage": {
+            "input_tokens": 46,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 0
+            },
+            "output_tokens": 431,
+            "service_tier": "standard",
+            "inference_geo": "not_available"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9cc8c38c49eb5017-EWR
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 12 Feb 2026 02:47:59 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      anthropic-ratelimit-input-tokens-limit:
+      - '450000'
+      anthropic-ratelimit-input-tokens-remaining:
+      - '450000'
+      anthropic-ratelimit-input-tokens-reset:
+      - '2026-02-12T02:47:53Z'
+      anthropic-ratelimit-output-tokens-limit:
+      - '90000'
+      anthropic-ratelimit-output-tokens-remaining:
+      - '90000'
+      anthropic-ratelimit-output-tokens-reset:
+      - '2026-02-12T02:47:59Z'
+      anthropic-ratelimit-requests-limit:
+      - '1000'
+      anthropic-ratelimit-requests-remaining:
+      - '999'
+      anthropic-ratelimit-requests-reset:
+      - '2026-02-12T02:47:53Z'
+      anthropic-ratelimit-tokens-limit:
+      - '540000'
+      anthropic-ratelimit-tokens-remaining:
+      - '540000'
+      anthropic-ratelimit-tokens-reset:
+      - '2026-02-12T02:47:53Z'
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2530'
+      request-id:
+      - req_011CY3Qq8Uoq7QhpK5b2KnAy
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      x-envoy-upstream-service-time:
+      - '6043'
+    status:
+      code: 200
+      message: OK
 version: 1

@@ -953,3 +953,47 @@ def test_sync_messages_stream_connection_error(
     span = spans[0]
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
     assert ErrorAttributes.ERROR_TYPE in span.attributes
+
+
+# =============================================================================
+# Tests for EVENT_ONLY content capture mode
+# =============================================================================
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_event_only_no_content_in_span(
+    span_exporter, log_exporter, anthropic_client, instrument_event_only
+):
+    """Test that EVENT_ONLY mode does not capture content in span attributes
+    but does emit a log event with the content."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    # Content should NOT be in span attributes under EVENT_ONLY
+    assert GenAIAttributes.GEN_AI_INPUT_MESSAGES not in span.attributes
+    assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES not in span.attributes
+
+    # Basic span attributes should still be present
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
+    assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
+    assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
+
+    # A log event should have been emitted with the content
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1
+    log_record = logs[0].log_record
+    assert (
+        log_record.event_name
+        == "gen_ai.client.inference.operation.details"
+    )
