@@ -60,11 +60,7 @@ from .patch import (
     chat_completions_create,
     embeddings_create,
 )
-from .patch_responses import (
-    responses_create,
-    responses_retrieve,
-    responses_stream,
-)
+from .patch_responses import responses_create, responses_retrieve
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -136,31 +132,29 @@ class OpenAIInstrumentor(BaseInstrumentor):
         # Responses API is only available in openai>=1.66.0
         # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
         try:
-            wrap_function_wrapper(
-                module="openai.resources.responses.responses",
-                name="Responses.create",
-                wrapper=responses_create(
-                    tracer, logger, instruments, is_content_enabled()
-                ),
+            from opentelemetry.util.genai.handler import (  # pylint: disable=import-outside-toplevel
+                TelemetryHandler,
+            )
+
+            handler = TelemetryHandler(
+                tracer_provider=tracer_provider,
+                meter_provider=meter_provider,
+                logger_provider=logger_provider,
             )
 
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
-                name="Responses.stream",
-                wrapper=responses_stream(
-                    tracer, logger, instruments, is_content_enabled()
-                ),
+                name="Responses.create",
+                wrapper=responses_create(handler, is_content_enabled()),
             )
 
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
                 name="Responses.retrieve",
-                wrapper=responses_retrieve(
-                    tracer, logger, instruments, is_content_enabled()
-                ),
+                wrapper=responses_retrieve(handler, is_content_enabled()),
             )
         except (AttributeError, ModuleNotFoundError):
-            # Responses API not available in this version of openai
+            # Responses API or TelemetryHandler not available
             pass
 
     def _uninstrument(self, **kwargs):
@@ -175,7 +169,6 @@ class OpenAIInstrumentor(BaseInstrumentor):
         # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
         try:
             unwrap(openai.resources.responses.responses.Responses, "create")
-            unwrap(openai.resources.responses.responses.Responses, "stream")
             unwrap(openai.resources.responses.responses.Responses, "retrieve")
         except (AttributeError, ModuleNotFoundError):
             # Responses API not available in this version of openai

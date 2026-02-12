@@ -51,4 +51,5 @@ wrapt==1.16.0
 # test with the latest version of opentelemetry-api, sdk, and semantic conventions
 
 -e opentelemetry-instrumentation
+-e util/opentelemetry-util-genai
 -e instrumentation-genai/opentelemetry-instrumentation-openai-v2

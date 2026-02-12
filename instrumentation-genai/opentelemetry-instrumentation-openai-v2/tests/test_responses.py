@@ -137,9 +137,9 @@ def test_responses_stream_existing_response(
     assert final_response is not None
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == span_count + 2
+    assert len(spans) == span_count + 1
 
-    stream_and_retrieve_spans = spans[span_count:]
+    retrieve_spans = spans[span_count:]
     retrieval_operation = getattr(
         GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
     )
@@ -150,26 +150,20 @@ def test_responses_stream_existing_response(
     )
     assert {
         span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME)
-        for span in stream_and_retrieve_spans
+        for span in retrieve_spans
     } == {
-        GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
         retrieval_operation_name,
     }
-    stream_span = next(
-        span
-        for span in stream_and_retrieve_spans
-        if span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME)
-        == GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value
-    )
+    retrieve_span = retrieve_spans[0]
 
     assert_all_attributes(
-        stream_span,
+        retrieve_span,
         final_response.model,
         final_response.id,
         final_response.model,
         final_response.usage.input_tokens if final_response.usage else None,
         final_response.usage.output_tokens if final_response.usage else None,
-        operation_name=GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value,
+        operation_name=retrieval_operation_name,
         response_service_tier=final_response.service_tier,
     )
 
