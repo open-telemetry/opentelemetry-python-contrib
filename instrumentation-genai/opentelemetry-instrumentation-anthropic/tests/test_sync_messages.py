@@ -687,10 +687,10 @@ def test_sync_messages_create_captures_thinking_content(
 
 
 @pytest.mark.vcr()
-def test_stream_wrapper_finalize_idempotent(
+def test_stream_wrapper_finalize_idempotent(  # pylint: disable=too-many-locals
     span_exporter,
     anthropic_client,
-    instrument_no_content,  # pylint: disable=too-many-locals
+    instrument_no_content,
 ):
     """Fully consumed stream plus explicit close should still yield one span."""
     model = "claude-sonnet-4-20250514"
@@ -917,10 +917,10 @@ def test_sync_messages_stream_double_exit_idempotent(
         max_tokens=100,
         messages=messages,
     )
-    stream = manager.__enter__()
+    stream = manager.__enter__()  # pylint: disable=unnecessary-dunder-call
     _ = "".join(stream.text_stream)
-    manager.__exit__(None, None, None)
-    manager.__exit__(None, None, None)
+    manager.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
+    manager.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1

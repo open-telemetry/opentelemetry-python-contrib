@@ -20,7 +20,7 @@ import base64
 import json
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Iterator, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Iterator, Optional, Sequence, cast
 from urllib.parse import urlparse
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -158,7 +158,7 @@ def should_capture_content() -> bool:
 
 def _get_field(obj: Any, name: str, default: Any = None) -> Any:
     if isinstance(obj, dict):
-        return obj.get(name, default)
+        return cast(dict[str, Any], obj).get(name, default)
     return getattr(obj, name, default)
 
 
@@ -172,7 +172,7 @@ def _as_str(value: Any) -> str | None:
 
 def _to_dict_if_possible(value: Any) -> Any:
     if isinstance(value, dict):
-        return value
+        return cast(dict[str, Any], value)
     if hasattr(value, "to_dict"):
         to_dict = getattr(value, "to_dict")
         if callable(to_dict):
@@ -181,7 +181,7 @@ def _to_dict_if_possible(value: Any) -> Any:
             except Exception:  # pylint: disable=broad-exception-caught
                 return value
     if hasattr(value, "__dict__"):
-        return dict(value.__dict__)
+        return cast(dict[str, Any], dict(value.__dict__))
     return value
 
 
@@ -199,40 +199,40 @@ def _convert_content_block_to_part(content_block: Any) -> MessagePart | None:
     if block_type is None:
         return None
 
+    result: MessagePart | None = None
     if block_type == "text":
         text = _as_str(_get_field(content_block, "text"))
-        return Text(content=text or "")
-
-    if block_type == "tool_use":
-        return ToolCall(
+        result = Text(content=text or "")
+    elif block_type == "tool_use":
+        result = ToolCall(
             arguments=_to_dict_if_possible(_get_field(content_block, "input")),
             name=_as_str(_get_field(content_block, "name")) or "",
             id=_as_str(_get_field(content_block, "id")),
         )
-
-    if block_type == "tool_result":
-        return ToolCallResponse(
-            response=_to_dict_if_possible(_get_field(content_block, "content")),
+    elif block_type == "tool_result":
+        result = ToolCallResponse(
+            response=_to_dict_if_possible(
+                _get_field(content_block, "content")
+            ),
             id=_as_str(_get_field(content_block, "tool_use_id")),
         )
-
-    if block_type in ("thinking", "redacted_thinking"):
+    elif block_type in ("thinking", "redacted_thinking"):
         content = _as_str(_get_field(content_block, "thinking"))
         if content is None:
             content = _as_str(_get_field(content_block, "data"))
-        return Reasoning(content=content or "")
-
-    if block_type in ("image", "audio", "video", "document", "file"):
+        result = Reasoning(content=content or "")
+    elif block_type in ("image", "audio", "video", "document", "file"):
         source = _get_field(content_block, "source")
         mime_type = _as_str(_get_field(source, "media_type"))
         raw_data = _as_str(_get_field(source, "data"))
         data = _decode_base64(raw_data)
-        if data is None:
-            return None
-        modality = _as_str(_get_field(content_block, "type")) or "file"
-        return Blob(mime_type=mime_type, modality=modality, content=data)
+        if data is not None:
+            modality = _as_str(_get_field(content_block, "type")) or "file"
+            result = Blob(mime_type=mime_type, modality=modality, content=data)
+    else:
+        result = _to_dict_if_possible(content_block)
 
-    return _to_dict_if_possible(content_block)
+    return result
 
 
 def _convert_content_to_parts(content: Any) -> list[MessagePart]:
@@ -242,7 +242,7 @@ def _convert_content_to_parts(content: Any) -> list[MessagePart]:
         return [Text(content=content)]
     if isinstance(content, list):
         parts: list[MessagePart] = []
-        for item in content:
+        for item in cast(list[Any], content):
             part = _convert_content_block_to_part(item)
             if part is not None:
                 parts.append(part)
@@ -256,7 +256,7 @@ def get_input_messages(messages: Any) -> list[InputMessage]:
         return []
 
     result: list[InputMessage] = []
-    for message in messages:
+    for message in cast(list[Any], messages):
         role = _as_str(_get_field(message, "role")) or "user"
         parts = _convert_content_to_parts(_get_field(message, "content"))
         result.append(InputMessage(role=role, parts=parts))
@@ -272,7 +272,9 @@ def get_output_messages_from_message(message: Any) -> list[OutputMessage]:
         return []
 
     parts = _convert_content_to_parts(_get_field(message, "content"))
-    finish_reason = _normalize_finish_reason(_get_field(message, "stop_reason"))
+    finish_reason = _normalize_finish_reason(
+        _get_field(message, "stop_reason")
+    )
     return [
         OutputMessage(
             role=_as_str(_get_field(message, "role")) or "assistant",
@@ -294,7 +296,9 @@ def _create_stream_block_state(content_block: Any) -> dict[str, Any]:
         state["input"] = _to_dict_if_possible(input_value)
         state["input_json"] = ""
     elif block_type in ("thinking", "redacted_thinking"):
-        state["thinking"] = _as_str(_get_field(content_block, "thinking")) or ""
+        state["thinking"] = (
+            _as_str(_get_field(content_block, "thinking")) or ""
+        )
     return state
 
 
@@ -606,7 +610,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             ] = self._cache_read_input_tokens
 
         if self._capture_content and self._content_blocks:
-            parts = []
+            parts: list[MessagePart] = []
             for index in sorted(self._content_blocks):
                 part = _stream_block_state_to_part(self._content_blocks[index])
                 if part is not None:
