@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `opentelemetry-instrumentation-logging`: Apply log format/level when logging already configured (autoinstrumentation, Gunicorn, Flask)
-  ([#2384](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/2384))
+  ([#4204](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4204))
 - `opentelemetry-instrumentation-cassandra`: Use `_instruments_any` instead of `_instruments` for driver dependencies so that having either `cassandra-driver` or `scylla-driver` installed is sufficient
   ([#4182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4182))
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
