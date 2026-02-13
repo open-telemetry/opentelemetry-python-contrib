@@ -46,7 +46,7 @@ docstring_parser==0.16
 exceptiongroup==1.2.2
 google-api-core[grpc, async_rest]==2.23.0
 google-auth[aiohttp]==2.45.0
-google-cloud-aiplatform==1.132.0
+google-cloud-aiplatform==1.79.0
 google-cloud-bigquery==3.27.0
 google-cloud-core==2.4.1
 google-cloud-resource-manager==1.13.1
@@ -55,7 +55,6 @@ google-crc32c==1.5.0
 google-resumable-media==2.7.2
 googleapis-common-protos==1.66.0
 grpc-google-iam-v1==0.13.1
-grpcio==1.68.1
 grpcio-status==1.68.1
 idna==3.10
 importlib_metadata==8.5.0
@@ -68,8 +67,7 @@ proto-plus==1.25.0
 protobuf==5.29.1
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
-pydantic==2.12.15
-pydantic_core==2.27.1
+pydantic==2.12.5
 pytest==7.4.4
 pytest-asyncio==0.21.0
 pytest-vcr==1.0.2
@@ -77,16 +75,18 @@ python-dateutil==2.9.0.post0
 PyYAML==6.0.2
 requests==2.32.3
 rsa==4.9
-shapely==2.1.2
 fsspec==2025.9.0
 six==1.17.0
 tomli==2.2.1
-typing_extensions==4.12.2
+typing_extensions==4.14.1
 urllib3==1.26.20
 vcrpy==6.0.2
 wrapt==1.17.0
 yarl==1.15.2
 zipp==3.20.2
+grpcio>=1.75.1 ; python_version >= "3.14"
+shapely==2.0.6 ; python_version < "3.10"
+shapely==2.1.2 ; python_version >= "3.10"
 # test with the latest version of opentelemetry-api, sdk, and semantic conventions
 
 -e opentelemetry-instrumentation
