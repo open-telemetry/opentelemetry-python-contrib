@@ -28,7 +28,7 @@ classifiers = [
 dependencies = [
   "opentelemetry-api ~= 1.5",
   "opentelemetry-sdk ~= 1.5",
-  "wrapt >= 1.0.0, < 2.0.0",
+  "wrapt >= 1.0.0",
 ]
 
 [project.urls]
