@@ -3091,6 +3091,25 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-asyncio -- -ra
 
+  py314-test-instrumentation-asyncio_ubuntu-latest:
+    name: instrumentation-asyncio 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-asyncio -- -ra
+
   py39-test-instrumentation-cassandra-driver_ubuntu-latest:
     name: instrumentation-cassandra-driver 3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -3280,6 +3299,44 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-cassandra-scylla -- -ra
+
+  py314-test-instrumentation-cassandra-driver_ubuntu-latest:
+    name: instrumentation-cassandra-driver 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-cassandra-driver -- -ra
+
+  py314-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-cassandra-scylla -- -ra
 
   pypy3-test-instrumentation-cassandra-scylla_ubuntu-latest:
     name: instrumentation-cassandra-scylla pypy-3.9 Ubuntu
