@@ -70,12 +70,16 @@ class LangChainInstrumentor(BaseInstrumentor):
         Enable Langchain instrumentation.
         """
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
+        logger_provider = kwargs.get("logger_provider")
 
         telemetry_handler = get_telemetry_handler(
-            tracer_provider=tracer_provider
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+            logger_provider=logger_provider,
         )
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
-            telemetry_handler=telemetry_handler
+            telemetry_handler=telemetry_handler,
         )
 
         wrap_function_wrapper(
