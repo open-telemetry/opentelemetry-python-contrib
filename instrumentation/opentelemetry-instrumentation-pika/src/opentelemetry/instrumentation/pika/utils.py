@@ -7,7 +7,10 @@ from pika.adapters.blocking_connection import (
 )
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
-from wrapt import ObjectProxy
+try:
+    from wrapt import BaseObjectProxy
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
@@ -196,7 +199,7 @@ def _enrich_span(
 
 
 # pylint:disable=abstract-method
-class ReadyMessagesDequeProxy(ObjectProxy):
+class ReadyMessagesDequeProxy(BaseObjectProxy):
     def __init__(
         self,
         wrapped,
