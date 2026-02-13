@@ -65,9 +65,12 @@ API
 
 from typing import Any, Collection
 
+from opentelemetry._logs import get_logger
 from opentelemetry.instrumentation.anthropic_agents.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.trace import get_tracer
 
 
 class AnthropicAgentsInstrumentor(BaseInstrumentor):
@@ -96,10 +99,6 @@ class AnthropicAgentsInstrumentor(BaseInstrumentor):
                 - meter_provider: MeterProvider instance
                 - logger_provider: LoggerProvider instance
         """
-        # pylint: disable=import-outside-toplevel
-        from opentelemetry._logs import get_logger  # noqa: PLC0415
-        from opentelemetry.metrics import get_meter  # noqa: PLC0415
-        from opentelemetry.trace import get_tracer  # noqa: PLC0415
 
         # Get providers from kwargs
         tracer_provider = kwargs.get("tracer_provider")
