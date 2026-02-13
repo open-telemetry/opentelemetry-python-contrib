@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation`: Add support for wrapt 2.x
+  ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 - Add Python 3.14 support
   ([#4193](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4193))
 - `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
