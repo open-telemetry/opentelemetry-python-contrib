@@ -64,7 +64,7 @@ def messages_create(
         request_model = (
             request_model_attribute
             if isinstance(request_model_attribute, str)
-            else params.model or ""
+            else params.model
         )
 
         capture_content = should_capture_content()
@@ -120,7 +120,7 @@ def messages_stream(
         request_model = (
             request_model_attribute
             if isinstance(request_model_attribute, str)
-            else params.model or ""
+            else params.model
         )
 
         capture_content = should_capture_content()
