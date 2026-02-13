@@ -87,6 +87,24 @@ LEVELS = {
 }
 
 
+def _apply_log_settings(log_format, log_level):
+    """Apply format/level to logging, handling pre-configured scenarios.
+
+    If root logger has handlers, update formatters on all handlers.
+    If no handlers, call basicConfig.
+    """
+    root_logger = logging.getLogger()
+
+    if root_logger.hasHandlers():
+        # Logging already configured - update existing handlers
+        for handler in root_logger.handlers:
+            handler.setFormatter(logging.Formatter(log_format))
+        root_logger.setLevel(log_level)
+    else:
+        # No handlers - use basicConfig (backward compatible)
+        logging.basicConfig(format=log_format, level=log_level)
+
+
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     __doc__ = f"""An instrumentor for stdlib logging module.
 
@@ -120,6 +138,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     _old_factory = None
     _log_hook = None
+    _old_handler_formatters = None
+    _old_level = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -149,7 +169,17 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             )
             log_level = log_level or logging.INFO
 
-            logging.basicConfig(format=log_format, level=log_level)
+            root_logger = logging.getLogger()
+
+            # Save old state if logging already configured
+            if root_logger.hasHandlers():
+                LoggingInstrumentor._old_handler_formatters = [
+                    (handler, handler.formatter)
+                    for handler in root_logger.handlers
+                ]
+                LoggingInstrumentor._old_level = root_logger.level
+
+            _apply_log_settings(log_format, log_level)
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
@@ -203,3 +233,13 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         if LoggingInstrumentor._old_factory:
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
             LoggingInstrumentor._old_factory = None
+
+        # Restore formatters and level
+        if LoggingInstrumentor._old_handler_formatters is not None:
+            for handler, old_formatter in LoggingInstrumentor._old_handler_formatters:
+                handler.setFormatter(old_formatter)
+            LoggingInstrumentor._old_handler_formatters = None
+
+        if LoggingInstrumentor._old_level is not None:
+            logging.getLogger().setLevel(LoggingInstrumentor._old_level)
+            LoggingInstrumentor._old_level = None
