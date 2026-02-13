@@ -1,0 +1,252 @@
+description: 'User query: ./foo.sh --help (blocked command)'
+prompt: ./foo.sh --help
+messages:
+- type: SystemMessage
+  subtype: init
+  data:
+    type: system
+    subtype: init
+    cwd: /path/to/claude-agent-sdk/examples
+    session_id: cf630075-3251-4f84-a57d-4274afed0c46
+    tools:
+    - Task
+    - TaskOutput
+    - Bash
+    - Glob
+    - Grep
+    - ExitPlanMode
+    - Read
+    - Edit
+    - Write
+    - NotebookEdit
+    - WebFetch
+    - TodoWrite
+    - WebSearch
+    - KillShell
+    - AskUserQuestion
+    - Skill
+    - EnterPlanMode
+    mcp_servers: []
+    model: qwen-plus
+    permissionMode: default
+    slash_commands:
+    - compact
+    - context
+    - cost
+    - init
+    - pr-comments
+    - release-notes
+    - review
+    - security-review
+    apiKeySource: ANTHROPIC_API_KEY
+    claude_code_version: 2.1.1
+    output_style: default
+    agents:
+    - Bash
+    - general-purpose
+    - statusline-setup
+    - Explore
+    - Plan
+    skills: []
+    plugins: []
+    uuid: cf949b1a-3a2e-4135-bcd8-5ae6a9c6ae1d
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: TextBlock
+    text: 'I''ll run the bash command `./foo.sh --help` for you.
+
+
+      '
+  parent_tool_use_id: null
+  error: null
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: ToolUseBlock
+    id: call_33776c3031c148f6a02f71
+    name: Bash
+    input:
+      command: ./foo.sh --help
+      description: Run foo.sh script with help flag
+  parent_tool_use_id: null
+  error: null
+- type: UserMessage
+  content:
+  - type: ToolResultBlock
+    tool_use_id: call_33776c3031c148f6a02f71
+    content: 'Command contains invalid pattern: foo.sh'
+    is_error: true
+  uuid: 8173b335-1fa8-45d0-a65d-5d901d69a8c8
+  parent_tool_use_id: null
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: TextBlock
+    text: 'It looks like the `foo.sh` script doesn''t exist in the current directory or isn''t accessible. Let me check what
+      files are available in the current directory first to see what scripts we have:
+
+
+      '
+  parent_tool_use_id: null
+  error: null
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: ToolUseBlock
+    id: call_2066d7694fd9488096cd3e
+    name: Bash
+    input:
+      command: ls -la
+      description: List all files in current directory
+  parent_tool_use_id: null
+  error: null
+- type: UserMessage
+  content:
+  - type: ToolResultBlock
+    tool_use_id: call_2066d7694fd9488096cd3e
+    content: 'total 432
+
+      drwxr-xr-x@ 41 user  staff   1312 Jan 23 12:33 .
+
+      drwxr-xr-x@ 23 user  staff    736 Jan 12 18:02 ..
+
+      drwxr-xr-x@ 14 user  staff    448 Jan  9 16:12 __pycache__
+
+      -rw-r--r--@  1 user  staff   4708 Dec 25 17:18 agents.py
+
+      -rw-r--r--@  1 user  staff   2189 Jan 23 12:34 code_reviewer_example.py
+
+      ...'
+    is_error: false
+  uuid: 9d0f6d9c-2715-47b1-9a5c-86237cd935ab
+  parent_tool_use_id: null
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: TextBlock
+    text: "I can see that there's no `foo.sh` script in the current directory. Looking at the files listed, I can see several\
+      \ Python scripts (`.py` files) and one text file (`hello.txt`). \n\nThe closest executable file I can see is `pretooluse_example.py`\
+      \ which has execute permissions (`-rwxr-xr-x`), but it's a Python script, not a shell script.\n\nWould you like me to:\n\
+      - Check if there are any other shell scripts (`.sh` files) in subdirectories?\n- Run the `--help` command on one of\
+      \ the Python scripts instead (like `python pretooluse_example.py --help`)?\n- Or did you mean to run a different command\
+      \ or script?\n\nLet me know what you'd like to do next!"
+  parent_tool_use_id: null
+  error: null
+- type: ResultMessage
+  subtype: success
+  duration_ms: 11929
+  duration_api_ms: 11297
+  is_error: false
+  num_turns: 3
+  session_id: cf630075-3251-4f84-a57d-4274afed0c46
+  total_cost_usd: 0.129201
+  usage:
+    input_tokens: 41647
+    cache_creation_input_tokens: 0
+    cache_read_input_tokens: 0
+    output_tokens: 284
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 0
+      ephemeral_5m_input_tokens: 0
+  result: I can see that there's no `foo.sh` script in the current directory...
+  structured_output: null
+expected_spans:
+- name_pattern: invoke_agent
+  operation: invoke_agent
+  parent: null
+  attributes:
+    gen_ai.operation.name: invoke_agent
+    gen_ai.agent.name: claude-agent
+    gen_ai.conversation.id: cf630075-3251-4f84-a57d-4274afed0c46
+    gen_ai.usage.input_tokens: 41647
+    gen_ai.usage.output_tokens: 284
+  attributes_contains:
+    gen_ai.input.messages: ./foo.sh --help
+- name_pattern: chat
+  operation: chat
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: chat
+    gen_ai.request.model: qwen-plus
+  attributes_contains:
+    gen_ai.input.messages: ./foo.sh --help
+    gen_ai.output.messages:
+    - I'll run the bash command
+    - tool_call
+    gen_ai.response.finish_reasons:
+    - stop
+- name_pattern: execute_tool
+  operation: execute_tool
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: execute_tool
+    gen_ai.tool.name: Bash
+    gen_ai.tool.call.id: call_33776c3031c148f6a02f71
+  attributes_contains:
+    gen_ai.tool.call.arguments: ./foo.sh --help
+    gen_ai.tool.call.result: Command contains invalid pattern
+  is_error: true
+- name_pattern: chat
+  operation: chat
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: chat
+    gen_ai.request.model: qwen-plus
+  attributes_contains:
+    gen_ai.input.messages:
+    - ./foo.sh --help
+    - tool_call
+    - tool_call_response
+    gen_ai.output.messages:
+    - doesn't exist
+    - tool_call
+    gen_ai.response.finish_reasons:
+    - stop
+- name_pattern: execute_tool
+  operation: execute_tool
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: execute_tool
+    gen_ai.tool.name: Bash
+    gen_ai.tool.call.id: call_2066d7694fd9488096cd3e
+  attributes_contains:
+    gen_ai.tool.call.arguments: ls -la
+    gen_ai.tool.call.result: total
+  is_error: false
+- name_pattern: chat
+  operation: chat
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: chat
+    gen_ai.request.model: qwen-plus
+  attributes_contains:
+    gen_ai.input.messages:
+    - ./foo.sh --help
+    - tool_call
+    - tool_call_response
+    - ls -la
+    gen_ai.output.messages:
+    - no `foo.sh` script
+    gen_ai.response.finish_reasons:
+    - stop
+  message_structure:
+    gen_ai.input.messages:
+      roles:
+      - user
+      - assistant
+      - tool
+      - assistant
+      - tool
+      parts_types:
+      - - text
+      - - text
+        - tool_call
+      - - tool_call_response
+      - - text
+        - tool_call
+      - - tool_call_response

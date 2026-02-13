@@ -1,0 +1,171 @@
+description: 'Documentation Writer Agent using Task tool to invoke general-purpose subagent'
+prompt: 'Use the doc-writer agent to explain what AgentDefinition is used for'
+messages:
+- type: SystemMessage
+  subtype: init
+  data:
+    type: system
+    subtype: init
+    cwd: /path/to/claude-agent-sdk
+    session_id: 397137cf-3ade-4272-a0bf-aecf66956d1b
+    tools:
+    - Task
+    - TaskOutput
+    - Bash
+    - Glob
+    - Grep
+    - ExitPlanMode
+    - Read
+    - Edit
+    - Write
+    - NotebookEdit
+    - WebFetch
+    - TodoWrite
+    - WebSearch
+    - TaskStop
+    - AskUserQuestion
+    - Skill
+    - EnterPlanMode
+    - ToolSearch
+    mcp_servers: []
+    model: qwen-plus
+    permissionMode: default
+    slash_commands:
+    - compact
+    - context
+    - cost
+    - init
+    - pr-comments
+    - release-notes
+    - review
+    - security-review
+    apiKeySource: ANTHROPIC_API_KEY
+    claude_code_version: 2.1.19
+    output_style: default
+    agents:
+    - Bash
+    - general-purpose
+    - statusline-setup
+    - Explore
+    - Plan
+    skills: []
+    plugins: []
+    uuid: 49c8bfe4-abe7-4f4b-bc19-b0dc334defc2
+
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: TextBlock
+    text: "I'll use the doc-writer agent to explain what AgentDefinition is used for.\n\n"
+  parent_tool_use_id: null
+  error: null
+
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: ToolUseBlock
+    id: call_a1e29785a6c94856bfc3e5
+    name: Task
+    input:
+      description: Explain AgentDefinition purpose
+      prompt: "Explain what AgentDefinition is used for in the context of Claude Agent SDK. Provide a clear, concise explanation of its purpose, when it's used, and what it typically contains."
+      subagent_type: general-purpose
+  parent_tool_use_id: null
+  error: null
+
+- type: UserMessage
+  content:
+  - type: TextBlock
+    text: "Explain what AgentDefinition is used for in the context of Claude Agent SDK. Provide a clear, concise explanation of its purpose, when it's used, and what it typically contains."
+  uuid: 62f08d13-8455-40ee-95d2-bbaf0eef9162
+  parent_tool_use_id: call_a1e29785a6c94856bfc3e5
+
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: ToolUseBlock
+    id: call_5c58f3a6922d407ca343bf
+    name: Grep
+    input:
+      pattern: AgentDefinition
+      output_mode: files_with_matches
+  parent_tool_use_id: call_a1e29785a6c94856bfc3e5
+  error: null
+
+- type: UserMessage
+  content:
+  - type: ToolResultBlock
+    tool_use_id: call_5c58f3a6922d407ca343bf
+    content: 'Found 12 files'
+    is_error: false
+  uuid: 4d3458b0-4475-47ad-b1da-84a8b12d7c79
+  parent_tool_use_id: call_a1e29785a6c94856bfc3e5
+
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: ToolUseBlock
+    id: call_c51d222a2f1049b5b3fd7d
+    name: Read
+    input:
+      file_path: /path/to/claude-agent-sdk/src/claude_agent_sdk/types.py
+  parent_tool_use_id: call_a1e29785a6c94856bfc3e5
+  error: null
+
+- type: UserMessage
+  content:
+  - type: ToolResultBlock
+    tool_use_id: call_c51d222a2f1049b5b3fd7d
+    content: 'AgentDefinition class definition content...'
+    is_error: false
+  uuid: 8fbd773e-7def-4570-96c8-e307f45f9b47
+  parent_tool_use_id: call_a1e29785a6c94856bfc3e5
+
+- type: UserMessage
+  content:
+  - type: ToolResultBlock
+    tool_use_id: call_a1e29785a6c94856bfc3e5
+    content:
+    - type: text
+      text: "Based on my analysis of the Claude Agent SDK codebase, here's a clear explanation of what `AgentDefinition` is used for..."
+    - type: text
+      text: "agentId: ada4edf (for resuming to continue this agent's work if needed)"
+    is_error: false
+  uuid: 9c09e979-6d8a-4f7f-80b5-4852305cfa92
+  parent_tool_use_id: null
+  tool_use_result:
+    status: completed
+    prompt: "Explain what AgentDefinition is used for in the context of Claude Agent SDK. Provide a clear, concise explanation of its purpose, when it's used, and what it typically contains."
+    agentId: ada4edf
+    content:
+    - type: text
+      text: "Based on my analysis of the Claude Agent SDK codebase, here's a clear explanation..."
+    totalDurationMs: 33079
+    totalTokens: 0
+    totalToolUseCount: 5
+    usage:
+      input_tokens: 0
+      output_tokens: 0
+
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: TextBlock
+    text: "Based on my analysis of the Claude Agent SDK codebase, `AgentDefinition` is a dataclass used to define the configuration for custom agents..."
+  parent_tool_use_id: null
+  error: null
+
+- type: ResultMessage
+  subtype: success
+  duration_ms: 43887
+  duration_api_ms: 42421
+  is_error: false
+  num_turns: 2
+  session_id: 397137cf-3ade-4272-a0bf-aecf66956d1b
+  total_cost_usd: 0.454974
+  usage:
+    input_tokens: 28964
+    cache_creation_input_tokens: 0
+    cache_read_input_tokens: 0
+    output_tokens: 294
+  result: "Based on my analysis of the Claude Agent SDK codebase..."

@@ -1,0 +1,5 @@
+claude-agent-sdk
+opentelemetry-distro
+opentelemetry-exporter-otlp
+python-dotenv
+opentelemetry-instrumentation-claude-agent-sdk
