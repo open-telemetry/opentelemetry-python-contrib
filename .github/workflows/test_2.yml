@@ -1533,8 +1533,8 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-asyncio -- -ra
 
-  py39-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.9 Ubuntu
+  py39-test-instrumentation-cassandra-driver_ubuntu-latest:
+    name: instrumentation-cassandra-driver 3.9 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1550,10 +1550,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-cassandra -- -ra
+        run: tox -e py39-test-instrumentation-cassandra-driver -- -ra
 
-  py310-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.10 Ubuntu
+  py39-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-cassandra-scylla -- -ra
+
+  py310-test-instrumentation-cassandra-driver_ubuntu-latest:
+    name: instrumentation-cassandra-driver 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1569,10 +1588,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-cassandra -- -ra
+        run: tox -e py310-test-instrumentation-cassandra-driver -- -ra
 
-  py311-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.11 Ubuntu
+  py310-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-cassandra-scylla -- -ra
+
+  py311-test-instrumentation-cassandra-driver_ubuntu-latest:
+    name: instrumentation-cassandra-driver 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1588,10 +1626,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-cassandra -- -ra
+        run: tox -e py311-test-instrumentation-cassandra-driver -- -ra
 
-  py312-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.12 Ubuntu
+  py311-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-cassandra-scylla -- -ra
+
+  py312-test-instrumentation-cassandra-driver_ubuntu-latest:
+    name: instrumentation-cassandra-driver 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1607,10 +1664,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-cassandra -- -ra
+        run: tox -e py312-test-instrumentation-cassandra-driver -- -ra
 
-  py313-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra 3.13 Ubuntu
+  py312-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-cassandra-scylla -- -ra
+
+  py313-test-instrumentation-cassandra-driver_ubuntu-latest:
+    name: instrumentation-cassandra-driver 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1626,10 +1702,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-cassandra -- -ra
+        run: tox -e py313-test-instrumentation-cassandra-driver -- -ra
 
-  pypy3-test-instrumentation-cassandra_ubuntu-latest:
-    name: instrumentation-cassandra pypy-3.9 Ubuntu
+  py313-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-cassandra-scylla -- -ra
+
+  pypy3-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1645,7 +1740,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-cassandra -- -ra
+        run: tox -e pypy3-test-instrumentation-cassandra-scylla -- -ra
 
   py39-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.9 Ubuntu
