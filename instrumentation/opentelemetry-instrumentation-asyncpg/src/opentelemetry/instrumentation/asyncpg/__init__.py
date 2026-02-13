@@ -196,6 +196,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             finally:
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(exception)
 
         return result
 
@@ -239,6 +240,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             finally:
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(exception)
 
         if not stop:
             return result
