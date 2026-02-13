@@ -11,12 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest import TestCase
+import asyncio
+from unittest import TestCase, mock
 
 import wrapt
 from aio_pika import Exchange, Queue
 
 from opentelemetry.instrumentation.aio_pika import AioPikaInstrumentor
+from opentelemetry.test.test_base import TestBase
+
+from .consts import (
+    AIOPIKA_VERSION_INFO,
+    CHANNEL_7,
+    CHANNEL_8,
+    CONNECTION_7,
+    EXCHANGE_NAME,
+    INSTRUMENTATION_NAME,
+    MESSAGE,
+    ROUTING_KEY,
+)
 
 
 class TestPika(TestCase):
@@ -31,4 +44,49 @@ class TestPika(TestCase):
         self.assertFalse(isinstance(Queue.consume, wrapt.BoundFunctionWrapper))
         self.assertFalse(
             isinstance(Exchange.publish, wrapt.BoundFunctionWrapper)
+        )
+
+
+class TestInstrumentationScopeName(TestBase):
+    """Test instrumentation scope via actual span output (not mocking internals)."""
+
+    def setUp(self):
+        super().setUp()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+    def tearDown(self):
+        with self.disable_logging():
+            AioPikaInstrumentor().uninstrument()
+        self.loop.close()
+        super().tearDown()
+
+    def test_instrumentation_scope_name(self):
+        """Verify instrumentation scope via the real instrument() path."""
+
+        async def _noop_publish(self, *args, **kwargs):
+            return None
+
+        with mock.patch.object(Exchange, "publish", new=_noop_publish):
+            AioPikaInstrumentor().instrument(
+                tracer_provider=self.tracer_provider
+            )
+            major = AIOPIKA_VERSION_INFO[0]
+            if major == 7:
+                exchange = Exchange(CONNECTION_7, CHANNEL_7, EXCHANGE_NAME)
+            elif major in (8, 9):
+                exchange = Exchange(CHANNEL_8, EXCHANGE_NAME)
+            else:
+                self.fail(
+                    f"Unsupported aio-pika major version {major} (supported: 7-9, <10)"
+                )
+            self.loop.run_until_complete(
+                exchange.publish(MESSAGE, ROUTING_KEY)
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(
+            spans[0].instrumentation_scope.name,
+            INSTRUMENTATION_NAME,
         )

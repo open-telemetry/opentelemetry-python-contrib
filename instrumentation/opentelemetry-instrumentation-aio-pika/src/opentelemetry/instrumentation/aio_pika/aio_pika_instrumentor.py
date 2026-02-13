@@ -21,7 +21,10 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.aio_pika.callback_decorator import (
     CallbackDecorator,
 )
-from opentelemetry.instrumentation.aio_pika.package import _instruments
+from opentelemetry.instrumentation.aio_pika.package import (
+    _instrumentation_name,
+    _instruments,
+)
 from opentelemetry.instrumentation.aio_pika.publish_decorator import (
     PublishDecorator,
 )
@@ -29,8 +32,6 @@ from opentelemetry.instrumentation.aio_pika.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import Tracer
-
-_INSTRUMENTATION_MODULE_NAME = "opentelemetry.instrumentation.aio_pika"
 
 
 class AioPikaInstrumentor(BaseInstrumentor):
@@ -64,7 +65,7 @@ class AioPikaInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider", None)
         tracer = trace.get_tracer(
-            _INSTRUMENTATION_MODULE_NAME,
+            _instrumentation_name,
             __version__,
             tracer_provider,
             schema_url="https://opentelemetry.io/schemas/1.11.0",
