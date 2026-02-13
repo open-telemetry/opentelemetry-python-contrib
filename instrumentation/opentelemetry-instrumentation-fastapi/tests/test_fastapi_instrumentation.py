@@ -2062,7 +2062,6 @@ class TestTraceableExceptionHandling(TestBase):
         )
 
 
-# pylint: disable=attribute-defined-outside-init
 class TestFastAPIFallback(TestBaseFastAPI):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
