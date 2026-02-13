@@ -87,12 +87,7 @@ def run_with_test_server(
                 await runnable(server)
         return netloc
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(do_request())
-    finally:
-        loop.close()
+    return asyncio.run(do_request())
 
 
 SCOPE = "opentelemetry.instrumentation.aiohttp_client"
