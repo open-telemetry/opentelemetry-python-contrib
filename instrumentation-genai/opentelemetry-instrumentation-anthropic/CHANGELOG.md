@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add async support for Anthropic instrumentation with `AsyncMessages.create` and `AsyncMessages.stream`
+  ([#4156](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4156))
 - Initial implementation of Anthropic instrumentation
   ([#3978](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3978))
 - Implement sync `Messages.create` instrumentation with GenAI semantic convention attributes
