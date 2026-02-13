@@ -20,7 +20,10 @@ import logging
 import posixpath
 import threading
 from collections import OrderedDict
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import (  # pylint: disable=no-name-in-module
+    Future,
+    ThreadPoolExecutor,
+)
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial

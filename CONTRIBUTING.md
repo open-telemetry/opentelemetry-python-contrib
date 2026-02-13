@@ -78,7 +78,7 @@ You can run `tox` with the following arguments:
 * `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
 * `tox -e docs` to regenerate all docs
-* `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+* `tox -e py314-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
 * `tox -e lint-some-package` to run lint checks on `some-package`
@@ -271,11 +271,11 @@ Some tests can be slow due to pre-steps that do dependencies installs. To help w
 
 1. First time run (e.g., opentelemetry-instrumentation-aiopg)
 ```console
-tox -e py312-test-instrumentation-aiopg
+tox -e py314-test-instrumentation-aiopg
 ```
 2. Run tests again without pre-steps:
 ```console
-.tox/py312-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
+.tox/py314-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
 ```
 
 ### Testing against a different Core repo branch/commit
