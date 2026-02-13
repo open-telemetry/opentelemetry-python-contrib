@@ -25,7 +25,7 @@ from ._utilities import _server_status
 
 
 # pylint:disable=abstract-method
-class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
+class _OpenTelemetryAioServicerContext(wrapt.BaseObjectProxy):
     def __init__(self, servicer_context, active_span):
         super().__init__(servicer_context)
         self._self_active_span = active_span

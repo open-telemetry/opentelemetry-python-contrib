@@ -372,7 +372,7 @@ def instrument_connection(
     Returns:
         An instrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, wrapt.BaseObjectProxy):
         _logger.warning("Connection already instrumented")
         return connection
 
@@ -407,7 +407,7 @@ def uninstrument_connection(
     Returns:
         An uninstrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, wrapt.BaseObjectProxy):
         return connection.__wrapped__
 
     _logger.warning("Connection is not instrumented")
@@ -566,14 +566,14 @@ class DatabaseApiIntegration:
 
 
 # pylint: disable=abstract-method
-class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
+class TracedConnectionProxy(wrapt.BaseObjectProxy, Generic[ConnectionT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         connection: ConnectionT,
         db_api_integration: DatabaseApiIntegration | None = None,
     ):
-        wrapt.ObjectProxy.__init__(self, connection)
+        wrapt.BaseObjectProxy.__init__(self, connection)
         self._self_db_api_integration = db_api_integration
 
     def __getattribute__(self, name: str):
@@ -800,14 +800,14 @@ class CursorTracer(Generic[CursorT]):
 
 
 # pylint: disable=abstract-method
-class TracedCursorProxy(wrapt.ObjectProxy, Generic[CursorT]):
+class TracedCursorProxy(wrapt.BaseObjectProxy, Generic[CursorT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
     ):
-        wrapt.ObjectProxy.__init__(self, cursor)
+        wrapt.BaseObjectProxy.__init__(self, cursor)
         self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):
