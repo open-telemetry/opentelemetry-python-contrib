@@ -1056,9 +1056,19 @@ class GenAISemanticProcessor(TracingProcessor):
 
         elif _is_instance_of(span_data, ResponseSpanData):
             span_input = getattr(span_data, "input", None)
+            response_obj = getattr(span_data, "response", None)
             if capture_messages and span_input:
                 payload.input_messages = (
                     self._normalize_messages_to_role_parts(span_input)
+                )
+
+            if (
+                capture_system
+                and response_obj
+                and hasattr(response_obj, "instructions")
+            ):
+                payload.system_instructions = self._normalize_to_text_parts(
+                    response_obj.instructions
                 )
             if capture_system and span_input:
                 sys_instr = self._collect_system_instructions(span_input)
@@ -2028,6 +2038,32 @@ class GenAISemanticProcessor(TracingProcessor):
                     output_tokens = getattr(usage, "completion_tokens", None)
                 if output_tokens is not None:
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
+
+            # Tool definitions from response
+            if self._capture_tool_definitions and hasattr(
+                span_data.response, "tools"
+            ):
+
+                def _serialize_tool_value(value: Any) -> Optional[str]:
+                    if value is None:
+                        return None
+                    return {
+                        "name": getattr(value, "name", None),
+                        "type": getattr(value, "type", None),
+                        "description": getattr(value, "description", None),
+                        "parameters": getattr(value, "parameters", None),
+                    }
+
+                yield (
+                    GEN_AI_TOOL_DEFINITIONS,
+                    safe_json_dumps(
+                        list(
+                            map(
+                                _serialize_tool_value, span_data.response.tools
+                            )
+                        )
+                    ),
+                )
 
         # Input/output messages
         if (
