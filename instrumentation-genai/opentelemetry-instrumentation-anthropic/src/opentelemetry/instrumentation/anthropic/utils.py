@@ -43,10 +43,7 @@ from opentelemetry.util.genai.types import (
     ToolCallResponse,
 )
 from opentelemetry.util.genai.utils import (
-    ContentCapturingMode,
-    get_content_capturing_mode,
-    is_experimental_mode,
-    should_emit_event,
+    should_capture_content,
 )
 from opentelemetry.util.types import AttributeValue
 
@@ -142,18 +139,6 @@ def _extract_usage_tokens(
         cache_creation_input_tokens,
         cache_read_input_tokens,
     )
-
-
-def should_capture_content() -> bool:
-    """Return True when content conversion should be performed."""
-    if not is_experimental_mode():
-        return False
-    mode = get_content_capturing_mode()
-    if mode == ContentCapturingMode.NO_CONTENT:
-        return False
-    if mode == ContentCapturingMode.EVENT_ONLY and not should_emit_event():
-        return False
-    return True
 
 
 def _get_field(obj: Any, name: str, default: Any = None) -> Any:
