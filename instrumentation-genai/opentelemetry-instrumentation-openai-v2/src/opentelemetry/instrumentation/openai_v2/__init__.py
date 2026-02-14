@@ -60,6 +60,7 @@ from .patch import (
     chat_completions_create,
     embeddings_create,
 )
+from .patch_responses import responses_create, responses_retrieve
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -128,6 +129,34 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
+        # Responses API is only available in openai>=1.66.0
+        # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
+        try:
+            from opentelemetry.util.genai.handler import (  # pylint: disable=import-outside-toplevel
+                TelemetryHandler,
+            )
+
+            handler = TelemetryHandler(
+                tracer_provider=tracer_provider,
+                meter_provider=meter_provider,
+                logger_provider=logger_provider,
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="Responses.create",
+                wrapper=responses_create(handler),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.responses.responses",
+                name="Responses.retrieve",
+                wrapper=responses_retrieve(handler),
+            )
+        except (AttributeError, ModuleNotFoundError):
+            # Responses API or TelemetryHandler not available
+            pass
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
@@ -135,3 +164,12 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
+
+        # Responses API is only available in openai>=1.66.0
+        # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
+        try:
+            unwrap(openai.resources.responses.responses.Responses, "create")
+            unwrap(openai.resources.responses.responses.Responses, "retrieve")
+        except (AttributeError, ModuleNotFoundError):
+            # Responses API not available in this version of openai
+            pass
