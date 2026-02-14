@@ -326,7 +326,7 @@ def set_int_attribute(
     if value:
         try:
             result[key] = int(value)
-        except ValueError:
+        except (ValueError, TypeError):
             return
 
 
