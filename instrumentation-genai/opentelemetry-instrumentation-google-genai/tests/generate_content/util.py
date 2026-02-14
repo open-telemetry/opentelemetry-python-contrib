@@ -26,6 +26,7 @@ def create_response(
     text: Optional[str] = None,
     input_tokens: Optional[int] = None,
     candidates_tokens: Optional[int] = None,
+    thoughts_tokens: Optional[int] = None,
     model_version: Optional[str] = None,
     usage_metadata: Optional[
         genai_types.GenerateContentResponseUsageMetadata
@@ -53,6 +54,8 @@ def create_response(
         usage_metadata.prompt_token_count = input_tokens
     if candidates_tokens is not None:
         usage_metadata.candidates_token_count = candidates_tokens
+    if thoughts_tokens is not None:
+        usage_metadata.thoughts_token_count = thoughts_tokens
     return genai_types.GenerateContentResponse(
         candidates=candidates,
         usage_metadata=usage_metadata,
