@@ -528,13 +528,22 @@ class _GenerateContentInstrumentationHelper:
         input_tokens = _get_response_property(
             response, "usage_metadata.prompt_token_count"
         )
-        output_tokens = _get_response_property(
+        candidates_tokens = _get_response_property(
             response, "usage_metadata.candidates_token_count"
         )
+        thoughts_tokens = _get_response_property(
+            response, "usage_metadata.thoughts_token_count"
+        )
+        output_tokens: int = 0
+        if candidates_tokens and isinstance(candidates_tokens, int):
+            output_tokens += candidates_tokens
+        if thoughts_tokens and isinstance(thoughts_tokens, int):
+            output_tokens += thoughts_tokens
+
         if input_tokens and isinstance(input_tokens, int):
             self._input_tokens = input_tokens
-        if output_tokens and isinstance(output_tokens, int):
-            self._output_tokens = output_tokens
+
+        self._output_tokens = output_tokens
 
     def _maybe_update_error_type(self, response: GenerateContentResponse):
         if response.candidates:
