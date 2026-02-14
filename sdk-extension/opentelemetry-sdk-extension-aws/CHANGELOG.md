@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Read `cloud.account.id` from symlink created by the OTel Lambda Extension in the Lambda resource detector
+  ([#4183](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4183))
+
 ## Version 2.1.0 (2024-12-24)
 
 - Make ec2 resource detector silent when loaded outside AWS
