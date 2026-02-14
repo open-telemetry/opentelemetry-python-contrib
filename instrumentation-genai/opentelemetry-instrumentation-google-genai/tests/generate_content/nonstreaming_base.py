@@ -259,7 +259,7 @@ class NonStreamingTestCase(TestCase):
         )
 
     def test_generated_span_counts_tokens(self):
-        self.configure_valid_response(input_tokens=123, output_tokens=456)
+        self.configure_valid_response(input_tokens=123, candidates_tokens=456)
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")

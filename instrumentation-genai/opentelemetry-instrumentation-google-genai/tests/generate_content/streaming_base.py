@@ -91,9 +91,9 @@ class StreamingTestCase(TestCase):
 
     def test_includes_token_counts_in_span_not_aggregated_from_responses(self):
         # Tokens should not be aggregated in streaming. Cumulative counts are returned on each response.
-        self.configure_valid_response(input_tokens=3, output_tokens=5)
-        self.configure_valid_response(input_tokens=3, output_tokens=5)
-        self.configure_valid_response(input_tokens=3, output_tokens=5)
+        self.configure_valid_response(input_tokens=3, candidates_tokens=5)
+        self.configure_valid_response(input_tokens=3, candidates_tokens=5)
+        self.configure_valid_response(input_tokens=3, candidates_tokens=5)
 
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
 
