@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
   ([#4116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4116))
+- `opentelemetry-instrumentation-cassandra`: Use `_instruments_any` instead of `_instruments` for driver dependencies so that having either `cassandra-driver` or `scylla-driver` installed is sufficient
+  ([#4182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4182))
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
   ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
 - `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
@@ -67,11 +69,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4001](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4001))
 - `opentelemetry-instrumentation-psycopg`: Fix `instrument_connection` method to use `_new_cursor_async_factory` on async connections.
   ([#3956](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3956))
-- `opentelemetry-instrumentation-dbapi`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-dbapi`: Replace SpanAttributes with semconv constants where applicable
   ([#4058](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4058))
-- `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-django`: Replace SpanAttributes with semconv constants where applicable
   ([#4059](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4059))
-- `opentelemetry-instrumentation-botocore`: Replace SpanAttributes with semconv constants where applicable 
+- `opentelemetry-instrumentation-botocore`: Replace SpanAttributes with semconv constants where applicable
   ([#4063](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4063))
 - `opentelemetry-instrumentation-celery`: Replace SpanAttributes with semconv constants where applicable
   ([#4056](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4056))
@@ -103,13 +105,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3729](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3729))
 - `opentelemetry-instrumentation-confluent-kafka`: Fix incorrect number of argument to `_inner_wrap_close`
   ([#3922](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3922))
+- `opentelemetry-instrumentation-urllib3`: fix multiple arguments error
+  ([#4144](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4144))
+- `opentelemetry-instrumentation-psycopg`: Fix instrument of typed psycopg sql
+  ([#4078](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4171))
+- `opentelemetry-instrumentation-aiohttp-server`: fix HTTP error inconsistencies
+  ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
 
 ### Breaking changes
 
 - `opentelemetry-instrumentation-logging`: Inject span context attributes into logging LogRecord only if configured to do so
   ([#4112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4112))
 - `opentelemetry-instrumentation-django`: Drop support for Django < 2.0
-  ([#3848](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
+  ([#4083](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
