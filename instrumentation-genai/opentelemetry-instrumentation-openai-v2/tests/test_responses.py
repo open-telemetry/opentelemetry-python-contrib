@@ -293,7 +293,7 @@ def test_responses_retrieve_stream_existing_response(
 
 
 @skip_if_no_responses_api
-@pytest.mark.vcr("test_responses_create.yaml")
+@pytest.mark.vcr("test_responses_create_captures_content.yaml")
 def test_responses_create_captures_content(
     span_exporter, openai_client, instrument_with_experimental_content
 ):
@@ -329,7 +329,7 @@ def test_responses_create_captures_content(
 
 
 @skip_if_no_responses_api
-@pytest.mark.vcr("test_responses_stream_new_response.yaml")
+@pytest.mark.vcr("test_responses_stream_captures_content.yaml")
 def test_responses_stream_captures_content(
     span_exporter, openai_client, instrument_with_experimental_content
 ):
@@ -360,7 +360,7 @@ def test_responses_stream_captures_content(
 
 
 @skip_if_no_responses_api
-@pytest.mark.vcr("test_responses_create.yaml")
+@pytest.mark.vcr("test_responses_create_no_content_in_experimental_mode.yaml")
 def test_responses_create_no_content_in_experimental_mode(
     span_exporter, openai_client, instrument_with_experimental_no_content
 ):
@@ -387,7 +387,7 @@ def test_responses_create_no_content_in_experimental_mode(
 
 
 @skip_if_no_responses_api
-@pytest.mark.vcr("test_responses_create.yaml")
+@pytest.mark.vcr("test_responses_create_captures_system_instruction.yaml")
 def test_responses_create_captures_system_instruction(
     span_exporter, openai_client, instrument_with_experimental_content
 ):
@@ -415,7 +415,7 @@ def test_responses_create_captures_system_instruction(
 
 
 @skip_if_no_responses_api
-@pytest.mark.vcr("test_responses_stream_new_response.yaml")
+@pytest.mark.vcr("test_responses_stream_no_content_in_experimental_mode.yaml")
 def test_responses_stream_no_content_in_experimental_mode(
     span_exporter, openai_client, instrument_with_experimental_no_content
 ):

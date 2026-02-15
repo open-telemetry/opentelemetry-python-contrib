@@ -42,17 +42,19 @@ if TYPE_CHECKING:
 
 
 def is_content_enabled() -> bool:
+    capture_content = os.environ.get(
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
+    )
+    legacy_enabled = capture_content.lower() == "true"
+
     try:
         from opentelemetry.util.genai.utils import (  # pylint: disable=import-outside-toplevel
             should_capture_content,
         )
 
-        return should_capture_content()
+        return legacy_enabled or should_capture_content()
     except ModuleNotFoundError:
-        capture_content = os.environ.get(
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-        )
-        return capture_content.lower() == "true"
+        return legacy_enabled
 
 
 def extract_tool_calls(item, capture_content):
