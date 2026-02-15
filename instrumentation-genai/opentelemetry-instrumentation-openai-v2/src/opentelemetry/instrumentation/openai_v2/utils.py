@@ -33,6 +33,13 @@ from opentelemetry.semconv.attributes import (
 )
 from opentelemetry.trace.status import Status, StatusCode
 
+try:
+    from opentelemetry.util.genai.utils import should_capture_content
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - optional dependency at import-time
+    should_capture_content = None  # type: ignore[assignment,misc]
+
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
@@ -47,14 +54,9 @@ def is_content_enabled() -> bool:
     )
     legacy_enabled = capture_content.lower() == "true"
 
-    try:
-        from opentelemetry.util.genai.utils import (  # pylint: disable=import-outside-toplevel
-            should_capture_content,
-        )
-
-        return legacy_enabled or should_capture_content()
-    except ModuleNotFoundError:
+    if should_capture_content is None:
         return legacy_enabled
+    return legacy_enabled or should_capture_content()
 
 
 def extract_tool_calls(item, capture_content):

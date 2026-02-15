@@ -18,24 +18,34 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 
-if TYPE_CHECKING:
-    from opentelemetry.util.genai.handler import TelemetryHandler
-    from opentelemetry.util.genai.types import LLMInvocation
+try:
+    from opentelemetry.util.genai.types import (
+        Error,
+        InputMessage,
+        LLMInvocation,
+        OutputMessage,
+        Text,
+    )
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - optional dependency at import-time
+    Error = InputMessage = LLMInvocation = OutputMessage = Text = None  # type: ignore[assignment,misc]
 
 from .utils import (
     get_llm_request_attributes,
     is_streaming,
 )
 
+if TYPE_CHECKING:
+    from opentelemetry.util.genai.handler import TelemetryHandler
+
 OPENAI = GenAIAttributes.GenAiSystemValues.OPENAI.value
 
 
 def _extract_system_instruction(kwargs: dict):
     """Extract system instruction from the ``instructions`` parameter."""
-    from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
-        Text,
-    )
-
+    if Text is None:
+        return []
     instructions = kwargs.get("instructions")
     if instructions is None:
         return []
@@ -51,11 +61,8 @@ def _extract_input_messages(kwargs: dict):
     - A string (simple text input)
     - A list of message items (with role and content)
     """
-    from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
-        InputMessage,
-        Text,
-    )
-
+    if InputMessage is None or Text is None:
+        return []
     raw_input = kwargs.get("input")
     if raw_input is None:
         return []
@@ -97,11 +104,8 @@ def _extract_output_messages(result: Any):
     The response ``output`` field is a list of output items. Items with
     type ``"message"`` contain content blocks (output_text, refusal, etc.).
     """
-    from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
-        OutputMessage,
-        Text,
-    )
-
+    if OutputMessage is None or Text is None:
+        return []
     if result is None:
         return []
 
@@ -111,32 +115,39 @@ def _extract_output_messages(result: Any):
 
     messages = []
     for item in output_items:
-        item_type = getattr(item, "type", None)
-        if item_type != "message":
+        if getattr(item, "type", None) != "message":
             continue
 
         role = getattr(item, "role", "assistant")
-        status = getattr(item, "status", None)
-        finish_reason = "stop" if status == "completed" else (status or "stop")
-
-        content_blocks = getattr(item, "content", [])
-        parts = []
-        for block in content_blocks:
-            block_type = getattr(block, "type", None)
-            if block_type == "output_text":
-                text = getattr(block, "text", None)
-                if text:
-                    parts.append(Text(content=text))
-            elif block_type == "refusal":
-                refusal = getattr(block, "refusal", None)
-                if refusal:
-                    parts.append(Text(content=refusal))
+        finish_reason = _finish_reason_from_status(
+            getattr(item, "status", None)
+        )
+        parts = _extract_output_parts(getattr(item, "content", []), Text)
 
         messages.append(
             OutputMessage(role=role, parts=parts, finish_reason=finish_reason)
         )
 
     return messages
+
+
+def _finish_reason_from_status(status):
+    return "stop" if status == "completed" else (status or "stop")
+
+
+def _extract_output_parts(content_blocks, text_type):
+    parts = []
+    for block in content_blocks:
+        block_type = getattr(block, "type", None)
+        if block_type == "output_text":
+            text = getattr(block, "text", None)
+            if text:
+                parts.append(text_type(content=text))
+        elif block_type == "refusal":
+            refusal = getattr(block, "refusal", None)
+            if refusal:
+                parts.append(text_type(content=refusal))
+    return parts
 
 
 # ---------------------------------------------------------------------------
@@ -152,14 +163,12 @@ def responses_create(
     # https://github.com/openai/openai-python/blob/dc68b90655912886bd7a6c7787f96005452ebfc9/src/openai/resources/responses/responses.py#L828
 
     def traced_method(wrapped, instance, args, kwargs):
-        from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
-            Error,
-            LLMInvocation,
-        )
+        if Error is None or LLMInvocation is None:
+            raise ModuleNotFoundError(
+                "opentelemetry.util.genai.types is unavailable"
+            )
 
-        operation_name = (
-            GenAIAttributes.GenAiOperationNameValues.CHAT.value
-        )
+        operation_name = GenAIAttributes.GenAiOperationNameValues.CHAT.value
         span_attributes = get_llm_request_attributes(
             kwargs,
             instance,
@@ -219,76 +228,6 @@ def responses_create(
     return traced_method
 
 
-def responses_retrieve(
-    handler: "TelemetryHandler",
-    capture_content: bool,
-):
-    """Wrap the `retrieve` method of the `Responses` class to trace it."""
-    # https://github.com/openai/openai-python/blob/dc68b90655912886bd7a6c7787f96005452ebfc9/src/openai/resources/responses/responses.py#L1417C9-L1417C17
-    retrieval_enum = getattr(
-        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
-    )
-    operation_name = retrieval_enum.value if retrieval_enum else "retrieval"
-
-    def traced_method(wrapped, instance, args, kwargs):
-        from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
-            Error,
-            LLMInvocation,
-        )
-
-        span_attributes = get_llm_request_attributes(
-            {},
-            instance,
-            operation_name,
-        )
-        request_model = str(
-            span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
-            or "unknown"
-        )
-        streaming = is_streaming(kwargs)
-
-        invocation = handler.start_llm(
-            LLMInvocation(
-                request_model=request_model,
-                operation_name=operation_name,
-                provider=OPENAI,
-                attributes=span_attributes.copy(),
-                metric_attributes={
-                    GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name
-                },
-            )
-        )
-
-        try:
-            result = wrapped(*args, **kwargs)
-            if hasattr(result, "parse"):
-                parsed_result = result.parse()
-            else:
-                parsed_result = result
-
-            if streaming:
-                return ResponseStreamWrapper(
-                    parsed_result,
-                    handler,
-                    invocation,
-                    capture_content,
-                )
-
-            _set_invocation_response_attributes(
-                invocation, parsed_result, capture_content
-            )
-            handler.stop_llm(invocation)
-            return result
-
-        except Exception as error:
-            handler.fail_llm(
-                invocation, Error(message=str(error), type=type(error))
-            )
-            raise
-
-    return traced_method
-
-
 # ---------------------------------------------------------------------------
 # Response attribute extraction
 # ---------------------------------------------------------------------------
@@ -303,8 +242,7 @@ def _set_invocation_response_attributes(
         return
 
     if getattr(result, "model", None) and (
-        not invocation.request_model
-        or invocation.request_model == "unknown"
+        not invocation.request_model or invocation.request_model == "unknown"
     ):
         invocation.request_model = result.model
 
@@ -378,7 +316,9 @@ class ResponseStreamWrapper:
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             if exc_type is not None:
-                self._fail(str(exc_val), type(exc_val) if exc_val else Exception)
+                self._fail(
+                    str(exc_val), type(exc_val) if exc_val else Exception
+                )
         finally:
             self.close()
         return False
@@ -440,9 +380,10 @@ class ResponseStreamWrapper:
     def _fail(self, message: str, error_type: type[BaseException]):
         if self._finalized:
             return
-        from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel
-            Error,
-        )
+        if Error is None:
+            raise ModuleNotFoundError(
+                "opentelemetry.util.genai.types is unavailable"
+            )
 
         self.handler.fail_llm(
             self.invocation, Error(message=message, type=error_type)

@@ -53,6 +53,13 @@ from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
+try:
+    from opentelemetry.util.genai.handler import TelemetryHandler
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - optional dependency at import-time
+    TelemetryHandler = None  # type: ignore[assignment,misc]
+
 from .instruments import Instruments
 from .patch import (
     async_chat_completions_create,
@@ -60,7 +67,7 @@ from .patch import (
     chat_completions_create,
     embeddings_create,
 )
-from .patch_responses import responses_create, responses_retrieve
+from .patch_responses import responses_create
 
 
 class OpenAIInstrumentor(BaseInstrumentor):
@@ -117,9 +124,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             module="openai.resources.embeddings",
             name="Embeddings.create",
-            wrapper=embeddings_create(
-                tracer, instruments, capture_content
-            ),
+            wrapper=embeddings_create(tracer, instruments, capture_content),
         )
 
         wrap_function_wrapper(
@@ -133,9 +138,10 @@ class OpenAIInstrumentor(BaseInstrumentor):
         # Responses API is only available in openai>=1.66.0
         # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
         try:
-            from opentelemetry.util.genai.handler import (  # pylint: disable=import-outside-toplevel
-                TelemetryHandler,
-            )
+            if TelemetryHandler is None:
+                raise ModuleNotFoundError(
+                    "opentelemetry.util.genai.handler is unavailable"
+                )
 
             handler = TelemetryHandler(
                 tracer_provider=tracer_provider,
@@ -147,12 +153,6 @@ class OpenAIInstrumentor(BaseInstrumentor):
                 module="openai.resources.responses.responses",
                 name="Responses.create",
                 wrapper=responses_create(handler, capture_content),
-            )
-
-            wrap_function_wrapper(
-                module="openai.resources.responses.responses",
-                name="Responses.retrieve",
-                wrapper=responses_retrieve(handler, capture_content),
             )
         except (AttributeError, ModuleNotFoundError):
             # Responses API or TelemetryHandler not available
@@ -170,7 +170,6 @@ class OpenAIInstrumentor(BaseInstrumentor):
         # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
         try:
             unwrap(openai.resources.responses.responses.Responses, "create")
-            unwrap(openai.resources.responses.responses.Responses, "retrieve")
         except (AttributeError, ModuleNotFoundError):
             # Responses API not available in this version of openai
             pass

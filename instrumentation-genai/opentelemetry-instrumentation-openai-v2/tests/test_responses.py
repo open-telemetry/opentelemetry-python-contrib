@@ -34,6 +34,7 @@ def _load_span_messages(span, attribute):
     assert isinstance(parsed, list), f"Expected {attribute} to be a JSON list"
     return parsed
 
+
 # The Responses API was introduced in openai>=1.66.0
 # https://github.com/openai/openai-python/blob/main/CHANGELOG.md#1660-2025-03-11
 OPENAI_VERSION = Version(openai.__version__)
@@ -149,35 +150,7 @@ def test_responses_stream_existing_response(
     assert final_response is not None
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == span_count + 1
-
-    retrieve_spans = spans[span_count:]
-    retrieval_operation = getattr(
-        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
-    )
-    retrieval_operation_name = (
-        retrieval_operation.value
-        if retrieval_operation is not None
-        else "retrieval"
-    )
-    assert {
-        span.attributes.get(GenAIAttributes.GEN_AI_OPERATION_NAME)
-        for span in retrieve_spans
-    } == {
-        retrieval_operation_name,
-    }
-    retrieve_span = retrieve_spans[0]
-
-    assert_all_attributes(
-        retrieve_span,
-        final_response.model,
-        final_response.id,
-        final_response.model,
-        final_response.usage.input_tokens if final_response.usage else None,
-        final_response.usage.output_tokens if final_response.usage else None,
-        operation_name=retrieval_operation_name,
-        response_service_tier=final_response.service_tier,
-    )
+    assert len(spans) == span_count
 
 
 @skip_if_no_responses_api
@@ -195,29 +168,8 @@ def test_responses_retrieve(
 
     response = openai_client.responses.retrieve(create_response.id)
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == span_count + 1
-
-    input_tokens = response.usage.input_tokens if response.usage else None
-    output_tokens = response.usage.output_tokens if response.usage else None
-    retrieval_operation = getattr(
-        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
-    )
-    operation_name = (
-        retrieval_operation.value
-        if retrieval_operation is not None
-        else "retrieval"
-    )
-
-    assert_all_attributes(
-        spans[-1],
-        response.model,
-        response.id,
-        response.model,
-        input_tokens,
-        output_tokens,
-        operation_name=operation_name,
-        response_service_tier=response.service_tier,
-    )
+    assert len(spans) == span_count
+    assert response.id == create_response.id
 
 
 @skip_if_no_responses_api
@@ -258,33 +210,7 @@ def test_responses_retrieve_stream_existing_response(
     assert final_response is not None
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == span_count + 1
-
-    input_tokens = (
-        final_response.usage.input_tokens if final_response.usage else None
-    )
-    output_tokens = (
-        final_response.usage.output_tokens if final_response.usage else None
-    )
-    retrieval_operation = getattr(
-        GenAIAttributes.GenAiOperationNameValues, "RETRIEVAL", None
-    )
-    operation_name = (
-        retrieval_operation.value
-        if retrieval_operation is not None
-        else "retrieval"
-    )
-
-    assert_all_attributes(
-        spans[-1],
-        final_response.model,
-        final_response.id,
-        final_response.model,
-        input_tokens,
-        output_tokens,
-        operation_name=operation_name,
-        response_service_tier=final_response.service_tier,
-    )
+    assert len(spans) == span_count
 
 
 # =============================================================================
@@ -380,7 +306,9 @@ def test_responses_create_no_content_in_experimental_mode(
     assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES not in span.attributes
 
     # Basic span attributes should still be present
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
+    )
     assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
