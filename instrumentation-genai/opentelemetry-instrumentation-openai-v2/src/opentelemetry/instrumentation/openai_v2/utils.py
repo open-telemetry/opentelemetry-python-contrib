@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from os import environ
+import os
 from typing import TYPE_CHECKING, Mapping, Optional
 from urllib.parse import urlparse
 
@@ -42,11 +42,17 @@ if TYPE_CHECKING:
 
 
 def is_content_enabled() -> bool:
-    capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-    )
+    try:
+        from opentelemetry.util.genai.utils import (  # pylint: disable=import-outside-toplevel
+            should_capture_content,
+        )
 
-    return capture_content.lower() == "true"
+        return should_capture_content()
+    except ModuleNotFoundError:
+        capture_content = os.environ.get(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
+        )
+        return capture_content.lower() == "true"
 
 
 def extract_tool_calls(item, capture_content):

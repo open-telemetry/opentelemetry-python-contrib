@@ -95,12 +95,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         instruments = Instruments(self._meter)
+        capture_content = is_content_enabled()
 
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=chat_completions_create(
-                tracer, logger, instruments, is_content_enabled()
+                tracer, logger, instruments, capture_content
             ),
         )
 
@@ -108,7 +109,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
             wrapper=async_chat_completions_create(
-                tracer, logger, instruments, is_content_enabled()
+                tracer, logger, instruments, capture_content
             ),
         )
 
@@ -117,7 +118,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.embeddings",
             name="Embeddings.create",
             wrapper=embeddings_create(
-                tracer, instruments, is_content_enabled()
+                tracer, instruments, capture_content
             ),
         )
 
@@ -125,7 +126,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.embeddings",
             name="AsyncEmbeddings.create",
             wrapper=async_embeddings_create(
-                tracer, instruments, is_content_enabled()
+                tracer, instruments, capture_content
             ),
         )
 
@@ -145,13 +146,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
                 name="Responses.create",
-                wrapper=responses_create(handler),
+                wrapper=responses_create(handler, capture_content),
             )
 
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
                 name="Responses.retrieve",
-                wrapper=responses_retrieve(handler),
+                wrapper=responses_retrieve(handler, capture_content),
             )
         except (AttributeError, ModuleNotFoundError):
             # Responses API or TelemetryHandler not available

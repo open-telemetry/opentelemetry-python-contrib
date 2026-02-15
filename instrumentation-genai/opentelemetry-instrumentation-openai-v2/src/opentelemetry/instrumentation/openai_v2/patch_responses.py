@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -28,37 +27,7 @@ from .utils import (
     is_streaming,
 )
 
-_logger = logging.getLogger(__name__)
-
 OPENAI = GenAIAttributes.GenAiSystemValues.OPENAI.value
-
-
-# ---------------------------------------------------------------------------
-# Content capture helpers
-# ---------------------------------------------------------------------------
-
-
-def _should_capture_content() -> bool:
-    """Return True when content conversion should be performed.
-
-    Mirrors the Anthropic instrumentation pattern: only extract content when
-    experimental mode is active and a content-capturing mode is set.
-    """
-    from opentelemetry.util.genai.utils import (  # pylint: disable=import-outside-toplevel
-        ContentCapturingMode,
-        get_content_capturing_mode,
-        is_experimental_mode,
-        should_emit_event,
-    )
-
-    if not is_experimental_mode():
-        return False
-    mode = get_content_capturing_mode()
-    if mode == ContentCapturingMode.NO_CONTENT:
-        return False
-    if mode == ContentCapturingMode.EVENT_ONLY and not should_emit_event():
-        return False
-    return True
 
 
 def _extract_system_instruction(kwargs: dict):
@@ -202,7 +171,6 @@ def responses_create(
         )
         streaming = is_streaming(kwargs)
 
-        capture_content = _should_capture_content()
         invocation = handler.start_llm(
             LLMInvocation(
                 request_model=request_model,
@@ -279,7 +247,6 @@ def responses_retrieve(
         )
         streaming = is_streaming(kwargs)
 
-        capture_content = _should_capture_content()
         invocation = handler.start_llm(
             LLMInvocation(
                 request_model=request_model,
