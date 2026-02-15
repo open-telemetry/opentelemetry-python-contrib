@@ -328,33 +328,33 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
             _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
-    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103
-        # Falcon 3 does not execute middleware within the context of the exception
-        # so we capture the exception here and save it into the env dict
+    if _falcon_version == 1:
 
-        # Translation layer for handling the changed arg position of "ex" in Falcon > 2 vs
-        # Falcon < 2
-        if not self._is_instrumented_by_opentelemetry:
-            return super()._handle_exception(arg1, arg2, arg3, arg4)
+        def _handle_exception(self, ex, req, resp, params):
+            # Falcon 3 does not execute middleware within the context
+            # of the exception so we capture the exception here and
+            # save it into the env dict
+            if not self._is_instrumented_by_opentelemetry:
+                return super()._handle_exception(ex, req, resp, params)
 
-        if _falcon_version == 1:
-            ex = arg1
-            req = arg2
-            resp = arg3
-            params = arg4
-        else:
-            req = arg1
-            resp = arg2
-            ex = arg3
-            params = arg4
+            _, exc, _ = exc_info()
+            req.env[_ENVIRON_EXC] = exc
 
-        _, exc, _ = exc_info()
-        req.env[_ENVIRON_EXC] = exc
-
-        if _falcon_version == 1:
             return super()._handle_exception(ex, req, resp, params)
 
-        return super()._handle_exception(req, resp, ex, params)
+    else:
+
+        def _handle_exception(self, req, resp, ex, params):
+            # Falcon 3 does not execute middleware within the context
+            # of the exception so we capture the exception here and
+            # save it into the env dict
+            if not self._is_instrumented_by_opentelemetry:
+                return super()._handle_exception(req, resp, ex, params)
+
+            _, exc, _ = exc_info()
+            req.env[_ENVIRON_EXC] = exc
+
+            return super()._handle_exception(req, resp, ex, params)
 
     def __call__(self, env, start_response):
         # pylint: disable=E1101
