@@ -56,7 +56,6 @@ from wrapt import (
 from opentelemetry.instrumentation.anthropic.package import _instruments
 from opentelemetry.instrumentation.anthropic.patch import (
     messages_create,
-    messages_stream,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
@@ -107,13 +106,6 @@ class AnthropicInstrumentor(BaseInstrumentor):
             wrapper=messages_create(handler),
         )
 
-        # Patch Messages.stream
-        wrap_function_wrapper(
-            module="anthropic.resources.messages",
-            name="Messages.stream",
-            wrapper=messages_stream(handler),
-        )
-
     def _uninstrument(self, **kwargs: Any) -> None:
         """Disable Anthropic instrumentation.
 
@@ -124,8 +116,4 @@ class AnthropicInstrumentor(BaseInstrumentor):
         unwrap(
             anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
             "create",
-        )
-        unwrap(
-            anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
-            "stream",
         )

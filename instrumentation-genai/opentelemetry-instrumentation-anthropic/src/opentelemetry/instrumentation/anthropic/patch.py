@@ -22,10 +22,11 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import Error, LLMInvocation
 
-from .utils import (
-    MessageStreamManagerWrapper,
+from .wrappers import (
     MessageWrapper,
     StreamWrapper,
+)
+from .utils import (
     extract_params,
     get_input_messages,
     get_llm_request_attributes,
@@ -35,7 +36,6 @@ from .utils import (
 
 if TYPE_CHECKING:
     from anthropic._streaming import Stream
-    from anthropic.lib.streaming import MessageStreamManager
     from anthropic.resources.messages import Messages
     from anthropic.types import Message, RawMessageStreamEvent
 
@@ -92,56 +92,6 @@ def messages_create(
             wrapper.extract_into(invocation)
             handler.stop_llm(invocation)
             return wrapper.message
-        except Exception as exc:
-            handler.fail_llm(
-                invocation, Error(message=str(exc), type=type(exc))
-            )
-            raise
-
-    return traced_method  # type: ignore[return-value]
-
-
-def messages_stream(
-    handler: TelemetryHandler,
-) -> Callable[..., "MessageStreamManager"]:
-    """Wrap the `stream` method of the `Messages` class to trace it."""
-
-    def traced_method(
-        wrapped: Callable[..., "MessageStreamManager"],
-        instance: "Messages",
-        args: tuple[Any, ...],
-        kwargs: dict[str, Any],
-    ) -> MessageStreamManagerWrapper:
-        params = extract_params(*args, **kwargs)
-        attributes = get_llm_request_attributes(params, instance)
-        request_model_attribute = attributes.get(
-            GenAIAttributes.GEN_AI_REQUEST_MODEL
-        )
-        request_model = (
-            request_model_attribute
-            if isinstance(request_model_attribute, str)
-            else params.model
-        )
-
-        capture_content = should_capture_content()
-        invocation = LLMInvocation(
-            request_model=request_model,
-            provider=ANTHROPIC,
-            input_messages=get_input_messages(params.messages)
-            if capture_content
-            else [],
-            system_instruction=get_system_instruction(params.system)
-            if capture_content
-            else [],
-            attributes=attributes,
-        )
-
-        # Start the span before calling the wrapped method
-        handler.start_llm(invocation)
-        try:
-            result = wrapped(*args, **kwargs)
-            # Return wrapped MessageStreamManager
-            return MessageStreamManagerWrapper(result, handler, invocation)
         except Exception as exc:
             handler.fail_llm(
                 invocation, Error(message=str(exc), type=type(exc))

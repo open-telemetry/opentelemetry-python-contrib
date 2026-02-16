@@ -25,7 +25,7 @@ from anthropic import Anthropic, APIConnectionError, NotFoundError
 from anthropic.resources.messages import Messages as _Messages
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
-from opentelemetry.instrumentation.anthropic.utils import (
+from opentelemetry.instrumentation.anthropic.wrappers import (
     MessageWrapper,
     StreamWrapper,
 )
@@ -539,7 +539,7 @@ def test_sync_messages_create_streaming_connection_error(
 
 
 # =============================================================================
-# Tests for Messages.stream() method
+# Tests for Messages.stream() method (not instrumented)
 # =============================================================================
 
 
@@ -547,7 +547,7 @@ def test_sync_messages_create_streaming_connection_error(
 def test_sync_messages_stream_basic(
     span_exporter, anthropic_client, instrument_no_content
 ):
-    """Test Messages.stream() produces correct span with context manager."""
+    """Messages.stream() should not produce spans when uninstrumented."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
 
@@ -564,24 +564,14 @@ def test_sync_messages_stream_basic(
     assert response_text  # Should have some text
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == 1
-
-    assert_span_attributes(
-        spans[0],
-        request_model=model,
-        response_id=final_message.id,
-        response_model=final_message.model,
-        input_tokens=expected_input_tokens(final_message.usage),
-        output_tokens=final_message.usage.output_tokens,
-        finish_reasons=[normalize_stop_reason(final_message.stop_reason)],
-    )
+    assert len(spans) == 0
 
 
 @pytest.mark.vcr()
 def test_sync_messages_stream_captures_content(
     span_exporter, anthropic_client, instrument_with_content
 ):
-    """Test content capture on Messages.stream()."""
+    """Messages.stream() content capture should not emit spans."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
 
@@ -593,18 +583,7 @@ def test_sync_messages_stream_captures_content(
         _ = "".join(stream.text_stream)
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == 1
-    span = spans[0]
-
-    input_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
-    )
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
-    assert input_messages[0]["role"] == "user"
-    assert output_messages[0]["role"] == "assistant"
-    assert output_messages[0]["parts"]
+    assert len(spans) == 0
 
 
 @pytest.mark.vcr()
@@ -847,7 +826,7 @@ def test_stream_wrapper_aggregates_cache_tokens():
 def test_sync_messages_stream_with_params(
     span_exporter, anthropic_client, instrument_no_content
 ):
-    """Test Messages.stream() with additional parameters."""
+    """Messages.stream() should remain uninstrumented with extra params."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
 
@@ -863,21 +842,14 @@ def test_sync_messages_stream_with_params(
         _ = "".join(stream.text_stream)
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == 1
-
-    span = spans[0]
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] == 50
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == 0.7
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] == 0.9
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_K] == 40
+    assert len(spans) == 0
 
 
 @pytest.mark.vcr()
 def test_sync_messages_stream_token_usage(
     span_exporter, anthropic_client, instrument_no_content
 ):
-    """Test that Messages.stream() captures token usage correctly."""
+    """Messages.stream() token usage should not be captured in spans."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Count to 3."}]
 
@@ -890,25 +862,15 @@ def test_sync_messages_stream_token_usage(
         final_message = stream.get_final_message()
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == 1
-
-    span = spans[0]
-    assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
-    assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
-    assert span.attributes[
-        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
-    ] == expected_input_tokens(final_message.usage)
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        == final_message.usage.output_tokens
-    )
+    assert final_message.usage.output_tokens is not None
+    assert len(spans) == 0
 
 
 @pytest.mark.vcr()
 def test_sync_messages_stream_double_exit_idempotent(
     span_exporter, anthropic_client, instrument_no_content
 ):
-    """Calling __exit__ twice should still emit only one span."""
+    """Calling __exit__ twice should still emit no spans."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi in one word."}]
 
@@ -923,14 +885,13 @@ def test_sync_messages_stream_double_exit_idempotent(
     manager.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == 1
-    assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert len(spans) == 0
 
 
 def test_sync_messages_stream_connection_error(
     span_exporter, instrument_no_content
 ):
-    """Test that connection errors in Messages.stream() are handled correctly."""
+    """Connection errors in Messages.stream() should not create spans."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
 
@@ -948,11 +909,7 @@ def test_sync_messages_stream_connection_error(
             _ = "".join(stream.text_stream)
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == 1
-
-    span = spans[0]
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
-    assert ErrorAttributes.ERROR_TYPE in span.attributes
+    assert len(spans) == 0
 
 
 # =============================================================================
