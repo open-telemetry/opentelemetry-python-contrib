@@ -89,7 +89,7 @@ def chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return StreamWrapper(
+                    return StreamWrapperOld(
                         parsed_result, span, logger, capture_content
                     )
 
@@ -194,7 +194,7 @@ def async_chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return StreamWrapper(
+                    return StreamWrapperOld(
                         parsed_result, span, logger, capture_content
                     )
 
@@ -763,7 +763,7 @@ class BaseStreamWrapper:
         return self
 
 
-class StreamWrapper(BaseStreamWrapper):
+class StreamWrapperOld(BaseStreamWrapper):
     span: Span
     response_id: Optional[str] = None
     response_model: Optional[str] = None
