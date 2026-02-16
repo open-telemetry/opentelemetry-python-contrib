@@ -315,20 +315,39 @@ class TestLoggingInstrumentorPreConfigured(TestBase):
         self.assertIn("otelTraceID", format_str)
         self.assertIn("otelSpanID", format_str)
 
-        # Verify logs include trace context
+        # Verify trace context injection works
+        # Note: caplog doesn't capture properly when basicConfig is called before it,
+        # so we verify by checking that the formatter includes the required fields
+        # and that log records have the otel attributes injected
         with self.tracer.start_as_current_span("test") as span:
-            with self.caplog.at_level(level=logging.INFO):
-                logger = logging.getLogger("test logger")
+            span_ctx = span.get_span_context()
+            logger = logging.getLogger("test logger")
+
+            # Create a test handler to capture log records
+            test_handler = logging.StreamHandler()
+            test_handler.setLevel(logging.INFO)
+            test_records = []
+
+            class RecordCapture(logging.Handler):
+                def emit(self, record):
+                    test_records.append(record)
+
+            capture_handler = RecordCapture()
+            capture_handler.setLevel(logging.INFO)
+            logger.addHandler(capture_handler)
+
+            try:
                 logger.info("test message")
-                self.assertEqual(len(self.caplog.records), 1)
-                record = self.caplog.records[0]
-                span_ctx = span.get_span_context()
+                self.assertEqual(len(test_records), 1)
+                record = test_records[0]
                 self.assertEqual(
                     record.otelSpanID, format(span_ctx.span_id, "016x")
                 )
                 self.assertEqual(
                     record.otelTraceID, format(span_ctx.trace_id, "032x")
                 )
+            finally:
+                logger.removeHandler(capture_handler)
 
         # Uninstrument and verify restoration
         LoggingInstrumentor().uninstrument()
