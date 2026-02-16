@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fix `StreamWrapper` missing `.headers` and other attributes when using `with_raw_response` streaming
+  ([#4113](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4113))
 - Add opt-in support for latest experimental semantic conventions (v1.37.0). Set
   `OTEL_SEMCONV_STABILITY_OPT_IN` to `gen_ai_latest_experimental` to enable.
   Add dependency on `opentelemetry-util-genai` pypi package.

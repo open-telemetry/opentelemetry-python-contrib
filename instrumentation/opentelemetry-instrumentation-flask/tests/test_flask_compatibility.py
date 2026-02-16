@@ -302,10 +302,12 @@ class TestFlaskCompatibility(WsgiTestBase):
         "Flask 3.1+ streaming context cleanup only enabled on Python 3.10+",
     )
     @skipIf(
-        lambda: not __import__(
-            "opentelemetry.instrumentation.flask",
-            fromlist=["_IS_FLASK_31_PLUS"],
-        )._IS_FLASK_31_PLUS,
+        lambda: (
+            not __import__(
+                "opentelemetry.instrumentation.flask",
+                fromlist=["_IS_FLASK_31_PLUS"],
+            )._IS_FLASK_31_PLUS
+        ),
         "Flask 3.1+ streaming context cleanup requires Flask 3.1+",
     )
     def test_flask_31_streaming_context_cleanup(self):

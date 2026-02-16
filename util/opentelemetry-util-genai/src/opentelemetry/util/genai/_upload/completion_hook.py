@@ -174,7 +174,7 @@ class UploadCompletionHook(CompletionHook):
         if is_system_instructions_hashable(system_instruction):
             # Get a hash of the text.
             system_instruction_hash = hashlib.sha256(
-                "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType]
+                "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType, reportCallIssue, reportArgumentType]
                     "utf-8"
                 ),
                 usedforsecurity=False,
