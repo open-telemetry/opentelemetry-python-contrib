@@ -236,7 +236,10 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         # Restore formatters and level
         if LoggingInstrumentor._old_handler_formatters is not None:
-            for handler, old_formatter in LoggingInstrumentor._old_handler_formatters:
+            for (
+                handler,
+                old_formatter,
+            ) in LoggingInstrumentor._old_handler_formatters:
                 handler.setFormatter(old_formatter)
             LoggingInstrumentor._old_handler_formatters = None
 
