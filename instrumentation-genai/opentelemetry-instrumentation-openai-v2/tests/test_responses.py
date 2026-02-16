@@ -13,14 +13,21 @@
 # limitations under the License.
 
 import json
+from types import SimpleNamespace
 
 import openai
 import pytest
 from packaging.version import Version
 
+from opentelemetry.instrumentation.openai_v2.patch_responses import (
+    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+    _set_invocation_response_attributes,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+from opentelemetry.util.genai.types import LLMInvocation
 
 from .test_utils import assert_all_attributes
 
@@ -367,3 +374,30 @@ def test_responses_stream_no_content_in_experimental_mode(
     # Basic span attributes should still be present
     assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
+
+
+def test_set_invocation_response_attributes_sets_cache_token_attributes():
+    invocation = LLMInvocation()
+    usage = SimpleNamespace(
+        input_tokens=12,
+        output_tokens=6,
+        input_tokens_details=SimpleNamespace(
+            cached_tokens=3,
+            cache_creation_input_tokens=2,
+        ),
+    )
+    result = SimpleNamespace(
+        usage=usage,
+        output=[
+            SimpleNamespace(type="message", status="completed"),
+        ],
+    )
+
+    _set_invocation_response_attributes(
+        invocation=invocation,
+        result=result,
+        capture_content=False,
+    )
+
+    assert invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == 3
+    assert invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] == 2

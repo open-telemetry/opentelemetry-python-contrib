@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
@@ -40,6 +40,10 @@ if TYPE_CHECKING:
     from opentelemetry.util.genai.handler import TelemetryHandler
 
 OPENAI = GenAIAttributes.GenAiSystemValues.OPENAI.value
+GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
+)
 
 
 def _extract_system_instruction(kwargs: dict):
@@ -150,6 +154,86 @@ def _extract_output_parts(content_blocks, text_type):
     return parts
 
 
+def _extract_finish_reasons(result: Any) -> list[str]:
+    """Extract finish reasons from Responses API output items."""
+    output_items = getattr(result, "output", None)
+    if not output_items:
+        return []
+
+    finish_reasons = []
+    for item in output_items:
+        if getattr(item, "type", None) != "message":
+            continue
+        finish_reasons.append(
+            _finish_reason_from_status(getattr(item, "status", None))
+        )
+    return finish_reasons
+
+
+def _extract_output_type(kwargs: dict) -> Optional[str]:
+    """Extract output type from Responses API request text.format."""
+    text_config = kwargs.get("text")
+    if not isinstance(text_config, Mapping):
+        return None
+
+    format_config = text_config.get("format")
+    if isinstance(format_config, Mapping):
+        format_type = format_config.get("type")
+    else:
+        format_type = None
+
+    if format_type == "json_schema":
+        return "json"
+    return format_type
+
+
+def _get_field(obj: Any, key: str):
+    if isinstance(obj, Mapping):
+        return obj.get(key)
+    return getattr(obj, key, None)
+
+
+def _set_optional_attribute(
+    invocation: "LLMInvocation",
+    result: Any,
+    source_name: str,
+    target_name: str,
+):
+    value = getattr(result, source_name, None)
+    if value is not None:
+        invocation.attributes[target_name] = value
+
+
+def _set_invocation_usage_attributes(invocation: "LLMInvocation", usage: Any):
+    input_tokens = _get_field(usage, "input_tokens")
+    if input_tokens is None:
+        input_tokens = _get_field(usage, "prompt_tokens")
+    invocation.input_tokens = input_tokens
+
+    output_tokens = _get_field(usage, "output_tokens")
+    if output_tokens is None:
+        output_tokens = _get_field(usage, "completion_tokens")
+    invocation.output_tokens = output_tokens
+
+    input_token_details = _get_field(usage, "input_tokens_details")
+    if input_token_details is None:
+        input_token_details = _get_field(usage, "prompt_tokens_details")
+
+    cache_read_tokens = _get_field(input_token_details, "cached_tokens")
+    if cache_read_tokens is not None:
+        invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
+            cache_read_tokens
+        )
+
+    cache_creation_tokens = _get_field(
+        input_token_details, "cache_creation_input_tokens"
+    )
+    if cache_creation_tokens is not None:
+        invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = (
+            cache_creation_tokens
+        )
+
+
 # ---------------------------------------------------------------------------
 # Patch functions
 # ---------------------------------------------------------------------------
@@ -174,6 +258,9 @@ def responses_create(
             instance,
             operation_name,
         )
+        output_type = _extract_output_type(kwargs)
+        if output_type:
+            span_attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = output_type
         request_model = str(
             span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
             or "unknown"
@@ -252,21 +339,26 @@ def _set_invocation_response_attributes(
     if getattr(result, "id", None):
         invocation.response_id = result.id
 
-    if getattr(result, "service_tier", None):
-        invocation.attributes[
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
-        ] = result.service_tier
+    _set_optional_attribute(
+        invocation,
+        result,
+        "service_tier",
+        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+    )
+    _set_optional_attribute(
+        invocation,
+        result,
+        "system_fingerprint",
+        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
+    )
 
-    if getattr(result, "usage", None):
-        input_tokens = getattr(result.usage, "input_tokens", None)
-        if input_tokens is None:
-            input_tokens = getattr(result.usage, "prompt_tokens", None)
-        invocation.input_tokens = input_tokens
+    usage = getattr(result, "usage", None)
+    if usage:
+        _set_invocation_usage_attributes(invocation, usage)
 
-        output_tokens = getattr(result.usage, "output_tokens", None)
-        if output_tokens is None:
-            output_tokens = getattr(result.usage, "completion_tokens", None)
-        invocation.output_tokens = output_tokens
+    finish_reasons = _extract_finish_reasons(result)
+    if finish_reasons:
+        invocation.finish_reasons = finish_reasons
 
     if capture_content:
         output_messages = _extract_output_messages(result)
