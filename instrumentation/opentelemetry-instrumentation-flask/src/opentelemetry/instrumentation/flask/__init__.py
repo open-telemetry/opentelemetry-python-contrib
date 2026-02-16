@@ -688,6 +688,14 @@ class _InstrumentedFlask(flask.Flask):
             )
         duration_histogram_new = None
         if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
+            duration_histogram_new = meter.create_histogram(
+                name=HTTP_SERVER_REQUEST_DURATION,
+                unit="s",
+                description="Duration of HTTP server requests.",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            )
+
+        if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
             active_requests_counter = create_http_server_active_requests(meter)
         else:
             active_requests_counter = meter.create_up_down_counter(
