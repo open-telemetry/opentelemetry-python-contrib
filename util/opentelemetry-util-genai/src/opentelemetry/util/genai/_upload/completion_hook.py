@@ -321,13 +321,7 @@ class UploadCompletionHook(CompletionHook):
             | list[types.MessagePart]
             | list[types.ToolDefinition],
         ) -> JsonEncodeable:
-            response = []
-            for dc in dataclass_list:
-                if isinstance(dc, dict):
-                    response.append(dc)
-                else:
-                    response.append(asdict(dc))
-            return response
+            return [asdict(dc) for dc in dataclass_list]
 
         references = [
             (ref_name, ref, ref_attr, contents_hashed_to_filename)
