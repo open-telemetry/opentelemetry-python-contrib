@@ -274,7 +274,7 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
     if hasattr(tool, "model_dump"):
         exclude_fields = {'function_declarations'}
         fields = {
-            k: v for k, v in tool.model_dump().items() 
+            k: v for k, v in tool.model_dump().items()
             if v is not None and k not in exclude_fields
         }
 
