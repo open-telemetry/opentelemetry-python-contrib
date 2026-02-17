@@ -100,6 +100,8 @@ import logging
 import os
 import sys
 import threading
+import warnings
+from contextlib import contextmanager
 from copy import deepcopy
 from platform import python_implementation
 from typing import Any, Collection, Iterable
@@ -688,7 +690,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self, options: CallbackOptions
     ) -> Iterable[Observation]:
         """Observer callback for swap usage"""
-        system_swap = psutil.swap_memory()
+        with self._suppress_psutil_swap_warnings():
+            system_swap = psutil.swap_memory()
 
         for metric in self._config["system.swap.usage"]:
             self._system_swap_usage_labels["state"] = metric
@@ -702,7 +705,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self, options: CallbackOptions
     ) -> Iterable[Observation]:
         """Observer callback for swap utilization"""
-        system_swap = psutil.swap_memory()
+        with self._suppress_psutil_swap_warnings():
+            system_swap = psutil.swap_memory()
 
         for metric in self._config["system.swap.utilization"]:
             if hasattr(system_swap, metric):
@@ -1071,3 +1075,17 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     getattr(ctx_switches, metric),
                     self._runtime_context_switches_labels.copy(),
                 )
+
+    @staticmethod
+    @contextmanager
+    def _suppress_psutil_swap_warnings():
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                action="ignore",
+                category=RuntimeWarning,
+                # language=regexp
+                message=r"^'sin' and 'sout' swap memory stats couldn't be determined and were set to 0",
+                # language=regexp
+                module=r"^psutil$",
+            )
+            yield
