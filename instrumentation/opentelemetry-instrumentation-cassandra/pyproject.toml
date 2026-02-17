@@ -32,7 +32,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-instruments = [
+instruments = []
+instruments-any = [
   "cassandra-driver ~= 3.25",
   "scylla-driver ~= 3.25",
 ]
