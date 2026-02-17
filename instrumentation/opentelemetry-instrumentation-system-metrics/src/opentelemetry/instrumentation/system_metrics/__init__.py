@@ -192,6 +192,16 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._meter = None
         self._python_implementation = python_implementation().lower()
 
+        # If 'system.network.connections' is found in the config at this time,
+        # then the user chose to explicitly add it themselves.
+        # We therefore remove the metric and issue a warning.
+        if psutil.MACOS and "system.network.connections" in self._config:
+            _logger.warning(
+                "'psutil.net_connections' can not reliably be computed on macOS! "
+                "'system.network.connections' will be excluded from metrics."
+            )
+            self._config.pop("system.network.connections")
+
         self._proc = psutil.Process(os.getpid())
 
         self._system_cpu_time_labels = self._labels.copy()
