@@ -18,28 +18,17 @@ import unittest
 from unittest.mock import AsyncMock, create_autospec, patch
 
 import pytest
-from google.genai.types import (
-    FunctionDeclarationDict,
-    GenerateContentConfig,
-    Part,
-    ToolDict,
-    GoogleMaps,
-)
-from pydantic import BaseModel, Field
-
+from google.genai.types import (FunctionDeclarationDict, GenerateContentConfig,
+                                GoogleMaps, Part, ToolDict)
 from opentelemetry import context as context_api
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
-    _StabilityMode,
-)
-from opentelemetry.instrumentation.google_genai import (
-    GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes,
-)
+    _OpenTelemetryStabilitySignalType, _StabilityMode)
+from opentelemetry.instrumentation.google_genai import \
+    GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.util.genai.types import ContentCapturingMode
+from pydantic import BaseModel, Field
 
 from .base import TestCase
 

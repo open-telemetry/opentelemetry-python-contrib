@@ -21,71 +21,42 @@ import logging
 import os
 import time
 import typing
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Iterator,
-    Optional,
-    Union,
-)
+from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
 
 from google.genai.models import AsyncModels, Models
 from google.genai.models import t as transformers
-from google.genai.types import (
-    BlockedReason,
-    Candidate,
-    Content,
-    ContentListUnion,
-    ContentListUnionDict,
-    ContentUnion,
-    ContentUnionDict,
-    GenerateContentConfig,
-    GenerateContentConfigOrDict,
-    GenerateContentResponse,
-    Tool,
-    ToolListUnionDict,
-    ToolUnionDict,
-)
-
+from google.genai.types import (BlockedReason, Candidate, Content,
+                                ContentListUnion, ContentListUnionDict,
+                                ContentUnion, ContentUnionDict,
+                                GenerateContentConfig,
+                                GenerateContentConfigOrDict,
+                                GenerateContentResponse, Tool,
+                                ToolListUnionDict, ToolUnionDict)
 from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType,
-    _StabilityMode,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    code_attributes,
-    gen_ai_attributes,
-)
+    _OpenTelemetryStabilitySignalType, _StabilityMode)
+from opentelemetry.semconv._incubating.attributes import (code_attributes,
+                                                          gen_ai_attributes)
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace.span import Span
 from opentelemetry.util.genai.completion_hook import CompletionHook
-from opentelemetry.util.genai.types import (
-    ContentCapturingMode,
-    InputMessage,
-    MessagePart,
-    OutputMessage,
-    ToolDefinition,
-    FunctionToolDefinition,
-    GenericToolDefinition,
-)
+from opentelemetry.util.genai.types import (ContentCapturingMode,
+                                            FunctionToolDefinition,
+                                            GenericToolDefinition,
+                                            InputMessage, MessagePart,
+                                            OutputMessage, ToolDefinition)
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
-from opentelemetry.util.types import (
-    AttributeValue,
-)
+from opentelemetry.util.types import AttributeValue
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
-from .message import (
-    to_input_messages,
-    to_output_messages,
-    to_system_instructions,
-)
+from .message import (to_input_messages, to_output_messages,
+                      to_system_instructions)
 from .otel_wrapper import OTelWrapper
 from .tool_call_wrapper import wrapped as wrapped_tool
 
@@ -272,7 +243,7 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
 
     # Generic types
     if hasattr(tool, "model_dump"):
-        exclude_fields = {'function_declarations'}
+        exclude_fields = {"function_declarations"}
         fields = {
             k: v for k, v in tool.model_dump().items()
             if v is not None and k not in exclude_fields
@@ -289,8 +260,7 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
     return definitions
 
 
-def _callable_tool_to_tool_definition(tool: Any) -> ToolDefinition:
-    doc = getattr(tool, "__doc__", "") or ""
+def _callable_tool_to_tool_definition(tool: Any) -> ToolDefinition:    doc = getattr(tool, "__doc__", "") or ""
     return FunctionToolDefinition(
         name=getattr(tool, "__name__", type(tool).__name__),
         description=doc.strip(),

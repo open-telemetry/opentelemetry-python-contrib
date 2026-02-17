@@ -111,7 +111,7 @@ def hash_tool_definitions(tool_definitions: list[types.ToolDefinition]) -> str |
         encoded_tools = json.dumps(
             tool_dicts,
             sort_keys=True,
-        ).encode('utf-8')
+        ).encode("utf-8")
 
         return hashlib.sha256(
             encoded_tools,
