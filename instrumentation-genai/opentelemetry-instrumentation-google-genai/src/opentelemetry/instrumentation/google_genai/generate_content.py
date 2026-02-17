@@ -20,12 +20,12 @@ import json
 import logging
 import os
 import time
+import typing
 from typing import (
     Any,
     AsyncIterator,
     Awaitable,
     Iterator,
-    Mapping,
     Optional,
     Union,
 )
@@ -43,6 +43,9 @@ from google.genai.types import (
     GenerateContentConfig,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
+    Tool,
+    ToolListUnionDict,
+    ToolUnionDict,
 )
 
 from opentelemetry import context as context_api
@@ -83,8 +86,27 @@ from .message import (
 from .otel_wrapper import OTelWrapper
 from .tool_call_wrapper import wrapped as wrapped_tool
 
+_is_mcp_imported = False
+if typing.TYPE_CHECKING:
+    from mcp import ClientSession as McpClientSession
+    from mcp import Tool as McpTool
+
+    is_mcp_imported = True
+else:
+    try:
+        from mcp import ClientSession as McpClientSession
+        from mcp import Tool as McpTool
+
+        _is_mcp_imported = True
+    except ImportError:
+        McpClientSession = None
+        McpTool = None
+
 _logger = logging.getLogger(__name__)
 
+GEN_AI_TOOL_DEFINITIONS = getattr(
+    gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
+)
 
 # Constant used to make the absence of content more understandable.
 _CONTENT_ELIDED = "<elided>"
@@ -186,10 +208,72 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
+def _tool_to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+    if hasattr(tool, "model_dump"):
+        return tool.model_dump(exclude_none=True)
+
+    return str(tool)
+
+
+def _callable_tool_to_tool_definition(tool: Any) -> MessagePart:
+    doc = getattr(tool, "__doc__", "") or ""
+    return {
+        "name": getattr(tool, "__name__", type(tool).__name__),
+        "description": doc.strip(),
+    }
+
+
+def _mcp_tool_to_tool_definition(tool: McpTool) -> MessagePart:
+    if hasattr(tool, "model_dump"):
+        return tool.model_dump(exclude_none=True)
+
+    return {
+        "name": getattr(tool, "name", type(tool).__name__),
+        "description": getattr(tool, "description", "") or "",
+        "input_schema": getattr(tool, "input_schema", {}),
+    }
+
+
+def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
+    if isinstance(tool, dict):
+        return tool
+
+    if isinstance(tool, Tool):
+        return _tool_to_tool_definition(tool)
+
+    if callable(tool):
+        return _callable_tool_to_tool_definition(tool)
+
+    if _is_mcp_imported and isinstance(tool, McpTool):
+        return _mcp_tool_to_tool_definition(tool)
+
+    try:
+        return {"raw_definition": json.loads(json.dumps(tool))}
+    except Exception:  # pylint: disable=broad-exception-caught
+        return {
+            "error": f"failed to serialize tool definition, tool type={type(tool).__name__}"
+        }
+
+
+def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+    if _is_mcp_imported and isinstance(tool, McpClientSession):
+        return None
+
+    return _to_tool_definition_common(tool)
+
+
+async def _to_tool_definition_async(tool: ToolUnionDict) -> MessagePart:
+    if _is_mcp_imported and isinstance(tool, McpClientSession):
+        result = await tool.list_tools()
+        return [t.model_dump(exclude_none=True) for t in result.tools]
+
+    return _to_tool_definition_common(tool)
+
+
 def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     allow_list: AllowList,
-) -> dict[str, Any]:
+) -> dict[str, AttributeValue]:
     if not config:
         return {}
     config = _to_dict(config)
@@ -286,13 +370,25 @@ def _config_to_system_instruction(
     return config.system_instruction
 
 
+def _config_to_tools(
+    config: Union[GenerateContentConfigOrDict, None],
+) -> Union[ToolListUnionDict, None]:
+    if not config:
+        return None
+
+    if isinstance(config, dict):
+        return GenerateContentConfig.model_validate(config).tools
+    return config.tools
+
+
 def _create_completion_details_attributes(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instructions: list[MessagePart],
+    tool_definitions: list[MessagePart],
     as_str: bool = False,
-) -> dict[str, Any]:
-    attributes: dict[str, Any] = {
+) -> dict[str, AttributeValue]:
+    attributes: dict[str, AttributeValue] = {
         gen_ai_attributes.GEN_AI_INPUT_MESSAGES: [
             dataclasses.asdict(input_message)
             for input_message in input_messages
@@ -307,13 +403,17 @@ def _create_completion_details_attributes(
             dataclasses.asdict(sys_instr) for sys_instr in system_instructions
         ]
 
+    if tool_definitions:
+        attributes[GEN_AI_TOOL_DEFINITIONS] = tool_definitions
+
     return attributes
 
 
-def _get_extra_generate_content_attributes() -> Optional[
-    Mapping[str, AttributeValue]
-]:
-    return context_api.get_value(GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY)
+def _get_extra_generate_content_attributes() -> dict[str, AttributeValue]:
+    attrs = context_api.get_value(
+        GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY
+    )
+    return dict(attrs or {})
 
 
 class _GenerateContentInstrumentationHelper:
@@ -324,6 +424,7 @@ class _GenerateContentInstrumentationHelper:
         model: str,
         completion_hook: CompletionHook,
         generate_content_config_key_allowlist: Optional[AllowList] = None,
+        is_async: bool = False,
     ):
         self._start_time = time.time_ns()
         self._otel_wrapper = otel_wrapper
@@ -345,6 +446,7 @@ class _GenerateContentInstrumentationHelper:
         self._generate_content_config_key_allowlist = (
             generate_content_config_key_allowlist or AllowList()
         )
+        self._is_async = is_async
 
     def wrapped_config(
         self, config: Optional[GenerateContentConfigOrDict]
@@ -371,7 +473,7 @@ class _GenerateContentInstrumentationHelper:
             end_on_exit=end_on_exit,
         )
 
-    def create_final_attributes(self) -> dict[str, Any]:
+    def create_final_attributes(self) -> dict[str, AttributeValue]:
         final_attributes = {
             gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS: self._input_tokens,
             gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS: self._output_tokens,
@@ -430,9 +532,9 @@ class _GenerateContentInstrumentationHelper:
             response, "usage_metadata.candidates_token_count"
         )
         if input_tokens and isinstance(input_tokens, int):
-            self._input_tokens += input_tokens
+            self._input_tokens = input_tokens
         if output_tokens and isinstance(output_tokens, int):
-            self._output_tokens += output_tokens
+            self._output_tokens = output_tokens
 
     def _maybe_update_error_type(self, response: GenerateContentResponse):
         if response.candidates:
@@ -461,13 +563,53 @@ class _GenerateContentInstrumentationHelper:
         block_reason = response.prompt_feedback.block_reason.name.upper()
         self._error_type = f"BLOCKED_{block_reason}"
 
+    def _maybe_get_tool_definitions(self, config):
+        if (
+            self.sem_conv_opt_in_mode
+            != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ):
+            return None
+
+        tool_definitions = []
+        if tools := _config_to_tools(config):
+            for tool in tools:
+                definition = _to_tool_definition(tool)
+                if definition is None:
+                    continue
+                if isinstance(definition, list):
+                    tool_definitions.extend(definition)
+                else:
+                    tool_definitions.append(definition)
+        return tool_definitions
+
+    async def _maybe_get_tool_definitions_async(self, config):
+        if (
+            self.sem_conv_opt_in_mode
+            != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ):
+            return None
+
+        tool_definitions = []
+        if tools := _config_to_tools(config):
+            for tool in tools:
+                definition = await _to_tool_definition_async(tool)
+                if definition is None:
+                    continue
+                if isinstance(definition, list):
+                    tool_definitions.extend(definition)
+                else:
+                    tool_definitions.append(definition)
+        return tool_definitions
+
     def _maybe_log_completion_details(
         self,
-        request_attributes: dict[str, Any],
-        final_attributes: dict[str, Any],
+        extra_attributes: dict[str, AttributeValue],
+        request_attributes: dict[str, AttributeValue],
+        final_attributes: dict[str, AttributeValue],
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
+        tool_definitions: list[MessagePart] = None,
     ):
         if (
             self.sem_conv_opt_in_mode
@@ -487,7 +629,9 @@ class _GenerateContentInstrumentationHelper:
         span = trace.get_current_span()
         event = LogRecord(
             event_name="gen_ai.client.inference.operation.details",
-            attributes=request_attributes | final_attributes,
+            attributes=extra_attributes
+            | request_attributes
+            | final_attributes,
         )
         self.completion_hook.on_completion(
             inputs=input_messages,
@@ -500,6 +644,7 @@ class _GenerateContentInstrumentationHelper:
             input_messages,
             output_messages,
             system_instructions,
+            tool_definitions,
         )
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
@@ -734,6 +879,7 @@ def _create_instrumented_generate_content(
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=False,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -742,9 +888,8 @@ def _create_instrumented_generate_content(
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content"
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
             try:
@@ -772,12 +917,17 @@ def _create_instrumented_generate_content(
             finally:
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = helper._maybe_get_tool_definitions(
+                    config
+                )
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
                     candidates,
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -809,6 +959,7 @@ def _create_instrumented_generate_content_stream(
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=False,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -817,9 +968,8 @@ def _create_instrumented_generate_content_stream(
         with helper.start_span_as_current_span(
             model, "google.genai.Models.generate_content_stream"
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
             try:
@@ -847,12 +997,17 @@ def _create_instrumented_generate_content_stream(
             finally:
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = helper._maybe_get_tool_definitions(
+                    config
+                )
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
                     candidates,
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -883,6 +1038,7 @@ def _create_instrumented_async_generate_content(
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=True,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -892,9 +1048,8 @@ def _create_instrumented_async_generate_content(
         with helper.start_span_as_current_span(
             model, "google.genai.AsyncModels.generate_content"
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if helper.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
                 helper.process_request(contents, config, span)
             try:
@@ -921,12 +1076,17 @@ def _create_instrumented_async_generate_content(
             finally:
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = (
+                    await helper._maybe_get_tool_definitions_async(config)
+                )
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
                     candidates,
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -958,6 +1118,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             model,
             completion_hook,
             generate_content_config_key_allowlist=generate_content_config_key_allowlist,
+            is_async=True,
         )
         request_attributes = _create_request_attributes(
             config,
@@ -968,9 +1129,8 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             "google.genai.AsyncModels.generate_content_stream",
             end_on_exit=False,
         ) as span:
-            if extra_attributes := _get_extra_generate_content_attributes():
-                span.set_attributes(extra_attributes)
-            span.set_attributes(request_attributes)
+            extra_attributes = _get_extra_generate_content_attributes()
+            span.set_attributes(extra_attributes | request_attributes)
             if (
                 not helper.sem_conv_opt_in_mode
                 == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
@@ -989,12 +1149,17 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 helper._record_token_usage_metric()
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
+                maybe_tool_definitions = (
+                    await helper._maybe_get_tool_definitions_async(config)
+                )
                 helper._maybe_log_completion_details(
+                    extra_attributes,
                     request_attributes,
                     final_attributes,
                     contents,
                     [],
                     config,
+                    maybe_tool_definitions,
                 )
                 helper._record_duration_metric()
                 with trace.use_span(span, end_on_exit=True):
@@ -1022,12 +1187,19 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                     finally:
                         final_attributes = helper.create_final_attributes()
                         span.set_attributes(final_attributes)
+                        maybe_tool_definitions = (
+                            await helper._maybe_get_tool_definitions_async(
+                                config
+                            )
+                        )
                         helper._maybe_log_completion_details(
+                            extra_attributes,
                             request_attributes,
                             final_attributes,
                             contents,
                             candidates,
                             config,
+                            maybe_tool_definitions,
                         )
                         helper._record_token_usage_metric()
                         helper._record_duration_metric()
