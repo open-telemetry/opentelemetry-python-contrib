@@ -58,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-cassandra`: Use `_instruments_any` instead of `_instruments` for driver dependencies so that having either `cassandra-driver` or `scylla-driver` installed is sufficient
+  ([#4182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4182))
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
   ([#3841](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3841))
 - `opentelemetry-instrumentation-django`: Fix exemplars generation for `http.server.(request.)duration`
@@ -115,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4112))
 - `opentelemetry-instrumentation-django`: Drop support for Django < 2.0
   ([#4083](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
+- `opentelemetry-instrumentation-aws-lambda`: Fix improper invocation `Span` name and kind.
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
