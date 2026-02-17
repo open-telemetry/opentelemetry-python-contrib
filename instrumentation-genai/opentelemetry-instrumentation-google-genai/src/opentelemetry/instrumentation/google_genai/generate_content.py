@@ -260,7 +260,8 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
     return definitions
 
 
-def _callable_tool_to_tool_definition(tool: Any) -> ToolDefinition:    doc = getattr(tool, "__doc__", "") or ""
+def _callable_tool_to_tool_definition(tool: Any) -> ToolDefinition:    
+    doc = getattr(tool, "__doc__", "") or ""
     return FunctionToolDefinition(
         name=getattr(tool, "__name__", type(tool).__name__),
         description=doc.strip(),
