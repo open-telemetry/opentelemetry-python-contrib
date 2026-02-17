@@ -202,6 +202,33 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
             )
             self._config.pop("system.network.connections")
 
+        # Filter 'sin' and 'sout' from 'system.swap' metrics
+        # if '/proc/vmstat' is not available and issue a warning.
+        # See: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3740.
+        if psutil.LINUX and (
+            "system.swap.usage" in self._config
+            or "system.swap.utilization" in self._config
+        ):
+            vmstat = os.path.join(psutil.PROCFS_PATH, "vmstat")
+            if not os.path.exists(vmstat):
+                _logger.warning(
+                    "Could not find '%s'! The 'sin' and 'sout' states"
+                    "will not be included in 'system.swap' metrics.",
+                    vmstat,
+                )
+                if usage := self._config.get("system.swap.usage"):
+                    self._config["system.swap.usage"] = [
+                        state
+                        for state in usage
+                        if state not in ("sin", "sout")
+                    ]
+                if utilization := self._config.get("system.swap.utilization"):
+                    self._config["system.swap.utilization"] = [
+                        state
+                        for state in utilization
+                        if state not in ("sin", "sout")
+                    ]
+
         self._proc = psutil.Process(os.getpid())
 
         self._system_cpu_time_labels = self._labels.copy()
