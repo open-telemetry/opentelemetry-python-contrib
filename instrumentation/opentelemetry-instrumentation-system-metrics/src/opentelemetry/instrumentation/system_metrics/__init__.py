@@ -156,7 +156,7 @@ _DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "process.runtime.context_switches": ["involuntary", "voluntary"],
 }
 
-if sys.platform == "darwin":
+if psutil.MACOS:
     # see https://github.com/giampaolo/psutil/issues/1219
     _DEFAULT_CONFIG.pop("system.network.connections")
 
