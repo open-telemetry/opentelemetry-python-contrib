@@ -21,17 +21,17 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.utils import should_capture_content
 
-from .wrappers import (
-    MessageWrapper,
-    StreamWrapper,
-)
 from .utils import (
     extract_params,
     get_input_messages,
     get_llm_request_attributes,
     get_system_instruction,
-    should_capture_content,
+)
+from .wrappers import (
+    MessageWrapper,
+    StreamWrapper,
 )
 
 if TYPE_CHECKING:

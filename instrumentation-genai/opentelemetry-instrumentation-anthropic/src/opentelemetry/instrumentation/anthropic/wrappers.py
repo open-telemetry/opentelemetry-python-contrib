@@ -14,23 +14,28 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Iterator, Optional
 
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import Error, LLMInvocation, MessagePart, OutputMessage
+from opentelemetry.util.genai.types import (
+    Error,
+    LLMInvocation,
+    MessagePart,
+    OutputMessage,
+)
 from opentelemetry.util.genai.utils import should_capture_content
 
 from .utils import (
-    _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
-    _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
-    _create_stream_block_state,
-    _extract_usage_tokens,
+    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
     _get_field,
-    _logger,
     _normalize_finish_reason,
-    _stream_block_state_to_part,
-    _update_stream_block_state,
+    create_stream_block_state,
+    extract_usage_tokens,
     get_output_messages_from_message,
+    stream_block_state_to_part,
+    update_stream_block_state,
 )
 
 if TYPE_CHECKING:
@@ -40,6 +45,8 @@ if TYPE_CHECKING:
         MessageStreamManager,
     )
     from anthropic.types import Message, RawMessageStreamEvent
+
+_logger = logging.getLogger(__name__)
 
 
 class MessageWrapper:
@@ -66,17 +73,17 @@ class MessageWrapper:
                 output_tokens,
                 cache_creation_input_tokens,
                 cache_read_input_tokens,
-            ) = _extract_usage_tokens(self._message.usage)
+            ) = extract_usage_tokens(self._message.usage)
             invocation.input_tokens = input_tokens
             invocation.output_tokens = output_tokens
             if cache_creation_input_tokens is not None:
                 invocation.attributes[
-                    _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+                    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
                 ] = cache_creation_input_tokens
             if cache_read_input_tokens is not None:
-                invocation.attributes[
-                    _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
-                ] = cache_read_input_tokens
+                invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
+                    cache_read_input_tokens
+                )
 
         if should_capture_content():
             invocation.output_messages = get_output_messages_from_message(
@@ -118,7 +125,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             output_tokens,
             cache_creation_input_tokens,
             cache_read_input_tokens,
-        ) = _extract_usage_tokens(usage)
+        ) = extract_usage_tokens(usage)
         if input_tokens is not None:
             self._input_tokens = input_tokens
         if output_tokens is not None:
@@ -149,7 +156,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             index = _get_field(chunk, "index")
             content_block = _get_field(chunk, "content_block")
             if isinstance(index, int):
-                self._content_blocks[index] = _create_stream_block_state(
+                self._content_blocks[index] = create_stream_block_state(
                     content_block
                 )
         elif self._capture_content and chunk.type == "content_block_delta":
@@ -157,7 +164,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             delta = _get_field(chunk, "delta")
             if isinstance(index, int) and delta is not None:
                 block = self._content_blocks.setdefault(index, {})
-                _update_stream_block_state(block, delta)
+                update_stream_block_state(block, delta)
 
     def _finalize_invocation(self) -> None:
         if self._finalized:
@@ -176,17 +183,17 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             self._invocation.output_tokens = self._output_tokens
         if self._cache_creation_input_tokens is not None:
             self._invocation.attributes[
-                _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+                GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
             ] = self._cache_creation_input_tokens
         if self._cache_read_input_tokens is not None:
             self._invocation.attributes[
-                _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
+                GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
             ] = self._cache_read_input_tokens
 
         if self._capture_content and self._content_blocks:
             parts: list[MessagePart] = []
             for index in sorted(self._content_blocks):
-                part = _stream_block_state_to_part(self._content_blocks[index])
+                part = stream_block_state_to_part(self._content_blocks[index])
                 if part is not None:
                     parts.append(part)
             self._invocation.output_messages = [
@@ -301,16 +308,16 @@ class MessageStreamManagerWrapper:
                     output_tokens,
                     cache_creation_input_tokens,
                     cache_read_input_tokens,
-                ) = _extract_usage_tokens(final_message.usage)
+                ) = extract_usage_tokens(final_message.usage)
                 self._invocation.input_tokens = input_tokens
                 self._invocation.output_tokens = output_tokens
                 if cache_creation_input_tokens is not None:
                     self._invocation.attributes[
-                        _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+                        GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
                     ] = cache_creation_input_tokens
                 if cache_read_input_tokens is not None:
                     self._invocation.attributes[
-                        _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
+                        GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
                     ] = cache_read_input_tokens
             if should_capture_content():
                 self._invocation.output_messages = (

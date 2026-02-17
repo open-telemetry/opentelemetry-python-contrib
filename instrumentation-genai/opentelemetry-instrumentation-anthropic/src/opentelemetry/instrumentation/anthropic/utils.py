@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import base64
 import json
-import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Sequence, cast
 from urllib.parse import urlparse
@@ -39,16 +38,10 @@ from opentelemetry.util.genai.types import (
     ToolCall,
     ToolCallResponse,
 )
-from opentelemetry.util.genai.utils import (
-    should_capture_content,
-)
 from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
     from anthropic.resources.messages import Messages
-    from anthropic.types import Message
-
-_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -65,10 +58,10 @@ class MessageRequestParams:
     system: Any | None = None
 
 
-_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
     "gen_ai.usage.cache_creation.input_tokens"
 )
-_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
+GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 def _normalize_finish_reason(stop_reason: str | None) -> str | None:
@@ -85,6 +78,20 @@ def _normalize_finish_reason(stop_reason: str | None) -> str | None:
     return normalized or stop_reason
 
 
+def _get_field(obj: Any, name: str, default: Any = None) -> Any:
+    if isinstance(obj, dict):
+        return cast(dict[str, Any], obj).get(name, default)
+    return getattr(obj, name, default)
+
+
+def _as_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    return str(value)
+
+
 def _as_int(value: Any) -> int | None:
     if isinstance(value, bool):
         return None
@@ -93,13 +100,10 @@ def _as_int(value: Any) -> int | None:
     return None
 
 
-def _extract_usage_tokens(
+def extract_usage_tokens(
     usage: Any | None,
 ) -> tuple[int | None, int | None, int | None, int | None]:
-    """Extract Anthropic usage fields and compute semconv input tokens.
-
-    Returns `(total_input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens)`.
-    """
+    """Extract Anthropic usage fields and compute semconv input tokens."""
     if usage is None:
         return None, None, None, None
 
@@ -131,20 +135,6 @@ def _extract_usage_tokens(
         cache_creation_input_tokens,
         cache_read_input_tokens,
     )
-
-
-def _get_field(obj: Any, name: str, default: Any = None) -> Any:
-    if isinstance(obj, dict):
-        return cast(dict[str, Any], obj).get(name, default)
-    return getattr(obj, name, default)
-
-
-def _as_str(value: Any) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, str):
-        return value
-    return str(value)
 
 
 def _to_dict_if_possible(value: Any) -> Any:
@@ -261,7 +251,7 @@ def get_output_messages_from_message(message: Any) -> list[OutputMessage]:
     ]
 
 
-def _create_stream_block_state(content_block: Any) -> dict[str, Any]:
+def create_stream_block_state(content_block: Any) -> dict[str, Any]:
     block_type = _as_str(_get_field(content_block, "type")) or "text"
     state: dict[str, Any] = {"type": block_type}
     if block_type == "text":
@@ -269,8 +259,7 @@ def _create_stream_block_state(content_block: Any) -> dict[str, Any]:
     elif block_type == "tool_use":
         state["id"] = _as_str(_get_field(content_block, "id"))
         state["name"] = _as_str(_get_field(content_block, "name")) or ""
-        input_value = _get_field(content_block, "input")
-        state["input"] = _to_dict_if_possible(input_value)
+        state["input"] = _get_field(content_block, "input")
         state["input_json"] = ""
     elif block_type in ("thinking", "redacted_thinking"):
         state["thinking"] = (
@@ -279,7 +268,7 @@ def _create_stream_block_state(content_block: Any) -> dict[str, Any]:
     return state
 
 
-def _update_stream_block_state(state: dict[str, Any], delta: Any) -> None:
+def update_stream_block_state(state: dict[str, Any], delta: Any) -> None:
     delta_type = _as_str(_get_field(delta, "type"))
     if delta_type == "text_delta":
         state["type"] = "text"
@@ -303,7 +292,7 @@ def _update_stream_block_state(state: dict[str, Any], delta: Any) -> None:
         )
 
 
-def _stream_block_state_to_part(state: dict[str, Any]) -> MessagePart | None:
+def stream_block_state_to_part(state: dict[str, Any]) -> MessagePart | None:
     block_type = _as_str(state.get("type"))
     if block_type == "text":
         return Text(content=_as_str(state.get("text")) or "")
