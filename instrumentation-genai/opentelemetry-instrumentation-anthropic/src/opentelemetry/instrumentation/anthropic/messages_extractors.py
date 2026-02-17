@@ -34,10 +34,10 @@ from opentelemetry.util.genai.types import (
 from opentelemetry.util.types import AttributeValue
 
 from .utils import (
-    as_int,
     _as_str,
-    convert_content_to_parts,
     _get_field,
+    as_int,
+    convert_content_to_parts,
     normalize_finish_reason,
 )
 
@@ -120,9 +120,7 @@ def get_output_messages_from_message(message: Any) -> list[OutputMessage]:
         return []
 
     parts = convert_content_to_parts(_get_field(message, "content"))
-    finish_reason = normalize_finish_reason(
-        _get_field(message, "stop_reason")
-    )
+    finish_reason = normalize_finish_reason(_get_field(message, "stop_reason"))
     return [
         OutputMessage(
             role=_as_str(_get_field(message, "role")) or "assistant",
