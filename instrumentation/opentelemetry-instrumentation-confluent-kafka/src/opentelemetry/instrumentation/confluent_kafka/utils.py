@@ -14,6 +14,7 @@ from opentelemetry.semconv.trace import (
     SpanAttributes,
 )
 from opentelemetry.trace import Link, SpanKind
+from opentelemetry.util import types
 
 _LOG = getLogger(__name__)
 
@@ -134,34 +135,29 @@ def _enrich_span(
     if not span.is_recording():
         return
 
-    span.set_attribute(MESSAGING_SYSTEM, "kafka")
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
+    _attributes: dict[str, types.AttributeValue] = {
+        MESSAGING_SYSTEM: "kafka",
+        SpanAttributes.MESSAGING_DESTINATION: topic,
+        SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
+    }
 
     if partition is not None:
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+        _attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION] = partition
 
     if offset is not None:
-        span.set_attribute(
-            SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET, offset
-        )
-
-    span.set_attribute(
-        SpanAttributes.MESSAGING_DESTINATION_KIND,
-        MessagingDestinationKindValues.QUEUE.value,
-    )
+        _attributes[SpanAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET] = offset
 
     if operation:
-        span.set_attribute(MESSAGING_OPERATION, operation.value)
+        _attributes[MESSAGING_OPERATION] = operation.value
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
+        _attributes[SpanAttributes.MESSAGING_TEMP_DESTINATION] = True
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
     if partition is not None and offset is not None and topic:
-        span.set_attribute(
-            MESSAGING_MESSAGE_ID,
-            f"{topic}.{partition}.{offset}",
-        )
+        _attributes[MESSAGING_MESSAGE_ID] = f"{topic}.{partition}.{offset}"
+
+    span.set_attributes(_attributes)
 
 
 _kafka_setter = KafkaContextSetter()
