@@ -12,63 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utility functions for Anthropic instrumentation."""
+"""Shared helper utilities for Anthropic instrumentation."""
 
 from __future__ import annotations
 
 import base64
 import json
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Sequence, cast
-from urllib.parse import urlparse
+from typing import Any, cast
 
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
-)
 from opentelemetry.util.genai.types import (
     Blob,
-    InputMessage,
     MessagePart,
-    OutputMessage,
     Reasoning,
     Text,
     ToolCall,
     ToolCallResponse,
 )
-from opentelemetry.util.types import AttributeValue
-
-if TYPE_CHECKING:
-    from anthropic.resources.messages import Messages
 
 
-@dataclass
-class MessageRequestParams:
-    """Parameters extracted from Anthropic Messages API calls."""
-
-    model: str | None = None
-    max_tokens: int | None = None
-    temperature: float | None = None
-    top_k: int | None = None
-    top_p: float | None = None
-    stop_sequences: Sequence[str] | None = None
-    messages: Any | None = None
-    system: Any | None = None
-
-
-GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    "gen_ai.usage.cache_creation.input_tokens"
-)
-GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
-
-
-def _normalize_finish_reason(stop_reason: str | None) -> str | None:
-    """Map Anthropic stop reasons to GenAI semantic convention values."""
+def normalize_finish_reason(stop_reason: str | None) -> str | None:
     if stop_reason is None:
         return None
-
     normalized = {
         "end_turn": "stop",
         "stop_sequence": "stop",
@@ -92,49 +56,12 @@ def _as_str(value: Any) -> str | None:
     return str(value)
 
 
-def _as_int(value: Any) -> int | None:
+def as_int(value: Any) -> int | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, int):
         return value
     return None
-
-
-def extract_usage_tokens(
-    usage: Any | None,
-) -> tuple[int | None, int | None, int | None, int | None]:
-    """Extract Anthropic usage fields and compute semconv input tokens."""
-    if usage is None:
-        return None, None, None, None
-
-    input_tokens = _as_int(getattr(usage, "input_tokens", None))
-    cache_creation_input_tokens = _as_int(
-        getattr(usage, "cache_creation_input_tokens", None)
-    )
-    cache_read_input_tokens = _as_int(
-        getattr(usage, "cache_read_input_tokens", None)
-    )
-    output_tokens = _as_int(getattr(usage, "output_tokens", None))
-
-    if (
-        input_tokens is None
-        and cache_creation_input_tokens is None
-        and cache_read_input_tokens is None
-    ):
-        total_input_tokens = None
-    else:
-        total_input_tokens = (
-            (input_tokens or 0)
-            + (cache_creation_input_tokens or 0)
-            + (cache_read_input_tokens or 0)
-        )
-
-    return (
-        total_input_tokens,
-        output_tokens,
-        cache_creation_input_tokens,
-        cache_read_input_tokens,
-    )
 
 
 def _to_dict_if_possible(value: Any) -> Any:
@@ -202,7 +129,7 @@ def _convert_content_block_to_part(content_block: Any) -> MessagePart | None:
     return result
 
 
-def _convert_content_to_parts(content: Any) -> list[MessagePart]:
+def convert_content_to_parts(content: Any) -> list[MessagePart]:
     if content is None:
         return []
     if isinstance(content, str):
@@ -216,39 +143,6 @@ def _convert_content_to_parts(content: Any) -> list[MessagePart]:
         return parts
     part = _convert_content_block_to_part(content)
     return [part] if part is not None else []
-
-
-def get_input_messages(messages: Any) -> list[InputMessage]:
-    if not isinstance(messages, list):
-        return []
-
-    result: list[InputMessage] = []
-    for message in cast(list[Any], messages):
-        role = _as_str(_get_field(message, "role")) or "user"
-        parts = _convert_content_to_parts(_get_field(message, "content"))
-        result.append(InputMessage(role=role, parts=parts))
-    return result
-
-
-def get_system_instruction(system: Any) -> list[MessagePart]:
-    return _convert_content_to_parts(system)
-
-
-def get_output_messages_from_message(message: Any) -> list[OutputMessage]:
-    if message is None:
-        return []
-
-    parts = _convert_content_to_parts(_get_field(message, "content"))
-    finish_reason = _normalize_finish_reason(
-        _get_field(message, "stop_reason")
-    )
-    return [
-        OutputMessage(
-            role=_as_str(_get_field(message, "role")) or "assistant",
-            parts=parts,
-            finish_reason=finish_reason or "",
-        )
-    ]
 
 
 def create_stream_block_state(content_block: Any) -> dict[str, Any]:
@@ -312,107 +206,3 @@ def stream_block_state_to_part(state: dict[str, Any]) -> MessagePart | None:
     if block_type in ("thinking", "redacted_thinking"):
         return Reasoning(content=_as_str(state.get("thinking")) or "")
     return None
-
-
-# Use parameter signature from
-# https://github.com/anthropics/anthropic-sdk-python/blob/9b5ab24ba17bcd5e762e5a5fd69bb3c17b100aaa/src/anthropic/resources/messages/messages.py#L896
-# https://github.com/anthropics/anthropic-sdk-python/blob/9b5ab24ba17bcd5e762e5a5fd69bb3c17b100aaa/src/anthropic/resources/messages/messages.py#L963
-# to handle named vs positional args robustly
-def extract_params(  # pylint: disable=too-many-locals
-    *,
-    max_tokens: int | None = None,
-    messages: Any | None = None,
-    model: str | None = None,
-    metadata: Any | None = None,
-    service_tier: Any | None = None,
-    stop_sequences: Sequence[str] | None = None,
-    stream: Any | None = None,
-    system: Any | None = None,
-    temperature: float | None = None,
-    thinking: Any | None = None,
-    tool_choice: Any | None = None,
-    tools: Any | None = None,
-    top_k: int | None = None,
-    top_p: float | None = None,
-    extra_headers: Any | None = None,
-    extra_query: Any | None = None,
-    extra_body: Any | None = None,
-    timeout: Any | None = None,
-    **_kwargs: Any,
-) -> MessageRequestParams:
-    """Extract relevant parameters from Anthropic Messages API arguments."""
-    return MessageRequestParams(
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        stop_sequences=stop_sequences,
-        messages=messages,
-        system=system,
-    )
-
-
-def set_server_address_and_port(
-    client_instance: "Messages", attributes: dict[str, Any]
-) -> None:
-    """Extract server address and port from the Anthropic client instance."""
-    base_client = getattr(client_instance, "_client", None)
-    base_url = getattr(base_client, "base_url", None)
-    if not base_url:
-        return
-
-    port: Optional[int] = None
-    if hasattr(base_url, "host"):
-        # httpx.URL object
-        attributes[ServerAttributes.SERVER_ADDRESS] = base_url.host
-        port = getattr(base_url, "port", None)
-    elif isinstance(base_url, str):
-        url = urlparse(base_url)
-        attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
-        port = url.port
-
-    if port and port != 443 and port > 0:
-        attributes[ServerAttributes.SERVER_PORT] = port
-
-
-def get_llm_request_attributes(
-    params: MessageRequestParams, client_instance: "Messages"
-) -> dict[str, AttributeValue]:
-    """Extract LLM request attributes from MessageRequestParams.
-
-    Returns a dictionary of OpenTelemetry semantic convention attributes for LLM requests.
-    The attributes follow the GenAI semantic conventions (gen_ai.*) and server semantic
-    conventions (server.*) as defined in the OpenTelemetry specification.
-
-    GenAI attributes included:
-    - gen_ai.operation.name: The operation name (e.g., "chat")
-    - gen_ai.system: The GenAI system identifier (e.g., "anthropic")
-    - gen_ai.request.model: The model identifier
-    - gen_ai.request.max_tokens: Maximum tokens in the request
-    - gen_ai.request.temperature: Sampling temperature
-    - gen_ai.request.top_p: Top-p sampling parameter
-    - gen_ai.request.top_k: Top-k sampling parameter
-    - gen_ai.request.stop_sequences: Stop sequences for the request
-
-    Server attributes included (if available):
-    - server.address: The server hostname
-    - server.port: The server port (if not default 443)
-
-    Only non-None values are included in the returned dictionary.
-    """
-    attributes = {
-        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: params.model,
-        GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: params.max_tokens,
-        GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: params.temperature,
-        GenAIAttributes.GEN_AI_REQUEST_TOP_P: params.top_p,
-        GenAIAttributes.GEN_AI_REQUEST_TOP_K: params.top_k,
-        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES: params.stop_sequences,
-    }
-
-    set_server_address_and_port(client_instance, attributes)
-
-    # Filter out None values
-    return {k: v for k, v in attributes.items() if v is not None}

@@ -23,7 +23,7 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import Error, LLMInvocation
 from opentelemetry.util.genai.utils import should_capture_content
 
-from .utils import (
+from .messages_extractors import (
     extract_params,
     get_input_messages,
     get_llm_request_attributes,

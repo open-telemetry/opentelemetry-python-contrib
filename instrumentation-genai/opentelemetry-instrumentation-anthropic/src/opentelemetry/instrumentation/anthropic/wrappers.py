@@ -26,14 +26,16 @@ from opentelemetry.util.genai.types import (
 )
 from opentelemetry.util.genai.utils import should_capture_content
 
-from .utils import (
+from .messages_extractors import (
     GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
     GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
-    _get_field,
-    _normalize_finish_reason,
-    create_stream_block_state,
     extract_usage_tokens,
     get_output_messages_from_message,
+)
+from .utils import (
+    _get_field,
+    create_stream_block_state,
+    normalize_finish_reason,
     stream_block_state_to_part,
     update_stream_block_state,
 )
@@ -63,7 +65,7 @@ class MessageWrapper:
         if self._message.id:
             invocation.response_id = self._message.id
 
-        finish_reason = _normalize_finish_reason(self._message.stop_reason)
+        finish_reason = normalize_finish_reason(self._message.stop_reason)
         if finish_reason:
             invocation.finish_reasons = [finish_reason]
 
@@ -149,7 +151,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
         elif chunk.type == "message_delta":
             delta = getattr(chunk, "delta", None)
             if delta and hasattr(delta, "stop_reason") and delta.stop_reason:
-                self._stop_reason = _normalize_finish_reason(delta.stop_reason)
+                self._stop_reason = normalize_finish_reason(delta.stop_reason)
             usage = getattr(chunk, "usage", None)
             self._update_usage(usage)
         elif self._capture_content and chunk.type == "content_block_start":
@@ -298,7 +300,7 @@ class MessageStreamManagerWrapper:
             if final_message.id:
                 self._invocation.response_id = final_message.id
 
-            finish_reason = _normalize_finish_reason(final_message.stop_reason)
+            finish_reason = normalize_finish_reason(final_message.stop_reason)
             if finish_reason:
                 self._invocation.finish_reasons = [finish_reason]
 
