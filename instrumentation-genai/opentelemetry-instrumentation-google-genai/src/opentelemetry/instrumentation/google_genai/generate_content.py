@@ -25,29 +25,46 @@ from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
 
 from google.genai.models import AsyncModels, Models
 from google.genai.models import t as transformers
-from google.genai.types import (BlockedReason, Candidate, Content,
-                                ContentListUnion, ContentListUnionDict,
-                                ContentUnion, ContentUnionDict,
-                                GenerateContentConfig,
-                                GenerateContentConfigOrDict,
-                                GenerateContentResponse, Tool,
-                                ToolListUnionDict, ToolUnionDict)
+from google.genai.types import (
+    BlockedReason,
+    Candidate,
+    Content,
+    ContentListUnion,
+    ContentListUnionDict,
+    ContentUnion,
+    ContentUnionDict,
+    GenerateContentConfig,
+    GenerateContentConfigOrDict,
+    GenerateContentResponse,
+    Tool,
+    ToolListUnionDict,
+    ToolUnionDict,
+)
+
 from opentelemetry import context as context_api
 from opentelemetry import trace
 from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
-    _OpenTelemetryStabilitySignalType, _StabilityMode)
-from opentelemetry.semconv._incubating.attributes import (code_attributes,
-                                                          gen_ai_attributes)
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    code_attributes,
+    gen_ai_attributes,
+)
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace.span import Span
 from opentelemetry.util.genai.completion_hook import CompletionHook
-from opentelemetry.util.genai.types import (ContentCapturingMode,
-                                            FunctionToolDefinition,
-                                            GenericToolDefinition,
-                                            InputMessage, MessagePart,
-                                            OutputMessage, ToolDefinition)
+from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
+    FunctionToolDefinition,
+    GenericToolDefinition,
+    InputMessage,
+    MessagePart,
+    OutputMessage,
+    ToolDefinition,
+)
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
 from opentelemetry.util.types import AttributeValue
 
@@ -55,8 +72,11 @@ from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
 from .dict_util import flatten_dict
 from .flags import is_content_recording_enabled
-from .message import (to_input_messages, to_output_messages,
-                      to_system_instructions)
+from .message import (
+    to_input_messages,
+    to_output_messages,
+    to_system_instructions,
+)
 from .otel_wrapper import OTelWrapper
 from .tool_call_wrapper import wrapped as wrapped_tool
 
@@ -185,15 +205,15 @@ def _to_dict(value: object):
 def _model_dump_to_tool_definition(tool: Any) -> ToolDefinition:
     model_dump = tool.model_dump(exclude_none=True)
 
-    name = model_dump.get("name") or getattr(tool, "name", None) or type(tool).__name__
-    description = (
-        model_dump.get("description")
-        or getattr(tool, "description", None)
+    name = (
+        model_dump.get("name")
+        or getattr(tool, "name", None)
+        or type(tool).__name__
     )
-    parameters = (
-        model_dump.get("parameters") or
-        model_dump.get("inputSchema")
+    description = model_dump.get("description") or getattr(
+        tool, "description", None
     )
+    parameters = model_dump.get("parameters") or model_dump.get("inputSchema")
     return FunctionToolDefinition(
         name=name,
         description=description,
@@ -223,7 +243,7 @@ def _clean_parameters(params: Any) -> Any:
             "properties": {
                 "serialization_error": {
                     "type": "string",
-                    "description": f"Failed to serialize parameters: {type(params).__name__}"
+                    "description": f"Failed to serialize parameters: {type(params).__name__}",
                 }
             },
         }
@@ -237,7 +257,9 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
                 FunctionToolDefinition(
                     name=getattr(fd, "name", type(fd).__name__),
                     description=getattr(fd, "description", None),
-                    parameters=_clean_parameters(getattr(fd, "parameters", None))
+                    parameters=_clean_parameters(
+                        getattr(fd, "parameters", None)
+                    ),
                 )
             )
 
@@ -245,7 +267,8 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
     if hasattr(tool, "model_dump"):
         exclude_fields = {"function_declarations"}
         fields = {
-            k: v for k, v in tool.model_dump().items()
+            k: v
+            for k, v in tool.model_dump().items()
             if v is not None and k not in exclude_fields
         }
 
@@ -260,7 +283,7 @@ def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
     return definitions
 
 
-def _callable_tool_to_tool_definition(tool: Any) -> ToolDefinition:    
+def _callable_tool_to_tool_definition(tool: Any) -> ToolDefinition:
     doc = getattr(tool, "__doc__", "") or ""
     return FunctionToolDefinition(
         name=getattr(tool, "__name__", type(tool).__name__),
@@ -279,6 +302,7 @@ def _mcp_tool_to_tool_definition(tool: McpTool) -> ToolDefinition:
         parameters=getattr(tool, "input_schema", None),
     )
 
+
 def _to_tool_definition_common(tool: ToolUnionDict) -> list[ToolDefinition]:
     if isinstance(tool, Tool):
         return _tool_to_tool_definition(tool)
@@ -289,10 +313,12 @@ def _to_tool_definition_common(tool: ToolUnionDict) -> list[ToolDefinition]:
     if _is_mcp_imported and isinstance(tool, McpTool):
         return [_mcp_tool_to_tool_definition(tool)]
 
-    return [GenericToolDefinition(
-        name="UnserializableTool",
-        type=type(tool).__name__,
-    )]
+    return [
+        GenericToolDefinition(
+            name="UnserializableTool",
+            type=type(tool).__name__,
+        )
+    ]
 
 
 def _to_tool_definition(tool: ToolUnionDict) -> list[ToolDefinition]:
@@ -302,7 +328,9 @@ def _to_tool_definition(tool: ToolUnionDict) -> list[ToolDefinition]:
     return _to_tool_definition_common(tool)
 
 
-async def _to_tool_definition_async(tool: ToolUnionDict) -> list[ToolDefinition]:
+async def _to_tool_definition_async(
+    tool: ToolUnionDict,
+) -> list[ToolDefinition]:
     if _is_mcp_imported and isinstance(tool, McpClientSession):
         result = await tool.list_tools()
         return [_model_dump_to_tool_definition(t) for t in result.tools]

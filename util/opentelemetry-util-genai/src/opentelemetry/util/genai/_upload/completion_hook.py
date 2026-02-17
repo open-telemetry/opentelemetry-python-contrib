@@ -101,7 +101,9 @@ def is_tool_definitions_hashable(
     return bool(tool_definitions)
 
 
-def hash_tool_definitions(tool_definitions: list[types.ToolDefinition]) -> str | None:
+def hash_tool_definitions(
+    tool_definitions: list[types.ToolDefinition],
+) -> str | None:
     try:
         tool_dicts = [
             {k: v for k, v in dataclasses.asdict(t).items() if v is not None}
@@ -317,7 +319,7 @@ class UploadCompletionHook(CompletionHook):
             dataclass_list: list[types.InputMessage]
             | list[types.OutputMessage]
             | list[types.MessagePart]
-            | list[types.ToolDefinition]
+            | list[types.ToolDefinition],
         ) -> JsonEncodeable:
             return [asdict(dc) for dc in dataclass_list]
 

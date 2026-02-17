@@ -70,12 +70,12 @@ FAKE_OUTPUTS = [
 FAKE_SYSTEM_INSTRUCTION = [types.Text(content="You are a helpful assistant.")]
 
 FAKE_TOOL_DEFINITIONS: list[types.ToolDefinition] = [
-        types.FunctionToolDefinition(
-                name="test_tool",
-                description="does something",
-                parameters=None,
-                type="function",
-        ),
+    types.FunctionToolDefinition(
+        name="test_tool",
+        description="does something",
+        parameters=None,
+        type="function",
+    ),
 ]
 
 
@@ -380,12 +380,12 @@ class TestUploadCompletionHookIntegration(TestBase):
         # FIle should exist.
         self.assertTrue(self.hook._file_exists(expected_file_name))
         tool_definitions = [
-                types.FunctionToolDefinition(
-                        name="some_tool",
-                        description="does something",
-                        parameters=None,
-                        type="function",
-                ),
+            types.FunctionToolDefinition(
+                name="some_tool",
+                description="does something",
+                parameters=None,
+                type="function",
+            ),
         ]
         record = LogRecord()
         self.hook.on_completion(
