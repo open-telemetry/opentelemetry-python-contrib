@@ -69,7 +69,14 @@ FAKE_OUTPUTS = [
 ]
 FAKE_SYSTEM_INSTRUCTION = [types.Text(content="You are a helpful assistant.")]
 
-FAKE_TOOL_DEFINITIONS = [types.Text(content="tool definitions")]
+FAKE_TOOL_DEFINITIONS: list[types.ToolDefinition] = [
+        types.FunctionToolDefinition(
+                name="test_tool",
+                description="does something",
+                parameters=None,
+                type="function",
+        ),
+]
 
 
 class ThreadSafeMagicMock(MagicMock):
@@ -364,7 +371,7 @@ class TestUploadCompletionHookIntegration(TestBase):
 
     def test_tool_definitions_is_hashed_to_avoid_reupload(self):
         expected_hash = (
-            "7869781c8e08986cd1703d5d88e4b296c6ced5613985e2651cf0ac6323cd4578"
+            "1f559d0102f8c440a667fd5ed587beeed488ec9f3ce0828d39c424bed6546cf5"
         )
         # Create the file before upload..
         expected_file_name = f"memory://{expected_hash}_tool.definitions.json"
@@ -373,7 +380,12 @@ class TestUploadCompletionHookIntegration(TestBase):
         # FIle should exist.
         self.assertTrue(self.hook._file_exists(expected_file_name))
         tool_definitions = [
-            {"name": "some_tool", "description": "does something"},
+                types.FunctionToolDefinition(
+                        name="some_tool",
+                        description="does something",
+                        parameters=None,
+                        type="function",
+                ),
         ]
         record = LogRecord()
         self.hook.on_completion(
@@ -439,7 +451,7 @@ class TestUploadCompletionHookIntegration(TestBase):
         )
         self.assert_fsspec_equal(
             span.attributes["gen_ai.tool.definitions_ref"],
-            '[{"content":"tool definitions","type":"text"}]\n',
+            '[{"name":"test_tool","description":"does something","parameters":null,"type":"function"}]\n',
         )
 
     def test_stamps_empty_log(self):

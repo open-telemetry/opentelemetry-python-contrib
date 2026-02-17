@@ -137,6 +137,26 @@ class Uri:
     type: Literal["uri"] = "uri"
 
 
+@dataclass()
+class FunctionToolDefinition:
+    """Represents a function tool definition sent to the model"""
+
+    name: str
+    description: str | None
+    parameters: Any | None # or dict[str, Any]
+    type: Literal["function"] = "function"
+
+
+@dataclass()
+class GenericToolDefinition:
+    """Represents a generic tool definition sent to the model"""
+
+    name: str
+    type: str
+
+
+ToolDefinition = Union[FunctionToolDefinition, GenericToolDefinition]
+
 MessagePart = Union[
     Text, ToolCall, ToolCallResponse, Blob, File, Uri, Reasoning, Any
 ]

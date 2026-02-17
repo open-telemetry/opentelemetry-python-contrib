@@ -23,6 +23,7 @@ from google.genai.types import (
     GenerateContentConfig,
     Part,
     ToolDict,
+    GoogleMaps,
 )
 from pydantic import BaseModel, Field
 
@@ -80,7 +81,7 @@ def _mock_mcp_client_session() -> McpClientSession:
         description="Tool from session",
         inputSchema={
             "type": "object",
-            "properties": {"query": {"type": "string"}},
+            "properties": {"id": {"type": "integer"}},
         },
     )
     mock_result = create_autospec(McpListToolsResult, instance=True)
@@ -106,9 +107,11 @@ def _mock_tool_dict() -> ToolDict:
     return ToolDict(
         function_declarations=[
             FunctionDeclarationDict(
-                name="mock_tool", description="Description of mock tool."
+                name="mock_tool",
+                description="Description of mock tool.",
             ),
-        ]
+        ],
+        google_maps=GoogleMaps()
     )
 
 
@@ -513,72 +516,87 @@ class NonStreamingTestCase(TestCase):
                                 {
                                     "name": "_mock_callable_tool",
                                     "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
                                 },
                                 {
-                                    "function_declarations": (
-                                        {
-                                            "name": "mock_tool",
-                                            "description": "Description of mock tool.",
-                                        },
-                                    )
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
                                 },
                                 {
                                     "name": "mcp_tool",
                                     "description": "A standalone mcp tool",
-                                    "inputSchema": {
+                                    "parameters": {
                                         "type": "object",
                                         "properties": {
                                             "id": {"type": "integer"}
                                         },
                                     },
+                                    "type": "function",
                                 },
                             ),
                             "TOOL_DEFINITIONS_ASYNC": (
                                 {
                                     "name": "_mock_callable_tool",
                                     "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
                                 },
                                 {
-                                    "function_declarations": (
-                                        {
-                                            "name": "mock_tool",
-                                            "description": "Description of mock tool.",
-                                        },
-                                    )
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
                                 },
                                 {
                                     "name": "mcp_tool",
                                     "description": "Tool from session",
-                                    "inputSchema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "query": {"type": "string"}
-                                        },
-                                    },
-                                },
-                                {
-                                    "name": "mcp_tool",
-                                    "description": "A standalone mcp tool",
-                                    "inputSchema": {
+                                    "parameters": {
                                         "type": "object",
                                         "properties": {
                                             "id": {"type": "integer"}
                                         },
                                     },
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "A standalone mcp tool",
+                                    "parameters": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"}
+                                        },
+                                    },
+                                    "type": "function",
                                 },
                             ),
                             "TOOL_DEFINITIONS_NO_MCP": (
                                 {
                                     "name": "_mock_callable_tool",
                                     "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
                                 },
                                 {
-                                    "function_declarations": (
-                                        {
-                                            "name": "mock_tool",
-                                            "description": "Description of mock tool.",
-                                        },
-                                    )
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
                                 },
                             ),
                         }
@@ -696,14 +714,14 @@ class NonStreamingTestCase(TestCase):
                             self.assertIn(
                                 span.attributes[GEN_AI_TOOL_DEFINITIONS],
                                 [
-                                    '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]},{"name":"mcp_tool","description":"Tool from session","inputSchema":{"type":"object","properties":{"query":{"type":"string"}}}},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}}]',
-                                    '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]},{"name":"mcp_tool","description":"A standalone mcp tool","inputSchema":{"type":"object","properties":{"id":{"type":"integer"}}}}]',
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"},{"name":"mcp_tool","description":"Tool from session","parameters":{"type":"object","properties":{"id":{"type":"integer"}}},"type":"function"},{"name":"mcp_tool","description":"A standalone mcp tool","parameters":{"type":"object","properties":{"id":{"type":"integer"}}},"type":"function"}]',
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"},{"name":"mcp_tool","description":"A standalone mcp tool","parameters":{"type":"object","properties":{"id":{"type":"integer"}}},"type":"function"}]',
                                 ],
                             )
                         else:
                             self.assertEqual(
                                 span.attributes[GEN_AI_TOOL_DEFINITIONS],
-                                '[{"name":"_mock_callable_tool","description":"Description of some tool."},{"function_declarations":[{"description":"Description of mock tool.","name":"mock_tool"}]}]',
+                                '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"},{"name":"mcp_tool","description":"A standalone mcp tool","parameters":{"type":"object","properties":{"id":{"type":"integer"}}},"type":"function"}]',
                             )
                     else:
                         self.assertNotIn(

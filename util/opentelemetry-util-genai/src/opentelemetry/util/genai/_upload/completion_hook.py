@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import logging
@@ -69,7 +70,7 @@ class Completion:
     inputs: list[types.InputMessage] | None
     outputs: list[types.OutputMessage] | None
     system_instruction: list[types.MessagePart] | None
-    tool_definitions: list[types.MessagePart] | None
+    tool_definitions: list[types.ToolDefinition] | None
 
 
 @dataclass
@@ -95,31 +96,30 @@ def is_system_instructions_hashable(
 
 
 def is_tool_definitions_hashable(
-    tool_definitions: list[types.MessagePart] | None,
+    tool_definitions: list[types.ToolDefinition] | None,
 ) -> bool:
-    return bool(tool_definitions) and all(
-        isinstance(x, (dict, str)) for x in tool_definitions
-    )
+    return bool(tool_definitions)
 
 
-def hash_tool_definitions(tool_definitions: list[types.MessagePart]) -> str:
-    serialized_parts: list[str] = []
+def hash_tool_definitions(tool_definitions: list[types.ToolDefinition]) -> str | None:
+    try:
+        tool_dicts = [
+            {k: v for k, v in dataclasses.asdict(t).items() if v is not None}
+            for t in tool_definitions
+        ]
 
-    for tool in tool_definitions:
-        if tool is None:
-            continue
+        encoded_tools = json.dumps(
+            tool_dicts,
+            sort_keys=True,
+        ).encode('utf-8')
 
-        if isinstance(tool, dict):
-            serialized_parts.append(json.dumps(tool, sort_keys=True))
-        else:
-            serialized_parts.append(str(tool))
+        return hashlib.sha256(
+            encoded_tools,
+            usedforsecurity=False,
+        ).hexdigest()
 
-    combined_string = "\n".join(serialized_parts)
-
-    return hashlib.sha256(
-        combined_string.encode("utf-8"),
-        usedforsecurity=False,
-    ).hexdigest()
+    except (TypeError, AttributeError):
+        return None
 
 
 class UploadCompletionHook(CompletionHook):
@@ -204,7 +204,7 @@ class UploadCompletionHook(CompletionHook):
     def _calculate_ref_path(
         self,
         system_instruction: list[types.MessagePart],
-        tool_definitions: list[types.MessagePart] | None = None,
+        tool_definitions: list[types.ToolDefinition] | None = None,
     ) -> CompletionRefs:
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
@@ -219,7 +219,7 @@ class UploadCompletionHook(CompletionHook):
             ).hexdigest()
 
         tool_definitions_hash = None
-        if tool_definitions and is_tool_definitions_hashable(tool_definitions):
+        if tool_definitions:
             tool_definitions_hash = hash_tool_definitions(tool_definitions)
 
         uuid_str = str(uuid4())
@@ -294,7 +294,7 @@ class UploadCompletionHook(CompletionHook):
         inputs: list[types.InputMessage],
         outputs: list[types.OutputMessage],
         system_instruction: list[types.MessagePart],
-        tool_definitions: list[types.MessagePart] | None = None,
+        tool_definitions: list[types.ToolDefinition] | None = None,
         span: Span | None = None,
         log_record: LogRecord | None = None,
         **kwargs: Any,
@@ -314,19 +314,12 @@ class UploadCompletionHook(CompletionHook):
         )
 
         def to_dict(
-            data_list: list[types.InputMessage]
+            dataclass_list: list[types.InputMessage]
             | list[types.OutputMessage]
-            | list[types.MessagePart],
+            | list[types.MessagePart]
+            | list[types.ToolDefinition]
         ) -> JsonEncodeable:
-            response: JsonEncodeable = []
-            for data in data_list:
-                if isinstance(data, dict):
-                    response.append(data)  # type: ignore
-                elif isinstance(data, str):
-                    response.append({"content": data})
-                else:
-                    response.append(asdict(data))
-            return response
+            return [asdict(dc) for dc in dataclass_list]
 
         references = [
             (ref_name, ref, ref_attr, contents_hashed_to_filename)
