@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-psycopg2`: Add parameter `capture_parameters` to instrumentor.
+  ([#4212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4212))
+
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
 ### Added
