@@ -338,6 +338,32 @@ async def _to_tool_definition_async(
     return _to_tool_definition_common(tool)
 
 
+def _tool_def_without_parameters_attr(
+    tool_def: list[ToolDefinition],
+) -> dict[str, AttributeValue]:
+    if tool_def == []:
+        return {}
+
+    result = []
+    for td in tool_def:
+        if isinstance(td, FunctionToolDefinition):
+            result.append(
+                FunctionToolDefinition(
+                    name=td.name,
+                    description=td.description,
+                    parameters=None,
+                )
+            )
+        else:
+            result.append(td)
+
+    return {
+        GEN_AI_TOOL_DEFINITIONS: [
+            dataclasses.asdict(tool_def) for tool_def in result
+        ],
+    }
+
+
 def _create_request_attributes(
     config: Optional[GenerateContentConfigOrDict],
     allow_list: AllowList,
@@ -701,11 +727,12 @@ class _GenerateContentInstrumentationHelper:
             | request_attributes
             | final_attributes,
         )
+        tool_definitions = tool_definitions or []
         self.completion_hook.on_completion(
             inputs=input_messages,
             outputs=output_messages,
             system_instruction=system_instructions,
-            tool_definitions=tool_definitions or [],
+            tool_definitions=tool_definitions,
             span=span,
             log_record=event,
         )
@@ -713,7 +740,7 @@ class _GenerateContentInstrumentationHelper:
             input_messages,
             output_messages,
             system_instructions,
-            tool_definitions or [],
+            tool_definitions,
         )
         if self._content_recording_enabled in [
             ContentCapturingMode.EVENT_ONLY,
@@ -723,6 +750,15 @@ class _GenerateContentInstrumentationHelper:
                 **(event.attributes or {}),
                 **completion_details_attributes,
             }
+        else:
+            tool_def_without_params_attr = _tool_def_without_parameters_attr(
+                tool_definitions
+            )
+            event.attributes = {
+                **(event.attributes or {}),
+                **tool_def_without_params_attr,
+            }
+
         self._otel_wrapper.log_completion_details(event=event)
 
         if self._content_recording_enabled in [
@@ -736,6 +772,16 @@ class _GenerateContentInstrumentationHelper:
                 }
             )
             # request attributes were already set on the span..
+        else:
+            tool_def_without_params_attr = _tool_def_without_parameters_attr(
+                tool_definitions
+            )
+            span.set_attributes(
+                {
+                    k: gen_ai_json_dumps(v)
+                    for k, v in tool_def_without_params_attr.items()
+                }
+            )
 
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
