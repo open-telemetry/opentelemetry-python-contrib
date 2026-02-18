@@ -32,11 +32,13 @@ from opentelemetry.trace import (
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
+    AgentCreation,
     Error,
     InputMessage,
     LLMInvocation,
     MessagePart,
     OutputMessage,
+    _BaseAgent,
 )
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
@@ -44,6 +46,21 @@ from opentelemetry.util.genai.utils import (
     get_content_capturing_mode,
     is_experimental_mode,
     should_emit_event,
+)
+
+
+def _agent_attr(name: str, fallback: str) -> str:
+    """Get a semconv attribute, falling back to a string literal if not yet in the package."""
+    return getattr(GenAI, name, fallback)
+
+
+_GEN_AI_AGENT_NAME = _agent_attr("GEN_AI_AGENT_NAME", "gen_ai.agent.name")
+_GEN_AI_AGENT_ID = _agent_attr("GEN_AI_AGENT_ID", "gen_ai.agent.id")
+_GEN_AI_AGENT_DESCRIPTION = _agent_attr(
+    "GEN_AI_AGENT_DESCRIPTION", "gen_ai.agent.description"
+)
+_GEN_AI_AGENT_VERSION = _agent_attr(
+    "GEN_AI_AGENT_VERSION", "gen_ai.agent.version"
 )
 
 
@@ -279,6 +296,75 @@ def _get_llm_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
+def _get_base_agent_common_attributes(
+    agent: _BaseAgent,
+) -> dict[str, Any]:
+    """Get common attributes shared by all agent operations (invoke_agent, create_agent)."""
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_MODEL, agent.model),
+        (GenAI.GEN_AI_PROVIDER_NAME, agent.provider),
+        (_GEN_AI_AGENT_NAME, agent.name),
+        (_GEN_AI_AGENT_ID, agent.agent_id),
+        (_GEN_AI_AGENT_DESCRIPTION, agent.description),
+        (_GEN_AI_AGENT_VERSION, agent.version),
+        (server_attributes.SERVER_ADDRESS, agent.server_address),
+        (server_attributes.SERVER_PORT, agent.server_port),
+    )
+
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: agent.operation_name,
+        **{key: value for key, value in optional_attrs if value is not None},
+    }
+
+
+def _get_base_agent_span_name(agent: _BaseAgent) -> str:
+    """Get the span name for any agent operation."""
+    if agent.name:
+        return f"{agent.operation_name} {agent.name}"
+    return agent.operation_name
+
+
+def _get_creation_common_attributes(
+    creation: AgentCreation,
+) -> dict[str, Any]:
+    """Get common agent creation attributes."""
+    return _get_base_agent_common_attributes(creation)
+
+
+def _get_creation_span_name(creation: AgentCreation) -> str:
+    """Get the span name for an agent creation."""
+    return _get_base_agent_span_name(creation)
+
+
+def _apply_creation_finish_attributes(
+    span: Span, creation: AgentCreation
+) -> None:
+    """Apply attributes common to agent creation finish() paths."""
+    span.update_name(_get_creation_span_name(creation))
+
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_creation_common_attributes(creation))
+
+    # System instructions (Opt-In)
+    if (
+        is_experimental_mode()
+        and get_content_capturing_mode()
+        in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+        and creation.system_instructions
+    ):
+        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
+            [asdict(p) for p in creation.system_instructions]
+        )
+
+    attributes.update(creation.attributes)
+
+    if attributes:
+        span.set_attributes(attributes)
+
+
 __all__ = [
     "_apply_llm_finish_attributes",
     "_apply_error_attributes",
@@ -287,4 +373,13 @@ __all__ = [
     "_get_llm_response_attributes",
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
+    "_GEN_AI_AGENT_NAME",
+    "_GEN_AI_AGENT_ID",
+    "_GEN_AI_AGENT_DESCRIPTION",
+    "_GEN_AI_AGENT_VERSION",
+    "_get_base_agent_common_attributes",
+    "_get_base_agent_span_name",
+    "_apply_creation_finish_attributes",
+    "_get_creation_common_attributes",
+    "_get_creation_span_name",
 ]

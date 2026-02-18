@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add `_BaseAgent` shared base class and `AgentCreation` type for agent creation lifecycle spans
+  ([#4217](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4217))
+
 ## Version 0.3b0 (2026-02-20)
 
 - Add `gen_ai.tool_definitions` to completion hook ([#4181](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4181))
