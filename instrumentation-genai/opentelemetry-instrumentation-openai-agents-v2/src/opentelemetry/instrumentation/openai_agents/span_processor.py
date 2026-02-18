@@ -2043,23 +2043,13 @@ class GenAISemanticProcessor(TracingProcessor):
             if self._capture_tool_definitions and hasattr(
                 span_data.response, "tools"
             ):
-
-                def _serialize_tool_value(value: Any) -> Optional[str]:
-                    if value is None:
-                        return None
-                    return {
-                        "name": getattr(value, "name", None),
-                        "type": getattr(value, "type", None),
-                        "description": getattr(value, "description", None),
-                        "parameters": getattr(value, "parameters", None),
-                    }
-
                 yield (
                     GEN_AI_TOOL_DEFINITIONS,
                     safe_json_dumps(
                         list(
                             map(
-                                _serialize_tool_value, span_data.response.tools
+                                lambda tool: tool.to_dict(),
+                                span_data.response.tools,
                             )
                         )
                     ),

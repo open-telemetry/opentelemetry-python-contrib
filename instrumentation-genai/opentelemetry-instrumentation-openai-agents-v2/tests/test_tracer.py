@@ -25,6 +25,7 @@ from agents.tracing import (  # noqa: E402
     set_trace_processors,
     trace,
 )
+from openai.types.responses import FunctionTool  # noqa: E402
 
 from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
@@ -61,6 +62,9 @@ GEN_AI_INPUT_MESSAGES = getattr(
 )
 GEN_AI_OUTPUT_MESSAGES = getattr(
     GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
+)
+GEN_AI_TOOL_DEFINITIONS = getattr(
+    GenAI, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
 )
 
 
@@ -484,26 +488,29 @@ def test_response_span_records_response_attributes():
             self.input_tokens = input_tokens
             self.output_tokens = output_tokens
 
-    class _FunctionTool:
-        def __init__(self) -> None:
-            self.name = "get_current_weather"
-            self.type = "function"
-            self.description = "Get the current weather in a given location"
-            self.parameters = {
-                "type": "object",
-                "properties": {
-                    "location": {"title": "Location", "type": "string"},
-                },
-                "required": ["location"],
-            }
-
     class _Response:
         def __init__(self) -> None:
             self.id = "resp-123"
             self.instructions = "You are a helpful assistant."
             self.model = "gpt-4o-mini"
             self.usage = _Usage(42, 9)
-            self.tools = [_FunctionTool()]
+            self.tools = [
+                FunctionTool(
+                    name="get_current_weather",
+                    type="function",
+                    description="Get the current weather in a given location",
+                    parameters={
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "title": "Location",
+                                "type": "string",
+                            },
+                        },
+                        "required": ["location"],
+                    },
+                )
+            ]
             self.output = [{"finish_reason": "stop"}]
 
     try:
@@ -539,7 +546,7 @@ def test_response_span_records_response_attributes():
             {"type": "text", "content": "You are a helpful assistant."}
         ]
         tool_definitions = json.loads(
-            response.attributes[GenAI.GEN_AI_TOOL_DEFINITIONS]
+            response.attributes[GEN_AI_TOOL_DEFINITIONS]
         )
         assert tool_definitions == [
             {
