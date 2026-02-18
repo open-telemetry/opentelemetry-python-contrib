@@ -50,35 +50,50 @@ def _get_db_name_from_cursor(vendor, cursor):
         return None
 
     vendor = vendor.lower()
+    db_name = None
     if "postgres" in vendor:
         info = getattr(getattr(cursor, "connection", None), "info", None)
-        return info.dbname if info and hasattr(info, "dbname") else None
-    if "mysql" in vendor:
-        # mysql-connector with c-extension uses _cnx
-        connection = getattr(cursor, "connection", None) or getattr(
-            cursor, "_cnx", None
-        )
-        if connection:
-            if hasattr(connection, "database"):
-                return connection.database
-            if hasattr(connection, "db"):
-                db_name = connection.db
-                return (
-                    db_name.decode("utf-8")
-                    if isinstance(db_name, bytes)
-                    else db_name
-                )
-    if "mssql" in vendor or "sqlserver" in vendor:
-        connection = getattr(cursor, "connection", None)
-        if connection:
-            if hasattr(connection, "database"):
-                return connection.database
-            if hasattr(connection, "db"):
-                return connection.db
-            info = getattr(connection, "info", None)
-            if info and hasattr(info, "database"):
-                return info.database
+        if info and hasattr(info, "dbname"):
+            db_name = info.dbname
+    elif "mysql" in vendor:
+        db_name = _get_mysql_db_name(cursor)
+    elif "mssql" in vendor or "sqlserver" in vendor:
+        db_name = _get_mssql_db_name(cursor)
+    return db_name
 
+
+def _get_mysql_db_name(cursor):
+    """Extract database name from MySQL cursor."""
+    # mysql-connector with c-extension uses _cnx
+    connection = getattr(cursor, "connection", None) or getattr(
+        cursor, "_cnx", None
+    )
+    if not connection:
+        return None
+    if hasattr(connection, "database"):
+        return connection.database
+    if hasattr(connection, "db"):
+        raw_db_name = connection.db
+        return (
+            raw_db_name.decode("utf-8")
+            if isinstance(raw_db_name, bytes)
+            else raw_db_name
+        )
+    return None
+
+
+def _get_mssql_db_name(cursor):
+    """Extract database name from MSSQL cursor."""
+    connection = getattr(cursor, "connection", None)
+    if not connection:
+        return None
+    if hasattr(connection, "database"):
+        return connection.database
+    if hasattr(connection, "db"):
+        return connection.db
+    info = getattr(connection, "info", None)
+    if info and hasattr(info, "database"):
+        return info.database
     return None
 
 
