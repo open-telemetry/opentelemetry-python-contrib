@@ -70,8 +70,14 @@ def _get_db_name_from_cursor(vendor, cursor):
                 )
     if "mssql" in vendor or "sqlserver" in vendor:
         connection = getattr(cursor, "connection", None)
-        if connection and hasattr(connection, "database"):
-            return connection.database
+        if connection:
+            if hasattr(connection, "database"):
+                return connection.database
+            if hasattr(connection, "db"):
+                return connection.db
+            info = getattr(connection, "info", None)
+            if info and hasattr(info, "database"):
+                return info.database
 
     return None
 
@@ -369,6 +375,9 @@ class EngineTracer:
             db_name = conn.engine.url.database
         else:
             db_name = _get_db_name_from_cursor(self.vendor, cursor)
+            # Fallback to URL if cursor-based extraction failed
+            if not db_name:
+                db_name = conn.engine.url.database
 
         span = self.tracer.start_span(
             self._operation_name(db_name, statement),
