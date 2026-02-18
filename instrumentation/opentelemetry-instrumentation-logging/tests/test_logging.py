@@ -145,13 +145,13 @@ class TestLoggingInstrumentor(TestBase):
         self.assertFalse(basic_config_mock.called)
         LoggingInstrumentor().uninstrument()
 
-        # Clear handlers to ensure basicConfig is called
-        root = logging.getLogger()
-        for handler in root.handlers[:]:
-            root.removeHandler(handler)
-
-        with mock.patch.dict(
-            "os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"}
+        with (
+            mock.patch.object(
+                logging.getLogger(), "hasHandlers", return_value=False
+            ),
+            mock.patch.dict(
+                "os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"}
+            ),
         ):
             LoggingInstrumentor().instrument()
             basic_config_mock.assert_called_with(
@@ -165,18 +165,18 @@ class TestLoggingInstrumentor(TestBase):
         self.assertFalse(basic_config_mock.called)
         LoggingInstrumentor().uninstrument()
 
-        # Clear handlers to ensure basicConfig is called
-        root = logging.getLogger()
-        for handler in root.handlers[:]:
-            root.removeHandler(handler)
-
-        with mock.patch.dict(
-            "os.environ",
-            {
-                "OTEL_PYTHON_LOG_CORRELATION": "true",
-                "OTEL_PYTHON_LOG_FORMAT": "%(message)s %(otelSpanID)s",
-                "OTEL_PYTHON_LOG_LEVEL": "error",
-            },
+        with (
+            mock.patch.object(
+                logging.getLogger(), "hasHandlers", return_value=False
+            ),
+            mock.patch.dict(
+                "os.environ",
+                {
+                    "OTEL_PYTHON_LOG_CORRELATION": "true",
+                    "OTEL_PYTHON_LOG_FORMAT": "%(message)s %(otelSpanID)s",
+                    "OTEL_PYTHON_LOG_LEVEL": "error",
+                },
+            ),
         ):
             LoggingInstrumentor().instrument()
             basic_config_mock.assert_called_with(
@@ -187,19 +187,18 @@ class TestLoggingInstrumentor(TestBase):
     def test_custom_format_and_level_api(self, basic_config_mock):  # pylint: disable=no-self-use
         LoggingInstrumentor().uninstrument()
 
-        # Clear handlers to ensure basicConfig is called
-        root = logging.getLogger()
-        for handler in root.handlers[:]:
-            root.removeHandler(handler)
-
-        LoggingInstrumentor().instrument(
-            set_logging_format=True,
-            logging_format="%(message)s span_id=%(otelSpanID)s",
-            log_level=logging.WARNING,
-        )
-        basic_config_mock.assert_called_with(
-            format="%(message)s span_id=%(otelSpanID)s", level=logging.WARNING
-        )
+        with mock.patch.object(
+            logging.getLogger(), "hasHandlers", return_value=False
+        ):
+            LoggingInstrumentor().instrument(
+                set_logging_format=True,
+                logging_format="%(message)s span_id=%(otelSpanID)s",
+                log_level=logging.WARNING,
+            )
+            basic_config_mock.assert_called_with(
+                format="%(message)s span_id=%(otelSpanID)s",
+                level=logging.WARNING,
+            )
 
     def test_log_hook(self):
         LoggingInstrumentor().uninstrument()
