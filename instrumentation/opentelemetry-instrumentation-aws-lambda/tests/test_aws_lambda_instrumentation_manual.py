@@ -28,6 +28,11 @@ from opentelemetry.instrumentation.aws_lambda import (
     OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT,
     AwsLambdaInstrumentor,
 )
+from opentelemetry.instrumentation.propagators import (
+    TraceResponsePropagator,
+    get_global_response_propagator,
+    set_global_response_propagator,
+)
 from opentelemetry.propagate import get_global_textmap
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_ID_FIRST_PART_LENGTH,
@@ -53,7 +58,13 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
+from opentelemetry.trace import (
+    NoOpTracerProvider,
+    SpanKind,
+    StatusCode,
+    format_span_id,
+    format_trace_id,
+)
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
@@ -579,7 +590,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
 
         AwsLambdaInstrumentor().instrument()
 
-        mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
+        response = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -603,6 +614,52 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
                 HTTP_STATUS_CODE: 200,
             },
         )
+        self.assertNotIn("headers", response)
+
+    def test_api_gateway_proxy_event_response_header(self):
+        handler_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.rest_api_handler"},
+        )
+        handler_patch.start()
+
+        orig = get_global_response_propagator()
+        set_global_response_propagator(TraceResponsePropagator())
+
+        AwsLambdaInstrumentor().instrument()
+
+        response = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
+
+        ctx = self.memory_exporter.get_finished_spans()[0].get_span_context()
+        trace_id = format_trace_id(ctx.trace_id)
+        span_id = format_span_id(ctx.span_id)
+        trace_flags = format(ctx.trace_flags, "02x")
+        self.assertEqual(
+            response["headers"]["traceresponse"],
+            f"00-{trace_id}-{span_id}-{trace_flags}",
+        )
+
+        set_global_response_propagator(orig)
+
+    def test_api_gateway_http_api_proxy_event_response_headers_not_set(self):
+        handler_patch = mock.patch.dict(
+            "os.environ",
+            {
+                _HANDLER: "tests.mocks.lambda_function.http_api_inferred_response_handler"
+            },
+        )
+        handler_patch.start()
+
+        orig = get_global_response_propagator()
+        set_global_response_propagator(TraceResponsePropagator())
+
+        AwsLambdaInstrumentor().instrument()
+
+        response = mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
+
+        self.assertEqual(response, {"message": "Hello from Lambda!"})
+
+        set_global_response_propagator(orig)
 
     def test_api_gateway_http_api_proxy_event_sets_attributes(self):
         AwsLambdaInstrumentor().instrument()
