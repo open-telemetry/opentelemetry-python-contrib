@@ -202,6 +202,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        capture_parameters = kwargs.get("capture_parameters", False)
         dbapi.wrap_connect(
             __name__,
             psycopg2,
@@ -214,6 +215,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     def _uninstrument(self, **kwargs):
