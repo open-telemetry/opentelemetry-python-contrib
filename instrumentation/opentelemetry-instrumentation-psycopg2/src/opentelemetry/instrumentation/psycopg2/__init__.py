@@ -136,6 +136,19 @@ setting.
 Warning:
     Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
+Capture parameters
+******************
+By default, only statements are captured, without the associated query parameters.
+To capture query parameters in the span attribute `db.statement.parameters`, enable `capture_parameters`.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+
+    Psycopg2Instrumentor().instrument(
+        capture_parameters=True,
+    )
+
 API
 ---
 """
