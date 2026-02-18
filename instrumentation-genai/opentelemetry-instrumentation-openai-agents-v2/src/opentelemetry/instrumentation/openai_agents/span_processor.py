@@ -107,14 +107,27 @@ class GenAIProvider:
 _OPERATION_VALUES = _enum_values(GenAIAttributes.GenAiOperationNameValues)
 
 
+def _operation_value(member: str, fallback: str) -> str:
+    return _OPERATION_VALUES.get(member, fallback)
+
+
 class GenAIOperationName:
-    CHAT = _OPERATION_VALUES["CHAT"]
-    GENERATE_CONTENT = _OPERATION_VALUES["GENERATE_CONTENT"]
-    TEXT_COMPLETION = _OPERATION_VALUES["TEXT_COMPLETION"]
-    EMBEDDINGS = _OPERATION_VALUES["EMBEDDINGS"]
-    CREATE_AGENT = _OPERATION_VALUES["CREATE_AGENT"]
-    INVOKE_AGENT = _OPERATION_VALUES["INVOKE_AGENT"]
-    EXECUTE_TOOL = _OPERATION_VALUES["EXECUTE_TOOL"]
+    CHAT = _operation_value("CHAT", "chat")
+    GENERATE_CONTENT = _operation_value("GENERATE_CONTENT", "generate_content")
+    TEXT_COMPLETION = _operation_value("TEXT_COMPLETION", "text_completion")
+    EMBEDDINGS = _operation_value("EMBEDDINGS", "embeddings")
+    CREATE_AGENT = _operation_value("CREATE_AGENT", "create_agent")
+    INVOKE_AGENT = _operation_value("INVOKE_AGENT", "invoke_agent")
+    EXECUTE_TOOL = _operation_value("EXECUTE_TOOL", "execute_tool")
+    SEARCH_MEMORY = _operation_value("SEARCH_MEMORY", "search_memory")
+    UPDATE_MEMORY = _operation_value("UPDATE_MEMORY", "update_memory")
+    DELETE_MEMORY = _operation_value("DELETE_MEMORY", "delete_memory")
+    CREATE_MEMORY_STORE = _operation_value(
+        "CREATE_MEMORY_STORE", "create_memory_store"
+    )
+    DELETE_MEMORY_STORE = _operation_value(
+        "DELETE_MEMORY_STORE", "delete_memory_store"
+    )
     # Operations below are not yet covered by the spec but remain for backwards compatibility
     TRANSCRIPTION = "transcription"
     SPEECH = "speech_generation"
@@ -127,6 +140,14 @@ class GenAIOperationName:
         "responsespan": RESPONSE,
         "functionspan": EXECUTE_TOOL,
         "agentspan": INVOKE_AGENT,
+    }
+
+    MEMORY_OPERATIONS = {
+        SEARCH_MEMORY,
+        UPDATE_MEMORY,
+        DELETE_MEMORY,
+        CREATE_MEMORY_STORE,
+        DELETE_MEMORY_STORE,
     }
 
 
@@ -220,6 +241,36 @@ GEN_AI_OUTPUT_MESSAGES = _attr(
     "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
 )
 GEN_AI_DATA_SOURCE_ID = _attr("GEN_AI_DATA_SOURCE_ID", "gen_ai.data_source.id")
+GEN_AI_MEMORY_STORE_ID = _attr(
+    "GEN_AI_MEMORY_STORE_ID", "gen_ai.memory.store.id"
+)
+GEN_AI_MEMORY_STORE_NAME = _attr(
+    "GEN_AI_MEMORY_STORE_NAME", "gen_ai.memory.store.name"
+)
+GEN_AI_MEMORY_ID = _attr("GEN_AI_MEMORY_ID", "gen_ai.memory.id")
+GEN_AI_MEMORY_TYPE = _attr("GEN_AI_MEMORY_TYPE", "gen_ai.memory.type")
+GEN_AI_MEMORY_SCOPE = _attr("GEN_AI_MEMORY_SCOPE", "gen_ai.memory.scope")
+GEN_AI_MEMORY_CONTENT = _attr("GEN_AI_MEMORY_CONTENT", "gen_ai.memory.content")
+GEN_AI_MEMORY_QUERY = _attr("GEN_AI_MEMORY_QUERY", "gen_ai.memory.query")
+GEN_AI_MEMORY_NAMESPACE = _attr(
+    "GEN_AI_MEMORY_NAMESPACE", "gen_ai.memory.namespace"
+)
+GEN_AI_MEMORY_SEARCH_RESULT_COUNT = _attr(
+    "GEN_AI_MEMORY_SEARCH_RESULT_COUNT", "gen_ai.memory.search.result.count"
+)
+GEN_AI_MEMORY_SEARCH_SIMILARITY_THRESHOLD = _attr(
+    "GEN_AI_MEMORY_SEARCH_SIMILARITY_THRESHOLD",
+    "gen_ai.memory.search.similarity.threshold",
+)
+GEN_AI_MEMORY_EXPIRATION_DATE = _attr(
+    "GEN_AI_MEMORY_EXPIRATION_DATE", "gen_ai.memory.expiration_date"
+)
+GEN_AI_MEMORY_IMPORTANCE = _attr(
+    "GEN_AI_MEMORY_IMPORTANCE", "gen_ai.memory.importance"
+)
+GEN_AI_MEMORY_UPDATE_STRATEGY = _attr(
+    "GEN_AI_MEMORY_UPDATE_STRATEGY", "gen_ai.memory.update.strategy"
+)
 
 # The semantic conventions currently expose multiple usage token attributes; we retain the
 # completion/prompt aliases for backwards compatibility where used.
@@ -395,6 +446,7 @@ def get_span_name(
     model: Optional[str] = None,
     agent_name: Optional[str] = None,
     tool_name: Optional[str] = None,
+    memory_store_name: Optional[str] = None,
 ) -> str:
     """Generate spec-compliant span name based on operation type."""
     base_name = operation_name
@@ -419,6 +471,13 @@ def get_span_name(
 
     if operation_name == GenAIOperationName.HANDOFF:
         return f"{base_name} {agent_name}" if agent_name else base_name
+
+    if operation_name in GenAIOperationName.MEMORY_OPERATIONS:
+        return (
+            f"{base_name} {memory_store_name}"
+            if memory_store_name
+            else base_name
+        )
 
     return base_name
 
@@ -1258,6 +1317,9 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _get_span_kind(self, span_data: Any) -> SpanKind:
         """Determine appropriate span kind based on span data type."""
+        operation_name = self._extract_operation_name(span_data)
+        if operation_name in GenAIOperationName.MEMORY_OPERATIONS:
+            return SpanKind.CLIENT
         if _is_instance_of(span_data, FunctionSpanData):
             return SpanKind.INTERNAL  # Tool execution is internal
         if _is_instance_of(
@@ -1353,9 +1415,16 @@ class GenAISemanticProcessor(TracingProcessor):
             if _is_instance_of(span.span_data, FunctionSpanData)
             else None
         )
+        memory_store_name = self._get_memory_store_name(span.span_data)
 
         # Generate spec-compliant span name
-        span_name = get_span_name(operation_name, model, agent_name, tool_name)
+        span_name = get_span_name(
+            operation_name,
+            model,
+            agent_name,
+            tool_name,
+            memory_store_name,
+        )
 
         attributes = {
             GEN_AI_PROVIDER_NAME: self.system_name,
@@ -1436,21 +1505,30 @@ class GenAISemanticProcessor(TracingProcessor):
                 otel_span.set_attribute(key, value)
                 attributes[key] = value
 
-            if _is_instance_of(
-                span.span_data, (GenerationSpanData, ResponseSpanData)
-            ):
-                operation_name = attributes.get(GEN_AI_OPERATION_NAME)
+            operation_name = attributes.get(GEN_AI_OPERATION_NAME)
+            if operation_name:
                 model_for_name = attributes.get(GEN_AI_REQUEST_MODEL) or (
                     attributes.get(GEN_AI_RESPONSE_MODEL)
                 )
-                if operation_name and model_for_name:
-                    agent_name_for_name = attributes.get(GEN_AI_AGENT_NAME)
-                    tool_name_for_name = attributes.get(GEN_AI_TOOL_NAME)
+                agent_name_for_name = attributes.get(GEN_AI_AGENT_NAME)
+                tool_name_for_name = attributes.get(GEN_AI_TOOL_NAME)
+                memory_store_name_for_name = attributes.get(
+                    GEN_AI_MEMORY_STORE_NAME
+                )
+                should_update_name = False
+                if _is_instance_of(
+                    span.span_data, (GenerationSpanData, ResponseSpanData)
+                ):
+                    should_update_name = model_for_name is not None
+                elif operation_name in GenAIOperationName.MEMORY_OPERATIONS:
+                    should_update_name = memory_store_name_for_name is not None
+                if should_update_name:
                     new_name = get_span_name(
                         operation_name,
                         model_for_name,
                         agent_name_for_name,
                         tool_name_for_name,
+                        memory_store_name_for_name,
                     )
                     if new_name != otel_span.name:
                         otel_span.update_name(new_name)
@@ -1506,8 +1584,364 @@ class GenAISemanticProcessor(TracingProcessor):
         """Force flush (no-op for this processor)."""
         pass
 
+    @staticmethod
+    def _normalize_operation_name(operation: Any) -> Optional[str]:
+        if not isinstance(operation, str):
+            return None
+        normalized = "_".join(
+            operation.strip().lower().replace("-", "_").split()
+        )
+        operation_map = {
+            "chat": GenAIOperationName.CHAT,
+            "generate_content": GenAIOperationName.GENERATE_CONTENT,
+            "text_completion": GenAIOperationName.TEXT_COMPLETION,
+            "embeddings": GenAIOperationName.EMBEDDINGS,
+            "create": GenAIOperationName.CREATE_AGENT,
+            "create_agent": GenAIOperationName.CREATE_AGENT,
+            "invoke": GenAIOperationName.INVOKE_AGENT,
+            "invoke_agent": GenAIOperationName.INVOKE_AGENT,
+            "execute_tool": GenAIOperationName.EXECUTE_TOOL,
+            "search_memory": GenAIOperationName.SEARCH_MEMORY,
+            "memory_search": GenAIOperationName.SEARCH_MEMORY,
+            "update_memory": GenAIOperationName.UPDATE_MEMORY,
+            "upsert_memory": GenAIOperationName.UPDATE_MEMORY,
+            "delete_memory": GenAIOperationName.DELETE_MEMORY,
+            "create_memory_store": GenAIOperationName.CREATE_MEMORY_STORE,
+            "delete_memory_store": GenAIOperationName.DELETE_MEMORY_STORE,
+            "transcription": GenAIOperationName.TRANSCRIPTION,
+            "speech_generation": GenAIOperationName.SPEECH,
+            "guardrail_check": GenAIOperationName.GUARDRAIL,
+            "agent_handoff": GenAIOperationName.HANDOFF,
+        }
+        if normalized in operation_map:
+            return operation_map[normalized]
+
+        for candidate, value in operation_map.items():
+            if normalized.startswith(f"{candidate}_"):
+                return value
+        return None
+
+    @staticmethod
+    def _span_data_payload(span_data: Any) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        export = getattr(span_data, "export", None)
+        if not callable(export):
+            return payload
+        try:
+            exported = export()
+        except Exception:
+            return payload
+        if not isinstance(exported, dict):
+            return payload
+
+        payload.update(exported)
+        nested_data = exported.get("data")
+        if isinstance(nested_data, dict):
+            payload.update(nested_data)
+        return payload
+
+    @staticmethod
+    def _first_non_none(*values: Any) -> Any:
+        for value in values:
+            if value is not None:
+                return value
+        return None
+
+    @staticmethod
+    def _to_int(value: Any) -> Optional[int]:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _to_float(value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return None
+        return None
+
+    def _extract_operation_name(self, span_data: Any) -> Optional[str]:
+        payload = self._span_data_payload(span_data)
+        candidates = (
+            getattr(span_data, "operation", None),
+            getattr(span_data, "operation_name", None),
+            payload.get("operation"),
+            payload.get("operation_name"),
+            payload.get(GEN_AI_OPERATION_NAME),
+            payload.get("gen_ai.operation.name"),
+            payload.get("name"),
+            getattr(span_data, "name", None),
+            payload.get("type"),
+            getattr(span_data, "type", None),
+        )
+        for candidate in candidates:
+            normalized = self._normalize_operation_name(candidate)
+            if normalized:
+                return normalized
+        return None
+
+    @staticmethod
+    def _memory_value(
+        span_data: Any,
+        payload: dict[str, Any],
+        *keys: str,
+    ) -> Any:
+        for key in keys:
+            value = getattr(span_data, key, None)
+            if value is not None:
+                return value
+        for key in keys:
+            value = payload.get(key)
+            if value is not None:
+                return value
+        return None
+
+    def _get_memory_store_name(self, span_data: Any) -> Optional[str]:
+        payload = self._span_data_payload(span_data)
+        memory_store = payload.get("memory_store")
+        memory_store_name = self._first_non_none(
+            self._memory_value(
+                span_data,
+                payload,
+                "memory_store_name",
+                "store_name",
+                GEN_AI_MEMORY_STORE_NAME,
+                "gen_ai.memory.store.name",
+            ),
+            memory_store.get("name")
+            if isinstance(memory_store, dict)
+            else None,
+        )
+        return (
+            str(memory_store_name) if memory_store_name is not None else None
+        )
+
+    def _get_attributes_from_memory_span_data(
+        self,
+        span_data: Any,
+        operation_name: str,
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        payload = self._span_data_payload(span_data)
+        memory_store = payload.get("memory_store")
+        memory_item = payload.get("memory")
+
+        if not isinstance(memory_store, dict):
+            memory_store = {}
+        if not isinstance(memory_item, dict):
+            memory_item = {}
+
+        yield GEN_AI_OPERATION_NAME, operation_name
+
+        store_id = self._first_non_none(
+            self._memory_value(
+                span_data,
+                payload,
+                "memory_store_id",
+                "store_id",
+                GEN_AI_MEMORY_STORE_ID,
+                "gen_ai.memory.store.id",
+            ),
+            memory_store.get("id"),
+        )
+        if store_id is not None:
+            yield GEN_AI_MEMORY_STORE_ID, str(store_id)
+
+        store_name = self._first_non_none(
+            self._memory_value(
+                span_data,
+                payload,
+                "memory_store_name",
+                "store_name",
+                GEN_AI_MEMORY_STORE_NAME,
+                "gen_ai.memory.store.name",
+            ),
+            memory_store.get("name"),
+        )
+        if store_name is not None:
+            yield GEN_AI_MEMORY_STORE_NAME, str(store_name)
+
+        memory_id = self._first_non_none(
+            self._memory_value(
+                span_data,
+                payload,
+                "memory_id",
+                GEN_AI_MEMORY_ID,
+                "gen_ai.memory.id",
+            ),
+            memory_item.get("id"),
+        )
+        if memory_id is not None:
+            yield GEN_AI_MEMORY_ID, str(memory_id)
+
+        memory_type = self._first_non_none(
+            self._memory_value(
+                span_data,
+                payload,
+                "memory_type",
+                GEN_AI_MEMORY_TYPE,
+                "gen_ai.memory.type",
+            ),
+            memory_item.get("type"),
+        )
+        if memory_type is not None:
+            yield GEN_AI_MEMORY_TYPE, str(memory_type)
+
+        memory_scope = self._memory_value(
+            span_data,
+            payload,
+            "memory_scope",
+            GEN_AI_MEMORY_SCOPE,
+            "gen_ai.memory.scope",
+        )
+        if memory_scope is not None:
+            yield GEN_AI_MEMORY_SCOPE, str(memory_scope)
+
+        memory_namespace = self._memory_value(
+            span_data,
+            payload,
+            "memory_namespace",
+            GEN_AI_MEMORY_NAMESPACE,
+            "gen_ai.memory.namespace",
+        )
+        if memory_namespace is not None:
+            yield GEN_AI_MEMORY_NAMESPACE, str(memory_namespace)
+
+        query_value = self._memory_value(
+            span_data,
+            payload,
+            "memory_query",
+            "query",
+            GEN_AI_MEMORY_QUERY,
+            "gen_ai.memory.query",
+        )
+        if query_value is not None and self.include_sensitive_data:
+            yield GEN_AI_MEMORY_QUERY, str(query_value)
+
+        result_count = self._to_int(
+            self._memory_value(
+                span_data,
+                payload,
+                "result_count",
+                "results_count",
+                "memory_search_result_count",
+                GEN_AI_MEMORY_SEARCH_RESULT_COUNT,
+                "gen_ai.memory.search.result.count",
+            )
+        )
+        if result_count is not None:
+            yield GEN_AI_MEMORY_SEARCH_RESULT_COUNT, result_count
+
+        similarity_threshold = self._to_float(
+            self._memory_value(
+                span_data,
+                payload,
+                "similarity_threshold",
+                "score_threshold",
+                "memory_similarity_threshold",
+                GEN_AI_MEMORY_SEARCH_SIMILARITY_THRESHOLD,
+                "gen_ai.memory.search.similarity.threshold",
+            )
+        )
+        if similarity_threshold is not None:
+            yield (
+                GEN_AI_MEMORY_SEARCH_SIMILARITY_THRESHOLD,
+                similarity_threshold,
+            )
+
+        update_strategy = self._memory_value(
+            span_data,
+            payload,
+            "update_strategy",
+            "strategy",
+            GEN_AI_MEMORY_UPDATE_STRATEGY,
+            "gen_ai.memory.update.strategy",
+        )
+        if update_strategy is not None:
+            yield GEN_AI_MEMORY_UPDATE_STRATEGY, str(update_strategy)
+
+        memory_content = self._first_non_none(
+            self._memory_value(
+                span_data,
+                payload,
+                "memory_content",
+                GEN_AI_MEMORY_CONTENT,
+                "gen_ai.memory.content",
+            ),
+            memory_item.get("content"),
+            memory_item.get("value"),
+        )
+        if memory_content is not None and self.include_sensitive_data:
+            if isinstance(memory_content, (dict, list)):
+                yield GEN_AI_MEMORY_CONTENT, safe_json_dumps(memory_content)
+            else:
+                yield GEN_AI_MEMORY_CONTENT, str(memory_content)
+
+        expiration_date = self._memory_value(
+            span_data,
+            payload,
+            "expiration_date",
+            "expires_at",
+            GEN_AI_MEMORY_EXPIRATION_DATE,
+            "gen_ai.memory.expiration_date",
+        )
+        if expiration_date is not None:
+            yield GEN_AI_MEMORY_EXPIRATION_DATE, str(expiration_date)
+
+        importance = self._to_float(
+            self._memory_value(
+                span_data,
+                payload,
+                "importance",
+                GEN_AI_MEMORY_IMPORTANCE,
+                "gen_ai.memory.importance",
+            )
+        )
+        if importance is not None:
+            yield GEN_AI_MEMORY_IMPORTANCE, importance
+
+        agent_id = self._memory_value(
+            span_data,
+            payload,
+            "agent_id",
+            GEN_AI_AGENT_ID,
+            "gen_ai.agent.id",
+        )
+        if agent_id is not None:
+            yield GEN_AI_AGENT_ID, str(agent_id)
+
+        conversation_id = self._memory_value(
+            span_data,
+            payload,
+            "conversation_id",
+            "session_id",
+            "thread_id",
+            GEN_AI_CONVERSATION_ID,
+            "gen_ai.conversation.id",
+        )
+        if conversation_id is not None:
+            yield GEN_AI_CONVERSATION_ID, str(conversation_id)
+
     def _get_operation_name(self, span_data: Any) -> str:
         """Determine operation name from span data type."""
+        if operation_name := self._extract_operation_name(span_data):
+            return operation_name
         if _is_instance_of(span_data, GenerationSpanData):
             # Check if it's embeddings
             if hasattr(span_data, "embedding_dimension"):
@@ -1519,17 +1953,6 @@ class GenAISemanticProcessor(TracingProcessor):
                     return GenAIOperationName.CHAT
             return GenAIOperationName.TEXT_COMPLETION
         if _is_instance_of(span_data, AgentSpanData):
-            # Could be create_agent or invoke_agent based on context
-            operation = getattr(span_data, "operation", None)
-            normalized = (
-                operation.strip().lower()
-                if isinstance(operation, str)
-                else None
-            )
-            if normalized in {"create", "create_agent"}:
-                return GenAIOperationName.CREATE_AGENT
-            if normalized in {"invoke", "invoke_agent"}:
-                return GenAIOperationName.INVOKE_AGENT
             return GenAIOperationName.INVOKE_AGENT
         if _is_instance_of(span_data, FunctionSpanData):
             return GenAIOperationName.EXECUTE_TOOL
@@ -1575,6 +1998,13 @@ class GenAISemanticProcessor(TracingProcessor):
         # Server attributes
         for key, value in self._get_server_attributes().items():
             yield key, value
+
+        operation_name = self._get_operation_name(span_data)
+        if operation_name in GenAIOperationName.MEMORY_OPERATIONS:
+            yield from self._get_attributes_from_memory_span_data(
+                span_data, operation_name
+            )
+            return
 
         # Process different span types
         if _is_instance_of(span_data, GenerationSpanData):
