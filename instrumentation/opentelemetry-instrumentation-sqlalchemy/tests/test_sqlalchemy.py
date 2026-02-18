@@ -992,3 +992,75 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_cursor.connection = mock_connection
         result = _get_db_name_from_cursor("unknown_db", mock_cursor)
         self.assertIsNone(result)
+
+    def test_get_db_name_from_cursor_mysql_with_database_attr(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "mysql_test_db"
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        self.assertEqual(result, "mysql_test_db")
+
+    def test_get_db_name_from_cursor_mysql_with_db_attr_string(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.db = "mysql_test_db"
+        del mock_connection.database  # Remove database attribute
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        self.assertEqual(result, "mysql_test_db")
+
+    def test_get_db_name_from_cursor_mysql_with_db_attr_bytes(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.db = b"mysql_test_db"
+        del mock_connection.database  # Remove database attribute
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        self.assertEqual(result, "mysql_test_db")
+
+    def test_get_db_name_from_cursor_mysql_with_cnx_attr(self):
+        mock_cursor = mock.Mock()
+        mock_cnx = mock.Mock()
+        mock_cnx.database = "mysql_cnx_db"
+        mock_cursor.connection = None
+        mock_cursor._cnx = mock_cnx
+        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        self.assertEqual(result, "mysql_cnx_db")
+
+    def test_get_db_name_from_cursor_mssql_with_database_attr(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "mssql_test_db"
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor("mssql", mock_cursor)
+        self.assertEqual(result, "mssql_test_db")
+
+    def test_get_db_name_from_cursor_mysql_variant_names(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "test_db"
+        mock_cursor.connection = mock_connection
+        for vendor in ["mysql", "pymysql", "mysqlclient", "mysql+pymysql"]:
+            result = _get_db_name_from_cursor(vendor, mock_cursor)
+            self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
+
+    def test_get_db_name_from_cursor_mssql_variant_names(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "test_db"
+        mock_cursor.connection = mock_connection
+        for vendor in ["mssql", "mssql+pyodbc", "sqlserver"]:
+            result = _get_db_name_from_cursor(vendor, mock_cursor)
+            self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
+
+    def test_get_db_name_from_cursor_postgresql_variant_names(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_info = mock.Mock()
+        mock_info.dbname = "test_db"
+        mock_connection.info = mock_info
+        mock_cursor.connection = mock_connection
+        for vendor in ["postgresql", "postgres", "postgresql+psycopg2"]:
+            result = _get_db_name_from_cursor(vendor, mock_cursor)
+            self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")

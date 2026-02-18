@@ -45,10 +45,34 @@ from opentelemetry.trace.status import Status, StatusCode
 
 
 def _get_db_name_from_cursor(vendor, cursor):
-    if vendor == "postgresql":
+    """Return DB name from cursor for PostgreSQL, MySQL, or MSSQL -- else None"""
+    if not vendor:
+        return None
+
+    vendor = vendor.lower()
+    if "postgres" in vendor:
         info = getattr(getattr(cursor, "connection", None), "info", None)
-        if info and info.dbname:
-            return info.dbname
+        return info.dbname if info and hasattr(info, "dbname") else None
+    if "mysql" in vendor:
+        # mysql-connector with c-extension uses _cnx
+        connection = getattr(cursor, "connection", None) or getattr(
+            cursor, "_cnx", None
+        )
+        if connection:
+            if hasattr(connection, "database"):
+                return connection.database
+            if hasattr(connection, "db"):
+                db_name = connection.db
+                return (
+                    db_name.decode("utf-8")
+                    if isinstance(db_name, bytes)
+                    else db_name
+                )
+    if "mssql" in vendor or "sqlserver" in vendor:
+        connection = getattr(cursor, "connection", None)
+        if connection and hasattr(connection, "database"):
+            return connection.database
+
     return None
 
 
