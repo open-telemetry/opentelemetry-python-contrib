@@ -17,6 +17,7 @@ sys.modules.pop("agents", None)
 sys.modules.pop("agents.tracing", None)
 
 import agents.tracing as agents_tracing  # noqa: E402
+import openai  # noqa: E402
 from agents.tracing import (  # noqa: E402
     agent_span,
     function_span,
@@ -26,52 +27,37 @@ from agents.tracing import (  # noqa: E402
     trace,
 )
 from openai.types.responses import (  # noqa: E402
-    ResponseOutputMessage,
-    ResponseOutputText,
-    ResponseOutputRefusal,
+    ResponseCodeInterpreterToolCall,
+    ResponseComputerToolCall,
+    ResponseCustomToolCall,
     ResponseFileSearchToolCall,
     ResponseFunctionToolCall,
     ResponseFunctionWebSearch,
-    ResponseComputerToolCall,
+    ResponseOutputMessage,
+    ResponseOutputRefusal,
+    ResponseOutputText,
     ResponseReasoningItem,
-    ResponseCompactionItem,
-    ResponseCodeInterpreterToolCall,
-    ResponseFunctionShellToolCall,
-    ResponseFunctionShellToolCallOutput,
-    ResponseApplyPatchToolCall,
-    ResponseApplyPatchToolCallOutput,
-    ResponseCustomToolCall,
+)
+from openai.types.responses.response_code_interpreter_tool_call import (  # noqa: E402
+    OutputLogs,
+)
+from openai.types.responses.response_computer_tool_call import (  # noqa: E402
+    ActionClick,
+)
+from openai.types.responses.response_function_web_search import (  # noqa: E402
+    ActionSearch as ActionWebSearch,
 )
 from openai.types.responses.response_output_item import (  # noqa: E402
     ImageGenerationCall,
     LocalShellCall,
     LocalShellCallAction,
+    McpApprovalRequest,
     McpCall,
     McpListTools,
-    McpApprovalRequest,
     McpListToolsTool,
-)
-from openai.types.responses.response_apply_patch_tool_call import (  # noqa: E402
-    OperationCreateFile,
 )
 from openai.types.responses.response_reasoning_item import (  # noqa: E402
     Content,
-)
-from openai.types.responses.response_code_interpreter_tool_call import (  # noqa: E402
-    OutputLogs,
-)
-from openai.types.responses.response_function_shell_tool_call_output import (  # noqa: E402
-    Output,
-    OutputOutcomeExit,
-)
-from openai.types.responses.response_function_web_search import (  # noqa: E402
-    ActionSearch as ActionWebSearch,
-)
-from openai.types.responses.response_computer_tool_call import (  # noqa: E402
-    ActionClick,
-)
-from openai.types.responses.response_function_shell_tool_call import (  # noqa: E402
-    Action as ActionShellCall,
 )
 
 from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
@@ -528,6 +514,101 @@ def test_capture_mode_can_be_disabled():
 def test_response_span_records_response_attributes():
     instrumentor, exporter = _instrument_with_provider()
 
+    # dummy classes for some response types since concrete type is not available in older `openai` versions
+    class _ResponseCompactionItem:
+        def __init__(self, id: str, type: str, encrypted_content: str) -> None:
+            self.id = id
+            self.type = type
+            self.encrypted_content = encrypted_content
+
+    class _ActionShellCall(openai.BaseModel):
+        def __init__(
+            self, commands: list[str], max_output_length: int, timeout_ms: int
+        ) -> None:
+            super().__init__(
+                commands=commands,
+                max_output_length=max_output_length,
+                timeout_ms=timeout_ms,
+            )
+
+    class _ResponseFunctionShellToolCall(openai.BaseModel):
+        def __init__(
+            self,
+            id: str,
+            type: str,
+            status: str,
+            call_id: str,
+            action: _ActionShellCall,
+        ) -> None:
+            super().__init__(
+                id=id, type=type, status=status, call_id=call_id, action=action
+            )
+
+    class _OutputOutcomeExit(openai.BaseModel):
+        def __init__(self, type: str, exit_code: int) -> None:
+            super().__init__(type=type, exit_code=exit_code)
+
+    class _ShellToolCallOutput(openai.BaseModel):
+        def __init__(
+            self, stdout: str, stderr: str, outcome: _OutputOutcomeExit
+        ) -> None:
+            super().__init__(stdout=stdout, stderr=stderr, outcome=outcome)
+
+    class _ResponseFunctionShellToolCallOutput(openai.BaseModel):
+        def __init__(
+            self,
+            id: str,
+            type: str,
+            status: str,
+            call_id: str,
+            output: list[_ShellToolCallOutput],
+        ) -> None:
+            super().__init__(
+                id=id, type=type, status=status, call_id=call_id, output=output
+            )
+
+    class _OperationCreateFile(openai.BaseModel):
+        def __init__(self, type: str, diff: str, path: str) -> None:
+            super().__init__(type=type, diff=diff, path=path)
+
+    class _ResponseApplyPatchToolCall(openai.BaseModel):
+        def __init__(
+            self,
+            id: str,
+            type: str,
+            status: str,
+            created_by: str,
+            call_id: str,
+            operation: _OperationCreateFile,
+        ) -> None:
+            super().__init__(
+                id=id,
+                type=type,
+                status=status,
+                created_by=created_by,
+                call_id=call_id,
+                operation=operation,
+            )
+
+    class _ResponseApplyPatchToolCallOutput(openai.BaseModel):
+        def __init__(
+            self,
+            id: str,
+            type: str,
+            created_by: str,
+            call_id: str,
+            status: str,
+            output: str,
+        ) -> None:
+            super().__init__(
+                id=id,
+                type=type,
+                created_by=created_by,
+                call_id=call_id,
+                status=status,
+                output=output,
+            )
+
     class _Usage:
         def __init__(self, input_tokens: int, output_tokens: int) -> None:
             self.input_tokens = input_tokens
@@ -574,7 +655,7 @@ def test_response_span_records_response_attributes():
                     ],
                 ),
                 # compaction
-                ResponseCompactionItem(
+                _ResponseCompactionItem(
                     id="compact-1",
                     type="compaction",
                     encrypted_content="encrypted_data",
@@ -644,46 +725,48 @@ def test_response_span_records_response_attributes():
                     ),
                 ),
                 # shell_call
-                ResponseFunctionShellToolCall(
+                _ResponseFunctionShellToolCall(
                     id="sh-123",
                     type="shell_call",
                     status="completed",
                     call_id="call-123",
-                    action=ActionShellCall(
+                    action=_ActionShellCall(
                         commands=["echo hello"],
                         max_output_length=1000,
                         timeout_ms=5000,
                     ),
                 ),
                 # shell_call_output
-                ResponseFunctionShellToolCallOutput(
+                _ResponseFunctionShellToolCallOutput(
                     id="sho-123",
                     type="shell_call_output",
                     status="completed",
                     call_id="call-123",
                     output=[
-                        Output(
+                        _ShellToolCallOutput(
                             stdout="shell output",
                             stderr="",
-                            outcome=OutputOutcomeExit(type="exit", exit_code=0),
+                            outcome=_OutputOutcomeExit(
+                                type="exit", exit_code=0
+                            ),
                         )
                     ],
                 ),
                 # apply_patch_call
-                ResponseApplyPatchToolCall(
+                _ResponseApplyPatchToolCall(
                     id="ap-123",
                     type="apply_patch_call",
                     status="completed",
                     created_by="agent",
                     call_id="call-123",
-                    operation=OperationCreateFile(
+                    operation=_OperationCreateFile(
                         type="create_file",
                         diff="content",
                         path="/tmp/test.txt",
                     ),
                 ),
                 # apply_patch_call_output
-                ResponseApplyPatchToolCallOutput(
+                _ResponseApplyPatchToolCallOutput(
                     id="apo-123",
                     type="apply_patch_call_output",
                     created_by="agent",
@@ -756,7 +839,7 @@ def test_response_span_records_response_attributes():
                     id="ct-123",
                     type="custom_tool_call",
                     call_id="call-ct-123",
-                    input='input',
+                    input="input",
                 ),
                 # fallback with content string
                 {
@@ -794,7 +877,9 @@ def test_response_span_records_response_attributes():
         assert response.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 9
 
         # Check output messages are properly normalized
-        output_messages = json.loads(response.attributes[GEN_AI_OUTPUT_MESSAGES])
+        output_messages = json.loads(
+            response.attributes[GEN_AI_OUTPUT_MESSAGES]
+        )
         assert len(output_messages) == 1
         assert output_messages[0]["role"] == "assistant"
         parts = output_messages[0]["parts"]
@@ -977,7 +1062,7 @@ def test_response_span_records_response_attributes():
                 "tools": [
                     {"name": "tool1", "input_schema": {}},
                     {"name": "tool2", "input_schema": {}},
-                ]
+                ],
             },
         }
 
