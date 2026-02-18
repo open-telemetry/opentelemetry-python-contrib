@@ -59,7 +59,7 @@ class AwsLambdaResourceDetector(ResourceDetector):
                 account_id = os.readlink(_ACCOUNT_ID_SYMLINK_PATH)
                 attributes[ResourceAttributes.CLOUD_ACCOUNT_ID] = account_id
             except OSError:
-                pass
+                logger.debug("cloud.account.id not available via symlink")
 
             return Resource(attributes)
         # pylint: disable=broad-except
