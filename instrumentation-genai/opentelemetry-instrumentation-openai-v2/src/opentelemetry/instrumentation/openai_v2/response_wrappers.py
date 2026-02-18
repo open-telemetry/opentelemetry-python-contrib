@@ -14,12 +14,7 @@
 
 from typing import TYPE_CHECKING, Any
 
-try:
-    from opentelemetry.util.genai.types import Error
-except (
-    ModuleNotFoundError
-):  # pragma: no cover - optional dependency at import-time
-    Error = None  # type: ignore[assignment,misc]
+from opentelemetry.util.genai.types import Error
 
 from .response_extractors import _set_invocation_response_attributes
 

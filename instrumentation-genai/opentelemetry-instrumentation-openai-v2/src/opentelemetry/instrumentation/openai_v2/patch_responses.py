@@ -17,13 +17,7 @@ from typing import TYPE_CHECKING
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-
-try:
-    from opentelemetry.util.genai.types import Error, LLMInvocation
-except (
-    ModuleNotFoundError
-):  # pragma: no cover - optional dependency at import-time
-    Error = LLMInvocation = None  # type: ignore[assignment,misc]
+from opentelemetry.util.genai.types import Error, LLMInvocation
 
 from .response_extractors import (
     GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,

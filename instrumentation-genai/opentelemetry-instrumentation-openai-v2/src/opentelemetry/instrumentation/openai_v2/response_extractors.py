@@ -17,18 +17,12 @@ from typing import Any, Mapping, Optional
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-
-try:
-    from opentelemetry.util.genai.types import (
-        InputMessage,
-        LLMInvocation,
-        OutputMessage,
-        Text,
-    )
-except (
-    ModuleNotFoundError
-):  # pragma: no cover - optional dependency at import-time
-    InputMessage = LLMInvocation = OutputMessage = Text = None  # type: ignore[assignment,misc]
+from opentelemetry.util.genai.types import (
+    InputMessage,
+    LLMInvocation,
+    OutputMessage,
+    Text,
+)
 
 OPENAI = GenAIAttributes.GenAiSystemValues.OPENAI.value
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"

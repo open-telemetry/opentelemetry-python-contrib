@@ -32,13 +32,7 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
-
-try:
-    from opentelemetry.util.genai.utils import should_capture_content
-except (
-    ModuleNotFoundError
-):  # pragma: no cover - optional dependency at import-time
-    should_capture_content = None  # type: ignore[assignment,misc]
+from opentelemetry.util.genai.utils import should_capture_content
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"

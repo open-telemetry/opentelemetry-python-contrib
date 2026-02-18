@@ -52,13 +52,7 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
-
-try:
-    from opentelemetry.util.genai.handler import TelemetryHandler
-except (
-    ModuleNotFoundError
-):  # pragma: no cover - optional dependency at import-time
-    TelemetryHandler = None  # type: ignore[assignment,misc]
+from opentelemetry.util.genai.handler import TelemetryHandler
 
 from .instruments import Instruments
 from .patch import (
