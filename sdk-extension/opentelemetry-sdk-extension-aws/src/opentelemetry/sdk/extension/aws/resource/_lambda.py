@@ -25,7 +25,7 @@ from opentelemetry.semconv.resource import (
 
 logger = logging.getLogger(__name__)
 
-_ACCOUNT_ID_SYMLINK_PATH = "/tmp/.otel-account-id"
+_ACCOUNT_ID_SYMLINK_PATH = "/tmp/.otel-aws-account-id"
 
 
 class AwsLambdaResourceDetector(ResourceDetector):

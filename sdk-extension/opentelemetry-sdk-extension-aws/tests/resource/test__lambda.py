@@ -89,7 +89,7 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
         symlink_path = None
         try:
             tmpdir = tempfile.mkdtemp()
-            symlink_path = os.path.join(tmpdir, ".otel-account-id")
+            symlink_path = os.path.join(tmpdir, ".otel-aws-account-id")
             os.symlink("123456789012", symlink_path)
             with patch(
                 "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
@@ -129,7 +129,7 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
         """When the symlink does not exist, cloud.account.id is absent and no exception is raised."""
         with patch(
             "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
-            "/tmp/.otel-account-id-nonexistent",
+            "/tmp/.otel-aws-account-id-nonexistent",
         ):
             actual = AwsLambdaResourceDetector().detect()
         self.assertNotIn(
@@ -160,7 +160,7 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
         symlink_path = None
         try:
             tmpdir = tempfile.mkdtemp()
-            symlink_path = os.path.join(tmpdir, ".otel-account-id")
+            symlink_path = os.path.join(tmpdir, ".otel-aws-account-id")
             os.symlink("000123456789", symlink_path)
             with patch(
                 "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
