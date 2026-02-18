@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add support for emitting inference events and enrich message types. ([#3994](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3994))
+- Add support for `server.address`, `server.port` on all signals and additional metric-only attributes
+  ([#4069](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4069))
+- Log error when `fsspec` fails to be imported instead of silently failing ([#4037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4037)).
+- Minor change to check LRU cache in Completion Hook before acquiring semaphore/thread ([#3907](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3907)).
+- Add environment variable for genai upload hook queue size
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3943](#3943))
+- Add more Semconv attributes to LLMInvocation spans.
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3862](#3862))
+- Limit the upload hook thread pool to 64 workers
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3944](#3944))
+- Add metrics to LLMInvocation traces
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3891](#3891))
+- Add parent class genAI invocation
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3889](#3889))
+
+## Version 0.2b0 (2025-10-14)
+
 - Add jsonlines support to fsspec uploader
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3791](#3791))
 - Rename "fsspec_upload" entry point and classes to more generic "upload"
@@ -15,8 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3795](#3795))
 - Make inputs / outputs / system instructions optional params to `on_completion`,
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3802](#3802)).
-  - `opentelemetry-instrumentation-google-genai`: migrate off the deprecated events API to use the logs API
-  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3624))
+  - Use a SHA256 hash of the system instructions as it's upload filename, and check
+  if the file exists before re-uploading it, ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3814](#3814)).
 
 
 ## Version 0.1b0 (2025-09-25)

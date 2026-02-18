@@ -13,15 +13,14 @@
 # limitations under the License.
 
 
-# pylint: disable=import-outside-toplevel,no-name-in-module
-import importlib
+# pylint: disable=no-name-in-module
 import logging
-import sys
 import threading
 import time
 from contextlib import contextmanager
+from platform import python_implementation
 from typing import Any
-from unittest import TestCase
+from unittest import TestCase, skipIf
 from unittest.mock import ANY, MagicMock, patch
 
 import fsspec
@@ -32,42 +31,10 @@ from opentelemetry.util.genai import types
 from opentelemetry.util.genai._upload.completion_hook import (
     UploadCompletionHook,
 )
-from opentelemetry.util.genai.completion_hook import (
-    _NoOpCompletionHook,
-    load_completion_hook,
-)
 
 # Use MemoryFileSystem for testing
 # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.implementations.memory.MemoryFileSystem
 BASE_PATH = "memory://"
-
-
-@patch.dict(
-    "os.environ",
-    {
-        "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK": "upload",
-        "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": BASE_PATH,
-    },
-    clear=True,
-)
-class TestUploadEntryPoint(TestCase):
-    def test_upload_entry_point(self):
-        self.assertIsInstance(load_completion_hook(), UploadCompletionHook)
-
-    def test_upload_entry_point_no_fsspec(self):
-        """Tests that the a no-op uploader is used when fsspec is not installed"""
-
-        from opentelemetry.util.genai import _upload
-
-        # Simulate fsspec imports failing
-        with patch.dict(
-            sys.modules,
-            {"opentelemetry.util.genai._upload.completion_hook": None},
-        ):
-            importlib.reload(_upload)
-            self.assertIsInstance(load_completion_hook(), _NoOpCompletionHook)
-
-
 MAXSIZE = 5
 FAKE_INPUTS = [
     types.InputMessage(
@@ -121,10 +88,10 @@ class TestUploadCompletionHook(TestCase):
         mock_fsspec = self._fsspec_patcher.start()
         self.mock_fs = ThreadSafeMagicMock()
         mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
+        self.mock_fs.exists.return_value = False
 
         self.hook = UploadCompletionHook(
-            base_path=BASE_PATH,
-            max_size=MAXSIZE,
+            base_path=BASE_PATH, max_queue_size=MAXSIZE, lru_cache_max_size=5
         )
 
     def tearDown(self) -> None:
@@ -148,6 +115,10 @@ class TestUploadCompletionHook(TestCase):
     def test_shutdown_no_items(self):
         self.hook.shutdown()
 
+    @skipIf(
+        python_implementation().lower() == "pypy",
+        "fails randomly on pypy: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812",
+    )
     def test_upload_then_shutdown(self):
         self.hook.on_completion(
             inputs=FAKE_INPUTS,
@@ -157,11 +128,44 @@ class TestUploadCompletionHook(TestCase):
         # all items should be consumed
         self.hook.shutdown()
         # TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812 fix flaky test that requires sleep.
-        time.sleep(2)
+        time.sleep(0.5)
         self.assertEqual(
             self.mock_fs.open.call_count,
             3,
             "should have uploaded 3 files",
+        )
+
+    def test_lru_cache_works(self):
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            log_record=record,
+        )
+        # Wait a bit for file upload to finish..
+        time.sleep(0.5)
+        self.assertIsNotNone(record.attributes)
+        self.assertTrue(
+            self.hook._file_exists(
+                record.attributes["gen_ai.system_instructions_ref"]
+            )
+        )
+        # LRU cache has a size of 5. So only AFTER 5 uploads should the original file be removed from the cache.
+        for iteration in range(5):
+            self.assertTrue(
+                record.attributes["gen_ai.system_instructions_ref"]
+                in self.hook.lru_dict
+            )
+            self.hook.on_completion(
+                inputs=[],
+                outputs=[],
+                system_instruction=[types.Text(content=str(iteration))],
+            )
+        self.hook.shutdown()
+        self.assertFalse(
+            record.attributes["gen_ai.system_instructions_ref"]
+            in self.hook.lru_dict
         )
 
     def test_upload_when_inputs_outputs_empty(self):
@@ -180,7 +184,7 @@ class TestUploadCompletionHook(TestCase):
             1,
             "should have uploaded 1 file",
         )
-        assert record.attributes is not None
+        self.assertIsNotNone(record.attributes)
         for ref_key in [
             "gen_ai.input.messages_ref",
             "gen_ai.output.messages_ref",
@@ -267,42 +271,6 @@ class TestUploadCompletionHook(TestCase):
                 ANY, "w", content_type=expect_content_type
             )
 
-    def test_parse_upload_format_envvar(self):
-        for envvar_value, expect in (
-            ("", "json"),
-            ("json", "json"),
-            ("invalid", "json"),
-            ("jsonl", "jsonl"),
-            ("jSoNl", "jsonl"),
-        ):
-            with patch.dict(
-                "os.environ",
-                {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value},
-                clear=True,
-            ):
-                hook = UploadCompletionHook(base_path=BASE_PATH)
-                self.addCleanup(hook.shutdown)
-                self.assertEqual(
-                    hook._format,
-                    expect,
-                    f"expected upload format {expect=} with {envvar_value=} got {hook._format}",
-                )
-
-        with patch.dict(
-            "os.environ",
-            {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": "json"},
-            clear=True,
-        ):
-            hook = UploadCompletionHook(
-                base_path=BASE_PATH, upload_format="jsonl"
-            )
-            self.addCleanup(hook.shutdown)
-            self.assertEqual(
-                hook._format,
-                "jsonl",
-                "upload_format kwarg should take precedence",
-            )
-
     def test_upload_after_shutdown_logs(self):
         self.hook.shutdown()
         with self.assertLogs(level=logging.INFO) as logs:
@@ -316,6 +284,19 @@ class TestUploadCompletionHook(TestCase):
             "attempting to upload file after UploadCompletionHook.shutdown() was already called",
             logs.output[0],
         )
+
+    def test_threadpool_max_workers(self):
+        for max_queue_size, expect_threadpool_workers in ((10, 10), (100, 64)):
+            with patch(
+                "opentelemetry.util.genai._upload.completion_hook.ThreadPoolExecutor"
+            ) as mock:
+                hook = UploadCompletionHook(
+                    base_path=BASE_PATH, max_queue_size=max_queue_size
+                )
+                self.addCleanup(hook.shutdown)
+                mock.assert_called_once_with(
+                    max_workers=expect_threadpool_workers
+                )
 
 
 class TestUploadCompletionHookIntegration(TestBase):
@@ -334,6 +315,39 @@ class TestUploadCompletionHookIntegration(TestBase):
     def assert_fsspec_equal(self, path: str, value: str) -> None:
         with fsspec.open(path, "r") as file:
             self.assertEqual(file.read(), value)
+
+    def test_system_insruction_is_hashed_to_avoid_reupload(self):
+        expected_hash = (
+            "7e35acac4feca03ab47929d4cc6cfef1df2190ae1ee1752196a05ffc2a6cb360"
+        )
+        # Create the file before upload..
+        expected_file_name = (
+            f"memory://{expected_hash}_system_instruction.json"
+        )
+        with fsspec.open(expected_file_name, "wb") as file:
+            file.write(b"asg")
+        # FIle should exist.
+        self.assertTrue(self.hook._file_exists(expected_file_name))
+        system_instructions = [
+            types.Text(content="You are a helpful assistant."),
+            types.Text(content="You will do your best."),
+        ]
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=system_instructions,
+            log_record=record,
+        )
+        self.hook.shutdown()
+        self.assertIsNotNone(record.attributes)
+
+        self.assertEqual(
+            record.attributes["gen_ai.system_instructions_ref"],
+            expected_file_name,
+        )
+        # Content should not have been overwritten.
+        self.assert_fsspec_equal(expected_file_name, "asg")
 
     def test_upload_completions(self):
         tracer = self.tracer_provider.get_tracer(__name__)

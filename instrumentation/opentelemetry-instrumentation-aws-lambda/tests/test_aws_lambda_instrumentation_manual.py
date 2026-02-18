@@ -74,18 +74,22 @@ from .mocks.sqs_event import MOCK_LAMBDA_SQS_EVENT
 
 
 class MockLambdaContext:
-    def __init__(self, aws_request_id, invoked_function_arn):
+    def __init__(self, function_name, aws_request_id, invoked_function_arn):
+        self.function_name = function_name
         self.invoked_function_arn = invoked_function_arn
         self.aws_request_id = aws_request_id
 
 
 MOCK_LAMBDA_CONTEXT = MockLambdaContext(
+    function_name="myfunction",
     aws_request_id="mock_aws_request_id",
     invoked_function_arn="arn:aws:lambda:us-east-1:123456:function:myfunction:myalias",
 )
 
 MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
-    CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+    CLOUD_RESOURCE_ID: ":".join(
+        MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[:7]
+    ),
     FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
     CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[4],
 }
@@ -115,7 +119,7 @@ MOCK_W3C_BAGGAGE_KEY = "baggage_key"
 MOCK_W3C_BAGGAGE_VALUE = "baggage_value"
 
 
-def mock_execute_lambda(event=None):
+def mock_execute_lambda(event=None, context=None):
     """Mocks the AWS Lambda execution.
 
     NOTE: We don't use `moto`'s `mock_lambda` because we are not instrumenting
@@ -127,11 +131,14 @@ def mock_execute_lambda(event=None):
 
     Args:
         event: The Lambda event which may or may not be used by instrumentation.
+        context: The AWS Lambda context to call the handler with
     """
 
     module_name, handler_name = os.environ[_HANDLER].rsplit(".", 1)
     handler_module = import_module(module_name.replace("/", "."))
-    return getattr(handler_module, handler_name)(event, MOCK_LAMBDA_CONTEXT)
+    return getattr(handler_module, handler_name)(
+        event, context or MOCK_LAMBDA_CONTEXT
+    )
 
 
 class TestAwsLambdaInstrumentorBase(TestBase):
@@ -183,7 +190,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, os.environ[_HANDLER])
+        self.assertEqual(span.name, MOCK_LAMBDA_CONTEXT.function_name)
         self.assertEqual(span.get_span_context().trace_id, MOCK_XRAY_TRACE_ID)
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
@@ -419,7 +426,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         assert len(spans) == 4
 
         for span in spans:
-            assert span.kind == SpanKind.CONSUMER
+            assert span.kind == SpanKind.SERVER
 
         test_env_patch.stop()
 
@@ -676,7 +683,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
@@ -691,7 +698,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
@@ -706,7 +713,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
@@ -721,11 +728,58 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
         )
+
+    def test_slash_delimited_handler_path(self):
+        """Test that slash-delimited handler paths work correctly.
+
+        AWS Lambda accepts both slash-delimited (python/functions/api.handler)
+        and dot-delimited (python.functions.api.handler) handler paths.
+        This test ensures the instrumentation handles both formats.
+        """
+        # Test slash-delimited format
+        slash_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests/mocks/lambda_function.handler"},
+        )
+        slash_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertSpanHasAttributes(
+            spans[0],
+            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
+        )
+
+        slash_env_patch.stop()
+        AwsLambdaInstrumentor().uninstrument()
+        self.memory_exporter.clear()
+
+        # Test dot-delimited format (should still work)
+        dot_env_patch = mock.patch.dict(
+            "os.environ",
+            {_HANDLER: "tests.mocks.lambda_function.handler"},
+        )
+        dot_env_patch.start()
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertSpanHasAttributes(
+            spans[0],
+            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
+        )
+
+        dot_env_patch.stop()
 
     def test_lambda_handles_handler_exception_with_api_gateway_proxy_event(
         self,

@@ -26,13 +26,14 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.59b0.dev",
-  "opentelemetry-semantic-conventions == 0.59b0.dev",
+  "opentelemetry-instrumentation == 0.61b0.dev",
+  "opentelemetry-semantic-conventions == 0.61b0.dev",
   "wrapt >= 1.0.0, < 2.0.0",
 ]
 
 [project.optional-dependencies]
-instruments = [
+instruments = []
+instruments-any = [
   "cassandra-driver ~= 3.25",
   "scylla-driver ~= 3.25",
 ]

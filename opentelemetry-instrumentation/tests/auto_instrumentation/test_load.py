@@ -492,3 +492,54 @@ class TestLoad(TestCase):
         )
         # dist are not comparable, being truthy is enough
         self.assertTrue(new_entry_point_dist)
+
+    @patch.dict(
+        "os.environ",
+        {OTEL_PYTHON_DISABLED_INSTRUMENTATIONS: "*"},
+    )
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
+    )
+    def test_no_instrumentor_called_with_wildcard(self, iter_mock, mock_dep):
+        # Mock opentelemetry_pre_instrument entry points
+        # pylint: disable=too-many-locals
+        pre_ep_mock1 = Mock()
+        pre_ep_mock1.name = "pre1"
+        pre_mock1 = Mock()
+        pre_ep_mock1.load.return_value = pre_mock1
+
+        # Mock opentelemetry_instrumentor entry points
+        ep_mock1 = Mock()
+        ep_mock1.name = "instr1"
+
+        # Mock opentelemetry_instrumentor entry points
+        post_ep_mock1 = Mock()
+        post_ep_mock1.name = "post1"
+        post_mock1 = Mock()
+        post_ep_mock1.load.return_value = post_mock1
+
+        distro_mock = Mock()
+
+        # Mock entry points in order
+        iter_mock.side_effect = [
+            (pre_ep_mock1,),
+            (ep_mock1,),
+            (post_ep_mock1,),
+        ]
+        _load._load_instrumentors(distro_mock)
+
+        self.assertEqual(iter_mock.call_count, 3)
+
+        # All opentelemetry_pre_instrument entry points should be loaded
+        pre_mock1.assert_called_once()
+
+        # No instrumentations should be loaded
+        mock_dep.assert_not_called()
+        distro_mock.load_instrumentor.assert_not_called()
+        self.assertEqual(distro_mock.load_instrumentor.call_count, 0)
+
+        # All opentelemetry_post_instrument entry points should be loaded
+        post_mock1.assert_called_once()

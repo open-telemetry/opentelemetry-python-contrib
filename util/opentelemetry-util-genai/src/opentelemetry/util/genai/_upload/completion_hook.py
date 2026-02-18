@@ -15,14 +15,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import posixpath
 import threading
+from collections import OrderedDict
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
-from os import environ
 from time import time
 from typing import Any, Callable, Final, Literal
 from uuid import uuid4
@@ -34,9 +35,6 @@ from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import Span
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai.completion_hook import CompletionHook
-from opentelemetry.util.genai.environment_variables import (
-    OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT,
-)
 from opentelemetry.util.genai.utils import gen_ai_json_dump
 
 GEN_AI_INPUT_MESSAGES_REF: Final = (
@@ -50,6 +48,9 @@ GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
 )
 
 _MESSAGE_INDEX_KEY = "index"
+_DEFAULT_MAX_QUEUE_SIZE = 20
+_DEFAULT_FORMAT = "json"
+
 
 Format = Literal["json", "jsonl"]
 _FORMATS: tuple[Format, ...] = ("json", "jsonl")
@@ -73,8 +74,16 @@ class CompletionRefs:
 
 JsonEncodeable = list[dict[str, Any]]
 
-# mapping of upload path to function computing upload data dict
-UploadData = dict[str, Callable[[], JsonEncodeable]]
+# mapping of upload path and whether the contents were hashed to the filename to function computing upload data dict
+UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
+
+
+def is_system_instructions_hashable(
+    system_instruction: list[types.MessagePart] | None,
+) -> bool:
+    return bool(system_instruction) and all(
+        isinstance(x, types.Text) for x in system_instruction
+    )
 
 
 class UploadCompletionHook(CompletionHook):
@@ -95,33 +104,28 @@ class UploadCompletionHook(CompletionHook):
         self,
         *,
         base_path: str,
-        max_size: int = 20,
-        upload_format: Format | None = None,
+        max_queue_size: int = _DEFAULT_MAX_QUEUE_SIZE,
+        upload_format: Format = _DEFAULT_FORMAT,
+        lru_cache_max_size: int = 1024,
     ) -> None:
-        self._max_size = max_size
+        self._max_queue_size = max_queue_size
         self._fs, base_path = fsspec.url_to_fs(base_path)
         self._base_path = self._fs.unstrip_protocol(base_path)
+        self.lru_dict: OrderedDict[str, bool] = OrderedDict()
+        self.lru_cache_max_size = lru_cache_max_size
 
-        if upload_format not in _FORMATS + (None,):
+        if upload_format not in _FORMATS:
             raise ValueError(
                 f"Invalid {upload_format=}. Must be one of {_FORMATS}"
             )
-
-        if upload_format is None:
-            environ_format = environ.get(
-                OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT, "json"
-            ).lower()
-            if environ_format not in _FORMATS:
-                upload_format = "json"
-            else:
-                upload_format = environ_format
-
-        self._format: Final[Literal["json", "jsonl"]] = upload_format
+        self._format = upload_format
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
         # limits the number of queued tasks. If the queue is full, data will be dropped.
-        self._executor = ThreadPoolExecutor(max_workers=max_size)
-        self._semaphore = threading.BoundedSemaphore(max_size)
+        self._executor = ThreadPoolExecutor(
+            max_workers=min(self._max_queue_size, 64)
+        )
+        self._semaphore = threading.BoundedSemaphore(self._max_queue_size)
 
     def _submit_all(self, upload_data: UploadData) -> None:
         def done(future: Future[None]) -> None:
@@ -132,7 +136,13 @@ class UploadCompletionHook(CompletionHook):
             finally:
                 self._semaphore.release()
 
-        for path, json_encodeable in upload_data.items():
+        for (
+            path,
+            contents_hashed_to_filename,
+        ), json_encodeable in upload_data.items():
+            if contents_hashed_to_filename and path in self.lru_dict:
+                self.lru_dict.move_to_end(path)
+                continue
             # could not acquire, drop data
             if not self._semaphore.acquire(blocking=False):  # pylint: disable=consider-using-with
                 _logger.warning(
@@ -143,7 +153,10 @@ class UploadCompletionHook(CompletionHook):
 
             try:
                 fut = self._executor.submit(
-                    self._do_upload, path, json_encodeable
+                    self._do_upload,
+                    path,
+                    contents_hashed_to_filename,
+                    json_encodeable,
                 )
                 fut.add_done_callback(done)
             except RuntimeError:
@@ -152,10 +165,20 @@ class UploadCompletionHook(CompletionHook):
                 )
                 self._semaphore.release()
 
-    def _calculate_ref_path(self) -> CompletionRefs:
+    def _calculate_ref_path(
+        self, system_instruction: list[types.MessagePart]
+    ) -> CompletionRefs:
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
-
+        system_instruction_hash = None
+        if is_system_instructions_hashable(system_instruction):
+            # Get a hash of the text.
+            system_instruction_hash = hashlib.sha256(
+                "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType, reportCallIssue, reportArgumentType]
+                    "utf-8"
+                ),
+                usedforsecurity=False,
+            ).hexdigest()
         uuid_str = str(uuid4())
         return CompletionRefs(
             inputs_ref=posixpath.join(
@@ -166,13 +189,32 @@ class UploadCompletionHook(CompletionHook):
             ),
             system_instruction_ref=posixpath.join(
                 self._base_path,
-                f"{uuid_str}_system_instruction.{self._format}",
+                f"{system_instruction_hash or uuid_str}_system_instruction.{self._format}",
             ),
         )
 
+    def _file_exists(self, path: str) -> bool:
+        if path in self.lru_dict:
+            self.lru_dict.move_to_end(path)
+            return True
+        # https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.spec.AbstractFileSystem.exists
+        file_exists = self._fs.exists(path)
+        # don't cache this because soon the file will exist..
+        if not file_exists:
+            return False
+        self.lru_dict[path] = True
+        if len(self.lru_dict) > self.lru_cache_max_size:
+            self.lru_dict.popitem(last=False)
+        return True
+
     def _do_upload(
-        self, path: str, json_encodeable: Callable[[], JsonEncodeable]
+        self,
+        path: str,
+        contents_hashed_to_filename: bool,
+        json_encodeable: Callable[[], JsonEncodeable],
     ) -> None:
+        if contents_hashed_to_filename and self._file_exists(path):
+            return
         if self._format == "json":
             # output as a single line with the json messages array
             message_lines = [json_encodeable()]
@@ -194,6 +236,11 @@ class UploadCompletionHook(CompletionHook):
                 gen_ai_json_dump(message, file)
                 file.write("\n")
 
+        if contents_hashed_to_filename:
+            self.lru_dict[path] = True
+            if len(self.lru_dict) > self.lru_cache_max_size:
+                self.lru_dict.popitem(last=False)
+
     def on_completion(
         self,
         *,
@@ -213,7 +260,7 @@ class UploadCompletionHook(CompletionHook):
             system_instruction=system_instruction or None,
         )
         # generate the paths to upload to
-        ref_names = self._calculate_ref_path()
+        ref_names = self._calculate_ref_path(system_instruction)
 
         def to_dict(
             dataclass_list: list[types.InputMessage]
@@ -223,35 +270,40 @@ class UploadCompletionHook(CompletionHook):
             return [asdict(dc) for dc in dataclass_list]
 
         references = [
-            (ref_name, ref, ref_attr)
-            for ref_name, ref, ref_attr in [
+            (ref_name, ref, ref_attr, contents_hashed_to_filename)
+            for ref_name, ref, ref_attr, contents_hashed_to_filename in [
                 (
                     ref_names.inputs_ref,
                     completion.inputs,
                     GEN_AI_INPUT_MESSAGES_REF,
+                    False,
                 ),
                 (
                     ref_names.outputs_ref,
                     completion.outputs,
                     GEN_AI_OUTPUT_MESSAGES_REF,
+                    False,
                 ),
                 (
                     ref_names.system_instruction_ref,
                     completion.system_instruction,
                     GEN_AI_SYSTEM_INSTRUCTIONS_REF,
+                    is_system_instructions_hashable(
+                        completion.system_instruction
+                    ),
                 ),
             ]
-            if ref
+            if ref  # Filter out empty input/output/sys instruction
         ]
         self._submit_all(
             {
-                ref_name: partial(to_dict, ref)
-                for ref_name, ref, _ in references
+                (ref_name, contents_hashed_to_filename): partial(to_dict, ref)
+                for ref_name, ref, _, contents_hashed_to_filename in references
             }
         )
 
         # stamp the refs on telemetry
-        references = {ref_attr: name for name, _, ref_attr in references}
+        references = {ref_attr: name for name, _, ref_attr, _ in references}
         if span:
             span.set_attributes(references)
         if log_record:
@@ -265,7 +317,7 @@ class UploadCompletionHook(CompletionHook):
 
         # Wait for all tasks to finish to flush the queue
         with ExitStack() as stack:
-            for _ in range(self._max_size):
+            for _ in range(self._max_queue_size):
                 remaining = deadline - time()
                 if not self._semaphore.acquire(timeout=remaining):  # pylint: disable=consider-using-with
                     # Couldn't finish flushing all uploads before timeout

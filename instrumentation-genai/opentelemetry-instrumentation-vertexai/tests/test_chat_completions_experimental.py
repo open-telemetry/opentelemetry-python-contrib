@@ -6,6 +6,7 @@ from vertexai.generative_models import (
     Content,
     GenerationConfig,
     GenerativeModel,
+    Image,
     Part,
 )
 from vertexai.preview.generative_models import (
@@ -13,9 +14,17 @@ from vertexai.preview.generative_models import (
 )
 
 from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
-from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
-    InMemoryLogExporter,
-)
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (  # pylint: disable=no-name-in-module
+        InMemoryLogRecordExporter,
+    )
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
@@ -24,9 +33,9 @@ from opentelemetry.trace import StatusCode
 
 
 @pytest.mark.vcr()
-def test_generate_content(
+def test_generate_content_with_files(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -38,6 +47,15 @@ def test_generate_content(
                 role="user",
                 parts=[
                     Part.from_text("Say this is a test"),
+                    Part.from_uri(
+                        mime_type="image/jpeg",
+                        uri="https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg",
+                    ),
+                    Part.from_image(
+                        Image.from_bytes(
+                            "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+                        )
+                    ),
                 ],
             ),
         ],
@@ -52,11 +70,11 @@ def test_generate_content(
         "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
         "gen_ai.response.model": "gemini-2.5-pro",
-        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.input_tokens": 521,
         "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","uri":"https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg","type":"file_data"},{"data":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","mime_type":"image/jpeg","type":"blob"}]}]',
         "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
     }
 
@@ -64,24 +82,36 @@ def test_generate_content(
     assert len(logs) == 1
     log = logs[0].log_record
     assert log.attributes == {
-        "gen_ai.operation.name": "chat",
-        "gen_ai.request.model": "gemini-2.5-pro",
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
+        "gen_ai.operation.name": "chat",
+        "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
-        "gen_ai.usage.input_tokens": 5,
+        "gen_ai.usage.input_tokens": 521,
         "gen_ai.usage.output_tokens": 5,
         "gen_ai.input.messages": (
             {
                 "role": "user",
-                "parts": ({"type": "text", "content": "Say this is a test"},),
+                "parts": (
+                    {"content": "Say this is a test", "type": "text"},
+                    {
+                        "mime_type": "image/jpeg",
+                        "uri": "https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg",
+                        "type": "file_data",
+                    },
+                    {
+                        "data": b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x05\x00\x00\x00\x05\x08\x06\x00\x00\x00\x8do&\xe5\x00\x00\x00\x1cIDAT\x08\xd7c\xf8\xff\xff?\xc3\x7f\x06 \x05\xc3 \x12\x84\xd01\xf1\x82X\xcd\x04\x00\x0e\xf55\xcb\xd1\x8e\x0e\x1f\x00\x00\x00\x00IEND\xaeB`\x82",
+                        "mime_type": "image/jpeg",
+                        "type": "blob",
+                    },
+                ),
             },
         ),
         "gen_ai.output.messages": (
             {
                 "role": "model",
-                "parts": ({"type": "text", "content": "This is a test."},),
+                "parts": ({"content": "This is a test.", "type": "text"},),
                 "finish_reason": "stop",
             },
         ),
@@ -91,7 +121,7 @@ def test_generate_content(
 @pytest.mark.vcr()
 def test_generate_content_without_events(
     span_exporter: InMemorySpanExporter,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -252,7 +282,7 @@ def test_generate_content_invalid_temperature(
 
 @pytest.mark.vcr()
 def test_generate_content_invalid_role(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -349,7 +379,7 @@ def assert_span_error(span: ReadableSpan) -> None:
 
 @pytest.mark.vcr()
 def test_generate_content_all_events(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -367,7 +397,7 @@ def test_generate_content_all_events(
 
 @pytest.mark.vcr()
 def test_preview_generate_content_all_input_events(
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     generate_content: callable,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
@@ -385,7 +415,7 @@ def test_preview_generate_content_all_input_events(
 
 def generate_content_all_input_events(
     model: GenerativeModel | PreviewGenerativeModel,
-    log_exporter: InMemoryLogExporter,
+    log_exporter: InMemoryLogRecordExporter,
     instrument_with_experimental_semconvs: VertexAIInstrumentor,
 ):
     model.generate_content(

@@ -177,6 +177,10 @@ class MethodWrappers:
                     | request_attributes
                     | get_genai_response_attributes(response)
                 )
+                event = LogRecord(
+                    event_name="gen_ai.client.inference.operation.details",
+                )
+                event.attributes = attributes.copy()
                 system_instructions, inputs, outputs = [], [], []
                 if params.system_instruction:
                     system_instructions = convert_content_to_message_parts(
@@ -203,6 +207,13 @@ class MethodWrappers:
                         )
                         for candidate in response.candidates
                     ]
+                self.completion_hook.on_completion(
+                    inputs=inputs,
+                    outputs=outputs,
+                    system_instruction=system_instructions,
+                    span=span,
+                    log_record=event,
+                )
                 content_attributes = {
                     k: [asdict(x) for x in v]
                     for k, v in [
@@ -227,23 +238,12 @@ class MethodWrappers:
                                 for k, v in content_attributes.items()
                             }
                         )
-                event = LogRecord(
-                    event_name="gen_ai.client.inference.operation.details",
-                )
-                event.attributes = attributes
                 if capture_content in (
                     ContentCapturingMode.SPAN_AND_EVENT,
                     ContentCapturingMode.EVENT_ONLY,
                 ):
                     event.attributes |= content_attributes
                 self.logger.emit(event)
-                self.completion_hook.on_completion(
-                    inputs=inputs,
-                    outputs=outputs,
-                    system_instruction=system_instructions,
-                    span=span,
-                    log_record=event,
-                )
 
             yield handle_response
 

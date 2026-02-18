@@ -1,4 +1,4 @@
-OpenTelemetry Langcahin Instrumentation Example
+OpenTelemetry Langchain Instrumentation Example
 ===============================================
 
 This is an example of how to instrument Langchain when configuring OpenTelemetry SDK and instrumentations manually.
@@ -8,14 +8,14 @@ Traces include details such as the span name and other attributes.
 
 Note: `.env <.env>`_ file configures additional environment variables:
 - :code:`OTEL_LOGS_EXPORTER=otlp` to specify exporter type.
-- :code:`OPENAI_API_KEY` open AI key for accessing the OpenAI API.
+- :code:`OPENAI_API_KEY` key for accessing the OpenAI API.
 - :code:`OTEL_EXPORTER_OTLP_ENDPOINT` to specify the endpoint for exporting traces (default is http://localhost:4317).
 
 Setup
 -----
 
 Minimally, update the `.env <.env>`_ file with your :code:`OPENAI_API_KEY`.
-An OTLP compatible endpoint should be listening for traces http://localhost:4317.
+An OTLP compatible endpoint should be listening for traces at http://localhost:4317.
 If not, update :code:`OTEL_EXPORTER_OTLP_ENDPOINT` as well.
 
 Next, set up a virtual environment like this:
@@ -26,6 +26,8 @@ Next, set up a virtual environment like this:
     source .venv/bin/activate
     pip install "python-dotenv[cli]"
     pip install -r requirements.txt
+    pip install opentelemetry-instrumentation-langchain
+    pip install util/opentelemetry-util-genai (once opentelemetry-util-genai package is released remove it from here and add dependency in opentelemetry-instrumentation-langchain)
 
 Run
 ---

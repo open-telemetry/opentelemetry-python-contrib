@@ -42,20 +42,36 @@ Usage
     ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
 
+Thread Context Propagation
+--------------------------
+
+boto3's S3 ``upload_file`` and ``download_file`` methods use background threads
+for multipart transfers. To ensure trace context is propagated to these threads,
+also enable the threading instrumentation:
+
+.. code:: python
+
+    from opentelemetry.instrumentation.threading import ThreadingInstrumentor
+    from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+
+    ThreadingInstrumentor().instrument()
+    BotocoreInstrumentor().instrument()
+
+When using auto-instrumentation (``opentelemetry-instrument``), both instrumentors
+are enabled automatically if their packages are installed.
+
 API
 ---
 
 The `instrument` method accepts the following keyword args:
 
-tracer_provider (TracerProvider) - an optional tracer provider
-request_hook (Callable) - a function with extra user-defined logic to be performed before performing the request
-this function signature is:  def request_hook(span: Span, service_name: str, operation_name: str, api_params: dict) -> None
-response_hook (Callable) - a function with extra user-defined logic to be performed after performing the request
-this function signature is:  def response_hook(span: Span, service_name: str, operation_name: str, result: dict) -> None
+* tracer_provider (``TracerProvider``) - an optional tracer provider
+* request_hook (``Callable[[Span, str, str, dict], None]``) - a function with extra user-defined logic to be performed before performing the request
+* response_hook (``Callable[[Span, str, str, dict], None]``) - a function with extra user-defined logic to be performed after performing the request
 
 for example:
 
-.. code: python
+.. code:: python
 
     from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
     import botocore.session
@@ -112,7 +128,14 @@ from opentelemetry.propagators.aws.aws_xray_propagator import AwsXRayPropagator
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
     CLOUD_REGION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_STATUS_CODE,
+)
+from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
+    RPC_METHOD,
+    RPC_SERVICE,
+    RPC_SYSTEM,
+)
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
 
@@ -276,9 +299,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
             return original_func(*args, **kwargs)
 
         attributes = {
-            SpanAttributes.RPC_SYSTEM: "aws-api",
-            SpanAttributes.RPC_SERVICE: call_context.service_id,
-            SpanAttributes.RPC_METHOD: call_context.operation,
+            RPC_SYSTEM: "aws-api",
+            RPC_SERVICE: call_context.service_id,
+            RPC_METHOD: call_context.operation,
             CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
@@ -374,7 +397,7 @@ def _apply_response_attributes(span: Span, result):
 
     status_code = metadata.get("HTTPStatusCode")
     if status_code is not None:
-        span.set_attribute(SpanAttributes.HTTP_STATUS_CODE, status_code)
+        span.set_attribute(HTTP_STATUS_CODE, status_code)
 
 
 def _determine_call_context(

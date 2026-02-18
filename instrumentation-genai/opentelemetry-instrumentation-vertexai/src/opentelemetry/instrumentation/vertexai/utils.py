@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from os import environ
@@ -166,24 +167,23 @@ def get_genai_request_attributes(  # pylint: disable=too-many-branches
         attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
             generation_config.stop_sequences
         )
-    if use_latest_semconvs:
-        if "seed" in generation_config:
-            attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
-                generation_config.seed
+    if "seed" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
+            generation_config.seed
+        )
+    if "candidate_count" in generation_config:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
+            generation_config.candidate_count
+        )
+    if "response_mime_type" in generation_config:
+        if generation_config.response_mime_type == "text/plain":
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "text"
+        elif generation_config.response_mime_type == "application/json":
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "json"
+        else:
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                generation_config.response_mime_type
             )
-        if "candidate_count" in generation_config:
-            attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
-                generation_config.candidate_count
-            )
-        if "response_mime_type" in generation_config:
-            if generation_config.response_mime_type == "text/plain":
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "text"
-            elif generation_config.response_mime_type == "application/json":
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "json"
-            else:
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
-                    generation_config.response_mime_type
-                )
 
     return attributes
 
@@ -308,6 +308,23 @@ def request_to_events(
         yield user_event(role=content.role, content=request_content)
 
 
+@dataclass
+class BlobPart:
+    data: bytes
+    mime_type: str
+    type: Literal["blob"] = "blob"
+
+
+@dataclass
+class FileDataPart:
+    mime_type: str
+    uri: str
+    type: Literal["file_data"] = "file_data"
+
+    class Config:
+        extra = "allow"
+
+
 def convert_content_to_message_parts(
     content: content.Content | content_v1beta1.Content,
 ) -> list[MessagePart]:
@@ -334,12 +351,20 @@ def convert_content_to_message_parts(
             )
         elif "text" in part:
             parts.append(Text(content=part.text))
-        else:
-            dict_part = type(part).to_dict(  # type: ignore[reportUnknownMemberType]
-                part, always_print_fields_with_no_presence=False
+        elif "inline_data" in part:
+            part = part.inline_data
+            parts.append(
+                BlobPart(mime_type=part.mime_type or "", data=part.data or b"")
             )
-            dict_part["type"] = type(part)
-            parts.append(dict_part)
+        elif "file_data" in part:
+            part = part.file_data
+            parts.append(
+                FileDataPart(
+                    mime_type=part.mime_type or "", uri=part.file_uri or ""
+                )
+            )
+        else:
+            logging.warning("Unknown part dropped from telemetry %s", part)
     return parts
 
 

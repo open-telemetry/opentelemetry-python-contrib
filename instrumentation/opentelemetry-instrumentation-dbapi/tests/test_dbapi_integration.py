@@ -23,7 +23,17 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import resources
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes import net_attributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -62,21 +72,13 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_SYSTEM], "testcomponent"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_NAME], "testdatabase"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
-        )
+        self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
         self.assertFalse("db.statement.parameters" in span.attributes)
-        self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "testhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 123)
+        self.assertEqual(span.attributes[DB_USER], "testuser")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_span_name(self):
@@ -136,24 +138,18 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
 
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_SYSTEM], "testcomponent"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_NAME], "testdatabase"
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
-        )
+        self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
         self.assertEqual(
             span.attributes["db.statement.parameters"],
             "('param1Value', False)",
         )
-        self.assertEqual(span.attributes[SpanAttributes.DB_USER], "testuser")
+        self.assertEqual(span.attributes[DB_USER], "testuser")
         self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "testhost"
+            span.attributes[net_attributes.NET_PEER_NAME], "testhost"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 123)
+        self.assertEqual(span.attributes[net_attributes.NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_span_not_recording(self):
@@ -200,9 +196,7 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
-        )
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
         self.assertEqual(span.status.description, "Exception: Test Exception")
 
@@ -310,9 +304,7 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "Test query"
-        )
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
 
     def test_executemany_comment(self):
         connect_module = mock.MagicMock()
@@ -343,7 +335,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -377,7 +369,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -413,7 +405,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -450,7 +442,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*dbapi_level='1.0',dbapi_threadsafety='unknown',driver_paramstyle='unknown',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -485,13 +477,13 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
         )
 
         cursor_span_id = re.search(r"[a-zA-Z0-9_]{16}", cursor.query).group()
         db_statement_span_id = re.search(
-            r"[a-zA-Z0-9_]{16}", span.attributes[SpanAttributes.DB_STATEMENT]
+            r"[a-zA-Z0-9_]{16}", span.attributes[DB_STATEMENT]
         ).group()
         self.assertEqual(cursor_span_id, db_statement_span_id)
 
@@ -525,7 +517,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -558,7 +550,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -595,7 +587,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -629,7 +621,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -664,7 +656,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*db_driver='psycopg2%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -697,7 +689,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -731,7 +723,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*db_driver='psycopg%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -764,7 +756,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -798,7 +790,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*db_driver='mysql.connector%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='1.2.3',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -840,7 +832,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -883,7 +875,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*db_driver='MySQLdb%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='123',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -917,7 +909,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -952,7 +944,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*db_driver='pymysql%%3A1.2.3',dbapi_threadsafety=123,driver_paramstyle='test',mysql_client_version='123',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -990,7 +982,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Select 1;",
         )
 
@@ -1032,7 +1024,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertRegex(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',flask=1,libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -1051,7 +1043,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "Test stored procedure",
         )
 
@@ -1187,6 +1179,89 @@ class TestDBApiIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_capture_mysql_version_primary_success(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "mysql.connector"
+        connect_module.__version__ = "2.2.9"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "mysql",
+            enable_commenter=True,
+            connect_module=connect_module,
+        )
+        mock_cursor = mock.MagicMock()
+        mock_cursor._cnx._cmysql.get_client_info.return_value = "8.0.32"
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor._cnx = mock_cursor._cnx
+        cursor.execute("SELECT 1;")
+        mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
+        self.assertEqual(
+            db_integration.commenter_data["mysql_client_version"], "8.0.32"
+        )
+
+    def test_capture_mysql_version_fallback_success(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "mysql.connector"
+        connect_module.__version__ = "2.2.9"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "mysql",
+            enable_commenter=True,
+            connect_module=connect_module,
+        )
+        mock_cursor = mock.MagicMock()
+        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError(
+            "Primary method failed"
+        )
+        mock_cursor._connection._cmysql.get_client_info.return_value = "8.0.33"
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor._cnx = mock_cursor._cnx
+        cursor._connection = mock_cursor._connection
+        cursor.execute("SELECT 1;")
+        mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
+        mock_cursor._connection._cmysql.get_client_info.assert_called_once()
+        self.assertEqual(
+            db_integration.commenter_data["mysql_client_version"], "8.0.33"
+        )
+
+    @mock.patch("opentelemetry.instrumentation.dbapi._logger")
+    def test_capture_mysql_version_fallback(self, mock_logger):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "mysql.connector"
+        connect_module.__version__ = "2.2.9"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "mysql",
+            enable_commenter=True,
+            connect_module=connect_module,
+        )
+        mock_cursor = mock.MagicMock()
+        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError(
+            "Primary method failed"
+        )
+        mock_cursor._connection._cmysql.get_client_info.side_effect = (
+            AttributeError("Fallback method failed")
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor._cnx = mock_cursor._cnx
+        cursor._connection = mock_cursor._connection
+        cursor.execute("SELECT 1;")
+        mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
+        mock_cursor._connection._cmysql.get_client_info.assert_called_once()
+        mock_logger.debug.assert_called_once()
+        self.assertEqual(
+            db_integration.commenter_data["mysql_client_version"], "unknown"
+        )
 
 
 # pylint: disable=unused-argument

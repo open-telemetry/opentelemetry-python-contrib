@@ -203,6 +203,66 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-google-genai-latest -- -ra
 
+  py39-test-instrumentation-anthropic-oldest:
+    name: instrumentation-anthropic-oldest 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-anthropic-oldest -- -ra
+
+  py39-test-instrumentation-anthropic-latest:
+    name: instrumentation-anthropic-latest 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-anthropic-latest -- -ra
+
   py39-test-resource-detector-containerid:
     name: resource-detector-containerid 
     runs-on: ubuntu-latest
@@ -1162,6 +1222,36 @@ jobs:
 
       - name: Run tests
         run: tox -e py39-test-instrumentation-flask-2 -- -ra
+
+  py39-test-instrumentation-flask-3:
+    name: instrumentation-flask-3 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-flask-3 -- -ra
 
   py39-test-instrumentation-urllib:
     name: instrumentation-urllib 
@@ -2933,8 +3023,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-asyncio -- -ra
 
-  py39-test-instrumentation-cassandra:
-    name: instrumentation-cassandra 
+  py39-test-instrumentation-cassandra-driver:
+    name: instrumentation-cassandra-driver 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2961,7 +3051,37 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-cassandra -- -ra
+        run: tox -e py39-test-instrumentation-cassandra-driver -- -ra
+
+  py39-test-instrumentation-cassandra-scylla:
+    name: instrumentation-cassandra-scylla 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-cassandra-scylla -- -ra
 
   py39-test-processor-baggage:
     name: processor-baggage 
