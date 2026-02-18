@@ -40,7 +40,7 @@ interactions:
       Host:
       - api.openai.com
       User-Agent:
-      - OpenAI/Python 2.16.0
+      - OpenAI/Python 2.21.0
       X-Stainless-Arch:
       - arm64
       X-Stainless-Async:
@@ -50,7 +50,7 @@ interactions:
       X-Stainless-OS:
       - MacOS
       X-Stainless-Package-Version:
-      - 2.16.0
+      - 2.21.0
       X-Stainless-Raw-Response:
       - 'true'
       X-Stainless-Runtime:
@@ -78,7 +78,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9c8f28c1b80f6ad3-SJC
+      - 9d0087cff9deee17-SJC
       Connection:
       - keep-alive
       Content-Length:
@@ -86,7 +86,7 @@ interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Thu, 05 Feb 2026 03:00:44 GMT
+      - Wed, 18 Feb 2026 21:13:48 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -104,7 +104,7 @@ interactions:
       x-openai-proxy-wasm:
       - v0.1
       x-request-id:
-      - req_d4d2b3c13bb64894b34e5b02f02b1611
+      - req_df9d949c51554f0d95ff25499774e7e4
     status:
       code: 401
       message: Unauthorized

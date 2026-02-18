@@ -59,6 +59,8 @@ interactions:
       - 3.13.5
       authorization:
       - Bearer test_openai_api_key
+      cookie:
+      - test_cookie
       x-stainless-retry-count:
       - '0'
     method: POST
@@ -67,9 +69,9 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-DAj9Ub5ttBgZdAqgGscw7FGhHiHKQ",
+          "id": "chatcmpl-DAj9WZiv8fbnefXi4FNVRPRTEnVPo",
           "object": "chat.completion",
-          "created": 1771449216,
+          "created": 1771449218,
           "model": "gpt-3.5-turbo-0125",
           "choices": [
             {
@@ -104,13 +106,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9d00877fddbbc52c-SJC
+      - 9d00878aee0931f4-SJC
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 18 Feb 2026 21:13:36 GMT
+      - Wed, 18 Feb 2026 21:13:38 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -130,15 +132,11 @@ interactions:
       - '822'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '214'
+      - '254'
       openai-project:
       - proj_GLiYlAc06hF0Fm06IMReZLy4
       openai-version:
       - '2020-10-01'
-      set-cookie:
-      - __cf_bm=svf._6V2i4MgL7d7aX1yG7rcKUoRzcPTV6NDOGABWqE-1771449215.9718075-1.0.1.1-qn_TzI8a5s0k.ILSwrsUXqsQE.elDzBlwOfqMmSKEgHZJwhl_pXZi.NpHr7bWAUAi6IIlFHqrYGZRznFICGWTgOAkegYYFGZYyDep4_U8OZCg8dXpIIC3YPk3WZCxloy;
-        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Wed, 18 Feb 2026
-        21:43:36 GMT
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
@@ -146,15 +144,15 @@ interactions:
       x-ratelimit-limit-tokens:
       - '200000'
       x-ratelimit-remaining-requests:
-      - '9999'
+      - '9998'
       x-ratelimit-remaining-tokens:
       - '199982'
       x-ratelimit-reset-requests:
-      - 8.64s
+      - 15.553s
       x-ratelimit-reset-tokens:
       - 5ms
       x-request-id:
-      - req_9a4171dffffd4bfe900f68e792029ff7
+      - req_e453155961504f42afd3c9655505091f
     status:
       code: 200
       message: OK
