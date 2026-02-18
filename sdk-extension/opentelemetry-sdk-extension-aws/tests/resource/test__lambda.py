@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import os
-import tempfile
 import unittest
 from collections import OrderedDict
 from unittest.mock import patch
+
+import pytest
 
 from opentelemetry.sdk.extension.aws.resource._lambda import (  # pylint: disable=no-name-in-module
     AwsLambdaResourceDetector,
@@ -38,25 +39,19 @@ MockLambdaResourceAttributes = {
     ResourceAttributes.FAAS_MAX_MEMORY: 128,
 }
 
+MOCK_LAMBDA_ENV = {
+    "AWS_REGION": MockLambdaResourceAttributes[ResourceAttributes.CLOUD_REGION],
+    "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_NAME],
+    "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[ResourceAttributes.FAAS_VERSION],
+    "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_INSTANCE],
+    "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
+}
+
 
 class AwsLambdaResourceDetectorTest(unittest.TestCase):
     @patch.dict(
         "os.environ",
-        {
-            "AWS_REGION": MockLambdaResourceAttributes[
-                ResourceAttributes.CLOUD_REGION
-            ],
-            "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_NAME
-            ],
-            "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_VERSION
-            ],
-            "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_INSTANCE
-            ],
-            "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
-        },
+        MOCK_LAMBDA_ENV,
         clear=True,
     )
     def test_simple_create(self):
@@ -65,114 +60,47 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
             actual.attributes.copy(), OrderedDict(MockLambdaResourceAttributes)
         )
 
-    @patch.dict(
-        "os.environ",
-        {
-            "AWS_REGION": MockLambdaResourceAttributes[
-                ResourceAttributes.CLOUD_REGION
-            ],
-            "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_NAME
-            ],
-            "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_VERSION
-            ],
-            "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_INSTANCE
-            ],
-            "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
-        },
-        clear=True,
-    )
-    def test_account_id_from_symlink(self):
-        """When the account ID symlink exists, cloud.account.id is set."""
-        symlink_path = None
-        try:
-            tmpdir = tempfile.mkdtemp()
-            symlink_path = os.path.join(tmpdir, ".otel-aws-account-id")
-            os.symlink("123456789012", symlink_path)
-            with patch(
-                "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
-                symlink_path,
-            ):
-                actual = AwsLambdaResourceDetector().detect()
-            self.assertEqual(
-                actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID],
-                "123456789012",
-            )
-        finally:
-            if symlink_path and os.path.islink(symlink_path):
-                os.unlink(symlink_path)
-            if tmpdir:
-                os.rmdir(tmpdir)
 
-    @patch.dict(
-        "os.environ",
-        {
-            "AWS_REGION": MockLambdaResourceAttributes[
-                ResourceAttributes.CLOUD_REGION
-            ],
-            "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_NAME
-            ],
-            "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_VERSION
-            ],
-            "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_INSTANCE
-            ],
-            "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
-        },
-        clear=True,
-    )
-    def test_account_id_missing_symlink(self):
-        """When the symlink does not exist, cloud.account.id is absent and no exception is raised."""
-        with patch(
-            "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
-            "/tmp/.otel-aws-account-id-nonexistent",
-        ):
-            actual = AwsLambdaResourceDetector().detect()
-        self.assertNotIn(
-            ResourceAttributes.CLOUD_ACCOUNT_ID, actual.attributes
-        )
+@pytest.fixture
+def account_id_symlink(tmp_path):
+    """Create a symlink at a temporary path and patch the detector to use it."""
+    def _create(account_id):
+        symlink_path = tmp_path / ".otel-aws-account-id"
+        os.symlink(account_id, symlink_path)
+        return str(symlink_path)
+    return _create
 
-    @patch.dict(
-        "os.environ",
-        {
-            "AWS_REGION": MockLambdaResourceAttributes[
-                ResourceAttributes.CLOUD_REGION
-            ],
-            "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_NAME
-            ],
-            "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_VERSION
-            ],
-            "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[
-                ResourceAttributes.FAAS_INSTANCE
-            ],
-            "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
-        },
-        clear=True,
-    )
-    def test_account_id_preserves_leading_zeros(self):
-        """Leading zeros in the account ID are preserved (treated as string)."""
-        symlink_path = None
-        try:
-            tmpdir = tempfile.mkdtemp()
-            symlink_path = os.path.join(tmpdir, ".otel-aws-account-id")
-            os.symlink("000123456789", symlink_path)
-            with patch(
-                "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
-                symlink_path,
-            ):
-                actual = AwsLambdaResourceDetector().detect()
-            self.assertEqual(
-                actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID],
-                "000123456789",
-            )
-        finally:
-            if symlink_path and os.path.islink(symlink_path):
-                os.unlink(symlink_path)
-            if tmpdir:
-                os.rmdir(tmpdir)
+
+@patch.dict("os.environ", MOCK_LAMBDA_ENV, clear=True)
+def test_account_id_from_symlink(account_id_symlink):
+    """When the account ID symlink exists, cloud.account.id is set."""
+    symlink_path = account_id_symlink("123456789012")
+    with patch(
+        "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
+        symlink_path,
+    ):
+        actual = AwsLambdaResourceDetector().detect()
+    assert actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID] == "123456789012"
+
+
+@patch.dict("os.environ", MOCK_LAMBDA_ENV, clear=True)
+def test_account_id_missing_symlink():
+    """When the symlink does not exist, cloud.account.id is absent and no exception is raised."""
+    with patch(
+        "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
+        "/tmp/.otel-aws-account-id-nonexistent",
+    ):
+        actual = AwsLambdaResourceDetector().detect()
+    assert ResourceAttributes.CLOUD_ACCOUNT_ID not in actual.attributes
+
+
+@patch.dict("os.environ", MOCK_LAMBDA_ENV, clear=True)
+def test_account_id_preserves_leading_zeros(account_id_symlink):
+    """Leading zeros in the account ID are preserved (treated as string)."""
+    symlink_path = account_id_symlink("000123456789")
+    with patch(
+        "opentelemetry.sdk.extension.aws.resource._lambda._ACCOUNT_ID_SYMLINK_PATH",
+        symlink_path,
+    ):
+        actual = AwsLambdaResourceDetector().detect()
+    assert actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID] == "000123456789"
