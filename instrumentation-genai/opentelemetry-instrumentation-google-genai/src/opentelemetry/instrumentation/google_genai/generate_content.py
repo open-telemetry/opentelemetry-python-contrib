@@ -695,6 +695,59 @@ class _GenerateContentInstrumentationHelper:
 
         return tool_definitions
 
+    def _maybe_log_completion_details_in_log(
+        self,
+        event: LogRecord,
+        completion_details_attributes: dict[str, AttributeValue],
+        tool_definitions: Optional[list[ToolDefinition]] = None,
+    ):
+        if self._content_recording_enabled in [
+            ContentCapturingMode.EVENT_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ]:
+            event.attributes = {
+                **(event.attributes or {}),
+                **completion_details_attributes,
+            }
+        else:
+            tool_def_without_params_attr = _tool_def_without_parameters_attr(
+                tool_definitions
+            )
+            event.attributes = {
+                **(event.attributes or {}),
+                **tool_def_without_params_attr,
+            }
+
+        self._otel_wrapper.log_completion_details(event=event)
+
+    def _maybe_log_completion_details_in_span(
+        self,
+        span: Span,
+        completion_details_attributes: dict[str, AttributeValue],
+        tool_definitions: Optional[list[ToolDefinition]] = None,
+    ):
+        if self._content_recording_enabled in [
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ]:
+            span.set_attributes(
+                {
+                    k: gen_ai_json_dumps(v)
+                    for k, v in completion_details_attributes.items()
+                }
+            )
+            # request attributes were already set on the span..
+        else:
+            tool_def_without_params_attr = _tool_def_without_parameters_attr(
+                tool_definitions
+            )
+            span.set_attributes(
+                {
+                    k: gen_ai_json_dumps(v)
+                    for k, v in tool_def_without_params_attr.items()
+                }
+            )
+
     def _maybe_log_completion_details(
         self,
         extra_attributes: dict[str, AttributeValue],
@@ -742,46 +795,16 @@ class _GenerateContentInstrumentationHelper:
             system_instructions,
             tool_definitions,
         )
-        if self._content_recording_enabled in [
-            ContentCapturingMode.EVENT_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        ]:
-            event.attributes = {
-                **(event.attributes or {}),
-                **completion_details_attributes,
-            }
-        else:
-            tool_def_without_params_attr = _tool_def_without_parameters_attr(
-                tool_definitions
-            )
-            event.attributes = {
-                **(event.attributes or {}),
-                **tool_def_without_params_attr,
-            }
-
-        self._otel_wrapper.log_completion_details(event=event)
-
-        if self._content_recording_enabled in [
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        ]:
-            span.set_attributes(
-                {
-                    k: gen_ai_json_dumps(v)
-                    for k, v in completion_details_attributes.items()
-                }
-            )
-            # request attributes were already set on the span..
-        else:
-            tool_def_without_params_attr = _tool_def_without_parameters_attr(
-                tool_definitions
-            )
-            span.set_attributes(
-                {
-                    k: gen_ai_json_dumps(v)
-                    for k, v in tool_def_without_params_attr.items()
-                }
-            )
+        self._maybe_log_completion_details_in_log(
+            event=event,
+            completion_details_attributes=completion_details_attributes,
+            tool_definitions=tool_definitions,
+        )
+        self._maybe_log_completion_details_in_span(
+            span=span,
+            completion_details_attributes=completion_details_attributes,
+            tool_definitions=tool_definitions,
+        )
 
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
