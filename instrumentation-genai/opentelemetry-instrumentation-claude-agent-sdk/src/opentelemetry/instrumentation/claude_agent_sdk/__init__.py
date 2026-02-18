@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-OpenTelemetry Anthropic Agents Instrumentation
+OpenTelemetry Claude Agent SDK Instrumentation
 ===============================================
 
 Instrumentation for the `Claude Agent SDK
@@ -24,11 +24,11 @@ Usage
 
 .. code-block:: python
 
-    from opentelemetry.instrumentation.anthropic_agents import AnthropicAgentsInstrumentor
+    from opentelemetry.instrumentation.claude_agent_sdk import ClaudeAgentSDKInstrumentor
     from claude_agent_sdk import ClaudeAgentOptions, AgentDefinition, AssistantMessage, TextBlock, query
 
     # Enable instrumentation
-    AnthropicAgentsInstrumentor().instrument()
+    ClaudeAgentSDKInstrumentor().instrument()
 
     # Use Claude Agent SDK normally
     import anyio
@@ -66,14 +66,14 @@ API
 from typing import Any, Collection
 
 from opentelemetry._logs import get_logger
-from opentelemetry.instrumentation.anthropic_agents.package import _instruments
+from opentelemetry.instrumentation.claude_agent_sdk.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
 
 
-class AnthropicAgentsInstrumentor(BaseInstrumentor):
+class ClaudeAgentSDKInstrumentor(BaseInstrumentor):
     """An instrumentor for the Claude Agent SDK.
 
     This instrumentor will automatically trace Anthropic API calls and
@@ -91,7 +91,7 @@ class AnthropicAgentsInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs: Any) -> None:
-        """Enable Anthropic Agents instrumentation.
+        """Enable Claude Agent SDK instrumentation.
 
         Args:
             **kwargs: Optional arguments
@@ -137,7 +137,7 @@ class AnthropicAgentsInstrumentor(BaseInstrumentor):
         # Patching will be added in a follow-up PR
 
     def _uninstrument(self, **kwargs: Any) -> None:
-        """Disable Anthropic Agents instrumentation.
+        """Disable Claude Agent SDK instrumentation.
 
         This removes all patches applied during instrumentation.
         """

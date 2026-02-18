@@ -59,6 +59,6 @@ components:
     - vasantteja
     - anirudha
 
-  instrumentation-genai/opentelemetry-instrumentation-anthropic-agents:
+  instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk:
     - vasantteja
     - anirudha

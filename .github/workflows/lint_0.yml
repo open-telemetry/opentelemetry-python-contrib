@@ -127,8 +127,8 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-anthropic
 
-  lint-instrumentation-anthropic-agents:
-    name: instrumentation-anthropic-agents
+  lint-instrumentation-claude-agent-sdk:
+    name: instrumentation-claude-agent-sdk
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -144,7 +144,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e lint-instrumentation-anthropic-agents
+        run: tox -e lint-instrumentation-claude-agent-sdk
 
   lint-resource-detector-containerid:
     name: resource-detector-containerid

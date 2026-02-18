@@ -1,10 +1,10 @@
-OpenTelemetry Anthropic Agents Instrumentation
+OpenTelemetry Claude Agent SDK Instrumentation
 ==============================================
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-anthropic-agents.svg
-   :target: https://pypi.org/project/opentelemetry-instrumentation-anthropic-agents/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-claude-agent-sdk.svg
+   :target: https://pypi.org/project/opentelemetry-instrumentation-claude-agent-sdk/
 
 This library allows tracing LLM requests made by the
 `Claude Agent SDK <https://github.com/anthropics/claude-agent-sdk-python>`_.
@@ -14,7 +14,7 @@ Installation
 
 ::
 
-    pip install opentelemetry-instrumentation-anthropic-agents
+    pip install opentelemetry-instrumentation-claude-agent-sdk
 
 If you don't have a Claude Agent SDK application yet, try our `examples <examples>`_
 which only need a valid Anthropic API key.
@@ -24,16 +24,16 @@ Check out the `zero-code example <examples/zero-code>`_ for a quick start.
 Usage
 -----
 
-This section describes how to set up Anthropic Agents instrumentation if you're setting OpenTelemetry up manually.
+This section describes how to set up Claude Agent SDK instrumentation if you're setting OpenTelemetry up manually.
 Check out the `manual example <examples/manual>`_ for more details.
 
 .. code-block:: python
 
-    from opentelemetry.instrumentation.anthropic_agents import AnthropicAgentsInstrumentor
+    from opentelemetry.instrumentation.claude_agent_sdk import ClaudeAgentSDKInstrumentor
     from claude_agent_sdk import ClaudeAgentOptions, AgentDefinition, AssistantMessage, TextBlock, query
 
-    # Instrument Anthropic Agents
-    AnthropicAgentsInstrumentor().instrument()
+    # Instrument Claude Agent SDK
+    ClaudeAgentSDKInstrumentor().instrument()
 
     # Use Claude Agent SDK as normal
     import anyio

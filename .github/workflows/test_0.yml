@@ -982,8 +982,8 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-anthropic-latest -- -ra
 
-  py310-test-instrumentation-anthropic-agents-oldest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-oldest 3.10 Ubuntu
+  py310-test-instrumentation-claude-agent-sdk-oldest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -999,10 +999,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-anthropic-agents-oldest -- -ra
+        run: tox -e py310-test-instrumentation-claude-agent-sdk-oldest -- -ra
 
-  py310-test-instrumentation-anthropic-agents-latest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-latest 3.10 Ubuntu
+  py310-test-instrumentation-claude-agent-sdk-latest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1018,10 +1018,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-anthropic-agents-latest -- -ra
+        run: tox -e py310-test-instrumentation-claude-agent-sdk-latest -- -ra
 
-  py311-test-instrumentation-anthropic-agents-oldest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-oldest 3.11 Ubuntu
+  py311-test-instrumentation-claude-agent-sdk-oldest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1037,10 +1037,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-anthropic-agents-oldest -- -ra
+        run: tox -e py311-test-instrumentation-claude-agent-sdk-oldest -- -ra
 
-  py311-test-instrumentation-anthropic-agents-latest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-latest 3.11 Ubuntu
+  py311-test-instrumentation-claude-agent-sdk-latest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-latest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1056,10 +1056,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-anthropic-agents-latest -- -ra
+        run: tox -e py311-test-instrumentation-claude-agent-sdk-latest -- -ra
 
-  py312-test-instrumentation-anthropic-agents-oldest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-oldest 3.12 Ubuntu
+  py312-test-instrumentation-claude-agent-sdk-oldest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1075,10 +1075,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-anthropic-agents-oldest -- -ra
+        run: tox -e py312-test-instrumentation-claude-agent-sdk-oldest -- -ra
 
-  py312-test-instrumentation-anthropic-agents-latest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-latest 3.12 Ubuntu
+  py312-test-instrumentation-claude-agent-sdk-latest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-latest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1094,10 +1094,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-anthropic-agents-latest -- -ra
+        run: tox -e py312-test-instrumentation-claude-agent-sdk-latest -- -ra
 
-  py313-test-instrumentation-anthropic-agents-oldest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-oldest 3.13 Ubuntu
+  py313-test-instrumentation-claude-agent-sdk-oldest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1113,10 +1113,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-anthropic-agents-oldest -- -ra
+        run: tox -e py313-test-instrumentation-claude-agent-sdk-oldest -- -ra
 
-  py313-test-instrumentation-anthropic-agents-latest_ubuntu-latest:
-    name: instrumentation-anthropic-agents-latest 3.13 Ubuntu
+  py313-test-instrumentation-claude-agent-sdk-latest_ubuntu-latest:
+    name: instrumentation-claude-agent-sdk-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1132,7 +1132,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-anthropic-agents-latest -- -ra
+        run: tox -e py313-test-instrumentation-claude-agent-sdk-latest -- -ra
 
   py39-test-resource-detector-containerid_ubuntu-latest:
     name: resource-detector-containerid 3.9 Ubuntu

@@ -29,8 +29,8 @@ from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
 )
-from opentelemetry.instrumentation.anthropic_agents import (
-    AnthropicAgentsInstrumentor,
+from opentelemetry.instrumentation.claude_agent_sdk import (
+    ClaudeAgentSDKInstrumentor,
 )
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
@@ -63,7 +63,7 @@ metrics.set_meter_provider(
 )
 
 # instrument Claude Agent SDK
-AnthropicAgentsInstrumentor().instrument()
+ClaudeAgentSDKInstrumentor().instrument()
 
 
 async def code_reviewer_example():

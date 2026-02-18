@@ -21,7 +21,7 @@ members = [
     "opentelemetry-instrumentation-aiokafka",
     "opentelemetry-instrumentation-aiopg",
     "opentelemetry-instrumentation-anthropic",
-    "opentelemetry-instrumentation-anthropic-agents",
+    "opentelemetry-instrumentation-claude-agent-sdk",
     "opentelemetry-instrumentation-asgi",
     "opentelemetry-instrumentation-asyncclick",
     "opentelemetry-instrumentation-asyncio",
@@ -2902,8 +2902,8 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-anthropic-agents"
-source = { editable = "instrumentation-genai/opentelemetry-instrumentation-anthropic-agents" }
+name = "opentelemetry-instrumentation-claude-agent-sdk"
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },

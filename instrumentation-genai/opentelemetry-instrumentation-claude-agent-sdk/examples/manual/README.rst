@@ -1,26 +1,23 @@
-OpenTelemetry Anthropic Agents Zero-Code Instrumentation Example
-================================================================
+OpenTelemetry Claude Agent SDK Instrumentation Example
+======================================================
 
-This is an example of how to instrument Claude Agent SDK calls with zero
-code changes, using ``opentelemetry-instrument``.
+This is an example of how to instrument Claude Agent SDK calls when
+configuring OpenTelemetry SDK and Instrumentations manually.
 
 Based on the `claude-agent-sdk-python agents example
 <https://github.com/anthropics/claude-agent-sdk-python/blob/main/examples/agents.py>`_,
 this example defines two custom agents — a **code reviewer** and a
 **documentation writer** — using ``AgentDefinition``, then runs queries
-against them via the ``query()`` API. When `main.py <main.py>`_ is run with
-the CLI, it exports traces and logs to an OTLP compatible endpoint. Traces
+against them via the ``query()`` API. When `main.py <main.py>`_ is run, it
+exports traces, logs, and metrics to an OTLP compatible endpoint. Traces
 capture each agent turn, tool invocations, and the duration of the
 interaction.
 
 Note: `.env <.env>`_ file configures additional environment variables:
 
-- ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`` configures
-  OpenTelemetry SDK to export logs and events.
 - ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` configures
-  Anthropic Agents instrumentation to capture prompt and completion contents
+  Claude Agent SDK instrumentation to capture prompt and completion contents
   on events.
-- ``OTEL_LOGS_EXPORTER=otlp`` to specify exporter type.
 
 Setup
 -----
@@ -41,19 +38,11 @@ Next, set up a virtual environment like this:
 Run
 ---
 
-Run the example with zero-code instrumentation like this:
+Run the example like this:
 
 ::
 
-    dotenv run -- opentelemetry-instrument python main.py
+    dotenv run -- python main.py
 
 You should see the code reviewer and documentation writer agents respond in
 the console while traces and logs export to your configured observability tool.
-No changes to ``main.py`` were required!
-
-Learn More
-----------
-
-See the `OpenTelemetry Python automatic instrumentation docs
-<https://opentelemetry.io/docs/languages/python/automatic/>`_ for more
-information about zero-code instrumentation.

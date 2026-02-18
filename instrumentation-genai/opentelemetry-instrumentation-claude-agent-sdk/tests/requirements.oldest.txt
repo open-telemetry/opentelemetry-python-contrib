@@ -25,4 +25,4 @@ opentelemetry-api==1.37  # when updating, also update in pyproject.toml
 opentelemetry-sdk==1.37  # when updating, also update in pyproject.toml
 opentelemetry-semantic-conventions==0.58b0  # when updating, also update in pyproject.toml
 
--e instrumentation-genai/opentelemetry-instrumentation-anthropic-agents
+-e instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk

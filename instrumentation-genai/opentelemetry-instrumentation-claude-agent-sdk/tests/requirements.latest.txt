@@ -21,8 +21,8 @@
 # with multiple other dependencies in the top-level "tox.ini"
 # file. In particular, please see:
 #
-#   anthropic-agents-latest: {[testenv]test_deps}
-#   anthropic-agents-latest: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-anthropic-agents/tests/requirements.latest.txt
+#   claude-agent-sdk-latest: {[testenv]test_deps}
+#   claude-agent-sdk-latest: -r {toxinidir}/instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/tests/requirements.latest.txt
 #
 # This provides additional dependencies, namely:
 #
@@ -45,4 +45,4 @@ wrapt==1.16.0
 
 -e opentelemetry-instrumentation
 -e util/opentelemetry-util-genai
--e instrumentation-genai/opentelemetry-instrumentation-anthropic-agents
+-e instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk

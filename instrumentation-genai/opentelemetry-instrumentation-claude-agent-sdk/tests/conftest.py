@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test configuration and fixtures for Anthropic Agents instrumentation tests."""
+"""Test configuration and fixtures for Claude Agent SDK instrumentation tests."""
 # pylint: disable=redefined-outer-name
 
 import pytest
@@ -80,16 +80,16 @@ def meter_provider(metric_reader):
 
 
 @pytest.fixture
-def instrument_anthropic_agents(
+def instrument_claude_agent_sdk(
     tracer_provider, logger_provider, meter_provider
 ):
-    """Fixture to instrument Anthropic Agents with test providers."""
+    """Fixture to instrument Claude Agent SDK with test providers."""
     # pylint: disable=import-outside-toplevel
-    from opentelemetry.instrumentation.anthropic_agents import (  # noqa: PLC0415
-        AnthropicAgentsInstrumentor,
+    from opentelemetry.instrumentation.claude_agent_sdk import (  # noqa: PLC0415
+        ClaudeAgentSDKInstrumentor,
     )
 
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         logger_provider=logger_provider,
@@ -100,12 +100,12 @@ def instrument_anthropic_agents(
 
 
 @pytest.fixture
-def uninstrument_anthropic_agents():
-    """Fixture to ensure Anthropic Agents is uninstrumented after test."""
+def uninstrument_claude_agent_sdk():
+    """Fixture to ensure Claude Agent SDK is uninstrumented after test."""
     yield
     # pylint: disable=import-outside-toplevel
-    from opentelemetry.instrumentation.anthropic_agents import (  # noqa: PLC0415
-        AnthropicAgentsInstrumentor,
+    from opentelemetry.instrumentation.claude_agent_sdk import (  # noqa: PLC0415
+        ClaudeAgentSDKInstrumentor,
     )
 
-    AnthropicAgentsInstrumentor().uninstrument()
+    ClaudeAgentSDKInstrumentor().uninstrument()

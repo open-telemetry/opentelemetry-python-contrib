@@ -12,23 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for the AnthropicAgentsInstrumentor class."""
+"""Tests for the ClaudeAgentSDKInstrumentor class."""
 
-from opentelemetry.instrumentation.anthropic_agents import (
-    AnthropicAgentsInstrumentor,
+from opentelemetry.instrumentation.claude_agent_sdk import (
+    ClaudeAgentSDKInstrumentor,
 )
 
 
 def test_instrumentor_instantiation():
     """Test that the instrumentor can be instantiated."""
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
     assert instrumentor is not None
-    assert isinstance(instrumentor, AnthropicAgentsInstrumentor)
+    assert isinstance(instrumentor, ClaudeAgentSDKInstrumentor)
 
 
 def test_instrumentation_dependencies():
     """Test that instrumentation dependencies are correctly reported."""
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
     dependencies = instrumentor.instrumentation_dependencies()
 
     assert dependencies is not None
@@ -40,7 +40,7 @@ def test_instrument_uninstrument_cycle(
     tracer_provider, logger_provider, meter_provider
 ):
     """Test that instrument() and uninstrument() can be called multiple times."""
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
 
     # First instrumentation
     instrumentor.instrument(
@@ -67,7 +67,7 @@ def test_multiple_instrumentation_calls(
     tracer_provider, logger_provider, meter_provider
 ):
     """Test that multiple instrument() calls don't cause issues."""
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
 
     # First call
     instrumentor.instrument(
@@ -89,7 +89,7 @@ def test_multiple_instrumentation_calls(
 
 def test_uninstrument_without_instrument():
     """Test that uninstrument() can be called without prior instrument()."""
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
 
     # This should not raise an error
     instrumentor.uninstrument()
@@ -97,7 +97,7 @@ def test_uninstrument_without_instrument():
 
 def test_instrument_with_no_providers():
     """Test that instrument() works without explicit providers."""
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
 
     # Should use global providers
     instrumentor.instrument()
@@ -108,7 +108,7 @@ def test_instrument_with_no_providers():
 
 def test_instrumentor_has_required_attributes():
     """Test that the instrumentor has the required methods."""
-    instrumentor = AnthropicAgentsInstrumentor()
+    instrumentor = ClaudeAgentSDKInstrumentor()
 
     assert hasattr(instrumentor, "instrument")
     assert hasattr(instrumentor, "uninstrument")
