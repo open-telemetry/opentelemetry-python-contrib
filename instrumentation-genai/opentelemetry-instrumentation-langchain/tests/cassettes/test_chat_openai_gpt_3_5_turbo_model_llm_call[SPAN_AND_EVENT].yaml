@@ -69,43 +69,91 @@ interactions:
     body:
       string: |-
         {
-          "error": {
-            "message": "Incorrect API key provided: test_ope*******_key. You can find your API key at https://platform.openai.com/account/api-keys.",
-            "type": "invalid_request_error",
-            "param": null,
-            "code": "invalid_api_key"
-          }
+          "id": "chatcmpl-DAiEtrq1iGFQUkLPXSjzNHfCcHSkC",
+          "object": "chat.completion",
+          "created": 1771445707,
+          "model": "gpt-3.5-turbo-0125",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The capital of France is Paris.",
+                "refusal": null,
+                "annotations": []
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 24,
+            "completion_tokens": 7,
+            "total_tokens": 31,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "service_tier": "default",
+          "system_fingerprint": null
         }
     headers:
       CF-RAY:
-      - 9d0031565ec36dd5-SJC
+      - 9d0031d57f06939b-SJC
       Connection:
       - keep-alive
-      Content-Length:
-      - '269'
       Content-Type:
-      - application/json; charset=utf-8
+      - application/json
       Date:
-      - Wed, 18 Feb 2026 20:14:46 GMT
+      - Wed, 18 Feb 2026 20:15:07 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
       X-Content-Type-Options:
       - nosniff
+      access-control-expose-headers:
+      - X-Request-ID
       alt-svc:
       - h3=":443"; ma=86400
       cf-cache-status:
       - DYNAMIC
+      content-length:
+      - '822'
       openai-organization: test_openai_org_id
-      vary:
-      - Origin
+      openai-processing-ms:
+      - '188'
+      openai-project:
+      - proj_GLiYlAc06hF0Fm06IMReZLy4
+      openai-version:
+      - '2020-10-01'
       x-openai-proxy-wasm:
       - v0.1
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '200000'
+      x-ratelimit-remaining-requests:
+      - '9998'
+      x-ratelimit-remaining-tokens:
+      - '199982'
+      x-ratelimit-reset-requests:
+      - 15.943s
+      x-ratelimit-reset-tokens:
+      - 5ms
       x-request-id:
-      - req_bd9941d5cd3141b0b726ed87a83a72f0
+      - req_caec566f7e2b49279fa10356591b620d
     status:
-      code: 401
-      message: Unauthorized
+      code: 200
+      message: OK
 version: 1

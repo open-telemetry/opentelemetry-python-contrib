@@ -40,7 +40,7 @@ interactions:
       Host:
       - api.openai.com
       User-Agent:
-      - OpenAI/Python 2.16.0
+      - OpenAI/Python 2.21.0
       X-Stainless-Arch:
       - arm64
       X-Stainless-Async:
@@ -50,7 +50,7 @@ interactions:
       X-Stainless-OS:
       - MacOS
       X-Stainless-Package-Version:
-      - 2.16.0
+      - 2.21.0
       X-Stainless-Raw-Response:
       - 'true'
       X-Stainless-Runtime:
@@ -76,7 +76,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9c8f28c12f51938c-SJC
+      - 9d003155ee38c090-SJC
       Connection:
       - keep-alive
       Content-Length:
@@ -84,7 +84,7 @@ interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Thu, 05 Feb 2026 03:00:44 GMT
+      - Wed, 18 Feb 2026 20:14:46 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -97,12 +97,18 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       openai-organization: test_openai_org_id
+      set-cookie:
+      - __cf_bm=Z9AjEcKiTXt3VNqTolbx4uUZeaRm7i1cwSQrmLEdn4o-1771445686.703757-1.0.1.1-y_bwkVL4ccU054ejX_BoqwuWKhOe_Ro9f9LB2er6R1CFdbuzZcLhfOO.WKtn0FFqyLEKKHd2e78jpVyfWehmgYPDm6KlSUrq7jC35adsrRmm5IhSO0.mlySHZwPkuRPn;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Wed, 18 Feb 2026
+        20:44:46 GMT
+      - _cfuvid=T4mhvpRDcyJ2oCawXGa.x7M2CgZazoug6xxHUwTuT8I-1771445686.703757-1.0.1.1-91pwrB_buis.VRYGH2Lod_bplUcRMgUu8faL5HN9v3o;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com
       vary:
       - Origin
       x-openai-proxy-wasm:
       - v0.1
       x-request-id:
-      - req_c707e654b3bb460a8fc6b5ded4ee43c9
+      - req_8155c73e2fc04951b7fe1181efaf112b
     status:
       code: 401
       message: Unauthorized

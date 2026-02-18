@@ -78,7 +78,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9d0031565ec36dd5-SJC
+      - 9d003156efae1321-SJC
       Connection:
       - keep-alive
       Content-Length:
@@ -104,7 +104,7 @@ interactions:
       x-openai-proxy-wasm:
       - v0.1
       x-request-id:
-      - req_bd9941d5cd3141b0b726ed87a83a72f0
+      - req_60aca1df7bee4aecb9d6f8663e8f1329
     status:
       code: 401
       message: Unauthorized
