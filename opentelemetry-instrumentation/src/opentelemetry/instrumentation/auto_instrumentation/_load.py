@@ -215,7 +215,9 @@ def _load_logging_integrations():
     ):
         enabled_logging_integrations.append("logging")
 
-    for entry_point in entry_points(group="opentelemetry_logging_handlers"):
+    for entry_point in entry_points(
+        group="opentelemetry_logging_integrations"
+    ):
         # TODO: add exclusions once we move to enabled by default
         if entry_point.name not in enabled_logging_integrations:
             continue
