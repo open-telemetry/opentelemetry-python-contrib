@@ -237,6 +237,126 @@ class LLMInvocation(GenAIInvocation):
 
 
 @dataclass
+class _BaseAgent(GenAIInvocation):
+    """
+    Shared base class for agent lifecycle types (AgentInvocation, AgentCreation).
+
+    Contains fields common to all agent operations: identity, provider,
+    model, system instructions, server info, and telemetry plumbing.
+
+    Follows semconv for GenAI agent spans:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md
+
+    Do not instantiate directly — use AgentInvocation or AgentCreation.
+    """
+
+    # Agent identity
+    agent_name: str | None = None
+    agent_id: str | None = None
+    agent_description: str | None = None
+    agent_version: str | None = None
+
+    # Operation
+    operation_name: str = ""
+    provider: str | None = None
+
+    # Request
+    request_model: str | None = None
+
+    # Content (Opt-In)
+    system_instruction: list[MessagePart] = field(
+        default_factory=_new_system_instruction
+    )
+
+    # Server
+    server_address: str | None = None
+    server_port: int | None = None
+
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    """
+    Additional attributes to set on spans and/or events.
+    """
+    # Monotonic start time in seconds (from timeit.default_timer) used
+    # for duration calculations to avoid mixing clock sources. This is
+    # populated by the TelemetryHandler when starting an invocation.
+    monotonic_start_s: float | None = None
+
+
+@dataclass
+class AgentCreation(_BaseAgent):
+    """
+    Represents agent creation/initialization (create_agent operation).
+
+    Follows semconv for GenAI agent spans:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#create-agent-span
+
+    When creating an AgentCreation object, only update the data attributes.
+    The span and context_token attributes are set by the TelemetryHandler.
+    """
+
+    # Override default operation name
+    operation_name: str = "create_agent"
+
+
+@dataclass
+class AgentInvocation(_BaseAgent):
+    """
+    Represents an agent invocation (invoke_agent operation).
+
+    Follows semconv for GenAI agent spans:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#invoke-agent-span
+
+    When creating an AgentInvocation object, only update the data attributes.
+    The span and context_token attributes are set by the TelemetryHandler.
+    """
+
+    # Override default operation name
+    operation_name: str = "invoke_agent"
+
+    # Invoke-specific request attributes (Cond. Required)
+    conversation_id: str | None = None
+    data_source_id: str | None = None
+    output_type: str | None = None
+
+    # Request parameters (Recommended)
+    temperature: float | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    max_tokens: int | None = None
+    stop_sequences: list[str] | None = None
+    seed: int | None = None
+    choice_count: int | None = None
+
+    # Response (Recommended)
+    response_model_name: str | None = None
+    response_id: str | None = None
+    finish_reasons: list[str] | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+    # Content (Opt-In) — input/output messages and tool definitions
+    input_messages: list[InputMessage] = field(
+        default_factory=_new_input_messages
+    )
+    output_messages: list[OutputMessage] = field(
+        default_factory=_new_output_messages
+    )
+    tool_definitions: list[dict[str, Any]] | None = None
+
+    # Span kind: CLIENT for remote agents, INTERNAL for in-process agents
+    is_remote: bool = True
+
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of a low cardinality.
+    These attributes will not be set on spans or events.
+    """
+
+
+@dataclass
 class Error:
     message: str
     type: Type[BaseException]
