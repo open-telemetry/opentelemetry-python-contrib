@@ -26,6 +26,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
 
@@ -62,6 +63,52 @@ def get_content_capturing_mode() -> ContentCapturingMode:
             ", ".join(e.name for e in ContentCapturingMode),
         )
         return ContentCapturingMode.NO_CONTENT
+
+
+def should_emit_event() -> bool:
+    """Check if event emission is enabled.
+
+    Returns True if event emission is enabled, False otherwise.
+
+    If the environment variable OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is explicitly set,
+    its value takes precedence. Otherwise, the default value is determined by
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT:
+    - NO_CONTENT or SPAN_ONLY: defaults to False
+    - EVENT_ONLY or SPAN_AND_EVENT: defaults to True
+    """
+    envvar = os.environ.get(OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT)
+    # If explicitly set (and not empty), use the user's value (highest priority)
+    if envvar and envvar.strip():
+        envvar_lower = envvar.lower().strip()
+        if envvar_lower == "true":
+            return True
+        if envvar_lower == "false":
+            return False
+        logger.warning(
+            "%s is not a valid option for `%s` environment variable. Must be one of true or false (case-insensitive). Defaulting based on content capturing mode.",
+            envvar,
+            OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
+        )
+        # Invalid value falls through to default logic below
+
+    # If not explicitly set (or invalid), determine default based on content capturing mode
+    try:
+        if not is_experimental_mode():
+            # Not in experimental mode, default to False
+            return False
+        content_mode = get_content_capturing_mode()
+        # EVENT_ONLY and SPAN_AND_EVENT require events, so default to True
+        if content_mode in (
+            ContentCapturingMode.EVENT_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ):
+            return True
+        # NO_CONTENT and SPAN_ONLY don't require events, so default to False
+        return False
+    except ValueError:
+        # If get_content_capturing_mode raises ValueError (not in experimental mode),
+        # default to False
+        return False
 
 
 class _GenAiJsonEncoder(json.JSONEncoder):
