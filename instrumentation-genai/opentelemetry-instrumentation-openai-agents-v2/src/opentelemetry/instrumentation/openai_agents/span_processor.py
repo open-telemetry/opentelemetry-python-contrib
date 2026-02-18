@@ -946,9 +946,11 @@ class GenAISemanticProcessor(TracingProcessor):
                     "id": getattr(item, "id", None),
                     "arguments": (
                         {
-                            "queries": ["readacted"]
-                            if not self.include_sensitive_data
-                            else getattr(item, "queries", None)
+                            "queries": (
+                                ["readacted"]
+                                if not self.include_sensitive_data
+                                else getattr(item, "queries", [])
+                            )
                         }
                     ),
                 }
