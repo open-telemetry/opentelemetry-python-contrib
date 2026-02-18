@@ -322,9 +322,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_enabled(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, _, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -353,9 +351,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_enabled_stmt_enabled(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, _, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -385,9 +381,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_enabled_with_options(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, _, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -421,9 +415,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_with_dbapi_sqlcomment_not_enabled_default(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, _, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
