@@ -25,7 +25,6 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_configurators,
     _load_distro,
     _load_instrumentors,
-    _load_logging_integrations,
 )
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
@@ -165,7 +164,6 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
         distro.configure()
         _load_configurators()
         _load_instrumentors(distro)
-        _load_logging_integrations()
     except Exception as exc:  # pylint: disable=broad-except
         _logger.exception("Failed to auto initialize OpenTelemetry")
         if not swallow_exceptions:

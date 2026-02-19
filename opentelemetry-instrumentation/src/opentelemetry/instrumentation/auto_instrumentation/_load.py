@@ -15,9 +15,7 @@
 from functools import cached_property
 from logging import getLogger
 from os import environ
-from typing import Callable
 
-from opentelemetry._logs import LoggerProvider, get_logger_provider
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflictError,
     get_dist_dependency_conflicts,
@@ -188,77 +186,4 @@ def _load_configurators():
                 )
         except Exception as exc:  # pylint: disable=broad-except
             _logger.exception("Configuration of %s failed", entry_point.name)
-            raise exc
-
-
-# FIXME: move to proper place
-_OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED = (
-    "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED"
-)
-
-
-LoggingSetupT = Callable[[LoggerProvider], None]
-
-
-# FIXME: how should call these things? Logging integrations?
-def _load_logging_integrations():
-    entry_point_finder = _EntryPointDistFinder()
-    # this assumes we are called after sdk has been setup
-    logger_provider = get_logger_provider()
-
-    enabled_logging_integrations = []
-    if (
-        environ.get(_OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED, "false")
-        .strip()
-        .lower()
-        == "true"
-    ):
-        enabled_logging_integrations.append("logging")
-
-    for entry_point in entry_points(
-        group="opentelemetry_logging_integrations"
-    ):
-        # TODO: add exclusions once we move to enabled by default
-        if entry_point.name not in enabled_logging_integrations:
-            continue
-
-        try:
-            entry_point_dist = entry_point_finder.dist_for(entry_point)
-            conflict = get_dist_dependency_conflicts(entry_point_dist)
-            if conflict:
-                _logger.debug(
-                    "Skipping logging handler %s: %s",
-                    entry_point.name,
-                    conflict,
-                )
-                continue
-
-            # we expect a function that takes the logger_provider
-            logging_setup_func: LoggingSetupT = entry_point.load()
-            logging_setup_func(logger_provider)
-            _logger.debug("Loaded logging integration %s", entry_point.name)
-        except ModuleNotFoundError as exc:
-            # ModuleNotFoundError is raised when the library is not installed
-            # and the logging integration is not required to be loaded.
-            _logger.debug(
-                "Skipping logging integration %s: %s",
-                entry_point.name,
-                exc.msg,
-            )
-            continue
-        except ImportError:
-            # in scenarios using the kubernetes operator to do autoinstrumentation
-            # logging integrations (usually requiring binary extensions) may fail to load
-            # because the injected autoinstrumentation code does not match the application
-            # environment regarding python version, libc, etc... In this case it's better
-            # to skip the single logging integration rather than failing to load everything
-            # so treat differently ImportError than the rest of exceptions
-            _logger.exception(
-                "Importing of %s failed, skipping it", entry_point.name
-            )
-            continue
-        except Exception as exc:  # pylint: disable=broad-except
-            _logger.exception(
-                "Logging integration of %s failed", entry_point.name
-            )
             raise exc

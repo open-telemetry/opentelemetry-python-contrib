@@ -36,9 +36,6 @@ instruments = []
 [project.entry-points.opentelemetry_instrumentor]
 logging = "opentelemetry.instrumentation.logging:LoggingInstrumentor"
 
-[project.entry-points.opentelemetry_logging_integrations]
-logging = "opentelemetry.instrumentation.logging.handler:_setup_logging_handler"
-
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-logging"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
