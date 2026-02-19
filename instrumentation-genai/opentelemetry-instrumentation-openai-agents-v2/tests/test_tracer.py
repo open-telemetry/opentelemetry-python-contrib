@@ -97,12 +97,14 @@ GEN_AI_OUTPUT_MESSAGES = getattr(
     GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
 )
 
+
 # dummy classes for some response types since concrete type is not available in older `openai` versions
 class _ResponseCompactionItem:
     def __init__(self, id: str, type: str, encrypted_content: str) -> None:
         self.id = id
         self.type = type
         self.encrypted_content = encrypted_content
+
 
 class _ActionShellCall(openai.BaseModel):
     def __init__(
@@ -113,6 +115,7 @@ class _ActionShellCall(openai.BaseModel):
             max_output_length=max_output_length,
             timeout_ms=timeout_ms,
         )
+
 
 class _ResponseFunctionShellToolCall(openai.BaseModel):
     def __init__(
@@ -127,15 +130,18 @@ class _ResponseFunctionShellToolCall(openai.BaseModel):
             id=id, type=type, status=status, call_id=call_id, action=action
         )
 
+
 class _OutputOutcomeExit(openai.BaseModel):
     def __init__(self, type: str, exit_code: int) -> None:
         super().__init__(type=type, exit_code=exit_code)
+
 
 class _ShellToolCallOutput(openai.BaseModel):
     def __init__(
         self, stdout: str, stderr: str, outcome: _OutputOutcomeExit
     ) -> None:
         super().__init__(stdout=stdout, stderr=stderr, outcome=outcome)
+
 
 class _ResponseFunctionShellToolCallOutput(openai.BaseModel):
     def __init__(
@@ -150,9 +156,11 @@ class _ResponseFunctionShellToolCallOutput(openai.BaseModel):
             id=id, type=type, status=status, call_id=call_id, output=output
         )
 
+
 class _OperationCreateFile(openai.BaseModel):
     def __init__(self, type: str, diff: str, path: str) -> None:
         super().__init__(type=type, diff=diff, path=path)
+
 
 class _ResponseApplyPatchToolCall(openai.BaseModel):
     def __init__(
@@ -173,6 +181,7 @@ class _ResponseApplyPatchToolCall(openai.BaseModel):
             operation=operation,
         )
 
+
 class _ResponseApplyPatchToolCallOutput(openai.BaseModel):
     def __init__(
         self,
@@ -192,10 +201,12 @@ class _ResponseApplyPatchToolCallOutput(openai.BaseModel):
             output=output,
         )
 
+
 class _Usage:
     def __init__(self, input_tokens: int, output_tokens: int) -> None:
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
+
 
 class _Response:
     def __init__(self) -> None:
@@ -272,9 +283,7 @@ class _Response:
                 call_id="call-cc-123",
                 status="completed",
                 pending_safety_checks=[],
-                action=ActionClick(
-                    type="click", x=100, y=200, button="left"
-                ),
+                action=ActionClick(type="click", x=100, y=200, button="left"),
             ),
             # image_generation_call
             ImageGenerationCall(
@@ -329,9 +338,7 @@ class _Response:
                     _ShellToolCallOutput(
                         stdout="shell output",
                         stderr="",
-                        outcome=_OutputOutcomeExit(
-                            type="exit", exit_code=0
-                        ),
+                        outcome=_OutputOutcomeExit(type="exit", exit_code=0),
                     )
                 ],
             ),
@@ -435,6 +442,7 @@ class _Response:
                 "data": "some data",
             },
         ]
+
 
 def _instrument_with_provider(**instrument_kwargs):
     set_trace_processors([])
@@ -878,216 +886,11 @@ def test_response_span_records_redacted_response_attributes():
         assert response.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 9
 
         # Check output messages are redacted
-        output_messages = json.loads(
-            response.attributes[GEN_AI_OUTPUT_MESSAGES]
-        )
-        assert len(output_messages) == 1
-        assert output_messages[0]["role"] == "assistant"
-        parts = output_messages[0]["parts"]
-        assert parts[0] == {
-            "type": "text",
-            "content": "readacted",
-            "annotations": [],
-        }
-
-        assert parts[1] == {
-            "type": "refusal",
-            "content": "readacted",
-        }
-
-        assert parts[2] == {
-            "type": "reasoning",
-            "content": "readacted",
-        }
-
-        assert parts[3] == {
-            "type": "compaction",
-            "content": "readacted",
-        }
-
-        assert tool_calls_by_id["fs-123"] == {
-            "type": "tool_call",
-            "name": "file_search",
-            "arguments": {"queries": ["readacted"]},
-        }
-
-        assert tool_calls_by_id["fc-123"] == {
-            "type": "tool_call",
-            "name": "get_weather",
-            "arguments": {"city": "Paris"},
-        }
-
-        assert tool_calls_by_id["ws-123"] == {
-            "type": "tool_call",
-            "name": "web_search",
-            "arguments": "readacted",
-        }
-
-        assert tool_calls_by_id["cc-123"] == {
-            "type": "tool_call",
-            "name": "computer",
-            "arguments": {
-                "action": {
-                    "type": "click",
-                }
-            },
-        }
-
-        assert tool_calls_by_id["ci-123"] == {
-            "type": "tool_call",
-            "name": "code_interpreter",
-            "arguments": {
-                "code": "readacted",
-                "container_id": "cont-123",
-            },
-        }
-
-        assert tool_call_responses_by_id["ci-123"] == {
-            "type": "tool_call_response",
-            "name": "code_interpreter",
-            "response": {
-                "status": "completed",
-                "output": [{"type": "logs"}],
-            },
-        }
-
-        assert tool_calls_by_id["ls-123"] == {
-            "type": "tool_call",
-            "name": "local_shell",
-            "arguments": {
-                "command": ["readacted"],
-                "env": "readacted",
-                "type": "exec",
-                "user": "readacted",
-                "working_directory": "readacted",
-                "timeout_ms": 5000,
-            },
-        }
-
-        assert tool_calls_by_id["sh-123"] == {
-            "type": "tool_call",
-            "name": "shell",
-            "arguments": {
-                "call_id": "call-123",
-                "commands": ["readacted"],
-                "created_by": None,
-                "environment": None,
-                "max_output_length": 1000,
-                "timeout_ms": 5000,
-            },
-        }
-
-        assert tool_calls_by_id["ap-123"] == {
-            "type": "tool_call",
-            "name": "apply_patch",
-            "arguments": {
-                "call_id": "call-123",
-                "operation": {
-                    "type": "create_file",
-                    # arguments redacted
-                },
-                "created_by": "agent",
-            },
-        }
-
-        assert tool_call_responses_by_id["apo-123"] == {
-            "type": "tool_call_response",
-            "name": "apply_patch",
-            "response": {
-                "call_id": "call-123",
-                "created_by": "agent",
-                "status": "completed",
-                "output": "readacted",
-            },
-        }
-
-        assert tool_calls_by_id["mcp-123"] == {
-            "type": "tool_call",
-            "name": "mcp_call",
-            "arguments": {
-                "server": "server1",
-                "tool_name": "tool_name",
-                "tool_args": "readacted",
-            },
-        }
-
-        assert tool_call_responses_by_id["mcp-123"] == {
-            "type": "tool_call_response",
-            "name": "mcp_call",
-            "response": {
-                "output": "readacted",
-                "error": None,
-                "status": "completed",
-            },
-        }
-
-        assert tool_call_responses_by_id["mcp-124"] == {
-            "type": "tool_call_response",
-            "name": "mcp_call",
-            "response": {
-                "output": None,
-                "error": "Some error",
-                "status": "failed",
-            },
-        }
-
-        assert tool_calls_by_id["mcp-125"] == {
-            "type": "tool_call",
-            "name": "mcp_call",
-            "arguments": {
-                "server": "server2",
-                "tool_name": "another_tool",
-                "tool_args": "readacted",
-            },
-        }
-
-        assert tool_calls_by_id["mcpl-123"] == {
-            "type": "tool_call",
-            "name": "mcp_list_tools",
-            "arguments": {
-                "server": "server1",
-            },
-        }
-
-        assert tool_call_responses_by_id["mcpl-123"] == {
-            "type": "tool_call_response",
-            "name": "mcp_list_tools",
-            "response": {
-                "error": None,
-                "tools": [
-                    {"name": "tool1", "input_schema": {}},
-                    {"name": "tool2", "input_schema": {}},
-                ],
-            },
-        }
-
-        assert tool_calls_by_id["mcpl-124"] == {
-            "type": "tool_call",
-            "name": "mcp_list_tools",
-            "arguments": {
-                "server": "server2",
-            },
-        }
-
-        assert tool_calls_by_id["mcpa-123"] == {
-            "type": "tool_call",
-            "name": "mcp_approval_request",
-            "arguments": {
-                "server": "server1",
-                "tool_name": "dangerous_tool",
-                "tool_args": "readacted",
-            },
-        }
-
-        assert tool_calls_by_id["ct-123"] == {
-            "type": "tool_call",
-            "name": "custom_tool",
-            "arguments": "readacted",
-        }
-
+        assert GEN_AI_OUTPUT_MESSAGES not in response.attributes
     finally:
         instrumentor.uninstrument()
         exporter.clear()
+
 
 def test_response_span_records_response_attributes():
     instrumentor, exporter = _instrument_with_provider()
@@ -1199,7 +1002,7 @@ def test_response_span_records_response_attributes():
             "name": "code_interpreter",
             "response": {
                 "status": "completed",
-                "output": [{"type": "logs", "logs": "hello"}],
+                "outputs": [{"type": "logs", "logs": "hello"}],
             },
         }
 

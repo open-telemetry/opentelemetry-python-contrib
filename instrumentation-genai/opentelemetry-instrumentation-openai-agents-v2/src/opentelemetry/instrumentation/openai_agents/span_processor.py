@@ -899,42 +899,28 @@ class GenAISemanticProcessor(TracingProcessor):
                             {
                                 "type": "text",
                                 "annotations": (  # out of spec but useful
-                                    ["readacted"]
-                                    if not self.include_sensitive_data
-                                    else [
+                                    [
                                         a.to_dict()
                                         if hasattr(a, "to_dict")
                                         else str(a)
                                         for a in getattr(c, "annotations", [])
                                     ]
                                 ),
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else getattr(c, "text", None)
-                                ),
+                                "content": getattr(c, "text", None),
                             }
                         )
                     elif content_type == "refusal":
                         parts.append(
                             {
                                 "type": "refusal",  # custom type
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else getattr(c, "refusal", None)
-                                ),
+                                "content": getattr(c, "refusal", None),
                             }
                         )
             else:
                 parts.append(
                     {
                         "type": "text",
-                        "content": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else str(content)
-                        ),
+                        "content": str(content),
                     }
                 )
             return parts
@@ -944,15 +930,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     "type": "tool_call",
                     "name": "file_search",
                     "id": getattr(item, "id", None),
-                    "arguments": (
-                        {
-                            "queries": (
-                                ["readacted"]
-                                if not self.include_sensitive_data
-                                else getattr(item, "queries", [])
-                            )
-                        }
-                    ),
+                    "arguments": ({"queries": getattr(item, "queries", [])}),
                 }
             ]
         elif part_type == "function_call":  # ResponseFunctionToolCall
@@ -962,21 +940,14 @@ class GenAISemanticProcessor(TracingProcessor):
                     "name": getattr(item, "name", None),
                     "id": getattr(item, "id", None),
                     "arguments": (
-                        "readacted"
-                        if not self.include_sensitive_data
-                        else safe_json_loads(getattr(item, "arguments", None))
+                        safe_json_loads(getattr(item, "arguments", None))
                     ),
                 }
             ]
         elif part_type == "web_search_call":  # ResponseFunctionWebSearch
             action = getattr(item, "action", None)
-            action_type = getattr(action, "type", None)
             action_obj = (
-                {"type": action_type}
-                if not self.include_sensitive_data
-                else action.to_dict()
-                if hasattr(action, "to_dict")
-                else str(action)
+                action.to_dict() if hasattr(action, "to_dict") else str(action)
             )
             return [
                 {
@@ -990,13 +961,8 @@ class GenAISemanticProcessor(TracingProcessor):
             ]
         elif part_type == "computer_call":  # ResponseComputerToolCall
             action = getattr(item, "action", None)
-            action_type = getattr(action, "type", None)
             action_obj = (
-                {"type": action_type}
-                if not self.include_sensitive_data
-                else action.to_dict()
-                if hasattr(action, "to_dict")
-                else str(action)
+                action.to_dict() if hasattr(action, "to_dict") else str(action)
             )
             return [
                 {
@@ -1026,22 +992,14 @@ class GenAISemanticProcessor(TracingProcessor):
             return [
                 {
                     "type": "reasoning",
-                    "content": (
-                        "readacted"
-                        if not self.include_sensitive_data
-                        else content_str
-                    ),
+                    "content": content_str,
                 }
             ]
         elif part_type == "compaction":  # ResponseCompactionItem
             return [
                 {
                     "type": "compaction",  # custom type
-                    "content": (
-                        "readacted"
-                        if not self.include_sensitive_data
-                        else getattr(item, "encrypted_content", None)
-                    ),
+                    "content": getattr(item, "encrypted_content", None),
                 }
             ]
         elif part_type == "image_generation_call":  # ImageGenerationCall
@@ -1050,13 +1008,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     "type": "tool_call_response",
                     "name": "image_generation",
                     "id": getattr(item, "id", None),
-                    "response": {
-                        "result": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else getattr(item, "result", None)
-                        )
-                    },
+                    "response": {"result": getattr(item, "result", None)},
                 }
             ]
         elif (
@@ -1069,11 +1021,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     "id": getattr(item, "id", None),
                     "arguments": {
                         "container_id": getattr(item, "container_id", None),
-                        "code": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else getattr(item, "code", None)
-                        ),
+                        "code": getattr(item, "code", None),
                     },
                 },
                 {
@@ -1083,11 +1031,9 @@ class GenAISemanticProcessor(TracingProcessor):
                     "response": {
                         "status": getattr(item, "status", None),
                         "outputs": [
-                            { "type": output.type }
-                            if not self.include_sensitive_data
-                            else output.to_dict()
+                            output.to_dict()
                             for output in getattr(item, "outputs", [])
-                        ]
+                        ],
                     },
                 },
             ]
@@ -1101,25 +1047,11 @@ class GenAISemanticProcessor(TracingProcessor):
                     "arguments": {
                         "type": getattr(action, "type", None),
                         "timeout_ms": getattr(action, "timeout_ms", None),
-                        "command": (
-                            ["readacted"]
-                            if not self.include_sensitive_data
-                            else getattr(action, "command", None)
-                        ),
-                        "env": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else getattr(action, "env", None)
-                        ),
-                        "user": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else getattr(action, "user", None)
-                        ),
-                        "working_directory": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else getattr(action, "working_directory", None)
+                        "command": getattr(action, "command", None),
+                        "env": getattr(action, "env", None),
+                        "user": getattr(action, "user", None),
+                        "working_directory": getattr(
+                            action, "working_directory", None
                         ),
                     },
                 }
@@ -1135,11 +1067,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         "created_by": getattr(action, "created_by", None),
                         "call_id": getattr(item, "call_id", None),
                         "environment": getattr(action, "environment", None),
-                        "commands": (
-                            ["readacted"]
-                            if not self.include_sensitive_data
-                            else getattr(action, "commands", None)
-                        ),
+                        "commands": getattr(action, "commands", None),
                         "max_output_length": getattr(
                             action, "max_output_length", None
                         ),
@@ -1158,14 +1086,10 @@ class GenAISemanticProcessor(TracingProcessor):
                     "response": {
                         "created_by": getattr(item, "created_by", None),
                         "call_id": getattr(item, "call_id", None),
-                        "result": (
-                            ["readacted"]
-                            if not self.include_sensitive_data
-                            else [
-                                output.to_dict()
-                                for output in getattr(item, "output", [])
-                            ]
-                        ),
+                        "result": [
+                            output.to_dict()
+                            for output in getattr(item, "output", [])
+                        ],
                     },
                 }
             ]
@@ -1181,9 +1105,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         "created_by": getattr(item, "created_by", None),
                         "call_id": getattr(item, "call_id", None),
                         "operation": (
-                            {"type": operation_type}
-                            if not self.include_sensitive_data
-                            else operation.to_dict()
+                            operation.to_dict()
                             if hasattr(operation, "to_dict")
                             else safe_json_dumps(operation)
                         ),
@@ -1202,11 +1124,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         "created_by": getattr(item, "created_by", None),
                         "call_id": getattr(item, "call_id", None),
                         "status": getattr(item, "status", None),
-                        "output": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else getattr(item, "output", None)
-                        ),
+                        "output": getattr(item, "output", None),
                     },
                 }
             ]
@@ -1220,11 +1138,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         "server": getattr(item, "server_label", None),
                         "tool_name": getattr(item, "name", None),
                         "tool_args": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else safe_json_loads(
-                                getattr(item, "arguments", None)
-                            )
+                            safe_json_loads(getattr(item, "arguments", None))
                         ),
                     },
                 }
@@ -1236,16 +1150,8 @@ class GenAISemanticProcessor(TracingProcessor):
                         "name": "mcp_call",
                         "id": getattr(item, "id", None),
                         "response": {
-                            "output": (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else getattr(item, "output", None)
-                            ),
-                            "error": (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else getattr(item, "error", None)
-                            ),
+                            "output": getattr(item, "output", None),
+                            "error": getattr(item, "error", None),
                             "status": getattr(item, "status", None),
                         },
                     }
@@ -1269,19 +1175,11 @@ class GenAISemanticProcessor(TracingProcessor):
                         "name": "mcp_list_tools",
                         "id": getattr(item, "id", None),
                         "response": {
-                            "tools": (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else [
-                                    tool.to_dict()
-                                    for tool in getattr(item, "tools", [])
-                                ]
-                            ),
-                            "error": (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else getattr(item, "error", None)
-                            ),
+                            "tools": [
+                                tool.to_dict()
+                                for tool in getattr(item, "tools", [])
+                            ],
+                            "error": getattr(item, "error", None),
                         },
                     }
                 )
@@ -1296,11 +1194,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         "server": getattr(item, "server_label", None),
                         "tool_name": getattr(item, "name", None),
                         "tool_args": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else safe_json_loads(
-                                getattr(item, "arguments", None)
-                            )
+                            safe_json_loads(getattr(item, "arguments", None))
                         ),
                     },
                 }
@@ -1311,11 +1205,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     "type": "tool_call",
                     "name": getattr(item, "name", None),
                     "id": getattr(item, "id", None),
-                    "arguments": (
-                        "readacted"
-                        if not self.include_sensitive_data
-                        else getattr(item, "input", None)
-                    ),
+                    "arguments": getattr(item, "input", None),
                 }
             ]
 
@@ -1325,9 +1215,7 @@ class GenAISemanticProcessor(TracingProcessor):
             return [
                 {
                     "type": "text",
-                    "content": (
-                        "readacted" if not self.include_sensitive_data else txt
-                    ),
+                    "content": txt,
                 }
             ]
         else:
@@ -1335,11 +1223,7 @@ class GenAISemanticProcessor(TracingProcessor):
             return [
                 {
                     "type": "text",
-                    "content": (
-                        "readacted"
-                        if not self.include_sensitive_data
-                        else safe_json_dumps(item)
-                    ),
+                    "content": safe_json_dumps(item),
                 }
             ]
 
@@ -1347,6 +1231,7 @@ class GenAISemanticProcessor(TracingProcessor):
         self, span_data: Any
     ) -> list[dict[str, Any]]:
         """Normalize output messages to enforced role+parts schema.
+        Contains sensitive content, assumes it will not be called if include_sensitive_data=False.
 
         Produces: [{"role": "assistant", "parts": [{"type": "text", "content": "..."}],
                     optional "finish_reason": "..." }]
@@ -1374,11 +1259,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     parts.append(
                         {
                             "type": "text",
-                            "content": (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else output_text
-                            ),
+                            "content": output_text,
                         }
                     )
 
@@ -1394,11 +1275,7 @@ class GenAISemanticProcessor(TracingProcessor):
                                 parts.append(
                                     {
                                         "type": "text",
-                                        "content": (
-                                            "readacted"
-                                            if not self.include_sensitive_data
-                                            else txt
-                                        ),
+                                        "content": txt,
                                     }
                                 )
                         elif "content" in item and isinstance(
@@ -1407,22 +1284,14 @@ class GenAISemanticProcessor(TracingProcessor):
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else item["content"]
-                                    ),
+                                    "content": item["content"],
                                 }
                             )
                         else:
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else str(item)
-                                    ),
+                                    "content": str(item),
                                 }
                             )
                         if not finish_reason and isinstance(
@@ -1433,22 +1302,14 @@ class GenAISemanticProcessor(TracingProcessor):
                         parts.append(
                             {
                                 "type": "text",
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else item
-                                ),
+                                "content": item,
                             }
                         )
                     else:
                         parts.append(
                             {
                                 "type": "text",
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else str(item)
-                                ),
+                                "content": str(item),
                             }
                         )
 
