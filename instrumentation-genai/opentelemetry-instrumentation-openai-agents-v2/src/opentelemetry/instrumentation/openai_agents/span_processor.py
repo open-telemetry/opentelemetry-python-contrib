@@ -933,7 +933,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     "arguments": ({"queries": getattr(item, "queries", [])}),
                 }
             ]
-        elif part_type == "function_call":  # ResponseFunctionToolCall
+        if part_type == "function_call":  # ResponseFunctionToolCall
             return [
                 {
                     "type": "tool_call",
@@ -944,7 +944,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     ),
                 }
             ]
-        elif part_type == "web_search_call":  # ResponseFunctionWebSearch
+        if part_type == "web_search_call":  # ResponseFunctionWebSearch
             action = getattr(item, "action", None)
             action_obj = (
                 action.to_dict() if hasattr(action, "to_dict") else str(action)
@@ -959,7 +959,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif part_type == "computer_call":  # ResponseComputerToolCall
+        if part_type == "computer_call":  # ResponseComputerToolCall
             action = getattr(item, "action", None)
             action_obj = (
                 action.to_dict() if hasattr(action, "to_dict") else str(action)
@@ -974,7 +974,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif part_type == "reasoning":  # ResponseReasoningItem
+        if part_type == "reasoning":  # ResponseReasoningItem
             content = getattr(item, "content", None)
             content_str = (
                 str.join(
@@ -995,14 +995,14 @@ class GenAISemanticProcessor(TracingProcessor):
                     "content": content_str,
                 }
             ]
-        elif part_type == "compaction":  # ResponseCompactionItem
+        if part_type == "compaction":  # ResponseCompactionItem
             return [
                 {
                     "type": "compaction",  # custom type
                     "content": getattr(item, "encrypted_content", None),
                 }
             ]
-        elif part_type == "image_generation_call":  # ImageGenerationCall
+        if part_type == "image_generation_call":  # ImageGenerationCall
             return [
                 {
                     "type": "tool_call_response",
@@ -1011,7 +1011,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     "response": {"result": getattr(item, "result", None)},
                 }
             ]
-        elif (
+        if (
             part_type == "code_interpreter_call"
         ):  # ResponseCodeInterpreterToolCall
             return [
@@ -1037,7 +1037,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 },
             ]
-        elif part_type == "local_shell_call":  # LocalShellCall
+        if part_type == "local_shell_call":  # LocalShellCall
             action = getattr(item, "action", None)
             return [
                 {
@@ -1056,7 +1056,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif part_type == "shell_call":  # ResponseFunctionShellToolCall
+        if part_type == "shell_call":  # ResponseFunctionShellToolCall
             action = getattr(item, "action", None)
             return [
                 {
@@ -1075,7 +1075,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif (
+        if (
             part_type == "shell_call_output"
         ):  # ResponseFunctionShellToolCallOutput
             return [
@@ -1093,9 +1093,8 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif part_type == "apply_patch_call":  # ResponseApplyPatchToolCall
+        if part_type == "apply_patch_call":  # ResponseApplyPatchToolCall
             operation = getattr(item, "operation", None)
-            operation_type = getattr(operation, "type", None)
             return [
                 {
                     "type": "tool_call",
@@ -1112,7 +1111,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif (
+        if (
             part_type == "apply_patch_call_output"
         ):  # ResponseApplyPatchToolCallOutput
             return [
@@ -1128,7 +1127,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif part_type == "mcp_call":  # McpCall
+        if part_type == "mcp_call":  # McpCall
             parts = [
                 {
                     "type": "tool_call",
@@ -1157,7 +1156,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     }
                 )
             return parts
-        elif part_type == "mcp_list_tools":  # McpListTools
+        if part_type == "mcp_list_tools":  # McpListTools
             parts = [
                 {
                     "type": "tool_call",
@@ -1184,7 +1183,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     }
                 )
             return parts
-        elif part_type == "mcp_approval_request":  # McpApprovalRequest
+        if part_type == "mcp_approval_request":  # McpApprovalRequest
             return [
                 {
                     "type": "tool_call",
@@ -1199,7 +1198,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-        elif part_type == "custom_tool_call":  # ResponseCustomToolCall
+        if part_type == "custom_tool_call":  # ResponseCustomToolCall
             return [
                 {
                     "type": "tool_call",
@@ -1218,14 +1217,14 @@ class GenAISemanticProcessor(TracingProcessor):
                     "content": txt,
                 }
             ]
-        else:
-            # Fallback: stringified
-            return [
-                {
-                    "type": "text",
-                    "content": safe_json_dumps(item),
-                }
-            ]
+
+        # Fallback: stringified
+        return [
+            {
+                "type": "text",
+                "content": safe_json_dumps(item),
+            }
+        ]
 
     def _normalize_output_messages_to_role_parts(
         self, span_data: Any

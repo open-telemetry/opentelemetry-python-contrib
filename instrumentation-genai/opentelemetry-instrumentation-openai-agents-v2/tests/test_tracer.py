@@ -1,4 +1,5 @@
-# pylint: disable=wrong-import-position,wrong-import-order,import-error,no-name-in-module,unexpected-keyword-arg,no-value-for-parameter,redefined-outer-name
+# ruff: noqa: E402
+# pylint: disable=wrong-import-position,wrong-import-order,import-error,no-name-in-module,unexpected-keyword-arg,no-value-for-parameter,redefined-outer-name,too-many-lines
 
 from __future__ import annotations
 
@@ -16,9 +17,9 @@ if str(stub_path) not in sys.path:
 sys.modules.pop("agents", None)
 sys.modules.pop("agents.tracing", None)
 
-import agents.tracing as agents_tracing  # noqa: E402
-import openai  # noqa: E402
-from agents.tracing import (  # noqa: E402
+import agents.tracing as agents_tracing
+import openai
+from agents.tracing import (
     agent_span,
     function_span,
     generation_span,
@@ -26,7 +27,7 @@ from agents.tracing import (  # noqa: E402
     set_trace_processors,
     trace,
 )
-from openai.types.responses import (  # noqa: E402
+from openai.types.responses import (
     ResponseCodeInterpreterToolCall,
     ResponseComputerToolCall,
     ResponseCustomToolCall,
@@ -38,16 +39,16 @@ from openai.types.responses import (  # noqa: E402
     ResponseOutputText,
     ResponseReasoningItem,
 )
-from openai.types.responses.response_code_interpreter_tool_call import (  # noqa: E402
+from openai.types.responses.response_code_interpreter_tool_call import (
     OutputLogs,
 )
-from openai.types.responses.response_computer_tool_call import (  # noqa: E402
+from openai.types.responses.response_computer_tool_call import (
     ActionClick,
 )
-from openai.types.responses.response_function_web_search import (  # noqa: E402
+from openai.types.responses.response_function_web_search import (
     ActionSearch as ActionWebSearch,
 )
-from openai.types.responses.response_output_item import (  # noqa: E402
+from openai.types.responses.response_output_item import (
     ImageGenerationCall,
     LocalShellCall,
     LocalShellCallAction,
@@ -56,38 +57,38 @@ from openai.types.responses.response_output_item import (  # noqa: E402
     McpListTools,
     McpListToolsTool,
 )
-from openai.types.responses.response_reasoning_item import (  # noqa: E402
+from openai.types.responses.response_reasoning_item import (
     Content,
 )
 
-from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
+from opentelemetry.instrumentation.openai_agents import (
     OpenAIAgentsInstrumentor,
 )
-from opentelemetry.instrumentation.openai_agents.span_processor import (  # noqa: E402
+from opentelemetry.instrumentation.openai_agents.span_processor import (
     ContentPayload,
     GenAISemanticProcessor,
 )
-from opentelemetry.sdk.trace import TracerProvider  # noqa: E402
+from opentelemetry.sdk.trace import TracerProvider
 
 try:
-    from opentelemetry.sdk.trace.export import (  # type: ignore[attr-defined]
+    from opentelemetry.sdk.trace.export import (  # type: ignore[attr-defined] pylint: disable=no-name-in-module
         InMemorySpanExporter,
         SimpleSpanProcessor,
     )
 except ImportError:  # pragma: no cover - support older/newer SDK layouts
     from opentelemetry.sdk.trace.export import (
-        SimpleSpanProcessor,  # noqa: E402
+        SimpleSpanProcessor,
     )
-    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (  # noqa: E402
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
         InMemorySpanExporter,
     )
-from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
+from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
+from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-from opentelemetry.trace import SpanKind  # noqa: E402
+from opentelemetry.trace import SpanKind
 
 GEN_AI_PROVIDER_NAME = GenAI.GEN_AI_PROVIDER_NAME
 GEN_AI_INPUT_MESSAGES = getattr(
@@ -99,107 +100,40 @@ GEN_AI_OUTPUT_MESSAGES = getattr(
 
 
 # dummy classes for some response types since concrete type is not available in older `openai` versions
-class _ResponseCompactionItem:
-    def __init__(self, id: str, type: str, encrypted_content: str) -> None:
-        self.id = id
-        self.type = type
-        self.encrypted_content = encrypted_content
+class _ResponseCompactionItem(openai.BaseModel):
+    pass
 
 
 class _ActionShellCall(openai.BaseModel):
-    def __init__(
-        self, commands: list[str], max_output_length: int, timeout_ms: int
-    ) -> None:
-        super().__init__(
-            commands=commands,
-            max_output_length=max_output_length,
-            timeout_ms=timeout_ms,
-        )
+    pass
 
 
 class _ResponseFunctionShellToolCall(openai.BaseModel):
-    def __init__(
-        self,
-        id: str,
-        type: str,
-        status: str,
-        call_id: str,
-        action: _ActionShellCall,
-    ) -> None:
-        super().__init__(
-            id=id, type=type, status=status, call_id=call_id, action=action
-        )
+    pass
 
 
 class _OutputOutcomeExit(openai.BaseModel):
-    def __init__(self, type: str, exit_code: int) -> None:
-        super().__init__(type=type, exit_code=exit_code)
+    pass
 
 
 class _ShellToolCallOutput(openai.BaseModel):
-    def __init__(
-        self, stdout: str, stderr: str, outcome: _OutputOutcomeExit
-    ) -> None:
-        super().__init__(stdout=stdout, stderr=stderr, outcome=outcome)
+    pass
 
 
 class _ResponseFunctionShellToolCallOutput(openai.BaseModel):
-    def __init__(
-        self,
-        id: str,
-        type: str,
-        status: str,
-        call_id: str,
-        output: list[_ShellToolCallOutput],
-    ) -> None:
-        super().__init__(
-            id=id, type=type, status=status, call_id=call_id, output=output
-        )
+    pass
 
 
 class _OperationCreateFile(openai.BaseModel):
-    def __init__(self, type: str, diff: str, path: str) -> None:
-        super().__init__(type=type, diff=diff, path=path)
+    pass
 
 
 class _ResponseApplyPatchToolCall(openai.BaseModel):
-    def __init__(
-        self,
-        id: str,
-        type: str,
-        status: str,
-        created_by: str,
-        call_id: str,
-        operation: _OperationCreateFile,
-    ) -> None:
-        super().__init__(
-            id=id,
-            type=type,
-            status=status,
-            created_by=created_by,
-            call_id=call_id,
-            operation=operation,
-        )
+    pass
 
 
 class _ResponseApplyPatchToolCallOutput(openai.BaseModel):
-    def __init__(
-        self,
-        id: str,
-        type: str,
-        created_by: str,
-        call_id: str,
-        status: str,
-        output: str,
-    ) -> None:
-        super().__init__(
-            id=id,
-            type=type,
-            created_by=created_by,
-            call_id=call_id,
-            status=status,
-            output=output,
-        )
+    pass
 
 
 class _Usage:
