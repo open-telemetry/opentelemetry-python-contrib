@@ -36,18 +36,16 @@ def connect_and_execute_query():
 
 
 def make_mysql_connection_mock():
-    cnx = mock.MagicMock(
-        database="test",
-        host="localhost",
-        port=3306,
-    )
+    cnx = mock.MagicMock()
+    cnx.database = "test"
+    cnx.server_host = "localhost"
+    cnx.server_port = 3306
 
     cursor = mock.MagicMock()
-    cursor._cnx = mock.MagicMock(
-        database="test",
-        host="localhost",
-        port=3306,
-    )
+    cursor._cnx = mock.MagicMock()
+    cursor._cnx.database = "test"
+    cursor._cnx.server_host = "localhost"
+    cursor._cnx.server_port = 3306
 
     cnx.cursor.return_value = cursor
     return cnx
@@ -69,18 +67,17 @@ def make_mysql_commenter_mocks(client_version="foobaz"):
         apilevel="123",
         paramstyle="test",
     )
-    mock_cursor = mock_connect_module.connect().cursor()
-    mock_cursor._cnx._cmysql.get_client_info.return_value = client_version
-
-    mock_cursor._cnx.host = "localhost"
-    mock_cursor._cnx.port = 3306
-    mock_cursor._cnx.database = "test"
-
     mock_connection = mock.MagicMock()
     mock_connection.database = "test"
-    mock_connection.host = "localhost"
-    mock_connection.port = 3306
+    mock_connection.server_host = "localhost"
+    mock_connection.server_port = 3306
+
+    mock_cursor = mock_connect_module.connect().cursor()
+    mock_cursor._cnx = mock_connection
+    mock_cursor._cnx._cmysql.get_client_info.return_value = client_version
+
     mock_connection.cursor.return_value = mock_cursor
+    mock_connect_module.connect.return_value = mock_connection
 
     return mock_connect_module, mock_connection, mock_cursor
 
