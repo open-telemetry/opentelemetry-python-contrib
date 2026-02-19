@@ -26,8 +26,8 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "opentelemetry-instrumentation ~= 0.58b0",
-  "opentelemetry-semantic-conventions ~= 0.58b0",
+  "opentelemetry-instrumentation ~= 0.60b1",
+  "opentelemetry-semantic-conventions ~= 0.60b1",
   "opentelemetry-api>=1.31.0",
 ]
 
@@ -46,10 +46,7 @@ Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 path = "src/opentelemetry/util/genai/version.py"
 
 [tool.hatch.build.targets.sdist]
-include = [
-  "/src",
-  "/tests",
-]
+include = ["/src", "/tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]

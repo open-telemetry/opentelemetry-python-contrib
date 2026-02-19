@@ -32,10 +32,10 @@ from opentelemetry.trace import (
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
+    EmbeddingInvocation,
     Error,
     InputMessage,
     LLMInvocation,
-    EmbeddingInvocation,
     MessagePart,
     OutputMessage,
 )
@@ -217,44 +217,6 @@ def _maybe_emit_llm_event(
     logger.emit(event)
 
 
-def _maybe_emit_embedding_event(
-    logger: Logger | None,
-    span: Span,
-    invocation: EmbeddingInvocation,
-    error: Error | None = None,
-) -> None:
-    """Emit a gen_ai.client.inference.operation.details event to the logger.
-
-    This function creates a LogRecord event following the semantic convention
-    for gen_ai.client.inference.operation.details as specified in the GenAI
-    event semantic conventions.
-
-    For more details, see the semantic convention documentation:
-    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md#event-eventgen_aiclientinferenceoperationdetails
-    """
-    if not is_experimental_mode() or not should_emit_event() or logger is None:
-        return
-
-    # Build event attributes by reusing the attribute getter functions
-    attributes: dict[str, Any] = {}
-    attributes.update(_get_embedding_common_attributes(invocation))
-    attributes.update(_get_embedding_request_attributes(invocation))
-    attributes.update(_get_embedding_response_attributes(invocation))
-
-    # Add error.type if operation ended in error
-    if error is not None:
-        attributes[error_attributes.ERROR_TYPE] = error.type.__qualname__
-
-    # Create and emit the event
-    context = set_span_in_context(span, get_current())
-    event = LogRecord(
-        event_name="gen_ai.client.embedding.operation.details",
-        attributes=attributes,
-        context=context,
-    )
-    logger.emit(event)
-
-
 def _apply_llm_finish_attributes(
     span: Span, invocation: LLMInvocation
 ) -> None:
@@ -333,7 +295,7 @@ def _get_embedding_request_attributes(
     """Get GenAI request semantic convention attributes."""
     optional_attrs = (
         (GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),
-        (GenAI.GEN_AI_EMBEDDING_DIMENSION_COUNT, invocation.dimension_count),
+        (GenAI.GEN_AI_EMBEDDINGS_DIMENSION_COUNT, invocation.dimension_count),
         (GenAI.GEN_AI_REQUEST_ENCODING_FORMATS, invocation.encoding_formats),
     )
 
@@ -399,5 +361,4 @@ __all__ = [
     "_get_embedding_request_attributes",
     "_get_embedding_response_attributes",
     "_get_embedding_span_name",
-    "_maybe_emit_embedding_event",
 ]

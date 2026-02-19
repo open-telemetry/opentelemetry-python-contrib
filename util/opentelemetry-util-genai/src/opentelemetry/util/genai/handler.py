@@ -234,9 +234,6 @@ class TelemetryHandler:
             name=f"{invocation.operation_name} {invocation.request_model}",
             kind=SpanKind.CLIENT,
         )
-        # Record a monotonic start timestamp (seconds) for duration
-        # calculation using timeit.default_timer.
-        invocation.monotonic_start_s = timeit.default_timer()
         invocation.span = span
         invocation.context_token = otel_context.attach(
             set_span_in_context(span)
