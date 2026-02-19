@@ -973,7 +973,7 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_OPERATION_NAME: "embeddings",
                 GenAI.GEN_AI_REQUEST_MODEL: "embed-model",
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
-                GenAI.GEN_AI_EMBEDDING_DIMENSION_COUNT: 1536,
+                GenAI.GEN_AI_EMBEDDINGS_DIMENSION_COUNT: 1536,
                 GenAI.GEN_AI_REQUEST_ENCODING_FORMATS: ("float",),
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 123,
                 server_attributes.SERVER_ADDRESS: "custom.server.com",

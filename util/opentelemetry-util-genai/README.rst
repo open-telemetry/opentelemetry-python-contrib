@@ -43,7 +43,7 @@ For embedding invocations, common attributes include:
 - `gen_ai.provider.name`: Str(openai)
 - `gen_ai.operation.name`: Str(embeddings)
 - `gen_ai.request.model`: Str(text-embedding-3-small)
-- `gen_ai.embedding.dimension_count`: Int(1536)
+- `gen_ai.embeddings.dimension.count`: Int(1536)
 - `gen_ai.request.encoding_formats`: Slice(["float"])
 - `gen_ai.usage.input_tokens`: Int(24)
 - `server.address`: Str(api.openai.com)
