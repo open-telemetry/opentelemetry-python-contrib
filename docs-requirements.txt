@@ -29,7 +29,7 @@ cassandra-driver~=3.25
 celery>=4.0
 confluent-kafka>= 1.8.2,<= 2.13.0
 elasticsearch>=6.0,<9.0
-flask~=2.0
+flask~=3.1
 falcon~=2.0
 grpcio~=1.27
 httpx>=0.18.0
