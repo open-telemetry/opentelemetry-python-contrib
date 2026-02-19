@@ -59,8 +59,6 @@ interactions:
       - 3.13.5
       authorization:
       - Bearer test_openai_api_key
-      cookie:
-      - test_cookie
       x-stainless-retry-count:
       - '0'
     method: POST
@@ -78,7 +76,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9d0087d14f4dc487-SJC
+      - 9d08b96c8d2b67d7-SJC
       Connection:
       - keep-alive
       Content-Length:
@@ -86,7 +84,7 @@ interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Wed, 18 Feb 2026 21:13:49 GMT
+      - Thu, 19 Feb 2026 21:05:46 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -99,12 +97,18 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       openai-organization: test_openai_org_id
+      set-cookie:
+      - __cf_bm=wRTe.yg21t4Hmlnym6umYHo41PFme8jHV65z7Ai6_04-1771535146.9666395-1.0.1.1-V3j6uPp1b7mudGWLLSB5Vk_zC3O8FBmCjRrguc_.hixN.Zy67xOtEeE__VwyjmXrWSnJnjHz2VO2RUr.6C04qr2J8dPfV5._bQfv4thKMonsCohocrVcwmwwfgF6GtYD;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Thu, 19 Feb 2026
+        21:35:46 GMT
+      - _cfuvid=FiOO9id9BeHCp.jp23WGFYuUJAqS3RdB2T1lLaroTEs-1771535146.9666395-1.0.1.1-GwFV1AQJkfqXaVwhyb_WBpNzyDw3zVtMUGJb8rtOMFg;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com
       vary:
       - Origin
       x-openai-proxy-wasm:
       - v0.1
       x-request-id:
-      - req_112dfa071ff84773b3c86d25a1dd3310
+      - req_71913c60957d49b29348e7966f3616d6
     status:
       code: 401
       message: Unauthorized

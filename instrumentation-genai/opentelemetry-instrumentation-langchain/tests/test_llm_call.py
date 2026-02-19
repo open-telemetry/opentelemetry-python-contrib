@@ -27,6 +27,7 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call(
     chat_openai_gpt_3_5_turbo_model,
     monkeypatch,
     capture_content,
+    vcr,
 ):
     monkeypatch.setenv(
         "OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental"
@@ -40,7 +41,10 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call(
         HumanMessage(content="What is the capital of France?"),
     ]
 
-    response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
+    with vcr.use_cassette(
+        "test_chat_openai_gpt_3_5_turbo_model_llm_call.yaml"
+    ):
+        response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
     assert response.content == "The capital of France is Paris."
 
     # verify spans
@@ -94,6 +98,7 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error(
     chat_openai_gpt_3_5_turbo_model,
     monkeypatch,
     capture_content,
+    vcr,
 ):
     monkeypatch.setenv(
         "OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental"
@@ -109,7 +114,10 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error(
 
     response = None
     try:
-        response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
+        with vcr.use_cassette(
+                "test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error.yaml"
+        ):
+            response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
     except Exception as e:
         # For this test, to get error, cassettes were recorded with no OPENAI_API_KEY, so an error is expected here.
         assert isinstance(e, AuthenticationError)
