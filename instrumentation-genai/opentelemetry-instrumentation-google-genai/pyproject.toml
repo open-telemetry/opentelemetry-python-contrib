@@ -42,7 +42,7 @@ dependencies = [
   "opentelemetry-api ~=1.37",
   "opentelemetry-instrumentation >=0.58b0, <2",
   "opentelemetry-semantic-conventions >=0.58b0, <2",
-  "opentelemetry-util-genai >= 0.2b0, <0.3b0", # TODO: update version after release (https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4221)
+  "opentelemetry-util-genai >= 0.2b0, <0.4b0", # TODO: update version after release (https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4221)
 ]
 
 [project.optional-dependencies]
