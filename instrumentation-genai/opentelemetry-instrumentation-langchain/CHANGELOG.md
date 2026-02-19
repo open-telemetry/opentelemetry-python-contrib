@@ -12,3 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added span support for genAI langchain llm invocation.
   ([#3665](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3665))
+
+- Added retriever memory search span/event instrumentation aligned with the
+  GenAI memory semantic convention proposal.
+  ([#3250](https://github.com/open-telemetry/semantic-conventions/pull/3250))
