@@ -110,6 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4078](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4171))
 - `opentelemetry-instrumentation-aiohttp-server`: fix HTTP error inconsistencies
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
+- `opentelemetry-instrumentation-aws-lambda`: fix improper handling of header casing 
+  ([#4216](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4216))
 
 ### Breaking changes
 
