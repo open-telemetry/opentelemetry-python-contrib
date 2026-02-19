@@ -12,12 +12,6 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.span_utils import (
-    _GEN_AI_AGENT_DESCRIPTION,
-    _GEN_AI_AGENT_ID,
-    _GEN_AI_AGENT_NAME,
-    _GEN_AI_AGENT_VERSION,
-)
 from opentelemetry.util.genai.types import (
     AgentCreation,
     Error,
@@ -55,7 +49,7 @@ class TestAgentCreationHandler(TestCase):
         self.assertEqual(
             span.attributes[GenAI.GEN_AI_OPERATION_NAME], "create_agent"
         )
-        self.assertEqual(span.attributes[_GEN_AI_AGENT_NAME], "New Agent")
+        self.assertEqual(span.attributes[GenAI.GEN_AI_AGENT_NAME], "New Agent")
 
     def test_create_agent_span_kind_is_client(self) -> None:
         handler = self._make_handler()
@@ -85,10 +79,10 @@ class TestAgentCreationHandler(TestCase):
         self.assertEqual(len(spans), 1)
         attrs = spans[0].attributes
         self.assertEqual(attrs[GenAI.GEN_AI_OPERATION_NAME], "create_agent")
-        self.assertEqual(attrs[_GEN_AI_AGENT_NAME], "Full Agent")
-        self.assertEqual(attrs[_GEN_AI_AGENT_ID], "agent-123")
-        self.assertEqual(attrs[_GEN_AI_AGENT_DESCRIPTION], "A test agent")
-        self.assertEqual(attrs[_GEN_AI_AGENT_VERSION], "1.0.0")
+        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_NAME], "Full Agent")
+        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_ID], "agent-123")
+        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_DESCRIPTION], "A test agent")
+        self.assertEqual(attrs["gen_ai.agent.version"], "1.0.0")
         self.assertEqual(attrs[GenAI.GEN_AI_PROVIDER_NAME], "openai")
         self.assertEqual(attrs[GenAI.GEN_AI_REQUEST_MODEL], "gpt-4")
 
