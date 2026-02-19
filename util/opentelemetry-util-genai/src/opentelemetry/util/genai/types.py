@@ -43,16 +43,52 @@ class ContentCapturingMode(Enum):
 
 @dataclass()
 class ToolCall:
-    """Represents a tool call requested by the model
+    """Represents a tool call with dual usage: message part and execution tracking.
 
-    This model is specified as part of semconv in `GenAI messages Python models - ToolCallRequestPart
-    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    This type serves two purposes as defined in OpenTelemetry semantic conventions:
+
+    1. Message Part (ToolCallRequestPart):
+       Represents a tool call requested by the model as part of a message.
+       Reference: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb
+
+    2. Tool Execution (execute_tool spans):
+       Represents the actual execution of a tool call, tracked via spans and metrics.
+       Reference: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md#execute-tool-span
+
+    The execution-only fields (tool_type, tool_description, tool_result, error_type)
+    are used when tracking tool execution via spans, but are typically not present when
+    this type is used as a message part in InputMessage or OutputMessage.
+
+    Semantic convention attributes for execute_tool spans:
+    - gen_ai.operation.name: "execute_tool" (Required)
+    - gen_ai.tool.name: Name of the tool (Recommended)
+    - gen_ai.tool.call.id: Tool call identifier (Recommended if available)
+    - gen_ai.tool.type: Type classification - "function", "extension", or "datastore" (Recommended if available)
+    - gen_ai.tool.description: Tool description (Recommended if available)
+    - gen_ai.tool.call.arguments: Parameters passed to tool (Opt-In, may contain sensitive data)
+    - gen_ai.tool.call.result: Result returned by tool (Opt-In, may contain sensitive data)
+    - error.type: Error type if operation failed (Conditionally Required)
     """
 
-    arguments: Any
+    # Fields used for both message part and execution tracking:
+    # gen_ai.tool.name - Name of the tool
     name: str
-    id: str | None
+    # gen_ai.tool.call.arguments - Arguments passed to the tool (Opt-In, may contain sensitive data)
+    arguments: Any = None
+    # gen_ai.tool.call.id - Unique identifier for the tool call
+    id: str | None = None
+    # Message part type identifier
     type: Literal["tool_call"] = "tool_call"
+
+    # Execution-only fields (used for execute_tool spans, not typically in messages):
+    # gen_ai.tool.type - Tool type: "function", "extension", or "datastore"
+    tool_type: str | None = None
+    # gen_ai.tool.description - Description of what the tool does
+    tool_description: str | None = None
+    # gen_ai.tool.call.result - Result returned by the tool (Opt-In, may contain sensitive data)
+    tool_result: Any = None
+    # error.type - Error type if the tool call failed
+    error_type: str | None = None
 
 
 @dataclass()
