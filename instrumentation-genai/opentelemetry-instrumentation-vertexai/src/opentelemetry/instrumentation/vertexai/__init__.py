@@ -47,7 +47,12 @@ from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
 )
 
-from opentelemetry._events import get_event_logger
+from opentelemetry._logs import get_logger
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.vertexai.package import _instruments
@@ -55,6 +60,7 @@ from opentelemetry.instrumentation.vertexai.patch import MethodWrappers
 from opentelemetry.instrumentation.vertexai.utils import is_content_enabled
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.completion_hook import load_completion_hook
 
 
 def _methods_to_wrap(
@@ -62,14 +68,14 @@ def _methods_to_wrap(
 ):
     # This import is very slow, do it lazily in case instrument() is not called
     # pylint: disable=import-outside-toplevel
-    from google.cloud.aiplatform_v1.services.prediction_service import (
+    from google.cloud.aiplatform_v1.services.prediction_service import (  # noqa: PLC0415
         async_client,
         client,
     )
-    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (  # noqa: PLC0415
         async_client as async_client_v1beta1,
     )
-    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (  # noqa: PLC0415
         client as client_v1beta1,
     )
 
@@ -104,24 +110,54 @@ class VertexAIInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any):
         """Enable VertexAI instrumentation."""
+        completion_hook = (
+            kwargs.get("completion_hook") or load_completion_hook()
+        )
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
+        )
         tracer_provider = kwargs.get("tracer_provider")
+        schema = (
+            Schemas.V1_28_0.value
+            if sem_conv_opt_in_mode == _StabilityMode.DEFAULT
+            else Schemas.V1_36_0.value
+        )
         tracer = get_tracer(
             __name__,
             "",
             tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
+            schema_url=schema,
         )
-        event_logger_provider = kwargs.get("event_logger_provider")
-        event_logger = get_event_logger(
+        logger_provider = kwargs.get("logger_provider")
+        logger = get_logger(
             __name__,
             "",
-            schema_url=Schemas.V1_28_0.value,
-            event_logger_provider=event_logger_provider,
+            logger_provider=logger_provider,
+            schema_url=schema,
         )
-
-        method_wrappers = MethodWrappers(
-            tracer, event_logger, is_content_enabled()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
         )
+        if sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
+            # Type checker now knows sem_conv_opt_in_mode is a Literal[_StabilityMode.DEFAULT]
+            method_wrappers = MethodWrappers(
+                tracer,
+                logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+                completion_hook,
+            )
+        elif sem_conv_opt_in_mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
+            # Type checker now knows it's the other literal
+            method_wrappers = MethodWrappers(
+                tracer,
+                logger,
+                is_content_enabled(sem_conv_opt_in_mode),
+                sem_conv_opt_in_mode,
+                completion_hook,
+            )
+        else:
+            raise RuntimeError(f"{sem_conv_opt_in_mode} mode not supported")
         for client_class, method_name, wrapper in _methods_to_wrap(
             method_wrappers
         ):

@@ -1,8 +1,8 @@
 OpenTelemetry Google GenAI SDK Manual Instrumentation Example
-============================================
+=============================================================
 
 This is an example of how to instrument Google GenAI SDK calls with zero code changes,
-using `opentelemetryh-instrument`.
+using `opentelemetry-instrument`.
 
 When `main.py <main.py>`_ is run, it exports traces, logs, and metrics to an OTLP
 compatible endpoint. Traces include details such as the model used and the

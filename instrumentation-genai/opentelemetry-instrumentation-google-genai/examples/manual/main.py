@@ -22,8 +22,7 @@ import os
 
 import google.genai
 
-# NOTE: OpenTelemetry Python Logs and Events APIs are in beta
-from opentelemetry import _events as otel_events
+# NOTE: OpenTelemetry Python Logs API is in beta
 from opentelemetry import _logs as otel_logs
 from opentelemetry import metrics as otel_metrics
 from opentelemetry import trace as otel_trace
@@ -40,7 +39,6 @@ from opentelemetry.instrumentation.google_genai import (
     GoogleGenAiSdkInstrumentor,
 )
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
@@ -56,12 +54,11 @@ def setup_otel_tracing():
     )
 
 
-def setup_otel_logs_and_events():
+def setup_otel_logs():
     otel_logs.set_logger_provider(LoggerProvider())
     otel_logs.get_logger_provider().add_log_record_processor(
         BatchLogRecordProcessor(OTLPLogExporter())
     )
-    otel_events.set_event_logger_provider(EventLoggerProvider())
 
 
 def setup_otel_metrics():
@@ -77,7 +74,7 @@ def setup_otel_metrics():
 
 def setup_opentelemetry():
     setup_otel_tracing()
-    setup_otel_logs_and_events()
+    setup_otel_logs()
     setup_otel_metrics()
 
 

@@ -9,7 +9,8 @@
       (otherwise the workflow will pick up the version from `main` and just remove the `.dev` suffix).
   * Review the two pull requests that it creates.
     (one is targeted to the release branch and one is targeted to `main`).
-    * The builds will fail for both the `main` and release pr because of validation rules. Follow the [release workflow](https://github.com/open-telemetry/opentelemetry-python/blob/main/RELEASING.md) for the core repo up until this same point. Change the SHAs of each PR to point at each other to get the `main` and release builds to pass.
+    * The builds will fail for the release PR because of validation rules. Follow the [release workflow](https://github.com/open-telemetry/opentelemetry-python/blob/main/RELEASING.md) for the core repo up until this same point.
+    * Close and reopen the PR so that the workflow will take into account the label automation we have in place
   * Merge the release PR.
   * Merge the PR to main (this can be done separately from [making the release](#making-the-release))
 
@@ -21,8 +22,12 @@
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
+> - opentelemetry-instrumentation-langchain
+> - opentelemetry-instrumentation-weaviate
+> - opentelemetry-util-genai
 >
 > These libraries are also excluded from the general release.
 
@@ -32,6 +37,7 @@ to pick a specific package to release. It follows the same versioning strategy a
 Long-term package release branch follows `package-release/{package-name}/v{major}.{minor}.x` (or `package-release/{package-name}/v{major}.{minor}bx`) naming pattern.
 
 The workflow will create two pull requests, one against the `main` and one against the `package-release/` branch; both should be merged in order to proceed with the release.
+To keep the process lightweight, it's OK to approve the PRs you generate and merge without additional reviews.
 
 ## Preparing a new patch release
 
@@ -40,6 +46,8 @@ The workflow will create two pull requests, one against the `main` and one again
   * Press the "Run workflow" button, then select the release branch from the dropdown list,
     e.g. `release/v1.9.x`, then enter the pull request number that you want to backport,
     then click the "Run workflow" button below that.
+  * Add the label `backport` to the generated pull request.
+  * In case label automation doesn't work, just close and reopen the PR so that the workflow will take into account the label automation we have in place.
   * Review and merge the backport pull request that it generates.
 * Merge a pull request to the release branch updating the `CHANGELOG.md`.
   * The heading for the unreleased entries should be `## Unreleased`.
@@ -47,6 +55,7 @@ The workflow will create two pull requests, one against the `main` and one again
   * Press the "Run workflow" button, then select the release branch from the dropdown list,
     e.g. `release/v1.9.x`, and click the "Run workflow" button below that.
   * Review and merge the pull request that it creates for updating the version.
+* Note: If you are doing a patch release in `-contrib` repo, you should also do an equivalent patch release in `-core` repo (even if there's no fix to release), otherwise tests in CI will fail.
 
 ### Preparing a patch release for individual package
 
@@ -80,8 +89,13 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
+> - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
 > - opentelemetry-instrumentation-google-genai
+> - opentelemetry-instrumentation-langchain
+> - opentelemetry-instrumentation-weaviate
+> - opentelemetry-util-genai
+> - opentelemetry-exporter-credential-provider-gcp
 >
 > These libraries are also excluded from the general patch release.
 

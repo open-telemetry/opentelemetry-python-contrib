@@ -22,7 +22,8 @@ from typing import Any, Callable, Dict, Iterator, Sequence, Union
 from botocore.eventstream import EventStream, EventStreamError
 from wrapt import ObjectProxy
 
-from opentelemetry._events import Event
+from opentelemetry._logs import LogRecord
+from opentelemetry.context import get_current
 from opentelemetry.instrumentation.botocore.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
@@ -33,16 +34,6 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
 
 _StreamDoneCallableT = Callable[[Dict[str, Union[int, str]]], None]
 _StreamErrorCallableT = Callable[[Exception], None]
-
-
-def _decode_tool_use(tool_use):
-    # input get sent encoded in json
-    if "input" in tool_use:
-        try:
-            tool_use["input"] = json.loads(tool_use["input"])
-        except json.JSONDecodeError:
-            pass
-    return tool_use
 
 
 # pylint: disable=abstract-method
@@ -64,7 +55,9 @@ class ConverseStreamWrapper(ObjectProxy):
         self._response = {}
         self._message = None
         self._content_block = {}
+        self._tool_json_input_buf = ""
         self._record_message = False
+        self._ended = False
 
     def __iter__(self):
         try:
@@ -72,7 +65,7 @@ class ConverseStreamWrapper(ObjectProxy):
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:
-            self._stream_error_callback(exc)
+            self._handle_stream_error(exc)
             raise
 
     def _process_event(self, event):
@@ -88,28 +81,40 @@ class ConverseStreamWrapper(ObjectProxy):
             # {'contentBlockStart': {'start': {'toolUse': {'toolUseId': 'id', 'name': 'func_name'}}, 'contentBlockIndex': 1}}
             start = event["contentBlockStart"].get("start", {})
             if "toolUse" in start:
-                tool_use = _decode_tool_use(start["toolUse"])
-                self._content_block = {"toolUse": tool_use}
+                self._content_block = {"toolUse": start["toolUse"]}
             return
 
         if "contentBlockDelta" in event:
             # {'contentBlockDelta': {'delta': {'text': "Hello"}, 'contentBlockIndex': 0}}
             # {'contentBlockDelta': {'delta': {'toolUse': {'input': '{"location":"Seattle"}'}}, 'contentBlockIndex': 1}}
+            # {'contentBlockDelta': {'delta': {'toolUse': {'input': 'a", "Yok'}}, 'contentBlockIndex': 1}}
             if self._record_message:
                 delta = event["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
                     self._content_block.setdefault("text", "")
                     self._content_block["text"] += delta["text"]
                 elif "toolUse" in delta:
-                    tool_use = _decode_tool_use(delta["toolUse"])
-                    self._content_block["toolUse"].update(tool_use)
+                    if (
+                        input_buf := delta["toolUse"].get("input")
+                    ) is not None:
+                        self._tool_json_input_buf += input_buf
             return
 
         if "contentBlockStop" in event:
             # {'contentBlockStop': {'contentBlockIndex': 0}}
             if self._record_message:
+                if self._tool_json_input_buf:
+                    try:
+                        self._content_block["toolUse"]["input"] = json.loads(
+                            self._tool_json_input_buf
+                        )
+                    except json.JSONDecodeError:
+                        self._content_block["toolUse"]["input"] = (
+                            self._tool_json_input_buf
+                        )
                 self._message["content"].append(self._content_block)
                 self._content_block = {}
+                self._tool_json_input_buf = ""
             return
 
         if "messageStop" in event:
@@ -133,10 +138,22 @@ class ConverseStreamWrapper(ObjectProxy):
 
                 if output_tokens := usage.get("outputTokens"):
                     self._response["usage"]["outputTokens"] = output_tokens
-
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
 
             return
+
+    def close(self):
+        self.__wrapped__.close()
+        # Treat the stream as done to ensure the span end.
+        self._complete_stream(self._response)
+
+    def _complete_stream(self, response):
+        self._stream_done_callback(response, self._ended)
+        self._ended = True
+
+    def _handle_stream_error(self, exc):
+        self._stream_error_callback(exc, self._ended)
+        self._ended = True
 
 
 # pylint: disable=abstract-method
@@ -163,6 +180,20 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
         self._content_block = {}
         self._tool_json_input_buf = ""
         self._record_message = False
+        self._ended = False
+
+    def close(self):
+        self.__wrapped__.close()
+        # Treat the stream as done to ensure the span end.
+        self._stream_done_callback(self._response, self._ended)
+
+    def _complete_stream(self, response):
+        self._stream_done_callback(response, self._ended)
+        self._ended = True
+
+    def _handle_stream_error(self, exc):
+        self._stream_error_callback(exc, self._ended)
+        self._ended = True
 
     def __iter__(self):
         try:
@@ -170,7 +201,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:
-            self._stream_error_callback(exc)
+            self._handle_stream_error(exc)
             raise
 
     def _process_event(self, event):
@@ -213,7 +244,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
             self._response["output"] = {
                 "message": {"content": [{"text": chunk["outputText"]}]}
             }
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
 
     def _process_amazon_nova_chunk(self, chunk):
         # pylint: disable=too-many-branches
@@ -283,7 +314,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 if output_tokens := usage.get("outputTokens"):
                     self._response["usage"]["outputTokens"] = output_tokens
 
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
             return
 
     def _process_anthropic_claude_chunk(self, chunk):
@@ -327,10 +358,13 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
         if message_type == "content_block_stop":
             # {'type': 'content_block_stop', 'index': 0}
             if self._tool_json_input_buf:
-                self._content_block["input"] = self._tool_json_input_buf
-            self._message["content"].append(
-                _decode_tool_use(self._content_block)
-            )
+                try:
+                    self._content_block["input"] = json.loads(
+                        self._tool_json_input_buf
+                    )
+                except json.JSONDecodeError:
+                    self._content_block["input"] = self._tool_json_input_buf
+            self._message["content"].append(self._content_block)
             self._content_block = {}
             self._tool_json_input_buf = ""
             return
@@ -355,7 +389,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
                 self._record_message = False
                 self._message = None
 
-            self._stream_done_callback(self._response)
+            self._complete_stream(self._response)
             return
 
 
@@ -382,7 +416,9 @@ def extract_tool_calls(
     tool_uses = [item["toolUse"] for item in content if "toolUse" in item]
     if not tool_uses:
         tool_uses = [
-            item for item in content if item.get("type") == "tool_use"
+            item
+            for item in content
+            if isinstance(item, dict) and item.get("type") == "tool_use"
         ]
         tool_id_key = "id"
     else:
@@ -450,7 +486,7 @@ def extract_tool_results(
 
 def message_to_event(
     message: dict[str, Any], capture_content: bool
-) -> Iterator[Event]:
+) -> Iterator[LogRecord]:
     attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
     role = message.get("role")
     content = message.get("content")
@@ -465,16 +501,18 @@ def message_to_event(
     elif role == "user":
         # in case of tool calls we send one tool event for tool call and one for the user event
         for tool_body in extract_tool_results(message, capture_content):
-            yield Event(
-                name="gen_ai.tool.message",
+            yield LogRecord(
+                event_name="gen_ai.tool.message",
                 attributes=attributes,
                 body=tool_body,
+                context=get_current(),
             )
 
-    yield Event(
-        name=f"gen_ai.{role}.message",
+    yield LogRecord(
+        event_name=f"gen_ai.{role}.message",
         attributes=attributes,
         body=body if body else None,
+        context=get_current(),
     )
 
 
@@ -490,7 +528,9 @@ class _Choice:
     def from_converse(
         cls, response: dict[str, Any], capture_content: bool
     ) -> _Choice:
-        orig_message = response["output"]["message"]
+        # be defensive about malformed responses, refer to #3958 for more context
+        output = response.get("output", {})
+        orig_message = output.get("message", {})
         if role := orig_message.get("role"):
             message = {"role": role}
         else:
@@ -499,8 +539,8 @@ class _Choice:
 
         if tool_calls := extract_tool_calls(orig_message, capture_content):
             message["tool_calls"] = tool_calls
-        elif capture_content:
-            message["content"] = orig_message["content"]
+        elif capture_content and (content := orig_message.get("content")):
+            message["content"] = content
 
         return cls(message, response["stopReason"], index=0)
 
@@ -575,10 +615,10 @@ class _Choice:
             "message": self.message,
         }
 
-    def to_choice_event(self, **event_kwargs) -> Event:
+    def to_choice_event(self, **event_kwargs) -> LogRecord:
         attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
-        return Event(
-            name="gen_ai.choice",
+        return LogRecord(
+            event_name="gen_ai.choice",
             attributes=attributes,
             body=self._to_body_dict(),
             **event_kwargs,

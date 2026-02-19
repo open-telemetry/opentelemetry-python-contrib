@@ -263,21 +263,27 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(kwargs["enable_commenter"], True)
 
     def test_sqlcommenter_enabled_instrument_connection_defaults(self):
-        with mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.__version__",
-            "foobar",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.__libpq_version__",
-            "foobaz",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.threadsafety",
-            "123",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.apilevel",
-            "123",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.paramstyle",
-            "test",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.__libpq_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.threadsafety",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.apilevel",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.paramstyle",
+                "test",
+            ),
         ):
             cnx = psycopg2.connect(database="test")
             cnx = Psycopg2Instrumentor().instrument_connection(
@@ -301,21 +307,27 @@ class TestPostgresqlIntegration(TestBase):
             )
 
     def test_sqlcommenter_enabled_instrument_connection_stmt_enabled(self):
-        with mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.__version__",
-            "foobar",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.__libpq_version__",
-            "foobaz",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.threadsafety",
-            "123",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.apilevel",
-            "123",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.paramstyle",
-            "test",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.__libpq_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.threadsafety",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.apilevel",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.paramstyle",
+                "test",
+            ),
         ):
             cnx = psycopg2.connect(database="test")
             cnx = Psycopg2Instrumentor().instrument_connection(
@@ -340,15 +352,19 @@ class TestPostgresqlIntegration(TestBase):
             )
 
     def test_sqlcommenter_enabled_instrument_connection_with_options(self):
-        with mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.__version__",
-            "foobar",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.__libpq_version__",
-            "foobaz",
-        ), mock.patch(
-            "opentelemetry.instrumentation.psycopg2.psycopg2.threadsafety",
-            "123",
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.__libpq_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg2.psycopg2.threadsafety",
+                "123",
+            ),
         ):
             cnx = psycopg2.connect(database="test")
             cnx = Psycopg2Instrumentor().instrument_connection(

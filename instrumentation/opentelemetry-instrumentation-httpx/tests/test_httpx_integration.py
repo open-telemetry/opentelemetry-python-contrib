@@ -16,6 +16,7 @@
 
 import abc
 import asyncio
+import inspect
 import typing
 from unittest import mock
 
@@ -26,6 +27,8 @@ from wrapt import ObjectProxy
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -37,6 +40,18 @@ from opentelemetry.instrumentation.httpx import (
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
@@ -53,7 +68,7 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -67,12 +82,14 @@ if typing.TYPE_CHECKING:
         ResponseHook,
         ResponseInfo,
     )
+    from opentelemetry.metrics import MeterProvider
     from opentelemetry.sdk.trace.export import SpanExporter
     from opentelemetry.trace import TracerProvider
     from opentelemetry.trace.span import Span
 
 
 HTTP_RESPONSE_BODY = "http.response.body"
+SCHEMA_URL = Schemas.V1_21_0.value
 
 
 def _is_url_tuple(request: "RequestInfo"):
@@ -124,6 +141,8 @@ async def _async_no_update_request_hook(span: "Span", request: "RequestInfo"):
 
 
 # pylint: disable=too-many-public-methods
+
+SCOPE = "opentelemetry.instrumentation.httpx"
 
 
 # Using this wrapper class to have a base class for the tests while also not
@@ -187,6 +206,11 @@ class BaseTestCases:
                 return span_list[0]
             return span_list
 
+        def assert_metrics(self, num_metrics: int = 1):
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), num_metrics)
+            return metrics
+
         @abc.abstractmethod
         def perform_request(
             self,
@@ -208,9 +232,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                 },
             )
 
@@ -218,6 +242,29 @@ class BaseTestCases:
 
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
+            )
+
+        def test_basic_metrics(self):
+            self.perform_request(self.URL)
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                },
+            )
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertTrue(duration_data_point.min >= 0)
+            self.assertTrue(duration_data_point.max >= 0)
+            self.assertTrue(duration_data_point.sum >= 0)
+            self.assertEqual(
+                duration_data_point.explicit_bounds,
+                HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
             )
 
         def test_nonstandard_http_method(self):
@@ -232,9 +279,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "_OTHER",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 405,
+                    HTTP_METHOD: "_OTHER",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 405,
                 },
             )
 
@@ -242,6 +289,19 @@ class BaseTestCases:
 
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
+            )
+            # Validate metrics
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    HTTP_STATUS_CODE: 405,
+                    HTTP_METHOD: "_OTHER",
+                    HTTP_SCHEME: "http",
+                },
             )
 
         def test_nonstandard_http_method_new_semconv(self):
@@ -272,6 +332,25 @@ class BaseTestCases:
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
+            # Validate metrics
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    HTTP_REQUEST_METHOD: "_OTHER",
+                    SERVER_ADDRESS: "mock",
+                    HTTP_RESPONSE_STATUS_CODE: 405,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    ERROR_TYPE: "405",
+                },
+            )
+            self.assertEqual(
+                duration_data_point.explicit_bounds,
+                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+            )
 
         def test_basic_new_semconv(self):
             url = "http://mock:8080/status/200"
@@ -291,7 +370,7 @@ class BaseTestCases:
 
             self.assertEqual(
                 span.instrumentation_scope.schema_url,
-                SpanAttributes.SCHEMA_URL,
+                SCHEMA_URL,
             )
             self.assertEqual(
                 dict(span.attributes),
@@ -311,6 +390,22 @@ class BaseTestCases:
 
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
+            )
+
+            # Validate metrics
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(duration_data_point.count, 1)
+            self.assertEqual(
+                dict(duration_data_point.attributes),
+                {
+                    SERVER_ADDRESS: "mock",
+                    HTTP_REQUEST_METHOD: "GET",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                },
             )
 
         def test_basic_both_semconv(self):
@@ -325,23 +420,23 @@ class BaseTestCases:
 
             self.assertEqual(
                 span.instrumentation_scope.schema_url,
-                SpanAttributes.SCHEMA_URL,
+                SCHEMA_URL,
             )
 
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
+                    HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: url,
+                    HTTP_URL: url,
                     URL_FULL: url,
-                    SpanAttributes.HTTP_HOST: "mock",
+                    HTTP_HOST: "mock",
                     SERVER_ADDRESS: "mock",
                     NETWORK_PEER_ADDRESS: "mock",
-                    SpanAttributes.NET_PEER_PORT: 8080,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    NET_PEER_PORT: 8080,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_STATUS_CODE: 200,
-                    SpanAttributes.HTTP_FLAVOR: "1.1",
+                    HTTP_FLAVOR: "1.1",
                     NETWORK_PROTOCOL_VERSION: "1.1",
                     SERVER_PORT: 8080,
                     NETWORK_PEER_PORT: 8080,
@@ -353,6 +448,36 @@ class BaseTestCases:
             self.assertEqualSpanInstrumentationScope(
                 span, opentelemetry.instrumentation.httpx
             )
+
+            # Validate metrics
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 2)
+            # Old convention
+            self.assertEqual(
+                dict(metrics[0].data.data_points[0].attributes),
+                {
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    NET_PEER_NAME: "mock",
+                    NET_PEER_PORT: 8080,
+                    HTTP_STATUS_CODE: 200,
+                },
+            )
+            self.assertEqual(metrics[0].name, "http.client.duration")
+            # New convention
+            self.assertEqual(
+                dict(metrics[1].data.data_points[0].attributes),
+                {
+                    HTTP_REQUEST_METHOD: "GET",
+                    SERVER_ADDRESS: "mock",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                },
+            )
+            self.assertEqual(metrics[1].name, "http.client.request.duration")
 
         def test_basic_multiple(self):
             self.perform_request(self.URL)
@@ -368,12 +493,18 @@ class BaseTestCases:
 
             self.assertEqual(result.status_code, 404)
             span = self.assert_span()
-            self.assertEqual(
-                span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-            )
+            self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
             self.assertIs(
                 span.status.status_code,
                 trace.StatusCode.ERROR,
+            )
+            # Validate metrics
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(
+                duration_data_point.attributes.get(HTTP_STATUS_CODE),
+                404,
             )
 
         def test_not_foundbasic_new_semconv(self):
@@ -395,6 +526,17 @@ class BaseTestCases:
                 span.status.status_code,
                 trace.StatusCode.ERROR,
             )
+            # Validate metrics
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 1)
+            duration_data_point = metrics[0].data.data_points[0]
+            self.assertEqual(
+                duration_data_point.attributes.get(HTTP_RESPONSE_STATUS_CODE),
+                404,
+            )
+            self.assertEqual(
+                duration_data_point.attributes.get(ERROR_TYPE), "404"
+            )
 
         def test_not_foundbasic_both_semconv(self):
             url_404 = "http://mock/status/404"
@@ -405,9 +547,7 @@ class BaseTestCases:
 
             self.assertEqual(result.status_code, 404)
             span = self.assert_span()
-            self.assertEqual(
-                span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-            )
+            self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
             self.assertEqual(
                 span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404
             )
@@ -416,6 +556,30 @@ class BaseTestCases:
             self.assertIs(
                 span.status.status_code,
                 trace.StatusCode.ERROR,
+            )
+            # Validate metrics
+            metrics = self.get_sorted_metrics(SCOPE)
+            self.assertEqual(len(metrics), 2)
+            # Old convention
+            self.assertEqual(
+                metrics[0]
+                .data.data_points[0]
+                .attributes.get(HTTP_STATUS_CODE),
+                404,
+            )
+            self.assertEqual(
+                metrics[0].data.data_points[0].attributes.get(ERROR_TYPE), None
+            )
+            # New convention
+            self.assertEqual(
+                metrics[1]
+                .data.data_points[0]
+                .attributes.get(HTTP_RESPONSE_STATUS_CODE),
+                404,
+            )
+            self.assertEqual(
+                metrics[1].data.data_points[0].attributes.get(ERROR_TYPE),
+                "404",
             )
 
         def test_suppress_instrumentation(self):
@@ -458,9 +622,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 500,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 500,
                 },
             )
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -535,14 +699,14 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
+                    HTTP_METHOD: "GET",
                     HTTP_REQUEST_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: url,
+                    HTTP_URL: url,
                     URL_FULL: url,
-                    SpanAttributes.HTTP_HOST: "mock",
+                    HTTP_HOST: "mock",
                     SERVER_ADDRESS: "mock",
                     NETWORK_PEER_ADDRESS: "mock",
-                    SpanAttributes.NET_PEER_PORT: 8080,
+                    NET_PEER_PORT: 8080,
                     SERVER_PORT: 8080,
                     NETWORK_PEER_PORT: 8080,
                     ERROR_TYPE: "TimeoutException",
@@ -568,10 +732,8 @@ class BaseTestCases:
             span = self.assert_span()
 
             self.assertEqual(span.name, "POST")
-            self.assertEqual(
-                span.attributes[SpanAttributes.HTTP_METHOD], "POST"
-            )
-            self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], url)
+            self.assertEqual(span.attributes[HTTP_METHOD], "POST")
+            self.assertEqual(span.attributes[HTTP_URL], url)
             self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
         def test_if_headers_equals_none(self):
@@ -579,11 +741,30 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
 
+        def test_ignores_excluded_urls(self):
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
+            ):
+                with self.subTest(env_var=env_var):
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(client)
+
     class BaseManualTest(BaseTest, metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def create_transport(
             self,
             tracer_provider: typing.Optional["TracerProvider"] = None,
+            meter_provider: typing.Optional["MeterProvider"] = None,
             request_hook: typing.Optional["RequestHook"] = None,
             response_hook: typing.Optional["ResponseHook"] = None,
             **kwargs,
@@ -623,6 +804,97 @@ class BaseTestCases:
             span = self.assert_span(exporter=exporter)
             self.assertIs(span.resource, resource)
 
+        def test_custom_meter_provider(self):
+            meter_provider, memory_reader = self.create_meter_provider()
+            transport = self.create_transport(meter_provider=meter_provider)
+            client = self.create_client(transport)
+            self.perform_request(self.URL, client=client)
+            metrics = memory_reader.get_metrics_data().resource_metrics[0]
+            self.assertEqual(len(metrics.scope_metrics), 1)
+            data_point = (
+                metrics.scope_metrics[0].metrics[0].data.data_points[0]
+            )
+            self.assertEqual(data_point.count, 1)
+
+        def _run_disabled_tracing_metrics_attributes_test(
+            self,
+            url: str,
+            expected_attributes: dict,
+            expected_number_of_metrics: int = 1,
+        ) -> None:
+            with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
+                client = self.create_client(
+                    self.create_transport(
+                        tracer_provider=trace.NoOpTracerProvider()
+                    )
+                )
+                mock_span.is_recording.return_value = False
+                self.perform_request(url, client=client)
+
+                self.assertFalse(mock_span.is_recording())
+                self.assertTrue(mock_span.is_recording.called)
+
+                metrics = self.assert_metrics(
+                    num_metrics=expected_number_of_metrics
+                )
+                duration_data_point = metrics[0].data.data_points[0]
+
+                self.assertEqual(duration_data_point.count, 1)
+                self.assertEqual(
+                    dict(duration_data_point.attributes),
+                    expected_attributes,
+                )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled for old
+            semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                },
+                expected_number_of_metrics=1,
+            )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing_both_semconv(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled for both
+            semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_SCHEME: "http",
+                    HTTP_FLAVOR: "1.1",
+                    HTTP_HOST: "mock",
+                    NET_PEER_NAME: "mock",
+                    NET_PEER_PORT: 8080,
+                },
+                expected_number_of_metrics=2,
+            )
+
+        def test_metrics_have_response_attributes_with_disabled_tracing_new_semconv(
+            self,
+        ) -> None:
+            """Test that metrics have response attributes when tracing is disabled with new semantic conventions."""
+            self._run_disabled_tracing_metrics_attributes_test(
+                url="http://mock:8080/status/200",
+                expected_attributes={
+                    SERVER_ADDRESS: "mock",
+                    HTTP_REQUEST_METHOD: "GET",
+                    HTTP_RESPONSE_STATUS_CODE: 200,
+                    NETWORK_PROTOCOL_VERSION: "1.1",
+                    SERVER_PORT: 8080,
+                },
+                expected_number_of_metrics=1,
+            )
+
         def test_response_hook(self):
             transport = self.create_transport(
                 tracer_provider=self.tracer_provider,
@@ -636,9 +908,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
@@ -718,12 +990,444 @@ class BaseTestCases:
             self.perform_request(self.URL, client=client1)
             self.perform_request(https_url, client=client2)
             spans = self.assert_span(num_spans=2)
+            self.assertEqual(spans[0].attributes[HTTP_URL], self.URL)
+            self.assertEqual(spans[1].attributes[HTTP_URL], https_url)
+
+        def test_ignores_excluded_urls(self):
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
+            ):
+                with self.subTest(env_var=env_var):
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(
+                        client=client
+                    )
+
+        def test_request_header_capture(self):
+            test_cases = [
+                {
+                    "name": "single_header",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Custom-Header",
+                    },
+                    "request_headers": {"X-Custom-Header": "custom-value"},
+                    "expected_attrs": {
+                        "http.request.header.x_custom_header": (
+                            "custom-value",
+                        ),
+                    },
+                },
+                {
+                    "name": "multiple_headers",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-First-Header,X-Second-Header",
+                    },
+                    "request_headers": {
+                        "X-First-Header": "value1",
+                        "X-Second-Header": "value2",
+                    },
+                    "expected_attrs": {
+                        "http.request.header.x_first_header": ("value1",),
+                        "http.request.header.x_second_header": ("value2",),
+                    },
+                },
+                {
+                    "name": "regex_pattern",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Test-.*",
+                    },
+                    "request_headers": {
+                        "X-Test-One": "one",
+                        "X-Test-Two": "two",
+                        "X-Not-Matched": "ignored",
+                    },
+                    "expected_attrs": {
+                        "http.request.header.x_test_one": ("one",),
+                        "http.request.header.x_test_two": ("two",),
+                    },
+                    "unexpected_attrs": ["http.request.header.x_not_matched"],
+                },
+                {
+                    "name": "wildcard_all_headers",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": ".*",
+                    },
+                    "request_headers": {
+                        "X-Any-Header": "any-value",
+                    },
+                    "expected_attrs": {
+                        "http.request.header.x_any_header": ("any-value",),
+                    },
+                },
+                {
+                    "name": "case_insensitive",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "x-lowercase-config",
+                    },
+                    "request_headers": {"X-Lowercase-Config": "mixed-case"},
+                    "expected_attrs": {
+                        "http.request.header.x_lowercase_config": (
+                            "mixed-case",
+                        ),
+                    },
+                },
+            ]
+
+            for test_case in test_cases:
+                with self.subTest(name=test_case["name"]):
+                    self.memory_exporter.clear()
+                    with mock.patch.dict(
+                        "os.environ",
+                        test_case["env_vars"],
+                    ):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(client)
+                        self.perform_request(
+                            self.URL,
+                            headers=test_case["request_headers"],
+                            client=client,
+                        )
+
+                    span = self.assert_span()
+                    for attr_name, expected_value in test_case[
+                        "expected_attrs"
+                    ].items():
+                        self.assertEqual(
+                            span.attributes.get(attr_name),
+                            expected_value,
+                            f"Expected {attr_name} to be {expected_value}",
+                        )
+                    for attr_name in test_case.get("unexpected_attrs", []):
+                        self.assertIsNone(
+                            span.attributes.get(attr_name),
+                            f"Expected {attr_name} to not be present",
+                        )
+                    HTTPXClientInstrumentor().uninstrument_client(client)
+
+        def test_response_header_capture(self):
+            test_cases = [
+                {
+                    "name": "single_header",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Response-Header",
+                    },
+                    "response_headers": {
+                        "X-Response-Header": "response-value"
+                    },
+                    "expected_attrs": {
+                        "http.response.header.x_response_header": (
+                            "response-value",
+                        ),
+                    },
+                },
+                {
+                    "name": "multiple_headers",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Response-One,X-Response-Two",
+                    },
+                    "response_headers": {
+                        "X-Response-One": "value1",
+                        "X-Response-Two": "value2",
+                    },
+                    "expected_attrs": {
+                        "http.response.header.x_response_one": ("value1",),
+                        "http.response.header.x_response_two": ("value2",),
+                    },
+                },
+                {
+                    "name": "regex_pattern",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Custom-.*",
+                    },
+                    "response_headers": {
+                        "X-Custom-First": "first",
+                        "X-Custom-Second": "second",
+                        "Content-Type": "text/plain",
+                    },
+                    "expected_attrs": {
+                        "http.response.header.x_custom_first": ("first",),
+                        "http.response.header.x_custom_second": ("second",),
+                    },
+                    "unexpected_attrs": ["http.response.header.content_type"],
+                },
+                {
+                    "name": "wildcard_all_headers",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": ".*",
+                    },
+                    "response_headers": {"X-Any-Response": "any-value"},
+                    "expected_attrs": {
+                        "http.response.header.x_any_response": ("any-value",),
+                    },
+                },
+            ]
+
+            for test_case in test_cases:
+                with self.subTest(name=test_case["name"]):
+                    self.memory_exporter.clear()
+                    respx.get(self.URL).mock(
+                        httpx.Response(
+                            200,
+                            text="Test",
+                            headers=test_case["response_headers"],
+                        )
+                    )
+
+                    with mock.patch.dict("os.environ", test_case["env_vars"]):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(client)
+                        self.perform_request(self.URL, client=client)
+
+                    span = self.assert_span()
+                    for attr_name, expected_value in test_case[
+                        "expected_attrs"
+                    ].items():
+                        self.assertEqual(
+                            span.attributes.get(attr_name),
+                            expected_value,
+                            f"Expected {attr_name} to be {expected_value}",
+                        )
+                    for attr_name in test_case.get("unexpected_attrs", []):
+                        self.assertIsNone(
+                            span.attributes.get(attr_name),
+                            f"Expected {attr_name} to not be present",
+                        )
+                    HTTPXClientInstrumentor().uninstrument_client(client)
+
+        def test_header_sanitization(self):
+            test_cases = [
+                {
+                    "name": "request_header_sanitization",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "Authorization,X-Api-Key,X-Safe-Header",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS": "authorization,.*api-key.*",
+                    },
+                    "request_headers": {
+                        "Authorization": "Bearer secret",
+                        "X-Api-Key": "secret-key",
+                        "X-Safe-Header": "safe-value",
+                    },
+                    "response_headers": {},
+                    "expected_attrs": {
+                        "http.request.header.authorization": ("[REDACTED]",),
+                        "http.request.header.x_api_key": ("[REDACTED]",),
+                        "http.request.header.x_safe_header": ("safe-value",),
+                    },
+                },
+                {
+                    "name": "response_header_sanitization",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Secret-Token,X-Normal-Header",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS": ".*secret.*",
+                    },
+                    "request_headers": {},
+                    "response_headers": {
+                        "X-Secret-Token": "secret-value",
+                        "X-Normal-Header": "normal-value",
+                    },
+                    "expected_attrs": {
+                        "http.response.header.x_secret_token": ("[REDACTED]",),
+                        "http.response.header.x_normal_header": (
+                            "normal-value",
+                        ),
+                    },
+                },
+                {
+                    "name": "both_request_and_response_sanitization",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Secret-Request",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Secret-Response",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS": ".*secret.*",
+                    },
+                    "request_headers": {"X-Secret-Request": "req-secret"},
+                    "response_headers": {"X-Secret-Response": "resp-secret"},
+                    "expected_attrs": {
+                        "http.request.header.x_secret_request": (
+                            "[REDACTED]",
+                        ),
+                        "http.response.header.x_secret_response": (
+                            "[REDACTED]",
+                        ),
+                    },
+                },
+            ]
+
+            for test_case in test_cases:
+                with self.subTest(name=test_case["name"]):
+                    self.memory_exporter.clear()
+                    respx.get(self.URL).mock(
+                        httpx.Response(
+                            200,
+                            text="Test",
+                            headers=test_case.get("response_headers") or {},
+                        )
+                    )
+
+                    with mock.patch.dict("os.environ", test_case["env_vars"]):
+                        client = self.create_client()
+                        HTTPXClientInstrumentor().instrument_client(client)
+                        self.perform_request(
+                            self.URL,
+                            headers=test_case.get("request_headers") or None,
+                            client=client,
+                        )
+
+                    span = self.assert_span()
+                    for attr_name, expected_value in test_case[
+                        "expected_attrs"
+                    ].items():
+                        self.assertEqual(
+                            span.attributes.get(attr_name),
+                            expected_value,
+                            f"Expected {attr_name} to be {expected_value}",
+                        )
+                    HTTPXClientInstrumentor().uninstrument_client(client)
+
+        def test_no_headers_captured_when_not_configured(self):
+            respx.get(self.URL).mock(
+                httpx.Response(
+                    200,
+                    text="Test",
+                    headers={"X-Custom-Response": "value"},
+                )
+            )
+
+            client = self.create_client()
+            HTTPXClientInstrumentor().instrument_client(client)
+            self.perform_request(
+                self.URL,
+                headers={"X-Custom-Request": "value"},
+                client=client,
+            )
+
+            span = self.assert_span()
+            self.assertIsNone(
+                span.attributes.get("http.request.header.x_custom_request")
+            )
+            self.assertIsNone(
+                span.attributes.get("http.response.header.x_custom_response")
+            )
+            HTTPXClientInstrumentor().uninstrument_client(client)
+
+        def test_both_request_and_response_headers_captured(self):
+            """Test capturing both request and response headers simultaneously."""
+            respx.get(self.URL).mock(
+                httpx.Response(
+                    200,
+                    text="Test",
+                    headers={"X-Response-Id": "response-123"},
+                )
+            )
+
+            with mock.patch.dict(
+                "os.environ",
+                {
+                    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Request-Id",
+                    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Response-Id",
+                },
+            ):
+                client = self.create_client()
+                HTTPXClientInstrumentor().instrument_client(client)
+                self.perform_request(
+                    self.URL,
+                    headers={"X-Request-Id": "req-456"},
+                    client=client,
+                )
+
+            span = self.assert_span()
             self.assertEqual(
-                spans[0].attributes[SpanAttributes.HTTP_URL], self.URL
+                span.attributes.get("http.request.header.x_request_id"),
+                ("req-456",),
             )
             self.assertEqual(
-                spans[1].attributes[SpanAttributes.HTTP_URL], https_url
+                span.attributes.get("http.response.header.x_response_id"),
+                ("response-123",),
             )
+            HTTPXClientInstrumentor().uninstrument_client(client)
+
+        def test_header_capture_via_transport(self):
+            test_cases = [
+                {
+                    "name": "request_header_capture",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Transport-Request",
+                    },
+                    "request_headers": {"X-Transport-Request": "req-value"},
+                    "response_headers": {},
+                    "expected_attrs": {
+                        "http.request.header.x_transport_request": (
+                            "req-value",
+                        ),
+                    },
+                },
+                {
+                    "name": "response_header_capture",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Transport-Response",
+                    },
+                    "request_headers": {},
+                    "response_headers": {"X-Transport-Response": "resp-value"},
+                    "expected_attrs": {
+                        "http.response.header.x_transport_response": (
+                            "resp-value",
+                        ),
+                    },
+                },
+                {
+                    "name": "header_sanitization",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Secret",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Secret",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS": "x-secret",
+                    },
+                    "request_headers": {"X-Secret": "secret-request"},
+                    "response_headers": {"X-Secret": "secret-response"},
+                    "expected_attrs": {
+                        "http.request.header.x_secret": ("[REDACTED]",),
+                        "http.response.header.x_secret": ("[REDACTED]",),
+                    },
+                },
+            ]
+
+            for test_case in test_cases:
+                with self.subTest(name=test_case["name"]):
+                    self.memory_exporter.clear()
+                    respx.get(self.URL).mock(
+                        httpx.Response(
+                            200,
+                            text="Test",
+                            headers=test_case.get("response_headers") or {},
+                        )
+                    )
+
+                    with mock.patch.dict("os.environ", test_case["env_vars"]):
+                        transport = self.create_transport()
+                        client = self.create_client(transport)
+                        self.perform_request(
+                            self.URL,
+                            headers=test_case.get("request_headers") or None,
+                            client=client,
+                        )
+
+                    span = self.assert_span()
+                    for attr_name, expected_value in test_case[
+                        "expected_attrs"
+                    ].items():
+                        self.assertEqual(
+                            span.attributes.get(attr_name),
+                            expected_value,
+                            f"Expected {attr_name} to be {expected_value}",
+                        )
 
     @mock.patch.dict("os.environ", {"NO_PROXY": ""}, clear=True)
     class BaseInstrumentorTest(BaseTest, metaclass=abc.ABCMeta):
@@ -751,6 +1455,8 @@ class BaseTestCases:
             HTTPXClientInstrumentor().instrument_client(self.client)
 
         def tearDown(self):
+            # TODO: uninstrument() is required in order to avoid leaks for instrumentations
+            # but we should audit the single tests and fix any missing uninstrumentation
             HTTPXClientInstrumentor().uninstrument()
 
         def create_proxy_mounts(self):
@@ -799,7 +1505,7 @@ class BaseTestCases:
         def test_response_hook(self):
             response_hook_key = (
                 "async_response_hook"
-                if asyncio.iscoroutinefunction(self.response_hook)
+                if inspect.iscoroutinefunction(self.response_hook)
                 else "response_hook"
             )
             response_hook_kwargs = {response_hook_key: self.response_hook}
@@ -815,9 +1521,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
@@ -836,9 +1542,9 @@ class BaseTestCases:
             self.assertEqual(
                 dict(span.attributes),
                 {
-                    SpanAttributes.HTTP_METHOD: "GET",
-                    SpanAttributes.HTTP_URL: self.URL,
-                    SpanAttributes.HTTP_STATUS_CODE: 200,
+                    HTTP_METHOD: "GET",
+                    HTTP_URL: self.URL,
+                    HTTP_STATUS_CODE: 200,
                     HTTP_RESPONSE_BODY: "Hello!",
                 },
             )
@@ -846,7 +1552,7 @@ class BaseTestCases:
         def test_request_hook(self):
             request_hook_key = (
                 "async_request_hook"
-                if asyncio.iscoroutinefunction(self.request_hook)
+                if inspect.iscoroutinefunction(self.request_hook)
                 else "request_hook"
             )
             request_hook_kwargs = {request_hook_key: self.request_hook}
@@ -941,7 +1647,7 @@ class BaseTestCases:
                 with self.subTest(idx=idx, res=res):
                     self.assertEqual(res.text, "Hello!")
                     self.assertEqual(
-                        spans[idx].attributes[SpanAttributes.HTTP_URL],
+                        spans[idx].attributes[HTTP_URL],
                         self.URL,
                     )
 
@@ -1082,6 +1788,112 @@ class BaseTestCases:
             self.assertEqual(result.text, "Hello!")
             self.assert_span()
 
+        def test_ignores_excluded_urls(self):
+            for env_var in (
+                "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+                "OTEL_PYTHON_EXCLUDED_URLS",
+            ):
+                with self.subTest(env_var=env_var):
+                    client = self.create_client()
+                    with mock.patch.dict(
+                        "os.environ", {env_var: self.URL}, clear=True
+                    ):
+                        HTTPXClientInstrumentor().instrument_client(
+                            client=client
+                        )
+                        self.perform_request(self.URL, client=client)
+                    self.assert_span(num_spans=0)
+                    self.assert_metrics(num_metrics=0)
+                    HTTPXClientInstrumentor().uninstrument_client(client)
+
+        def test_header_capture_with_instrument(self):
+            test_cases = [
+                {
+                    "name": "request_header_capture",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Request",
+                    },
+                    "request_headers": {"X-Request": "req-value"},
+                    "response_headers": {},
+                    "expected_attrs": {
+                        "http.request.header.x_request": ("req-value",),
+                    },
+                },
+                {
+                    "name": "response_header_capture",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Response",
+                    },
+                    "request_headers": {},
+                    "response_headers": {"X-Response": "resp-value"},
+                    "expected_attrs": {
+                        "http.response.header.x_response": ("resp-value",),
+                    },
+                },
+                {
+                    "name": "header_capture_and_sanitization",
+                    "env_vars": {
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "X-Public-Request,X-Secret-Request",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "X-Public-Response,X-Secret-Response",
+                        "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS": ".*secret.*",
+                    },
+                    "request_headers": {
+                        "X-Public-Request": "public-req",
+                        "X-Secret-Request": "secret-req",
+                    },
+                    "response_headers": {
+                        "X-Public-Response": "public-resp",
+                        "X-Secret-Response": "secret-resp",
+                    },
+                    "expected_attrs": {
+                        "http.request.header.x_public_request": (
+                            "public-req",
+                        ),
+                        "http.request.header.x_secret_request": (
+                            "[REDACTED]",
+                        ),
+                        "http.response.header.x_public_response": (
+                            "public-resp",
+                        ),
+                        "http.response.header.x_secret_response": (
+                            "[REDACTED]",
+                        ),
+                    },
+                },
+            ]
+
+            for test_case in test_cases:
+                with self.subTest(name=test_case["name"]):
+                    self.memory_exporter.clear()
+                    HTTPXClientInstrumentor().uninstrument()
+
+                    respx.get(self.URL).mock(
+                        httpx.Response(
+                            200,
+                            text="Test",
+                            headers=test_case.get("response_headers") or {},
+                        )
+                    )
+
+                    with mock.patch.dict("os.environ", test_case["env_vars"]):
+                        HTTPXClientInstrumentor().instrument()
+                        client = self.create_client()
+                        self.perform_request(
+                            self.URL,
+                            headers=test_case.get("request_headers") or None,
+                            client=client,
+                        )
+
+                    span = self.assert_span()
+                    for attr_name, expected_value in test_case[
+                        "expected_attrs"
+                    ].items():
+                        self.assertEqual(
+                            span.attributes.get(attr_name),
+                            expected_value,
+                            f"Expected {attr_name} to be {expected_value}",
+                        )
+
 
 class TestSyncIntegration(BaseTestCases.BaseManualTest):
     def setUp(self):
@@ -1096,6 +1908,7 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
     def create_transport(
         self,
         tracer_provider: typing.Optional["TracerProvider"] = None,
+        meter_provider: typing.Optional["MeterProvider"] = None,
         request_hook: typing.Optional["RequestHook"] = None,
         response_hook: typing.Optional["ResponseHook"] = None,
         **kwargs,
@@ -1104,6 +1917,7 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
         telemetry_transport = SyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             request_hook=request_hook,
             response_hook=response_hook,
         )
@@ -1127,12 +1941,31 @@ class TestSyncIntegration(BaseTestCases.BaseManualTest):
             return self.client.request(method, url, headers=headers)
         return client.request(method, url, headers=headers)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_basic(self):
+        self.perform_request(self.URL)
+        self.assert_span(num_spans=1)
+        self.assert_metrics(num_metrics=1)
+
+    def test_remove_sensitive_params(self):
+        new_url = "http://username:password@mock/status/200?sig=secret"
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        actual_url = span.attributes[HTTP_URL]
+
+        if "@" in actual_url:
+            # If credentials are present, they must be redacted
+            self.assertEqual(
+                span.attributes[HTTP_URL],
+                "http://REDACTED:REDACTED@mock/status/200?sig=REDACTED",
+            )
+        else:
+            # If credentials are removed completely, the query string should still be redacted
+            self.assertIn(
+                "http://mock/status/200?sig=REDACTED",
+                actual_url,
+                f"Basic URL structure is incorrect: {actual_url}",
+            )
 
 
 class TestAsyncIntegration(BaseTestCases.BaseManualTest):
@@ -1148,6 +1981,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
     def create_transport(
         self,
         tracer_provider: typing.Optional["TracerProvider"] = None,
+        meter_provider: typing.Optional["MeterProvider"] = None,
         request_hook: typing.Optional["AsyncRequestHook"] = None,
         response_hook: typing.Optional["AsyncResponseHook"] = None,
         **kwargs,
@@ -1156,6 +1990,7 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
         telemetry_transport = AsyncOpenTelemetryTransport(
             transport,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             request_hook=request_hook,
             response_hook=response_hook,
         )
@@ -1195,13 +2030,26 @@ class TestAsyncIntegration(BaseTestCases.BaseManualTest):
             self.URL, client=self.create_client(self.transport)
         )
         self.assert_span(num_spans=2)
+        self.assert_metrics(num_metrics=1)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_remove_sensitive_params(self):
+        new_url = "http://username:password@mock/status/200?Signature=secret"
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        actual_url = span.attributes[HTTP_URL]
+
+        if "@" in actual_url:
+            self.assertEqual(
+                span.attributes[HTTP_URL],
+                "http://REDACTED:REDACTED@mock/status/200?Signature=REDACTED",
+            )
+        else:
+            self.assertIn(
+                "http://mock/status/200?Signature=REDACTED",
+                actual_url,
+                f"If credentials are removed, the query string still should be redacted {actual_url}",
+            )
 
 
 class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
@@ -1291,6 +2139,7 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.perform_request(self.URL, client=self.client)
         self.perform_request(self.URL, client=self.client2)
         self.assert_span(num_spans=2)
+        self.assert_metrics(num_metrics=1)
 
     def test_async_response_hook_does_nothing_if_not_coroutine(self):
         HTTPXClientInstrumentor().instrument(
@@ -1305,9 +2154,9 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.assertEqual(
             dict(span.attributes),
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
             },
         )
 

@@ -25,6 +25,10 @@ import pytest
 from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
+from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
+    InvokeModelWithResponseStreamWrapper,
+    _Choice,
+)
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
@@ -882,6 +886,122 @@ def test_converse_stream_with_content_tool_call(
     BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
 )
 @pytest.mark.vcr()
+def test_converse_stream_tool_call_parsing_errors(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    # pylint:disable=too-many-locals
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "text": "Use the get_cities_list tool to provide exactly 10 popular tourist cities in Japan. Call the tool with a cities array containing: Tokyo, Osaka, Kyoto, Hiroshima, Nara, Yokohama, Sapporo, Fukuoka, Sendai, and Nagoya"
+                }
+            ],
+        }
+    ]
+
+    tool_config = {
+        "tools": [
+            {
+                "toolSpec": {
+                    "name": "get_cities_list",
+                    "description": "Get a list of cities",
+                    "inputSchema": {
+                        "json": {
+                            "type": "object",
+                            "properties": {
+                                "cities": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                }
+                            },
+                        }
+                    },
+                }
+            }
+        ]
+    }
+
+    llm_model_value = "anthropic.claude-3-sonnet-20240229-v1:0"
+    response_0 = bedrock_runtime_client.converse_stream(
+        messages=messages, modelId=llm_model_value, toolConfig=tool_config
+    )
+
+    res = ""
+    tool_use_id = None
+    for chunk in response_0["stream"]:
+        if "contentBlockStart" in chunk:
+            start = chunk["contentBlockStart"]["start"]
+            tool_use_id = start["toolUse"]["toolUseId"]
+        elif "contentBlockDelta" in chunk:
+            delta = chunk["contentBlockDelta"]["delta"]
+            if "toolUse" in delta:
+                res += delta["toolUse"].get("input")
+
+    tool_use_input = json.loads(res)
+    expected_tool_use_input = {
+        "cities": [
+            "Tokyo",
+            "Osaka",
+            "Kyoto",
+            "Hiroshima",
+            "Nara",
+            "Yokohama",
+            "Sapporo",
+            "Fukuoka",
+            "Sendai",
+            "Nagoya",
+        ]
+    }
+    assert tool_use_input == expected_tool_use_input
+
+    (span_0,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span_0,
+        llm_model_value,
+        input_tokens=mock.ANY,
+        output_tokens=mock.ANY,
+        finish_reason=("tool_use",),
+        operation_name="chat",
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(
+        logs[0], "gen_ai.user.message", user_content, span_0
+    )
+
+    function_call_0 = {
+        "name": "get_cities_list",
+        "arguments": expected_tool_use_input,
+    }
+    choice_body = {
+        "index": 0,
+        "finish_reason": "tool_use",
+        "message": {
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "id": tool_use_id,
+                    "type": "function",
+                    "function": function_call_0,
+                },
+            ],
+        },
+    }
+    assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span_0)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
+)
+@pytest.mark.vcr()
 def test_converse_stream_no_content(
     span_exporter,
     log_exporter,
@@ -1110,6 +1230,56 @@ def test_converse_stream_with_invalid_model(
     assert span.attributes[ERROR_TYPE] == "ValidationException"
 
     logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1
+    user_content = filter_message_keys(messages[0], ["content"])
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+
+@pytest.mark.skipif(
+    BOTO3_VERSION < (1, 35, 56), reason="ConverseStream API not available"
+)
+@pytest.mark.vcr()
+def test_converse_stream_close_before_consumption(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    messages = [{"role": "user", "content": [{"text": "Say this is a test"}]}]
+
+    llm_model_value = "amazon.titan-text-lite-v1"
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    response = bedrock_runtime_client.converse_stream(
+        messages=messages,
+        modelId=llm_model_value,
+        inferenceConfig={
+            "maxTokens": max_tokens,
+            "temperature": temperature,
+            "topP": top_p,
+            "stopSequences": stop_sequences,
+        },
+    )
+
+    # Close the stream without consuming it
+    response["stream"].close()
+
+    # Verify span is closed regardless of stream consumption
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        input_tokens=None,
+        output_tokens=None,
+        finish_reason=None,
+        operation_name="chat",
+        request_top_p=top_p,
+        request_temperature=temperature,
+        request_max_tokens=max_tokens,
+        request_stop_sequences=stop_sequences,
+    )
+    assert span.status.status_code == StatusCode.UNSET
+    logs = log_exporter.get_finished_logs()
+
     assert len(logs) == 1
     user_content = filter_message_keys(messages[0], ["content"])
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
@@ -1369,6 +1539,61 @@ def test_invoke_model_with_content_user_content_as_string(
         "message": message,
     }
     assert_message_in_logs(logs[1], "gen_ai.choice", choice_body, span)
+
+
+@pytest.mark.vcr()
+def test_invoke_model_with_content_assistant_content_as_string(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+):
+    llm_model_value = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    max_tokens = 10
+    body = json.dumps(
+        {
+            "messages": [
+                {"role": "user", "content": "say this is a test"},
+                {"role": "assistant", "content": "{"},
+            ],
+            "max_tokens": max_tokens,
+            "anthropic_version": "bedrock-2023-05-31",
+        }
+    )
+    response = bedrock_runtime_client.invoke_model(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    (span,) = span_exporter.get_finished_spans()
+    assert_completion_attributes_from_streaming_body(
+        span,
+        llm_model_value,
+        response,
+        "chat",
+        request_max_tokens=max_tokens,
+    )
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 3
+    user_content = {"content": "say this is a test"}
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+    assistant_content = {"content": "{"}
+    assert_message_in_logs(
+        logs[1], "gen_ai.assistant.message", assistant_content, span
+    )
+
+    assistant_response_message = {
+        "role": "assistant",
+        "content": [{"type": "text", "text": "this is a test}"}],
+    }
+    choice_body = {
+        "index": 0,
+        "finish_reason": "end_turn",
+        "message": assistant_response_message,
+    }
+    assert_message_in_logs(logs[2], "gen_ai.choice", choice_body, span)
 
 
 @pytest.mark.parametrize(
@@ -2614,6 +2839,65 @@ def test_invoke_model_with_response_stream_no_content_tool_call(
     )
 
 
+@pytest.mark.parametrize(
+    "model_family",
+    ["amazon.nova", "amazon.titan", "anthropic.claude"],
+)
+@pytest.mark.vcr()
+def test_invoke_model_with_response_stream_close_before_consumption(
+    span_exporter,
+    log_exporter,
+    bedrock_runtime_client,
+    instrument_with_content,
+    model_family,
+):
+    llm_model_value = get_model_name_from_family(model_family)
+    max_tokens, temperature, top_p, stop_sequences = 10, 0.8, 1, ["|"]
+    body = get_invoke_model_body(
+        llm_model_value, max_tokens, temperature, top_p, stop_sequences
+    )
+    response = bedrock_runtime_client.invoke_model_with_response_stream(
+        body=body,
+        modelId=llm_model_value,
+    )
+
+    # Close the stream without consuming it
+    response["body"].close()
+
+    # Verify span is closed regardless of stream consumption
+    (span,) = span_exporter.get_finished_spans()
+    assert_stream_completion_attributes(
+        span,
+        llm_model_value,
+        input_tokens=None,
+        output_tokens=None,
+        finish_reason=None,
+        operation_name="text_completion"
+        if model_family == "amazon.titan"
+        else "chat",
+        request_top_p=top_p,
+        request_temperature=temperature,
+        request_max_tokens=max_tokens,
+        request_stop_sequences=None
+        if model_family == "meta.llama"
+        else stop_sequences,
+    )
+    assert span.status.status_code == StatusCode.UNSET
+
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 1
+
+    # Set appropriate user_content based on model family
+    if model_family == "anthropic.claude":
+        user_content = {
+            "content": [{"text": "Say this is a test", "type": "text"}]
+        }
+    else:
+        user_content = {"content": [{"text": "Say this is a test"}]}
+
+    assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
+
 @pytest.mark.vcr()
 def test_invoke_model_with_response_stream_handles_stream_error(
     span_exporter,
@@ -2693,6 +2977,89 @@ def test_invoke_model_with_response_stream_invalid_model(
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 0
+
+
+@pytest.mark.parametrize(
+    "input_value,expected_output",
+    [
+        ({"location": "Seattle"}, {"location": "Seattle"}),
+        ({}, {}),
+        (None, None),
+    ],
+)
+def test_anthropic_claude_chunk_tool_use_input_handling(
+    input_value, expected_output
+):
+    """Test that _process_anthropic_claude_chunk handles various tool_use input formats."""
+
+    def stream_done_callback(response, ended):
+        pass
+
+    def stream_error_callback(exc, ended):
+        pass
+
+    wrapper = InvokeModelWithResponseStreamWrapper(
+        stream=mock.MagicMock(),
+        stream_done_callback=stream_done_callback,
+        stream_error_callback=stream_error_callback,
+        model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    )
+
+    # Simulate message_start
+    wrapper._process_anthropic_claude_chunk(
+        {
+            "type": "message_start",
+            "message": {
+                "role": "assistant",
+                "content": [],
+            },
+        }
+    )
+
+    # Simulate content_block_start with specified input
+    content_block = {
+        "type": "tool_use",
+        "id": "test_id",
+        "name": "test_tool",
+    }
+    if input_value is not None:
+        content_block["input"] = input_value
+
+    wrapper._process_anthropic_claude_chunk(
+        {
+            "type": "content_block_start",
+            "index": 0,
+            "content_block": content_block,
+        }
+    )
+
+    # Simulate content_block_stop
+    wrapper._process_anthropic_claude_chunk(
+        {"type": "content_block_stop", "index": 0}
+    )
+
+    # Verify the message content
+    assert len(wrapper._message["content"]) == 1
+    tool_block = wrapper._message["content"][0]
+    assert tool_block["type"] == "tool_use"
+    assert tool_block["id"] == "test_id"
+    assert tool_block["name"] == "test_tool"
+
+    if expected_output is not None:
+        assert tool_block["input"] == expected_output
+        assert isinstance(tool_block["input"], dict)
+    else:
+        assert "input" not in tool_block
+
+
+def test_converse_stream_with_missing_output_in_response():
+    # Test malformed response missing "output" key
+    malformed_response = {"stopReason": "end_turn"}
+    choice = _Choice.from_converse(malformed_response, capture_content=True)
+
+    assert choice.finish_reason == "end_turn"
+    assert choice.message == {}
+    assert choice.index == 0
 
 
 def amazon_nova_messages():

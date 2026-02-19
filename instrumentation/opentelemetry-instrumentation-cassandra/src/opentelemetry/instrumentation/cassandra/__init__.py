@@ -37,17 +37,29 @@ API
 ---
 """
 
+from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import cassandra.cluster
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.cassandra.package import _instruments
+from opentelemetry.instrumentation.cassandra.package import (
+    _instruments_any,
+    _instruments_cassandra_driver,
+    _instruments_scylla_driver,
+)
 from opentelemetry.instrumentation.cassandra.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
 
 
 def _instrument(tracer_provider, include_db_statement=False):
@@ -68,16 +80,16 @@ def _instrument(tracer_provider, include_db_statement=False):
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_NAME, instance.keyspace)
-                span.set_attribute(SpanAttributes.DB_SYSTEM, "cassandra")
+                span.set_attribute(DB_NAME, instance.keyspace)
+                span.set_attribute(DB_SYSTEM, "cassandra")
                 span.set_attribute(
-                    SpanAttributes.NET_PEER_NAME,
+                    NET_PEER_NAME,
                     instance.cluster.contact_points,
                 )
 
                 if include_db_statement:
                     query = args[0]
-                    span.set_attribute(SpanAttributes.DB_STATEMENT, str(query))
+                    span.set_attribute(DB_STATEMENT, str(query))
 
             response = func(*args, **kwargs)
             return response
@@ -89,7 +101,22 @@ def _instrument(tracer_provider, include_db_statement=False):
 
 class CassandraInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        # Determine which package of cassandra is installed.
+        # Right now there are two packages, cassandra-driver and scylla-driver.
+        # The latter is a fork with additional support for ScyllaDB.
+        try:
+            distribution("cassandra-driver")
+            return (_instruments_cassandra_driver,)
+        except PackageNotFoundError:
+            pass
+
+        try:
+            distribution("scylla-driver")
+            return (_instruments_scylla_driver,)
+        except PackageNotFoundError:
+            pass
+
+        return _instruments_any
 
     def _instrument(self, **kwargs):
         _instrument(

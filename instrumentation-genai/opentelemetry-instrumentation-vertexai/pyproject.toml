@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "OpenTelemetry Official VertexAI instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,16 +18,16 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "opentelemetry-api ~= 1.28",
-  "opentelemetry-instrumentation ~= 0.49b0",
-  "opentelemetry-semantic-conventions ~= 0.49b0",
+  "opentelemetry-api ~= 1.37",
+  "opentelemetry-instrumentation ~= 0.58b0",
+  "opentelemetry-semantic-conventions ~= 0.58b0",
+  "opentelemetry-util-genai >= 0.2b0, <0.3b0",
 ]
 
 [project.optional-dependencies]

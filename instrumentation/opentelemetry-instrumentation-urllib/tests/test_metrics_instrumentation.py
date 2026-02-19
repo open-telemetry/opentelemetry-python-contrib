@@ -23,6 +23,7 @@ import httpretty
 from pytest import mark
 
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
@@ -38,6 +39,8 @@ from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
 from opentelemetry.test.test_base import TestBase
+
+SCOPE = "opentelemetry.instrumentation.urllib"
 
 
 class TestUrllibMetricsInstrumentation(TestBase):
@@ -76,10 +79,17 @@ class TestUrllibMetricsInstrumentation(TestBase):
         httpretty.disable()
 
     # Return Sequence with one histogram
-    def create_histogram_data_points(self, sum_data_point, attributes):
+    def create_histogram_data_points(
+        self, sum_data_point, attributes, explicit_bounds=None
+    ):
         return [
             self.create_histogram_data_point(
-                sum_data_point, 1, sum_data_point, sum_data_point, attributes
+                sum_data_point,
+                1,
+                sum_data_point,
+                sum_data_point,
+                attributes,
+                explicit_bounds=explicit_bounds,
             )
         ]
 
@@ -88,7 +98,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL) as result:
             client_duration_estimated = (default_timer() - start_time) * 1000
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -154,7 +164,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL) as result:
             duration_s = default_timer() - start_time
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -176,6 +186,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                     },
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
                 est_value_delta=40,
             )
@@ -218,7 +229,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
             duration_s = default_timer() - start_time
             duration = max(round(duration_s * 1000), 0)
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 6)
 
             (
@@ -295,6 +306,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.request.method": "GET",
                         "network.protocol.version": "1.1",
                     },
+                    explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
                 est_value_delta=40,
             )
@@ -339,7 +351,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         with request.urlopen(self.URL_POST, data=data_encoded) as result:
             client_duration_estimated = (default_timer() - start_time) * 1000
 
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -404,7 +416,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
     )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 3)
 
             (
@@ -428,7 +440,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
             )
 
         with request.urlopen(self.URL):
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
 
             self.assertEqual(len(metrics), 3)
 
@@ -454,7 +466,7 @@ class TestUrllibMetricsInstrumentation(TestBase):
         URLLibInstrumentor().uninstrument()
 
         with request.urlopen(self.URL):
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
 
             self.assertEqual(len(metrics), 3)
 

@@ -7,8 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fix `StreamWrapper` missing `.headers` and other attributes when using `with_raw_response` streaming
+  ([#4113](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4113))
+
+## Version 2.3b0 (2025-12-24)
+
+- Fix `AttributeError` when handling `LegacyAPIResponse` (from `with_raw_response`)
+  ([#4017](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4017))
+- Add support for chat completions choice count and stop sequences span attributes
+  ([#4028](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4028))
+- Fix crash with streaming `with_raw_response`
+  ([#4033](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4033))
+- Bump to 1.30.0 semconv schema: `gen_ai.request.seed` instead of `gen_ai.openai.request.seed`
+  ([#4036](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4036))
+
+## Version 2.2b0 (2025-11-25)
+
+- Fix service tier attribute names: use `GEN_AI_OPENAI_REQUEST_SERVICE_TIER` for request
+  attributes and `GEN_AI_OPENAI_RESPONSE_SERVICE_TIER` for response attributes.
+  ([#3920](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3920))
+- Added support for OpenAI embeddings instrumentation
+  ([#3461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3461))
 - Record prompt and completion events regardless of span sampling decision.
   ([#3226](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3226))
+- Filter out attributes with the value of NotGiven instances
+  ([#3760](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3760))
+- Migrate off the deprecated events API to use the logs API
+  ([#3625](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3628))
 
 ## Version 2.1b0 (2025-01-18)
 

@@ -13,92 +13,10 @@
 # limitations under the License.
 
 """
-The integration with PostgreSQL supports the `Psycopg`_ library, it can be enabled by
+The integration with PostgreSQL supports the `Psycopg`_ library. It can be enabled by
 using ``PsycopgInstrumentor``.
 
 .. _Psycopg: https://www.psycopg.org/psycopg3/docs/
-
-SQLCOMMENTER
-*****************************************
-You can optionally configure Psycopg instrumentation to enable sqlcommenter which enriches
-the query with contextual information.
-
-Usage
------
-
-.. code:: python
-
-    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
-
-    PsycopgInstrumentor().instrument(enable_commenter=True, commenter_options={})
-
-
-For example,
-::
-
-   Invoking cursor.execute("select * from auth_users") will lead to sql query "select * from auth_users" but when SQLCommenter is enabled
-   the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;"
-
-
-SQLCommenter Configurations
-***************************
-We can configure the tags to be appended to the sqlquery log by adding configuration inside commenter_options(default:{}) keyword
-
-db_driver = True(Default) or False
-
-For example,
-::
-Enabling this flag will add psycopg and it's version which is /*psycopg%%3A2.9.3*/
-
-dbapi_threadsafety = True(Default) or False
-
-For example,
-::
-Enabling this flag will add threadsafety /*dbapi_threadsafety=2*/
-
-dbapi_level = True(Default) or False
-
-For example,
-::
-Enabling this flag will add dbapi_level /*dbapi_level='2.0'*/
-
-libpq_version = True(Default) or False
-
-For example,
-::
-Enabling this flag will add libpq_version /*libpq_version=140001*/
-
-driver_paramstyle = True(Default) or False
-
-For example,
-::
-Enabling this flag will add driver_paramstyle /*driver_paramstyle='pyformat'*/
-
-opentelemetry_values = True(Default) or False
-
-For example,
-::
-Enabling this flag will add traceparent values /*traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'*/
-
-SQLComment in span attribute
-****************************
-If sqlcommenter is enabled, you can optionally configure psycopg instrumentation to append sqlcomment to query span attribute for convenience of your platform.
-
-.. code:: python
-
-    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
-
-    PsycopgInstrumentor().instrument(
-        enable_commenter=True,
-        enable_attribute_commenter=True,
-    )
-
-
-For example,
-::
-
-    Invoking cursor.execute("select * from auth_users") will lead to postgresql query "select * from auth_users" but when SQLCommenter and attribute_commenter are enabled
-    the query will get appended with some configurable tags like "select * from auth_users /*tag=value*/;" for both server query and `db.statement` span attribute.
 
 Usage
 -----
@@ -133,6 +51,99 @@ Usage
     cursor.close()
     instrumented_cnx.close()
 
+
+Configuration
+-------------
+
+SQLCommenter
+************
+You can optionally configure Psycopg instrumentation to enable sqlcommenter which enriches
+the query with contextual information. Queries made after setting up trace integration with
+sqlcommenter enabled will have configurable key-value pairs appended to them, e.g.
+``"select * from auth_users; /*traceparent=00-01234567-abcd-01*/"``. This supports context
+propagation between database client and server when database log records are enabled.
+For more information, see:
+
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `sqlcommenter <https://google.github.io/sqlcommenter/>`_
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+
+    PsycopgInstrumentor().instrument(enable_commenter=True)
+    # OR with specific connection
+    cnx = psycopg.connect(database='Database')
+    instrumented_cnx = PsycopgInstrumentor().instrument_connection(
+        cnx,
+        enable_commenter=True,
+    )
+
+
+
+SQLCommenter with commenter_options
+***********************************
+The key-value pairs appended to the query can be configured using
+``commenter_options``. When sqlcommenter is enabled, all available KVs/tags
+are calculated by default. ``commenter_options`` supports *opting out*
+of specific KVs.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+
+    # Opts into sqlcomment for Psycopg trace integration.
+    # Opts out of tags for libpq_version, db_driver.
+    PsycopgInstrumentor().instrument(
+        enable_commenter=True,
+        commenter_options={
+            "libpq_version": False,
+            "db_driver": False,
+        }
+    )
+
+Available commenter_options
+###########################
+
+The following sqlcomment key-values can be opted out of through ``commenter_options``:
+
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| Commenter Option          | Description                                               | Example                                                                   |
++===========================+===========================================================+===========================================================================+
+| ``db_driver``             | Database driver name with version.                        | ``psycopg='3.1.9'``                                                       |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``libpq_version``         | PostgreSQL libpq version                                  | ``libpq_version=140001``                                                  |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
++---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+
+SQLComment in span attribute
+****************************
+If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
+the query span ``db.statement`` attribute for your needs. If ``commenter_options``
+have been set, the span attribute comment will also be configured by this
+setting.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+
+    # Opts into sqlcomment for Psycopg trace integration.
+    # Opts into sqlcomment for `db.statement` span attribute.
+    PsycopgInstrumentor().instrument(
+        enable_commenter=True,
+        enable_attribute_commenter=True,
+    )
+
+Warning:
+    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+
 API
 ---
 """
@@ -143,7 +154,7 @@ import logging
 from typing import Any, Callable, Collection, Optional, TypeVar
 
 import psycopg  # pylint: disable=import-self
-from psycopg.sql import Composed  # pylint: disable=no-name-in-module
+from psycopg.sql import Composable  # pylint: disable=no-name-in-module
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
@@ -184,6 +195,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        capture_parameters = kwargs.get("capture_parameters", False)
         dbapi.wrap_connect(
             __name__,
             psycopg,
@@ -196,6 +208,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
         dbapi.wrap_connect(
@@ -210,6 +223,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
         dbapi.wrap_connect(
             __name__,
@@ -223,6 +237,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     def _uninstrument(self, **kwargs: Any):
@@ -271,12 +286,18 @@ class PsycopgInstrumentor(BaseInstrumentor):
             setattr(
                 connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
             )
-            connection.cursor_factory = _new_cursor_factory(
-                tracer_provider=tracer_provider,
-                enable_commenter=enable_commenter,
-                commenter_options=commenter_options,
-                enable_attribute_commenter=enable_attribute_commenter,
-            )
+            if isinstance(connection, psycopg.AsyncConnection):
+                connection.cursor_factory = _new_cursor_async_factory(
+                    tracer_provider=tracer_provider
+                    # TODO support enable_commenter for async
+                )
+            else:
+                connection.cursor_factory = _new_cursor_factory(
+                    tracer_provider=tracer_provider,
+                    enable_commenter=enable_commenter,
+                    commenter_options=commenter_options,
+                    enable_attribute_commenter=enable_attribute_commenter,
+                )
             connection._is_instrumented_by_opentelemetry = True
         else:
             _logger.warning(
@@ -339,7 +360,7 @@ class CursorTracer(dbapi.CursorTracer):
             return ""
 
         statement = args[0]
-        if isinstance(statement, Composed):
+        if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
 
         # `statement` can be empty string. See #2643
@@ -354,7 +375,7 @@ class CursorTracer(dbapi.CursorTracer):
             return ""
 
         statement = args[0]
-        if isinstance(statement, Composed):
+        if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
         return statement
 
@@ -420,17 +441,17 @@ def _new_cursor_async_factory(
 
     class TracedCursorAsyncFactory(base_factory):
         async def execute(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution(
+            return await _cursor_tracer.traced_execution_async(
                 self, super().execute, *args, **kwargs
             )
 
         async def executemany(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution(
+            return await _cursor_tracer.traced_execution_async(
                 self, super().executemany, *args, **kwargs
             )
 
         async def callproc(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution(
+            return await _cursor_tracer.traced_execution_async(
                 self, super().callproc, *args, **kwargs
             )
 

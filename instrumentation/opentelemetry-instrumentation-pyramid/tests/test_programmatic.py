@@ -17,14 +17,31 @@ from unittest.mock import Mock, patch
 from pyramid.config import Configurator
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
     set_global_response_propagator,
 )
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_ROUTE,
+    HTTP_SCHEME,
+    HTTP_SERVER_NAME,
+    HTTP_STATUS_CODE,
+    HTTP_TARGET,
+    HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_HOST_NAME,
+    NET_HOST_PORT,
+)
 from opentelemetry.semconv.attributes import exception_attributes
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.util.http import get_excluded_urls
 
@@ -34,15 +51,16 @@ from .pyramid_base_test import InstrumentationTest
 
 def expected_attributes(override_attributes):
     default_attributes = {
-        SpanAttributes.HTTP_METHOD: "GET",
-        SpanAttributes.HTTP_SERVER_NAME: "localhost",
-        SpanAttributes.HTTP_SCHEME: "http",
-        SpanAttributes.NET_HOST_PORT: 80,
-        SpanAttributes.NET_HOST_NAME: "localhost",
-        SpanAttributes.HTTP_HOST: "localhost",
-        SpanAttributes.HTTP_TARGET: "/",
-        SpanAttributes.HTTP_FLAVOR: "1.1",
-        SpanAttributes.HTTP_STATUS_CODE: 200,
+        HTTP_METHOD: "GET",
+        HTTP_SERVER_NAME: "localhost",
+        HTTP_SCHEME: "http",
+        NET_HOST_PORT: 80,
+        NET_HOST_NAME: "localhost",
+        HTTP_HOST: "localhost",
+        HTTP_TARGET: "/",
+        HTTP_FLAVOR: "1.1",
+        HTTP_STATUS_CODE: 200,
+        HTTP_URL: "http://localhost/",
     }
     for key, val in override_attributes.items():
         default_attributes[key] = val
@@ -52,6 +70,9 @@ def expected_attributes(override_attributes):
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
+        # Reset semconv stability to ensure clean state
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
         config = Configurator()
         PyramidInstrumentor().instrument_config(config)
 
@@ -97,8 +118,9 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_simple(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/123",
-                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_TARGET: "/hello/123",
+                HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_URL: "http://localhost/hello/123",
             }
         )
         self.client.get("/hello/123")
@@ -136,9 +158,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_404(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_METHOD: "POST",
-                SpanAttributes.HTTP_TARGET: "/bye",
-                SpanAttributes.HTTP_STATUS_CODE: 404,
+                HTTP_METHOD: "POST",
+                HTTP_TARGET: "/bye",
+                HTTP_STATUS_CODE: 404,
+                HTTP_URL: "http://localhost/bye",
             }
         )
 
@@ -155,9 +178,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_internal_error(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/500",
-                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_TARGET: "/hello/500",
+                HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_STATUS_CODE: 500,
+                HTTP_URL: "http://localhost/hello/500",
             }
         )
         resp = self.client.get("/hello/500")
@@ -184,9 +208,10 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def test_internal_exception(self):
         expected_attrs = expected_attributes(
             {
-                SpanAttributes.HTTP_TARGET: "/hello/900",
-                SpanAttributes.HTTP_ROUTE: "/hello/{helloid}",
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_TARGET: "/hello/900",
+                HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_STATUS_CODE: 500,
+                HTTP_URL: "http://localhost/hello/900",
             }
         )
         with self.assertRaises(NotImplementedError):
