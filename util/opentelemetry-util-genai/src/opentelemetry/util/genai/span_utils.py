@@ -49,21 +49,6 @@ from opentelemetry.util.genai.utils import (
 )
 
 
-def _agent_attr(name: str, fallback: str) -> str:
-    """Get a semconv attribute, falling back to a string literal if not yet in the package."""
-    return getattr(GenAI, name, fallback)
-
-
-_GEN_AI_AGENT_NAME = _agent_attr("GEN_AI_AGENT_NAME", "gen_ai.agent.name")
-_GEN_AI_AGENT_ID = _agent_attr("GEN_AI_AGENT_ID", "gen_ai.agent.id")
-_GEN_AI_AGENT_DESCRIPTION = _agent_attr(
-    "GEN_AI_AGENT_DESCRIPTION", "gen_ai.agent.description"
-)
-_GEN_AI_AGENT_VERSION = _agent_attr(
-    "GEN_AI_AGENT_VERSION", "gen_ai.agent.version"
-)
-
-
 def _get_llm_common_attributes(
     invocation: LLMInvocation,
 ) -> dict[str, Any]:
@@ -303,10 +288,10 @@ def _get_base_agent_common_attributes(
     optional_attrs = (
         (GenAI.GEN_AI_REQUEST_MODEL, agent.model),
         (GenAI.GEN_AI_PROVIDER_NAME, agent.provider),
-        (_GEN_AI_AGENT_NAME, agent.name),
-        (_GEN_AI_AGENT_ID, agent.agent_id),
-        (_GEN_AI_AGENT_DESCRIPTION, agent.description),
-        (_GEN_AI_AGENT_VERSION, agent.version),
+        (GenAI.GEN_AI_AGENT_NAME, agent.name),
+        (GenAI.GEN_AI_AGENT_ID, agent.agent_id),
+        (GenAI.GEN_AI_AGENT_DESCRIPTION, agent.description),
+        ("gen_ai.agent.version", agent.version),
         (server_attributes.SERVER_ADDRESS, agent.server_address),
         (server_attributes.SERVER_PORT, agent.server_port),
     )
@@ -373,10 +358,6 @@ __all__ = [
     "_get_llm_response_attributes",
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
-    "_GEN_AI_AGENT_NAME",
-    "_GEN_AI_AGENT_ID",
-    "_GEN_AI_AGENT_DESCRIPTION",
-    "_GEN_AI_AGENT_VERSION",
     "_get_base_agent_common_attributes",
     "_get_base_agent_span_name",
     "_apply_creation_finish_attributes",
