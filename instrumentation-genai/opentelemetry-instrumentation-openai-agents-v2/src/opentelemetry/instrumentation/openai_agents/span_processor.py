@@ -1080,14 +1080,15 @@ class GenAISemanticProcessor(TracingProcessor):
                     "type": "tool_call_response",
                     "name": "code_interpreter",
                     "id": getattr(item, "id", None),
-                    "response": (
-                        "readacted"
-                        if not self.include_sensitive_data
-                        else [
-                            output.to_dict()
+                    "response": {
+                        "status": getattr(item, "status", None),
+                        "outputs": [
+                            { "type": output.type }
+                            if not self.include_sensitive_data
+                            else output.to_dict()
                             for output in getattr(item, "outputs", [])
                         ]
-                    ),
+                    },
                 },
             ]
         elif part_type == "local_shell_call":  # LocalShellCall
