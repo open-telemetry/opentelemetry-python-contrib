@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for Enhanced ToolCall Type Definition"""
+"""Tests for ToolCallRequest and ToolCall types"""
 
 import pytest
 
@@ -20,106 +20,145 @@ from opentelemetry.util.genai.types import (
     InputMessage,
     OutputMessage,
     ToolCall,
+    ToolCallRequest,
 )
 
 
+def test_toolcallrequest_basic():
+    """Test basic ToolCallRequest instantiation"""
+    tcr = ToolCallRequest(arguments=None, name="get_weather", id=None)
+    assert tcr.name == "get_weather"
+    assert tcr.type == "tool_call"
+    assert tcr.arguments is None
+    assert tcr.id is None
+
+
+def test_toolcallrequest_with_all_fields():
+    """Test ToolCallRequest with all fields"""
+    tcr = ToolCallRequest(
+        name="get_weather",
+        arguments={"location": "Paris"},
+        id="call_123",
+    )
+    assert tcr.name == "get_weather"
+    assert tcr.arguments == {"location": "Paris"}
+    assert tcr.id == "call_123"
+    assert tcr.type == "tool_call"
+
+
+def test_toolcallrequest_in_message():
+    """Test ToolCallRequest works as message part"""
+    tcr = ToolCallRequest(
+        arguments={"location": "Paris"}, name="get_weather", id=None
+    )
+    msg = InputMessage(role="user", parts=[tcr])
+    assert len(msg.parts) == 1
+    assert msg.parts[0] == tcr
+
+
+def test_toolcall_inherits_from_toolcallrequest():
+    """Test that ToolCall inherits from ToolCallRequest"""
+    tc = ToolCall(arguments=None, name="get_weather", id=None)
+    assert isinstance(tc, ToolCallRequest)
+    assert isinstance(tc, ToolCall)
+
+
+def test_toolcall_has_execution_fields():
+    """Test ToolCall has execution-only fields"""
+    tc = ToolCall(arguments=None, name="get_weather", id=None)
+    assert hasattr(tc, "tool_type")
+    assert hasattr(tc, "tool_description")
+    assert hasattr(tc, "tool_result")
+    assert hasattr(tc, "error_type")
+
+
+def test_toolcall_execution_fields_default_none():
+    """Test ToolCall execution fields default to None"""
+    tc = ToolCall(arguments=None, name="get_weather", id=None)
+    assert tc.tool_type is None
+    assert tc.tool_description is None
+    assert tc.tool_result is None
+    assert tc.error_type is None
+
+
+def test_toolcall_with_execution_fields():
+    """Test ToolCall with execution fields set"""
+    tc = ToolCall(
+        name="get_weather",
+        arguments={"location": "Paris"},
+        id="call_123",
+        tool_type="function",
+        tool_description="Get current weather",
+        tool_result={"temp": 20, "condition": "sunny"},
+    )
+    assert tc.name == "get_weather"
+    assert tc.tool_type == "function"
+    assert tc.tool_description == "Get current weather"
+    assert tc.tool_result == {"temp": 20, "condition": "sunny"}
+
+
+def test_toolcall_with_error():
+    """Test ToolCall with error_type set"""
+    tc = ToolCall(
+        arguments={"location": "Invalid"},
+        name="get_weather",
+        id=None,
+        error_type="InvalidLocationError",
+    )
+    assert tc.error_type == "InvalidLocationError"
+    assert tc.tool_result is None
+
+
 def test_toolcall_backward_compatibility():
-    """Test backward compatibility as message part"""
+    """Test ToolCall still works as message part (backward compatibility)"""
     tc = ToolCall(
         name="get_weather",
         arguments={"location": "Paris"},
         id="call_123",
     )
-    assert tc.name == "get_weather"
-    assert tc.arguments == {"location": "Paris"}
-    assert tc.id == "call_123"
-    assert tc.type == "tool_call"
-
-
-def test_toolcall_in_message():
-    """Test ToolCall works as message part in InputMessage"""
-    tc = ToolCall(name="get_weather", arguments={"location": "Paris"})
+    # Should work in messages
     msg = InputMessage(role="user", parts=[tc])
     assert len(msg.parts) == 1
-    assert msg.parts[0] == tc
 
-
-def test_toolcall_full_lifecycle():
-    """Test complete tool call lifecycle with all fields"""
-    # Start with tool call request
-    tc = ToolCall(
-        name="get_weather",
-        arguments={"location": "Paris", "units": "metric"},
-        id="call_abc123",
-        tool_type="function",
-        tool_description="Retrieves current weather for a location",
-    )
-
-    # Simulate successful execution - set result
-    tc.tool_result = {"temperature": 15, "condition": "cloudy"}
-
-    assert tc.name == "get_weather"
-    assert tc.tool_type == "function"
-    assert tc.tool_result is not None
-    assert tc.error_type is None
-
-    # Simulate failed execution - set error
-    tc_failed = ToolCall(
-        name="get_weather",
-        arguments={"location": "Invalid"},
-        id="call_xyz789",
-        tool_type="function",
-    )
-    tc_failed.error_type = "InvalidLocationError"
-
-    assert tc_failed.error_type == "InvalidLocationError"
-    assert tc_failed.tool_result is None
-
-
-def test_toolcall_with_output_message():
-    """Test ToolCall in OutputMessage (backward compatibility)"""
-    tc = ToolCall(
-        name="get_weather",
-        arguments={"location": "Paris"},
-        id="call_123",
-    )
-    msg = OutputMessage(
+    # Should work in output messages
+    out_msg = OutputMessage(
         role="assistant", parts=[tc], finish_reason="tool_calls"
     )
-
-    assert len(msg.parts) == 1
-    assert msg.parts[0].name == "get_weather"
-    assert msg.finish_reason == "tool_calls"
+    assert len(out_msg.parts) == 1
 
 
-def test_toolcall_field_values():
-    """Test that ToolCall fields can be set and retrieved correctly"""
+def test_toolcallrequest_no_execution_fields():
+    """Test that ToolCallRequest doesn't have execution fields"""
+    tcr = ToolCallRequest(arguments=None, name="get_weather", id=None)
+    # ToolCallRequest should only have message part fields
+    assert not hasattr(tcr, "tool_type")
+    assert not hasattr(tcr, "tool_description")
+    assert not hasattr(tcr, "tool_result")
+    assert not hasattr(tcr, "error_type")
+
+
+def test_mixed_types_in_message():
+    """Test using both ToolCallRequest and ToolCall in messages"""
+    tcr = ToolCallRequest(arguments=None, name="simple_tool", id=None)
     tc = ToolCall(
-        name="get_weather",
-        id="call_123",
-        tool_type="function",
-        tool_description="Weather tool",
-        arguments={"location": "Paris"},
-        tool_result={"temp": 20},
+        arguments=None, name="complex_tool", id=None, tool_type="function"
     )
 
-    # Verify all field values are set correctly
-    assert tc.name == "get_weather"
-    assert tc.id == "call_123"
-    assert tc.tool_type == "function"
-    assert tc.tool_description == "Weather tool"
-    assert tc.arguments == {"location": "Paris"}
-    assert tc.tool_result == {"temp": 20}
-    assert tc.error_type is None
+    msg = InputMessage(role="user", parts=[tcr, tc])
+    assert len(msg.parts) == 2
+    assert isinstance(msg.parts[0], ToolCallRequest)
+    assert isinstance(msg.parts[1], ToolCall)
+    # ToolCall is also a ToolCallRequest
+    assert isinstance(msg.parts[1], ToolCallRequest)
 
-    # Verify these fields map to semantic convention attributes:
-    # - name -> gen_ai.tool.name
-    # - id -> gen_ai.tool.call.id
-    # - tool_type -> gen_ai.tool.type
-    # - tool_description -> gen_ai.tool.description
-    # - arguments -> gen_ai.tool.call.arguments (Opt-In)
-    # - tool_result -> gen_ai.tool.call.result (Opt-In)
-    # - error_type -> error.type
+
+def test_toolcall_tool_type_values():
+    """Test valid tool_type values"""
+    for tool_type in ["function", "extension", "datastore"]:
+        tc = ToolCall(
+            arguments=None, name="test", id=None, tool_type=tool_type
+        )
+        assert tc.tool_type == tool_type
 
 
 if __name__ == "__main__":
