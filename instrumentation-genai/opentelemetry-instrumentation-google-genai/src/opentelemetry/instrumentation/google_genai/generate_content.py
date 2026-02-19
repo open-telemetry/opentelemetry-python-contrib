@@ -344,23 +344,17 @@ def _tool_def_without_parameters_attr(
     if tool_def == []:
         return {}
 
-    result = []
-    for td in tool_def:
-        if isinstance(td, FunctionToolDefinition):
-            result.append(
-                FunctionToolDefinition(
-                    name=td.name,
-                    description=td.description,
-                    parameters=None,
-                )
-            )
-        else:
-            result.append(td)
-
     return {
         GEN_AI_TOOL_DEFINITIONS: [
-            dataclasses.asdict(tool_def) for tool_def in result
-        ],
+            dataclasses.asdict(
+                FunctionToolDefinition(
+                    name=td.name, description=td.description, parameters=None
+                )
+                if isinstance(td, FunctionToolDefinition)
+                else td
+            )
+            for td in tool_def
+        ]
     }
 
 
@@ -666,15 +660,11 @@ class _GenerateContentInstrumentationHelper:
         ):
             return []
 
-        tool_definitions = []
         if tools := _config_to_tools(config):
-            for tool in tools:
-                definitions = _to_tool_definition(tool)
-                for de in definitions:
-                    if de:
-                        tool_definitions.append(de)
-
-        return tool_definitions
+            return [
+                de for tool in tools for de in _to_tool_definition(tool) if de
+            ]
+        return []
 
     async def _maybe_get_tool_definitions_async(
         self, config
@@ -710,12 +700,9 @@ class _GenerateContentInstrumentationHelper:
                 **completion_details_attributes,
             }
         else:
-            tool_def_without_params_attr = _tool_def_without_parameters_attr(
-                tool_definitions
-            )
             event.attributes = {
                 **(event.attributes or {}),
-                **tool_def_without_params_attr,
+                **_tool_def_without_parameters_attr(tool_definitions),
             }
 
         self._otel_wrapper.log_completion_details(event=event)
@@ -738,13 +725,12 @@ class _GenerateContentInstrumentationHelper:
             )
             # request attributes were already set on the span..
         else:
-            tool_def_without_params_attr = _tool_def_without_parameters_attr(
-                tool_definitions
-            )
             span.set_attributes(
                 {
                     k: gen_ai_json_dumps(v)
-                    for k, v in tool_def_without_params_attr.items()
+                    for k, v in _tool_def_without_parameters_attr(
+                        tool_definitions
+                    ).items()
                 }
             )
 

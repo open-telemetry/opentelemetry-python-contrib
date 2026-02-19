@@ -95,15 +95,11 @@ def is_message_part_list_hashable(
     )
 
 
-def is_tool_definitions_hashable(
-    tool_definitions: list[types.ToolDefinition] | None,
-) -> bool:
-    return bool(tool_definitions)
-
-
 def hash_tool_definitions(
-    tool_definitions: list[types.ToolDefinition],
+    tool_definitions: list[types.ToolDefinition] | None,
 ) -> str | None:
+    if not tool_definitions:
+        return None
     try:
         tool_dicts = [
             {k: v for k, v in dataclasses.asdict(t).items() if v is not None}
@@ -220,9 +216,7 @@ class UploadCompletionHook(CompletionHook):
                 usedforsecurity=False,
             ).hexdigest()
 
-        tool_definitions_hash = None
-        if tool_definitions:
-            tool_definitions_hash = hash_tool_definitions(tool_definitions)
+        tool_definitions_hash = hash_tool_definitions(tool_definitions)
 
         uuid_str = str(uuid4())
         return CompletionRefs(
@@ -350,10 +344,10 @@ class UploadCompletionHook(CompletionHook):
                     ref_names.tool_definitions_ref,
                     completion.tool_definitions,
                     GEN_AI_TOOL_DEFINITIONS_REF,
-                    is_tool_definitions_hashable(completion.tool_definitions),
+                    bool(completion.tool_definitions),
                 ),
             ]
-            if ref  # Filter out empty input/output/sys instruction
+            if ref  # Filter out empty input/output/sys instruction/tool defs
         ]
         self._submit_all(
             {

@@ -143,7 +143,7 @@ class FunctionToolDefinition:
 
     name: str
     description: str | None
-    parameters: Any | None  # or dict[str, Any]
+    parameters: Any
     type: Literal["function"] = "function"
 
 
