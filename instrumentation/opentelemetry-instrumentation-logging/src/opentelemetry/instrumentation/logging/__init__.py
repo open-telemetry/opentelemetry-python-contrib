@@ -61,9 +61,6 @@ from typing import Collection
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.logging._handler import (
-    _setup_logging_handler,
-)
 from opentelemetry.instrumentation.logging.constants import (
     _MODULE_DOC,
     DEFAULT_LOGGING_FORMAT,
@@ -72,6 +69,9 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
     OTEL_PYTHON_LOG_LEVEL,
+)
+from opentelemetry.instrumentation.logging.handler import (
+    _setup_logging_handler,
 )
 from opentelemetry.instrumentation.logging.package import _instruments
 from opentelemetry.trace import (
