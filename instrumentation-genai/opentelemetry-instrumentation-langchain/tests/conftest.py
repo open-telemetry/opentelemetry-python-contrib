@@ -27,7 +27,6 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
-from opentelemetry.util.genai.handler import get_telemetry_handler
 
 
 @pytest.fixture(scope="function", name="chat_openai_gpt_3_5_turbo_model")
@@ -112,18 +111,7 @@ def fixture_meter_provider(metric_reader):
 
 
 @pytest.fixture(scope="function")
-def reset_telemetry_handler():
-    """Clear the TelemetryHandler singleton so each test run gets a handler
-    wired to its own tracer_provider/span_exporter. Otherwise parametrized
-    runs reuse the first run's handler and spans go to the wrong exporter."""
-    if getattr(get_telemetry_handler, "_default_handler", None) is not None:
-        delattr(get_telemetry_handler, "_default_handler")
-    yield
-
-
-@pytest.fixture(scope="function")
 def start_instrumentation(
-    reset_telemetry_handler,
     tracer_provider,
     meter_provider,
     logger_provider,

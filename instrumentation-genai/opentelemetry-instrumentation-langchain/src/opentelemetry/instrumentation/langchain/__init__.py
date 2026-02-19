@@ -93,6 +93,14 @@ class LangChainInstrumentor(BaseInstrumentor):
         Cleanup instrumentation (unwrap).
         """
         unwrap("langchain_core.callbacks.base.BaseCallbackManager", "__init__")
+        # Clear the TelemetryHandler singleton so the next instrument() uses
+        # the provided tracer_provider/meter_provider/logger_provider instead
+        # of reusing the previous handler.
+        if (
+            getattr(get_telemetry_handler, "_default_handler", None)
+            is not None
+        ):
+            delattr(get_telemetry_handler, "_default_handler")
 
 
 class _BaseCallbackManagerInitWrapper:
