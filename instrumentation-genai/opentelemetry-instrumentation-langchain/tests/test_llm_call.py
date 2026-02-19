@@ -115,7 +115,7 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error(
     response = None
     try:
         with vcr.use_cassette(
-                "test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error.yaml"
+            "test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error.yaml"
         ):
             response = chat_openai_gpt_3_5_turbo_model.invoke(messages)
     except Exception as e:
