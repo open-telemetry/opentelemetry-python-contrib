@@ -36,6 +36,19 @@ This package provides these span attributes:
 - `gen_ai.output.messages`: Str('[{"role": "AI", "parts": [{"content": "hello back", "type": "text"}], "finish_reason": "stop"}]')
 - `gen_ai.system_instructions`: Str('[{"content": "You are a helpful assistant.", "type": "text"}]') (when system instruction is provided)
 
+This package also supports embedding invocation spans via
+`EmbeddingInvocation` and `TelemetryHandler.start_embedding/stop_embedding/fail_embedding`.
+For embedding invocations, common attributes include:
+
+- `gen_ai.provider.name`: Str(openai)
+- `gen_ai.operation.name`: Str(embeddings)
+- `gen_ai.request.model`: Str(text-embedding-3-small)
+- `gen_ai.embedding.dimension_count`: Int(1536)
+- `gen_ai.request.encoding_formats`: Slice(["float"])
+- `gen_ai.usage.input_tokens`: Int(24)
+- `server.address`: Str(api.openai.com)
+- `server.port`: Int(443)
+
 When `EVENT_ONLY` or `SPAN_AND_EVENT` mode is enabled and a LoggerProvider is configured, 
 the package also emits `gen_ai.client.inference.operation.details` events with structured 
 message content (as dictionaries instead of JSON strings). Note that when using `EVENT_ONLY` 

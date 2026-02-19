@@ -80,16 +80,15 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
+    _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
-    _apply_embedding_finish_attributes,
     _maybe_emit_llm_event,
-    _maybe_emit_embedding_event,
 )
 from opentelemetry.util.genai.types import (
+    EmbeddingInvocation,
     Error,
     LLMInvocation,
-    EmbeddingInvocation,
 )
 from opentelemetry.util.genai.version import __version__
 
@@ -255,7 +254,6 @@ class TelemetryHandler:
         span = invocation.span
         _apply_embedding_finish_attributes(span, invocation)
         self._record_embedding_metrics(invocation, span)
-        _maybe_emit_embedding_event(self._logger, span, invocation)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
         span.end()
@@ -273,10 +271,7 @@ class TelemetryHandler:
         _apply_embedding_finish_attributes(invocation.span, invocation)
         _apply_error_attributes(invocation.span, error)
         error_type = getattr(error.type, "__qualname__", None)
-        self._record_embedding_metrics(
-            invocation, span, error_type=error_type
-        )
-        _maybe_emit_embedding_event(self._logger, span, invocation, error)
+        self._record_embedding_metrics(invocation, span, error_type=error_type)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
         span.end()

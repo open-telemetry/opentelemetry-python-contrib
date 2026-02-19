@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3891](#3891))
 - Add parent class genAI invocation
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3889](#3889))
+- Add `EmbeddingInvocation` span lifecycle support (`start_embedding`,
+  `stop_embedding`, `fail_embedding`), embedding span tests, and defer
+  embedding metrics emission (current no-op) to a follow-up PR.
+  ([#<PR_NUMBER>](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/<PR_NUMBER>))
 
 ## Version 0.2b0 (2025-10-14)
 

@@ -305,10 +305,6 @@ class EmbeddingInvocation(GenAIInvocation):
     Additional attributes to set on metrics. Must be of a low cardinality.
     These attributes will not be set on spans or events.
     """
-    # Monotonic start time in seconds (from timeit.default_timer) used
-    # for duration calculations to avoid mixing clock sources. This is
-    # populated by the TelemetryHandler when starting an invocation.
-    monotonic_start_s: float | None = None
 
 
 @dataclass
