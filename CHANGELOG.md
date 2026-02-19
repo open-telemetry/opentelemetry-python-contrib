@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add Python 3.14 support
+  ([#4193](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4193))
 - `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
   ([#3739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3739))
 - `opentelemetry-instrumentation-wsgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
@@ -117,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4112](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4112))
 - `opentelemetry-instrumentation-django`: Drop support for Django < 2.0
   ([#4083](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4083))
+- `opentelemetry-instrumentation-aws-lambda`: Fix improper invocation `Span` name and kind.
 
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
