@@ -35,6 +35,7 @@ from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
     LLMInvocation,
+    EmbeddingInvocation,
     MessagePart,
     OutputMessage,
 )
@@ -68,8 +69,32 @@ def _get_llm_common_attributes(
     }
 
 
+def _get_embedding_common_attributes(
+    invocation: EmbeddingInvocation,
+) -> dict[str, Any]:
+    """Get common Embedding attributes shared by finish() and error() paths.
+
+    Returns a dictionary of attributes.
+    """
+    optional_attrs = (
+        (server_attributes.SERVER_ADDRESS, invocation.server_address),
+        (server_attributes.SERVER_PORT, invocation.server_port),
+    )
+
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+        GenAI.GEN_AI_PROVIDER_NAME: invocation.provider,
+        **{key: value for key, value in optional_attrs if value is not None},
+    }
+
+
 def _get_llm_span_name(invocation: LLMInvocation) -> str:
     """Get the span name for an LLM invocation."""
+    return f"{invocation.operation_name} {invocation.request_model}".strip()
+
+
+def _get_embedding_span_name(invocation: EmbeddingInvocation) -> str:
+    """Get the span name for an Embedding invocation."""
     return f"{invocation.operation_name} {invocation.request_model}".strip()
 
 
@@ -192,6 +217,44 @@ def _maybe_emit_llm_event(
     logger.emit(event)
 
 
+def _maybe_emit_embedding_event(
+    logger: Logger | None,
+    span: Span,
+    invocation: EmbeddingInvocation,
+    error: Error | None = None,
+) -> None:
+    """Emit a gen_ai.client.inference.operation.details event to the logger.
+
+    This function creates a LogRecord event following the semantic convention
+    for gen_ai.client.inference.operation.details as specified in the GenAI
+    event semantic conventions.
+
+    For more details, see the semantic convention documentation:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md#event-eventgen_aiclientinferenceoperationdetails
+    """
+    if not is_experimental_mode() or not should_emit_event() or logger is None:
+        return
+
+    # Build event attributes by reusing the attribute getter functions
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_embedding_common_attributes(invocation))
+    attributes.update(_get_embedding_request_attributes(invocation))
+    attributes.update(_get_embedding_response_attributes(invocation))
+
+    # Add error.type if operation ended in error
+    if error is not None:
+        attributes[error_attributes.ERROR_TYPE] = error.type.__qualname__
+
+    # Create and emit the event
+    context = set_span_in_context(span, get_current())
+    event = LogRecord(
+        event_name="gen_ai.client.embedding.operation.details",
+        attributes=attributes,
+        context=context,
+    )
+    logger.emit(event)
+
+
 def _apply_llm_finish_attributes(
     span: Span, invocation: LLMInvocation
 ) -> None:
@@ -211,6 +274,26 @@ def _apply_llm_finish_attributes(
             invocation.system_instruction,
         )
     )
+    attributes.update(invocation.attributes)
+
+    # Set all attributes on the span
+    if attributes:
+        span.set_attributes(attributes)
+
+
+def _apply_embedding_finish_attributes(
+    span: Span, invocation: EmbeddingInvocation
+) -> None:
+    """Apply attributes common to embedding finish() paths."""
+    # Update span name
+    span.update_name(_get_embedding_span_name(invocation))
+
+    # Build all attributes by reusing the attribute getter functions
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_embedding_common_attributes(invocation))
+    attributes.update(_get_embedding_request_attributes(invocation))
+    attributes.update(_get_embedding_response_attributes(invocation))
+
     attributes.update(invocation.attributes)
 
     # Set all attributes on the span
@@ -239,6 +322,19 @@ def _get_llm_request_attributes(
         (GenAI.GEN_AI_REQUEST_MAX_TOKENS, invocation.max_tokens),
         (GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, invocation.stop_sequences),
         (GenAI.GEN_AI_REQUEST_SEED, invocation.seed),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
+def _get_embedding_request_attributes(
+    invocation: EmbeddingInvocation,
+) -> dict[str, Any]:
+    """Get GenAI request semantic convention attributes."""
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),
+        (GenAI.GEN_AI_EMBEDDING_DIMENSION_COUNT, invocation.dimension_count),
+        (GenAI.GEN_AI_REQUEST_ENCODING_FORMATS, invocation.encoding_formats),
     )
 
     return {key: value for key, value in optional_attrs if value is not None}
@@ -279,6 +375,17 @@ def _get_llm_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
+def _get_embedding_response_attributes(
+    invocation: EmbeddingInvocation,
+) -> dict[str, Any]:
+    """Get GenAI response semantic convention attributes."""
+    optional_attrs = (
+        (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
 __all__ = [
     "_apply_llm_finish_attributes",
     "_apply_error_attributes",
@@ -287,4 +394,10 @@ __all__ = [
     "_get_llm_response_attributes",
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
+    "_apply_embedding_finish_attributes",
+    "_get_embedding_common_attributes",
+    "_get_embedding_request_attributes",
+    "_get_embedding_response_attributes",
+    "_get_embedding_span_name",
+    "_maybe_emit_embedding_event",
 ]
