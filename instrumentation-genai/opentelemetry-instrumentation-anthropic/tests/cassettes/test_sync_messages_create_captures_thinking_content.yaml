@@ -61,18 +61,18 @@ interactions:
       string: |-
         {
           "model": "claude-sonnet-4-20250514",
-          "id": "msg_019NDXwtBySEFeG2ZqQSaEo4",
+          "id": "msg_019M6D1Hc9WSFVbi5UhXvxm5",
           "type": "message",
           "role": "assistant",
           "content": [
             {
               "type": "thinking",
-              "thinking": "I need to calculate 17 * 19.\n\nLet me think about this step by step.\n\n17 * 19\n\nI can use the distributive property or just multiply directly.\n\nMethod 1: Direct multiplication\n17 * 19\n= 17 * (20 - 1)\n= 17 * 20 - 17 * 1\n= 340 - 17\n= 323\n\nMethod 2: Let me double-check with standard multiplication\n  17\n\u00d7 19\n----\n 153  (17 \u00d7 9)\n170   (17 \u00d7 10, shifted one place)\n----\n323\n\nLet me verify the first line: 17 \u00d7 9\n17 \u00d7 9 = 17 \u00d7 (10 - 1) = 170 - 17 = 153 \u2713\n\nAnd the second line: 17 \u00d7 10 = 170 \u2713\n\n153 + 170 = 323 \u2713\n\nSo 17 \u00d7 19 = 323",
-              "signature": "EsEFCkYICxgCKkAIGZPDOqD0gDVK//TgvXwCDj3ZW3uQ+ktoo+p/HDigcgFke4byRd8xvvl2RakjQcPFkRqyox1bc7+pi5wUjW0FEgw71QuDm1IP1jAIZm4aDO+/Kx+ob0xHevusAiIw28eEOxLg6AZiDjmcHUf9jfwknL0nq3BEJ6A/GKXvGsVSCGlxf3cQih4fSI7izDonKqgEb4GYu6l9uI5Sn3O+LnbOIby3T8iMlsZaOxFIkL6JG4YGXsePNhZqfsUJ8KpWdDrzz86lDW0k5ixQUHtKaTI4E5VzIg8nFsjLXjmXorFbM9LwsEenAns6/Acd1LfOO3hojaa/cLub/zxXmd/ANIj7hTHfl+gOJrXtVglgE1FDjkLFwEsx0brQgJJuGMSimKL+CWrMcGkDrVo0ZycZVGRqztcPBYrmNmsQjZWo/BxoM9WD+8xGTvO1WNq1c5hguwmZhO9v0W7nnNtoyS+62ZCvbsde5bMd237VyRKpDQcqy/3BK5Xo5TTe2NQhF8y15SujYrH2DXz/T+ljPQwetGcpaCxlC/8Mb8ixZh0mWDrx5eG638g/Yj/jBBjjtx/673MDDvYXCsH6FxVp4K2L40WLGdmRpIqc2jfjvIi3mJSpO/x2pYkmkEAd9SG/vVOERDFRwO1455eye8C5f9Zc0X6bhY9Obf/ZELkRSHT6ggzR+gYINGokfLxMWf5hyrVC3TbqPBa6SwIWpLiFGAboCizN3SozuVHRwBWW6bGV2W22IFnFL7OBWA9qr1FPFtIUWfrmm3VcUl9gmVQs9GelsiY3XrgC/hxa3SwKHUOVR0RYrM3zxEMTXNwfwqvI9+7gB6fLmBU80xZGgKoN8tuGMIhLzRb6j2kREK7AIcPprl29qDbX+h6WIr4BU1zlUTgFn4nDdYQhJEW19ky2pcDhi+4ax7SLN680TAC8GAE="
+              "thinking": "I need to calculate 17 * 19.\n\nLet me think about this step by step.\n\nOne way is to use the standard multiplication:\n17 * 19\n\nI can break this down:\n17 * 19 = 17 * (20 - 1) = 17 * 20 - 17 * 1 = 340 - 17 = 323\n\nLet me double-check this:\n17 * 20 = 340\n17 * 1 = 17\n340 - 17 = 323\n\nAlternatively, I could do:\n19 * 17 = 19 * (10 + 7) = 19 * 10 + 19 * 7 = 190 + 133\n\nLet me calculate 19 * 7:\n19 * 7 = (20 - 1) * 7 = 20 * 7 - 1 * 7 = 140 - 7 = 133\n\nSo: 190 + 133 = 323\n\nBoth methods give me 323, so that should be correct.",
+              "signature": "EqsFCkYICxgCKkBj3TzwlCMb5oc6IOfRK12T1/x6oRw0jcUAh73ytRZYa+FS2kbF2ww9xPCMT6UA6mo3mNluiotjDwd7ox2CQaYpEgzfGNJ622dnd9Zao78aDEvJnPgVLG3DbVZAZiIwHtc5Bi2WdxoOJlbdbxACS6DJC/wETtNVKh6+YelaZbyB5yAbq0DOX0OWLr1QL1lRKpIEb7XRfskfTALZimvJMVmxn5zFcVdGM42FoiBAUvDdugak6qgRw2l7Ur4v+6y/PHt65MrlSGz72eHCbaPJI5gXoArNOdEOBKbHkIVYrqUF+KuGtNXSS9N0+LuntqiLXO985/aA4lRpo48DAYxUIDMpjun2VPVs0U5opP4hpyhPKy+jVx0ua0bihuAQtESjacRVSXuUPa839Y7qx+uvzyCW5dXym5HiEvX5edcWSxGukLJNXpxWv1KP89PCCXvlQkSRLlGblBLVhvlW2lbKftPEN1pnlQ7ZI+kh+F9t41SUm6MQ2vyb0v9Blbs5bujDs1ivNqUldx/TNLFwQbCMVZ9fBxXO2YbmOKOkRvdaw1W5p32tRfFHSldg8Toj5wi4MWtCcSBCFq5SploMAPLS5tUyQXMCVmEye77ltNi86d0ezBTm8Xebuo1VPdJVWMMHKI0iYch6SgBbR31HA2/hO8A/BWnHryDUYb34zu8A31Zp6igaxtoCKniLTFyBIJbeJD4qf+yVrFRfdUblQu8p1dpdlY/MOnR1EVOqWj8jyiYwTtqQBqaA1bjgNCWR+dTBrolFh5n5ZGDVaZrAJo/dmhYqVBlZ3STsvm+pBf3MCw761Z0BCy5h6YkEA87PbA3yi0QxEQCoOtjgyX/cBw0K2Aillhtbq1SSEOV0CCtrwUSw6ENf/eCSqkNcWR4Q9zT7kZ1YGxUYAQ=="
             },
             {
               "type": "text",
-              "text": "I need to calculate 17 \u00d7 19.\n\nLet me break this down:\n17 \u00d7 19 = 17 \u00d7 (20 - 1) = 17 \u00d7 20 - 17 \u00d7 1 = 340 - 17 = 323\n\nOr using standard multiplication:\n```\n  17\n\u00d7 19\n----\n 153  (17 \u00d7 9)\n170   (17 \u00d7 1, in tens place)\n----\n323\n```\n\nTherefore, 17 \u00d7 19 = 323."
+              "text": "I need to calculate 17 \u00d7 19.\n\nLet me use the distributive property to make this easier:\n17 \u00d7 19 = 17 \u00d7 (20 - 1) = 17 \u00d7 20 - 17 \u00d7 1\n\n17 \u00d7 20 = 340\n17 \u00d7 1 = 17\n\nSo: 340 - 17 = 323\n\nTherefore, 17 \u00d7 19 = 323."
             }
           ],
           "stop_reason": "end_turn",
@@ -85,14 +85,14 @@ interactions:
               "ephemeral_5m_input_tokens": 0,
               "ephemeral_1h_input_tokens": 0
             },
-            "output_tokens": 376,
+            "output_tokens": 378,
             "service_tier": "standard",
             "inference_geo": "not_available"
           }
         }
     headers:
       CF-RAY:
-      - 9d028b439be25f83-EWR
+      - 9d029e2d5f104337-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -100,7 +100,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Thu, 19 Feb 2026 03:05:47 GMT
+      - Thu, 19 Feb 2026 03:18:41 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -112,35 +112,35 @@ interactions:
       anthropic-ratelimit-input-tokens-remaining:
       - '450000'
       anthropic-ratelimit-input-tokens-reset:
-      - '2026-02-19T03:05:42Z'
+      - '2026-02-19T03:18:37Z'
       anthropic-ratelimit-output-tokens-limit:
       - '90000'
       anthropic-ratelimit-output-tokens-remaining:
       - '90000'
       anthropic-ratelimit-output-tokens-reset:
-      - '2026-02-19T03:05:48Z'
+      - '2026-02-19T03:18:41Z'
       anthropic-ratelimit-requests-limit:
       - '1000'
       anthropic-ratelimit-requests-remaining:
       - '999'
       anthropic-ratelimit-requests-reset:
-      - '2026-02-19T03:05:41Z'
+      - '2026-02-19T03:18:36Z'
       anthropic-ratelimit-tokens-limit:
       - '540000'
       anthropic-ratelimit-tokens-remaining:
       - '540000'
       anthropic-ratelimit-tokens-reset:
-      - '2026-02-19T03:05:42Z'
+      - '2026-02-19T03:18:37Z'
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2278'
+      - '2165'
       request-id:
-      - req_011CYGgrKNqV8tVpUzrRJ1B8
+      - req_011CYGhqRT49PCBrV4e9s65s
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-envoy-upstream-service-time:
-      - '6263'
+      - '5185'
     status:
       code: 200
       message: OK
