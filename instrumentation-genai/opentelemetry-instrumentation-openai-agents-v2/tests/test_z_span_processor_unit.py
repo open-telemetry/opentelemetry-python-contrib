@@ -156,19 +156,14 @@ def test_operation_and_span_naming(processor_setup):
         == sp.GenAIOperationName.EMBEDDINGS
     )
 
-    agent_create = AgentSpanData(operation=" CREATE ")
+    # AgentSpanData always maps to invoke_agent (no operation field in real SDK)
+    agent_data = AgentSpanData(name="bot")
     assert (
-        processor._get_operation_name(agent_create)
-        == sp.GenAIOperationName.CREATE_AGENT
-    )
-
-    agent_invoke = AgentSpanData(operation="invoke_agent")
-    assert (
-        processor._get_operation_name(agent_invoke)
+        processor._get_operation_name(agent_data)
         == sp.GenAIOperationName.INVOKE_AGENT
     )
 
-    agent_default = AgentSpanData(operation=None)
+    agent_default = AgentSpanData()
     assert (
         processor._get_operation_name(agent_default)
         == sp.GenAIOperationName.INVOKE_AGENT
@@ -315,26 +310,19 @@ def test_attribute_builders(processor_setup):
     agent_span = AgentSpanData(
         name="helper",
         output_type="json",
-        description="desc",
-        agent_id="agent-123",
-        model="model-x",
-        operation="invoke_agent",
     )
     agent_attrs = _collect(
         processor._get_attributes_from_agent_span_data(agent_span, None)
     )
     assert agent_attrs[sp.GEN_AI_AGENT_NAME] == "helper"
-    assert agent_attrs[sp.GEN_AI_AGENT_ID] == "agent-123"
-    assert agent_attrs[sp.GEN_AI_REQUEST_MODEL] == "model-x"
+    assert sp.GEN_AI_AGENT_ID not in agent_attrs
+    assert sp.GEN_AI_REQUEST_MODEL not in agent_attrs
     assert agent_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.TEXT
 
     # Fallback to aggregated model when span data lacks it
     agent_span_no_model = AgentSpanData(
         name="helper-2",
         output_type="json",
-        description="desc",
-        agent_id="agent-456",
-        operation="invoke_agent",
     )
     agent_content = {
         "input_messages": [],
@@ -435,9 +423,7 @@ def test_span_lifecycle_and_shutdown(processor_setup):
     parent_span = FakeSpan(
         trace_id="trace-1",
         span_id="span-1",
-        span_data=AgentSpanData(
-            operation="invoke", name="agent", model="gpt-4o"
-        ),
+        span_data=AgentSpanData(name="agent"),
         started_at="2024-01-01T00:00:00Z",
         ended_at="2024-01-01T00:00:02Z",
     )
@@ -476,7 +462,7 @@ def test_span_lifecycle_and_shutdown(processor_setup):
     linger_span = FakeSpan(
         trace_id="trace-2",
         span_id="span-3",
-        span_data=AgentSpanData(operation=None),
+        span_data=AgentSpanData(),
         started_at="2024-01-01T00:00:06Z",
     )
     processor.on_span_start(linger_span)
@@ -518,7 +504,6 @@ def test_chat_span_renamed_with_model(processor_setup):
         trace_id=trace.trace_id,
         span_id="agent-span",
         span_data=AgentSpanData(
-            operation="invoke_agent",
             name="Agent",
         ),
         started_at="2025-01-01T00:00:00Z",
