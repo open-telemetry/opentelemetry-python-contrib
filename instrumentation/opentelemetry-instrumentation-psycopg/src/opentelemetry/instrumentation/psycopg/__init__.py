@@ -288,8 +288,10 @@ class PsycopgInstrumentor(BaseInstrumentor):
             )
             if isinstance(connection, psycopg.AsyncConnection):
                 connection.cursor_factory = _new_cursor_async_factory(
-                    tracer_provider=tracer_provider
-                    # TODO support enable_commenter for async
+                    tracer_provider=tracer_provider,
+                    enable_commenter=enable_commenter,
+                    commenter_options=commenter_options,
+                    enable_attribute_commenter=enable_attribute_commenter,
                 )
             else:
                 connection.cursor_factory = _new_cursor_factory(
@@ -427,6 +429,9 @@ def _new_cursor_async_factory(
     db_api: DatabaseApiAsyncIntegration | None = None,
     base_factory: type[psycopg.AsyncCursor] | None = None,
     tracer_provider: TracerProvider | None = None,
+    enable_commenter: bool = False,
+    commenter_options: dict = None,
+    enable_attribute_commenter: bool = False,
 ):
     if not db_api:
         db_api = DatabaseApiAsyncIntegration(
@@ -435,6 +440,10 @@ def _new_cursor_async_factory(
             connection_attributes=PsycopgInstrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=psycopg,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
     base_factory = base_factory or psycopg.AsyncCursor
     _cursor_tracer = CursorTracer(db_api)
