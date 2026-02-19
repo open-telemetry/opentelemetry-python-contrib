@@ -57,13 +57,13 @@ interactions:
       string: |-
         {
           "model": "claude-sonnet-4-20250514",
-          "id": "msg_01GApBhZsKAd9ydf4bAuJQtG",
+          "id": "msg_01K2eUCtTz3m34b16Fj2PRLL",
           "type": "message",
           "role": "assistant",
           "content": [
             {
               "type": "text",
-              "text": "1\n2\n3\n4\n5"
+              "text": "1, 2, 3, 4, 5"
             }
           ],
           "stop_reason": "end_turn",
@@ -76,14 +76,14 @@ interactions:
               "ephemeral_5m_input_tokens": 0,
               "ephemeral_1h_input_tokens": 0
             },
-            "output_tokens": 13,
+            "output_tokens": 17,
             "service_tier": "standard",
             "inference_geo": "not_available"
           }
         }
     headers:
       CF-RAY:
-      - 9cfdb8f5f8461768-EWR
+      - 9d028aed89256e53-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -91,7 +91,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Wed, 18 Feb 2026 13:03:06 GMT
+      - Thu, 19 Feb 2026 03:05:29 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -103,35 +103,35 @@ interactions:
       anthropic-ratelimit-input-tokens-remaining:
       - '450000'
       anthropic-ratelimit-input-tokens-reset:
-      - '2026-02-18T13:03:05Z'
+      - '2026-02-19T03:05:29Z'
       anthropic-ratelimit-output-tokens-limit:
       - '90000'
       anthropic-ratelimit-output-tokens-remaining:
       - '90000'
       anthropic-ratelimit-output-tokens-reset:
-      - '2026-02-18T13:03:06Z'
+      - '2026-02-19T03:05:29Z'
       anthropic-ratelimit-requests-limit:
       - '1000'
       anthropic-ratelimit-requests-remaining:
       - '999'
       anthropic-ratelimit-requests-reset:
-      - '2026-02-18T13:03:04Z'
+      - '2026-02-19T03:05:28Z'
       anthropic-ratelimit-tokens-limit:
       - '540000'
       anthropic-ratelimit-tokens-remaining:
       - '540000'
       anthropic-ratelimit-tokens-reset:
-      - '2026-02-18T13:03:05Z'
+      - '2026-02-19T03:05:29Z'
       cf-cache-status:
       - DYNAMIC
       content-length:
       - '449'
       request-id:
-      - req_011CYFabYE8rYYWg3TYBoDAo
+      - req_011CYGgqJXDj6uzUxcHZccee
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-envoy-upstream-service-time:
-      - '1466'
+      - '1370'
     status:
       code: 200
       message: OK

@@ -135,10 +135,15 @@ def instrument_no_content(tracer_provider, logger_provider, meter_provider):
         meter_provider=meter_provider,
     )
 
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
-    instrumentor.uninstrument()
+    try:
+        yield instrumentor
+    finally:
+        os.environ.pop(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
+        )
+        os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+        instrumentor.uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 @pytest.fixture(scope="function")
@@ -158,10 +163,15 @@ def instrument_with_content(tracer_provider, logger_provider, meter_provider):
         meter_provider=meter_provider,
     )
 
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
-    instrumentor.uninstrument()
+    try:
+        yield instrumentor
+    finally:
+        os.environ.pop(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
+        )
+        os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+        instrumentor.uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 @pytest.fixture(scope="function")
@@ -182,11 +192,16 @@ def instrument_event_only(tracer_provider, logger_provider, meter_provider):
         meter_provider=meter_provider,
     )
 
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT, None)
-    instrumentor.uninstrument()
+    try:
+        yield instrumentor
+    finally:
+        os.environ.pop(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
+        )
+        os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+        os.environ.pop(OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT, None)
+        instrumentor.uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 @pytest.fixture

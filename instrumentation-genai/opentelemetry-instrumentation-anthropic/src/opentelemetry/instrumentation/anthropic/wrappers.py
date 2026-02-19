@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any, Iterator, Optional
 
 from opentelemetry.util.genai.handler import TelemetryHandler
@@ -24,7 +23,6 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
 )
-from opentelemetry.util.genai.utils import should_capture_content
 
 from .messages_extractors import (
     GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
@@ -42,20 +40,15 @@ from .utils import (
 
 if TYPE_CHECKING:
     from anthropic._streaming import Stream
-    from anthropic.lib.streaming import (
-        MessageStream,
-        MessageStreamManager,
-    )
     from anthropic.types import Message, RawMessageStreamEvent
-
-_logger = logging.getLogger(__name__)
 
 
 class MessageWrapper:
     """Wrapper for non-streaming Message response that handles telemetry."""
 
-    def __init__(self, message: "Message"):
+    def __init__(self, message: "Message", capture_content: bool):
         self._message = message
+        self._capture_content = capture_content
 
     def extract_into(self, invocation: LLMInvocation) -> None:
         """Extract response data into the invocation."""
@@ -87,7 +80,7 @@ class MessageWrapper:
                     cache_read_input_tokens
                 )
 
-        if should_capture_content():
+        if self._capture_content:
             invocation.output_messages = get_output_messages_from_message(
                 self._message
             )
@@ -106,6 +99,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
         stream: "Stream[RawMessageStreamEvent]",
         handler: TelemetryHandler,
         invocation: LLMInvocation,
+        capture_content: bool,
     ):
         self._stream = stream
         self._handler = handler
@@ -117,7 +111,7 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
         self._output_tokens: Optional[int] = None
         self._cache_creation_input_tokens: Optional[int] = None
         self._cache_read_input_tokens: Optional[int] = None
-        self._capture_content = should_capture_content()
+        self._capture_content = capture_content
         self._content_blocks: dict[int, dict[str, Any]] = {}
         self._finalized = False
 
@@ -211,6 +205,9 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
     def __iter__(self) -> "StreamWrapper":
         return self
 
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._stream, name)
+
     def __next__(self) -> "RawMessageStreamEvent":
         try:
             chunk = next(self._stream)
@@ -236,97 +233,3 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
         if hasattr(self._stream, "close"):
             self._stream.close()
         self._finalize_invocation()
-
-
-class MessageStreamManagerWrapper:
-    """Wrapper for MessageStreamManager that handles telemetry."""
-
-    def __init__(
-        self,
-        stream_manager: "MessageStreamManager",
-        handler: TelemetryHandler,
-        invocation: LLMInvocation,
-    ):
-        self._stream_manager = stream_manager
-        self._handler = handler
-        self._invocation = invocation
-        self._message_stream: Optional["MessageStream"] = None
-        self._finalized = False
-
-    def _finalize_success(self) -> None:
-        if self._finalized:
-            return
-        self._finalized = True
-        self._handler.stop_llm(self._invocation)
-
-    def _finalize_error(self, exc_type: Any, exc_val: Any) -> None:
-        if self._finalized:
-            return
-        self._finalized = True
-        self._handler.fail_llm(
-            self._invocation,
-            Error(
-                message=str(exc_val) if exc_val else str(exc_type),
-                type=exc_type,
-            ),
-        )
-
-    def __enter__(self) -> "MessageStream":
-        try:
-            self._message_stream = self._stream_manager.__enter__()
-            return self._message_stream
-        except Exception as exc:
-            self._finalize_error(type(exc), exc)
-            raise
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
-        if self._message_stream is not None and exc_type is None:
-            self._extract_telemetry_from_stream()
-            self._finalize_success()
-        elif exc_type is not None:
-            self._finalize_error(exc_type, exc_val)
-        return self._stream_manager.__exit__(exc_type, exc_val, exc_tb)  # type: ignore[return-value]
-
-    def _extract_telemetry_from_stream(self) -> None:
-        if self._message_stream is None:
-            return
-
-        try:
-            final_message = self._message_stream.get_final_message()
-
-            if final_message.model:
-                self._invocation.response_model_name = final_message.model
-
-            if final_message.id:
-                self._invocation.response_id = final_message.id
-
-            finish_reason = normalize_finish_reason(final_message.stop_reason)
-            if finish_reason:
-                self._invocation.finish_reasons = [finish_reason]
-
-            if final_message.usage:
-                (
-                    input_tokens,
-                    output_tokens,
-                    cache_creation_input_tokens,
-                    cache_read_input_tokens,
-                ) = extract_usage_tokens(final_message.usage)
-                self._invocation.input_tokens = input_tokens
-                self._invocation.output_tokens = output_tokens
-                if cache_creation_input_tokens is not None:
-                    self._invocation.attributes[
-                        GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
-                    ] = cache_creation_input_tokens
-                if cache_read_input_tokens is not None:
-                    self._invocation.attributes[
-                        GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
-                    ] = cache_read_input_tokens
-            if should_capture_content():
-                self._invocation.output_messages = (
-                    get_output_messages_from_message(final_message)
-                )
-        except Exception:  # pylint: disable=broad-exception-caught
-            _logger.warning(
-                "Failed to extract telemetry from Anthropic MessageStream final message.",
-                exc_info=True,
-            )

@@ -57,7 +57,7 @@ interactions:
       string: |-
         {
           "model": "claude-sonnet-4-20250514",
-          "id": "msg_01VdhCzYwXoK615zbBaimYhX",
+          "id": "msg_01DUmi3tbd6g3b2ySCyDftGL",
           "type": "message",
           "role": "assistant",
           "content": [
@@ -83,7 +83,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9cfdb8d73a447564-EWR
+      - 9d028ad08ba28456-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -91,7 +91,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Wed, 18 Feb 2026 13:03:00 GMT
+      - Thu, 19 Feb 2026 03:05:24 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -103,35 +103,35 @@ interactions:
       anthropic-ratelimit-input-tokens-remaining:
       - '450000'
       anthropic-ratelimit-input-tokens-reset:
-      - '2026-02-18T13:03:00Z'
+      - '2026-02-19T03:05:24Z'
       anthropic-ratelimit-output-tokens-limit:
       - '90000'
       anthropic-ratelimit-output-tokens-remaining:
       - '90000'
       anthropic-ratelimit-output-tokens-reset:
-      - '2026-02-18T13:03:00Z'
+      - '2026-02-19T03:05:24Z'
       anthropic-ratelimit-requests-limit:
       - '1000'
       anthropic-ratelimit-requests-remaining:
       - '999'
       anthropic-ratelimit-requests-reset:
-      - '2026-02-18T13:02:59Z'
+      - '2026-02-19T03:05:23Z'
       anthropic-ratelimit-tokens-limit:
       - '540000'
       anthropic-ratelimit-tokens-remaining:
       - '540000'
       anthropic-ratelimit-tokens-reset:
-      - '2026-02-18T13:03:00Z'
+      - '2026-02-19T03:05:24Z'
       cf-cache-status:
       - DYNAMIC
       content-length:
       - '441'
       request-id:
-      - req_011CYFabBBrKEaMTgAcq7Kcx
+      - req_011CYGgpxe8e6VvWmUwKDv8H
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-envoy-upstream-service-time:
-      - '1027'
+      - '1455'
     status:
       code: 200
       message: OK

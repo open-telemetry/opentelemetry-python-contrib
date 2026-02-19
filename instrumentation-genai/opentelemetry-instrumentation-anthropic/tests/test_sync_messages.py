@@ -510,6 +510,27 @@ def test_sync_messages_create_streaming_iteration(
     assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
 
 
+@pytest.mark.vcr()
+def test_sync_messages_create_streaming_delegates_response_attribute(
+    request, anthropic_client, instrument_no_content
+):
+    """Stream wrapper should expose attributes from the wrapped stream."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+
+    stream = anthropic_client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=100,
+        messages=[{"role": "user", "content": "Say hi."}],
+        stream=True,
+    )
+
+    # `response` exists on Anthropic Stream and should be reachable on wrapper.
+    assert stream.response is not None
+    assert stream.response.status_code == 200
+    assert stream.response.headers.get("request-id") is not None
+    stream.close()
+
+
 def test_sync_messages_create_streaming_connection_error(
     span_exporter, instrument_no_content
 ):
@@ -696,7 +717,7 @@ def test_message_wrapper_aggregates_cache_tokens():
         provider="anthropic",
     )
 
-    MessageWrapper(message).extract_into(invocation)  # type: ignore[arg-type]
+    MessageWrapper(message, capture_content=False).extract_into(invocation)  # type: ignore[arg-type]
 
     assert invocation.input_tokens == 20
     assert invocation.output_tokens == 5
@@ -762,7 +783,9 @@ def test_stream_wrapper_aggregates_cache_tokens():
         request_model="claude-sonnet-4-20250514",
         provider="anthropic",
     )
-    wrapper = StreamWrapper(FakeStream(), FakeHandler(), invocation)  # type: ignore[arg-type]
+    wrapper = StreamWrapper(  # type: ignore[arg-type]
+        FakeStream(), FakeHandler(), invocation, capture_content=False
+    )
     list(wrapper)
 
     assert invocation.input_tokens == 17
