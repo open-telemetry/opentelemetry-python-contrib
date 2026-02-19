@@ -325,6 +325,36 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
                 expected_baggage=MOCK_W3C_BAGGAGE_VALUE,
                 propagators="tracecontext,baggage",
             ),
+            TestCase(
+                name="case_insensitive_headers_uppercase",
+                custom_extractor=None,
+                context={
+                    "headers": {
+                        TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME.upper(): MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+                        TraceContextTextMapPropagator._TRACESTATE_HEADER_NAME.upper(): f"{MOCK_W3C_TRACE_STATE_KEY}={MOCK_W3C_TRACE_STATE_VALUE},foo=1,bar=2",
+                    }
+                },
+                expected_traceid=MOCK_W3C_TRACE_ID,
+                expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
+                expected_trace_state_len=3,
+                expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+            ),
+            TestCase(
+                name="case_insensitive_headers_mixedcase",
+                custom_extractor=None,
+                context={
+                    "headers": {
+                        "TraceParent": MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+                        "tRaCeStAtE": f"{MOCK_W3C_TRACE_STATE_KEY}={MOCK_W3C_TRACE_STATE_VALUE},foo=1,bar=2",
+                    }
+                },
+                expected_traceid=MOCK_W3C_TRACE_ID,
+                expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
+                expected_trace_state_len=3,
+                expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+            ),
         ]
         for test in tests:
             with self.subTest(test_name=test.name):
@@ -399,6 +429,57 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         test_env_patch.stop()
+
+    def test_api_gateway_v1_attributes_case_insensitivity(self):
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda(
+            {
+                "httpMethod": "GET",
+                "headers": {
+                    "user-agent": "lowercase-agent",
+                    "host": "lowercase-host",
+                    "x-forwarded-proto": "http",
+                },
+                "resource": "/test",
+                "requestContext": {
+                    "version": "1.0",
+                },
+            }
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(
+            span.attributes.get(HTTP_USER_AGENT), "lowercase-agent"
+        )
+        self.assertEqual(span.attributes.get(NET_HOST_NAME), "lowercase-host")
+        self.assertEqual(span.attributes.get(HTTP_SCHEME), "http")
+
+        self.memory_exporter.clear()
+
+        mock_execute_lambda(
+            {
+                "httpMethod": "GET",
+                "headers": {
+                    "uSeR-aGeNt": "mixed-agent",
+                    "hOsT": "mixed-host",
+                    "X-fOrWaRdEd-PrOtO": "https",
+                },
+                "resource": "/test",
+                "requestContext": {
+                    "version": "1.0",
+                },
+            }
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.attributes.get(HTTP_USER_AGENT), "mixed-agent")
+        self.assertEqual(span.attributes.get(NET_HOST_NAME), "mixed-host")
+        self.assertEqual(span.attributes.get(HTTP_SCHEME), "https")
 
     def test_lambda_handles_multiple_consumers(self):
         test_env_patch = mock.patch.dict(
