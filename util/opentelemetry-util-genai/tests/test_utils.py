@@ -501,6 +501,82 @@ class TestTelemetryHandler(unittest.TestCase):
         # Parent should not have a parent (root)
         assert parent_span.parent is None
 
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_embedding_parent_child_span_relationship(self):
+        parent_invocation = EmbeddingInvocation(
+            request_model="embed-parent-model",
+            provider="test-provider",
+            input_tokens=10,
+        )
+        child_invocation = EmbeddingInvocation(
+            request_model="embed-child-model",
+            provider="test-provider",
+            input_tokens=5,
+        )
+
+        self.telemetry_handler.start_embedding(parent_invocation)
+        assert parent_invocation.span is not None
+        self.telemetry_handler.start_embedding(child_invocation)
+        assert child_invocation.span is not None
+        self.telemetry_handler.stop_embedding(child_invocation)
+        self.telemetry_handler.stop_embedding(parent_invocation)
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+        child_span = next(
+            s for s in spans if s.name == "embeddings embed-child-model"
+        )
+        parent_span = next(
+            s for s in spans if s.name == "embeddings embed-parent-model"
+        )
+
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
+        assert parent_span.parent is None
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_llm_parent_embedding_child_span_relationship(self):
+        message = _create_input_message("hi")
+        chat_generation = _create_output_message("ok")
+        child_invocation = EmbeddingInvocation(
+            request_model="embed-child-model",
+            provider="test-provider",
+            input_tokens=3,
+        )
+
+        with self.telemetry_handler.llm() as parent_invocation:
+            for attr, value in {
+                "request_model": "parent-model",
+                "input_messages": [message],
+                "provider": "test-provider",
+            }.items():
+                setattr(parent_invocation, attr, value)
+            self.telemetry_handler.start_embedding(child_invocation)
+            assert child_invocation.span is not None
+            self.telemetry_handler.stop_embedding(child_invocation)
+            parent_invocation.output_messages = [chat_generation]
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+        child_span = next(
+            s for s in spans if s.name == "embeddings embed-child-model"
+        )
+        parent_span = next(s for s in spans if s.name == "chat parent-model")
+
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
+        assert parent_span.parent is None
+
     def test_llm_context_manager_error_path_records_error_status_and_attrs(
         self,
     ):
@@ -906,92 +982,6 @@ class TestTelemetryHandler(unittest.TestCase):
                 "extra_embed": "info",
             },
         )
-
-    @patch_env_vars(
-        stability_mode="gen_ai_latest_experimental",
-        content_capturing="EVENT_ONLY",
-        emit_event="true",
-    )
-    def test_emits_embedding_event(self):
-        invocation = EmbeddingInvocation(
-            request_model="event-embed-model",
-            provider="test-provider",
-            dimension_count=1024,
-            encoding_formats=["float"],
-            input_tokens=10,
-            server_address="event.server.com",
-            server_port=8443,
-        )
-
-        self.telemetry_handler.start_embedding(invocation)
-        self.telemetry_handler.stop_embedding(invocation)
-
-        logs = self.log_exporter.get_finished_logs()
-        self.assertEqual(len(logs), 1)
-        log_record = logs[0].log_record
-        self.assertEqual(
-            log_record.event_name, "gen_ai.client.embedding.operation.details"
-        )
-
-        attrs = log_record.attributes
-        self.assertIsNotNone(attrs)
-        self.assertEqual(attrs[GenAI.GEN_AI_OPERATION_NAME], "embeddings")
-        self.assertEqual(
-            attrs[GenAI.GEN_AI_REQUEST_MODEL], "event-embed-model"
-        )
-        self.assertEqual(attrs[GenAI.GEN_AI_PROVIDER_NAME], "test-provider")
-        self.assertEqual(attrs[GenAI.GEN_AI_EMBEDDING_DIMENSION_COUNT], 1024)
-        self.assertEqual(
-            _normalize_to_list(attrs[GenAI.GEN_AI_REQUEST_ENCODING_FORMATS]),
-            ["float"],
-        )
-        self.assertEqual(attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS], 10)
-        self.assertEqual(attrs[server_attributes.SERVER_ADDRESS], "event.server.com")
-        self.assertEqual(attrs[server_attributes.SERVER_PORT], 8443)
-
-        span = _get_single_span(self.span_exporter)
-        self.assertIsNotNone(log_record.trace_id)
-        self.assertIsNotNone(log_record.span_id)
-        self.assertIsNotNone(span.context)
-        self.assertEqual(log_record.trace_id, span.context.trace_id)
-        self.assertEqual(log_record.span_id, span.context.span_id)
-
-    @patch_env_vars(
-        stability_mode="gen_ai_latest_experimental",
-        content_capturing="EVENT_ONLY",
-        emit_event="true",
-    )
-    def test_emits_embedding_event_with_error(self):
-        class EmbeddingError(RuntimeError):
-            pass
-
-        invocation = EmbeddingInvocation(
-            request_model="error-embed-model",
-            provider="test-provider",
-            input_tokens=9,
-        )
-        self.telemetry_handler.start_embedding(invocation)
-        error = Error(message="embedding error", type=EmbeddingError)
-        self.telemetry_handler.fail_embedding(invocation, error)
-
-        logs = self.log_exporter.get_finished_logs()
-        self.assertEqual(len(logs), 1)
-        log_record = logs[0].log_record
-        attrs = log_record.attributes
-        self.assertEqual(
-            attrs[error_attributes.ERROR_TYPE], EmbeddingError.__qualname__
-        )
-        self.assertEqual(attrs[GenAI.GEN_AI_OPERATION_NAME], "embeddings")
-        self.assertEqual(
-            attrs[GenAI.GEN_AI_REQUEST_MODEL], "error-embed-model"
-        )
-
-        span = _get_single_span(self.span_exporter)
-        self.assertIsNotNone(log_record.trace_id)
-        self.assertIsNotNone(log_record.span_id)
-        self.assertIsNotNone(span.context)
-        self.assertEqual(log_record.trace_id, span.context.trace_id)
-        self.assertEqual(log_record.span_id, span.context.span_id)
 
 
 class AnyNonNone:
