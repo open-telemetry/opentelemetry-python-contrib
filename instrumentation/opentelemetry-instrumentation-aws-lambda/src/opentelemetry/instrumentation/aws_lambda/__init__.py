@@ -176,7 +176,9 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
         )
     if not isinstance(headers, dict):
         headers = {}
-    return get_global_textmap().extract(headers)
+    return get_global_textmap().extract(
+        {k.casefold(): v for k, v in headers.items()}
+    )
 
 
 def _determine_parent_context(
@@ -216,20 +218,21 @@ def _set_api_gateway_v1_proxy_attributes(
     span.set_attribute(HTTP_METHOD, lambda_event.get("httpMethod"))
 
     if lambda_event.get("headers"):
-        if "User-Agent" in lambda_event["headers"]:
+        headers = {k.casefold(): v for k, v in lambda_event["headers"].items()}
+        if "user-agent" in headers:
             span.set_attribute(
                 HTTP_USER_AGENT,
-                lambda_event["headers"]["User-Agent"],
+                headers["user-agent"],
             )
-        if "X-Forwarded-Proto" in lambda_event["headers"]:
+        if "x-forwarded-proto" in headers:
             span.set_attribute(
                 HTTP_SCHEME,
-                lambda_event["headers"]["X-Forwarded-Proto"],
+                headers["x-forwarded-proto"],
             )
-        if "Host" in lambda_event["headers"]:
+        if "host" in headers:
             span.set_attribute(
                 NET_HOST_NAME,
-                lambda_event["headers"]["Host"],
+                headers["host"],
             )
     if "resource" in lambda_event:
         span.set_attribute(HTTP_ROUTE, lambda_event["resource"])
