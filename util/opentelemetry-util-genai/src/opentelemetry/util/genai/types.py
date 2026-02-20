@@ -264,32 +264,18 @@ class EmbeddingInvocation(GenAIInvocation):
     and context_token attributes are set by the TelemetryHandler.
     """
 
-    operation_name: str = field(
-        default=GenAI.GenAiOperationNameValues.EMBEDDINGS.value,
-        metadata={"semconv": GenAI.GEN_AI_OPERATION_NAME},
-    )
+    operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+
     provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
 
-    request_model: str | None = field(
-        default=None,
-        metadata={"semconv": GenAI.GEN_AI_REQUEST_MODEL},
-    )
-
+    request_model: str | None = None
     server_address: str | None = None
     server_port: int | None = None
-    error_type: str | None = None
 
     # encoding_formats can be multi-value -> combinational cardinality risk.
     # Keep on spans/events only.
-    encoding_formats: list[str] = field(
-        default_factory=list,
-        metadata={"semconv": GenAI.GEN_AI_REQUEST_ENCODING_FORMATS},
-    )
-
-    input_tokens: int | None = field(
-        default=None,
-        metadata={"semconv": GenAI.GEN_AI_USAGE_INPUT_TOKENS},
-    )
+    encoding_formats: list[str] | None = None
+    input_tokens: int | None = None
     dimension_count: int | None = None
 
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
@@ -305,6 +291,7 @@ class EmbeddingInvocation(GenAIInvocation):
     Additional attributes to set on metrics. Must be of a low cardinality.
     These attributes will not be set on spans or events.
     """
+    monotonic_start_s: float | None = None
 
 
 @dataclass
