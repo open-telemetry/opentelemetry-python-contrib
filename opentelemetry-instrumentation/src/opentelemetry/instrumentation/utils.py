@@ -111,7 +111,11 @@ def unwrap(obj: object, attr: str):
             ) from exc
 
     func = getattr(obj, attr, None)
-    if func and isinstance(func, BaseObjectProxy) and hasattr(func, "__wrapped__"):
+    if (
+        func
+        and isinstance(func, BaseObjectProxy)
+        and hasattr(func, "__wrapped__")
+    ):
         setattr(obj, attr, func.__wrapped__)
 
 
