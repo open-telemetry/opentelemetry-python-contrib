@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+import logging.config
 import threading
 import traceback
 from time import time_ns
