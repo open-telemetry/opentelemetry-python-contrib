@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
 - `opentelemetry-instrumentation-pyramid`: pass request attributes at span creation
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
+- `opentelemetry-instrumentation-redis`: Add support for semantic convention opt-in and stable Redis span attributes 
+  ([#3826](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3826))
 
 ### Fixed
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
