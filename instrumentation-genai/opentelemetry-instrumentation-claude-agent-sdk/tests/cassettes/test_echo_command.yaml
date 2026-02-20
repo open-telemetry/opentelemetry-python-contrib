@@ -1,0 +1,156 @@
+description: 'User query: echo ''Hello from hooks example!'''
+prompt: echo 'Hello from hooks example!'
+messages:
+- type: SystemMessage
+  subtype: init
+  data:
+    type: system
+    subtype: init
+    cwd: /path/to/claude-agent-sdk/examples
+    session_id: cf630075-3251-4f84-a57d-4274afed0c46
+    tools:
+    - Task
+    - TaskOutput
+    - Bash
+    - Glob
+    - Grep
+    - ExitPlanMode
+    - Read
+    - Edit
+    - Write
+    - NotebookEdit
+    - WebFetch
+    - TodoWrite
+    - WebSearch
+    - KillShell
+    - AskUserQuestion
+    - Skill
+    - EnterPlanMode
+    mcp_servers: []
+    model: qwen-plus
+    permissionMode: default
+    slash_commands:
+    - compact
+    - context
+    - cost
+    - init
+    - pr-comments
+    - release-notes
+    - review
+    - security-review
+    apiKeySource: ANTHROPIC_API_KEY
+    claude_code_version: 2.1.1
+    output_style: default
+    agents:
+    - Bash
+    - general-purpose
+    - statusline-setup
+    - Explore
+    - Plan
+    skills: []
+    plugins: []
+    uuid: 8dd3b79c-8b8c-4649-8e4d-7eaa01374f1f
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: TextBlock
+    text: 'I''ll run the bash command `echo ''Hello from hooks example!''` for you.
+
+
+
+      '
+  parent_tool_use_id: null
+  error: null
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: ToolUseBlock
+    id: call_601533b186c2423dad58e8
+    name: Bash
+    input:
+      command: echo 'Hello from hooks example!'
+      description: Print hello message from hooks example
+  parent_tool_use_id: null
+  error: null
+- type: UserMessage
+  content:
+  - type: ToolResultBlock
+    tool_use_id: call_601533b186c2423dad58e8
+    content: Hello from hooks example\!
+    is_error: false
+  uuid: a043c8a7-9b34-46db-adbe-d376748df781
+  parent_tool_use_id: null
+- type: AssistantMessage
+  model: qwen-plus
+  content:
+  - type: TextBlock
+    text: 'The command executed successfully and printed: "Hello from hooks example!"
+
+
+      Note: The exclamation mark appears to have been escaped in the output as `\!`, which is normal behavior in some shell
+      contexts, but the message was displayed correctly.
+
+
+      Is there anything else you''d like me to help you with?'
+  parent_tool_use_id: null
+  error: null
+- type: ResultMessage
+  subtype: success
+  duration_ms: 5280
+  duration_api_ms: 16331
+  is_error: false
+  num_turns: 2
+  session_id: cf630075-3251-4f84-a57d-4274afed0c46
+  total_cost_usd: 0.221802
+  usage:
+    input_tokens: 30297
+    cache_creation_input_tokens: 0
+    cache_read_input_tokens: 0
+    output_tokens: 114
+    server_tool_use:
+      web_search_requests: 0
+      web_fetch_requests: 0
+    service_tier: standard
+    cache_creation:
+      ephemeral_1h_input_tokens: 0
+      ephemeral_5m_input_tokens: 0
+  result: 'The command executed successfully and printed: "Hello from hooks example!"...'
+  structured_output: null
+expected_spans:
+- name_pattern: invoke_agent
+  operation: invoke_agent
+  parent: null
+  attributes:
+    gen_ai.operation.name: invoke_agent
+    gen_ai.agent.name: claude-agent
+    gen_ai.conversation.id: cf630075-3251-4f84-a57d-4274afed0c46
+    gen_ai.usage.input_tokens: 30297
+    gen_ai.usage.output_tokens: 114
+  attributes_contains:
+    gen_ai.input.messages: echo 'Hello from hooks example!'
+- name_pattern: chat
+  operation: chat
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: chat
+    gen_ai.request.model: qwen-plus
+  attributes_contains:
+    gen_ai.input.messages: echo 'Hello from hooks example!'
+- name_pattern: execute_tool
+  operation: execute_tool
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: execute_tool
+    gen_ai.tool.name: Bash
+    gen_ai.tool.call.id: call_601533b186c2423dad58e8
+  attributes_contains:
+    gen_ai.tool.call.arguments: echo 'Hello from hooks example!'
+  is_error: false
+- name_pattern: chat
+  operation: chat
+  parent: invoke_agent
+  attributes:
+    gen_ai.operation.name: chat
+    gen_ai.request.model: qwen-plus
+  attributes_contains:
+    gen_ai.input.messages: echo 'Hello from hooks example!'
