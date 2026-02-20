@@ -59,6 +59,7 @@ import logging  # pylint: disable=import-self
 from os import environ
 from typing import Collection
 
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.logging.constants import (
     _MODULE_DOC,
@@ -68,6 +69,9 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
     OTEL_PYTHON_LOG_LEVEL,
+)
+from opentelemetry.instrumentation.logging.handler import (
+    _setup_logging_handler,
 )
 from opentelemetry.instrumentation.logging.package import _instruments
 from opentelemetry.trace import (
@@ -85,6 +89,8 @@ LEVELS = {
     "warning": logging.WARNING,
     "error": logging.ERROR,
 }
+
+_logger = logging.getLogger(__name__)
 
 
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
@@ -199,7 +205,24 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         logging.setLogRecordFactory(record_factory)
 
+        if (
+            environ.get(
+                "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "false"
+            )
+            .strip()
+            .lower()
+            == "false"
+        ):
+            logger_provider = get_logger_provider()
+            _setup_logging_handler(logger_provider=logger_provider)
+        else:
+            _logger.warning(
+                "disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`"
+            )
+
     def _uninstrument(self, **kwargs):
         if LoggingInstrumentor._old_factory:
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
             LoggingInstrumentor._old_factory = None
+
+        # TODO: implement opposite of _setup_logging_handler
