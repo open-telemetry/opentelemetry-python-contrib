@@ -25,6 +25,7 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.utils import (
+    should_capture_content,
     should_emit_event,
 )
 
@@ -206,3 +207,45 @@ class TestShouldEmitEvent(unittest.TestCase):
     ):  # pylint: disable=no-self-use
         # User explicitly setting emit_event="true" should override the default (False for NO_CONTENT)
         assert should_emit_event() is True
+
+
+class TestShouldCaptureContent(unittest.TestCase):
+    @patch_env_vars(
+        stability_mode="default",
+        content_capturing="SPAN_AND_EVENT",
+        emit_event="true",
+    )
+    def test_should_capture_content_false_when_not_experimental(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="NO_CONTENT",
+        emit_event="true",
+    )
+    def test_should_capture_content_false_when_no_content(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="false",
+    )
+    def test_should_capture_content_false_when_event_only_but_event_disabled(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_should_capture_content_true_for_span_only(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content() is True
