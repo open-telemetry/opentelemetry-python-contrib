@@ -222,6 +222,44 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-openai-v2-latest -- -ra
 
+  py314-test-instrumentation-openai-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai-v2-oldest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-openai-v2-oldest -- -ra
+
+  py314-test-instrumentation-openai-v2-latest_ubuntu-latest:
+    name: instrumentation-openai-v2-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-openai-v2-latest -- -ra
+
   pypy3-test-instrumentation-openai-v2-oldest_ubuntu-latest:
     name: instrumentation-openai-v2-oldest pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -411,6 +449,44 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-openai_agents-v2-latest -- -ra
+
+  py314-test-instrumentation-openai_agents-v2-oldest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-oldest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-openai_agents-v2-oldest -- -ra
+
+  py314-test-instrumentation-openai_agents-v2-latest_ubuntu-latest:
+    name: instrumentation-openai_agents-v2-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-openai_agents-v2-latest -- -ra
 
   py39-test-instrumentation-vertexai-oldest_ubuntu-latest:
     name: instrumentation-vertexai-oldest 3.9 Ubuntu
@@ -602,6 +678,44 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-vertexai-latest -- -ra
 
+  py314-test-instrumentation-vertexai-oldest_ubuntu-latest:
+    name: instrumentation-vertexai-oldest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-vertexai-oldest -- -ra
+
+  py314-test-instrumentation-vertexai-latest_ubuntu-latest:
+    name: instrumentation-vertexai-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-vertexai-latest -- -ra
+
   py39-test-instrumentation-google-genai-oldest_ubuntu-latest:
     name: instrumentation-google-genai-oldest 3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -791,6 +905,44 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-google-genai-latest -- -ra
+
+  py314-test-instrumentation-google-genai-oldest_ubuntu-latest:
+    name: instrumentation-google-genai-oldest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-google-genai-oldest -- -ra
+
+  py314-test-instrumentation-google-genai-latest_ubuntu-latest:
+    name: instrumentation-google-genai-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-google-genai-latest -- -ra
 
   py39-test-instrumentation-anthropic-oldest_ubuntu-latest:
     name: instrumentation-anthropic-oldest 3.9 Ubuntu
@@ -984,6 +1136,8 @@ jobs:
 
   py310-test-instrumentation-claude-agent-sdk-oldest_ubuntu-latest:
     name: instrumentation-claude-agent-sdk-oldest 3.10 Ubuntu
+  py314-test-instrumentation-anthropic-oldest_ubuntu-latest:
+    name: instrumentation-anthropic-oldest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -994,6 +1148,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
 
       - name: Install tox
         run: pip install tox-uv
@@ -1003,6 +1161,10 @@ jobs:
 
   py310-test-instrumentation-claude-agent-sdk-latest_ubuntu-latest:
     name: instrumentation-claude-agent-sdk-latest 3.10 Ubuntu
+        run: tox -e py314-test-instrumentation-anthropic-oldest -- -ra
+
+  py314-test-instrumentation-anthropic-latest_ubuntu-latest:
+    name: instrumentation-anthropic-latest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1013,6 +1175,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
 
       - name: Install tox
         run: pip install tox-uv
@@ -1133,6 +1299,7 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-claude-agent-sdk-latest -- -ra
+        run: tox -e py314-test-instrumentation-anthropic-latest -- -ra
 
   py39-test-resource-detector-containerid_ubuntu-latest:
     name: resource-detector-containerid 3.9 Ubuntu
@@ -1228,6 +1395,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-resource-detector-containerid -- -ra
+
+  py314-test-resource-detector-containerid_ubuntu-latest:
+    name: resource-detector-containerid 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-resource-detector-containerid -- -ra
 
   pypy3-test-resource-detector-containerid_ubuntu-latest:
     name: resource-detector-containerid pypy-3.9 Ubuntu
@@ -1437,6 +1623,44 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-resource-detector-azure-1 -- -ra
+
+  py314-test-resource-detector-azure-0_ubuntu-latest:
+    name: resource-detector-azure-0 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-resource-detector-azure-0 -- -ra
+
+  py314-test-resource-detector-azure-1_ubuntu-latest:
+    name: resource-detector-azure-1 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-resource-detector-azure-1 -- -ra
 
   pypy3-test-resource-detector-azure-0_ubuntu-latest:
     name: resource-detector-azure-0 pypy-3.9 Ubuntu
@@ -1666,6 +1890,44 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-sdk-extension-aws-1 -- -ra
 
+  py314-test-sdk-extension-aws-0_ubuntu-latest:
+    name: sdk-extension-aws-0 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-sdk-extension-aws-0 -- -ra
+
+  py314-test-sdk-extension-aws-1_ubuntu-latest:
+    name: sdk-extension-aws-1 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-sdk-extension-aws-1 -- -ra
+
   pypy3-test-sdk-extension-aws-0_ubuntu-latest:
     name: sdk-extension-aws-0 pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -1799,6 +2061,25 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-distro -- -ra
 
+  py314-test-distro_ubuntu-latest:
+    name: distro 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-distro -- -ra
+
   pypy3-test-distro_ubuntu-latest:
     name: distro pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -1912,6 +2193,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-opentelemetry-instrumentation -- -ra
+
+  py314-test-opentelemetry-instrumentation_ubuntu-latest:
+    name: opentelemetry-instrumentation 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-opentelemetry-instrumentation -- -ra
 
   pypy3-test-opentelemetry-instrumentation_ubuntu-latest:
     name: opentelemetry-instrumentation pypy-3.9 Ubuntu
@@ -2027,6 +2327,25 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-aiohttp-client -- -ra
 
+  py314-test-instrumentation-aiohttp-client_ubuntu-latest:
+    name: instrumentation-aiohttp-client 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-aiohttp-client -- -ra
+
   pypy3-test-instrumentation-aiohttp-client_ubuntu-latest:
     name: instrumentation-aiohttp-client pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -2140,6 +2459,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-aiohttp-server -- -ra
+
+  py314-test-instrumentation-aiohttp-server_ubuntu-latest:
+    name: instrumentation-aiohttp-server 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-aiohttp-server -- -ra
 
   pypy3-test-instrumentation-aiohttp-server_ubuntu-latest:
     name: instrumentation-aiohttp-server pypy-3.9 Ubuntu
@@ -2255,6 +2593,25 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-aiopg -- -ra
 
+  py314-test-instrumentation-aiopg_ubuntu-latest:
+    name: instrumentation-aiopg 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-aiopg -- -ra
+
   py39-test-instrumentation-aws-lambda_ubuntu-latest:
     name: instrumentation-aws-lambda 3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -2349,6 +2706,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-aws-lambda -- -ra
+
+  py314-test-instrumentation-aws-lambda_ubuntu-latest:
+    name: instrumentation-aws-lambda 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-aws-lambda -- -ra
 
   pypy3-test-instrumentation-aws-lambda_ubuntu-latest:
     name: instrumentation-aws-lambda pypy-3.9 Ubuntu
@@ -2559,6 +2935,44 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-botocore-1 -- -ra
 
+  py314-test-instrumentation-botocore-0_ubuntu-latest:
+    name: instrumentation-botocore-0 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-botocore-0 -- -ra
+
+  py314-test-instrumentation-botocore-1_ubuntu-latest:
+    name: instrumentation-botocore-1 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-botocore-1 -- -ra
+
   py39-test-instrumentation-boto3sqs_ubuntu-latest:
     name: instrumentation-boto3sqs 3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -2653,6 +3067,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-boto3sqs -- -ra
+
+  py314-test-instrumentation-boto3sqs_ubuntu-latest:
+    name: instrumentation-boto3sqs 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-boto3sqs -- -ra
 
   pypy3-test-instrumentation-boto3sqs_ubuntu-latest:
     name: instrumentation-boto3sqs pypy-3.9 Ubuntu
@@ -2863,6 +3296,25 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-django-3 -- -ra
 
+  py314-test-instrumentation-django-3_ubuntu-latest:
+    name: instrumentation-django-3 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-django-3 -- -ra
+
   pypy3-test-instrumentation-django-0_ubuntu-latest:
     name: instrumentation-django-0 pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -2995,6 +3447,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-dbapi -- -ra
+
+  py314-test-instrumentation-dbapi_ubuntu-latest:
+    name: instrumentation-dbapi 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-dbapi -- -ra
 
   pypy3-test-instrumentation-dbapi_ubuntu-latest:
     name: instrumentation-dbapi pypy-3.9 Ubuntu
@@ -3167,6 +3638,25 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-asyncclick -- -ra
 
+  py314-test-instrumentation-asyncclick_ubuntu-latest:
+    name: instrumentation-asyncclick 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-asyncclick -- -ra
+
   pypy3-test-instrumentation-asyncclick_ubuntu-latest:
     name: instrumentation-asyncclick pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -3280,6 +3770,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-click -- -ra
+
+  py314-test-instrumentation-click_ubuntu-latest:
+    name: instrumentation-click 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-click -- -ra
 
   pypy3-test-instrumentation-click_ubuntu-latest:
     name: instrumentation-click pypy-3.9 Ubuntu
@@ -3584,6 +4093,63 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-elasticsearch-2 -- -ra
+
+  py314-test-instrumentation-elasticsearch-0_ubuntu-latest:
+    name: instrumentation-elasticsearch-0 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-elasticsearch-0 -- -ra
+
+  py314-test-instrumentation-elasticsearch-1_ubuntu-latest:
+    name: instrumentation-elasticsearch-1 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-elasticsearch-1 -- -ra
+
+  py314-test-instrumentation-elasticsearch-2_ubuntu-latest:
+    name: instrumentation-elasticsearch-2 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-elasticsearch-2 -- -ra
 
   pypy3-test-instrumentation-elasticsearch-0_ubuntu-latest:
     name: instrumentation-elasticsearch-0 pypy-3.9 Ubuntu
@@ -3965,6 +4531,25 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-falcon-4 -- -ra
 
+  py314-test-instrumentation-falcon-4_ubuntu-latest:
+    name: instrumentation-falcon-4 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-falcon-4 -- -ra
+
   pypy3-test-instrumentation-falcon-0_ubuntu-latest:
     name: instrumentation-falcon-0 pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -4154,6 +4739,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-fastapi -- -ra
+
+  py314-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-fastapi -- -ra
 
   pypy3-test-instrumentation-fastapi_ubuntu-latest:
     name: instrumentation-fastapi pypy-3.9 Ubuntu
