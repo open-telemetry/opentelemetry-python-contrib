@@ -13,9 +13,10 @@
 # limitations under the License.
 import asyncio
 import threading
-from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
-    ThreadPoolExecutor,
-)
+# from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+#     ThreadPoolExecutor,
+# )
+import concurrent.futures
 from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
@@ -35,7 +36,7 @@ class TestRunCoroutineThreadSafe(TestBase):
         super().setUp()
         AsyncioInstrumentor().instrument()
         self.loop = asyncio.new_event_loop()
-        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self.loop.set_default_executor(self.executor)
         self.thread = threading.Thread(target=self.loop.run_forever)
         self.thread.start()

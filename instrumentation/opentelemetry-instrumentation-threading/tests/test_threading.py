@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import threading
-from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
-    ThreadPoolExecutor,
-)
+# from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+#     ThreadPoolExecutor,
+# )
+
+import concurrent.futures
 from typing import List
 from unittest.mock import MagicMock, patch
 
@@ -63,7 +65,7 @@ class TestThreading(TestBase):
         self,
     ):
         max_workers = 10
-        executor = ThreadPoolExecutor(max_workers=max_workers)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
         expected_span_contexts: List[trace.SpanContext] = []
         futures_list = []
@@ -83,7 +85,7 @@ class TestThreading(TestBase):
 
     def test_trace_context_propagation_in_thread_pool_with_single_worker(self):
         max_workers = 1
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # test propagation of the same trace context across multiple tasks
             with self._tracer.start_as_current_span("task") as task_span:
                 expected_task_context = task_span.get_span_context()
@@ -271,7 +273,7 @@ class TestThreading(TestBase):
     def test_thread_pool_with_none_context_token(self, mock_detach: MagicMock):
         with (
             self.get_root_span(),
-            ThreadPoolExecutor(max_workers=1) as executor,
+            concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor,
         ):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
@@ -289,7 +291,7 @@ class TestThreading(TestBase):
     def test_threadpool_with_valid_context_token(self, mock_detach: MagicMock):
         with (
             self.get_root_span(),
-            ThreadPoolExecutor(max_workers=1) as executor,
+            concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor,
         ):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
