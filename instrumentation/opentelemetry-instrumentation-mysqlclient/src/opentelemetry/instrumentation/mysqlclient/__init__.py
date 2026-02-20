@@ -121,14 +121,14 @@ setting.
     from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 
     # Opts into sqlcomment for mysqlclient trace integration.
-    # Opts into sqlcomment for `db.statement` span attribute.
+    # Opts into sqlcomment for `db.statement` and/or `db.query.text` span attribute.
     MySQLClientInstrumentor().instrument(
         enable_commenter=True,
         enable_attribute_commenter=True,
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
 API
 ---

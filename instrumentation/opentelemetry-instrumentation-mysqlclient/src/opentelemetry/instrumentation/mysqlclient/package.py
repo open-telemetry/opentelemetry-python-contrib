@@ -14,3 +14,5 @@
 
 
 _instruments = ("mysqlclient < 3",)
+
+_semconv_status = "migration"
