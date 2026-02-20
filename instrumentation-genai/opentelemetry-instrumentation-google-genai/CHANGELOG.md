@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Fix bug in how tokens are counted when using the streaming `generateContent` method.  ([#4152](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4152)).
+- Add `gen_ai.tool.definitions` attribute to `gen_ai.client.inference.operation.details` log event ([#4142](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4142)).
+- Add `gen_ai.tool_definitions` to completion hook ([#4181](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4181))
+
+
+## Version 0.6b0 (2026-01-27)
+
+- Enable the addition of custom attributes to the `generate_content {model.name}` span via the Context API. ([#3961](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3961)).
+- Enable the addition of custom attributes to `gen_ai.client.inference.operation.details` log events ([#4103](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4103)).
 
 ## Version 0.5b0 (2025-12-11)
 

@@ -23,17 +23,18 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.37",
   "opentelemetry-instrumentation ~= 0.58b0",
   "opentelemetry-semantic-conventions ~= 0.58b0",
-  "opentelemetry-util-genai >= 0.2b0, <0.3b0",
+  "opentelemetry-util-genai >= 0.2b0, <0.4b0",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "anthropic >= 0.3.0",
+  "anthropic >= 0.16.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
@@ -55,4 +56,7 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
