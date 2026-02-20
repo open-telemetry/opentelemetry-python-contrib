@@ -42,10 +42,7 @@ def make_mysql_connection_mock():
     cnx.server_port = 3306
 
     cursor = mock.MagicMock()
-    cursor._cnx = mock.MagicMock()
-    cursor._cnx.database = "test"
-    cursor._cnx.server_host = "localhost"
-    cursor._cnx.server_port = 3306
+    cursor._cnx = cnx
 
     cnx.cursor.return_value = cursor
     return cnx
