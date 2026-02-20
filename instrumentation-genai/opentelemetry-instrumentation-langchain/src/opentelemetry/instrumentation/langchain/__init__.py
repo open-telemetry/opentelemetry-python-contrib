@@ -70,16 +70,12 @@ class LangChainInstrumentor(BaseInstrumentor):
         Enable Langchain instrumentation.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        meter_provider = kwargs.get("meter_provider")
-        logger_provider = kwargs.get("logger_provider")
 
         telemetry_handler = get_telemetry_handler(
-            tracer_provider=tracer_provider,
-            meter_provider=meter_provider,
-            logger_provider=logger_provider,
+            tracer_provider=tracer_provider
         )
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
-            telemetry_handler=telemetry_handler,
+            telemetry_handler=telemetry_handler
         )
 
         wrap_function_wrapper(
@@ -93,14 +89,6 @@ class LangChainInstrumentor(BaseInstrumentor):
         Cleanup instrumentation (unwrap).
         """
         unwrap("langchain_core.callbacks.base.BaseCallbackManager", "__init__")
-        # Clear the TelemetryHandler singleton so the next instrument() uses
-        # the provided tracer_provider/meter_provider/logger_provider instead
-        # of reusing the previous handler.
-        if (
-            getattr(get_telemetry_handler, "_default_handler", None)
-            is not None
-        ):
-            delattr(get_telemetry_handler, "_default_handler")
 
 
 class _BaseCallbackManagerInitWrapper:

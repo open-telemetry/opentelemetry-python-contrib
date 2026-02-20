@@ -1,0 +1,109 @@
+interactions:
+- request:
+    body: |-
+      {
+        "messages": [
+          {
+            "content": "You are a helpful assistant!",
+            "role": "system"
+          },
+          {
+            "content": "What is the capital of France?",
+            "role": "user"
+          }
+        ],
+        "model": "gpt-3.5-turbo",
+        "frequency_penalty": 0.5,
+        "max_completion_tokens": 100,
+        "presence_penalty": 0.5,
+        "seed": 100,
+        "stop": [
+          "\n",
+          "Human:",
+          "AI:"
+        ],
+        "stream": false,
+        "temperature": 0.1,
+        "top_p": 0.9
+      }
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate, zstd
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '316'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 2.16.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 2.16.0
+      X-Stainless-Raw-Response:
+      - 'true'
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.13.5
+      authorization:
+      - Bearer test_openai_api_key
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "error": {
+            "message": "Incorrect API key provided: test_ope*******_key. You can find your API key at https://platform.openai.com/account/api-keys.",
+            "type": "invalid_request_error",
+            "param": null,
+            "code": "invalid_api_key"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9c8f28c12f51938c-SJC
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '269'
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Thu, 05 Feb 2026 03:00:44 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      openai-organization: test_openai_org_id
+      vary:
+      - Origin
+      x-openai-proxy-wasm:
+      - v0.1
+      x-request-id:
+      - req_c707e654b3bb460a8fc6b5ded4ee43c9
+    status:
+      code: 401
+      message: Unauthorized
+version: 1

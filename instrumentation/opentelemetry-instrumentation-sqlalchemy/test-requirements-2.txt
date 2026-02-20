@@ -1,8 +1,7 @@
 aiosqlite==0.20.0
 asgiref==3.8.1
 Deprecated==1.2.14
-greenlet==3.1.1 ; python_version < "3.10"
-greenlet==3.3.1 ; python_version >= "3.10"
+greenlet==3.1.1
 iniconfig==2.0.0
 packaging==24.1
 pluggy==1.5.0

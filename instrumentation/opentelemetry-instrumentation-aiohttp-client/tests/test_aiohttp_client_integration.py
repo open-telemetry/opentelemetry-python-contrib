@@ -87,7 +87,8 @@ def run_with_test_server(
                 await runnable(server)
         return netloc
 
-    return asyncio.run(do_request())
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(do_request())
 
 
 SCOPE = "opentelemetry.instrumentation.aiohttp_client"
@@ -486,8 +487,9 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
+                loop = asyncio.get_event_loop()
                 with self.assertRaises(aiohttp.ClientConnectorError):
-                    asyncio.run(do_request(url))
+                    loop.run_until_complete(do_request(url))
 
             self._assert_spans(
                 [
@@ -708,7 +710,8 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                asyncio.run(do_request(url))
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(do_request(url))
 
         self._assert_spans(
             [
@@ -749,7 +752,8 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                asyncio.run(do_request(url))
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(do_request(url))
 
         self._assert_spans(
             [
@@ -793,7 +797,8 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
-                asyncio.run(do_request(url))
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(do_request(url))
 
         self._assert_spans(
             [

@@ -328,7 +328,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
             _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
-    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103,W0237
+    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103
         # Falcon 3 does not execute middleware within the context of the exception
         # so we capture the exception here and save it into the env dict
 
@@ -352,7 +352,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         req.env[_ENVIRON_EXC] = exc
 
         if _falcon_version == 1:
-            return super()._handle_exception(ex, req, resp, params)  # pylint: disable=W1114
+            return super()._handle_exception(ex, req, resp, params)
 
         return super()._handle_exception(req, resp, ex, params)
 

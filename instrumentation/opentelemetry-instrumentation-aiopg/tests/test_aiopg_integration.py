@@ -42,7 +42,8 @@ from opentelemetry.test.test_base import TestBase
 
 
 def async_call(coro):
-    return asyncio.run(coro)
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(coro)
 
 
 class TestAiopgInstrumentor(TestBase):
