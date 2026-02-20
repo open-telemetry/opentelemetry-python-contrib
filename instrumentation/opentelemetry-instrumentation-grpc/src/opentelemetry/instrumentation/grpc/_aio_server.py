@@ -14,7 +14,6 @@
 
 import grpc
 import grpc.aio
-import wrapt
 
 try:
     from wrapt import BaseObjectProxy

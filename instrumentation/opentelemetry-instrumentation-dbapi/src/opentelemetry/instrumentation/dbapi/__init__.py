@@ -173,7 +173,6 @@ import logging
 import re
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
-import wrapt
 from wrapt import wrap_function_wrapper
 
 try:
