@@ -22,6 +22,7 @@ from unittest import mock
 
 import httpx
 import respx
+
 try:
     from wrapt import BaseObjectProxy
 except ImportError:
