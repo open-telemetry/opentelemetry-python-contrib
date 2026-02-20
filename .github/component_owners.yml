@@ -57,3 +57,10 @@ components:
 
   instrumentation-genai/opentelemetry-instrumentation-anthropic:
     - vasantteja
+    - anirudha
+    - MikeGoldsmith
+
+  instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk:
+    - vasantteja
+    - anirudha
+    - MikeGoldsmith

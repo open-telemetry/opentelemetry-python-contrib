@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "opentelemetry-instrumentation-anthropic"
+name = "opentelemetry-instrumentation-claude-agent-sdk"
 dynamic = ["version"]
-description = "OpenTelemetry Anthropic instrumentation"
+description = "OpenTelemetry Claude Agent SDK instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,34 +18,32 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
   "opentelemetry-api ~= 1.37",
   "opentelemetry-instrumentation ~= 0.58b0",
   "opentelemetry-semantic-conventions ~= 0.58b0",
-  "opentelemetry-util-genai >= 0.2b0, <0.4b0",
+  "opentelemetry-util-genai >= 0.2b0, <0.3b0",
 ]
 
 [project.optional-dependencies]
 instruments = [
-  "anthropic >= 0.16.0",
+  "claude-agent-sdk >= 0.1.14",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
-anthropic = "opentelemetry.instrumentation.anthropic:AnthropicInstrumentor"
+claude-agent-sdk = "opentelemetry.instrumentation.claude_agent_sdk:ClaudeAgentSDKInstrumentor"
 
 [project.urls]
-Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-anthropic"
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
-path = "src/opentelemetry/instrumentation/anthropic/version.py"
+path = "src/opentelemetry/instrumentation/claude_agent_sdk/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -59,4 +57,3 @@ packages = ["src/opentelemetry"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
