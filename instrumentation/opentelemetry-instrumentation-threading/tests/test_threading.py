@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+    ThreadPoolExecutor,
+)
 from typing import List
 from unittest.mock import MagicMock, patch
 
