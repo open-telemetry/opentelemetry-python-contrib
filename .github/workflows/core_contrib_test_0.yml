@@ -563,8 +563,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-aiohttp-server -- -ra
 
-  py39-test-instrumentation-aiopg:
-    name: instrumentation-aiopg 
+  py39-test-instrumentation-aiopg-wrapt1:
+    name: instrumentation-aiopg-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -591,7 +591,37 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-aiopg -- -ra
+        run: tox -e py39-test-instrumentation-aiopg-wrapt1 -- -ra
+
+  py39-test-instrumentation-aiopg-wrapt2:
+    name: instrumentation-aiopg-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-aiopg-wrapt2 -- -ra
 
   py39-test-instrumentation-aws-lambda:
     name: instrumentation-aws-lambda 
@@ -623,8 +653,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-aws-lambda -- -ra
 
-  py39-test-instrumentation-botocore-0:
-    name: instrumentation-botocore-0 
+  py39-test-instrumentation-botocore-0-wrapt1:
+    name: instrumentation-botocore-0-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -651,10 +681,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-0 -- -ra
+        run: tox -e py39-test-instrumentation-botocore-0-wrapt1 -- -ra
 
-  py39-test-instrumentation-botocore-1:
-    name: instrumentation-botocore-1 
+  py39-test-instrumentation-botocore-0-wrapt2:
+    name: instrumentation-botocore-0-wrapt2 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -681,7 +711,67 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-1 -- -ra
+        run: tox -e py39-test-instrumentation-botocore-0-wrapt2 -- -ra
+
+  py39-test-instrumentation-botocore-1-wrapt1:
+    name: instrumentation-botocore-1-wrapt1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-botocore-1-wrapt1 -- -ra
+
+  py39-test-instrumentation-botocore-1-wrapt2:
+    name: instrumentation-botocore-1-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-botocore-1-wrapt2 -- -ra
 
   py39-test-instrumentation-boto3sqs:
     name: instrumentation-boto3sqs 
@@ -803,8 +893,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-django-2 -- -ra
 
-  py39-test-instrumentation-dbapi:
-    name: instrumentation-dbapi 
+  py39-test-instrumentation-dbapi-wrapt1:
+    name: instrumentation-dbapi-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -831,7 +921,37 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-dbapi -- -ra
+        run: tox -e py39-test-instrumentation-dbapi-wrapt1 -- -ra
+
+  py39-test-instrumentation-dbapi-wrapt2:
+    name: instrumentation-dbapi-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-dbapi-wrapt2 -- -ra
 
   py39-test-instrumentation-boto:
     name: instrumentation-boto 
@@ -2063,8 +2183,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-asgi -- -ra
 
-  py39-test-instrumentation-asyncpg:
-    name: instrumentation-asyncpg 
+  py39-test-instrumentation-asyncpg-wrapt1:
+    name: instrumentation-asyncpg-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2091,7 +2211,37 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-asyncpg -- -ra
+        run: tox -e py39-test-instrumentation-asyncpg-wrapt1 -- -ra
+
+  py39-test-instrumentation-asyncpg-wrapt2:
+    name: instrumentation-asyncpg-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-asyncpg-wrapt2 -- -ra
 
   py39-test-instrumentation-sqlite3:
     name: instrumentation-sqlite3 
@@ -2153,8 +2303,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-wsgi -- -ra
 
-  py39-test-instrumentation-grpc-0:
-    name: instrumentation-grpc-0 
+  py39-test-instrumentation-grpc-0-wrapt1:
+    name: instrumentation-grpc-0-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2181,10 +2331,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-grpc-0 -- -ra
+        run: tox -e py39-test-instrumentation-grpc-0-wrapt1 -- -ra
 
-  py39-test-instrumentation-grpc-1:
-    name: instrumentation-grpc-1 
+  py39-test-instrumentation-grpc-0-wrapt2:
+    name: instrumentation-grpc-0-wrapt2 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2211,7 +2361,67 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-grpc-1 -- -ra
+        run: tox -e py39-test-instrumentation-grpc-0-wrapt2 -- -ra
+
+  py39-test-instrumentation-grpc-1-wrapt1:
+    name: instrumentation-grpc-1-wrapt1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-grpc-1-wrapt1 -- -ra
+
+  py39-test-instrumentation-grpc-1-wrapt2:
+    name: instrumentation-grpc-1-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-grpc-1-wrapt2 -- -ra
 
   py39-test-instrumentation-sqlalchemy-1:
     name: instrumentation-sqlalchemy-1 
@@ -2483,8 +2693,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-tortoiseorm -- -ra
 
-  py39-test-instrumentation-httpx-0:
-    name: instrumentation-httpx-0 
+  py39-test-instrumentation-httpx-0-wrapt1:
+    name: instrumentation-httpx-0-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2511,10 +2721,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-httpx-0 -- -ra
+        run: tox -e py39-test-instrumentation-httpx-0-wrapt1 -- -ra
 
-  py39-test-instrumentation-httpx-1:
-    name: instrumentation-httpx-1 
+  py39-test-instrumentation-httpx-0-wrapt2:
+    name: instrumentation-httpx-0-wrapt2 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2541,7 +2751,67 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-httpx-1 -- -ra
+        run: tox -e py39-test-instrumentation-httpx-0-wrapt2 -- -ra
+
+  py39-test-instrumentation-httpx-1-wrapt1:
+    name: instrumentation-httpx-1-wrapt1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-httpx-1-wrapt1 -- -ra
+
+  py39-test-instrumentation-httpx-1-wrapt2:
+    name: instrumentation-httpx-1-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-httpx-1-wrapt2 -- -ra
 
   py39-test-util-http:
     name: util-http 
@@ -2723,8 +2993,8 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-propagator-ot-trace -- -ra
 
-  py39-test-instrumentation-sio-pika-0:
-    name: instrumentation-sio-pika-0 
+  py39-test-instrumentation-sio-pika-0-wrapt1:
+    name: instrumentation-sio-pika-0-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2751,10 +3021,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-sio-pika-0 -- -ra
+        run: tox -e py39-test-instrumentation-sio-pika-0-wrapt1 -- -ra
 
-  py39-test-instrumentation-sio-pika-1:
-    name: instrumentation-sio-pika-1 
+  py39-test-instrumentation-sio-pika-0-wrapt2:
+    name: instrumentation-sio-pika-0-wrapt2 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -2781,7 +3051,67 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-sio-pika-1 -- -ra
+        run: tox -e py39-test-instrumentation-sio-pika-0-wrapt2 -- -ra
+
+  py39-test-instrumentation-sio-pika-1-wrapt1:
+    name: instrumentation-sio-pika-1-wrapt1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-sio-pika-1-wrapt1 -- -ra
+
+  py39-test-instrumentation-sio-pika-1-wrapt2:
+    name: instrumentation-sio-pika-1-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-sio-pika-1-wrapt2 -- -ra
 
   py39-test-instrumentation-aio-pika-0:
     name: instrumentation-aio-pika-0 
