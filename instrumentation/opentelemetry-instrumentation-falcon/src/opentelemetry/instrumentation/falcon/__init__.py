@@ -328,33 +328,22 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
             _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
-    if _falcon_version == 1:
+    def _handle_exception(self, *args):
+        # Falcon 3 does not execute middleware within the context
+        # of the exception so we capture the exception here and
+        # save it into the env dict
+        if not self._is_instrumented_by_opentelemetry:
+            return super()._handle_exception(*args)
 
-        def _handle_exception(self, ex, req, resp, params):
-            # Falcon 3 does not execute middleware within the context
-            # of the exception so we capture the exception here and
-            # save it into the env dict
-            if not self._is_instrumented_by_opentelemetry:
-                return super()._handle_exception(ex, req, resp, params)
+        if _falcon_version == 1:
+            _, req, _, _ = args  # ex, req, resp, params
+        else:
+            req, _, _, _ = args  # req, resp, ex, params
 
-            _, exc, _ = exc_info()
-            req.env[_ENVIRON_EXC] = exc
+        _, exc, _ = exc_info()
+        req.env[_ENVIRON_EXC] = exc
 
-            return super()._handle_exception(ex, req, resp, params)
-
-    else:
-
-        def _handle_exception(self, req, resp, ex, params):
-            # Falcon 3 does not execute middleware within the context
-            # of the exception so we capture the exception here and
-            # save it into the env dict
-            if not self._is_instrumented_by_opentelemetry:
-                return super()._handle_exception(req, resp, ex, params)
-
-            _, exc, _ = exc_info()
-            req.env[_ENVIRON_EXC] = exc
-
-            return super()._handle_exception(req, resp, ex, params)
+        return super()._handle_exception(*args)
 
     def __call__(self, env, start_response):
         # pylint: disable=E1101
