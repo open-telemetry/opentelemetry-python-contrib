@@ -31,3 +31,4 @@ jobs:
           close-pr-message: >
             This PR has been closed due to inactivity. Please reopen if you would
             like to continue working on it.
+          exempt-pr-labels: "hold,WIP,blocked-by-spec,do not merge"
