@@ -7,6 +7,7 @@ from pika.adapters.blocking_connection import (
 )
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
+
 try:
     from wrapt import BaseObjectProxy
 except ImportError:
