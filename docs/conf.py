@@ -129,6 +129,8 @@ intersphinx_mapping = {
         "https://opentelemetry-python.readthedocs.io/en/latest/",
         None,
     ),
+    "psycopg": ("https://www.psycopg.org/psycopg3/docs/", None),
+    "psycopg2": ("https://www.psycopg.org/docs/", None),
     "redis": ("https://redis.readthedocs.io/en/latest/", None),
     "fsspec": ("https://filesystem-spec.readthedocs.io/en/latest/", None),
 }
