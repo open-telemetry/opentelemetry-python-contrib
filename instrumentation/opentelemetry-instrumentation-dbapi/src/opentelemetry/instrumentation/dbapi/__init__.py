@@ -173,8 +173,12 @@ import logging
 import re
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
-import wrapt
 from wrapt import wrap_function_wrapper
+
+try:
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
@@ -372,7 +376,7 @@ def instrument_connection(
     Returns:
         An instrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, BaseObjectProxy):
         _logger.warning("Connection already instrumented")
         return connection
 
@@ -407,7 +411,7 @@ def uninstrument_connection(
     Returns:
         An uninstrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, BaseObjectProxy):
         return connection.__wrapped__
 
     _logger.warning("Connection is not instrumented")
@@ -566,14 +570,14 @@ class DatabaseApiIntegration:
 
 
 # pylint: disable=abstract-method
-class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
+class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         connection: ConnectionT,
         db_api_integration: DatabaseApiIntegration | None = None,
     ):
-        wrapt.ObjectProxy.__init__(self, connection)
+        BaseObjectProxy.__init__(self, connection)
         self._self_db_api_integration = db_api_integration
 
     def __getattribute__(self, name: str):
@@ -800,14 +804,14 @@ class CursorTracer(Generic[CursorT]):
 
 
 # pylint: disable=abstract-method
-class TracedCursorProxy(wrapt.ObjectProxy, Generic[CursorT]):
+class TracedCursorProxy(BaseObjectProxy, Generic[CursorT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
     ):
-        wrapt.ObjectProxy.__init__(self, cursor)
+        BaseObjectProxy.__init__(self, cursor)
         self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):
