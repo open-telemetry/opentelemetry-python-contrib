@@ -16,7 +16,7 @@ import grpc
 import grpc.aio
 
 try:
-    from wrapt import BaseObjectProxy
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
 
