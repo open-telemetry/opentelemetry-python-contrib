@@ -112,6 +112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4078](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4171))
 - `opentelemetry-instrumentation-aiohttp-server`: fix HTTP error inconsistencies
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
+- `opentelemetry-instrumentation-falcon`: Refactor `_handle_exception` to remove pylint disables
+  ([#4207](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4207))
 
 ### Breaking changes
 
