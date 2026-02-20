@@ -6,7 +6,6 @@ certifi==2024.7.4
 cffi==1.17.0
 charset-normalizer==3.3.2
 cryptography==43.0.1
-Deprecated==1.2.14
 docker==7.0.0
 idna==3.7
 iniconfig==2.0.0
@@ -31,7 +30,6 @@ tomli==2.0.1
 typing_extensions==4.12.2
 urllib3==1.26.19
 Werkzeug==3.0.6
-wrapt==1.16.0
 xmltodict==0.13.0
 zipp==3.19.2
 -e opentelemetry-instrumentation
