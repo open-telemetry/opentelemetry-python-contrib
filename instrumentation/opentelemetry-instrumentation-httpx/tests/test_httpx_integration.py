@@ -98,8 +98,7 @@ def _is_url_tuple(request: "RequestInfo"):
 
 
 def _async_call(coro: typing.Coroutine) -> asyncio.Task:
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
@@ -141,6 +140,8 @@ async def _async_no_update_request_hook(span: "Span", request: "RequestInfo"):
 
 
 # pylint: disable=too-many-public-methods
+
+SCOPE = "opentelemetry.instrumentation.httpx"
 
 
 # Using this wrapper class to have a base class for the tests while also not
@@ -205,7 +206,7 @@ class BaseTestCases:
             return span_list
 
         def assert_metrics(self, num_metrics: int = 1):
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), num_metrics)
             return metrics
 
@@ -244,7 +245,7 @@ class BaseTestCases:
 
         def test_basic_metrics(self):
             self.perform_request(self.URL)
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(duration_data_point.count, 1)
@@ -289,7 +290,7 @@ class BaseTestCases:
                 span, opentelemetry.instrumentation.httpx
             )
             # Validate metrics
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(duration_data_point.count, 1)
@@ -331,7 +332,7 @@ class BaseTestCases:
                 span, opentelemetry.instrumentation.httpx
             )
             # Validate metrics
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(duration_data_point.count, 1)
@@ -391,7 +392,7 @@ class BaseTestCases:
             )
 
             # Validate metrics
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(duration_data_point.count, 1)
@@ -448,7 +449,7 @@ class BaseTestCases:
             )
 
             # Validate metrics
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 2)
             # Old convention
             self.assertEqual(
@@ -497,7 +498,7 @@ class BaseTestCases:
                 trace.StatusCode.ERROR,
             )
             # Validate metrics
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(
@@ -525,7 +526,7 @@ class BaseTestCases:
                 trace.StatusCode.ERROR,
             )
             # Validate metrics
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertEqual(
@@ -556,7 +557,7 @@ class BaseTestCases:
                 trace.StatusCode.ERROR,
             )
             # Validate metrics
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 2)
             # Old convention
             self.assertEqual(

@@ -25,10 +25,13 @@ opentelemetry-api==1.37.0
 opentelemetry-sdk==1.37.0
 opentelemetry-semantic-conventions==0.58b0
 opentelemetry-instrumentation==0.58b0
-opentelemetry-util-genai[upload]==0.2b0
+# TODO: uncomment and update version after release (https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4221) 
+# opentelemetry-util-genai[upload]==0.2b0
 
 fsspec==2025.9.0
 
 # Install locally from the folder. This path is relative to the
 # root directory, given invocation from "tox" at root level.
 -e instrumentation-genai/opentelemetry-instrumentation-google-genai
+# TODO: remove local install after release (https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4221)
+-e util/opentelemetry-util-genai[upload]
