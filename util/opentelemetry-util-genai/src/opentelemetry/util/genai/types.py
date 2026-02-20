@@ -257,6 +257,44 @@ class LLMInvocation(GenAIInvocation):
 
 
 @dataclass
+class EmbeddingInvocation(GenAIInvocation):
+    """
+    Represents a single embedding model invocation. When creating an
+    EmbeddingInvocation object, only update the data attributes. The span
+    and context_token attributes are set by the TelemetryHandler.
+    """
+
+    operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+
+    provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
+
+    request_model: str | None = None
+    server_address: str | None = None
+    server_port: int | None = None
+
+    # encoding_formats can be multi-value -> combinational cardinality risk.
+    # Keep on spans/events only.
+    encoding_formats: list[str] | None = None
+    input_tokens: int | None = None
+    dimension_count: int | None = None
+
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    """
+    Additional attributes to set on spans and/or events. These attributes
+    will not be set on metrics.
+    """
+
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of a low cardinality.
+    These attributes will not be set on spans or events.
+    """
+    monotonic_start_s: float | None = None
+
+
+@dataclass
 class Error:
     message: str
     type: Type[BaseException]

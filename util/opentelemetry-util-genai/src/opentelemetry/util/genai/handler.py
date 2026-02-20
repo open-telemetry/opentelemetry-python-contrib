@@ -80,11 +80,16 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
+    _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
     _maybe_emit_llm_event,
 )
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import (
+    EmbeddingInvocation,
+    Error,
+    LLMInvocation,
+)
 from opentelemetry.util.genai.version import __version__
 
 
@@ -130,6 +135,18 @@ class TelemetryHandler:
             invocation,
             error_type=error_type,
         )
+
+    def _record_embedding_metrics(
+        self,
+        invocation: EmbeddingInvocation,
+        span: Span | None = None,
+        *,
+        error_type: str | None = None,
+    ) -> None:
+        # Metrics recorder currently supports LLMInvocation fields only.
+        # Keep embedding metrics as a no-op until dedicated embedding
+        # metric support is added.
+        return
 
     def start_llm(
         self,
@@ -207,6 +224,85 @@ class TelemetryHandler:
             self.fail_llm(invocation, Error(message=str(exc), type=type(exc)))
             raise
         self.stop_llm(invocation)
+
+    @contextmanager
+    def embedding(
+        self, invocation: EmbeddingInvocation | None = None
+    ) -> Iterator[EmbeddingInvocation]:
+        """Context manager for Embedding invocations.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = EmbeddingInvocation()
+        self.start_embedding(invocation)
+        try:
+            yield invocation
+        except Exception as exc:
+            self.fail_embedding(
+                invocation, Error(message=str(exc), type=type(exc))
+            )
+            raise
+        self.stop_embedding(invocation)
+
+    def start_embedding(
+        self, invocation: EmbeddingInvocation
+    ) -> EmbeddingInvocation:
+        """Start an embedding invocation and create a pending span entry."""
+
+        span = self._tracer.start_span(
+            name=f"{invocation.operation_name} {invocation.request_model}",
+            kind=SpanKind.CLIENT,
+        )
+        invocation.span = span
+        invocation.context_token = otel_context.attach(
+            set_span_in_context(span)
+        )
+        return invocation
+
+    def stop_embedding(
+        self, invocation: EmbeddingInvocation
+    ) -> EmbeddingInvocation:
+        """Finalize an embedding invocation successfully and end its span."""
+        if invocation.context_token is None or invocation.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return invocation
+
+        span = invocation.span
+        try:
+            _apply_embedding_finish_attributes(span, invocation)
+            self._record_embedding_metrics(invocation, span)
+        finally:
+            # Detach context and end span even if finishing fails
+            otel_context.detach(invocation.context_token)
+            span.end()
+        return invocation
+
+    def fail_embedding(
+        self, invocation: EmbeddingInvocation, error: Error
+    ) -> EmbeddingInvocation:
+        """Fail an embedding invocation and end its span with error status."""
+        if invocation.context_token is None or invocation.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return invocation
+
+        span = invocation.span
+        try:
+            _apply_embedding_finish_attributes(invocation.span, invocation)
+            _apply_error_attributes(invocation.span, error)
+            error_type = getattr(error.type, "__qualname__", None)
+            self._record_embedding_metrics(
+                invocation, span, error_type=error_type
+            )
+        finally:
+            # Detach context and end span even if finishing fails
+            otel_context.detach(invocation.context_token)
+            span.end()
+        return invocation
 
 
 def get_telemetry_handler(
