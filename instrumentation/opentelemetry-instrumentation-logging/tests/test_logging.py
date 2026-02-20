@@ -145,8 +145,13 @@ class TestLoggingInstrumentor(TestBase):
         self.assertFalse(basic_config_mock.called)
         LoggingInstrumentor().uninstrument()
 
-        with mock.patch.dict(
-            "os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"}
+        with (
+            mock.patch.object(
+                logging.getLogger(), "hasHandlers", return_value=False
+            ),
+            mock.patch.dict(
+                "os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"}
+            ),
         ):
             LoggingInstrumentor().instrument()
             basic_config_mock.assert_called_with(
@@ -160,13 +165,18 @@ class TestLoggingInstrumentor(TestBase):
         self.assertFalse(basic_config_mock.called)
         LoggingInstrumentor().uninstrument()
 
-        with mock.patch.dict(
-            "os.environ",
-            {
-                "OTEL_PYTHON_LOG_CORRELATION": "true",
-                "OTEL_PYTHON_LOG_FORMAT": "%(message)s %(otelSpanID)s",
-                "OTEL_PYTHON_LOG_LEVEL": "error",
-            },
+        with (
+            mock.patch.object(
+                logging.getLogger(), "hasHandlers", return_value=False
+            ),
+            mock.patch.dict(
+                "os.environ",
+                {
+                    "OTEL_PYTHON_LOG_CORRELATION": "true",
+                    "OTEL_PYTHON_LOG_FORMAT": "%(message)s %(otelSpanID)s",
+                    "OTEL_PYTHON_LOG_LEVEL": "error",
+                },
+            ),
         ):
             LoggingInstrumentor().instrument()
             basic_config_mock.assert_called_with(
@@ -176,14 +186,19 @@ class TestLoggingInstrumentor(TestBase):
     @mock.patch("logging.basicConfig")
     def test_custom_format_and_level_api(self, basic_config_mock):  # pylint: disable=no-self-use
         LoggingInstrumentor().uninstrument()
-        LoggingInstrumentor().instrument(
-            set_logging_format=True,
-            logging_format="%(message)s span_id=%(otelSpanID)s",
-            log_level=logging.WARNING,
-        )
-        basic_config_mock.assert_called_with(
-            format="%(message)s span_id=%(otelSpanID)s", level=logging.WARNING
-        )
+
+        with mock.patch.object(
+            logging.getLogger(), "hasHandlers", return_value=False
+        ):
+            LoggingInstrumentor().instrument(
+                set_logging_format=True,
+                logging_format="%(message)s span_id=%(otelSpanID)s",
+                log_level=logging.WARNING,
+            )
+            basic_config_mock.assert_called_with(
+                format="%(message)s span_id=%(otelSpanID)s",
+                level=logging.WARNING,
+            )
 
     def test_log_hook(self):
         LoggingInstrumentor().uninstrument()
@@ -257,3 +272,150 @@ class TestLoggingInstrumentor(TestBase):
             self.assertEqual(record.otelTraceID, "0")
             self.assertEqual(record.otelServiceName, "")
             self.assertEqual(record.otelTraceSampled, False)
+
+
+class TestLoggingInstrumentorPreConfigured(TestBase):
+    """Tests for pre-configured logging scenarios."""
+
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+
+    def setUp(self):
+        super().setUp()
+        self.tracer = get_tracer(__name__)
+        # Clear any existing handlers
+        root = logging.getLogger()
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
+
+    def tearDown(self):
+        super().tearDown()
+        LoggingInstrumentor().uninstrument()
+        # Clear handlers
+        root = logging.getLogger()
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
+
+    def test_preconfigured_logging(self):
+        """Test instrumentation works when logging is already configured."""
+        # Configure logging before instrumentation
+        logging.basicConfig(format="OLD: %(message)s", level=logging.WARNING)
+
+        # Instrument with set_logging_format=True
+        LoggingInstrumentor().instrument(set_logging_format=True)
+
+        # Verify root logger level updated
+        self.assertEqual(logging.getLogger().level, logging.INFO)
+
+        # Verify formatter updated to include OTel fields
+        handler = logging.getLogger().handlers[0]
+        format_str = handler.formatter._style._fmt
+        self.assertIn("otelTraceID", format_str)
+        self.assertIn("otelSpanID", format_str)
+
+        # Verify trace context injection works
+        # Note: caplog doesn't capture properly when basicConfig is called before it,
+        # so we verify by checking that the formatter includes the required fields
+        # and that log records have the otel attributes injected
+        with self.tracer.start_as_current_span("test") as span:
+            span_ctx = span.get_span_context()
+            logger = logging.getLogger("test logger")
+
+            # Create a test handler to capture log records
+            test_handler = logging.StreamHandler()
+            test_handler.setLevel(logging.INFO)
+            test_records = []
+
+            class RecordCapture(logging.Handler):
+                def emit(self, record):
+                    test_records.append(record)
+
+            capture_handler = RecordCapture()
+            capture_handler.setLevel(logging.INFO)
+            logger.addHandler(capture_handler)
+
+            try:
+                logger.info("test message")
+                self.assertEqual(len(test_records), 1)
+                record = test_records[0]
+                self.assertEqual(
+                    record.otelSpanID, format(span_ctx.span_id, "016x")
+                )
+                self.assertEqual(
+                    record.otelTraceID, format(span_ctx.trace_id, "032x")
+                )
+            finally:
+                logger.removeHandler(capture_handler)
+
+        # Uninstrument and verify restoration
+        LoggingInstrumentor().uninstrument()
+        self.assertEqual(handler.formatter._style._fmt, "OLD: %(message)s")
+        self.assertEqual(logging.getLogger().level, logging.WARNING)
+
+    def test_multiple_handlers(self):
+        """Test that all handlers are updated and restored."""
+        root = logging.getLogger()
+        h1 = logging.StreamHandler()
+        h1.setFormatter(logging.Formatter("H1: %(message)s"))
+        h2 = logging.StreamHandler()
+        h2.setFormatter(logging.Formatter("H2: %(message)s"))
+        root.addHandler(h1)
+        root.addHandler(h2)
+
+        LoggingInstrumentor().instrument(set_logging_format=True)
+
+        # Both handlers updated
+        self.assertIn("otelTraceID", h1.formatter._style._fmt)
+        self.assertIn("otelTraceID", h2.formatter._style._fmt)
+
+        LoggingInstrumentor().uninstrument()
+
+        # Both restored
+        self.assertEqual(h1.formatter._style._fmt, "H1: %(message)s")
+        self.assertEqual(h2.formatter._style._fmt, "H2: %(message)s")
+
+    def test_handler_without_formatter(self):
+        """Test handler with no formatter gets one set."""
+        root = logging.getLogger()
+        handler = logging.StreamHandler()
+        # Don't set formatter
+        root.addHandler(handler)
+
+        self.assertIsNone(handler.formatter)
+
+        LoggingInstrumentor().instrument(set_logging_format=True)
+
+        # Formatter now set
+        self.assertIsNotNone(handler.formatter)
+        self.assertIn("otelTraceID", handler.formatter._style._fmt)
+
+        LoggingInstrumentor().uninstrument()
+
+        # Restored to None
+        self.assertIsNone(handler.formatter)
+
+    def test_instrument_uninstrument_cycle(self):
+        """Test multiple instrument/uninstrument cycles."""
+        logging.basicConfig(
+            format="ORIGINAL: %(message)s", level=logging.ERROR
+        )
+
+        LoggingInstrumentor().instrument(set_logging_format=True)
+        handler = logging.getLogger().handlers[0]
+        self.assertIn("otelTraceID", handler.formatter._style._fmt)
+
+        LoggingInstrumentor().uninstrument()
+        self.assertEqual(
+            handler.formatter._style._fmt, "ORIGINAL: %(message)s"
+        )
+
+        # Re-instrument
+        LoggingInstrumentor().instrument(set_logging_format=True)
+        self.assertIn("otelTraceID", handler.formatter._style._fmt)
+
+        # Re-uninstrument
+        LoggingInstrumentor().uninstrument()
+        self.assertEqual(
+            handler.formatter._style._fmt, "ORIGINAL: %(message)s"
+        )
