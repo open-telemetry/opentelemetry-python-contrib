@@ -13,6 +13,7 @@
 # limitations under the License.
 import logging
 import re
+from unittest import mock
 
 import pytest
 from sqlalchemy import (
@@ -21,9 +22,16 @@ from sqlalchemy import (
 )
 
 from opentelemetry import context
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_QUERY_TEXT,
 )
 from opentelemetry.test.test_base import TestBase
 
@@ -32,6 +40,10 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+
+    def setUp(self):
+        super().setUp()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
     def tearDown(self):
         super().tearDown()
@@ -356,6 +368,96 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         self.assertRegex(
             query_span.attributes[DB_STATEMENT],
             r"SELECT 1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_sqlcommenter_enabled_database_mode(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT  1;")).fetchall()
+        # Query log should have sqlcommenter
+        self.assertRegex(
+            self.caplog.records[-2].getMessage(),
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        query_span = spans[1]
+        # Should use new semconv attribute (db.query.text not db.statement)
+        self.assertNotIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_QUERY_TEXT], "SELECT  1;")
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_sqlcommenter_enabled_stmt_enabled_database_mode(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+            enable_attribute_commenter=True,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT  1;")).fetchall()
+        query_log = self.caplog.records[-2].getMessage()
+        self.assertRegex(
+            query_log,
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        query_span = spans[1]
+        # Should use new semconv attribute with comment
+        self.assertNotIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertRegex(
+            query_span.attributes[DB_QUERY_TEXT],
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    @mock.patch.dict(
+        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
+    )
+    def test_sqlcommenter_enabled_database_dup_mode(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+            enable_attribute_commenter=True,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT  1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        query_span = spans[1]
+        # Should have both old and new semconv attributes with comment
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertRegex(
+            query_span.attributes[DB_STATEMENT],
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertRegex(
+            query_span.attributes[DB_QUERY_TEXT],
+            r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
     def test_sqlcommenter_disabled_create_engine_after_instrumentation(self):
