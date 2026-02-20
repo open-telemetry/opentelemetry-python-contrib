@@ -218,6 +218,7 @@ from opentelemetry.util.http import (
     parse_excluded_urls,
     sanitize_method,
 )
+from opentelemetry.instrumentation.fastapi.utils import get_excluded_spans
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)
@@ -278,6 +279,10 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 excluded_urls = _excluded_urls_from_env
             else:
                 excluded_urls = parse_excluded_urls(excluded_urls)
+
+            if exclude_spans is None:
+                exclude_spans = get_excluded_spans()
+
             tracer = get_tracer(
                 __name__,
                 __version__,
