@@ -1,6 +1,10 @@
 import falcon
 from packaging import version as package_version
 
+from opentelemetry.instrumentation._labeler import (
+    get_labeler,
+)
+
 # pylint:disable=R0201,W0613,E0602
 
 
@@ -75,6 +79,21 @@ class UserResource:
             resp.text = f"Hello user {user_id}"
 
 
+class UserLabelerResource:
+    def on_get(self, req, resp, user_id):
+        labeler = get_labeler()
+        labeler.add("custom_attr", "test_value")
+        labeler.add_attributes({"endpoint_type": "test", "feature_flag": True})
+        # pylint: disable=no-member
+        resp.status = falcon.HTTP_200
+
+        if _parsed_falcon_version < package_version.parse("3.0.0"):
+            # Falcon 1 and Falcon 2
+            resp.body = f"Hello user {user_id}"
+        else:
+            resp.text = f"Hello user {user_id}"
+
+
 def make_app():
     if _parsed_falcon_version < package_version.parse("3.0.0"):
         # Falcon 1 and Falcon 2
@@ -90,5 +109,6 @@ def make_app():
         "/test_custom_response_headers", CustomResponseHeaderResource()
     )
     app.add_route("/user/{user_id}", UserResource())
+    app.add_route("/user_custom_attr/{user_id}", UserLabelerResource())
 
     return app
