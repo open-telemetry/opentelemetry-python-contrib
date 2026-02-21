@@ -84,6 +84,7 @@ from opentelemetry import context as context_api
 from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
+from opentelemetry.instrumentation.cidict import CIDict
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import MeterProvider, get_meter_provider
@@ -176,7 +177,9 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
         )
     if not isinstance(headers, dict):
         headers = {}
-    return get_global_textmap().extract(headers)
+    return get_global_textmap().extract(
+        CIDict(headers),
+    )
 
 
 def _determine_parent_context(
@@ -216,20 +219,21 @@ def _set_api_gateway_v1_proxy_attributes(
     span.set_attribute(HTTP_METHOD, lambda_event.get("httpMethod"))
 
     if lambda_event.get("headers"):
-        if "User-Agent" in lambda_event["headers"]:
+        headers = CIDict(lambda_event["headers"])
+        if "User-Agent" in headers:
             span.set_attribute(
                 HTTP_USER_AGENT,
-                lambda_event["headers"]["User-Agent"],
+                headers["User-Agent"],
             )
-        if "X-Forwarded-Proto" in lambda_event["headers"]:
+        if "X-Forwarded-Proto" in headers:
             span.set_attribute(
                 HTTP_SCHEME,
-                lambda_event["headers"]["X-Forwarded-Proto"],
+                headers["X-Forwarded-Proto"],
             )
-        if "Host" in lambda_event["headers"]:
+        if "Host" in headers:
             span.set_attribute(
                 NET_HOST_NAME,
-                lambda_event["headers"]["Host"],
+                headers["Host"],
             )
     if "resource" in lambda_event:
         span.set_attribute(HTTP_ROUTE, lambda_event["resource"])
