@@ -32,13 +32,13 @@ class TestKafka(TestCase):
         instrumentation.instrument()
         self.assertTrue(isinstance(KafkaProducer.send, BoundFunctionWrapper))
         self.assertTrue(
-            isinstance(KafkaConsumer.__next__, BoundFunctionWrapper)
+            isinstance(KafkaConsumer.poll, BoundFunctionWrapper)
         )
 
         instrumentation.uninstrument()
         self.assertFalse(isinstance(KafkaProducer.send, BoundFunctionWrapper))
         self.assertFalse(
-            isinstance(KafkaConsumer.__next__, BoundFunctionWrapper)
+            isinstance(KafkaConsumer.poll, BoundFunctionWrapper)
         )
 
     @patch("opentelemetry.instrumentation.kafka.distribution")

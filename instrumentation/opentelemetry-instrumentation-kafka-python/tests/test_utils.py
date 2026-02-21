@@ -21,7 +21,7 @@ from opentelemetry.instrumentation.kafka.utils import (
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
-    _wrap_next,
+    _wrap_poll,
     _wrap_send,
 )
 from opentelemetry.trace import SpanKind
@@ -142,42 +142,46 @@ class TestUtils(TestCase):
     @mock.patch(
         "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
     )
-    def test_wrap_next(
-        self,
-        extract_bootstrap_servers: mock.MagicMock,
-        _create_consumer_span: mock.MagicMock,
-        extract: mock.MagicMock,
+    def test_wrap_poll(
+            self,
+            extract_bootstrap_servers: mock.MagicMock,
+            _create_consumer_span: mock.MagicMock,
+            extract: mock.MagicMock,
     ) -> None:
+        self.args = []
+        self.kwargs = {"timeout_ms": 1000}
         tracer = mock.MagicMock()
         consume_hook = mock.MagicMock()
-        original_next_callback = mock.MagicMock()
+        original_poll_callback = mock.MagicMock()
         kafka_consumer = mock.MagicMock()
 
-        wrapped_next = _wrap_next(tracer, consume_hook)
-        record = wrapped_next(
-            original_next_callback, kafka_consumer, self.args, self.kwargs
+        wrapped_poll = _wrap_poll(tracer, consume_hook)
+        records = wrapped_poll(
+            original_poll_callback, kafka_consumer, self.args, self.kwargs
         )
 
         extract_bootstrap_servers.assert_called_once_with(kafka_consumer)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
-        original_next_callback.assert_called_once_with(
+        original_poll_callback.assert_called_once_with(
             *self.args, **self.kwargs
         )
-        self.assertEqual(record, original_next_callback.return_value)
+        self.assertEqual(records, original_poll_callback.return_value)
 
-        extract.assert_called_once_with(record.headers, getter=_kafka_getter)
-        context = extract.return_value
+        for items in records.values():
+            for record in items:
+                extract.assert_called_once_with(record.headers, getter=_kafka_getter)
+                context = extract.return_value
 
-        _create_consumer_span.assert_called_once_with(
-            tracer,
-            consume_hook,
-            record,
-            context,
-            bootstrap_servers,
-            self.args,
-            self.kwargs,
-        )
+                _create_consumer_span.assert_called_once_with(
+                    tracer,
+                    consume_hook,
+                    record,
+                    context,
+                    bootstrap_servers,
+                    self.args,
+                    self.kwargs,
+                )
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.context.attach")
