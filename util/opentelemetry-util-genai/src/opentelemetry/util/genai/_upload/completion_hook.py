@@ -15,6 +15,11 @@
 
 from __future__ import annotations
 
+# from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+#     Future,
+#     ThreadPoolExecutor,
+# )
+import concurrent.futures
 import dataclasses
 import hashlib
 import json
@@ -22,10 +27,6 @@ import logging
 import posixpath
 import threading
 from collections import OrderedDict
-from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
-    Future,
-    ThreadPoolExecutor,
-)
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
@@ -159,13 +160,13 @@ class UploadCompletionHook(CompletionHook):
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
         # limits the number of queued tasks. If the queue is full, data will be dropped.
-        self._executor = ThreadPoolExecutor(
+        self._executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=min(self._max_queue_size, 64)
         )
         self._semaphore = threading.BoundedSemaphore(self._max_queue_size)
 
     def _submit_all(self, upload_data: UploadData) -> None:
-        def done(future: Future[None]) -> None:
+        def done(future: concurrent.futures.Future[None]) -> None:
             try:
                 future.result()
             except Exception:  # pylint: disable=broad-except
@@ -313,10 +314,12 @@ class UploadCompletionHook(CompletionHook):
         )
 
         def to_dict(
-            dataclass_list: list[types.InputMessage]
-            | list[types.OutputMessage]
-            | list[types.MessagePart]
-            | list[types.ToolDefinition],
+            dataclass_list: (
+                list[types.InputMessage]
+                | list[types.OutputMessage]
+                | list[types.MessagePart]
+                | list[types.ToolDefinition]
+            ),
         ) -> JsonEncodeable:
             return [asdict(dc) for dc in dataclass_list]
 
