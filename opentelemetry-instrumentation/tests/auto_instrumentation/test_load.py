@@ -376,7 +376,7 @@ class TestLoad(TestCase):
             ]
         )
         self.assertEqual(distro_mock.load_instrumentor.call_count, 2)
-        mock_logger.exception.assert_any_call(
+        mock_logger.warning.assert_any_call(
             "Importing of %s failed, skipping it",
             ep_mock1.name,
         )
