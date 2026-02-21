@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opentelemetry-instrumentation-modal"
+dynamic = ["version"]
+description = "OpenTelemetry Modal Instrumentation"
+readme = "README.rst"
+license = "Apache-2.0"
+requires-python = ">=3.8"
+authors = [
+    { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "opentelemetry-api ~= 1.12",
+    "opentelemetry-instrumentation == 0.46b0.dev",
+    "opentelemetry-semantic-conventions == 0.46b0.dev",
+]
+
+[project.optional-dependencies]
+instruments = ["modal ~= 0.62"]
+
+[project.entry-points.opentelemetry_instrumentor]
+modal = "opentelemetry.instrumentation.modal:ModalInstrumentor"
+
+[project.urls]
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-modal"
+
+[tool.hatch.version]
+path = "src/opentelemetry/instrumentation/modal/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opentelemetry"]
