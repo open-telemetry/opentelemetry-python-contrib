@@ -40,7 +40,7 @@ paramiko==3.4.0
 pluggy==1.4.0
 prometheus_client==0.20.0
 prompt-toolkit==3.0.43
-protobuf==3.20.3
+protobuf==5.29.6
 # prerequisite: install libpq-dev (debian) or postgresql-devel (rhel), postgresql (mac)
 # see https://www.psycopg.org/docs/install.html#build-prerequisites
 # you might have to install additional packages depending on your OS
