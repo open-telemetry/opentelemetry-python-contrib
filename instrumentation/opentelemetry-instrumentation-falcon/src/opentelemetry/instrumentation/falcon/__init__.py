@@ -560,7 +560,7 @@ class _TraceMiddleware:
 
 
 class FalconInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for falcon.API
 
     See `BaseInstrumentor`
