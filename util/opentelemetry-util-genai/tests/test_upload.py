@@ -307,7 +307,7 @@ class TestUploadCompletionHook(TestCase):
     def test_threadpool_max_workers(self):
         for max_queue_size, expect_threadpool_workers in ((10, 10), (100, 64)):
             with patch(
-                "opentelemetry.util.genai._upload.completion_hook.ThreadPoolExecutor"
+                "opentelemetry.util.genai._upload.completion_hook.concurrent.futures.ThreadPoolExecutor"
             ) as mock:
                 hook = UploadCompletionHook(
                     base_path=BASE_PATH, max_queue_size=max_queue_size

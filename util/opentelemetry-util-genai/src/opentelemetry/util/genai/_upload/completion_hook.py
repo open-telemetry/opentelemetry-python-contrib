@@ -15,6 +15,11 @@
 
 from __future__ import annotations
 
+# from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+#     Future,
+#     ThreadPoolExecutor,
+# )
+import concurrent.futures
 import dataclasses
 import hashlib
 import json
@@ -22,11 +27,6 @@ import logging
 import posixpath
 import threading
 from collections import OrderedDict
-# from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
-#     Future,
-#     ThreadPoolExecutor,
-# )
-import concurrent.futures
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
@@ -314,10 +314,12 @@ class UploadCompletionHook(CompletionHook):
         )
 
         def to_dict(
-            dataclass_list: list[types.InputMessage]
-            | list[types.OutputMessage]
-            | list[types.MessagePart]
-            | list[types.ToolDefinition],
+            dataclass_list: (
+                list[types.InputMessage]
+                | list[types.OutputMessage]
+                | list[types.MessagePart]
+                | list[types.ToolDefinition]
+            ),
         ) -> JsonEncodeable:
             return [asdict(dc) for dc in dataclass_list]
 

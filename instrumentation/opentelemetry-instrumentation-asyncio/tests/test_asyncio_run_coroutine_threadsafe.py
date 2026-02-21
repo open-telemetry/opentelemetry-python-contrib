@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import threading
+
 # from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
 #     ThreadPoolExecutor,
 # )
 import concurrent.futures
+import threading
 from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
