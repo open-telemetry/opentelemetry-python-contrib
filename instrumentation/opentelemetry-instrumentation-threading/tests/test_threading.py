@@ -294,3 +294,7 @@ class TestThreading(TestBase):
             future = executor.submit(self.get_current_span_context_for_test)
             future.result()
             mock_detach.assert_called_once()
+
+    def test_threading_run_without_start(self):
+        square_thread = threading.Thread(target=self.print_square, args=(10,))
+        square_thread.run()
