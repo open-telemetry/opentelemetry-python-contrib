@@ -27,10 +27,15 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSInstrumentor,
     Boto3SQSSetter,
 )
-from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
-    MessagingOperationValues,
-    SpanAttributes,
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -223,10 +228,9 @@ class TestBoto3SQSInstrumentation(TestBase):
 
     def _default_span_attrs(self):
         return {
-            SpanAttributes.MESSAGING_SYSTEM: "aws.sqs",
-            SpanAttributes.MESSAGING_DESTINATION: self._queue_name,
-            SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-            SpanAttributes.MESSAGING_URL: self._queue_url,
+            MESSAGING_SYSTEM: "aws.sqs",
+            MESSAGING_DESTINATION_NAME: self._queue_name,
+            SERVER_ADDRESS: self._queue_url,
         }
 
     @staticmethod
@@ -282,7 +286,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(
             {
-                SpanAttributes.MESSAGING_MESSAGE_ID: message_id,
+                MESSAGING_MESSAGE_ID: message_id,
                 **self._default_span_attrs(),
             },
             span.attributes,
@@ -321,7 +325,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(SpanKind.CONSUMER, span.kind)
         self.assertEqual(
             {
-                SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.RECEIVE.value,
+                MESSAGING_OPERATION: MessagingOperationTypeValues.RECEIVE.value,
                 **self._default_span_attrs(),
             },
             span.attributes,
@@ -345,8 +349,8 @@ class TestBoto3SQSInstrumentation(TestBase):
             # processing span attributes
             self.assertEqual(
                 {
-                    SpanAttributes.MESSAGING_MESSAGE_ID: msg_id,
-                    SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.PROCESS.value,
+                    MESSAGING_MESSAGE_ID: msg_id,
+                    MESSAGING_OPERATION: MessagingOperationTypeValues.PROCESS.value,
                     **self._default_span_attrs(),
                 },
                 span.attributes,
