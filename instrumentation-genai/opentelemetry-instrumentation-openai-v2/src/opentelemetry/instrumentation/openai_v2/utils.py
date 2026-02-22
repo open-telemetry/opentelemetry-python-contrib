@@ -407,7 +407,7 @@ def get_value(v: Any):
     return None
 
 
-def handle_span_exception(span, error):
+def handle_span_exception(span, error: BaseException):
     span.set_status(Status(StatusCode.ERROR, str(error)))
     if span.is_recording():
         span.set_attribute(

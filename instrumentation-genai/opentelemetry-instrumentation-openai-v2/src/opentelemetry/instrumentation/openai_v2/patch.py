@@ -633,7 +633,7 @@ class BaseStreamWrapper:
         if not self._started:
             self._started = True
 
-    def cleanup(self, error: Optional[Error] = None):
+    def cleanup(self, error: Optional[BaseException] = None):
         pass
 
     def __enter__(self):
@@ -641,12 +641,8 @@ class BaseStreamWrapper:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        error = None
-        try:
-            if exc_type is not None:
-                error = Error(message=str(exc_val), type=exc_type)
-        finally:
-            self.cleanup(error)
+        error = exc_val if exc_type else None
+        self.cleanup(error)
         return False  # Propagate the exception
 
     async def __aenter__(self):
@@ -654,12 +650,8 @@ class BaseStreamWrapper:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        error = None
-        try:
-            if exc_type is not None:
-                error = Error(message=str(exc_val), type=exc_type)
-        finally:
-            self.cleanup(error)
+        error = exc_val if exc_type else None
+        self.cleanup(error)
         return False  # Propagate the exception
 
     def close(self):
@@ -681,7 +673,7 @@ class BaseStreamWrapper:
             self.cleanup()
             raise
         except Exception as error:
-            self.cleanup(Error(message=str(error), type=type(error)))
+            self.cleanup(error)
             raise
 
     async def __anext__(self):
@@ -693,7 +685,7 @@ class BaseStreamWrapper:
             self.cleanup()
             raise
         except Exception as error:
-            self.cleanup(Error(message=str(error), type=type(error)))
+            self.cleanup(error)
             raise
 
     def set_response_model(self, chunk):
@@ -786,7 +778,7 @@ class StreamWrapperOld(BaseStreamWrapper):
         self.span = span
         self.logger = logger
 
-    def cleanup(self, error: Optional[Error] = None):
+    def cleanup(self, error: Optional[BaseException] = None):
         if not self._started:
             return
         if self.span.is_recording():
@@ -929,7 +921,7 @@ class StreamWrapperNew(BaseStreamWrapper):
 
         self.invocation.output_messages = output_messages
 
-    def cleanup(self, error: Optional[Error] = None):
+    def cleanup(self, error: Optional[BaseException] = None):
         if not self._started:
             return
 
@@ -948,7 +940,9 @@ class StreamWrapperNew(BaseStreamWrapper):
         self._set_output_messages()
 
         if error:
-            self.handler.fail_llm(self.invocation, error)
+            self.handler.fail_llm(
+                self.invocation, Error(type=type(error), message=str(error))
+            )
         else:
             self.handler.stop_llm(self.invocation)
         self._started = False

@@ -120,6 +120,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            logger_provider=logger_provider,
         )
 
         wrap_function_wrapper(
