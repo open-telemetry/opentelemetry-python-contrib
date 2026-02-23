@@ -147,9 +147,10 @@ class ThreadingInstrumentor(BaseInstrumentor):
     ) -> R:
         token = None
         try:
-            if getattr(instance, "_otel_context", None) is None:
-                instance._otel_context = context.get_current()
-            token = context.attach(instance._otel_context)
+            if getattr(instance, "_otel_context", None) is not None:
+                token = context.attach(instance._otel_context)
+            else:
+                token = context.attach(context.get_current())
             return call_wrapped(*args, **kwargs)
         finally:
             if token is not None:
