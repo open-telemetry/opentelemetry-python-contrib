@@ -27,7 +27,7 @@ dependencies = [
   "opentelemetry-api ~= 1.37",
   "opentelemetry-instrumentation ~= 0.58b0",
   "opentelemetry-semantic-conventions ~= 0.58b0",
-  "opentelemetry-util-genai >= 0.2b0, <0.3b0",
+  "opentelemetry-util-genai >= 0.2b0, <0.4b0",
 ]
 
 [project.optional-dependencies]
