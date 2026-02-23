@@ -89,7 +89,6 @@ class TestLoggingHandler(unittest.TestCase):
 
     def test_log_flush_noop(self):
         no_op_logger_provider = NoOpLoggerProvider()
-        no_op_logger_provider.force_flush = Mock()
 
         logger = logging.getLogger("foo")
         handler = LoggingHandler(
@@ -100,8 +99,14 @@ class TestLoggingHandler(unittest.TestCase):
         with self.assertLogs(level=logging.WARNING):
             logger.warning("Warning message")
 
-        logger.handlers[0].flush()
-        no_op_logger_provider.force_flush.assert_not_called()
+        # the LoggingHandler flush method will call the force_flush method of LoggerProvider in
+        # a separate thread if present. NoOpLoggerProvider is not supposed to have that
+        with patch(
+            "opentelemetry.instrumentation.logging.handler.threading"
+        ) as threading_mock:
+            logger.handlers[0].flush()
+
+        threading_mock.Thread.assert_not_called()
 
         logger.removeHandler(handler)
 
