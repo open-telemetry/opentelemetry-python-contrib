@@ -70,6 +70,15 @@ SEARCH_MEMORY_OPERATION = (
     else "search_memory"
 )
 
+_RETRIEVAL_MEMBER = getattr(
+    getattr(GenAI, "GenAiOperationNameValues", object()),
+    "RETRIEVAL",
+    None,
+)
+RETRIEVAL_OPERATION = (
+    _RETRIEVAL_MEMBER.value if _RETRIEVAL_MEMBER is not None else "retrieval"
+)
+
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     """
@@ -122,6 +131,19 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         return mode in (
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
+        )
+
+    @staticmethod
+    def _is_memory_retriever(
+        metadata: Optional[dict[str, Any]],
+    ) -> bool:
+        """Detect if a retriever is a memory retriever based on metadata hints."""
+        if not metadata:
+            return False
+        return bool(
+            metadata.get("memory_store_name")
+            or metadata.get("memory_store_id")
+            or metadata.get("is_memory_retriever")
         )
 
     def on_chat_model_start(
@@ -365,6 +387,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             provider = metadata.get("ls_provider", "unknown")
 
         attributes: dict[str, Any] = {}
+        is_memory = self._is_memory_retriever(metadata)
+        operation = (
+            SEARCH_MEMORY_OPERATION if is_memory else RETRIEVAL_OPERATION
+        )
+
         if store_name := self._resolve_retriever_store_name(
             serialized, metadata
         ):
@@ -383,16 +410,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         llm_invocation = LLMInvocation(
             request_model="",
             provider=provider,
-            operation_name=SEARCH_MEMORY_OPERATION,
+            operation_name=operation,
             attributes=attributes,
         )
         llm_invocation = self._telemetry_handler.start_llm(
             invocation=llm_invocation
         )
         if llm_invocation.span and store_name:
-            llm_invocation.span.update_name(
-                f"{SEARCH_MEMORY_OPERATION} {store_name}"
-            )
+            llm_invocation.span.update_name(f"{operation} {store_name}")
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
