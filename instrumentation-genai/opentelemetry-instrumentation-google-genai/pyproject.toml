@@ -46,7 +46,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-instruments = ["google-genai >= 1.32.0"]
+instruments = ["google-genai >= 1.32.0, <= 1.63.0"]
 
 [project.entry-points.opentelemetry_instrumentor]
 google-genai = "opentelemetry.instrumentation.google_genai:GoogleGenAiSdkInstrumentor"
