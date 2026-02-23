@@ -135,6 +135,8 @@ def _redact_headers(headers):
 
 
 def _before_record_request(request):
+    if request.method:
+        request.method = request.method.upper()
     if request.headers:
         _redact_headers(request.headers)
     uri = request.uri
