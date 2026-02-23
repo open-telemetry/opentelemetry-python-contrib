@@ -307,6 +307,22 @@ class TestLoggingInstrumentor(TestBase):
         ]
         self.assertEqual(logging_handler_instances, [])
 
+    def test_handler_setup_is_called_if_autoinstrumentation_env_var_is_not_set(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument()
+
+        self.assertEqual(len(self.caplog.records), 0)
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(len(logging_handler_instances), 1)
+
     def test_handler_setup_is_called_without_code_attributes_by_default(self):
         LoggingInstrumentor().uninstrument()
         with mock.patch(
@@ -318,14 +334,6 @@ class TestLoggingInstrumentor(TestBase):
         setup_mock.assert_called_once_with(
             logger_provider=logger_provider, log_code_attributes=False
         )
-
-        root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
-        self.assertEqual(len(logging_handler_instances), 1)
 
     @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CODE_ATTRIBUTES": "true"})
     def test_handler_setup_is_called_with_code_attributes_from_env_var(self):
@@ -339,11 +347,3 @@ class TestLoggingInstrumentor(TestBase):
         setup_mock.assert_called_once_with(
             logger_provider=logger_provider, log_code_attributes=True
         )
-
-        root_logger = logging.getLogger()
-        logging_handler_instances = [
-            handler
-            for handler in root_logger.handlers
-            if isinstance(handler, LoggingHandler)
-        ]
-        self.assertEqual(len(logging_handler_instances), 1)
