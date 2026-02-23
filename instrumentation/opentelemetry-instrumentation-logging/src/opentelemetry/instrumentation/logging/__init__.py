@@ -66,6 +66,7 @@ from opentelemetry.instrumentation.logging.constants import (
     DEFAULT_LOGGING_FORMAT,
 )
 from opentelemetry.instrumentation.logging.environment_variables import (
+    OTEL_PYTHON_LOG_CODE_ATTRIBUTES,
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
     OTEL_PYTHON_LOG_LEVEL,
@@ -126,6 +127,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     _old_factory = None
     _log_hook = None
+    _logging_handler = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -205,24 +207,44 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         logging.setLogRecordFactory(record_factory)
 
-        if (
+        # Here we need to handle 3 scenarios:
+        # - the sdk logging handler is enabled and we should do no nothing
+        # - the sdk logging handler is not enabled and we should setup the handler by default
+        # - the sdk logging handler is not enabled and the user do not want we setup the handler
+        # FIXME: we are reusing the very same env var of the sdk but probably we should be use a new one
+        logging_autoinstrumentation_env_var = (
             environ.get(
-                "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "false"
+                "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "notset"
             )
             .strip()
             .lower()
-            == "false"
-        ):
-            logger_provider = get_logger_provider()
-            _setup_logging_handler(logger_provider=logger_provider)
-        else:
+        )
+        if logging_autoinstrumentation_env_var == "true":
             _logger.warning(
-                "disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`"
+                "Disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging "
+                "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`"
             )
+        elif logging_autoinstrumentation_env_var == "notset":
+            log_code_attributes = (
+                environ.get(OTEL_PYTHON_LOG_CODE_ATTRIBUTES, "false")
+                .strip()
+                .lower()
+                == "true"
+            )
+            logger_provider = get_logger_provider()
+            handler = _setup_logging_handler(
+                logger_provider=logger_provider,
+                log_code_attributes=log_code_attributes,
+            )
+            LoggingInstrumentor._logging_handler = handler
 
     def _uninstrument(self, **kwargs):
         if LoggingInstrumentor._old_factory:
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
             LoggingInstrumentor._old_factory = None
 
-        # TODO: implement opposite of _setup_logging_handler
+        if LoggingInstrumentor._logging_handler:
+            logging.getLogger().removeHandler(
+                LoggingInstrumentor._logging_handler
+            )
+            LoggingInstrumentor._logging_handler = None

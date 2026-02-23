@@ -20,10 +20,13 @@ from unittest.mock import Mock, patch
 from opentelemetry._logs import NoOpLoggerProvider, SeverityNumber
 from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
+from opentelemetry.instrumentation.logging.handler import (
+    LoggingHandler,
+    _setup_logging_handler,
+)
 from opentelemetry.sdk import trace
 from opentelemetry.sdk._logs import (
     LoggerProvider,
-    LoggingHandler,
     LogRecordProcessor,
     ReadableLogRecord,
 )
@@ -135,6 +138,24 @@ class TestLoggingHandler(unittest.TestCase):
         record = processor.get_log_record(0)
 
         self.assertIsNotNone(record)
+        self.assertEqual(len(record.log_record.attributes), 1)
+        self.assertEqual(record.log_record.attributes["http.status_code"], 200)
+        self.assertTrue(
+            isinstance(record.log_record.attributes, BoundedAttributes)
+        )
+
+    def test_log_record_with_code_attributes(self):
+        processor, logger = set_up_test_logging(
+            logging.WARNING, log_code_attributes=True
+        )
+
+        # Assert emit gets called for warning message
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning("Warning message", extra={"http.status_code": 200})
+
+        record = processor.get_log_record(0)
+
+        self.assertIsNotNone(record)
         self.assertEqual(len(record.log_record.attributes), 4)
         self.assertEqual(record.log_record.attributes["http.status_code"], 200)
         self.assertTrue(
@@ -144,7 +165,7 @@ class TestLoggingHandler(unittest.TestCase):
         )
         self.assertEqual(
             record.log_record.attributes[code_attributes.CODE_FUNCTION_NAME],
-            "test_log_record_user_attributes",
+            "test_log_record_with_code_attributes",
         )
         # The line of the log statement is not a constant (changing tests may change that),
         # so only check that the attribute is present.
@@ -432,11 +453,11 @@ class TestLoggingHandler(unittest.TestCase):
             f"Should have exactly 3 attributes due to limit, got {total_attrs}",
         )
 
-        # Should have 10 dropped attributes (10 custom + 3 code - 3 kept = 10 dropped)
+        # Should have 7 dropped attributes (10 custom - 3 kept = 7 dropped)
         self.assertEqual(
             record.dropped_attributes,
-            10,
-            f"Should have 10 dropped attributes, got {record.dropped_attributes}",
+            7,
+            f"Should have 7 dropped attributes, got {record.dropped_attributes}",
         )
 
     @patch.dict(os.environ, {OTEL_ATTRIBUTE_COUNT_LIMIT: "5"})
@@ -469,11 +490,11 @@ class TestLoggingHandler(unittest.TestCase):
             f"Should have exactly 5 attributes due to limit, got {total_attrs}",
         )
 
-        # Should have 6 dropped attributes (8 user + 3 code - 5 kept = 6 dropped)
+        # Should have 3 dropped attributes (8 user - 5 kept = 3 dropped)
         self.assertEqual(
             record.dropped_attributes,
-            6,
-            f"Should have 6 dropped attributes, got {record.dropped_attributes}",
+            3,
+            f"Should have 3 dropped attributes, got {record.dropped_attributes}",
         )
 
     def test_logging_handler_without_env_var_uses_default_limit(self):
@@ -498,20 +519,115 @@ class TestLoggingHandler(unittest.TestCase):
             f"Should have exactly 128 attributes (default limit), got {total_attrs}",
         )
 
-        # Should have 25 dropped attributes (150 user + 3 code - 128 kept = 25 dropped)
+        # Should have 22 dropped attributes (150 user - 128 kept = 22 dropped)
         self.assertEqual(
             record.dropped_attributes,
-            25,
-            f"Should have 25 dropped attributes, got {record.dropped_attributes}",
+            22,
+            f"Should have 22 dropped attributes, got {record.dropped_attributes}",
         )
 
 
-def set_up_test_logging(level, formatter=None, root_logger=False):
+class SetupLoggingHandlerTestCase(unittest.TestCase):
+    def test_basicConfig_works_with_otel_handler(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            _setup_logging_handler(logger_provider=logger_provider)
+
+            logging.basicConfig(level=logging.INFO)
+
+            root_logger = logging.getLogger()
+            stream_handlers = [
+                h
+                for h in root_logger.handlers
+                if isinstance(h, logging.StreamHandler)
+            ]
+            self.assertEqual(
+                len(stream_handlers),
+                1,
+                "basicConfig should add a StreamHandler even when OTel handler exists",
+            )
+
+    def test_basicConfig_preserves_otel_handler(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            _setup_logging_handler(logger_provider=logger_provider)
+
+            root_logger = logging.getLogger()
+            self.assertEqual(
+                len(root_logger.handlers),
+                1,
+                "Should be exactly one OpenTelemetry LoggingHandler",
+            )
+            handler = root_logger.handlers[0]
+            self.assertIsInstance(handler, LoggingHandler)
+            logging.basicConfig()
+
+            self.assertGreater(len(root_logger.handlers), 1)
+
+            logging_handlers = [
+                h
+                for h in root_logger.handlers
+                if isinstance(h, LoggingHandler)
+            ]
+            self.assertEqual(
+                len(logging_handlers),
+                1,
+                "Should still have exactly one OpenTelemetry LoggingHandler",
+            )
+
+    def test_dictConfig_preserves_otel_handler(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            _setup_logging_handler(logger_provider=logger_provider)
+
+            root = logging.getLogger()
+            self.assertEqual(
+                len(root.handlers),
+                1,
+                "Should be exactly one OpenTelemetry LoggingHandler",
+            )
+            logging.config.dictConfig(
+                {
+                    "version": 1,
+                    "disable_existing_loggers": False,  # If this is True all loggers are disabled. Many unit tests assert loggers emit logs.
+                    "handlers": {
+                        "console": {
+                            "class": "logging.StreamHandler",
+                            "level": "DEBUG",
+                            "stream": "ext://sys.stdout",
+                        },
+                    },
+                    "loggers": {
+                        "": {  # root logger
+                            "handlers": ["console"],
+                        },
+                    },
+                }
+            )
+            self.assertEqual(len(root.handlers), 2)
+
+            logging_handlers = [
+                h for h in root.handlers if isinstance(h, LoggingHandler)
+            ]
+            self.assertEqual(
+                len(logging_handlers),
+                1,
+                "Should still have exactly one OpenTelemetry LoggingHandler",
+            )
+
+
+def set_up_test_logging(
+    level, formatter=None, root_logger=False, log_code_attributes=False
+):
     logger_provider = LoggerProvider()
     processor = FakeProcessor()
     logger_provider.add_log_record_processor(processor)
     logger = logging.getLogger(None if root_logger else "foo")
-    handler = LoggingHandler(level=level, logger_provider=logger_provider)
+    handler = LoggingHandler(
+        level=level,
+        logger_provider=logger_provider,
+        log_code_attributes=log_code_attributes,
+    )
     if formatter:
         handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -536,3 +652,28 @@ class FakeProcessor(LogRecordProcessor):
 
     def get_log_record(self, i):
         return self.log_data_emitted[i]
+
+
+# Any test that calls _init_logging with setup_logging_handler=True
+# should call _init_logging within this context manager, to
+# ensure the global logging state is reset after the test.
+class ResetGlobalLoggingState:
+    def __init__(self):
+        self.original_basic_config = logging.basicConfig
+        self.original_dict_config = logging.config.dictConfig
+        self.original_file_config = logging.config.fileConfig
+        self.root_logger = logging.getLogger()
+        self.original_handlers = None
+
+    def __enter__(self):
+        self.original_handlers = self.root_logger.handlers[:]
+        self.root_logger.handlers = []
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.root_logger.handlers = []
+        for handler in self.original_handlers:
+            self.root_logger.addHandler(handler)
+        logging.basicConfig = self.original_basic_config
+        logging.config.dictConfig = self.original_dict_config
+        logging.config.fileConfig = self.original_file_config

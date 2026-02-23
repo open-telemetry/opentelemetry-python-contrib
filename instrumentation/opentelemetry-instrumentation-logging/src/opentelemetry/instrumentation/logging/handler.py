@@ -36,12 +36,17 @@ from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util.types import _ExtendedAttributes
 
 
-def _setup_logging_handler(logger_provider: LoggerProvider):
+def _setup_logging_handler(
+    logger_provider: LoggerProvider, log_code_attributes: bool = False
+) -> LoggingHandler:
     handler = LoggingHandler(
-        level=logging.NOTSET, logger_provider=logger_provider
+        level=logging.NOTSET,
+        logger_provider=logger_provider,
+        log_code_attributes=log_code_attributes,
     )
     logging.getLogger().addHandler(handler)
     _overwrite_logging_config_fns(handler)
+    return handler
 
 
 def _overwrite_logging_config_fns(handler: "LoggingHandler") -> None:
@@ -111,18 +116,21 @@ class LoggingHandler(logging.Handler):
         self,
         level: int = logging.NOTSET,
         logger_provider: LoggerProvider | None = None,
+        log_code_attributes: bool = False,
     ) -> None:
         super().__init__(level=level)
         self._logger_provider = logger_provider or get_logger_provider()
 
-    @staticmethod
-    def _get_attributes(record: logging.LogRecord) -> _ExtendedAttributes:
+        self._log_code_attributes = log_code_attributes
+
+    def _get_attributes(
+        self, record: logging.LogRecord
+    ) -> _ExtendedAttributes:
         attributes = {
             k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS
         }
 
-        # FIXME: good time to disable these by default
-        if False:
+        if self._log_code_attributes:
             # Add standard code attributes for logs.
             attributes[code_attributes.CODE_FILE_PATH] = record.pathname
             attributes[code_attributes.CODE_FUNCTION_NAME] = record.funcName
