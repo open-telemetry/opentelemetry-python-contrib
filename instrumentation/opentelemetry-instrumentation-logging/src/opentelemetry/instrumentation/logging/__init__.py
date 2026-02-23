@@ -66,6 +66,7 @@ from opentelemetry.instrumentation.logging.constants import (
     DEFAULT_LOGGING_FORMAT,
 )
 from opentelemetry.instrumentation.logging.environment_variables import (
+    OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION,
     OTEL_PYTHON_LOG_CODE_ATTRIBUTES,
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
@@ -211,20 +212,23 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         # - the sdk logging handler is enabled and we should do no nothing
         # - the sdk logging handler is not enabled and we should setup the handler by default
         # - the sdk logging handler is not enabled and the user do not want we setup the handler
-        # FIXME: we are reusing the very same env var of the sdk but probably we should be use a new one
-        logging_autoinstrumentation_env_var = (
+        sdk_autoinstrumentation_env_var = (
             environ.get(
                 "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "notset"
             )
             .strip()
             .lower()
         )
-        if logging_autoinstrumentation_env_var == "true":
+        if sdk_autoinstrumentation_env_var == "true":
             _logger.warning(
                 "Disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging "
                 "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`"
             )
-        elif logging_autoinstrumentation_env_var == "notset":
+        elif (
+            environ.get(OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION, "true")
+            .strip()
+            .lower()
+        ) == "true":
             log_code_attributes = (
                 environ.get(OTEL_PYTHON_LOG_CODE_ATTRIBUTES, "false")
                 .strip()
