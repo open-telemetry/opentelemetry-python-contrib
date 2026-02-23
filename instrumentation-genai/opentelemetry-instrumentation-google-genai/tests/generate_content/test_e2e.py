@@ -37,10 +37,8 @@ import google.auth.credentials
 import google.genai
 import pytest
 import yaml
-from aiohttp.client_exceptions import ClientConnectionError
 from google.genai import types
 from vcr.record_mode import RecordMode
-from vcr.stubs import aiohttp_stubs
 
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -322,6 +320,15 @@ def setup_vcr(vcr):
 
 @pytest.fixture(name="patch_vcr_aiohttp_stream", scope="module", autouse=True)
 def fixture_patch_vcr_aiohttp_stream():
+    try:
+        # These packages can only be imported in python >= 3.10
+        from aiohttp.client_exceptions import (  # noqa: PLC0415
+            ClientConnectionError,
+        )
+        from vcr.stubs import aiohttp_stubs  # noqa: PLC0415
+    except ImportError:
+        return
+
     class _ReplayMockStream(aiohttp_stubs.MockStream):
         # Keep vcrpy's stream behavior, but ignore aiohttp's
         # close-time ClientConnectionError("Connection closed") during
