@@ -16,7 +16,9 @@
 OpenTelemetry Mem0 Instrumentation
 ===================================
 
-Instrumentation for the Mem0 Python SDK memory operations.
+Instrumentation for the Mem0 Python SDK memory operations, aligned with
+the `GenAI memory semantic conventions
+<https://github.com/open-telemetry/semantic-conventions/pull/3250>`_.
 
 Usage
 -----
@@ -26,10 +28,8 @@ Usage
     from opentelemetry.instrumentation.mem0 import Mem0Instrumentor
     from mem0 import Memory
 
-    # Enable instrumentation
     Mem0Instrumentor().instrument()
 
-    # Use Mem0 normally — all memory operations are now traced
     m = Memory()
     m.add("I prefer dark mode", user_id="alice")
     results = m.search("preferences", user_id="alice")
@@ -64,8 +64,9 @@ from opentelemetry.instrumentation.utils import unwrap
 class Mem0Instrumentor(BaseInstrumentor):
     """An instrumentor for the Mem0 Python SDK.
 
-    This instrumentor traces Mem0 memory operations (add, search, update,
-    delete) and emits spans with GenAI memory semantic convention attributes.
+    Traces Mem0 memory operations (add, search, update, delete) and emits
+    spans with GenAI memory semantic convention attributes plus a
+    ``gen_ai.client.operation.duration`` histogram metric.
     """
 
     def __init__(self) -> None:
@@ -76,36 +77,37 @@ class Mem0Instrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs: Any) -> None:
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         wrap_function_wrapper(
             module="mem0.memory.main",
             name="Memory.add",
-            wrapper=wrap_memory_add(tracer_provider),
+            wrapper=wrap_memory_add(tracer_provider, meter_provider),
         )
         wrap_function_wrapper(
             module="mem0.memory.main",
             name="Memory.search",
-            wrapper=wrap_memory_search(tracer_provider),
+            wrapper=wrap_memory_search(tracer_provider, meter_provider),
         )
         wrap_function_wrapper(
             module="mem0.memory.main",
             name="Memory.update",
-            wrapper=wrap_memory_update(tracer_provider),
+            wrapper=wrap_memory_update(tracer_provider, meter_provider),
         )
         wrap_function_wrapper(
             module="mem0.memory.main",
             name="Memory.delete",
-            wrapper=wrap_memory_delete(tracer_provider),
+            wrapper=wrap_memory_delete(tracer_provider, meter_provider),
         )
         wrap_function_wrapper(
             module="mem0.memory.main",
             name="Memory.delete_all",
-            wrapper=wrap_memory_delete_all(tracer_provider),
+            wrapper=wrap_memory_delete_all(tracer_provider, meter_provider),
         )
         wrap_function_wrapper(
             module="mem0.memory.main",
             name="Memory.get_all",
-            wrapper=wrap_memory_get_all(tracer_provider),
+            wrapper=wrap_memory_get_all(tracer_provider, meter_provider),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
