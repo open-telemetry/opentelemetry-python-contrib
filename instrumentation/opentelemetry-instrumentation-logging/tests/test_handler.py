@@ -85,6 +85,8 @@ class TestLoggingHandler(unittest.TestCase):
         with self.assertLogs(level=logging.WARNING):
             logger.warning("Warning message")
 
+        logger.removeHandler(handler_mock)
+
     def test_log_flush_noop(self):
         no_op_logger_provider = NoOpLoggerProvider()
         no_op_logger_provider.force_flush = Mock()
@@ -100,6 +102,8 @@ class TestLoggingHandler(unittest.TestCase):
 
         logger.handlers[0].flush()
         no_op_logger_provider.force_flush.assert_not_called()
+
+        logger.removeHandler(handler)
 
     def test_log_record_no_span_context(self):
         processor, logger, handler = set_up_test_logging(logging.WARNING)
@@ -494,6 +498,8 @@ class TestLoggingHandler(unittest.TestCase):
             f"Should have 7 dropped attributes, got {record.dropped_attributes}",
         )
 
+        logger.removeHandler(handler)
+
     @patch.dict(os.environ, {OTEL_ATTRIBUTE_COUNT_LIMIT: "5"})
     def test_otel_attribute_count_limit_includes_code_attributes(self):
         """Test that OTEL_ATTRIBUTE_COUNT_LIMIT applies to all attributes including code attributes."""
@@ -530,6 +536,8 @@ class TestLoggingHandler(unittest.TestCase):
             3,
             f"Should have 3 dropped attributes, got {record.dropped_attributes}",
         )
+
+        logger.removeHandler(handler)
 
     def test_logging_handler_without_env_var_uses_default_limit(self):
         """Test that without OTEL_ATTRIBUTE_COUNT_LIMIT, default limit (128) should apply."""
