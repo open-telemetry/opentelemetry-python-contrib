@@ -167,10 +167,10 @@ _logger = logging.getLogger(__name__)
 
 if typing.TYPE_CHECKING:
     from psycopg2.extensions import (  # pylint: disable=no-name-in-module
-        connection as pg_connection,
+        connection as PgConnection,
     )
 else:
-    pg_connection = typing.Any
+    PgConnection = typing.Any
 
 
 class Psycopg2Instrumentor(BaseInstrumentor):
@@ -235,9 +235,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(
-        connection: pg_connection,
+        connection: PgConnection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
-    ) -> pg_connection:
+    ) -> PgConnection:
         """Enable instrumentation in a psycopg2 connection.
 
         Uses `_INSTRUMENTED_CONNECTIONS` to store the original `cursor_factory`
@@ -274,7 +274,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def uninstrument_connection(connection: pg_connection) -> pg_connection:
+    def uninstrument_connection(connection: PgConnection) -> PgConnection:
         """Disable instrumentation for a psycopg2 connection.
 
         Restores the original `cursor_factory` from `_INSTRUMENTED_CONNECTIONS`.
