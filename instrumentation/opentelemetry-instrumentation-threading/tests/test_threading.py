@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import threading
 from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
     Future,
     ThreadPoolExecutor,
 )
-from typing import List, Union
+from typing import List
 from unittest.mock import MagicMock, patch
 
 from opentelemetry import trace
@@ -126,17 +128,15 @@ class TestThreading(TestBase):
     def get_current_span_context_for_test() -> trace.SpanContext:
         return trace.get_current_span().get_span_context()
 
-    def print_square(self, num: Union[int, float]) -> Union[int, float]:
+    def print_square(self, num: int | float) -> int | float:
         with self._tracer.start_as_current_span("square"):
             return num * num
 
-    def print_cube(self, num: Union[int, float]) -> Union[int, float]:
+    def print_cube(self, num: int | float) -> int | float:
         with self._tracer.start_as_current_span("cube"):
             return num * num * num
 
-    def print_square_with_thread(
-        self, num: Union[int, float]
-    ) -> Union[int, float]:
+    def print_square_with_thread(self, num: int | float) -> int | float:
         with self._tracer.start_as_current_span("square"):
             cube_thread = threading.Thread(target=self.print_cube, args=(10,))
 
@@ -144,7 +144,7 @@ class TestThreading(TestBase):
             cube_thread.join()
             return num * num
 
-    def calculate(self, num: Union[int, float]) -> None:
+    def calculate(self, num: int | float) -> None:
         with self._tracer.start_as_current_span("calculate"):
             square_thread = threading.Thread(
                 target=self.print_square, args=(num,)
