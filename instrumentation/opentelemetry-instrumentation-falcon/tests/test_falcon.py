@@ -571,32 +571,28 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.client().simulate_get("/user_custom_attr/123")
         self.client().simulate_get("/user_custom_attr/123")
         self.client().simulate_get("/user_custom_attr/123")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
 
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_old_with_custom[
-                                    metric.name
-                                ],
-                            )
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_old_with_custom[
+                            metric.name
+                        ],
+                    )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_falcon_metric_values_new_semconv(self):
@@ -639,33 +635,29 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
         self.client().simulate_get("/user_custom_attr/123")
         duration = max(default_timer() - start, 0)
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
-                            histogram_data_point_seen = True
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=10
-                            )
-                            self.assertEqual(
-                                point.explicit_bounds,
-                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                            )
-                        if isinstance(point, NumberDataPoint):
-                            self.assertEqual(point.value, 0)
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_new_with_custom[
-                                    metric.name
-                                ],
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    histogram_data_point_seen = True
+                    self.assertAlmostEqual(duration, point.sum, delta=10)
+                    self.assertEqual(
+                        point.explicit_bounds,
+                        HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                    )
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_new_with_custom[
+                            metric.name
+                        ],
+                    )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_falcon_metric_values_both_semconv(self):

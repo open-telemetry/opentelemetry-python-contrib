@@ -801,37 +801,31 @@ class TestMiddleware(WsgiTestBase):
             response = Client().get("/span_name_custom_attrs/1234/")
             self.assertEqual(response.status_code, 200)
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histrogram_data_point_seen = True
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=100
-                            )
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                            self.assertEqual(point.value, 0)
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histrogram_data_point_seen = True
+                    self.assertAlmostEqual(duration, point.sum, delta=100)
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                    self.assertEqual(point.value, 0)
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
     # pylint: disable=too-many-locals
@@ -912,41 +906,35 @@ class TestMiddleware(WsgiTestBase):
             response = Client().get("/span_name_custom_attrs/1234/")
             self.assertEqual(response.status_code, 200)
         duration_s = default_timer() - start
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histrogram_data_point_seen = True
-                            self.assertAlmostEqual(
-                                duration_s, point.sum, places=1
-                            )
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(
-                                point.explicit_bounds,
-                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                            )
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                            self.assertEqual(point.value, 0)
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histrogram_data_point_seen = True
+                    self.assertAlmostEqual(duration_s, point.sum, places=1)
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(
+                        point.explicit_bounds,
+                        HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                    )
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                    self.assertEqual(point.value, 0)
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
     # pylint: disable=too-many-locals
@@ -1073,54 +1061,46 @@ class TestMiddleware(WsgiTestBase):
             self.assertEqual(response.status_code, 200)
         duration_s = max(default_timer() - start, 0)
         duration = max(round(duration_s * 1000), 0)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histrogram_data_point_seen = False
 
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histrogram_data_point_seen = True
-                            if metric.name == "http.server.request.duration":
-                                self.assertAlmostEqual(
-                                    duration_s, point.sum, places=1
-                                )
-                                self.assertDictEqual(
-                                    expected_duration_attributes_new,
-                                    dict(point.attributes),
-                                )
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                                )
-                            elif metric.name == "http.server.duration":
-                                self.assertAlmostEqual(
-                                    duration, point.sum, delta=100
-                                )
-                                self.assertDictEqual(
-                                    expected_duration_attributes_old,
-                                    dict(point.attributes),
-                                )
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
-                                )
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                            self.assertEqual(point.value, 0)
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histrogram_data_point_seen = True
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                        )
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=100)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+                        )
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                    self.assertEqual(point.value, 0)
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
     def test_wsgi_metrics_unistrument(self):
