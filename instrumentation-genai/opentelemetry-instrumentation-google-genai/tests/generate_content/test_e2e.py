@@ -135,6 +135,7 @@ def _redact_headers(headers):
 
 
 def _before_record_request(request):
+    # aiohttp reports the request method in lower case while it is recorded in the cassette in upper case.
     if request.method:
         request.method = request.method.upper()
     if request.headers:
