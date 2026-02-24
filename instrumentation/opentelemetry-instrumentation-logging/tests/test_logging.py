@@ -42,6 +42,7 @@ class FakeTracerProvider:
         )
 
 
+# pylint: disable=no-self-use,too-many-public-methods
 class TestLoggingInstrumentorProxyTracerProvider(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
