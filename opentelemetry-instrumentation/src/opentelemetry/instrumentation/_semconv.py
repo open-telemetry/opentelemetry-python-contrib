@@ -18,6 +18,7 @@ import os
 import threading
 from enum import Enum
 from typing import Container, Mapping, MutableMapping
+from urllib.parse import urlparse
 
 from packaging import version as package_version
 
@@ -659,11 +660,17 @@ def _get_schema_version_for_opt_in_mode(
         return _LEGACY_SCHEMA_VERSION
 
     signal_versions = {
-        _OpenTelemetryStabilitySignalType.HTTP: "1.21.0",
-        _OpenTelemetryStabilitySignalType.DATABASE: "1.25.0",
-        _OpenTelemetryStabilitySignalType.GEN_AI: "1.26.0",
+        _OpenTelemetryStabilitySignalType.HTTP: Schemas.V1_21_0.value,
+        _OpenTelemetryStabilitySignalType.DATABASE: Schemas.V1_25_0.value,
+        _OpenTelemetryStabilitySignalType.GEN_AI: Schemas.V1_26_0.value,
     }
-    return signal_versions.get(signal_type, _LEGACY_SCHEMA_VERSION)
+    schema_url = signal_versions.get(signal_type)
+    if not schema_url:
+        return _LEGACY_SCHEMA_VERSION
+
+    path = urlparse(schema_url).path
+    schema_version = path.rstrip("/").split("/")[-1]
+    return schema_version or _LEGACY_SCHEMA_VERSION
 
 
 def _get_schema_url_for_signal_types(
