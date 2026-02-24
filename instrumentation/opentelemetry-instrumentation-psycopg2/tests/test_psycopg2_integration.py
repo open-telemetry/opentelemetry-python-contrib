@@ -65,6 +65,10 @@ class MockConnection:
         return {"dbname": "test"}
 
 
+class CustomCursor(MockCursor):
+    pass
+
+
 class TestPostgresqlIntegration(TestBase):
     def setUp(self):
         super().setUp()
@@ -214,6 +218,96 @@ class TestPostgresqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    # pylint: disable=unused-argument
+    def test_instrument_connection_is_idempotent(self):
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        instrumentor = Psycopg2Instrumentor()
+        cnx = instrumentor.instrument_connection(cnx)
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_with_custom_cursor_factory_instrument_then_uninstrument(
+        self,
+    ):
+        instrumentor = Psycopg2Instrumentor()
+        cnx = psycopg2.connect(database="test", cursor_factory=CustomCursor)
+        query = "SELECT * FROM test"
+
+        self.assertIs(cnx.cursor_factory, CustomCursor)
+
+        cnx = instrumentor.instrument_connection(cnx)
+        self.assertIsNot(cnx.cursor_factory, CustomCursor)
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        self.assertIs(cnx.cursor_factory, CustomCursor)
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_uninstrument_connection_is_idempotent(self):
+        instrumentor = Psycopg2Instrumentor()
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_reinstrument_after_uninstrument(self):
+        instrumentor = Psycopg2Instrumentor()
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 2)
 
     # pylint: disable=unused-argument
     def test_uninstrument_connection_with_instrument(self):

@@ -141,16 +141,22 @@ API
 """
 
 import logging
+import threading
 import typing
+import weakref
 from importlib.metadata import PackageNotFoundError, distribution
 from typing import Collection
 
 import psycopg2
 from psycopg2.extensions import (
+    connection as pg_connection,  # pylint: disable=no-name-in-module
+)
+from psycopg2.extensions import (
     cursor as pg_cursor,  # pylint: disable=no-name-in-module
 )
 from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg2.package import (
@@ -161,7 +167,6 @@ from opentelemetry.instrumentation.psycopg2.package import (
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
 _logger = logging.getLogger(__name__)
-_OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"
 
 
 class Psycopg2Instrumentor(BaseInstrumentor):
@@ -173,6 +178,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     }
 
     _DATABASE_SYSTEM = "postgresql"
+    _MISSING = object()
+    _INSTRUMENTED_CONNECTIONS = weakref.WeakKeyDictionary()
+    _INSTRUMENTED_CONNECTIONS_LOCK = threading.Lock()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         # Determine which package of psycopg2 is installed
@@ -222,8 +230,14 @@ class Psycopg2Instrumentor(BaseInstrumentor):
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(
+        connection: pg_connection,
+        tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+    ) -> pg_connection:
         """Enable instrumentation in a psycopg2 connection.
+
+        Uses `_INSTRUMENTED_CONNECTIONS` to store the original `cursor_factory`
+        per connection.
 
         Args:
             connection: psycopg2.extensions.connection
@@ -236,29 +250,44 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             An instrumented psycopg2 connection object.
         """
 
-        if not hasattr(connection, "_is_instrumented_by_opentelemetry"):
-            connection._is_instrumented_by_opentelemetry = False
+        with Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS_LOCK:
+            if connection in Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS:
+                _logger.warning(
+                    "Attempting to instrument Psycopg connection while already instrumented"
+                )
+                return connection
 
-        if not connection._is_instrumented_by_opentelemetry:
-            setattr(
-                connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
-            )
+            original_cursor_factory = connection.cursor_factory
             connection.cursor_factory = _new_cursor_factory(
-                tracer_provider=tracer_provider
+                base_factory=original_cursor_factory,
+                tracer_provider=tracer_provider,
             )
-            connection._is_instrumented_by_opentelemetry = True
-        else:
-            _logger.warning(
-                "Attempting to instrument Psycopg connection while already instrumented"
+            Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS[connection] = (
+                original_cursor_factory
             )
+
         return connection
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def uninstrument_connection(connection):
-        connection.cursor_factory = getattr(
-            connection, _OTEL_CURSOR_FACTORY_KEY, None
-        )
+    def uninstrument_connection(connection: pg_connection) -> pg_connection:
+        """Disable instrumentation for a psycopg2 connection.
+
+        Restores the original `cursor_factory` from `_INSTRUMENTED_CONNECTIONS`.
+        `_MISSING` is used to distinguish "not tracked" from a tracked `None` value
+        which is allowed in psycopg2.
+        """
+        with Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS_LOCK:
+            original_cursor_factory = (
+                Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS.pop(
+                    connection, Psycopg2Instrumentor._MISSING
+                )
+            )
+
+        if original_cursor_factory is not Psycopg2Instrumentor._MISSING:
+            connection.cursor_factory = original_cursor_factory
+        else:
+            connection.cursor_factory = None
 
         return connection
 
