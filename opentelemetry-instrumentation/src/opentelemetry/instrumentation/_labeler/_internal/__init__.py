@@ -180,9 +180,8 @@ def get_labeler_attributes() -> Mapping[str, Union[str, int, float, bool]]:
     """
     labeler = _labeler_context.get()
     if labeler is None:
-        return MappingProxyType(
-            {}  # type: Dict[str, Union[str, int, float, bool]]
-        )
+        empty_attributes: Dict[str, Union[str, int, float, bool]] = {}
+        return MappingProxyType(empty_attributes)
     return labeler.get_attributes()
 
 
