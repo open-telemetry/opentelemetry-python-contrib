@@ -546,7 +546,7 @@ class TestLoggingHandler(unittest.TestCase):
 
     def test_logging_handler_without_env_var_uses_default_limit(self):
         """Test that without OTEL_ATTRIBUTE_COUNT_LIMIT, default limit (128) should apply."""
-        processor, logger, handler = set_up_test_logging(logging.WARNING)
+        processor, logger, _ = set_up_test_logging(logging.WARNING)
 
         # Create a log record with many attributes (more than default limit of 128)
         extra_attrs = {f"attr_{i}": f"value_{i}" for i in range(150)}
@@ -574,6 +574,7 @@ class TestLoggingHandler(unittest.TestCase):
         )
 
 
+# pylint: disable=invalid-name
 class SetupLoggingHandlerTestCase(unittest.TestCase):
     def test_basicConfig_works_with_otel_handler(self):
         logger_provider = LoggerProvider()
