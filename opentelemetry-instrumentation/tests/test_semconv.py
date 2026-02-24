@@ -24,6 +24,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
+    _set_db_operation,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -32,12 +33,14 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
 )
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
+    DB_OPERATION_NAME,
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
@@ -573,3 +576,45 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         result = {}
         _set_db_user(result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertNotIn(DB_USER, result)
+
+    def test_db_operation_default(self):
+        result = {}
+        _set_db_operation(
+            result,
+            "SELECT",
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertIn(DB_OPERATION, result)
+        self.assertEqual(result[DB_OPERATION], "SELECT")
+        self.assertNotIn(DB_OPERATION_NAME, result)
+
+    def test_db_operation_database_stable(self):
+        result = {}
+        _set_db_operation(
+            result,
+            "SELECT",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        self.assertNotIn(DB_OPERATION, result)
+        self.assertIn(DB_OPERATION_NAME, result)
+        self.assertEqual(result[DB_OPERATION_NAME], "SELECT")
+
+    def test_db_operation_database_dup(self):
+        result = {}
+        _set_db_operation(
+            result,
+            "SELECT",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        self.assertIn(DB_OPERATION, result)
+        self.assertEqual(result[DB_OPERATION], "SELECT")
+        self.assertIn(DB_OPERATION_NAME, result)
+        self.assertEqual(result[DB_OPERATION_NAME], "SELECT")
+
+    def test_db_operation_none_value(self):
+        result = {}
+        _set_db_operation(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertNotIn(DB_OPERATION, result)
+        self.assertNotIn(DB_OPERATION_NAME, result)

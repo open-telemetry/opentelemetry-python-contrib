@@ -25,6 +25,7 @@ from packaging import version as package_version
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -53,6 +54,7 @@ from opentelemetry.semconv.attributes.client_attributes import (
 )
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
+    DB_OPERATION_NAME,
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
@@ -594,6 +596,17 @@ def _set_db_user(
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, DB_USER, user)
     # No new attribute - db.user was removed with no replacement
+
+
+def _set_db_operation(
+    result: MutableMapping[str, AttributeValue],
+    operation: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_OPERATION, operation)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_OPERATION_NAME, operation)
 
 
 # General

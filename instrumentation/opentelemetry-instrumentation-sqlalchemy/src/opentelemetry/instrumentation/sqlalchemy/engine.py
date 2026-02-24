@@ -26,6 +26,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
+    _set_db_operation,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -362,11 +363,18 @@ class EngineTracer:
         }
         return commenter_data
 
-    def _set_db_client_span_attributes(self, span, statement, attrs) -> None:
-        """Uses statement and attrs to set attributes of provided Otel span"""
+    def _set_db_client_span_attributes(
+        self, span, statement, db_name, attrs
+    ) -> None:
+        """Uses statement, db_name, and attrs to set attributes of provided Otel span"""
         span_attrs = dict(attrs)
         _set_db_statement(span_attrs, statement, self._sem_conv_opt_in_mode_db)
         _set_db_system(span_attrs, self.vendor, self._sem_conv_opt_in_mode_db)
+        _set_db_operation(
+            span_attrs,
+            self._operation_name(db_name, statement),
+            self._sem_conv_opt_in_mode_db,
+        )
         for key, value in span_attrs.items():
             span.set_attribute(key, value)
 
@@ -412,14 +420,14 @@ class EngineTracer:
                             statement, **commenter_data
                         )
                         self._set_db_client_span_attributes(
-                            span, statement, attrs
+                            span, statement, db_name, attrs
                         )
 
                     else:
                         # sqlcomment is only added to executed query
                         # so db.statement and/or db.query.text is set before add_sql_comment
                         self._set_db_client_span_attributes(
-                            span, statement, attrs
+                            span, statement, db_name, attrs
                         )
                         statement = _add_sql_comment(
                             statement, **commenter_data
@@ -427,7 +435,9 @@ class EngineTracer:
 
                 else:
                     # no sqlcomment anywhere
-                    self._set_db_client_span_attributes(span, statement, attrs)
+                    self._set_db_client_span_attributes(
+                        span, statement, db_name, attrs
+                    )
 
         context._otel_span = span
 
