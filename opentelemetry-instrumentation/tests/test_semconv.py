@@ -229,7 +229,8 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
     @stability_mode("")
     def test_get_schema_version_for_opt_in_mode_gen_ai_stable(self):
         version = _get_schema_version_for_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.GEN_AI, _StabilityMode.HTTP
+            _OpenTelemetryStabilitySignalType.GEN_AI,
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
         )
         self.assertEqual(version, "1.26.0")
 
