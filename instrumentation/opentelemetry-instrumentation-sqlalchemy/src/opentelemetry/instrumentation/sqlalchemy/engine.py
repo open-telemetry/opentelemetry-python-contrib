@@ -60,6 +60,10 @@ def _get_db_name_from_cursor_or_conn(vendor, conn, cursor):
         db_name = _get_mysql_db_name(cursor)
     elif "mssql" in vendor or "sqlserver" in vendor:
         db_name = _get_mssql_db_name(cursor)
+        if not db_name:
+            engine = getattr(conn, "engine", None)
+            url = getattr(engine, "url", None)
+            db_name = getattr(url, "database", None)
     else:
         # Try connection for sqlite and others
         engine = getattr(conn, "engine", None)
