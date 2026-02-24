@@ -149,9 +149,6 @@ from typing import Collection
 
 import psycopg2
 from psycopg2.extensions import (
-    connection as pg_connection,  # pylint: disable=no-name-in-module
-)
-from psycopg2.extensions import (
     cursor as pg_cursor,  # pylint: disable=no-name-in-module
 )
 from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
@@ -167,6 +164,13 @@ from opentelemetry.instrumentation.psycopg2.package import (
 from opentelemetry.instrumentation.psycopg2.version import __version__
 
 _logger = logging.getLogger(__name__)
+
+if typing.TYPE_CHECKING:
+    from psycopg2.extensions import (  # pylint: disable=no-name-in-module
+        connection as pg_connection,
+    )
+else:
+    pg_connection = typing.Any
 
 
 class Psycopg2Instrumentor(BaseInstrumentor):
@@ -240,7 +244,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         per connection.
 
         Args:
-            connection: psycopg2.extensions.connection
+            connection:
                 The psycopg2 connection object to be instrumented.
             tracer_provider: opentelemetry.trace.TracerProvider, optional
                 The TracerProvider to use for instrumentation. If not specified,
