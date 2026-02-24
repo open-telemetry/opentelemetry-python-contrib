@@ -44,8 +44,8 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 from opentelemetry.trace.status import Status, StatusCode
 
 
-def _get_db_name_from_cursor(vendor, cursor):
-    """Return DB name from cursor for PostgreSQL, MySQL, or MSSQL -- else None"""
+def _get_db_name_from_cursor_or_conn(vendor, conn, cursor):
+    """Return DB name from cursor or connection when available -- else None."""
     if not vendor:
         return None
 
@@ -59,6 +59,11 @@ def _get_db_name_from_cursor(vendor, cursor):
         db_name = _get_mysql_db_name(cursor)
     elif "mssql" in vendor or "sqlserver" in vendor:
         db_name = _get_mssql_db_name(cursor)
+    else:
+        # Try connection for sqlite and others
+        engine = getattr(conn, "engine", None)
+        url = getattr(engine, "url", None)
+        db_name = getattr(url, "database", None)
     return db_name
 
 
@@ -377,8 +382,9 @@ class EngineTracer:
             self._sem_conv_opt_in_mode_http,
         )
         if not found:
-            attrs = _get_attributes_from_cursor(
+            attrs = _get_attributes_from_cursor_or_conn(
                 self.vendor,
+                conn,
                 cursor,
                 attrs,
                 self._sem_conv_opt_in_mode_db,
@@ -386,13 +392,7 @@ class EngineTracer:
             )
 
         # Extract db_name for operation name
-        if self.vendor == "sqlite":
-            db_name = conn.engine.url.database
-        else:
-            db_name = _get_db_name_from_cursor(self.vendor, cursor)
-            # Fallback to URL if cursor-based extraction failed
-            if not db_name:
-                db_name = conn.engine.url.database
+        db_name = _get_db_name_from_cursor_or_conn(self.vendor, conn, cursor)
 
         span = self.tracer.start_span(
             self._operation_name(db_name, statement),
@@ -476,8 +476,13 @@ def _get_attributes_from_url(
     return attrs, bool(url.host)
 
 
-def _get_attributes_from_cursor(
-    vendor, cursor, attrs, sem_conv_opt_in_mode_db, sem_conv_opt_in_mode_http
+def _get_attributes_from_cursor_or_conn(
+    vendor,
+    conn,
+    cursor,
+    attrs,
+    sem_conv_opt_in_mode_db,
+    sem_conv_opt_in_mode_http,
 ):
     """Attempt to set db connection attributes by introspecting the cursor."""
     if vendor == "postgresql":
@@ -485,7 +490,7 @@ def _get_attributes_from_cursor(
         if not info:
             return attrs
 
-        db_name = _get_db_name_from_cursor(vendor, cursor)
+        db_name = _get_db_name_from_cursor_or_conn(vendor, conn, cursor)
         _set_db_name(attrs, db_name, sem_conv_opt_in_mode_db)
         is_unix_socket = info.host and info.host.startswith("/")
 
@@ -508,7 +513,7 @@ def _get_attributes_from_cursor(
                     attrs, int(info.port), sem_conv_opt_in_mode_http
                 )
     elif vendor == "sqlite":
-        db_name = _get_db_name_from_cursor(vendor, cursor)
+        db_name = _get_db_name_from_cursor_or_conn(vendor, conn, cursor)
         _set_db_name(attrs, db_name, sem_conv_opt_in_mode_db)
         # SQLite has no network attributes
     return attrs

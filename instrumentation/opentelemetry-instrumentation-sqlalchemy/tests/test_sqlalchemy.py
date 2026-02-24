@@ -32,7 +32,7 @@ from opentelemetry.instrumentation.sqlalchemy import (
     SQLAlchemyInstrumentor,
 )
 from opentelemetry.instrumentation.sqlalchemy.engine import (
-    _get_db_name_from_cursor,
+    _get_db_name_from_cursor_or_conn,
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.resources import Resource
@@ -960,101 +960,136 @@ class TestSqlalchemyInstrumentation(TestBase):
         metric_list = self.get_sorted_metrics()
         self.assertEqual(len(metric_list), 0)
 
-    def test_get_db_name_from_cursor_postgresql_success(self):
+    def test_get_db_name_from_cursor_or_conn_postgresql_success(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_info = mock.Mock()
         mock_info.dbname = "test_database"
         mock_connection.info = mock_info
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor("postgresql", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "postgresql", mock_connection, mock_cursor
+        )
         self.assertEqual(result, "test_database")
 
-    def test_get_db_name_from_cursor_postgresql_no_connection(self):
+    def test_get_db_name_from_cursor_or_conn_postgresql_no_connection(self):
         mock_cursor = mock.Mock()
         mock_cursor.connection = None
-        result = _get_db_name_from_cursor("postgresql", mock_cursor)
+        mock_connection = mock.Mock()
+        result = _get_db_name_from_cursor_or_conn(
+            "postgresql", mock_connection, mock_cursor
+        )
         self.assertIsNone(result)
 
-    def test_get_db_name_from_cursor_postgresql_no_dbname(self):
+    def test_get_db_name_from_cursor_or_conn_postgresql_no_dbname(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_info = mock.Mock()
         mock_info.dbname = None
         mock_connection.info = mock_info
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor("postgresql", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "postgresql", mock_connection, mock_cursor
+        )
         self.assertIsNone(result)
 
-    def test_get_db_name_from_cursor_unknown_vendor(self):
+    def test_get_db_name_from_cursor_or_conn_unknown_vendor_with_url(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
+        mock_connection.engine.url.database = "foo"
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor("unknown_db", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "unknown_db", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "foo")
+
+    def test_get_db_name_from_cursor_or_conn_unknown_vendor_without_url(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.engine.url.database = None
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "unknown_db", mock_connection, mock_cursor
+        )
         self.assertIsNone(result)
 
-    def test_get_db_name_from_cursor_mysql_with_database_attr(self):
+    def test_get_db_name_from_cursor_or_conn_mysql_with_database_attr(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_connection.database = "mysql_test_db"
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
         self.assertEqual(result, "mysql_test_db")
 
-    def test_get_db_name_from_cursor_mysql_with_db_attr_string(self):
+    def test_get_db_name_from_cursor_or_conn_mysql_with_db_attr_string(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_connection.db = "mysql_test_db"
         del mock_connection.database  # Remove database attribute
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
         self.assertEqual(result, "mysql_test_db")
 
-    def test_get_db_name_from_cursor_mysql_with_db_attr_bytes(self):
+    def test_get_db_name_from_cursor_or_conn_mysql_with_db_attr_bytes(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_connection.db = b"mysql_test_db"
         del mock_connection.database  # Remove database attribute
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
         self.assertEqual(result, "mysql_test_db")
 
-    def test_get_db_name_from_cursor_mysql_with_cnx_attr(self):
+    def test_get_db_name_from_cursor_or_conn_mysql_with_cnx_attr(self):
         mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
         mock_cnx = mock.Mock()
         mock_cnx.database = "mysql_cnx_db"
         mock_cursor.connection = None
         mock_cursor._cnx = mock_cnx
-        result = _get_db_name_from_cursor("mysql", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
         self.assertEqual(result, "mysql_cnx_db")
 
-    def test_get_db_name_from_cursor_mssql_with_database_attr(self):
+    def test_get_db_name_from_cursor_or_conn_mssql_with_database_attr(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_connection.database = "mssql_test_db"
         mock_cursor.connection = mock_connection
-        result = _get_db_name_from_cursor("mssql", mock_cursor)
+        result = _get_db_name_from_cursor_or_conn(
+            "mssql", mock_connection, mock_cursor
+        )
         self.assertEqual(result, "mssql_test_db")
 
-    def test_get_db_name_from_cursor_mysql_variant_names(self):
+    def test_get_db_name_from_cursor_or_conn_mysql_variant_names(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_connection.database = "test_db"
         mock_cursor.connection = mock_connection
         for vendor in ["mysql", "pymysql", "mysqlclient", "mysql+pymysql"]:
-            result = _get_db_name_from_cursor(vendor, mock_cursor)
+            result = _get_db_name_from_cursor_or_conn(
+                vendor, mock_connection, mock_cursor
+            )
             self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
 
-    def test_get_db_name_from_cursor_mssql_variant_names(self):
+    def test_get_db_name_from_cursor_or_conn_mssql_variant_names(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_connection.database = "test_db"
         mock_cursor.connection = mock_connection
         for vendor in ["mssql", "mssql+pyodbc", "sqlserver"]:
-            result = _get_db_name_from_cursor(vendor, mock_cursor)
+            result = _get_db_name_from_cursor_or_conn(
+                vendor, mock_connection, mock_cursor
+            )
             self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
 
-    def test_get_db_name_from_cursor_postgresql_variant_names(self):
+    def test_get_db_name_from_cursor_or_conn_postgresql_variant_names(self):
         mock_cursor = mock.Mock()
         mock_connection = mock.Mock()
         mock_info = mock.Mock()
@@ -1062,5 +1097,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         mock_connection.info = mock_info
         mock_cursor.connection = mock_connection
         for vendor in ["postgresql", "postgres", "postgresql+psycopg2"]:
-            result = _get_db_name_from_cursor(vendor, mock_cursor)
+            result = _get_db_name_from_cursor_or_conn(
+                vendor, mock_connection, mock_cursor
+            )
             self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
