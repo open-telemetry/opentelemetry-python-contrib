@@ -21,6 +21,7 @@ from unittest.mock import patch
 from opentelemetry.instrumentation._labeler import (
     Labeler,
     clear_labeler,
+    enrich_metric_attributes,
     get_labeler,
     get_labeler_attributes,
     set_labeler,
@@ -193,6 +194,29 @@ class TestLabeler(unittest.TestCase):
         attributes = labeler.get_attributes()
         self.assertEqual(attributes, {})
         self.assertEqual(len(labeler), 0)
+
+    def test_enrich_metric_attributes_skips_base_key_overrides(self):
+        base_attributes = {
+            "http.method": "GET",
+            "http.status_code": 200,
+        }
+
+        labeler = get_labeler()
+        labeler.add("http.method", "POST")
+        labeler.add("custom_attr", "test-value")
+
+        enriched = enrich_metric_attributes(base_attributes)
+
+        self.assertEqual(enriched["http.method"], "GET")
+        self.assertEqual(enriched["http.status_code"], 200)
+        self.assertEqual(enriched["custom_attr"], "test-value")
+        self.assertEqual(
+            base_attributes,
+            {
+                "http.method": "GET",
+                "http.status_code": 200,
+            },
+        )
 
     def test_thread_safety(self):
         labeler = Labeler(max_custom_attrs=1100)  # 11 * 100
