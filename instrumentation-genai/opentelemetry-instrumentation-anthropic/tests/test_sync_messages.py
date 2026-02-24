@@ -27,7 +27,7 @@ from anthropic.resources.messages import Messages as _Messages
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.instrumentation.anthropic.wrappers import (
     MessageWrapper,
-    StreamWrapper,
+    MessagesStreamWrapper,
 )
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
@@ -729,7 +729,7 @@ def test_message_wrapper_aggregates_cache_tokens():
 
 
 def test_stream_wrapper_aggregates_cache_tokens():
-    """StreamWrapper should aggregate cache token fields from stream chunks."""
+    """MessagesStreamWrapper should aggregate cache token fields."""
 
     class FakeHandler:
         def stop_llm(self, invocation):  # pylint: disable=no-self-use
@@ -783,7 +783,7 @@ def test_stream_wrapper_aggregates_cache_tokens():
         request_model="claude-sonnet-4-20250514",
         provider="anthropic",
     )
-    wrapper = StreamWrapper(  # type: ignore[arg-type]
+    wrapper = MessagesStreamWrapper(  # type: ignore[arg-type]
         FakeStream(), FakeHandler(), invocation, capture_content=False
     )
     list(wrapper)

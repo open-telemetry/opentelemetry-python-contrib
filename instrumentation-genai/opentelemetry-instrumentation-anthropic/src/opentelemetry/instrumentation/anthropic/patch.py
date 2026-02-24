@@ -31,7 +31,7 @@ from .messages_extractors import (
 )
 from .wrappers import (
     MessageWrapper,
-    StreamWrapper,
+    MessagesStreamWrapper,
 )
 
 if TYPE_CHECKING:
@@ -56,7 +56,7 @@ def messages_create(
         instance: "Messages",
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
-    ) -> Union["Message", StreamWrapper]:
+    ) -> Union["Message", MessagesStreamWrapper]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
         request_model_attribute = attributes.get(
@@ -88,7 +88,7 @@ def messages_create(
             result = wrapped(*args, **kwargs)
             if is_streaming:
                 stream_result = cast("Stream[RawMessageStreamEvent]", result)
-                return StreamWrapper(
+                return MessagesStreamWrapper(
                     stream_result, handler, invocation, capture_content
                 )
             message_result = cast("Message", result)

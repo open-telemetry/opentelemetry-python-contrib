@@ -91,7 +91,7 @@ class MessageWrapper:
         return self._message
 
 
-class StreamWrapper(Iterator["RawMessageStreamEvent"]):
+class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
     """Wrapper for Anthropic Stream that handles telemetry."""
 
     def __init__(
@@ -162,11 +162,8 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
                 block = self._content_blocks.setdefault(index, {})
                 update_stream_block_state(block, delta)
 
-    def _finalize_invocation(self) -> None:
-        if self._finalized:
-            return
-        self._finalized = True
-
+    def _set_invocation_response_attributes(self) -> None:
+        """Extract accumulated stream state into the invocation."""
         if self._response_model:
             self._invocation.response_model_name = self._response_model
         if self._response_id:
@@ -200,9 +197,24 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
                 )
             ]
 
+    def _stop(self) -> None:
+        if self._finalized:
+            return
+        self._set_invocation_response_attributes()
         self._handler.stop_llm(self._invocation)
+        self._finalized = True
 
-    def __iter__(self) -> "StreamWrapper":
+    def _fail(
+        self, message: str, error_type: type[BaseException]
+    ) -> None:
+        if self._finalized:
+            return
+        self._handler.fail_llm(
+            self._invocation, Error(message=message, type=error_type)
+        )
+        self._finalized = True
+
+    def __iter__(self) -> "MessagesStreamWrapper":
         return self
 
     def __getattr__(self, name: str) -> Any:
@@ -214,22 +226,32 @@ class StreamWrapper(Iterator["RawMessageStreamEvent"]):
             self._process_chunk(chunk)
             return chunk
         except StopIteration:
-            self._finalize_invocation()
+            self._stop()
             raise
         except Exception as exc:
-            self._handler.fail_llm(
-                self._invocation, Error(message=str(exc), type=type(exc))
-            )
+            self._fail(str(exc), type(exc))
             raise
 
-    def __enter__(self) -> "StreamWrapper":
+    def __enter__(self) -> "MessagesStreamWrapper":
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
-        self.close()
+        try:
+            if exc_type is not None:
+                self._fail(
+                    str(exc_val), type(exc_val) if exc_val else Exception
+                )
+        finally:
+            self.close()
         return False
 
     def close(self) -> None:
-        if hasattr(self._stream, "close"):
-            self._stream.close()
-        self._finalize_invocation()
+        try:
+            if hasattr(self._stream, "close"):
+                self._stream.close()
+        finally:
+            self._stop()
+
+
+# Backward-compatible alias for older imports.
+StreamWrapper = MessagesStreamWrapper
