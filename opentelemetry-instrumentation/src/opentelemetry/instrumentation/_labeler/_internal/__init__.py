@@ -16,7 +16,9 @@ import contextvars
 import logging
 import threading
 from types import MappingProxyType
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Mapping, Optional, Union
+
+from opentelemetry.util.types import AttributeValue
 
 # Context variable to store the current labeler
 _labeler_context: contextvars.ContextVar[Optional["Labeler"]] = (
@@ -51,7 +53,7 @@ class Labeler:
         self._max_custom_attrs = max_custom_attrs
         self._max_attr_value_length = max_attr_value_length
 
-    def add(self, key: str, value: Union[str, int, float, bool]) -> None:
+    def add(self, key: str, value: Any) -> None:
         """
         Add a single attribute to the labeler, subject to the labeler's limits:
         - If max_custom_attrs limit is reached and this is a new key, the attribute is ignored
@@ -84,9 +86,7 @@ class Labeler:
 
             self._attributes[key] = value
 
-    def add_attributes(
-        self, attributes: Dict[str, Union[str, int, float, bool]]
-    ) -> None:
+    def add_attributes(self, attributes: Dict[str, Any]) -> None:
         """
         Add multiple attributes to the labeler, subject to the labeler's limits:
         - If max_custom_attrs limit is reached and this is a new key, the attribute is ignored
@@ -120,7 +120,7 @@ class Labeler:
 
                 self._attributes[key] = value
 
-    def get_attributes(self) -> Dict[str, Union[str, int, float, bool]]:
+    def get_attributes(self) -> Mapping[str, Union[str, int, float, bool]]:
         """
         Returns a copy of all attributes added to the labeler.
         """
@@ -171,7 +171,7 @@ def clear_labeler() -> None:
     _labeler_context.set(None)
 
 
-def get_labeler_attributes() -> Dict[str, Union[str, int, float, bool]]:
+def get_labeler_attributes() -> Mapping[str, Union[str, int, float, bool]]:
     """
     Get attributes from the current labeler, if any.
 
@@ -180,14 +180,16 @@ def get_labeler_attributes() -> Dict[str, Union[str, int, float, bool]]:
     """
     labeler = _labeler_context.get()
     if labeler is None:
-        return MappingProxyType({})
+        return MappingProxyType(
+            {}  # type: Dict[str, Union[str, int, float, bool]]
+        )
     return labeler.get_attributes()
 
 
 def enrich_metric_attributes(
     base_attributes: Dict[str, Any],
     enrich_enabled: bool = True,
-) -> Dict[str, Any]:
+) -> Dict[str, AttributeValue]:
     """
     Combines base_attributes with custom attributes from the current labeler,
     returning a new dictionary of attributes according to the labeler configuration:
