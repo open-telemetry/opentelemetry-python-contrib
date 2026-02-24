@@ -113,6 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4078](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4171))
 - `opentelemetry-instrumentation-aiohttp-server`: fix HTTP error inconsistencies
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
+- `opentelemetry-instrumentation-psycopg2`: Fix AttributeError by using instrumented connections weakref, instead of mutating connection object
+  ([#4257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4257))
 
 ### Breaking changes
 
