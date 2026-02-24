@@ -320,6 +320,9 @@ def setup_vcr(vcr):
 
 @pytest.fixture(name="patch_vcr_aiohttp_stream", scope="module", autouse=True)
 def fixture_patch_vcr_aiohttp_stream():
+    # Allows the async tests to not be stuck in inifinite loop when streaming
+    # a VCR cassette with aiohttp stubs.
+    # https://github.com/kevin1024/vcrpy/issues/927
     try:
         # These packages can only be imported in python >= 3.10
         from aiohttp.client_exceptions import (  # noqa: PLC0415
@@ -332,8 +335,8 @@ def fixture_patch_vcr_aiohttp_stream():
     class _ReplayMockStream(aiohttp_stubs.MockStream):
         # Keep vcrpy's stream behavior, but ignore aiohttp's
         # close-time ClientConnectionError("Connection closed") during
-        # cassette replay, where the full response is already buffered and
-        # this condition should be treated as normal EOF.
+        # cassette replay, where the full response is already buffered
+        # and this condition should be treated as normal EOF.
         def set_exception(self, exc):
             if isinstance(exc, ClientConnectionError) and exc.args == (
                 "Connection closed",
