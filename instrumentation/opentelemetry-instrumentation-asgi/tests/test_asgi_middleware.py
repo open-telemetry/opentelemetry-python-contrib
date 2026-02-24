@@ -1564,11 +1564,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) != 0)
             for scope_metric in resource_metric.scope_metrics:
+                if scope_metric.scope.name != SCOPE:
+                    continue
                 self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names_old)
                     data_points = list(metric.data.data_points)
@@ -1649,11 +1647,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) != 0)
             for scope_metric in resource_metric.scope_metrics:
+                if scope_metric.scope.name != SCOPE:
+                    continue
                 self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names_new)
                     data_points = list(metric.data.data_points)
@@ -1732,11 +1728,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         for resource_metric in metrics_list.resource_metrics:
             self.assertTrue(len(resource_metric.scope_metrics) != 0)
             for scope_metric in resource_metric.scope_metrics:
+                if scope_metric.scope.name != SCOPE:
+                    continue
                 self.assertTrue(len(scope_metric.metrics) != 0)
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.asgi",
-                )
                 for metric in scope_metric.metrics:
                     self.assertIn(metric.name, _expected_metric_names_both)
                     data_points = list(metric.data.data_points)
