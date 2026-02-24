@@ -15,7 +15,11 @@
 # pylint: disable=empty-docstring,no-value-for-parameter,no-member,no-name-in-module
 
 """
-The OpenTelemetry `logging` integration automatically injects tracing context into
+The OpenTelemetry `logging` instrumentation automatically instruments Python logging
+system with an handler to convert log messages into OpenTelemetry logs.
+You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
+
+The OpenTelemetry `logging` integration can inject tracing context into
 log statements, though it is opt-in and must be enabled explicitly by setting the
 environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
 
