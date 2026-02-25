@@ -244,6 +244,14 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
 
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(logging_handler_instances, [])
+
     def test_no_op_tracer_provider(self):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(
