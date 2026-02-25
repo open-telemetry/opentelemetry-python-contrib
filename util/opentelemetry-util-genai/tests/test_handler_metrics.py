@@ -1,15 +1,33 @@
 from __future__ import annotations
 
+import json
+import os
 from typing import Any, Dict, List
+from unittest import TestCase
 from unittest.mock import patch
 
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import StatusCode
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import Error, LLMInvocation, ToolCall
 
 _DEFAULT_SCHEMA_URL = Schemas.V1_37_0.value
 
@@ -181,3 +199,183 @@ class TelemetryHandlerMetricsTest(TestBase):
                 self.assertEqual(
                     scope_metric.scope.schema_url, expected_schema_url
                 )
+
+
+class TelemetryHandlerToolTest(TestCase):
+    """Tests for tool call lifecycle methods"""
+
+    def setUp(self) -> None:
+        self.span_exporter = InMemorySpanExporter()
+        self.tracer_provider = TracerProvider()
+        self.tracer_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+        self.handler = TelemetryHandler(tracer_provider=self.tracer_provider)
+
+    def test_start_tool_call_creates_span(self):
+        """Test start_tool_call creates span with correct name and kind"""
+        tool = ToolCall(
+            name="get_weather",
+            arguments={"location": "Paris"},
+            id="call_123",
+        )
+        self.handler.start_tool_call(tool)
+
+        spans = self.span_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)  # Span not finished yet
+
+        self.assertIsNotNone(tool.span)
+        self.assertIsNotNone(tool.context_token)
+        self.assertEqual(tool.span.name, "execute_tool get_weather")
+        # Check kind is INTERNAL (value 1)
+        self.assertEqual(tool.span.kind, SpanKind.INTERNAL)
+
+    def test_stop_tool_call_ends_span(self):
+        """Test stop_tool_call ends span successfully"""
+        tool = ToolCall(
+            name="get_weather",
+            arguments={"location": "Paris"},
+            id="call_123",
+            tool_type="function",
+            tool_description="Get current weather",
+        )
+        self.handler.start_tool_call(tool)
+        tool.tool_result = {"temp": 20, "condition": "sunny"}
+        self.handler.stop_tool_call(tool)
+
+        spans = self.span_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.name, "execute_tool get_weather")
+        self.assertEqual(span.kind, SpanKind.INTERNAL)
+
+        # Check required attributes
+        self.assertEqual(
+            span.attributes[GenAI.GEN_AI_OPERATION_NAME],
+            "execute_tool",
+        )
+        # Check recommended attributes
+        self.assertEqual(
+            span.attributes[GenAI.GEN_AI_TOOL_NAME], "get_weather"
+        )
+        self.assertEqual(
+            span.attributes[GenAI.GEN_AI_TOOL_CALL_ID], "call_123"
+        )
+        self.assertEqual(span.attributes[GenAI.GEN_AI_TOOL_TYPE], "function")
+        self.assertEqual(
+            span.attributes[GenAI.GEN_AI_TOOL_DESCRIPTION],
+            "Get current weather",
+        )
+
+        # Check status is OK
+        self.assertEqual(span.status.status_code, StatusCode.OK)
+
+    def test_stop_tool_call_without_start(self):
+        """Test stop_tool_call without prior start is a no-op"""
+        tool = ToolCall(name="test", arguments={}, id=None)
+        # Don't call start_tool_call
+        self.handler.stop_tool_call(tool)
+
+        spans = self.span_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_fail_tool_call_sets_error_status(self):
+        """Test fail_tool_call sets error status and attributes"""
+        tool = ToolCall(name="failing_tool", arguments={}, id="call_456")
+        self.handler.start_tool_call(tool)
+
+        error = Error(message="Tool execution failed", type=ValueError)
+        self.handler.fail_tool_call(tool, error)
+
+        spans = self.span_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.name, "execute_tool failing_tool")
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(
+            span.attributes[error_attributes.ERROR_TYPE], "ValueError"
+        )
+
+    @patch.dict(
+        os.environ,
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_ONLY",
+        },
+    )
+    def test_tool_call_with_content_capture(self):
+        """Test tool call captures arguments and results when SPAN_ONLY mode"""
+        # Reset semconv state after patching env
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+
+        tool = ToolCall(
+            name="get_weather",
+            arguments={"location": "Paris"},
+            id="call_123",
+        )
+        self.handler.start_tool_call(tool)
+        tool.tool_result = {"temp": 20, "condition": "sunny"}
+        self.handler.stop_tool_call(tool)
+
+        spans = self.span_exporter.get_finished_spans()
+        span = spans[0]
+
+        # Check that arguments and result are captured
+        self.assertIn(GenAI.GEN_AI_TOOL_CALL_ARGUMENTS, span.attributes)
+        self.assertIn(GenAI.GEN_AI_TOOL_CALL_RESULT, span.attributes)
+
+        # Verify JSON serialization
+        args = json.loads(span.attributes[GenAI.GEN_AI_TOOL_CALL_ARGUMENTS])
+        self.assertEqual(args["location"], "Paris")
+
+        result = json.loads(span.attributes[GenAI.GEN_AI_TOOL_CALL_RESULT])
+        self.assertEqual(result["temp"], 20)
+
+    def test_tool_call_context_manager_success(self):
+        """Test tool_call context manager successfully"""
+        tool = ToolCall(
+            name="calculate_sum",
+            arguments={"a": 5, "b": 3},
+            id="call_789",
+            tool_type="function",
+        )
+
+        with self.handler.tool_call(tool) as tc:
+            # Simulate tool execution
+            tc.tool_result = {"sum": 8}
+
+        spans = self.span_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.name, "execute_tool calculate_sum")
+        self.assertEqual(span.status.status_code, StatusCode.OK)
+        self.assertEqual(
+            span.attributes[GenAI.GEN_AI_TOOL_NAME], "calculate_sum"
+        )
+
+    def test_tool_call_context_manager_with_exception(self):
+        """Test tool_call context manager handles exceptions"""
+        tool = ToolCall(name="failing_operation", arguments={}, id="call_999")
+
+        class ToolExecutionError(RuntimeError):
+            pass
+
+        with self.assertRaises(ToolExecutionError):
+            with self.handler.tool_call(tool):
+                raise ToolExecutionError("Tool execution failed")
+
+        spans = self.span_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.name, "execute_tool failing_operation")
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        # Error type includes full qualified name for local classes
+        self.assertIn(
+            "ToolExecutionError",
+            span.attributes[error_attributes.ERROR_TYPE],
+        )

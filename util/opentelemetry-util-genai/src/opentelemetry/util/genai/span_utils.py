@@ -37,6 +37,7 @@ from opentelemetry.util.genai.types import (
     LLMInvocation,
     MessagePart,
     OutputMessage,
+    ToolCall,
 )
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
@@ -279,6 +280,106 @@ def _get_llm_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
+def _get_tool_call_span_name(tool_call: ToolCall) -> str:
+    """Get span name for tool call execution per semantic convention.
+
+    Format: "execute_tool {gen_ai.tool.name}"
+    """
+    return f"execute_tool {tool_call.name}".strip()
+
+
+def _apply_tool_call_attributes(
+    span: Span,
+    tool_call: ToolCall,
+    capture_content: bool = False,
+) -> None:
+    """Apply semantic convention attributes from ToolCall to span.
+
+    Follows span.gen_ai.execute_tool.internal specification from:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md#execute-tool-span
+
+    Required attributes:
+    - gen_ai.operation.name = "execute_tool"
+
+    Recommended attributes (if available):
+    - gen_ai.tool.name
+    - gen_ai.tool.call.id
+    - gen_ai.tool.type
+    - gen_ai.tool.description
+
+    Opt-In attributes (only if capture_content=True and experimental mode):
+    - gen_ai.tool.call.arguments (sensitive data)
+    - gen_ai.tool.call.result (sensitive data)
+
+    Conditionally required:
+    - error.type (if operation ended in error)
+    """
+    # Set REQUIRED attribute
+    span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, "execute_tool")
+
+    # Set RECOMMENDED attributes (if present)
+    if tool_call.name:
+        span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_call.name)
+
+    if tool_call.id:
+        span.set_attribute(GenAI.GEN_AI_TOOL_CALL_ID, tool_call.id)
+
+    if tool_call.tool_type:
+        span.set_attribute(GenAI.GEN_AI_TOOL_TYPE, tool_call.tool_type)
+
+    if tool_call.tool_description:
+        span.set_attribute(
+            GenAI.GEN_AI_TOOL_DESCRIPTION, tool_call.tool_description
+        )
+
+    # Set OPT-IN attributes (only if capture_content enabled)
+    if capture_content and is_experimental_mode():
+        content_mode = get_content_capturing_mode()
+        if content_mode in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ):
+            if tool_call.arguments is not None:
+                # Serialize to JSON string per spec
+                span.set_attribute(
+                    GenAI.GEN_AI_TOOL_CALL_ARGUMENTS,
+                    gen_ai_json_dumps(tool_call.arguments),
+                )
+
+            if tool_call.tool_result is not None:
+                span.set_attribute(
+                    GenAI.GEN_AI_TOOL_CALL_RESULT,
+                    gen_ai_json_dumps(tool_call.tool_result),
+                )
+
+    # Set CONDITIONALLY REQUIRED attributes
+    if tool_call.error_type:
+        span.set_attribute(error_attributes.ERROR_TYPE, tool_call.error_type)
+        span.set_status(Status(StatusCode.ERROR))
+
+
+def _finish_tool_call_span(
+    span: Span,
+    tool_call: ToolCall,
+    capture_content: bool = False,
+) -> None:
+    """Finalize tool call span with result or error.
+
+    Sets span name, applies final attributes, and sets status.
+    """
+    # Update span name with actual tool name
+    span.update_name(_get_tool_call_span_name(tool_call))
+
+    # Apply all attributes including result if available
+    _apply_tool_call_attributes(span, tool_call, capture_content)
+
+    # Set status based on error presence
+    if tool_call.error_type:
+        span.set_status(Status(StatusCode.ERROR))
+    else:
+        span.set_status(Status(StatusCode.OK))
+
+
 __all__ = [
     "_apply_llm_finish_attributes",
     "_apply_error_attributes",
@@ -287,4 +388,7 @@ __all__ = [
     "_get_llm_response_attributes",
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
+    "_apply_tool_call_attributes",
+    "_finish_tool_call_span",
+    "_get_tool_call_span_name",
 ]
