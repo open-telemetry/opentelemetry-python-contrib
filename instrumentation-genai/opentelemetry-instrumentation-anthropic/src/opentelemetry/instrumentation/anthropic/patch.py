@@ -16,6 +16,9 @@
 
 from typing import TYPE_CHECKING, Any, Callable, Union, cast
 
+from anthropic._streaming import Stream as AnthropicStream
+from anthropic.types import Message as AnthropicMessage
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -30,14 +33,13 @@ from .messages_extractors import (
     get_system_instruction,
 )
 from .wrappers import (
-    MessageWrapper,
     MessagesStreamWrapper,
+    MessageWrapper,
 )
 
 if TYPE_CHECKING:
-    from anthropic._streaming import Stream
     from anthropic.resources.messages import Messages
-    from anthropic.types import Message, RawMessageStreamEvent
+    from anthropic.types import RawMessageStreamEvent
 
 
 ANTHROPIC = "anthropic"
@@ -45,18 +47,24 @@ ANTHROPIC = "anthropic"
 
 def messages_create(
     handler: TelemetryHandler,
-) -> Callable[..., Union["Message", "Stream[RawMessageStreamEvent]"]]:
+) -> Callable[
+    ..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]"]
+]:
     """Wrap the `create` method of the `Messages` class to trace it."""
     capture_content = should_capture_content()
 
     def traced_method(
         wrapped: Callable[
-            ..., Union["Message", "Stream[RawMessageStreamEvent]"]
+            ...,
+            Union[
+                "AnthropicMessage",
+                "AnthropicStream[RawMessageStreamEvent]",
+            ],
         ],
         instance: "Messages",
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
-    ) -> Union["Message", MessagesStreamWrapper]:
+    ) -> Union["AnthropicMessage", MessagesStreamWrapper]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
         request_model_attribute = attributes.get(
@@ -80,19 +88,26 @@ def messages_create(
             attributes=attributes,
         )
 
-        is_streaming = kwargs.get("stream", False)
+        is_streaming = params.stream is True
 
         # Use manual lifecycle management for both streaming and non-streaming
         handler.start_llm(invocation)
         try:
             result = wrapped(*args, **kwargs)
             if is_streaming:
-                stream_result = cast("Stream[RawMessageStreamEvent]", result)
+                if not isinstance(result, AnthropicStream):
+                    raise TypeError(
+                        "Expected anthropic Stream when stream=True"
+                    )
                 return MessagesStreamWrapper(
-                    stream_result, handler, invocation, capture_content
+                    result, handler, invocation, capture_content
                 )
-            message_result = cast("Message", result)
-            wrapper = MessageWrapper(message_result, capture_content)
+            if not isinstance(result, AnthropicMessage):
+                raise TypeError(
+                    "Expected anthropic Message when stream is disabled"
+                )
+
+            wrapper = MessageWrapper(result, capture_content)
             wrapper.extract_into(invocation)
             handler.stop_llm(invocation)
             return wrapper.message
@@ -103,6 +118,12 @@ def messages_create(
             raise
 
     return cast(
-        Callable[..., Union["Message", "Stream[RawMessageStreamEvent]"]],
+        Callable[
+            ...,
+            Union[
+                "AnthropicMessage",
+                "AnthropicStream[RawMessageStreamEvent]",
+            ],
+        ],
         traced_method,
     )

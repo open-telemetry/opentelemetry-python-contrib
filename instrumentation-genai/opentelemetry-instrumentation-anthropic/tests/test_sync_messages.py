@@ -26,8 +26,8 @@ from anthropic.resources.messages import Messages as _Messages
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.instrumentation.anthropic.wrappers import (
-    MessageWrapper,
     MessagesStreamWrapper,
+    MessageWrapper,
 )
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,

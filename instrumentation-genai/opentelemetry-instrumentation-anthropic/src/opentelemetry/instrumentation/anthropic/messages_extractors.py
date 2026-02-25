@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Sequence
 from urllib.parse import urlparse
 
+from anthropic.types import MessageDeltaUsage
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -42,7 +44,20 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
+    import httpx
     from anthropic.resources.messages import Messages
+    from anthropic.types import (
+        Message,
+        MessageParam,
+        MetadataParam,
+        TextBlockParam,
+        ThinkingConfigParam,
+        ToolChoiceParam,
+        ToolUnionParam,
+        Usage,
+    )
 
 
 @dataclass
@@ -53,8 +68,9 @@ class MessageRequestParams:
     top_k: int | None = None
     top_p: float | None = None
     stop_sequences: Sequence[str] | None = None
-    messages: object | None = None
-    system: object | None = None
+    stream: bool | None = None
+    messages: Iterable[MessageParam] | None = None
+    system: str | Iterable[TextBlockParam] | None = None
 
 
 GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
@@ -64,7 +80,7 @@ GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 def extract_usage_tokens(
-    usage: object | None,
+    usage: Usage | MessageDeltaUsage | None,
 ) -> tuple[int | None, int | None, int | None, int | None]:
     if usage is None:
         return None, None, None, None
@@ -99,10 +115,7 @@ def extract_usage_tokens(
     )
 
 
-def get_input_messages(messages: object) -> list[InputMessage]:
-    if not isinstance(messages, list):
-        return []
-
+def get_input_messages(messages: Iterable[MessageParam]) -> list[InputMessage]:
     result: list[InputMessage] = []
     for message in messages:
         role = _as_str(_get_field(message, "role")) or "user"
@@ -111,11 +124,15 @@ def get_input_messages(messages: object) -> list[InputMessage]:
     return result
 
 
-def get_system_instruction(system: object) -> list[MessagePart]:
+def get_system_instruction(
+    system: str | Iterable[TextBlockParam],
+) -> list[MessagePart]:
     return convert_content_to_parts(system)
 
 
-def get_output_messages_from_message(message: object) -> list[OutputMessage]:
+def get_output_messages_from_message(
+    message: Message | None,
+) -> list[OutputMessage]:
     if message is None:
         return []
 
@@ -133,23 +150,23 @@ def get_output_messages_from_message(message: object) -> list[OutputMessage]:
 def extract_params(  # pylint: disable=too-many-locals
     *,
     max_tokens: int | None = None,
-    messages: object | None = None,
+    messages: Iterable[MessageParam] | None = None,
     model: str | None = None,
-    metadata: object | None = None,
-    service_tier: object | None = None,
+    metadata: MetadataParam | None = None,
+    service_tier: str | None = None,
     stop_sequences: Sequence[str] | None = None,
-    stream: object | None = None,
-    system: object | None = None,
+    stream: bool | None = None,
+    system: str | Iterable[TextBlockParam] | None = None,
     temperature: float | None = None,
-    thinking: object | None = None,
-    tool_choice: object | None = None,
-    tools: object | None = None,
+    thinking: ThinkingConfigParam | None = None,
+    tool_choice: ToolChoiceParam | None = None,
+    tools: Iterable[ToolUnionParam] | None = None,
     top_k: int | None = None,
     top_p: float | None = None,
-    extra_headers: object | None = None,
-    extra_query: object | None = None,
+    extra_headers: Mapping[str, str] | None = None,
+    extra_query: Mapping[str, object] | None = None,
     extra_body: object | None = None,
-    timeout: object | None = None,
+    timeout: float | httpx.Timeout | None = None,
     **_kwargs: object,
 ) -> MessageRequestParams:
     return MessageRequestParams(
@@ -159,6 +176,7 @@ def extract_params(  # pylint: disable=too-many-locals
         top_p=top_p,
         top_k=top_k,
         stop_sequences=stop_sequences,
+        stream=stream,
         messages=messages,
         system=system,
     )

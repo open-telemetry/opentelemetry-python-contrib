@@ -139,7 +139,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
     def _process_chunk(self, chunk: RawMessageStreamEvent) -> None:
         """Extract telemetry data from a streaming chunk."""
         if chunk.type == "message_start":
-            message = getattr(chunk, "message", None)
+            message = chunk.message
             if message:
                 if hasattr(message, "id") and message.id:
                     self._response_id = message.id
@@ -148,10 +148,10 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
                 if hasattr(message, "usage") and message.usage:
                     self._update_usage(message.usage)
         elif chunk.type == "message_delta":
-            delta = getattr(chunk, "delta", None)
+            delta = chunk.delta
             if delta and hasattr(delta, "stop_reason") and delta.stop_reason:
                 self._stop_reason = normalize_finish_reason(delta.stop_reason)
-            usage = getattr(chunk, "usage", None)
+            usage = chunk.usage
             self._update_usage(usage)
         elif self._capture_content and chunk.type == "content_block_start":
             index = _get_field(chunk, "index")
@@ -167,8 +167,9 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
                 block = self._content_blocks.setdefault(index, {})
                 update_stream_block_state(block, delta)
 
+    @staticmethod
     def _safe_instrumentation(
-        self, callback: Callable[[], None], context: str
+        callback: Callable[[], None], context: str
     ) -> None:
         try:
             callback()
@@ -227,9 +228,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         )
         self._finalized = True
 
-    def _fail(
-        self, message: str, error_type: type[BaseException]
-    ) -> None:
+    def _fail(self, message: str, error_type: type[BaseException]) -> None:
         if self._finalized:
             return
         self._safe_instrumentation(
