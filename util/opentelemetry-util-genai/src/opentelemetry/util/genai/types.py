@@ -201,6 +201,10 @@ class GenAIInvocation:
     context_token: ContextToken | None = None
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    # Monotonic start time in seconds (from timeit.default_timer) used
+    # for duration calculations to avoid mixing clock sources. This is
+    # populated by the TelemetryHandler when starting an invocation.
+    monotonic_start_s: float | None = None
 
 
 @dataclass
@@ -250,10 +254,6 @@ class LLMInvocation(GenAIInvocation):
     seed: int | None = None
     server_address: str | None = None
     server_port: int | None = None
-    # Monotonic start time in seconds (from timeit.default_timer) used
-    # for duration calculations to avoid mixing clock sources. This is
-    # populated by the TelemetryHandler when starting an invocation.
-    monotonic_start_s: float | None = None
 
 
 @dataclass
@@ -267,7 +267,6 @@ class EmbeddingInvocation(GenAIInvocation):
     operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
 
     provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
-
     request_model: str | None = None
     server_address: str | None = None
     server_port: int | None = None
@@ -291,7 +290,6 @@ class EmbeddingInvocation(GenAIInvocation):
     Additional attributes to set on metrics. Must be of a low cardinality.
     These attributes will not be set on spans or events.
     """
-    monotonic_start_s: float | None = None
 
 
 @dataclass

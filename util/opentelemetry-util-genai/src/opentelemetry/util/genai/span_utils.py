@@ -88,14 +88,21 @@ def _get_embedding_common_attributes(
     }
 
 
+def _get_span_name(
+    invocation: LLMInvocation | EmbeddingInvocation,
+) -> str:
+    """Get the span name for a GenAI invocation."""
+    return f"{invocation.operation_name} {invocation.request_model}".strip()
+
+
 def _get_llm_span_name(invocation: LLMInvocation) -> str:
     """Get the span name for an LLM invocation."""
-    return f"{invocation.operation_name} {invocation.request_model}".strip()
+    return _get_span_name(invocation)
 
 
 def _get_embedding_span_name(invocation: EmbeddingInvocation) -> str:
     """Get the span name for an Embedding invocation."""
-    return f"{invocation.operation_name} {invocation.request_model}".strip()
+    return _get_span_name(invocation)
 
 
 def _get_llm_messages_attributes_for_span(
