@@ -228,7 +228,7 @@ class OpenTelemetryClientInterceptor(
         if self._filter is not None and not self._filter(client_info):
             return invoker(request_or_iterator, metadata)
 
-        if client_info.is_server_stream:
+        if client_info.is_server_stream and not client_info.is_client_stream:
             return self._intercept_server_stream(
                 request_or_iterator, metadata, client_info, invoker
             )
