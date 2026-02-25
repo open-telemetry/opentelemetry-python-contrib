@@ -27,7 +27,7 @@ OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED = (
 """
 .. envvar:: OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED
 
-To determines whether the tracing feature for Future of Asyncio in Python is enabled or not.
+To determine whether the tracing feature for Future of Asyncio in Python is enabled or not.
 """
 
 OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE = (
