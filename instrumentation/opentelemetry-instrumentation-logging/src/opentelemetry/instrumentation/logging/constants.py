@@ -16,9 +16,17 @@ DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(l
 
 
 _MODULE_DOC = """
-The OpenTelemetry `logging` instrumentation automatically instruments Python logging
+The OpenTelemetry ``logging`` instrumentation automatically instruments Python logging
 system with an handler to convert log messages into OpenTelemetry logs.
-You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
+You can disable this setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``false``.
+
+.. warning::
+
+    The code in this instrumentation is based from code available in the ``opentelemetry-sdk`` that is now deprecated.
+    Therefore if you have this instrumentation installed you don't need to set
+    ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`` environment variable to ``true``.
+    The new code does not add by the default ``code`` namespace attributes, can be added back using the
+    ``OTEL_PYTHON_CODE_ATTRIBUTES`` environment variable.
 
 Enable trace context injection
 ------------------------------
