@@ -23,9 +23,9 @@ You can disable this setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``false
 .. warning::
 
     The code in this instrumentation is based from code available in the ``opentelemetry-sdk`` that is now deprecated.
-    Therefore if you have this instrumentation installed you don't need to set
+    Therefore if you have opentelemetry-instrumentation-logging installed you don't need to set
     ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`` environment variable to ``true``.
-    The new code does not add by the default ``code`` namespace attributes, can be added back using the
+    This instrumentation does not add by the default ``code`` namespace attributes, can be added back using the
     ``OTEL_PYTHON_CODE_ATTRIBUTES`` environment variable.
 
 Enable trace context injection
