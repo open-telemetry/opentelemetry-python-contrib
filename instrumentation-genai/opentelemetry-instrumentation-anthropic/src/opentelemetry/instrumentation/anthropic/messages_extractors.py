@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Optional, Sequence
 from urllib.parse import urlparse
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -53,8 +53,8 @@ class MessageRequestParams:
     top_k: int | None = None
     top_p: float | None = None
     stop_sequences: Sequence[str] | None = None
-    messages: Any | None = None
-    system: Any | None = None
+    messages: object | None = None
+    system: object | None = None
 
 
 GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
@@ -64,7 +64,7 @@ GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 def extract_usage_tokens(
-    usage: Any | None,
+    usage: object | None,
 ) -> tuple[int | None, int | None, int | None, int | None]:
     if usage is None:
         return None, None, None, None
@@ -99,23 +99,23 @@ def extract_usage_tokens(
     )
 
 
-def get_input_messages(messages: Any) -> list[InputMessage]:
+def get_input_messages(messages: object) -> list[InputMessage]:
     if not isinstance(messages, list):
         return []
 
     result: list[InputMessage] = []
-    for message in cast(list[Any], messages):
+    for message in messages:
         role = _as_str(_get_field(message, "role")) or "user"
         parts = convert_content_to_parts(_get_field(message, "content"))
         result.append(InputMessage(role=role, parts=parts))
     return result
 
 
-def get_system_instruction(system: Any) -> list[MessagePart]:
+def get_system_instruction(system: object) -> list[MessagePart]:
     return convert_content_to_parts(system)
 
 
-def get_output_messages_from_message(message: Any) -> list[OutputMessage]:
+def get_output_messages_from_message(message: object) -> list[OutputMessage]:
     if message is None:
         return []
 
@@ -133,24 +133,24 @@ def get_output_messages_from_message(message: Any) -> list[OutputMessage]:
 def extract_params(  # pylint: disable=too-many-locals
     *,
     max_tokens: int | None = None,
-    messages: Any | None = None,
+    messages: object | None = None,
     model: str | None = None,
-    metadata: Any | None = None,
-    service_tier: Any | None = None,
+    metadata: object | None = None,
+    service_tier: object | None = None,
     stop_sequences: Sequence[str] | None = None,
-    stream: Any | None = None,
-    system: Any | None = None,
+    stream: object | None = None,
+    system: object | None = None,
     temperature: float | None = None,
-    thinking: Any | None = None,
-    tool_choice: Any | None = None,
-    tools: Any | None = None,
+    thinking: object | None = None,
+    tool_choice: object | None = None,
+    tools: object | None = None,
     top_k: int | None = None,
     top_p: float | None = None,
-    extra_headers: Any | None = None,
-    extra_query: Any | None = None,
-    extra_body: Any | None = None,
-    timeout: Any | None = None,
-    **_kwargs: Any,
+    extra_headers: object | None = None,
+    extra_query: object | None = None,
+    extra_body: object | None = None,
+    timeout: object | None = None,
+    **_kwargs: object,
 ) -> MessageRequestParams:
     return MessageRequestParams(
         model=model,
@@ -165,7 +165,7 @@ def extract_params(  # pylint: disable=too-many-locals
 
 
 def _set_server_address_and_port(
-    client_instance: "Messages", attributes: dict[str, Any]
+    client_instance: "Messages", attributes: dict[str, AttributeValue]
 ) -> None:
     base_client = getattr(client_instance, "_client", None)
     base_url = getattr(base_client, "base_url", None)

@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterator, Optional
+import logging
+from types import TracebackType
+from typing import TYPE_CHECKING, Callable, Iterator, Optional
 
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
@@ -43,10 +45,13 @@ if TYPE_CHECKING:
     from anthropic.types import Message, RawMessageStreamEvent
 
 
+_logger = logging.getLogger(__name__)
+
+
 class MessageWrapper:
     """Wrapper for non-streaming Message response that handles telemetry."""
 
-    def __init__(self, message: "Message", capture_content: bool):
+    def __init__(self, message: Message, capture_content: bool):
         self._message = message
         self._capture_content = capture_content
 
@@ -86,7 +91,7 @@ class MessageWrapper:
             )
 
     @property
-    def message(self) -> "Message":
+    def message(self) -> Message:
         """Return the wrapped Message object."""
         return self._message
 
@@ -96,7 +101,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
 
     def __init__(
         self,
-        stream: "Stream[RawMessageStreamEvent]",
+        stream: Stream[RawMessageStreamEvent],
         handler: TelemetryHandler,
         invocation: LLMInvocation,
         capture_content: bool,
@@ -112,10 +117,10 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         self._cache_creation_input_tokens: Optional[int] = None
         self._cache_read_input_tokens: Optional[int] = None
         self._capture_content = capture_content
-        self._content_blocks: dict[int, dict[str, Any]] = {}
+        self._content_blocks: dict[int, dict[str, object]] = {}
         self._finalized = False
 
-    def _update_usage(self, usage: Any | None) -> None:
+    def _update_usage(self, usage: object | None) -> None:
         (
             input_tokens,
             output_tokens,
@@ -131,7 +136,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         if cache_read_input_tokens is not None:
             self._cache_read_input_tokens = cache_read_input_tokens
 
-    def _process_chunk(self, chunk: "RawMessageStreamEvent") -> None:
+    def _process_chunk(self, chunk: RawMessageStreamEvent) -> None:
         """Extract telemetry data from a streaming chunk."""
         if chunk.type == "message_start":
             message = getattr(chunk, "message", None)
@@ -161,6 +166,18 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
             if isinstance(index, int) and delta is not None:
                 block = self._content_blocks.setdefault(index, {})
                 update_stream_block_state(block, delta)
+
+    def _safe_instrumentation(
+        self, callback: Callable[[], None], context: str
+    ) -> None:
+        try:
+            callback()
+        except Exception:  # pylint: disable=broad-exception-caught
+            _logger.debug(
+                "Anthropic MessagesStreamWrapper instrumentation error in %s",
+                context,
+                exc_info=True,
+            )
 
     def _set_invocation_response_attributes(self) -> None:
         """Extract accumulated stream state into the invocation."""
@@ -200,8 +217,14 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
     def _stop(self) -> None:
         if self._finalized:
             return
-        self._set_invocation_response_attributes()
-        self._handler.stop_llm(self._invocation)
+        self._safe_instrumentation(
+            self._set_invocation_response_attributes,
+            "response attribute extraction",
+        )
+        self._safe_instrumentation(
+            lambda: self._handler.stop_llm(self._invocation),
+            "stop_llm",
+        )
         self._finalized = True
 
     def _fail(
@@ -209,33 +232,44 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
     ) -> None:
         if self._finalized:
             return
-        self._handler.fail_llm(
-            self._invocation, Error(message=message, type=error_type)
+        self._safe_instrumentation(
+            lambda: self._handler.fail_llm(
+                self._invocation, Error(message=message, type=error_type)
+            ),
+            "fail_llm",
         )
         self._finalized = True
 
-    def __iter__(self) -> "MessagesStreamWrapper":
+    def __iter__(self) -> MessagesStreamWrapper:
         return self
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> object:
         return getattr(self._stream, name)
 
-    def __next__(self) -> "RawMessageStreamEvent":
+    def __next__(self) -> RawMessageStreamEvent:
         try:
             chunk = next(self._stream)
-            self._process_chunk(chunk)
-            return chunk
         except StopIteration:
             self._stop()
             raise
         except Exception as exc:
             self._fail(str(exc), type(exc))
             raise
+        self._safe_instrumentation(
+            lambda: self._process_chunk(chunk),
+            "stream chunk processing",
+        )
+        return chunk
 
-    def __enter__(self) -> "MessagesStreamWrapper":
+    def __enter__(self) -> MessagesStreamWrapper:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
         try:
             if exc_type is not None:
                 self._fail(
@@ -251,7 +285,3 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
                 self._stream.close()
         finally:
             self._stop()
-
-
-# Backward-compatible alias for older imports.
-StreamWrapper = MessagesStreamWrapper
