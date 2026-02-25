@@ -34,6 +34,7 @@ from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
     EmbeddingInvocation,
     Error,
+    GenAIInvocation,
     InputMessage,
     LLMInvocation,
     MessagePart,
@@ -89,7 +90,7 @@ def _get_embedding_common_attributes(
 
 
 def _get_span_name(
-    invocation: LLMInvocation | EmbeddingInvocation,
+    invocation: GenAIInvocation,
 ) -> str:
     """Get the span name for a GenAI invocation."""
     return f"{invocation.operation_name} {invocation.request_model}".strip()

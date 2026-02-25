@@ -201,6 +201,8 @@ class GenAIInvocation:
     context_token: ContextToken | None = None
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    request_model: str | None = None
+    operation_name: str | None = None
     # Monotonic start time in seconds (from timeit.default_timer) used
     # for duration calculations to avoid mixing clock sources. This is
     # populated by the TelemetryHandler when starting an invocation.
@@ -215,9 +217,10 @@ class LLMInvocation(GenAIInvocation):
     set by the TelemetryHandler.
     """
 
-    request_model: str | None = None
-    # Chat by default
-    operation_name: str = GenAI.GenAiOperationNameValues.CHAT.value
+    def __post_init__(self) -> None:
+        if self.operation_name is None:
+            self.operation_name = GenAI.GenAiOperationNameValues.CHAT.value
+
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -264,10 +267,13 @@ class EmbeddingInvocation(GenAIInvocation):
     and context_token attributes are set by the TelemetryHandler.
     """
 
-    operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+    def __post_init__(self) -> None:
+        if self.operation_name is None:
+            self.operation_name = (
+                GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+            )
 
     provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
-    request_model: str | None = None
     server_address: str | None = None
     server_port: int | None = None
 
