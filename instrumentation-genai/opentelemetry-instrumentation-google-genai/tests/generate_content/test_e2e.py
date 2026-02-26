@@ -40,6 +40,14 @@ import yaml
 from google.genai import types
 from vcr.record_mode import RecordMode
 
+try:
+    # These modules are only supported in python >= 3.10
+    from aiohttp.client_exceptions import ClientConnectionError
+    from vcr.stubs import aiohttp_stubs
+except ImportError:
+    ClientConnectionError = None
+    aiohttp_stubs = None
+
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -324,13 +332,7 @@ def fixture_patch_vcr_aiohttp_stream():
     # Allows the async tests to not be stuck in inifinite loop when streaming
     # a VCR cassette with aiohttp stubs.
     # https://github.com/kevin1024/vcrpy/issues/927
-    try:
-        # These packages can only be imported in python >= 3.10
-        from aiohttp.client_exceptions import (  # noqa: PLC0415
-            ClientConnectionError,
-        )
-        from vcr.stubs import aiohttp_stubs  # noqa: PLC0415
-    except ImportError:
+    if ClientConnectionError is None or aiohttp_stubs is None:
         return
 
     class _ReplayMockStream(aiohttp_stubs.MockStream):
@@ -346,13 +348,17 @@ def fixture_patch_vcr_aiohttp_stream():
             super().set_exception(exc)
 
     class _ReplayMockClientResponse(aiohttp_stubs.MockClientResponse):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._mock_content_stream = None
+
         @property
         def content(self):
             # vcrpy's aiohttp MockClientResponse.content creates a fresh stream object
             # on every property access. google-genai async streaming repeatedly reads
             # response.content.readline() and expects the same stream instance until EOF is
             # reached.
-            if not hasattr(self, "_mock_content_stream"):
+            if self._mock_content_stream is None:
                 body = self._body or b""
                 stream = _ReplayMockStream()
                 stream.feed_data(body)
