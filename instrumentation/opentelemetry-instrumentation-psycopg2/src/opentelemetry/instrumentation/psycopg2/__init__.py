@@ -72,6 +72,12 @@ For more information, see:
 
     Psycopg2Instrumentor().instrument(enable_commenter=True)
 
+    # OR with specific connection
+    cnx = psycopg2.connect(database='Database')
+    instrumented_cnx = Psycopg2Instrumentor().instrument_connection(
+        cnx,
+        enable_commenter=True,
+    )
 
 SQLCommenter with commenter_options
 ***********************************
@@ -237,6 +243,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     def instrument_connection(
         connection: PgConnection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+        enable_commenter: bool = False,
+        commenter_options: dict = None,
+        enable_attribute_commenter: bool = False,
     ) -> PgConnection:
         """Enable instrumentation in a psycopg2 connection.
 
@@ -249,6 +258,12 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             tracer_provider: opentelemetry.trace.TracerProvider, optional
                 The TracerProvider to use for instrumentation. If not specified,
                 the global TracerProvider will be used.
+            enable_commenter: bool, optional
+                Optional flag to enable/disable sqlcommenter (default False).
+            commenter_options: dict, optional
+                Optional configurations for tags to be appended at the sql query.
+            enable_attribute_commenter:
+                Optional flag to enable/disable addition of sqlcomment to span attribute (default False). Requires enable_commenter=True.
 
         Returns:
             An instrumented psycopg2 connection object.
@@ -265,6 +280,9 @@ class Psycopg2Instrumentor(BaseInstrumentor):
             connection.cursor_factory = _new_cursor_factory(
                 base_factory=original_cursor_factory,
                 tracer_provider=tracer_provider,
+                enable_commenter=enable_commenter,
+                commenter_options=commenter_options,
+                enable_attribute_commenter=enable_attribute_commenter,
             )
             Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS[connection] = (
                 original_cursor_factory
@@ -340,7 +358,14 @@ class CursorTracer(dbapi.CursorTracer):
         return statement
 
 
-def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
+def _new_cursor_factory(
+    db_api: dbapi.DatabaseApiIntegration = None,
+    base_factory: typing.Optional[typing.Type[pg_cursor]] = None,
+    tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
+    enable_commenter: bool = False,
+    commenter_options: dict = None,
+    enable_attribute_commenter: bool = False,
+):
     if not db_api:
         db_api = DatabaseApiIntegration(
             __name__,
@@ -348,6 +373,10 @@ def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
             connection_attributes=Psycopg2Instrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=psycopg2,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     base_factory = base_factory or pg_cursor

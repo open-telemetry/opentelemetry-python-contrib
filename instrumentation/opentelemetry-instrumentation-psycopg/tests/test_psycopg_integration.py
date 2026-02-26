@@ -22,6 +22,9 @@ from psycopg.sql import SQL, Composed
 import opentelemetry.instrumentation.psycopg
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -451,6 +454,149 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
 
+    def test_sqlcommenter_enabled_instrument_connection_defaults(self):
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.__build_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.version",
+                new=lambda: "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.threadsafety",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.apilevel",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.paramstyle",
+                "test",
+            ),
+        ):
+            cnx = psycopg.connect(database="test")
+            cnx = PsycopgInstrumentor().instrument_connection(
+                cnx,
+                enable_commenter=True,
+            )
+            query = "Select 1"
+            cursor = cnx.cursor()
+            cursor.execute(query)
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
+                MockCursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+            )
+            self.assertEqual(
+                span.attributes[DB_STATEMENT],
+                "Select 1",
+            )
+
+    def test_sqlcommenter_enabled_instrument_connection_stmt_enabled(self):
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.__build_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.version",
+                new=lambda: "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.threadsafety",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.apilevel",
+                "123",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.paramstyle",
+                "test",
+            ),
+        ):
+            cnx = psycopg.connect(database="test")
+            cnx = PsycopgInstrumentor().instrument_connection(
+                cnx,
+                enable_commenter=True,
+                enable_attribute_commenter=True,
+            )
+            query = "Select 1"
+            cursor = cnx.cursor()
+            cursor.execute(query)
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
+                MockCursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+            )
+            self.assertEqual(
+                span.attributes[DB_STATEMENT],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+            )
+
+    def test_sqlcommenter_enabled_instrument_connection_with_options(self):
+        with (
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.__version__",
+                "foobar",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.__build_version__",
+                "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.pq.version",
+                new=lambda: "foobaz",
+            ),
+            mock.patch(
+                "opentelemetry.instrumentation.psycopg.psycopg.threadsafety",
+                "123",
+            ),
+        ):
+            cnx = psycopg.connect(database="test")
+            cnx = PsycopgInstrumentor().instrument_connection(
+                cnx,
+                enable_commenter=True,
+                commenter_options={
+                    "dbapi_level": False,
+                    "dbapi_threadsafety": True,
+                    "driver_paramstyle": False,
+                    "foo": "ignored",
+                },
+            )
+            query = "Select 1"
+            cursor = cnx.cursor()
+            cursor.execute(query)
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            span_id = format(span.get_span_context().span_id, "016x")
+            trace_id = format(span.get_span_context().trace_id, "032x")
+            self.assertEqual(
+                MockCursor.execute.call_args[0][0],
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_threadsafety='123',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+            )
+            self.assertEqual(
+                span.attributes[DB_STATEMENT],
+                "Select 1",
+            )
+
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_disabled(self, event_mocked):
         cnx = psycopg.connect(database="test")
@@ -460,6 +606,45 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         cursor.execute(query)
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], False)
+
+    def test_sqlcommenter_disabled_default_instrument_connection(self):
+        cnx = psycopg.connect(database="test")
+        cnx = PsycopgInstrumentor().instrument_connection(
+            cnx,
+        )
+        query = "Select 1"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        self.assertEqual(
+            MockCursor.execute.call_args[0][0],
+            "Select 1",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        span = spans_list[0]
+        self.assertEqual(
+            span.attributes[DB_STATEMENT],
+            "Select 1",
+        )
+
+    def test_sqlcommenter_disabled_explicit_instrument_connection(self):
+        cnx = psycopg.connect(database="test")
+        cnx = PsycopgInstrumentor().instrument_connection(
+            cnx,
+            enable_commenter=False,
+        )
+        query = "Select 1"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        self.assertEqual(
+            MockCursor.execute.call_args[0][0],
+            "Select 1",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        span = spans_list[0]
+        self.assertEqual(
+            span.attributes[DB_STATEMENT],
+            "Select 1",
+        )
 
 
 class TestPostgresqlIntegrationAsync(

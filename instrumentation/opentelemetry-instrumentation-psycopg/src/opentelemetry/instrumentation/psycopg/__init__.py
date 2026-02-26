@@ -72,6 +72,12 @@ For more information, see:
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 
     PsycopgInstrumentor().instrument(enable_commenter=True)
+    # OR with specific connection
+    cnx = psycopg.connect(database='Database')
+    instrumented_cnx = PsycopgInstrumentor().instrument_connection(
+        cnx,
+        enable_commenter=True,
+    )
 
 
 SQLCommenter with commenter_options
@@ -247,7 +253,11 @@ class PsycopgInstrumentor(BaseInstrumentor):
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def instrument_connection(
-        connection: ConnectionT, tracer_provider: TracerProvider | None = None
+        connection: ConnectionT,
+        tracer_provider: TracerProvider | None = None,
+        enable_commenter: bool = False,
+        commenter_options: dict = None,
+        enable_attribute_commenter: bool = False,
     ) -> ConnectionT:
         """Enable instrumentation in a psycopg connection.
 
@@ -257,6 +267,12 @@ class PsycopgInstrumentor(BaseInstrumentor):
             tracer_provider: opentelemetry.trace.TracerProvider, optional
                 The TracerProvider to use for instrumentation. If not provided,
                 the global TracerProvider will be used.
+            enable_commenter: bool, optional
+                Optional flag to enable/disable sqlcommenter (default False).
+            commenter_options: dict, optional
+                Optional configurations for tags to be appended at the sql query.
+            enable_attribute_commenter:
+                Optional flag to enable/disable addition of sqlcomment to span attribute (default False). Requires enable_commenter=True.
 
         Returns:
             An instrumented psycopg connection object.
@@ -270,11 +286,17 @@ class PsycopgInstrumentor(BaseInstrumentor):
             )
             if isinstance(connection, psycopg.AsyncConnection):
                 connection.cursor_factory = _new_cursor_async_factory(
-                    tracer_provider=tracer_provider
+                    tracer_provider=tracer_provider,
+                    enable_commenter=enable_commenter,
+                    commenter_options=commenter_options,
+                    enable_attribute_commenter=enable_attribute_commenter,
                 )
             else:
                 connection.cursor_factory = _new_cursor_factory(
-                    tracer_provider=tracer_provider
+                    tracer_provider=tracer_provider,
+                    enable_commenter=enable_commenter,
+                    commenter_options=commenter_options,
+                    enable_attribute_commenter=enable_attribute_commenter,
                 )
             connection._is_instrumented_by_opentelemetry = True
         else:
@@ -362,6 +384,9 @@ def _new_cursor_factory(
     db_api: DatabaseApiIntegration | None = None,
     base_factory: type[psycopg.Cursor] | None = None,
     tracer_provider: TracerProvider | None = None,
+    enable_commenter: bool = False,
+    commenter_options: dict = None,
+    enable_attribute_commenter: bool = False,
 ):
     if not db_api:
         db_api = DatabaseApiIntegration(
@@ -370,6 +395,10 @@ def _new_cursor_factory(
             connection_attributes=PsycopgInstrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=psycopg,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
 
     base_factory = base_factory or psycopg.Cursor
@@ -398,6 +427,9 @@ def _new_cursor_async_factory(
     db_api: DatabaseApiAsyncIntegration | None = None,
     base_factory: type[psycopg.AsyncCursor] | None = None,
     tracer_provider: TracerProvider | None = None,
+    enable_commenter: bool = False,
+    commenter_options: dict = None,
+    enable_attribute_commenter: bool = False,
 ):
     if not db_api:
         db_api = DatabaseApiAsyncIntegration(
@@ -406,6 +438,10 @@ def _new_cursor_async_factory(
             connection_attributes=PsycopgInstrumentor._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_commenter=enable_commenter,
+            commenter_options=commenter_options,
+            connect_module=psycopg,
+            enable_attribute_commenter=enable_attribute_commenter,
         )
     base_factory = base_factory or psycopg.AsyncCursor
     _cursor_tracer = CursorTracer(db_api)
