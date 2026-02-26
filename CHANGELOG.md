@@ -119,6 +119,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4246))
 - `opentelemetry-instrumentation-psycopg2`: Fix AttributeError by using instrumented connections weakref, instead of mutating connection object
   ([#4257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4257))
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: Add sqlcommenter support for `instrument_connection`
+  ([#4267](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4267/))
 
 ### Breaking changes
 
