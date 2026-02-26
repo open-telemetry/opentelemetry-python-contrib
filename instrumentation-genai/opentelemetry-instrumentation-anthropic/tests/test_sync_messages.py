@@ -716,9 +716,7 @@ def test_sync_messages_create_aggregates_cache_tokens(
     assert len(spans) == 1
     span = spans[0]
 
-    assert (
-        GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
-    )
+    assert GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
     assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS in span.attributes
     assert span.attributes[
         GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
@@ -772,9 +770,7 @@ def test_sync_messages_create_streaming_aggregates_cache_tokens(
     assert len(spans) == 1
     span = spans[0]
 
-    assert (
-        GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
-    )
+    assert GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
     assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS in span.attributes
     assert (
         span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
@@ -788,9 +784,7 @@ def test_sync_messages_create_streaming_aggregates_cache_tokens(
         span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
         == cache_creation
     )
-    assert (
-        span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cache_read
-    )
+    assert span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cache_read
 
 
 @pytest.mark.vcr()
