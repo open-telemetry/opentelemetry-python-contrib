@@ -376,3 +376,35 @@ class TestLoggingInstrumentor(TestBase):
         setup_mock.assert_called_once_with(
             logger_provider=logger_provider, log_code_attributes=True
         )
+
+    def test_handler_setup_is_controlled_by_instrumentor_parameter(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument(
+                enable_log_auto_istrumentation=False
+            )
+
+        self.assertEqual(len(self.caplog.records), 0)
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(logging_handler_instances, [])
+
+    def test_handler_code_attributes_is_controlled_by_instrumentor_parameter(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with mock.patch(
+            "opentelemetry.instrumentation.logging._setup_logging_handler"
+        ) as setup_mock:
+            LoggingInstrumentor().instrument(log_code_attributes=True)
+
+        logger_provider = get_logger_provider()
+        setup_mock.assert_called_once_with(
+            logger_provider=logger_provider, log_code_attributes=True
+        )
