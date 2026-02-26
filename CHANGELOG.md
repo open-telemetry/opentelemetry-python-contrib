@@ -115,6 +115,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
 - `opentelemetry-docker-tests` Fix docker-tests assumption by Postgres-Sqlalchemy case about scope of metrics
   ([#4258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4258))
+- `opentelemetry-instrumentation-threading`: fix AttributeError when Thread is run without starting
+  ([#4246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4246))
 
 ### Breaking changes
 
