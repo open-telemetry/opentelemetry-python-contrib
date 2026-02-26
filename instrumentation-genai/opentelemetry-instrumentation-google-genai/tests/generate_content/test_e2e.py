@@ -329,7 +329,7 @@ def setup_vcr(vcr):
 
 @pytest.fixture(name="patch_vcr_aiohttp_stream", scope="module", autouse=True)
 def fixture_patch_vcr_aiohttp_stream():
-    # Allows the async tests to not be stuck in inifinite loop when streaming
+    # Allows the async tests to not be stuck in infinite loop when streaming
     # a VCR cassette with aiohttp stubs.
     # https://github.com/kevin1024/vcrpy/issues/927
     if ClientConnectionError is None or aiohttp_stubs is None:
