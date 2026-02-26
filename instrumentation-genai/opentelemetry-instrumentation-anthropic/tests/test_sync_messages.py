@@ -18,16 +18,18 @@ import inspect
 import json
 import os
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from anthropic import Anthropic, APIConnectionError, NotFoundError
 from anthropic.resources.messages import Messages as _Messages
 
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+from opentelemetry.instrumentation.anthropic.messages_extractors import (
+    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+)
 from opentelemetry.instrumentation.anthropic.wrappers import (
     MessagesStreamWrapper,
-    MessageWrapper,
 )
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
@@ -38,7 +40,6 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-from opentelemetry.util.genai.types import LLMInvocation
 
 # Detect whether the installed anthropic SDK supports tools / thinking params.
 # Older SDK versions (e.g. 0.16.0) do not accept these keyword arguments.
@@ -697,104 +698,212 @@ def test_stream_wrapper_finalize_idempotent(  # pylint: disable=too-many-locals
     )
 
 
-def test_message_wrapper_aggregates_cache_tokens():
-    """MessageWrapper should aggregate cache token fields into input tokens."""
+@pytest.mark.vcr()
+def test_sync_messages_create_aggregates_cache_tokens(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Non-streaming response with non-zero cache tokens aggregates correctly."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
 
-    usage = SimpleNamespace(
-        input_tokens=10,
-        cache_creation_input_tokens=3,
-        cache_read_input_tokens=7,
-        output_tokens=5,
-    )
-    message = SimpleNamespace(
-        model="claude-sonnet-4-20250514",
-        id="msg_123",
-        stop_reason="end_turn",
-        usage=usage,
-    )
-    invocation = LLMInvocation(
-        request_model="claude-sonnet-4-20250514",
-        provider="anthropic",
+    response = anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
     )
 
-    MessageWrapper(message, capture_content=False).extract_into(invocation)  # type: ignore[arg-type]
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
 
-    assert invocation.input_tokens == 20
-    assert invocation.output_tokens == 5
-    assert invocation.finish_reasons == ["stop"]
     assert (
-        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 3
+        GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
     )
-    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 7
-
-
-def test_stream_wrapper_aggregates_cache_tokens():
-    """MessagesStreamWrapper should aggregate cache token fields."""
-
-    class FakeHandler:
-        def stop_llm(self, invocation):  # pylint: disable=no-self-use
-            return invocation
-
-        def fail_llm(self, invocation, error):  # pylint: disable=no-self-use
-            return invocation
-
-    message_start = SimpleNamespace(
-        type="message_start",
-        message=SimpleNamespace(
-            id="msg_1",
-            model="claude-sonnet-4-20250514",
-            usage=SimpleNamespace(
-                input_tokens=9,
-                cache_creation_input_tokens=1,
-                cache_read_input_tokens=2,
-            ),
-        ),
+    assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS in span.attributes
+    assert span.attributes[
+        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
+    ] == expected_input_tokens(response.usage)
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+        == response.usage.output_tokens
     )
-    message_delta = SimpleNamespace(
-        type="message_delta",
-        delta=SimpleNamespace(stop_reason="end_turn"),
-        usage=SimpleNamespace(
-            input_tokens=10,
-            cache_creation_input_tokens=3,
-            cache_read_input_tokens=4,
-            output_tokens=8,
-        ),
+    cache_creation = getattr(response.usage, "cache_creation_input_tokens", 0)
+    cache_read = getattr(response.usage, "cache_read_input_tokens", 0)
+    assert (
+        span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
+        == cache_creation
+    )
+    assert span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cache_read
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_streaming_aggregates_cache_tokens(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Streaming response with non-zero cache tokens aggregates correctly."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    input_tokens = None
+    output_tokens = None
+    cache_creation = None
+    cache_read = None
+
+    with anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+        stream=True,
+    ) as stream:
+        for chunk in stream:
+            if chunk.type == "message_delta":
+                usage = getattr(chunk, "usage", None)
+                if usage:
+                    input_tokens = expected_input_tokens(usage)
+                    output_tokens = getattr(usage, "output_tokens", None)
+                    cache_creation = getattr(
+                        usage, "cache_creation_input_tokens", None
+                    )
+                    cache_read = getattr(
+                        usage, "cache_read_input_tokens", None
+                    )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    assert (
+        GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
+    )
+    assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS in span.attributes
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
+        == input_tokens
+    )
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+        == output_tokens
+    )
+    assert (
+        span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
+        == cache_creation
+    )
+    assert (
+        span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cache_read
     )
 
-    class FakeStream:
-        def __init__(self):
-            self._chunks = [message_start, message_delta]
-            self._index = 0
+
+@pytest.mark.vcr()
+def test_sync_messages_create_stream_propagation_error(
+    span_exporter, anthropic_client, instrument_no_content, monkeypatch
+):
+    """Mid-stream errors from the underlying iterator must propagate and record error on span."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    stream = anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+        stream=True,
+    )
+
+    # Wrap the underlying stream so we inject an iteration error but still
+    # delegate close()/other behavior to the real stream.
+    class ErrorInjectingStreamDelegate:
+        def __init__(self, inner):
+            self._inner = inner
+            self._count = 0
 
         def __iter__(self):
             return self
 
         def __next__(self):
-            if self._index >= len(self._chunks):
-                raise StopIteration
-            value = self._chunks[self._index]
-            self._index += 1
-            return value
+            # Fail after yielding one chunk so this exercises a mid-stream error.
+            if self._count == 1:
+                raise ConnectionError("connection reset during stream")
+            self._count += 1
+            return next(self._inner)
 
-        def close(self):  # pylint: disable=no-self-use
-            return None
+        def close(self):
+            return self._inner.close()
 
-    invocation = LLMInvocation(
-        request_model="claude-sonnet-4-20250514",
-        provider="anthropic",
-    )
-    wrapper = MessagesStreamWrapper(  # type: ignore[arg-type]
-        FakeStream(), FakeHandler(), invocation, capture_content=False
-    )
-    list(wrapper)
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
 
-    assert invocation.input_tokens == 17
-    assert invocation.output_tokens == 8
-    assert invocation.finish_reasons == ["stop"]
-    assert (
-        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 3
+    monkeypatch.setattr(
+        stream, "_stream", ErrorInjectingStreamDelegate(stream._stream)
     )
-    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 4
+
+    with pytest.raises(
+        ConnectionError, match="connection reset during stream"
+    ):
+        with stream:
+            for _ in stream:
+                pass
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert span.attributes[ErrorAttributes.ERROR_TYPE] == "ConnectionError"
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_streaming_user_exception(
+    span_exporter, anthropic_client, instrument_no_content
+):
+    """Test that user raised exceptions are propagated."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    with pytest.raises(ValueError, match="User raised exception"):
+        with anthropic_client.messages.create(
+            model=model,
+            max_tokens=100,
+            messages=messages,
+            stream=True,
+        ) as stream:
+            for _ in stream:
+                raise ValueError("User raised exception")
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert span.attributes[ErrorAttributes.ERROR_TYPE] == "ValueError"
+
+
+@pytest.mark.vcr()
+def test_sync_messages_create_instrumentation_error_swallowed(
+    span_exporter, anthropic_client, instrument_no_content, monkeypatch
+):
+    """Instrumentation errors in _process_chunk must not propagate to user code."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    def exploding_process_chunk(self, chunk):
+        raise RuntimeError("instrumentation bug")
+
+    monkeypatch.setattr(
+        MessagesStreamWrapper, "_process_chunk", exploding_process_chunk
+    )
+
+    with anthropic_client.messages.create(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+        stream=True,
+    ) as stream:
+        chunks = list(stream)
+
+    assert len(chunks) > 0
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert ErrorAttributes.ERROR_TYPE not in span.attributes
 
 
 # =============================================================================

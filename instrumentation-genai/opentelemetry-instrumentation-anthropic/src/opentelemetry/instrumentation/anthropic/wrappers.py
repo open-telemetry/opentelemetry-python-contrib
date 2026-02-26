@@ -42,7 +42,12 @@ from .utils import (
 
 if TYPE_CHECKING:
     from anthropic._streaming import Stream
-    from anthropic.types import Message, RawMessageStreamEvent
+    from anthropic.types import (
+        Message,
+        MessageDeltaUsage,
+        RawMessageStreamEvent,
+        Usage,
+    )
 
 
 _logger = logging.getLogger(__name__)
@@ -120,7 +125,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         self._content_blocks: dict[int, dict[str, object]] = {}
         self._finalized = False
 
-    def _update_usage(self, usage: object | None) -> None:
+    def _update_usage(self, usage: Usage | MessageDeltaUsage | None) -> None:
         (
             input_tokens,
             output_tokens,
@@ -169,7 +174,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
 
     @staticmethod
     def _safe_instrumentation(
-        callback: Callable[[], None], context: str
+        callback: Callable[[], object], context: str
     ) -> None:
         try:
             callback()

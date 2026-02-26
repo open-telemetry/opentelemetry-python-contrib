@@ -57,13 +57,13 @@ interactions:
       string: |-
         {
           "model": "claude-sonnet-4-20250514",
-          "id": "msg_011kM6moFzh9EE6Ka7oczinb",
+          "id": "msg_01EyT4W1amM9qQRUGKXEQtKE",
           "type": "message",
           "role": "assistant",
           "content": [
             {
               "type": "text",
-              "text": "Hello."
+              "text": "Hello!"
             }
           ],
           "stop_reason": "end_turn",
@@ -83,7 +83,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9d029dbefaa9566e-EWR
+      - 9d3b3863dc6058af-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -91,7 +91,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Thu, 19 Feb 2026 03:18:19 GMT
+      - Thu, 26 Feb 2026 00:10:36 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -103,35 +103,35 @@ interactions:
       anthropic-ratelimit-input-tokens-remaining:
       - '450000'
       anthropic-ratelimit-input-tokens-reset:
-      - '2026-02-19T03:18:19Z'
+      - '2026-02-26T00:10:36Z'
       anthropic-ratelimit-output-tokens-limit:
       - '90000'
       anthropic-ratelimit-output-tokens-remaining:
       - '90000'
       anthropic-ratelimit-output-tokens-reset:
-      - '2026-02-19T03:18:19Z'
+      - '2026-02-26T00:10:36Z'
       anthropic-ratelimit-requests-limit:
       - '1000'
       anthropic-ratelimit-requests-remaining:
       - '999'
       anthropic-ratelimit-requests-reset:
-      - '2026-02-19T03:18:18Z'
+      - '2026-02-26T00:10:35Z'
       anthropic-ratelimit-tokens-limit:
       - '540000'
       anthropic-ratelimit-tokens-remaining:
       - '540000'
       anthropic-ratelimit-tokens-reset:
-      - '2026-02-19T03:18:19Z'
+      - '2026-02-26T00:10:36Z'
       cf-cache-status:
       - DYNAMIC
       content-length:
       - '441'
       request-id:
-      - req_011CYGhp7xZSRVffb9XH2iUi
+      - req_011CYViAGeo3XGFByeCrP8XD
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-envoy-upstream-service-time:
-      - '1124'
+      - '1191'
     status:
       code: 200
       message: OK

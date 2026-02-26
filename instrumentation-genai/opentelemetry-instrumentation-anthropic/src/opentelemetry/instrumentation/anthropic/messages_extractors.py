@@ -115,7 +115,11 @@ def extract_usage_tokens(
     )
 
 
-def get_input_messages(messages: Iterable[MessageParam]) -> list[InputMessage]:
+def get_input_messages(
+    messages: Iterable[MessageParam] | None,
+) -> list[InputMessage]:
+    if messages is None:
+        return []
     result: list[InputMessage] = []
     for message in messages:
         role = _as_str(_get_field(message, "role")) or "user"
@@ -125,8 +129,10 @@ def get_input_messages(messages: Iterable[MessageParam]) -> list[InputMessage]:
 
 
 def get_system_instruction(
-    system: str | Iterable[TextBlockParam],
+    system: str | Iterable[TextBlockParam] | None,
 ) -> list[MessagePart]:
+    if system is None:
+        return []
     return convert_content_to_parts(system)
 
 
@@ -183,7 +189,8 @@ def extract_params(  # pylint: disable=too-many-locals
 
 
 def _set_server_address_and_port(
-    client_instance: "Messages", attributes: dict[str, AttributeValue]
+    client_instance: "Messages",
+    attributes: dict[str, AttributeValue | None],
 ) -> None:
     base_client = getattr(client_instance, "_client", None)
     base_url = getattr(base_client, "base_url", None)
@@ -196,7 +203,8 @@ def _set_server_address_and_port(
         port = getattr(base_url, "port", None)
     elif isinstance(base_url, str):
         url = urlparse(base_url)
-        attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
+        if url.hostname is not None:
+            attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
         port = url.port
 
     if port and port != 443 and port > 0:
@@ -206,7 +214,7 @@ def _set_server_address_and_port(
 def get_llm_request_attributes(
     params: MessageRequestParams, client_instance: "Messages"
 ) -> dict[str, AttributeValue]:
-    attributes = {
+    attributes: dict[str, AttributeValue | None] = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]
         GenAIAttributes.GEN_AI_REQUEST_MODEL: params.model,

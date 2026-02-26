@@ -61,11 +61,11 @@ interactions:
             "type": "not_found_error",
             "message": "model: invalid-model-name"
           },
-          "request_id": "req_011CYGhpks5P7XxEveVNKVG1"
+          "request_id": "req_011CYViAuU7DmHrwTiP5n98M"
         }
     headers:
       CF-RAY:
-      - 9d029df4edc1dcf2-EWR
+      - 9d3b3899bfea151b-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -73,7 +73,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Thu, 19 Feb 2026 03:18:27 GMT
+      - Thu, 26 Feb 2026 00:10:44 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -85,11 +85,11 @@ interactions:
       content-length:
       - '133'
       request-id:
-      - req_011CYGhpks5P7XxEveVNKVG1
+      - req_011CYViAuU7DmHrwTiP5n98M
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-envoy-upstream-service-time:
-      - '55'
+      - '50'
       x-should-retry:
       - 'false'
     status:
