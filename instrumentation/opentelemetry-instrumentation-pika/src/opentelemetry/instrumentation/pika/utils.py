@@ -1,7 +1,13 @@
+from __future__ import annotations
+
+from collections import deque
+from contextvars import Token
 from logging import getLogger
-from typing import Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Mapping, Protocol, TypeVar
 
 from pika.adapters.blocking_connection import (
+    BlockingChannel,
+    BlockingConnection,
     _ConsumerDeliveryEvt,
     _QueueConsumerGeneratorInfo,
 )
@@ -11,7 +17,7 @@ from wrapt import ObjectProxy
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
-from opentelemetry.propagators.textmap import CarrierT, Getter
+from opentelemetry.propagators.textmap import Getter
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
@@ -20,13 +26,59 @@ from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
 )
-from opentelemetry.trace import SpanKind, Tracer
-from opentelemetry.trace.span import Span
+from opentelemetry.trace import SpanKind
+
+CarrierT = TypeVar("CarrierT", bound=Mapping[str, Any])
+
+
+class OnMessageCallbackT(Protocol):
+    def __call__(
+        self,
+        channel: Union[Channel, BlockingChannel],
+        method: Basic.Deliver,
+        properties: BasicProperties,
+        body: bytes,
+    ) -> None: ...
+
+
+class BasicPublishFnT(Protocol):
+    def __call__(
+        self,
+        exchange: str,
+        routing_key: str,
+        body: Union[str, bytes],
+        properties: Optional[BasicProperties] = None,
+        mandatory: bool = False,
+    ) -> None: ...
+
+
+if TYPE_CHECKING:
+    from typing import (
+        Callable,
+        List,
+        Optional,
+        Union,
+    )
+
+    from pika.connection import Connection
+
+    from opentelemetry.context import Context
+    from opentelemetry.trace import Tracer
+    from opentelemetry.trace.span import Span
+
+    ChannelT = TypeVar("ChannelT", Channel, BlockingChannel)
+    ConnectionT = TypeVar("ConnectionT", Connection, BlockingConnection)
+
+    ConsumeHookT = Callable[[Optional[Span], bytes, BasicProperties], None]
+    PublishHookT = Callable[
+        [Optional[Span], Union[str, bytes], BasicProperties], None
+    ]
+
 
 _LOG = getLogger(__name__)
 
 
-class _PikaGetter(Getter[CarrierT]):  # type: ignore
+class _PikaGetter(Getter[CarrierT]):
     def get(self, carrier: CarrierT, key: str) -> Optional[List[str]]:
         value = carrier.get(key, None)
         if value is None:
@@ -37,26 +89,26 @@ class _PikaGetter(Getter[CarrierT]):  # type: ignore
         return []
 
 
-_pika_getter = _PikaGetter()
-
-HookT = Callable[[Span, bytes, BasicProperties], None]
+_pika_getter: Getter[Mapping[str, str]] = _PikaGetter()
 
 
-def dummy_callback(span: Span, body: bytes, properties: BasicProperties): ...
+def dummy_callback(
+    span: Optional[Span], body: Union[str, bytes], properties: BasicProperties
+) -> None: ...
 
 
 def _decorate_callback(
-    callback: Callable[[Channel, Basic.Deliver, BasicProperties, bytes], Any],
+    callback: OnMessageCallbackT,
     tracer: Tracer,
     task_name: str,
-    consume_hook: HookT = dummy_callback,
-):
+    consume_hook: ConsumeHookT = dummy_callback,
+) -> OnMessageCallbackT:
     def decorated_callback(
-        channel: Channel,
+        channel: Union[Channel, BlockingChannel],
         method: Basic.Deliver,
         properties: BasicProperties,
         body: bytes,
-    ) -> Any:
+    ) -> None:
         if not properties:
             properties = BasicProperties(headers={})
         if properties.headers is None:
@@ -92,18 +144,18 @@ def _decorate_callback(
 
 
 def _decorate_basic_publish(
-    original_function: Callable[[str, str, bytes, BasicProperties, bool], Any],
-    channel: Channel,
+    original_function: BasicPublishFnT,
+    channel: Union[Channel, BlockingChannel],
     tracer: Tracer,
-    publish_hook: HookT = dummy_callback,
-):
+    publish_hook: PublishHookT = dummy_callback,
+) -> BasicPublishFnT:
     def decorated_function(
         exchange: str,
         routing_key: str,
-        body: bytes,
-        properties: BasicProperties = None,
+        body: Union[str, bytes],
+        properties: Optional[BasicProperties] = None,
         mandatory: bool = False,
-    ) -> Any:
+    ) -> None:
         if not properties:
             properties = BasicProperties(headers={})
         if properties.headers is None:
@@ -137,7 +189,7 @@ def _decorate_basic_publish(
 
 def _get_span(
     tracer: Tracer,
-    channel: Optional[Channel],
+    channel: Optional[Union[Channel, BlockingChannel]],
     properties: BasicProperties,
     task_name: str,
     destination: str,
@@ -166,7 +218,7 @@ def _generate_span_name(
 
 def _enrich_span(
     span: Span,
-    channel: Optional[Channel],
+    channel: Optional[Union[Channel, BlockingChannel]],
     properties: BasicProperties,
     task_destination: str,
     operation: Optional[MessagingOperationValues] = None,
@@ -199,13 +251,13 @@ def _enrich_span(
 class ReadyMessagesDequeProxy(ObjectProxy):
     def __init__(
         self,
-        wrapped,
+        wrapped: deque,
         queue_consumer_generator: _QueueConsumerGeneratorInfo,
-        tracer: Optional[Tracer],
-        consume_hook: HookT = dummy_callback,
+        tracer: Tracer,
+        consume_hook: ConsumeHookT = dummy_callback,
     ):
         super().__init__(wrapped)
-        self._self_active_token = None
+        self._self_active_token: Optional[Token[Context]] = None
         self._self_tracer = tracer
         self._self_consume_hook = consume_hook
         self._self_queue_consumer_generator = queue_consumer_generator
