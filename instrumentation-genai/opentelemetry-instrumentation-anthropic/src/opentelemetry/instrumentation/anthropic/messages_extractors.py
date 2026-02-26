@@ -17,8 +17,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Sequence
-from urllib.parse import urlparse
+from typing import TYPE_CHECKING, Sequence
 
 from anthropic.types import MessageDeltaUsage
 
@@ -36,9 +35,6 @@ from opentelemetry.util.genai.types import (
 from opentelemetry.util.types import AttributeValue
 
 from .utils import (
-    _as_str,
-    _get_field,
-    as_int,
     convert_content_to_parts,
     normalize_finish_reason,
 )
@@ -85,14 +81,10 @@ def extract_usage_tokens(
     if usage is None:
         return None, None, None, None
 
-    input_tokens = as_int(getattr(usage, "input_tokens", None))
-    cache_creation_input_tokens = as_int(
-        getattr(usage, "cache_creation_input_tokens", None)
-    )
-    cache_read_input_tokens = as_int(
-        getattr(usage, "cache_read_input_tokens", None)
-    )
-    output_tokens = as_int(getattr(usage, "output_tokens", None))
+    input_tokens = usage.input_tokens
+    output_tokens = usage.output_tokens
+    cache_creation_input_tokens = usage.cache_creation_input_tokens
+    cache_read_input_tokens = usage.cache_read_input_tokens
 
     if (
         input_tokens is None
@@ -122,8 +114,8 @@ def get_input_messages(
         return []
     result: list[InputMessage] = []
     for message in messages:
-        role = _as_str(_get_field(message, "role")) or "user"
-        parts = convert_content_to_parts(_get_field(message, "content"))
+        role = message["role"]
+        parts = convert_content_to_parts(message["content"])
         result.append(InputMessage(role=role, parts=parts))
     return result
 
@@ -142,11 +134,11 @@ def get_output_messages_from_message(
     if message is None:
         return []
 
-    parts = convert_content_to_parts(_get_field(message, "content"))
-    finish_reason = normalize_finish_reason(_get_field(message, "stop_reason"))
+    parts = convert_content_to_parts(message.content)
+    finish_reason = normalize_finish_reason(message.stop_reason)
     return [
         OutputMessage(
-            role=_as_str(_get_field(message, "role")) or "assistant",
+            role=message.role,
             parts=parts,
             finish_reason=finish_reason or "",
         )
@@ -192,21 +184,12 @@ def _set_server_address_and_port(
     client_instance: "Messages",
     attributes: dict[str, AttributeValue | None],
 ) -> None:
-    base_client = getattr(client_instance, "_client", None)
-    base_url = getattr(base_client, "base_url", None)
-    if not base_url:
-        return
+    base_url = client_instance._client.base_url
+    host = base_url.host
+    if host:
+        attributes[ServerAttributes.SERVER_ADDRESS] = host
 
-    port: Optional[int] = None
-    if hasattr(base_url, "host"):
-        attributes[ServerAttributes.SERVER_ADDRESS] = base_url.host
-        port = getattr(base_url, "port", None)
-    elif isinstance(base_url, str):
-        url = urlparse(base_url)
-        if url.hostname is not None:
-            attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
-        port = url.port
-
+    port = base_url.port
     if port and port != 443 and port > 0:
         attributes[ServerAttributes.SERVER_PORT] = port
 

@@ -18,7 +18,20 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import Any, cast
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from anthropic.types import (
+    InputJSONDelta,
+    RedactedThinkingBlock,
+    ServerToolUseBlock,
+    TextBlock,
+    TextDelta,
+    ThinkingBlock,
+    ThinkingDelta,
+    ToolUseBlock,
+    WebSearchToolResultBlock,
+)
 
 from opentelemetry.util.genai.types import (
     Blob,
@@ -28,6 +41,26 @@ from opentelemetry.util.genai.types import (
     ToolCall,
     ToolCallResponse,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
+    from anthropic.types import (
+        ContentBlock,
+        ContentBlockParam,
+        RawContentBlockDelta,
+    )
+
+
+@dataclass
+class StreamBlockState:
+    type: str
+    text: str = ""
+    tool_id: str | None = None
+    tool_name: str = ""
+    tool_input: dict[str, object] | None = None
+    input_json: str = ""
+    thinking: str = ""
 
 
 def normalize_finish_reason(stop_reason: str | None) -> str | None:
@@ -42,167 +75,167 @@ def normalize_finish_reason(stop_reason: str | None) -> str | None:
     return normalized or stop_reason
 
 
-def _get_field(obj: Any, name: str, default: Any = None) -> Any:
-    if isinstance(obj, dict):
-        return cast(dict[str, Any], obj).get(name, default)
-    return getattr(obj, name, default)
-
-
-def _as_str(value: Any) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, str):
-        return value
-    return str(value)
-
-
-def as_int(value: Any) -> int | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    return None
-
-
-def _to_dict_if_possible(value: Any) -> Any:
-    if isinstance(value, dict):
-        return cast(dict[str, Any], value)
-    if hasattr(value, "to_dict"):
-        to_dict = getattr(value, "to_dict")
-        if callable(to_dict):
-            try:
-                return to_dict()
-            except Exception:  # pylint: disable=broad-exception-caught
-                return value
-    if hasattr(value, "__dict__"):
-        return cast(dict[str, Any], dict(value.__dict__))
-    return value
-
-
-def _decode_base64(data: str | None) -> bytes | None:
-    if not data:
-        return None
+def _decode_base64(data: str) -> bytes | None:
     try:
         return base64.b64decode(data)
     except Exception:  # pylint: disable=broad-exception-caught
         return None
 
 
-def _convert_content_block_to_part(content_block: Any) -> MessagePart | None:
-    block_type = _as_str(_get_field(content_block, "type"))
-    if block_type is None:
+def _extract_base64_blob(source: object, modality: str) -> Blob | None:
+    """Extract a Blob from a base64-encoded source dict."""
+    if not isinstance(source, dict):
         return None
+    # source is a TypedDict (e.g. Base64ImageSourceParam) narrowed to dict;
+    # pyright cannot infer value types from isinstance-narrowed dicts.
+    data: object = source.get("data")  # type: ignore[reportUnknownMemberType]
+    if not isinstance(data, str):
+        return None
+    decoded = _decode_base64(data)
+    if decoded is None:
+        return None
+    media_type: object = source.get("media_type")  # type: ignore[reportUnknownMemberType]
+    return Blob(
+        mime_type=media_type if isinstance(media_type, str) else None,
+        modality=modality,
+        content=decoded,
+    )
 
-    result: MessagePart | None = None
+
+def _convert_dict_block_to_part(
+    block: Mapping[str, object],
+) -> MessagePart | None:
+    """Convert a request-param content block (TypedDict/dict) to a MessagePart."""
+    block_type = block.get("type")
+
     if block_type == "text":
-        text = _as_str(_get_field(content_block, "text"))
-        result = Text(content=text or "")
-    elif block_type == "tool_use":
-        result = ToolCall(
-            arguments=_to_dict_if_possible(_get_field(content_block, "input")),
-            name=_as_str(_get_field(content_block, "name")) or "",
-            id=_as_str(_get_field(content_block, "id")),
+        text = block.get("text")
+        return Text(content=str(text) if text is not None else "")
+
+    if block_type == "tool_use":
+        inp = block.get("input")
+        return ToolCall(
+            arguments=inp if isinstance(inp, dict) else None,
+            name=str(block.get("name", "")),
+            id=str(block.get("id", "")),
         )
-    elif block_type == "tool_result":
-        result = ToolCallResponse(
-            response=_to_dict_if_possible(
-                _get_field(content_block, "content")
-            ),
-            id=_as_str(_get_field(content_block, "tool_use_id")),
+
+    if block_type == "tool_result":
+        return ToolCallResponse(
+            response=block.get("content"),
+            id=str(block.get("tool_use_id", "")),
         )
-    elif block_type in ("thinking", "redacted_thinking"):
-        content = _as_str(_get_field(content_block, "thinking"))
-        if content is None:
-            content = _as_str(_get_field(content_block, "data"))
-        result = Reasoning(content=content or "")
-    elif block_type in ("image", "audio", "video", "document", "file"):
-        source = _get_field(content_block, "source")
-        mime_type = _as_str(_get_field(source, "media_type"))
-        raw_data = _as_str(_get_field(source, "data"))
-        data = _decode_base64(raw_data)
-        if data is not None:
-            modality = _as_str(_get_field(content_block, "type")) or "file"
-            result = Blob(mime_type=mime_type, modality=modality, content=data)
-    else:
-        result = _to_dict_if_possible(content_block)
 
-    return result
+    if block_type in ("thinking", "redacted_thinking"):
+        thinking = block.get("thinking") or block.get("data")
+        return Reasoning(content=str(thinking) if thinking is not None else "")
+
+    if block_type in ("image", "audio", "video", "document", "file"):
+        return _extract_base64_blob(block.get("source"), str(block_type))
+
+    return None
 
 
-def convert_content_to_parts(content: Any) -> list[MessagePart]:
+def _convert_content_block_to_part(
+    block: ContentBlock | ContentBlockParam,
+) -> MessagePart | None:
+    """Convert an Anthropic content block to a MessagePart."""
+    if isinstance(block, TextBlock):
+        return Text(content=block.text)
+
+    if isinstance(block, (ToolUseBlock, ServerToolUseBlock)):
+        return ToolCall(arguments=block.input, name=block.name, id=block.id)
+
+    if isinstance(block, (ThinkingBlock, RedactedThinkingBlock)):
+        content = (
+            block.thinking if isinstance(block, ThinkingBlock) else block.data
+        )
+        return Reasoning(content=content)
+
+    if isinstance(block, WebSearchToolResultBlock):
+        return ToolCallResponse(
+            response=block.model_dump().get("content"),
+            id=block.tool_use_id,
+        )
+
+    # ContentBlockParam variants are TypedDicts (dicts at runtime);
+    # newer SDK versions may add Pydantic block types not handled above.
+    if isinstance(block, dict):
+        return _convert_dict_block_to_part(block)
+
+    return None
+
+
+def convert_content_to_parts(
+    content: str | Iterable[ContentBlock | ContentBlockParam] | None,
+) -> list[MessagePart]:
     if content is None:
         return []
     if isinstance(content, str):
         return [Text(content=content)]
-    if isinstance(content, list):
-        parts: list[MessagePart] = []
-        for item in cast(list[Any], content):
-            part = _convert_content_block_to_part(item)
-            if part is not None:
-                parts.append(part)
-        return parts
-    part = _convert_content_block_to_part(content)
-    return [part] if part is not None else []
+    parts: list[MessagePart] = []
+    for item in content:
+        part = _convert_content_block_to_part(item)
+        if part is not None:
+            parts.append(part)
+    return parts
 
 
-def create_stream_block_state(content_block: Any) -> dict[str, Any]:
-    block_type = _as_str(_get_field(content_block, "type")) or "text"
-    state: dict[str, Any] = {"type": block_type}
-    if block_type == "text":
-        state["text"] = _as_str(_get_field(content_block, "text")) or ""
-    elif block_type == "tool_use":
-        state["id"] = _as_str(_get_field(content_block, "id"))
-        state["name"] = _as_str(_get_field(content_block, "name")) or ""
-        state["input"] = _get_field(content_block, "input")
-        state["input_json"] = ""
-    elif block_type in ("thinking", "redacted_thinking"):
-        state["thinking"] = (
-            _as_str(_get_field(content_block, "thinking")) or ""
-        )
-    return state
+def create_stream_block_state(content_block: ContentBlock) -> StreamBlockState:
+    if isinstance(content_block, TextBlock):
+        return StreamBlockState(type="text", text=content_block.text)
 
-
-def update_stream_block_state(state: dict[str, Any], delta: Any) -> None:
-    delta_type = _as_str(_get_field(delta, "type"))
-    if delta_type == "text_delta":
-        state["type"] = "text"
-        state["text"] = (
-            f"{state.get('text', '')}"
-            f"{_as_str(_get_field(delta, 'text')) or ''}"
-        )
-        return
-    if delta_type == "input_json_delta":
-        state["type"] = "tool_use"
-        state["input_json"] = (
-            f"{state.get('input_json', '')}"
-            f"{_as_str(_get_field(delta, 'partial_json')) or ''}"
-        )
-        return
-    if delta_type == "thinking_delta":
-        state["type"] = "thinking"
-        state["thinking"] = (
-            f"{state.get('thinking', '')}"
-            f"{_as_str(_get_field(delta, 'thinking')) or ''}"
+    if isinstance(content_block, (ToolUseBlock, ServerToolUseBlock)):
+        return StreamBlockState(
+            type="tool_use",
+            tool_id=content_block.id,
+            tool_name=content_block.name,
+            tool_input=content_block.input,
         )
 
+    if isinstance(content_block, ThinkingBlock):
+        return StreamBlockState(
+            type="thinking", thinking=content_block.thinking
+        )
 
-def stream_block_state_to_part(state: dict[str, Any]) -> MessagePart | None:
-    block_type = _as_str(state.get("type"))
-    if block_type == "text":
-        return Text(content=_as_str(state.get("text")) or "")
-    if block_type == "tool_use":
-        arguments: Any = state.get("input")
-        partial_json = _as_str(state.get("input_json"))
-        if partial_json:
+    if isinstance(content_block, RedactedThinkingBlock):
+        return StreamBlockState(type="redacted_thinking")
+
+    return StreamBlockState(type=content_block.type)
+
+
+def update_stream_block_state(
+    state: StreamBlockState, delta: RawContentBlockDelta
+) -> None:
+    if isinstance(delta, TextDelta):
+        state.type = "text"
+        state.text += delta.text
+    elif isinstance(delta, InputJSONDelta):
+        state.type = "tool_use"
+        state.input_json += delta.partial_json
+    elif isinstance(delta, ThinkingDelta):
+        state.type = "thinking"
+        state.thinking += delta.thinking
+
+
+def stream_block_state_to_part(state: StreamBlockState) -> MessagePart | None:
+    if state.type == "text":
+        return Text(content=state.text)
+
+    if state.type == "tool_use":
+        arguments: str | dict[str, object] | None = state.tool_input
+        if state.input_json:
             try:
-                arguments = json.loads(partial_json)
+                arguments = json.loads(state.input_json)
             except ValueError:
-                arguments = partial_json
+                arguments = state.input_json
         return ToolCall(
             arguments=arguments,
-            name=_as_str(state.get("name")) or "",
-            id=_as_str(state.get("id")),
+            name=state.tool_name,
+            id=state.tool_id,
         )
-    if block_type in ("thinking", "redacted_thinking"):
-        return Reasoning(content=_as_str(state.get("thinking")) or "")
+
+    if state.type in ("thinking", "redacted_thinking"):
+        return Reasoning(content=state.thinking)
+
     return None

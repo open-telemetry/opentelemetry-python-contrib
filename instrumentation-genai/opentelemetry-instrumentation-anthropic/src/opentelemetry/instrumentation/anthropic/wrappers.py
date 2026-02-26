@@ -33,7 +33,7 @@ from .messages_extractors import (
     get_output_messages_from_message,
 )
 from .utils import (
-    _get_field,
+    StreamBlockState,
     create_stream_block_state,
     normalize_finish_reason,
     stream_block_state_to_part,
@@ -122,7 +122,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         self._cache_creation_input_tokens: Optional[int] = None
         self._cache_read_input_tokens: Optional[int] = None
         self._capture_content = capture_content
-        self._content_blocks: dict[int, dict[str, object]] = {}
+        self._content_blocks: dict[int, StreamBlockState] = {}
         self._finalized = False
 
     def _update_usage(self, usage: Usage | MessageDeltaUsage | None) -> None:
@@ -145,32 +145,25 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         """Extract telemetry data from a streaming chunk."""
         if chunk.type == "message_start":
             message = chunk.message
-            if message:
-                if hasattr(message, "id") and message.id:
-                    self._response_id = message.id
-                if hasattr(message, "model") and message.model:
-                    self._response_model = message.model
-                if hasattr(message, "usage") and message.usage:
-                    self._update_usage(message.usage)
+            if message.id:
+                self._response_id = message.id
+            if message.model:
+                self._response_model = message.model
+            self._update_usage(message.usage)
         elif chunk.type == "message_delta":
-            delta = chunk.delta
-            if delta and hasattr(delta, "stop_reason") and delta.stop_reason:
-                self._stop_reason = normalize_finish_reason(delta.stop_reason)
-            usage = chunk.usage
-            self._update_usage(usage)
-        elif self._capture_content and chunk.type == "content_block_start":
-            index = _get_field(chunk, "index")
-            content_block = _get_field(chunk, "content_block")
-            if isinstance(index, int):
-                self._content_blocks[index] = create_stream_block_state(
-                    content_block
+            if chunk.delta.stop_reason:
+                self._stop_reason = normalize_finish_reason(
+                    chunk.delta.stop_reason
                 )
+            self._update_usage(chunk.usage)
+        elif self._capture_content and chunk.type == "content_block_start":
+            self._content_blocks[chunk.index] = create_stream_block_state(
+                chunk.content_block
+            )
         elif self._capture_content and chunk.type == "content_block_delta":
-            index = _get_field(chunk, "index")
-            delta = _get_field(chunk, "delta")
-            if isinstance(index, int) and delta is not None:
-                block = self._content_blocks.setdefault(index, {})
-                update_stream_block_state(block, delta)
+            block = self._content_blocks.get(chunk.index)
+            if block is not None:
+                update_stream_block_state(block, chunk.delta)
 
     @staticmethod
     def _safe_instrumentation(
@@ -285,7 +278,6 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
 
     def close(self) -> None:
         try:
-            if hasattr(self._stream, "close"):
-                self._stream.close()
+            self._stream.close()
         finally:
             self._stop()
