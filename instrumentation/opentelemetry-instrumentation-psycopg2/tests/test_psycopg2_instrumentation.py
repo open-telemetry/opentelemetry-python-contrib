@@ -15,14 +15,21 @@ from importlib.metadata import PackageNotFoundError
 from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
+import psycopg2
+
 from opentelemetry.instrumentation.auto_instrumentation._load import (
     _load_instrumentors,
 )
-from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
+from opentelemetry.instrumentation.psycopg2 import (
+    DatabaseApiIntegration,
+    Psycopg2Instrumentor,
+)
 from opentelemetry.instrumentation.psycopg2.package import (
     _instruments_psycopg2,
     _instruments_psycopg2_binary,
 )
+from opentelemetry.instrumentation.psycopg2.version import __version__
+from opentelemetry.test.test_base import TestBase
 
 
 class TestPsycopg2InstrumentationDependencies(TestCase):
@@ -159,4 +166,42 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
         self.assertEqual(ep.name, "psycopg2")
         mock_logger.debug.assert_has_calls(
             [_instrumentation_loaded_successfully_call()]
+        )
+
+
+@patch("opentelemetry.instrumentation.psycopg2.dbapi")
+class TestPsycopg2InstrumentorParameters(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            Psycopg2Instrumentor().uninstrument()
+
+    def test_instrument_defaults(self, mock_dbapi):
+        Psycopg2Instrumentor().instrument()
+
+        mock_dbapi.wrap_connect.assert_called_once_with(
+            "opentelemetry.instrumentation.psycopg2",
+            psycopg2,
+            "connect",
+            "postgresql",
+            {
+                "database": "info.dbname",
+                "port": "info.port",
+                "host": "info.host",
+                "user": "info.user",
+            },
+            version=__version__,
+            tracer_provider=None,
+            db_api_integration_factory=DatabaseApiIntegration,
+            enable_commenter=False,
+            commenter_options={},
+            enable_attribute_commenter=False,
+            capture_parameters=False,
+        )
+
+    def test_instrument_capture_parameters(self, mock_dbapi):
+        Psycopg2Instrumentor().instrument(capture_parameters=True)
+
+        self.assertTrue(
+            mock_dbapi.wrap_connect.call_args.kwargs["capture_parameters"]
         )
