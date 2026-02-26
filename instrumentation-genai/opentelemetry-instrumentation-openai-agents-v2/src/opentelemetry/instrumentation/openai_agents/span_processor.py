@@ -17,6 +17,7 @@ References:
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -371,8 +372,18 @@ def safe_json_dumps(obj: Any) -> str:
     """Safely convert object to JSON string (fallback to str)."""
     try:
         return gen_ai_json_dumps(obj)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as e:
+        logger.warning("Failed to serialize object to JSON: %s", e)
         return str(obj)
+
+
+def safe_json_loads(s: str) -> Any:
+    """Safely parse JSON string (fallback to original string)."""
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError as e:
+        logger.warning("Failed to parse JSON string: %s", e)
+        return s
 
 
 def _as_utc_nano(dt: datetime) -> int:
@@ -873,10 +884,353 @@ class GenAISemanticProcessor(TracingProcessor):
 
         return normalized
 
+    def _normalize_response_output_part(
+        self, item: Any
+    ) -> list[dict[str, Any]]:
+        part_type = getattr(item, "type", None)
+        if part_type == "message":  # ResponseOutputMessage
+            parts = []
+            content = getattr(item, "content", None)
+            if isinstance(content, Sequence):
+                for c in content:
+                    content_type = getattr(c, "type", None)
+                    if content_type == "output_text":
+                        parts.append(
+                            {
+                                "type": "text",
+                                "annotations": (  # out of spec but useful
+                                    [
+                                        a.to_dict()
+                                        if hasattr(a, "to_dict")
+                                        else str(a)
+                                        for a in getattr(c, "annotations", [])
+                                    ]
+                                ),
+                                "content": getattr(c, "text", None),
+                            }
+                        )
+                    elif content_type == "refusal":
+                        parts.append(
+                            {
+                                "type": "refusal",  # custom type
+                                "content": getattr(c, "refusal", None),
+                            }
+                        )
+            else:
+                parts.append(
+                    {
+                        "type": "text",
+                        "content": str(content),
+                    }
+                )
+            return parts
+        if part_type == "file_search_call":  # ResponseFileSearchToolCall
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "file_search",
+                    "id": getattr(item, "id", None),
+                    "arguments": ({"queries": getattr(item, "queries", [])}),
+                }
+            ]
+        if part_type == "function_call":  # ResponseFunctionToolCall
+            return [
+                {
+                    "type": "tool_call",
+                    "name": getattr(item, "name", None),
+                    "id": getattr(item, "id", None),
+                    "arguments": (
+                        safe_json_loads(getattr(item, "arguments", None))
+                    ),
+                }
+            ]
+        if part_type == "web_search_call":  # ResponseFunctionWebSearch
+            action = getattr(item, "action", None)
+            action_obj = (
+                action.to_dict() if hasattr(action, "to_dict") else str(action)
+            )
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "web_search",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "action": action_obj,
+                    },
+                }
+            ]
+        if part_type == "computer_call":  # ResponseComputerToolCall
+            action = getattr(item, "action", None)
+            action_obj = (
+                action.to_dict() if hasattr(action, "to_dict") else str(action)
+            )
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "computer",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "action": action_obj,
+                    },
+                }
+            ]
+        if part_type == "reasoning":  # ResponseReasoningItem
+            content = getattr(item, "content", None)
+            content_str = (
+                str.join(
+                    "\n",
+                    [
+                        getattr(c, "text", "")
+                        if hasattr(c, "text")
+                        else str(c)
+                        for c in content
+                    ],
+                )
+                if isinstance(content, Sequence)
+                else str(content)
+            )
+            return [
+                {
+                    "type": "reasoning",
+                    "content": content_str,
+                }
+            ]
+        if part_type == "compaction":  # ResponseCompactionItem
+            return [
+                {
+                    "type": "compaction",  # custom type
+                    "content": getattr(item, "encrypted_content", None),
+                }
+            ]
+        if part_type == "image_generation_call":  # ImageGenerationCall
+            return [
+                {
+                    "type": "tool_call_response",
+                    "name": "image_generation",
+                    "id": getattr(item, "id", None),
+                    "response": {"result": getattr(item, "result", None)},
+                }
+            ]
+        if (
+            part_type == "code_interpreter_call"
+        ):  # ResponseCodeInterpreterToolCall
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "code_interpreter",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "container_id": getattr(item, "container_id", None),
+                        "code": getattr(item, "code", None),
+                    },
+                },
+                {
+                    "type": "tool_call_response",
+                    "name": "code_interpreter",
+                    "id": getattr(item, "id", None),
+                    "response": {
+                        "status": getattr(item, "status", None),
+                        "outputs": [
+                            output.to_dict()
+                            for output in getattr(item, "outputs", [])
+                        ],
+                    },
+                },
+            ]
+        if part_type == "local_shell_call":  # LocalShellCall
+            action = getattr(item, "action", None)
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "local_shell",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "type": getattr(action, "type", None),
+                        "timeout_ms": getattr(action, "timeout_ms", None),
+                        "command": getattr(action, "command", None),
+                        "env": getattr(action, "env", None),
+                        "user": getattr(action, "user", None),
+                        "working_directory": getattr(
+                            action, "working_directory", None
+                        ),
+                    },
+                }
+            ]
+        if part_type == "shell_call":  # ResponseFunctionShellToolCall
+            action = getattr(item, "action", None)
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "shell",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "created_by": getattr(action, "created_by", None),
+                        "call_id": getattr(item, "call_id", None),
+                        "environment": getattr(action, "environment", None),
+                        "commands": getattr(action, "commands", None),
+                        "max_output_length": getattr(
+                            action, "max_output_length", None
+                        ),
+                        "timeout_ms": getattr(action, "timeout_ms", None),
+                    },
+                }
+            ]
+        if (
+            part_type == "shell_call_output"
+        ):  # ResponseFunctionShellToolCallOutput
+            return [
+                {
+                    "type": "tool_call_response",
+                    "name": "shell",
+                    "id": getattr(item, "id", None),
+                    "response": {
+                        "created_by": getattr(item, "created_by", None),
+                        "call_id": getattr(item, "call_id", None),
+                        "result": [
+                            output.to_dict()
+                            for output in getattr(item, "output", [])
+                        ],
+                    },
+                }
+            ]
+        if part_type == "apply_patch_call":  # ResponseApplyPatchToolCall
+            operation = getattr(item, "operation", None)
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "apply_patch",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "created_by": getattr(item, "created_by", None),
+                        "call_id": getattr(item, "call_id", None),
+                        "operation": (
+                            operation.to_dict()
+                            if hasattr(operation, "to_dict")
+                            else safe_json_dumps(operation)
+                        ),
+                    },
+                }
+            ]
+        if (
+            part_type == "apply_patch_call_output"
+        ):  # ResponseApplyPatchToolCallOutput
+            return [
+                {
+                    "type": "tool_call_response",
+                    "name": "apply_patch",
+                    "id": getattr(item, "id", None),
+                    "response": {
+                        "created_by": getattr(item, "created_by", None),
+                        "call_id": getattr(item, "call_id", None),
+                        "status": getattr(item, "status", None),
+                        "output": getattr(item, "output", None),
+                    },
+                }
+            ]
+        if part_type == "mcp_call":  # McpCall
+            parts = [
+                {
+                    "type": "tool_call",
+                    "name": "mcp_call",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "server": getattr(item, "server_label", None),
+                        "tool_name": getattr(item, "name", None),
+                        "tool_args": (
+                            safe_json_loads(getattr(item, "arguments", None))
+                        ),
+                    },
+                }
+            ]
+            if getattr(item, "output", None) or getattr(item, "error", None):
+                parts.append(
+                    {
+                        "type": "tool_call_response",
+                        "name": "mcp_call",
+                        "id": getattr(item, "id", None),
+                        "response": {
+                            "output": getattr(item, "output", None),
+                            "error": getattr(item, "error", None),
+                            "status": getattr(item, "status", None),
+                        },
+                    }
+                )
+            return parts
+        if part_type == "mcp_list_tools":  # McpListTools
+            parts = [
+                {
+                    "type": "tool_call",
+                    "name": "mcp_list_tools",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "server": getattr(item, "server_label", None),
+                    },
+                }
+            ]
+            if getattr(item, "tools", None) or getattr(item, "error", None):
+                parts.append(
+                    {
+                        "type": "tool_call_response",
+                        "name": "mcp_list_tools",
+                        "id": getattr(item, "id", None),
+                        "response": {
+                            "tools": [
+                                tool.to_dict()
+                                for tool in getattr(item, "tools", [])
+                            ],
+                            "error": getattr(item, "error", None),
+                        },
+                    }
+                )
+            return parts
+        if part_type == "mcp_approval_request":  # McpApprovalRequest
+            return [
+                {
+                    "type": "tool_call",
+                    "name": "mcp_approval_request",
+                    "id": getattr(item, "id", None),
+                    "arguments": {
+                        "server": getattr(item, "server_label", None),
+                        "tool_name": getattr(item, "name", None),
+                        "tool_args": (
+                            safe_json_loads(getattr(item, "arguments", None))
+                        ),
+                    },
+                }
+            ]
+        if part_type == "custom_tool_call":  # ResponseCustomToolCall
+            return [
+                {
+                    "type": "tool_call",
+                    "name": getattr(item, "name", None),
+                    "id": getattr(item, "id", None),
+                    "arguments": getattr(item, "input", None),
+                }
+            ]
+
+        # Fallback: content string attribute
+        txt = getattr(item, "content", None)
+        if isinstance(txt, str) and txt:
+            return [
+                {
+                    "type": "text",
+                    "content": txt,
+                }
+            ]
+
+        # Fallback: stringified
+        return [
+            {
+                "type": "text",
+                "content": safe_json_dumps(item),
+            }
+        ]
+
     def _normalize_output_messages_to_role_parts(
         self, span_data: Any
     ) -> list[dict[str, Any]]:
         """Normalize output messages to enforced role+parts schema.
+        Contains sensitive content, assumes it will not be called if include_sensitive_data=False.
 
         Produces: [{"role": "assistant", "parts": [{"type": "text", "content": "..."}],
                     optional "finish_reason": "..." }]
@@ -885,55 +1239,28 @@ class GenAISemanticProcessor(TracingProcessor):
         parts: list[dict[str, Any]] = []
         finish_reason: Optional[str] = None
 
-        # Response span: prefer consolidated output_text
+        # Response span: use span_data.response.output, or fall back to consolidated output_text
         response = getattr(span_data, "response", None)
         if response is not None:
-            # Collect text content
-            output_text = getattr(response, "output_text", None)
-            if isinstance(output_text, str) and output_text:
-                parts.append(
-                    {
-                        "type": "text",
-                        "content": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else output_text
-                        ),
-                    }
-                )
+            output = getattr(response, "output", None)
+            if isinstance(output, Sequence):
+                for item in output:
+                    parts.extend(self._normalize_response_output_part(item))
+
+                    # Capture finish_reason from parts when present
+                    fr = getattr(item, "finish_reason", None)
+                    if isinstance(fr, str) and not finish_reason:
+                        finish_reason = fr
             else:
-                output = getattr(response, "output", None)
-                if isinstance(output, Sequence):
-                    for item in output:
-                        # ResponseOutputMessage may have a string representation
-                        txt = getattr(item, "content", None)
-                        if isinstance(txt, str) and txt:
-                            parts.append(
-                                {
-                                    "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else txt
-                                    ),
-                                }
-                            )
-                        else:
-                            # Fallback: stringified
-                            parts.append(
-                                {
-                                    "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else str(item)
-                                    ),
-                                }
-                            )
-                        # Capture finish_reason from parts when present
-                        fr = getattr(item, "finish_reason", None)
-                        if isinstance(fr, str) and not finish_reason:
-                            finish_reason = fr
+                # Collect text content
+                output_text = getattr(response, "output_text", None)
+                if isinstance(output_text, str) and output_text:
+                    parts.append(
+                        {
+                            "type": "text",
+                            "content": output_text,
+                        }
+                    )
 
         # Generation span: use span_data.output
         if not parts:
@@ -947,11 +1274,7 @@ class GenAISemanticProcessor(TracingProcessor):
                                 parts.append(
                                     {
                                         "type": "text",
-                                        "content": (
-                                            "readacted"
-                                            if not self.include_sensitive_data
-                                            else txt
-                                        ),
+                                        "content": txt,
                                     }
                                 )
                         elif "content" in item and isinstance(
@@ -960,22 +1283,14 @@ class GenAISemanticProcessor(TracingProcessor):
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else item["content"]
-                                    ),
+                                    "content": item["content"],
                                 }
                             )
                         else:
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else str(item)
-                                    ),
+                                    "content": str(item),
                                 }
                             )
                         if not finish_reason and isinstance(
@@ -986,22 +1301,14 @@ class GenAISemanticProcessor(TracingProcessor):
                         parts.append(
                             {
                                 "type": "text",
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else item
-                                ),
+                                "content": item,
                             }
                         )
                     else:
                         parts.append(
                             {
                                 "type": "text",
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else str(item)
-                                ),
+                                "content": str(item),
                             }
                         )
 
@@ -1056,9 +1363,19 @@ class GenAISemanticProcessor(TracingProcessor):
 
         elif _is_instance_of(span_data, ResponseSpanData):
             span_input = getattr(span_data, "input", None)
+            response_obj = getattr(span_data, "response", None)
             if capture_messages and span_input:
                 payload.input_messages = (
                     self._normalize_messages_to_role_parts(span_input)
+                )
+
+            if (
+                capture_system
+                and response_obj
+                and hasattr(response_obj, "instructions")
+            ):
+                payload.system_instructions = self._normalize_to_text_parts(
+                    response_obj.instructions
                 )
             if capture_system and span_input:
                 sys_instr = self._collect_system_instructions(span_input)
