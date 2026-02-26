@@ -89,7 +89,7 @@ def chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return StreamWrapperOld(
+                    return LegacyChatStreamWrapper(
                         parsed_result, span, logger, capture_content
                     )
 
@@ -142,7 +142,7 @@ def chat_completions_create_v_new(
             else:
                 parsed_result = result
             if is_streaming(kwargs):
-                return StreamWrapperNew(
+                return ChatStreamWrapper(
                     parsed_result, handler, chat_invocation, capture_content
                 )
 
@@ -194,7 +194,7 @@ def async_chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return StreamWrapperOld(
+                    return LegacyChatStreamWrapper(
                         parsed_result, span, logger, capture_content
                     )
 
@@ -246,7 +246,7 @@ def async_chat_completions_create_v_new(
             else:
                 parsed_result = result
             if is_streaming(kwargs):
-                return StreamWrapperNew(
+                return ChatStreamWrapper(
                     parsed_result, handler, chat_invocation, capture_content
                 )
 
@@ -758,7 +758,7 @@ class BaseStreamWrapper:
         return self
 
 
-class StreamWrapperOld(BaseStreamWrapper):
+class LegacyChatStreamWrapper(BaseStreamWrapper):
     span: Span
     response_id: Optional[str] = None
     response_model: Optional[str] = None
@@ -863,7 +863,7 @@ class StreamWrapperOld(BaseStreamWrapper):
         self._started = False
 
 
-class StreamWrapperNew(BaseStreamWrapper):
+class ChatStreamWrapper(BaseStreamWrapper):
     handler: TelemetryHandler
     invocation: LLMInvocation
     response_id: Optional[str] = None

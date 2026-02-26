@@ -84,30 +84,25 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         latest_experimental_enabled = is_experimental_mode()
         tracer_provider = kwargs.get("tracer_provider")
-        schema_url = (
-            Schemas.V1_37_0.value
-            if latest_experimental_enabled
-            else Schemas.V1_30_0.value
-        )
         tracer = get_tracer(
             __name__,
             "",
             tracer_provider,
-            schema_url=schema_url,
+            schema_url=Schemas.V1_30_0.value,  # only used on the legacy path
         )
         logger_provider = kwargs.get("logger_provider")
         logger = get_logger(
             __name__,
             "",
             logger_provider=logger_provider,
-            schema_url=schema_url,
+            schema_url=Schemas.V1_30_0.value,  # only used on the legacy path
         )
         meter_provider = kwargs.get("meter_provider")
         self._meter = get_meter(
             __name__,
             "",
             meter_provider,
-            schema_url=schema_url,
+            schema_url=Schemas.V1_30_0.value,  # only used on the legacy path
         )
 
         instruments = Instruments(self._meter)
