@@ -59,7 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 
 ### Fixed
-- `opentelemetry-instrumentation-asyncio`: Fix environment variables not appearing in Read the Docs documentation by moving docstrings below variable assignments and adding `.. envvar::` directives
+
+- `opentelemetry-instrumentation-asyncio`: Fix environment variables not appearing in Read the Docs documentation
   ([#4256](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4256))
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
   ([#4116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4116))
