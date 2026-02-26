@@ -493,9 +493,10 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = int(span.get_span_context().trace_flags)
             self.assertEqual(
                 MockCursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -542,13 +543,14 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = int(span.get_span_context().trace_flags)
             self.assertEqual(
                 MockCursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
-                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
             )
 
     def test_sqlcommenter_enabled_instrument_connection_with_options(self):
@@ -588,9 +590,10 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = int(span.get_span_context().trace_flags)
             self.assertEqual(
                 MockCursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_threadsafety='123',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/",
+                f"Select 1 /*db_driver='psycopg%%3Afoobar',dbapi_threadsafety='123',libpq_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags:02x}'*/",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
