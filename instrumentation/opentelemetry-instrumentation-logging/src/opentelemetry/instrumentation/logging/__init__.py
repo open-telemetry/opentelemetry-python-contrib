@@ -228,16 +228,19 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 "Disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging "
                 "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`"
             )
-        elif (
+        elif kwargs.get(
+            "enable_log_auto_istrumentation",
             environ.get(OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION, "true")
             .strip()
             .lower()
-        ) == "true":
-            log_code_attributes = (
+            == "true",
+        ):
+            log_code_attributes = kwargs.get(
+                "log_code_attributes",
                 environ.get(OTEL_PYTHON_LOG_CODE_ATTRIBUTES, "false")
                 .strip()
                 .lower()
-                == "true"
+                == "true",
             )
             logger_provider = get_logger_provider()
             handler = _setup_logging_handler(
