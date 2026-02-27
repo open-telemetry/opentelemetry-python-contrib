@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 
 ### Fixed
+- `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'` by routing bidi streams through `_intercept` instead of the generator-based `_intercept_server_stream`
+  ([#1180](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1180))
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
   ([#4116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4116))
 - `opentelemetry-instrumentation-cassandra`: Use `_instruments_any` instead of `_instruments` for driver dependencies so that having either `cassandra-driver` or `scylla-driver` installed is sufficient
