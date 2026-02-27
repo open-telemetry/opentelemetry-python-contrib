@@ -90,7 +90,7 @@ class TestPika(TestCase):
         instrument_channel_consumers: mock.MagicMock,
         instrument_basic_consume: mock.MagicMock,
         instrument_channel_functions: mock.MagicMock,
-    ):
+    ) -> None:
         PikaInstrumentor.instrument_channel(channel=self.blocking_channel)
         assert hasattr(
             self.blocking_channel, "_is_instrumented_by_opentelemetry"
@@ -113,7 +113,7 @@ class TestPika(TestCase):
         instrument_channel_consumers: mock.MagicMock,
         instrument_basic_consume: mock.MagicMock,
         instrument_channel_functions: mock.MagicMock,
-    ):
+    ) -> None:
         PikaInstrumentor.instrument_channel(channel=self.channel)
         assert hasattr(self.channel, "_is_instrumented_by_opentelemetry"), (
             "channel is not marked as instrumented!"
