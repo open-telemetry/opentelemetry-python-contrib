@@ -516,7 +516,7 @@ def _wrapped_before_request(
                     span.set_attributes(custom_attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
         flask_request_environ[_ENVIRON_REQCTX_REF_KEY] = _request_ctx_ref()
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
@@ -553,7 +553,7 @@ def _wrapped_teardown_request(
     excluded_urls=None,
 ):
     def _teardown_request(exc):
-        # pylint: disable=E1101
+        # pylint: disable=unnecessary-dunder-call
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
             return
 

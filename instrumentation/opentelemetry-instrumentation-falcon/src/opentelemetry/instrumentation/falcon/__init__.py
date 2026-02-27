@@ -357,7 +357,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         return super()._handle_exception(req, resp, ex, params)
 
     def __call__(self, env, start_response):
-        # pylint: disable=E1101
+        # pylint: disable=unnecessary-dunder-call
         # pylint: disable=too-many-locals
         # pylint: disable=too-many-branches
         if self._otel_excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
