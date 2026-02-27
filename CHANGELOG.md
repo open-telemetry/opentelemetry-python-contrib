@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
 - `opentelemetry-instrumentation-pyramid`: pass request attributes at span creation
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
+- `opentelemetry-instrumentation-exceptions`: add instrumentation to emit LogRecords for uncaught exceptions and unhandled asyncio task exceptions
+([#4211](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4211))
 
 ### Fixed
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.

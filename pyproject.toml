@@ -39,6 +39,7 @@ dependencies = [
   "opentelemetry-instrumentation-kafka-python[instruments]",
   "opentelemetry-instrumentation-kafka-python[instruments-any]",
   "opentelemetry-instrumentation-logging",
+  "opentelemetry-instrumentation-exceptions",
   "opentelemetry-instrumentation-mysql[instruments]",
   "opentelemetry-instrumentation-mysqlclient[instruments]",
   "opentelemetry-instrumentation-pika[instruments]",
@@ -111,6 +112,7 @@ opentelemetry-instrumentation-httpx = { workspace = true }
 opentelemetry-instrumentation-jinja2 = { workspace = true }
 opentelemetry-instrumentation-kafka-python = { workspace = true }
 opentelemetry-instrumentation-logging = { workspace = true }
+opentelemetry-instrumentation-exceptions = { workspace = true }
 opentelemetry-instrumentation-mysql = { workspace = true }
 opentelemetry-instrumentation-mysqlclient = { workspace = true }
 opentelemetry-instrumentation-pika = { workspace = true }

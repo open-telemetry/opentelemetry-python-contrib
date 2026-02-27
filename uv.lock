@@ -37,6 +37,7 @@ members = [
     "opentelemetry-instrumentation-dbapi",
     "opentelemetry-instrumentation-django",
     "opentelemetry-instrumentation-elasticsearch",
+    "opentelemetry-instrumentation-exceptions",
     "opentelemetry-instrumentation-falcon",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-flask",
@@ -3253,6 +3254,21 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
+name = "opentelemetry-instrumentation-exceptions"
+source = { editable = "instrumentation/opentelemetry-instrumentation-exceptions" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+]
+provides-extras = ["instruments"]
+
+[[package]]
 name = "opentelemetry-instrumentation-falcon"
 source = { editable = "instrumentation/opentelemetry-instrumentation-falcon" }
 dependencies = [
@@ -4186,6 +4202,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-dbapi" },
     { name = "opentelemetry-instrumentation-django", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-elasticsearch", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-exceptions" },
     { name = "opentelemetry-instrumentation-falcon", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-fastapi", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-flask", extra = ["instruments"] },
@@ -4258,6 +4275,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
     { name = "opentelemetry-instrumentation-django", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-django" },
     { name = "opentelemetry-instrumentation-elasticsearch", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-elasticsearch" },
+    { name = "opentelemetry-instrumentation-exceptions", editable = "instrumentation/opentelemetry-instrumentation-exceptions" },
     { name = "opentelemetry-instrumentation-falcon", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-falcon" },
     { name = "opentelemetry-instrumentation-fastapi", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-flask", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-flask" },
