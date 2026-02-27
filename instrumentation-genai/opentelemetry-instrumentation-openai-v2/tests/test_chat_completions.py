@@ -464,6 +464,9 @@ def test_chat_completion_with_raw_response_streaming(
     response = raw_response.parse()
 
     message_content = ""
+    response_stream_usage = None
+    response_stream_model = None
+    response_stream_id = None
     for chunk in response:
         if chunk.choices:
             message_content += chunk.choices[0].delta.content or ""
@@ -831,6 +834,9 @@ def test_chat_completion_multiple_choices_streaming(
     # two strings for each choice
     response_stream_result = ["", ""]
     finish_reasons = ["", ""]
+    response_stream_usage = None
+    response_stream_model = None
+    response_stream_id = None
     for chunk in response_0:
         if chunk.choices:
             for choice in chunk.choices:
@@ -968,6 +974,9 @@ def test_chat_completion_with_context_manager_streaming(
         stream_options={"include_usage": True},
     ) as response:
         message_content = ""
+        response_stream_usage = None
+        response_stream_model = None
+        response_stream_id = None
         for chunk in response:
             if chunk.choices:
                 message_content += chunk.choices[0].delta.content or ""
@@ -1029,6 +1038,9 @@ def chat_completion_multiple_tools_streaming(
     )
 
     finish_reason = None
+    response_stream_usage = None
+    response_stream_model = None
+    response_stream_id = None
     # two tools
     tool_names = ["", ""]
     tool_call_ids = ["", ""]
