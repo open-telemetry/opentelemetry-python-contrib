@@ -68,6 +68,7 @@ class MockConnection:
         return {"dbname": "test"}
 
 
+# pylint: disable=too-many-public-methods
 class TestPostgresqlIntegration(TestBase):
     def setUp(self):
         super().setUp()
