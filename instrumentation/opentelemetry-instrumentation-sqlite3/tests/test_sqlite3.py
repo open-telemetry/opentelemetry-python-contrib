@@ -118,3 +118,24 @@ class TestSQLite3(TestBase):
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")
+            
+    def test_noop_tracer_provider(self):
+        """Should not create any spans when using NoOpTracerProvider"""
+        SQLite3Instrumentor().uninstrument()
+        SQLite3Instrumentor().instrument(tracer_provider=trace_api.get_tracer_provider())
+        self._tracer = trace_api.get_tracer(__name__)
+        self._create_tables()
+
+        stmt = "CREATE TABLE IF NOT EXISTS test (id integer)"
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor.execute(stmt)
+
+        stmt = "INSERT INTO test (id) VALUES (?)"
+        data = [("1",), ("2",), ("3",)]
+        with self._tracer.start_as_current_span("rootSpan"):
+            self._cursor.executemany(stmt, data)
+
+        with self._tracer.start_as_current_span("rootSpan"), self.assertRaises(Exception):
+            self._cursor.callproc("test", ())
+
+       
