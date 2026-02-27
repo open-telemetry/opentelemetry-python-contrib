@@ -90,6 +90,7 @@ class Labeler:
         """
         Add multiple attributes to the labeler, subject to the labeler's limits:
         - If max_custom_attrs limit is reached and this is a new key, the attribute is ignored
+        - Existing attributes can still be updated
         - String values exceeding max_attr_value_length are truncated
 
         Args:
@@ -110,7 +111,8 @@ class Labeler:
                     len(self._attributes) >= self._max_custom_attrs
                     and key not in self._attributes
                 ):
-                    break
+                    # Continue to allow existing key update
+                    continue
 
                 if (
                     isinstance(value, str)
