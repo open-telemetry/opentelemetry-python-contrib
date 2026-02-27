@@ -104,8 +104,8 @@ class TestAgentCreationHandler(TestCase):
             name="CM Agent",
             provider="openai",
         )
-        with handler.create_agent(creation) as c:
-            c.agent_id = "assigned-id"
+        with handler.create_agent(creation) as cr:
+            cr.agent_id = "assigned-id"
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -123,9 +123,9 @@ class TestAgentCreationHandler(TestCase):
 
     def test_create_agent_context_manager_default(self) -> None:
         handler = self._make_handler()
-        with handler.create_agent() as c:
-            c.name = "Dynamic Agent"
-            c.provider = "openai"
+        with handler.create_agent() as cr:
+            cr.name = "Dynamic Agent"
+            cr.provider = "openai"
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
