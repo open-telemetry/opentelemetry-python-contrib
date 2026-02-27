@@ -21,6 +21,9 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
+    openai_attributes as OpenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 
@@ -84,7 +87,7 @@ def assert_all_attributes(
     )
     _assert_optional_attribute(
         span,
-        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+        OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER,
         response_service_tier,
     )
 

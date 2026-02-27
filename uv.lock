@@ -3574,6 +3574,7 @@ dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-genai" },
 ]
 
 [package.optional-dependencies]
@@ -3587,6 +3588,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "opentelemetry-util-genai", editable = "util/opentelemetry-util-genai" },
 ]
 provides-extras = ["instruments"]
 

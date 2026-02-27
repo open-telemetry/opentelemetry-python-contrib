@@ -82,6 +82,23 @@ Make sure to configure OpenTelemetry tracing, logging, and events to capture all
         input="Generate vector embeddings for this text"
     )
 
+    # Responses API example
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input="Write a short poem on OpenTelemetry.",
+    )
+
+    # Responses streaming example
+    with client.responses.stream(
+        model="gpt-4o-mini",
+        input="Write a short poem on OpenTelemetry.",
+        background=True,
+    ) as stream:
+        for event in stream:
+            if event.type == "response.completed":
+                response = event.response
+                break
+
 Enabling message content
 *************************
 
@@ -109,4 +126,3 @@ References
 * `OpenTelemetry OpenAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation-genai/openai.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
-
