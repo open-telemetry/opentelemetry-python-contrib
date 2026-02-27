@@ -113,6 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4078](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4171))
 - `opentelemetry-instrumentation-aiohttp-server`: fix HTTP error inconsistencies
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
+- `opentelemetry-instrumentation-falcon`: Refactor `_handle_exception` to remove pylint disables
+  ([#4207](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4207))
 - `opentelemetry-docker-tests` Fix docker-tests assumption by Postgres-Sqlalchemy case about scope of metrics
   ([#4258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4258))
 - `opentelemetry-instrumentation-threading`: fix AttributeError when Thread is run without starting
