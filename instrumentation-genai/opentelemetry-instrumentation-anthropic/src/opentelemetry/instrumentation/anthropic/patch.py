@@ -14,65 +14,116 @@
 
 """Patching functions for Anthropic instrumentation."""
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Union, cast
+
+from anthropic._streaming import Stream as AnthropicStream
+from anthropic.types import Message as AnthropicMessage
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import LLMInvocation
+from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.utils import should_capture_content
 
-from .utils import (
+from .messages_extractors import (
     extract_params,
+    get_input_messages,
     get_llm_request_attributes,
+    get_system_instruction,
+)
+from .wrappers import (
+    MessagesStreamWrapper,
+    MessageWrapper,
 )
 
 if TYPE_CHECKING:
     from anthropic.resources.messages import Messages
-    from anthropic.types import Message
+    from anthropic.types import RawMessageStreamEvent
+
+
+ANTHROPIC = "anthropic"
 
 
 def messages_create(
     handler: TelemetryHandler,
-) -> Callable[..., "Message"]:
+) -> Callable[
+    ..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]"]
+]:
     """Wrap the `create` method of the `Messages` class to trace it."""
+    capture_content = should_capture_content()
 
     def traced_method(
-        wrapped: Callable[..., "Message"],
+        wrapped: Callable[
+            ...,
+            Union[
+                "AnthropicMessage",
+                "AnthropicStream[RawMessageStreamEvent]",
+            ],
+        ],
         instance: "Messages",
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
-    ) -> "Message":
+    ) -> Union["AnthropicMessage", MessagesStreamWrapper]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
-        request_model = str(
-            attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
-            or params.model
-            or "unknown"
+        request_model_attribute = attributes.get(
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        )
+        request_model = (
+            request_model_attribute
+            if isinstance(request_model_attribute, str)
+            else params.model
         )
 
         invocation = LLMInvocation(
             request_model=request_model,
-            provider="anthropic",
+            provider=ANTHROPIC,
+            input_messages=get_input_messages(params.messages)
+            if capture_content
+            else [],
+            system_instruction=get_system_instruction(params.system)
+            if capture_content
+            else [],
             attributes=attributes,
         )
 
-        with handler.llm(invocation) as invocation:
+        is_streaming = params.stream is True
+
+        # Use manual lifecycle management for both streaming and non-streaming
+        handler.start_llm(invocation)
+        try:
             result = wrapped(*args, **kwargs)
+            if is_streaming:
+                if not isinstance(result, AnthropicStream):
+                    raise TypeError(
+                        "Expected anthropic Stream when stream=True"
+                    )
+                return MessagesStreamWrapper(
+                    result, handler, invocation, capture_content
+                )
+            if not isinstance(result, AnthropicMessage):
+                raise TypeError(
+                    "Expected anthropic Message when stream is disabled"
+                )
 
-            if result.model:
-                invocation.response_model_name = result.model
+            wrapper = MessageWrapper(result, capture_content)
+            wrapper.extract_into(invocation)
+            handler.stop_llm(invocation)
+            return wrapper.message
+        except Exception as exc:
+            handler.fail_llm(
+                invocation, Error(message=str(exc), type=type(exc))
+            )
+            raise
 
-            if result.id:
-                invocation.response_id = result.id
-
-            if result.stop_reason:
-                invocation.finish_reasons = [result.stop_reason]
-
-            if result.usage:
-                invocation.input_tokens = result.usage.input_tokens
-                invocation.output_tokens = result.usage.output_tokens
-
-            return result
-
-    return traced_method
+    return cast(
+        Callable[
+            ...,
+            Union[
+                "AnthropicMessage",
+                "AnthropicStream[RawMessageStreamEvent]",
+            ],
+        ],
+        traced_method,
+    )

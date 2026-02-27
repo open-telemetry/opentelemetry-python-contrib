@@ -22,6 +22,10 @@ import pytest
 import yaml
 from anthropic import Anthropic
 
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
@@ -37,6 +41,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 
 
@@ -115,8 +120,12 @@ def vcr_config():
 @pytest.fixture(scope="function")
 def instrument_no_content(tracer_provider, logger_provider, meter_provider):
     """Instrument Anthropic without content capture."""
+    _OpenTelemetrySemanticConventionStability._initialized = False
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "stable",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "NO_CONTENT",
+        }
     )
 
     instrumentor = AnthropicInstrumentor()
@@ -126,16 +135,26 @@ def instrument_no_content(tracer_provider, logger_provider, meter_provider):
         meter_provider=meter_provider,
     )
 
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    instrumentor.uninstrument()
+    try:
+        yield instrumentor
+    finally:
+        os.environ.pop(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
+        )
+        os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+        instrumentor.uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 @pytest.fixture(scope="function")
 def instrument_with_content(tracer_provider, logger_provider, meter_provider):
     """Instrument Anthropic with content capture enabled."""
+    _OpenTelemetrySemanticConventionStability._initialized = False
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_ONLY",
+        }
     )
     instrumentor = AnthropicInstrumentor()
     instrumentor.instrument(
@@ -144,9 +163,45 @@ def instrument_with_content(tracer_provider, logger_provider, meter_provider):
         meter_provider=meter_provider,
     )
 
-    yield instrumentor
-    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
-    instrumentor.uninstrument()
+    try:
+        yield instrumentor
+    finally:
+        os.environ.pop(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
+        )
+        os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+        instrumentor.uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+
+@pytest.fixture(scope="function")
+def instrument_event_only(tracer_provider, logger_provider, meter_provider):
+    """Instrument Anthropic with EVENT_ONLY content capture."""
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "EVENT_ONLY",
+            OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT: "true",
+        }
+    )
+    instrumentor = AnthropicInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    try:
+        yield instrumentor
+    finally:
+        os.environ.pop(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
+        )
+        os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+        os.environ.pop(OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT, None)
+        instrumentor.uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 @pytest.fixture
@@ -230,6 +285,16 @@ def fixture_vcr(vcr):
     return vcr
 
 
+_SCRUBBED_RESPONSE_HEADERS = frozenset(
+    {
+        "anthropic-organization-id",
+    }
+)
+
+
 def scrub_response_headers(response):
-    """Scrub sensitive response headers."""
+    """Scrub sensitive headers from recorded responses."""
+    headers = response.get("headers", {})
+    for header in _SCRUBBED_RESPONSE_HEADERS:
+        headers.pop(header, None)
     return response

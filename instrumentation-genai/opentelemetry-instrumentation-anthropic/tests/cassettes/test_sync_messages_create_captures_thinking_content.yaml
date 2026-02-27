@@ -2,20 +2,18 @@ interactions:
 - request:
     body: |-
       {
-        "max_tokens": 50,
+        "max_tokens": 16000,
         "messages": [
           {
             "role": "user",
-            "content": "Say hello."
+            "content": "What is 17*19? Think first."
           }
         ],
         "model": "claude-sonnet-4-20250514",
-        "stop_sequences": [
-          "STOP"
-        ],
-        "temperature": 0.7,
-        "top_k": 40,
-        "top_p": 0.9
+        "thinking": {
+          "type": "enabled",
+          "budget_tokens": 10000
+        }
       }
     headers:
       accept:
@@ -27,7 +25,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '171'
+      - '176'
       content-type:
       - application/json
       host:
@@ -63,33 +61,38 @@ interactions:
       string: |-
         {
           "model": "claude-sonnet-4-20250514",
-          "id": "msg_01TmHCb7QRNTPGCbdZCsFH8q",
+          "id": "msg_01Wr63EVQ99qSimMzVWidt6S",
           "type": "message",
           "role": "assistant",
           "content": [
             {
+              "type": "thinking",
+              "thinking": "I need to calculate 17 * 19.\n\nLet me think about this step by step.\n\nI can use the standard multiplication method:\n17 \u00d7 19\n\nI can break this down:\n17 \u00d7 19 = 17 \u00d7 (20 - 1) = 17 \u00d7 20 - 17 \u00d7 1 = 340 - 17 = 323\n\nOr I can do it the traditional way:\n  17\n\u00d7 19\n----\n 153  (17 \u00d7 9)\n170   (17 \u00d7 10)\n----\n323\n\nLet me double-check the first line: 17 \u00d7 9\n17 \u00d7 9 = 17 \u00d7 (10 - 1) = 170 - 17 = 153 \u2713\n\nAnd 17 \u00d7 10 = 170 \u2713\n\nSo 153 + 170 = 323\n\nLet me verify this another way:\n17 \u00d7 19 = (20 - 3) \u00d7 (20 - 1) = 20\u00b2 - 20 - 3\u00d720 + 3 = 400 - 20 - 60 + 3 = 400 - 80 + 3 = 320 + 3 = 323 \u2713\n\nYes, 17 \u00d7 19 = 323.",
+              "signature": "EogGCkYICxgCKkAxs8t07yMFiwAaO61FwoyqVpxj3ia/JWKx1cE7b9xqI/c2lYLIGy5eof9e1k5fEUix5OWHCLkCaon0dm5LUBtkEgz/oDM2mTBB27Xx6GYaDDYsQqXAIlkTkWyC0yIwHCKfezWvrT/BpU0Z09wqT19UNXjC0twg31t9lQYBV1/9glQtQgBkU8ml19Qd8JvJKu8EYW3lxaCiu7m0crt48lNhluutl9L6J/OGE9P5AbsQw6oNUY0VmRXSJZTAibR3Hy7IfxDLXFDak2f/K0oK31ouuN19lCoXkL/s64IqrWA5AvXALoKSoCaCv4Rkv1decZgyamVlYnIa4dbDaHlVzMYeO+qm9dG/haPObJ09F5nDhB1dfjggGSZhumLoli5jwN6PKwOH9enwpAymb1pSvbQpcYh3GoCdo0qzrzX3ScIeXZ40Vv6vfn49+glSDFRGUnG4xwv3ikefdSXiUBiuIIsub4oDADMfsZV/1dci03F59p2nEJ52TGGuIkRVNTFOoEzbRpnrdZiCF7zeXdAN8Jfefqrw6hUWrdkaBwVmhiqkpwMEnTfF204ZYSuHMbSwlYcM4GVqZn63htgtPBD132ym0oaPe3w28kJFbDfG0jea9maXn0YtfOc060/tt/ftvGVBXORZENhrt+kbKcczK2IBvRjciqgxUJeqlyyiagY+KWa+qHymO21d+HYG+WEyTTRgHpoz8dAVW2aK3S3AcnU79narB3rqJXQGBfDc/5jo+mzjPV2zBb7NYp6doGNpwEAlkDnPqTzPVNecSwL9/GrrvWYfR0ABKrDPAD2XVCbOpm8pURZSMThSpailrIBz5+WiY/jOVUSjZlR4SMpBsOnXm6/VyxW/XvlJ/YrBkpQnHE1gyZfVN1d1FPFjGUzd2RPH127ThANP+ZDQxCfPZ6L1pIbEDEddehMCLTjkCmqNkQsIxBYsVR3pAGCmCOJtVFc311SpHiryVdmeDnV9PVP096M930a5+O4EdZSX+2PMgRPhpQzc+REpCeoErBPm5kEYAQ=="
+            },
+            {
               "type": "text",
-              "text": "Hello! It's nice to meet you. How are you doing today?"
+              "text": "Looking at 17 \u00d7 19, I'll calculate this step by step.\n\nI can use the method of breaking down one number:\n17 \u00d7 19 = 17 \u00d7 (20 - 1) = (17 \u00d7 20) - (17 \u00d7 1) = 340 - 17 = 323\n\nLet me verify with traditional multiplication:\n```\n   17\n\u00d7  19\n-----\n  153  (17 \u00d7 9)\n 170   (17 \u00d7 10, shifted one place)\n-----\n 323\n```\n\nTherefore, 17 \u00d7 19 = 323."
             }
           ],
           "stop_reason": "end_turn",
           "stop_sequence": null,
           "usage": {
-            "input_tokens": 10,
+            "input_tokens": 46,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
             "cache_creation": {
               "ephemeral_5m_input_tokens": 0,
               "ephemeral_1h_input_tokens": 0
             },
-            "output_tokens": 18,
+            "output_tokens": 469,
             "service_tier": "standard",
             "inference_geo": "not_available"
           }
         }
     headers:
       CF-RAY:
-      - 9d433fefb83acd8b-EWR
+      - 9d434044d9205d8f-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -97,7 +100,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Thu, 26 Feb 2026 23:33:51 GMT
+      - Thu, 26 Feb 2026 23:34:11 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -109,35 +112,35 @@ interactions:
       anthropic-ratelimit-input-tokens-remaining:
       - '450000'
       anthropic-ratelimit-input-tokens-reset:
-      - '2026-02-26T23:33:51Z'
+      - '2026-02-26T23:34:05Z'
       anthropic-ratelimit-output-tokens-limit:
       - '90000'
       anthropic-ratelimit-output-tokens-remaining:
       - '90000'
       anthropic-ratelimit-output-tokens-reset:
-      - '2026-02-26T23:33:51Z'
+      - '2026-02-26T23:34:11Z'
       anthropic-ratelimit-requests-limit:
       - '1000'
       anthropic-ratelimit-requests-remaining:
       - '999'
       anthropic-ratelimit-requests-reset:
-      - '2026-02-26T23:33:50Z'
+      - '2026-02-26T23:34:04Z'
       anthropic-ratelimit-tokens-limit:
       - '540000'
       anthropic-ratelimit-tokens-remaining:
       - '540000'
       anthropic-ratelimit-tokens-reset:
-      - '2026-02-26T23:33:51Z'
+      - '2026-02-26T23:34:05Z'
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '490'
+      - '2523'
       request-id:
-      - req_011CYXZAfAqyTW82t5hSJb5z
+      - req_011CYXZBfP2AZrnRcZpL7v33
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       x-envoy-upstream-service-time:
-      - '1150'
+      - '6707'
     status:
       code: 200
       message: OK

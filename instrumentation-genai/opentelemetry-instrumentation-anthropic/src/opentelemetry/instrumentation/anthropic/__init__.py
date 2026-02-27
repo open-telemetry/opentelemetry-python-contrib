@@ -54,7 +54,9 @@ from wrapt import (
 )
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
-from opentelemetry.instrumentation.anthropic.patch import messages_create
+from opentelemetry.instrumentation.anthropic.patch import (
+    messages_create,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.util.genai.handler import TelemetryHandler
@@ -89,11 +91,12 @@ class AnthropicInstrumentor(BaseInstrumentor):
         # Get providers from kwargs
         tracer_provider = kwargs.get("tracer_provider")
         meter_provider = kwargs.get("meter_provider")
+        logger_provider = kwargs.get("logger_provider")
 
-        # TODO: Add logger_provider to TelemetryHandler to capture content events.
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            logger_provider=logger_provider,
         )
 
         # Patch Messages.create

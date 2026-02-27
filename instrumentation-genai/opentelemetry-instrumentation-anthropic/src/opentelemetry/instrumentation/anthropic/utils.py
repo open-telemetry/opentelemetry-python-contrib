@@ -12,134 +12,230 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utility functions for Anthropic instrumentation."""
+"""Shared helper utilities for Anthropic instrumentation."""
 
 from __future__ import annotations
 
+import base64
+import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Sequence
-from urllib.parse import urlparse
+from typing import TYPE_CHECKING
 
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
+from anthropic.types import (
+    InputJSONDelta,
+    RedactedThinkingBlock,
+    ServerToolUseBlock,
+    TextBlock,
+    TextDelta,
+    ThinkingBlock,
+    ThinkingDelta,
+    ToolUseBlock,
+    WebSearchToolResultBlock,
 )
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
+
+from opentelemetry.util.genai.types import (
+    Blob,
+    MessagePart,
+    Reasoning,
+    Text,
+    ToolCall,
+    ToolCallResponse,
 )
-from opentelemetry.util.types import AttributeValue
 
 if TYPE_CHECKING:
-    from anthropic.resources.messages import Messages
+    from collections.abc import Iterable, Mapping
 
-
-@dataclass
-class MessageCreateParams:
-    """Parameters extracted from Messages.create() call."""
-
-    model: str | None = None
-    max_tokens: int | None = None
-    temperature: float | None = None
-    top_p: float | None = None
-    top_k: int | None = None
-    stop_sequences: Sequence[str] | None = None
-
-
-# Use parameter signature from
-# https://github.com/anthropics/anthropic-sdk-python/blob/9b5ab24ba17bcd5e762e5a5fd69bb3c17b100aaa/src/anthropic/resources/messages/messages.py#L92
-# to handle named vs positional args robustly
-def extract_params(  # pylint: disable=too-many-locals
-    *,
-    max_tokens: int | None = None,
-    messages: Any | None = None,
-    model: str | None = None,
-    metadata: Any | None = None,
-    service_tier: Any | None = None,
-    stop_sequences: Sequence[str] | None = None,
-    stream: Any | None = None,
-    system: Any | None = None,
-    temperature: float | None = None,
-    thinking: Any | None = None,
-    tool_choice: Any | None = None,
-    tools: Any | None = None,
-    top_p: float | None = None,
-    top_k: int | None = None,
-    extra_headers: Any | None = None,
-    extra_query: Any | None = None,
-    extra_body: Any | None = None,
-    timeout: Any | None = None,
-    **_kwargs: Any,
-) -> MessageCreateParams:
-    """Extract relevant parameters from Messages.create() arguments."""
-    return MessageCreateParams(
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        stop_sequences=stop_sequences,
+    from anthropic.types import (
+        ContentBlock,
+        ContentBlockParam,
+        RawContentBlockDelta,
     )
 
 
-def set_server_address_and_port(
-    client_instance: "Messages", attributes: dict[str, Any]
+@dataclass
+class StreamBlockState:
+    type: str
+    text: str = ""
+    tool_id: str | None = None
+    tool_name: str = ""
+    tool_input: dict[str, object] | None = None
+    input_json: str = ""
+    thinking: str = ""
+
+
+def normalize_finish_reason(stop_reason: str | None) -> str | None:
+    if stop_reason is None:
+        return None
+    normalized = {
+        "end_turn": "stop",
+        "stop_sequence": "stop",
+        "max_tokens": "length",
+        "tool_use": "tool_calls",
+    }.get(stop_reason)
+    return normalized or stop_reason
+
+
+def _decode_base64(data: str) -> bytes | None:
+    try:
+        return base64.b64decode(data)
+    except Exception:  # pylint: disable=broad-exception-caught
+        return None
+
+
+def _extract_base64_blob(source: object, modality: str) -> Blob | None:
+    """Extract a Blob from a base64-encoded source dict."""
+    if not isinstance(source, dict):
+        return None
+    # source is a TypedDict (e.g. Base64ImageSourceParam) narrowed to dict;
+    # pyright cannot infer value types from isinstance-narrowed dicts.
+    data: object = source.get("data")  # type: ignore[reportUnknownMemberType]
+    if not isinstance(data, str):
+        return None
+    decoded = _decode_base64(data)
+    if decoded is None:
+        return None
+    media_type: object = source.get("media_type")  # type: ignore[reportUnknownMemberType]
+    return Blob(
+        mime_type=media_type if isinstance(media_type, str) else None,
+        modality=modality,
+        content=decoded,
+    )
+
+
+def _convert_dict_block_to_part(
+    block: Mapping[str, object],
+) -> MessagePart | None:
+    """Convert a request-param content block (TypedDict/dict) to a MessagePart."""
+    block_type = block.get("type")
+
+    if block_type == "text":
+        text = block.get("text")
+        return Text(content=str(text) if text is not None else "")
+
+    if block_type == "tool_use":
+        inp = block.get("input")
+        return ToolCall(
+            arguments=inp if isinstance(inp, dict) else None,
+            name=str(block.get("name", "")),
+            id=str(block.get("id", "")),
+        )
+
+    if block_type == "tool_result":
+        return ToolCallResponse(
+            response=block.get("content"),
+            id=str(block.get("tool_use_id", "")),
+        )
+
+    if block_type in ("thinking", "redacted_thinking"):
+        thinking = block.get("thinking") or block.get("data")
+        return Reasoning(content=str(thinking) if thinking is not None else "")
+
+    if block_type in ("image", "audio", "video", "document", "file"):
+        return _extract_base64_blob(block.get("source"), str(block_type))
+
+    return None
+
+
+def _convert_content_block_to_part(
+    block: ContentBlock | ContentBlockParam,
+) -> MessagePart | None:
+    """Convert an Anthropic content block to a MessagePart."""
+    if isinstance(block, TextBlock):
+        return Text(content=block.text)
+
+    if isinstance(block, (ToolUseBlock, ServerToolUseBlock)):
+        return ToolCall(arguments=block.input, name=block.name, id=block.id)
+
+    if isinstance(block, (ThinkingBlock, RedactedThinkingBlock)):
+        content = (
+            block.thinking if isinstance(block, ThinkingBlock) else block.data
+        )
+        return Reasoning(content=content)
+
+    if isinstance(block, WebSearchToolResultBlock):
+        return ToolCallResponse(
+            response=block.model_dump().get("content"),
+            id=block.tool_use_id,
+        )
+
+    # ContentBlockParam variants are TypedDicts (dicts at runtime);
+    # newer SDK versions may add Pydantic block types not handled above.
+    if isinstance(block, dict):
+        return _convert_dict_block_to_part(block)
+
+    return None
+
+
+def convert_content_to_parts(
+    content: str | Iterable[ContentBlock | ContentBlockParam] | None,
+) -> list[MessagePart]:
+    if content is None:
+        return []
+    if isinstance(content, str):
+        return [Text(content=content)]
+    parts: list[MessagePart] = []
+    for item in content:
+        part = _convert_content_block_to_part(item)
+        if part is not None:
+            parts.append(part)
+    return parts
+
+
+def create_stream_block_state(content_block: ContentBlock) -> StreamBlockState:
+    if isinstance(content_block, TextBlock):
+        return StreamBlockState(type="text", text=content_block.text)
+
+    if isinstance(content_block, (ToolUseBlock, ServerToolUseBlock)):
+        return StreamBlockState(
+            type="tool_use",
+            tool_id=content_block.id,
+            tool_name=content_block.name,
+            tool_input=content_block.input,
+        )
+
+    if isinstance(content_block, ThinkingBlock):
+        return StreamBlockState(
+            type="thinking", thinking=content_block.thinking
+        )
+
+    if isinstance(content_block, RedactedThinkingBlock):
+        return StreamBlockState(type="redacted_thinking")
+
+    return StreamBlockState(type=content_block.type)
+
+
+def update_stream_block_state(
+    state: StreamBlockState, delta: RawContentBlockDelta
 ) -> None:
-    """Extract server address and port from the Anthropic client instance."""
-    base_client = getattr(client_instance, "_client", None)
-    base_url = getattr(base_client, "base_url", None)
-    if not base_url:
-        return
-
-    port: Optional[int] = None
-    if hasattr(base_url, "host"):
-        # httpx.URL object
-        attributes[ServerAttributes.SERVER_ADDRESS] = base_url.host
-        port = getattr(base_url, "port", None)
-    elif isinstance(base_url, str):
-        url = urlparse(base_url)
-        attributes[ServerAttributes.SERVER_ADDRESS] = url.hostname
-        port = url.port
-
-    if port and port != 443 and port > 0:
-        attributes[ServerAttributes.SERVER_PORT] = port
+    if isinstance(delta, TextDelta):
+        state.type = "text"
+        state.text += delta.text
+    elif isinstance(delta, InputJSONDelta):
+        state.type = "tool_use"
+        state.input_json += delta.partial_json
+    elif isinstance(delta, ThinkingDelta):
+        state.type = "thinking"
+        state.thinking += delta.thinking
 
 
-def get_llm_request_attributes(
-    params: MessageCreateParams, client_instance: "Messages"
-) -> dict[str, AttributeValue]:
-    """Extract LLM request attributes from MessageCreateParams.
+def stream_block_state_to_part(state: StreamBlockState) -> MessagePart | None:
+    if state.type == "text":
+        return Text(content=state.text)
 
-    Returns a dictionary of OpenTelemetry semantic convention attributes for LLM requests.
-    The attributes follow the GenAI semantic conventions (gen_ai.*) and server semantic
-    conventions (server.*) as defined in the OpenTelemetry specification.
+    if state.type == "tool_use":
+        arguments: str | dict[str, object] | None = state.tool_input
+        if state.input_json:
+            try:
+                arguments = json.loads(state.input_json)
+            except ValueError:
+                arguments = state.input_json
+        return ToolCall(
+            arguments=arguments,
+            name=state.tool_name,
+            id=state.tool_id,
+        )
 
-    GenAI attributes included:
-    - gen_ai.operation.name: The operation name (e.g., "chat")
-    - gen_ai.system: The GenAI system identifier (e.g., "anthropic")
-    - gen_ai.request.model: The model identifier
-    - gen_ai.request.max_tokens: Maximum tokens in the request
-    - gen_ai.request.temperature: Sampling temperature
-    - gen_ai.request.top_p: Top-p sampling parameter
-    - gen_ai.request.top_k: Top-k sampling parameter
-    - gen_ai.request.stop_sequences: Stop sequences for the request
+    if state.type in ("thinking", "redacted_thinking"):
+        return Reasoning(content=state.thinking)
 
-    Server attributes included (if available):
-    - server.address: The server hostname
-    - server.port: The server port (if not default 443)
-
-    Only non-None values are included in the returned dictionary.
-    """
-    attributes = {
-        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
-        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: params.model,
-        GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: params.max_tokens,
-        GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: params.temperature,
-        GenAIAttributes.GEN_AI_REQUEST_TOP_P: params.top_p,
-        GenAIAttributes.GEN_AI_REQUEST_TOP_K: params.top_k,
-        GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES: params.stop_sequences,
-    }
-
-    set_server_address_and_port(client_instance, attributes)
-
-    # Filter out None values
-    return {k: v for k, v in attributes.items() if v is not None}
+    return None
