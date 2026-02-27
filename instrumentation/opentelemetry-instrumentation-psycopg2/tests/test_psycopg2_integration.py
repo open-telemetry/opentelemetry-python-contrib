@@ -65,10 +65,6 @@ class MockConnection:
         return {"dbname": "test"}
 
 
-class CustomCursor(MockCursor):
-    pass
-
-
 class TestPostgresqlIntegration(TestBase):
     def setUp(self):
         super().setUp()
@@ -242,13 +238,13 @@ class TestPostgresqlIntegration(TestBase):
         self,
     ):
         instrumentor = Psycopg2Instrumentor()
-        cnx = psycopg2.connect(database="test", cursor_factory=CustomCursor)
+        cnx = psycopg2.connect(database="test", cursor_factory=MockCursor)
         query = "SELECT * FROM test"
 
-        self.assertIs(cnx.cursor_factory, CustomCursor)
+        self.assertIs(cnx.cursor_factory, MockCursor)
 
         cnx = instrumentor.instrument_connection(cnx)
-        self.assertIsNot(cnx.cursor_factory, CustomCursor)
+        self.assertIsNot(cnx.cursor_factory, MockCursor)
 
         cursor = cnx.cursor()
         cursor.execute(query)
@@ -256,7 +252,7 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
 
         cnx = instrumentor.uninstrument_connection(cnx)
-        self.assertIs(cnx.cursor_factory, CustomCursor)
+        self.assertIs(cnx.cursor_factory, MockCursor)
 
         cursor = cnx.cursor()
         cursor.execute(query)
