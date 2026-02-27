@@ -54,6 +54,8 @@ class TestSQLite3(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.memory_exporter.clear()
         self.assertEqual(len(spans), 2)
+        root_span = None
+        child_span = None
         for span in spans:
             if span.name == "rootSpan":
                 root_span = span
