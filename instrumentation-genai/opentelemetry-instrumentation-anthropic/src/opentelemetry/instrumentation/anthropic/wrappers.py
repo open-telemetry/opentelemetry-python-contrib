@@ -73,21 +73,16 @@ class MessageWrapper:
             invocation.finish_reasons = [finish_reason]
 
         if self._message.usage:
-            (
-                input_tokens,
-                output_tokens,
-                cache_creation_input_tokens,
-                cache_read_input_tokens,
-            ) = extract_usage_tokens(self._message.usage)
-            invocation.input_tokens = input_tokens
-            invocation.output_tokens = output_tokens
-            if cache_creation_input_tokens is not None:
+            tokens = extract_usage_tokens(self._message.usage)
+            invocation.input_tokens = tokens.input_tokens
+            invocation.output_tokens = tokens.output_tokens
+            if tokens.cache_creation_input_tokens is not None:
                 invocation.attributes[
                     GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
-                ] = cache_creation_input_tokens
-            if cache_read_input_tokens is not None:
+                ] = tokens.cache_creation_input_tokens
+            if tokens.cache_read_input_tokens is not None:
                 invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
-                    cache_read_input_tokens
+                    tokens.cache_read_input_tokens
                 )
 
         if self._capture_content:
@@ -126,20 +121,17 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         self._finalized = False
 
     def _update_usage(self, usage: Usage | MessageDeltaUsage | None) -> None:
-        (
-            input_tokens,
-            output_tokens,
-            cache_creation_input_tokens,
-            cache_read_input_tokens,
-        ) = extract_usage_tokens(usage)
-        if input_tokens is not None:
-            self._input_tokens = input_tokens
-        if output_tokens is not None:
-            self._output_tokens = output_tokens
-        if cache_creation_input_tokens is not None:
-            self._cache_creation_input_tokens = cache_creation_input_tokens
-        if cache_read_input_tokens is not None:
-            self._cache_read_input_tokens = cache_read_input_tokens
+        tokens = extract_usage_tokens(usage)
+        if tokens.input_tokens is not None:
+            self._input_tokens = tokens.input_tokens
+        if tokens.output_tokens is not None:
+            self._output_tokens = tokens.output_tokens
+        if tokens.cache_creation_input_tokens is not None:
+            self._cache_creation_input_tokens = (
+                tokens.cache_creation_input_tokens
+            )
+        if tokens.cache_read_input_tokens is not None:
+            self._cache_read_input_tokens = tokens.cache_read_input_tokens
 
     def _process_chunk(self, chunk: RawMessageStreamEvent) -> None:
         """Extract telemetry data from a streaming chunk."""

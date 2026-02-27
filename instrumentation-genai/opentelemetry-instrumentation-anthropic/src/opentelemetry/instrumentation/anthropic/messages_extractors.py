@@ -75,11 +75,19 @@ GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
+@dataclass
+class UsageTokens:
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cache_creation_input_tokens: int | None = None
+    cache_read_input_tokens: int | None = None
+
+
 def extract_usage_tokens(
     usage: Usage | MessageDeltaUsage | None,
-) -> tuple[int | None, int | None, int | None, int | None]:
+) -> UsageTokens:
     if usage is None:
-        return None, None, None, None
+        return UsageTokens()
 
     input_tokens = usage.input_tokens
     output_tokens = usage.output_tokens
@@ -99,11 +107,11 @@ def extract_usage_tokens(
             + (cache_read_input_tokens or 0)
         )
 
-    return (
-        total_input_tokens,
-        output_tokens,
-        cache_creation_input_tokens,
-        cache_read_input_tokens,
+    return UsageTokens(
+        input_tokens=total_input_tokens,
+        output_tokens=output_tokens,
+        cache_creation_input_tokens=cache_creation_input_tokens,
+        cache_read_input_tokens=cache_read_input_tokens,
     )
 
 
