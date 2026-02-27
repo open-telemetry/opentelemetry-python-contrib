@@ -358,7 +358,6 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         class SpanLifetimeServicer(GRPCTestServerServicer):
             # pylint:disable=C0103
             async def SimpleMethod(self, request, context):
-                # pylint:disable=attribute-defined-outside-init
                 self.span = trace.get_current_span()
 
                 return Response(
