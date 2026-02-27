@@ -14,3 +14,5 @@
 
 
 _instruments = ("mysql-connector-python >= 8.0, < 10.0",)
+
+_semconv_status = "migration"

@@ -14,3 +14,5 @@
 from __future__ import annotations
 
 _instruments: tuple[str, ...] = tuple()
+
+_semconv_status = "migration"

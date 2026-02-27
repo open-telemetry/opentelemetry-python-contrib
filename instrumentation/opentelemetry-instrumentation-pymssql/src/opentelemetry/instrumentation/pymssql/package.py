@@ -14,3 +14,5 @@
 
 
 _instruments = ("pymssql >= 2.1.5, < 3",)
+
+_semconv_status = "migration"
