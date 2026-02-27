@@ -134,7 +134,6 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_METHOD,
     RPC_SERVICE,
-    RPC_SYSTEM,
 )
 from opentelemetry.trace import get_tracer
 from opentelemetry.trace.span import Span
@@ -190,6 +189,11 @@ class BotocoreInstrumentor(BaseInstrumentor):
             "botocore.endpoint",
             "Endpoint.prepare_request",
             self._patched_endpoint_prepare_request,
+        )
+        wrap_function_wrapper(
+            "botocore.signers",
+            "RequestSigner.generate_presigned_url",
+            self._patched_generate_presigned_url,
         )
 
     @staticmethod
@@ -299,9 +303,9 @@ class BotocoreInstrumentor(BaseInstrumentor):
             return original_func(*args, **kwargs)
 
         attributes = {
-            RPC_SYSTEM: "aws-api",
-            RPC_SERVICE: call_context.service_id,
-            RPC_METHOD: call_context.operation,
+            "rpc.system": "aws-api",
+            "rpc.service": call_context.service_id,
+            "rpc.method": call_context.operation,
             CLOUD_REGION: call_context.region,
             **get_server_attributes(call_context.endpoint_url),
         }
@@ -348,6 +352,34 @@ class BotocoreInstrumentor(BaseInstrumentor):
                 self._call_response_hook(span, call_context, result)
 
             return result
+
+    def _patched_generate_presigned_url(self, wrapped, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return wrapped(*args, **kwargs)
+
+        tracer = get_tracer(
+            __name__,
+            __version__,
+            self.tracer_provider,
+        )
+
+        with tracer.start_as_current_span("botocore.presigned_url") as span:
+            if service := getattr(instance, "_service_id", None):
+                service = service.lower()
+                span.set_attribute(RPC_SERVICE, service)
+                # Botocore uses the low-level operation name ("connect") when generating
+                # RDS auth tokens, not the high-level helper name.
+
+            if operation := kwargs.get("operation_name"):
+                span.set_attribute(RPC_METHOD, operation)
+
+            if expires_in := kwargs.get("expires_in"):
+                span.set_attribute("aws.expires_in", expires_in)
+
+            if region := getattr(instance, "_region_name", None):
+                span.set_attribute(CLOUD_REGION, region)
+
+            return wrapped(*args, **kwargs)
 
     def _call_request_hook(self, span: Span, call_context: _AwsSdkCallContext):
         if not callable(self.request_hook):

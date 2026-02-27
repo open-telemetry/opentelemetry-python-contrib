@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-
+- `opentelemetry-instrumentation-botocore`: Add tracing for AWS presigned URL generation (`RequestSigner.generate_presigned_url`), emitting a `botocore.presigned_url` span with `aws.service` attribute.
 - Add Python 3.14 support
   ([#4193](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4193))
 - `opentelemetry-instrumentation-asgi`: Add exemplars for `http.server.request.duration` and `http.server.duration` metrics
