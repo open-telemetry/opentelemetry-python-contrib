@@ -125,6 +125,7 @@ For more information about the maintainer role, see the [community repository](h
 - [Emídio Neto](https://github.com/emdneto), Independent
 - [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
+- [Keith Decker](https://github.com/keith-decker), Cisco/Splunk
 - [Liudmila Molkova](https://github.com/lmolkova), Grafana Labs
 - [Lukas Hering](https://github.com/herin049), Capital One
 - [Owais Lone](https://github.com/owais), Splunk
