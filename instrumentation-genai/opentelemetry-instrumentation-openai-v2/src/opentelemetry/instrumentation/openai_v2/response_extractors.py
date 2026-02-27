@@ -17,6 +17,9 @@ from typing import Any, Mapping, Optional
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    openai_attributes as OpenAIAttributes,
+)
 from opentelemetry.util.genai.types import (
     InputMessage,
     LLMInvocation,
@@ -218,11 +221,6 @@ def _set_invocation_response_attributes(
     if result is None:
         return
 
-    if getattr(result, "model", None) and (
-        not invocation.request_model or invocation.request_model == "unknown"
-    ):
-        invocation.request_model = result.model
-
     if getattr(result, "model", None):
         invocation.response_model_name = result.model
 
@@ -233,13 +231,7 @@ def _set_invocation_response_attributes(
         invocation,
         result,
         "service_tier",
-        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
-    )
-    _set_optional_attribute(
-        invocation,
-        result,
-        "system_fingerprint",
-        GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
+        OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER,
     )
 
     usage = getattr(result, "usage", None)

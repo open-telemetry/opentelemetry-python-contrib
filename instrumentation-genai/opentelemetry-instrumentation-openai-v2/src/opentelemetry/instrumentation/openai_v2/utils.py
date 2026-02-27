@@ -26,6 +26,9 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
+    openai_attributes as OpenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 from opentelemetry.semconv.attributes import (
@@ -323,13 +326,8 @@ def _record_metrics(  # pylint: disable=too-many-branches
         common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = result.model
 
     if result and getattr(result, "service_tier", None):
-        common_attributes[
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
-        ] = result.service_tier
-
-    if result and getattr(result, "system_fingerprint", None):
-        common_attributes["gen_ai.openai.response.system_fingerprint"] = (
-            result.system_fingerprint
+        common_attributes[OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER] = (
+            result.service_tier
         )
 
     if ServerAttributes.SERVER_ADDRESS in request_attributes:

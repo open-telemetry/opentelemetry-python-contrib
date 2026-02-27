@@ -166,10 +166,7 @@ class ResponseStreamWrapper:
         event_type = getattr(event, "type", None)
         response = getattr(event, "response", None)
 
-        if response and (
-            not self.invocation.request_model
-            or self.invocation.request_model == "unknown"
-        ):
+        if response and not self.invocation.request_model:
             model = getattr(response, "model", None)
             if model:
                 self.invocation.request_model = model

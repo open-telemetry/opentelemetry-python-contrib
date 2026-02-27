@@ -47,15 +47,15 @@ interactions:
     body:
       string: |-
         {
-          "id": "resp_0d18b4a505bb3e7a0069922bd88954819f884008a1e164c94c",
+          "id": "resp_0f2f29ed2e5d13240069a11dfc7040819d98fd806156ea80c6",
           "object": "response",
-          "created_at": 1771187160,
+          "created_at": 1772166652,
           "status": "completed",
           "background": false,
           "billing": {
             "payer": "developer"
           },
-          "completed_at": 1771187161,
+          "completed_at": 1772166652,
           "error": null,
           "frequency_penalty": 0.0,
           "incomplete_details": null,
@@ -65,7 +65,7 @@ interactions:
           "model": "gpt-4o-mini-2024-07-18",
           "output": [
             {
-              "id": "msg_0d18b4a505bb3e7a0069922bd8e5b4819f8e1086a823f00419",
+              "id": "msg_0f2f29ed2e5d13240069a11dfcc634819da4a4b50de8d38d4b",
               "type": "message",
               "status": "completed",
               "content": [
@@ -119,13 +119,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9ce789a9281d60e6-EWR
+      - 9d44f3098dd599cb-EWR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Sun, 15 Feb 2026 20:26:01 GMT
+      - Fri, 27 Feb 2026 04:30:53 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -143,15 +143,15 @@ interactions:
       - '1542'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '589'
+      - '501'
       openai-project:
       - proj_s74VWObPgWXRchv2sHdrOTPY
       openai-version:
       - '2020-10-01'
       set-cookie:
-      - __cf_bm=n4.5mxMWU4m5YLF1PpbKFO7tw4IRw1nmtvQzxo2rcB4-1771187160.510076-1.0.1.1-7uGrj0QFRCtsERMlJtLfzLI0fK_HaShDinmhpr1cpsoGs6We1zdnkAQqZhM2JlFB4aWnVCOOzs34A1meNF8BQjBHhPjPoWHYpjiCTHRno4JdFNvyhzuIperX.ZQkqIeV;
-        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Sun, 15 Feb 2026
-        20:56:01 GMT
+      - __cf_bm=6Ab3BcyvmmcHE7b_.CuX_qN2EMAJ3mcYESIS309GbIk-1772166652.4092877-1.0.1.1-rgVXlJGm2kDWzEVFJl0aTVACDjHaMgyj.2Wj4VF0mo0eGQumx_fS6TZisfDIVABG.XF2_2CO5s4KKAQ6lbGECvb0rtL8v8tgcsieuS96npfvwYMKRh.b6EVH.Pqrwp8R;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 27 Feb 2026
+        05:00:53 GMT
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
@@ -161,11 +161,11 @@ interactions:
       x-ratelimit-remaining-tokens:
       - '199969'
       x-ratelimit-reset-requests:
-      - 41.391s
+      - 41.841s
       x-ratelimit-reset-tokens:
       - 9ms
       x-request-id:
-      - req_6c5f965d80654f80bed9e7b7c3cf1067
+      - req_fa286cb6b251410bbd2feeb5a0cf8da6
     status:
       code: 200
       message: OK

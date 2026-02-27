@@ -24,6 +24,9 @@ from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    openai_attributes as OpenAIAttributes,
+)
 from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.propagation import set_span_in_context
 
@@ -307,7 +310,7 @@ def _set_response_attributes(
     if getattr(result, "service_tier", None):
         set_span_attribute(
             span,
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+            OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER,
             result.service_tier,
         )
 
@@ -450,7 +453,7 @@ class StreamWrapper:
 
                 set_span_attribute(
                     self.span,
-                    GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+                    OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER,
                     self.service_tier,
                 )
 

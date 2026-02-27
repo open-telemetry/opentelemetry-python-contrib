@@ -68,9 +68,13 @@ def responses_create(
         output_type = _extract_output_type(kwargs)
         if output_type:
             span_attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = output_type
-        request_model = str(
-            span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
-            or "unknown"
+        request_model_attribute = span_attributes.get(
+            GenAIAttributes.GEN_AI_REQUEST_MODEL
+        )
+        request_model = (
+            request_model_attribute
+            if isinstance(request_model_attribute, str)
+            else None
         )
         streaming = is_streaming(kwargs)
 
@@ -86,9 +90,6 @@ def responses_create(
                 if capture_content
                 else [],
                 attributes=span_attributes.copy(),
-                metric_attributes={
-                    GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name
-                },
             )
         )
 

@@ -47,15 +47,15 @@ interactions:
     body:
       string: |-
         {
-          "id": "resp_0ddadc2b6c99631e0069922bc4c8b881a1bb297b80eab5f2da",
+          "id": "resp_0460a1b0c70a24480069a11de08298819faa51fec2e4b7e9e4",
           "object": "response",
-          "created_at": 1771187140,
+          "created_at": 1772166624,
           "status": "completed",
           "background": false,
           "billing": {
             "payer": "developer"
           },
-          "completed_at": 1771187141,
+          "completed_at": 1772166625,
           "error": null,
           "frequency_penalty": 0.0,
           "incomplete_details": null,
@@ -65,7 +65,7 @@ interactions:
           "model": "gpt-4o-mini-2024-07-18",
           "output": [
             {
-              "id": "msg_0ddadc2b6c99631e0069922bc5bb7481a1bd2cf765e86f0324",
+              "id": "msg_0460a1b0c70a24480069a11de17c94819fa42b9ffbba23b0c1",
               "type": "message",
               "status": "completed",
               "content": [
@@ -73,7 +73,7 @@ interactions:
                   "type": "output_text",
                   "annotations": [],
                   "logprobs": [],
-                  "text": "This is a test."
+                  "text": "This is a test. How can I assist you further?"
                 }
               ],
               "role": "assistant"
@@ -108,24 +108,24 @@ interactions:
             "input_tokens_details": {
               "cached_tokens": 0
             },
-            "output_tokens": 6,
+            "output_tokens": 13,
             "output_tokens_details": {
               "reasoning_tokens": 0
             },
-            "total_tokens": 18
+            "total_tokens": 25
           },
           "user": null,
           "metadata": {}
         }
     headers:
       CF-RAY:
-      - 9ce7892a1edf6e28-EWR
+      - 9d44f256ef4543f7-EWR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Sun, 15 Feb 2026 20:25:41 GMT
+      - Fri, 27 Feb 2026 04:30:25 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -140,18 +140,18 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '1542'
+      - '1573'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '1117'
+      - '1223'
       openai-project:
       - proj_s74VWObPgWXRchv2sHdrOTPY
       openai-version:
       - '2020-10-01'
       set-cookie:
-      - __cf_bm=EqzSyI6frjYjpe4KHsZwfOCC3u_Kwly3Sd3J5Zds8zI-1771187140.1743493-1.0.1.1-OmexI2NvBMMEXBpmchsnZHZYoTN49ITf88EX6vLlvPVe2omNldWnkBVDxPsaqC43T_5jYbgXJ8TWJOreyavfvAJJt5s6AT_6hiOPPN9GC8ZuS6nii1Buh8VcBBlsCibo;
-        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Sun, 15 Feb 2026
-        20:55:41 GMT
+      - __cf_bm=nAyBDLxrz3It3Gfa8VsIKLJ2F9kverRMkyVqnBbRlww-1772166623.8279672-1.0.1.1-qj6fTaAQ26aGLK1nSu6fhPwy.UqEPr4cDZoYMoOp7DAKMmSRPH.YPFcCPVdiYP0dUmF7hJ4cg3WVTClJ8fDCAgmg7dJqWHs_cT4CcNMd97ovICOvK3pcV3BCtpjVO_1r;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 27 Feb 2026
+        05:00:25 GMT
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
@@ -165,7 +165,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 9ms
       x-request-id:
-      - req_599094c097964d0d8609a82a7d64b624
+      - req_3a3e20b0c4c842188f4e277b83b6ed36
     status:
       code: 200
       message: OK
