@@ -287,6 +287,9 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_ROUTE,
     HTTP_TARGET,
 )
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    create_http_server_active_requests,
+)
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
@@ -299,7 +302,6 @@ from opentelemetry.util.http import (
 )
 
 _logger = getLogger(__name__)
-
 # Global constants for Flask 3.1+ streaming context cleanup
 _IS_FLASK_31_PLUS = hasattr(flask, "__version__") and package_version.parse(
     flask.__version__
@@ -692,11 +694,15 @@ class _InstrumentedFlask(flask.Flask):
                 description="Duration of HTTP server requests.",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
-        active_requests_counter = meter.create_up_down_counter(
-            name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-            unit="requests",
-            description="measures the number of concurrent HTTP requests that are currently in-flight",
-        )
+
+        if _report_new(_InstrumentedFlask._sem_conv_opt_in_mode):
+            active_requests_counter = create_http_server_active_requests(meter)
+        else:
+            active_requests_counter = meter.create_up_down_counter(
+                name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+                unit="requests",
+                description="Measures the number of concurrent HTTP requests that are currently in-flight.",
+            )
 
         self.wsgi_app = _rewrapped_app(
             self.wsgi_app,
@@ -826,11 +832,16 @@ class FlaskInstrumentor(BaseInstrumentor):
                     description="Duration of HTTP server requests.",
                     explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 )
-            active_requests_counter = meter.create_up_down_counter(
-                name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
-                unit="{request}",
-                description="Number of active HTTP server requests.",
-            )
+            if _report_new(sem_conv_opt_in_mode):
+                active_requests_counter = create_http_server_active_requests(
+                    meter
+                )
+            else:
+                active_requests_counter = meter.create_up_down_counter(
+                    name=MetricInstruments.HTTP_SERVER_ACTIVE_REQUESTS,
+                    unit="requests",
+                    description="Measures the number of concurrent HTTP requests that are currently in-flight.",
+                )
 
             app._original_wsgi_app = app.wsgi_app
             app.wsgi_app = _rewrapped_app(
