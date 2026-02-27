@@ -17,10 +17,14 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from opentelemetry.instrumentation._semconv import (
+    _LEGACY_SCHEMA_VERSION,
     OTEL_SEMCONV_STABILITY_OPT_IN,
+    _get_schema_url_for_signal_types,
+    _get_schema_version_for_opt_in_mode,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
+    _set_db_operation,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -29,12 +33,14 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
 )
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
+    DB_OPERATION_NAME,
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
@@ -186,6 +192,134 @@ class TestOpenTelemetrySemConvStability(TestCase):
             ),
             _StabilityMode.HTTP_DUP,
         )
+
+
+class TestOpenTelemetrySemConvSchemaUrl(TestCase):
+    @stability_mode("")
+    def test_get_schema_version_for_opt_in_mode_default(self):
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.DEFAULT
+        )
+        self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
+
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE, _StabilityMode.DEFAULT
+        )
+        self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
+
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI, _StabilityMode.DEFAULT
+        )
+        self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
+
+    @stability_mode("")
+    def test_get_schema_version_for_opt_in_mode_http_stable(self):
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.HTTP
+        )
+        self.assertEqual(version, "1.21.0")
+
+    @stability_mode("")
+    def test_get_schema_version_for_opt_in_mode_database_stable(self):
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE, _StabilityMode.DATABASE
+        )
+        self.assertEqual(version, "1.25.0")
+
+    @stability_mode("")
+    def test_get_schema_version_for_opt_in_mode_gen_ai_stable(self):
+        version = _get_schema_version_for_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI,
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+        )
+        self.assertEqual(version, "1.26.0")
+
+    @stability_mode("")
+    def test_get_schema_url_for_signal_types_single_http_default(self):
+        url = _get_schema_url_for_signal_types(
+            [_OpenTelemetryStabilitySignalType.HTTP]
+        )
+        self.assertEqual(
+            url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}"
+        )
+
+    @stability_mode("http")
+    def test_get_schema_url_for_signal_types_single_http_stable(self):
+        url = _get_schema_url_for_signal_types(
+            [_OpenTelemetryStabilitySignalType.HTTP]
+        )
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.21.0")
+
+    @stability_mode("database")
+    def test_get_schema_url_for_signal_types_single_database_stable(self):
+        url = _get_schema_url_for_signal_types(
+            [_OpenTelemetryStabilitySignalType.DATABASE]
+        )
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.25.0")
+
+    @stability_mode("http,database")
+    def test_get_schema_url_for_signal_types_multiple_both_stable(self):
+        # DATABASE has higher version (1.25.0) than HTTP (1.21.0)
+        url = _get_schema_url_for_signal_types(
+            [
+                _OpenTelemetryStabilitySignalType.HTTP,
+                _OpenTelemetryStabilitySignalType.DATABASE,
+            ]
+        )
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.25.0")
+
+    @stability_mode("http")
+    def test_get_schema_url_for_signal_types_mixed_modes(self):
+        # HTTP is stable (1.21.0), DATABASE is default (1.11.0)
+        # Should return HTTP version as it's higher
+        url = _get_schema_url_for_signal_types(
+            [
+                _OpenTelemetryStabilitySignalType.HTTP,
+                _OpenTelemetryStabilitySignalType.DATABASE,
+            ]
+        )
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.21.0")
+
+    @stability_mode("database")
+    def test_get_schema_url_for_signal_types_database_only_stable(self):
+        # DATABASE is stable (1.25.0), HTTP is default (1.11.0)
+        # Should return DATABASE version as it's highest
+        url = _get_schema_url_for_signal_types(
+            [
+                _OpenTelemetryStabilitySignalType.HTTP,
+                _OpenTelemetryStabilitySignalType.DATABASE,
+            ]
+        )
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.25.0")
+
+    @stability_mode("")
+    def test_get_schema_url_for_signal_types_empty_list(self):
+        url = _get_schema_url_for_signal_types([])
+        self.assertEqual(
+            url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}"
+        )
+
+    @stability_mode("http/dup,database/dup")
+    def test_get_schema_url_for_signal_types_dup_modes(self):
+        url = _get_schema_url_for_signal_types(
+            [
+                _OpenTelemetryStabilitySignalType.HTTP,
+                _OpenTelemetryStabilitySignalType.DATABASE,
+            ]
+        )
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.25.0")
+
+    @stability_mode("http,database,gen_ai_latest_experimental")
+    def test_get_schema_url_for_signal_types_with_gen_ai(self):
+        # GEN_AI should be highest at 1.26.0
+        url = _get_schema_url_for_signal_types(
+            [
+                _OpenTelemetryStabilitySignalType.HTTP,
+                _OpenTelemetryStabilitySignalType.DATABASE,
+                _OpenTelemetryStabilitySignalType.GEN_AI,
+            ]
+        )
+        self.assertEqual(url, "https://opentelemetry.io/schemas/1.26.0")
 
 
 class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
@@ -443,3 +577,45 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         result = {}
         _set_db_user(result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertNotIn(DB_USER, result)
+
+    def test_db_operation_default(self):
+        result = {}
+        _set_db_operation(
+            result,
+            "SELECT",
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertIn(DB_OPERATION, result)
+        self.assertEqual(result[DB_OPERATION], "SELECT")
+        self.assertNotIn(DB_OPERATION_NAME, result)
+
+    def test_db_operation_database_stable(self):
+        result = {}
+        _set_db_operation(
+            result,
+            "SELECT",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        self.assertNotIn(DB_OPERATION, result)
+        self.assertIn(DB_OPERATION_NAME, result)
+        self.assertEqual(result[DB_OPERATION_NAME], "SELECT")
+
+    def test_db_operation_database_dup(self):
+        result = {}
+        _set_db_operation(
+            result,
+            "SELECT",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        self.assertIn(DB_OPERATION, result)
+        self.assertEqual(result[DB_OPERATION], "SELECT")
+        self.assertIn(DB_OPERATION_NAME, result)
+        self.assertEqual(result[DB_OPERATION_NAME], "SELECT")
+
+    def test_db_operation_none_value(self):
+        result = {}
+        _set_db_operation(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertNotIn(DB_OPERATION, result)
+        self.assertNotIn(DB_OPERATION_NAME, result)

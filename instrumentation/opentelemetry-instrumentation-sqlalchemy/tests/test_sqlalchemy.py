@@ -23,17 +23,34 @@ from sqlalchemy import (
 )
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.sqlalchemy import (
     EngineTracer,
     SQLAlchemyInstrumentor,
+)
+from opentelemetry.instrumentation.sqlalchemy.engine import (
+    _get_db_name_from_cursor_or_conn,
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider, export
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION,
     DB_STATEMENT,
     DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_OPERATION_NAME,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
 )
 from opentelemetry.test.test_base import TestBase
 
@@ -42,6 +59,12 @@ class TestSqlalchemyInstrumentation(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+
+    def setUp(self):
+        super().setUp()
+        # Reset semconv state before each test for reproducibility
+        # Tests using @mock.patch.dict will re-initialize again after the mock is applied
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
     def tearDown(self):
         super().tearDown()
@@ -687,6 +710,248 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
+    def test_semconv_default_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        # Verify new conventions are NOT present
+        self.assertNotIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertNotIn(DB_NAMESPACE, connect_span.attributes)
+
+        query_span = spans[1]
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_OPERATION, query_span.attributes)
+        self.assertEqual(
+            query_span.attributes[DB_OPERATION], "SELECT :memory:"
+        )
+        # Verify new conventions are NOT present
+        self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http"})
+    def test_semconv_http_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # HTTP attributes should use new semconv
+        self.assertNotIn(NET_PEER_NAME, connect_span.attributes)
+        # DB attributes should still use old semconv
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertNotIn(DB_NAMESPACE, connect_span.attributes)
+
+        query_span = spans[1]
+        # DB attributes should still use old semconv
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_semconv_database_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertIn(DB_NAMESPACE, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAMESPACE], ":memory:")
+        # Verify old conventions are NOT present
+        self.assertNotIn(DB_SYSTEM, connect_span.attributes)
+        self.assertNotIn(DB_NAME, connect_span.attributes)
+
+        query_span = spans[1]
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertIn(DB_OPERATION_NAME, query_span.attributes)
+        self.assertEqual(
+            query_span.attributes[DB_OPERATION_NAME], "SELECT :memory:"
+        )
+        # Verify old conventions are NOT present
+        self.assertNotIn(DB_STATEMENT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM, query_span.attributes)
+
+    @mock.patch.dict(
+        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http,database"}
+    )
+    def test_semconv_http_and_database_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # New DB conventions should be present
+        self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertIn(DB_NAMESPACE, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAMESPACE], ":memory:")
+        # Old DB conventions should NOT be present
+        self.assertNotIn(DB_SYSTEM, connect_span.attributes)
+        self.assertNotIn(DB_NAME, connect_span.attributes)
+
+        query_span = spans[1]
+        # New DB conventions should be present
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        # Old DB conventions should NOT be present
+        self.assertNotIn(DB_STATEMENT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM, query_span.attributes)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup"})
+    def test_semconv_http_dup_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # DB attributes should use old semconv only
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertNotIn(DB_NAMESPACE, connect_span.attributes)
+
+        query_span = spans[1]
+        # DB attributes should use old semconv
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
+        # Verify new DB conventions are NOT present
+        self.assertNotIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertNotIn(DB_SYSTEM_NAME, query_span.attributes)
+
+    @mock.patch.dict(
+        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
+    )
+    def test_semconv_database_dup_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # Old conventions
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        # New conventions
+        self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertIn(DB_NAMESPACE, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAMESPACE], ":memory:")
+
+        query_span = spans[1]
+        # Old conventions
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
+        # New conventions
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
+
+    @mock.patch.dict(
+        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup,database/dup"}
+    )
+    def test_semconv_http_and_database_dup_mode(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1 + 1;")).fetchall()
+        spans = self.memory_exporter.get_finished_spans()
+
+        connect_span = spans[0]
+        # Both old and new DB conventions
+        self.assertIn(DB_SYSTEM, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAME], ":memory:")
+        self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertIn(DB_NAMESPACE, connect_span.attributes)
+        self.assertEqual(connect_span.attributes[DB_NAMESPACE], ":memory:")
+
+        query_span = spans[1]
+        # Both old and new DB conventions
+        self.assertIn(DB_STATEMENT, query_span.attributes)
+        self.assertIn(DB_SYSTEM, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM], "sqlite")
+        self.assertIn(DB_QUERY_TEXT, query_span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, query_span.attributes)
+        self.assertEqual(query_span.attributes[DB_SYSTEM_NAME], "sqlite")
+
     def test_suppress_instrumentation_cursor_and_metric(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
@@ -704,3 +969,145 @@ class TestSqlalchemyInstrumentation(TestBase):
 
         metric_list = self.get_sorted_metrics()
         self.assertEqual(len(metric_list), 0)
+
+    def test_get_db_name_from_cursor_or_conn_postgresql_success(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_info = mock.Mock()
+        mock_info.dbname = "test_database"
+        mock_connection.info = mock_info
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "postgresql", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "test_database")
+
+    def test_get_db_name_from_cursor_or_conn_postgresql_no_connection(self):
+        mock_cursor = mock.Mock()
+        mock_cursor.connection = None
+        mock_connection = mock.Mock()
+        result = _get_db_name_from_cursor_or_conn(
+            "postgresql", mock_connection, mock_cursor
+        )
+        self.assertIsNone(result)
+
+    def test_get_db_name_from_cursor_or_conn_postgresql_no_dbname(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_info = mock.Mock()
+        mock_info.dbname = None
+        mock_connection.info = mock_info
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "postgresql", mock_connection, mock_cursor
+        )
+        self.assertIsNone(result)
+
+    def test_get_db_name_from_cursor_or_conn_unknown_vendor_with_url(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.engine.url.database = "foo"
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "unknown_db", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "foo")
+
+    def test_get_db_name_from_cursor_or_conn_unknown_vendor_without_url(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.engine.url.database = None
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "unknown_db", mock_connection, mock_cursor
+        )
+        self.assertIsNone(result)
+
+    def test_get_db_name_from_cursor_or_conn_mysql_with_database_attr(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "mysql_test_db"
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "mysql_test_db")
+
+    def test_get_db_name_from_cursor_or_conn_mysql_with_db_attr_string(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.db = "mysql_test_db"
+        del mock_connection.database  # Remove database attribute
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "mysql_test_db")
+
+    def test_get_db_name_from_cursor_or_conn_mysql_with_db_attr_bytes(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.db = b"mysql_test_db"
+        del mock_connection.database  # Remove database attribute
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "mysql_test_db")
+
+    def test_get_db_name_from_cursor_or_conn_mysql_with_cnx_attr(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_cnx = mock.Mock()
+        mock_cnx.database = "mysql_cnx_db"
+        mock_cursor.connection = None
+        mock_cursor._cnx = mock_cnx
+        result = _get_db_name_from_cursor_or_conn(
+            "mysql", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "mysql_cnx_db")
+
+    def test_get_db_name_from_cursor_or_conn_mssql_with_database_attr(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "mssql_test_db"
+        mock_cursor.connection = mock_connection
+        result = _get_db_name_from_cursor_or_conn(
+            "mssql", mock_connection, mock_cursor
+        )
+        self.assertEqual(result, "mssql_test_db")
+
+    def test_get_db_name_from_cursor_or_conn_mysql_variant_names(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "test_db"
+        mock_cursor.connection = mock_connection
+        for vendor in ["mysql", "pymysql", "mysqlclient", "mysql+pymysql"]:
+            result = _get_db_name_from_cursor_or_conn(
+                vendor, mock_connection, mock_cursor
+            )
+            self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
+
+    def test_get_db_name_from_cursor_or_conn_mssql_variant_names(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_connection.database = "test_db"
+        mock_cursor.connection = mock_connection
+        for vendor in ["mssql", "mssql+pyodbc", "sqlserver"]:
+            result = _get_db_name_from_cursor_or_conn(
+                vendor, mock_connection, mock_cursor
+            )
+            self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
+
+    def test_get_db_name_from_cursor_or_conn_postgresql_variant_names(self):
+        mock_cursor = mock.Mock()
+        mock_connection = mock.Mock()
+        mock_info = mock.Mock()
+        mock_info.dbname = "test_db"
+        mock_connection.info = mock_info
+        mock_cursor.connection = mock_connection
+        for vendor in ["postgresql", "postgres", "postgresql+psycopg2"]:
+            result = _get_db_name_from_cursor_or_conn(
+                vendor, mock_connection, mock_cursor
+            )
+            self.assertEqual(result, "test_db", f"Failed for vendor: {vendor}")
