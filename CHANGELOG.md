@@ -59,7 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 
 ### Fixed
-
+- `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
+  ([#4116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4116))
 - `opentelemetry-instrumentation-cassandra`: Use `_instruments_any` instead of `_instruments` for driver dependencies so that having either `cassandra-driver` or `scylla-driver` installed is sufficient
   ([#4182](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4182))
 - `opentelemetry-instrumentation-asyncpg`: Hydrate span attributes before creation so samplers can filter on database details
@@ -114,6 +115,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
 - `opentelemetry-instrumentation-falcon`: Refactor `_handle_exception` to remove pylint disables
   ([#4207](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4207))
+- `opentelemetry-docker-tests` Fix docker-tests assumption by Postgres-Sqlalchemy case about scope of metrics
+  ([#4258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4258))
+- `opentelemetry-instrumentation-threading`: fix AttributeError when Thread is run without starting
+  ([#4246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4246))
 
 ### Breaking changes
 
