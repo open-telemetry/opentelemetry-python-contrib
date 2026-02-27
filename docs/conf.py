@@ -118,6 +118,8 @@ extensions = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
+    "psycopg": ("https://www.psycopg.org/psycopg3/docs/", None),
+    "psycopg2": ("https://www.psycopg.org/docs/", None),
     "opentracing": (
         "https://opentracing-python.readthedocs.io/en/latest/",
         None,

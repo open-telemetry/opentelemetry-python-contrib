@@ -146,6 +146,8 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
 import threading
 import typing
@@ -175,8 +177,6 @@ if typing.TYPE_CHECKING:
     from psycopg2.extensions import (  # pylint: disable=no-name-in-module
         connection as PgConnection,
     )
-else:
-    PgConnection = typing.Any
 
 
 class Psycopg2Instrumentor(BaseInstrumentor):
@@ -188,7 +188,6 @@ class Psycopg2Instrumentor(BaseInstrumentor):
     }
 
     _DATABASE_SYSTEM = "postgresql"
-    _MISSING = object()
     _INSTRUMENTED_CONNECTIONS = weakref.WeakKeyDictionary()
     _INSTRUMENTED_CONNECTIONS_LOCK = threading.Lock()
 
@@ -296,20 +295,14 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         """Disable instrumentation for a psycopg2 connection.
 
         Restores the original `cursor_factory` from `_INSTRUMENTED_CONNECTIONS`.
-        `_MISSING` is used to distinguish "not tracked" from a tracked `None` value
-        which is allowed in psycopg2.
         """
         with Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS_LOCK:
             original_cursor_factory = (
                 Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS.pop(
-                    connection, Psycopg2Instrumentor._MISSING
+                    connection, None
                 )
             )
-
-        if original_cursor_factory is not Psycopg2Instrumentor._MISSING:
-            connection.cursor_factory = original_cursor_factory
-        else:
-            connection.cursor_factory = None
+        connection.cursor_factory = original_cursor_factory
 
         return connection
 
