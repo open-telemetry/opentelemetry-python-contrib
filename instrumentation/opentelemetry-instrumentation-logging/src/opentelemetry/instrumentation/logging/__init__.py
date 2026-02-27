@@ -15,7 +15,11 @@
 # pylint: disable=empty-docstring,no-value-for-parameter,no-member,no-name-in-module
 
 """
-The OpenTelemetry `logging` integration automatically injects tracing context into
+The OpenTelemetry `logging` instrumentation automatically instruments Python logging
+system with an handler to convert log messages into OpenTelemetry logs.
+You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
+
+The OpenTelemetry `logging` integration can inject tracing context into
 log statements, though it is opt-in and must be enabled explicitly by setting the
 environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
 
@@ -59,15 +63,21 @@ import logging  # pylint: disable=import-self
 from os import environ
 from typing import Collection
 
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.logging.constants import (
     _MODULE_DOC,
     DEFAULT_LOGGING_FORMAT,
 )
 from opentelemetry.instrumentation.logging.environment_variables import (
+    OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION,
+    OTEL_PYTHON_LOG_CODE_ATTRIBUTES,
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
     OTEL_PYTHON_LOG_LEVEL,
+)
+from opentelemetry.instrumentation.logging.handler import (
+    _setup_logging_handler,
 )
 from opentelemetry.instrumentation.logging.package import _instruments
 from opentelemetry.trace import (
@@ -85,6 +95,8 @@ LEVELS = {
     "warning": logging.WARNING,
     "error": logging.ERROR,
 }
+
+_logger = logging.getLogger(__name__)
 
 
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
@@ -120,6 +132,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     _old_factory = None
     _log_hook = None
+    _logging_handler = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -199,7 +212,50 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         logging.setLogRecordFactory(record_factory)
 
+        # Here we need to handle 3 scenarios:
+        # - the sdk logging handler is enabled and we should do no nothing
+        # - the sdk logging handler is not enabled and we should setup the handler by default
+        # - the sdk logging handler is not enabled and the user do not want we setup the handler
+        sdk_autoinstrumentation_env_var = (
+            environ.get(
+                "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "notset"
+            )
+            .strip()
+            .lower()
+        )
+        if sdk_autoinstrumentation_env_var == "true":
+            _logger.warning(
+                "Disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging "
+                "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`"
+            )
+        elif kwargs.get(
+            "enable_log_auto_istrumentation",
+            environ.get(OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION, "true")
+            .strip()
+            .lower()
+            == "true",
+        ):
+            log_code_attributes = kwargs.get(
+                "log_code_attributes",
+                environ.get(OTEL_PYTHON_LOG_CODE_ATTRIBUTES, "false")
+                .strip()
+                .lower()
+                == "true",
+            )
+            logger_provider = get_logger_provider()
+            handler = _setup_logging_handler(
+                logger_provider=logger_provider,
+                log_code_attributes=log_code_attributes,
+            )
+            LoggingInstrumentor._logging_handler = handler
+
     def _uninstrument(self, **kwargs):
         if LoggingInstrumentor._old_factory:
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
             LoggingInstrumentor._old_factory = None
+
+        if LoggingInstrumentor._logging_handler:
+            logging.getLogger().removeHandler(
+                LoggingInstrumentor._logging_handler
+            )
+            LoggingInstrumentor._logging_handler = None

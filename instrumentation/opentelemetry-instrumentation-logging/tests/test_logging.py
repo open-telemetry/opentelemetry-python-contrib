@@ -18,10 +18,12 @@ from unittest import mock
 
 import pytest
 
-from opentelemetry.instrumentation.logging import (  # pylint: disable=no-name-in-module
+from opentelemetry._logs import get_logger_provider
+from opentelemetry.instrumentation.logging import (
     DEFAULT_LOGGING_FORMAT,
     LoggingInstrumentor,
 )
+from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import NoOpTracerProvider, ProxyTracer, get_tracer
 
@@ -40,6 +42,7 @@ class FakeTracerProvider:
         )
 
 
+# pylint: disable=no-self-use,too-many-public-methods
 class TestLoggingInstrumentorProxyTracerProvider(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
@@ -241,6 +244,14 @@ class TestLoggingInstrumentor(TestBase):
                 self.assertFalse(hasattr(record, "otelTraceID"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
 
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(logging_handler_instances, [])
+
     def test_no_op_tracer_provider(self):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(
@@ -257,3 +268,143 @@ class TestLoggingInstrumentor(TestBase):
             self.assertEqual(record.otelTraceID, "0")
             self.assertEqual(record.otelServiceName, "")
             self.assertEqual(record.otelTraceSampled, False)
+
+    @mock.patch.dict(
+        "os.environ",
+        {"OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED": "true"},
+    )
+    def test_handler_setup_is_disabled_if_sdk_autoinstrumentation_env_var_is_set_to_true(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument()
+
+        self.assertEqual(len(self.caplog.records), 1)
+        record = self.caplog.records[0]
+        self.assertEqual(
+            record.message,
+            "Disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging "
+            "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`",
+        )
+
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(logging_handler_instances, [])
+
+    @mock.patch.dict(
+        "os.environ",
+        {"OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED": "false"},
+    )
+    def test_handler_setup_is_enabled_if_sdk_autoinstrumentation_env_var_is_set_to_false(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument()
+
+        self.assertEqual(len(self.caplog.records), 0)
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(len(logging_handler_instances), 1)
+
+    @mock.patch.dict(
+        "os.environ",
+        {"OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION": "false"},
+    )
+    def test_handler_setup_is_enabled_if_autoinstrumentation_env_var_is_set_to_false(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument()
+
+        self.assertEqual(len(self.caplog.records), 0)
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(logging_handler_instances, [])
+
+    def test_handler_setup_is_called_if_autoinstrumentation_env_vars_are_not_set(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument()
+
+        self.assertEqual(len(self.caplog.records), 0)
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(len(logging_handler_instances), 1)
+
+    def test_handler_setup_is_called_without_code_attributes_by_default(self):
+        LoggingInstrumentor().uninstrument()
+        with mock.patch(
+            "opentelemetry.instrumentation.logging._setup_logging_handler"
+        ) as setup_mock:
+            LoggingInstrumentor().instrument()
+
+        logger_provider = get_logger_provider()
+        setup_mock.assert_called_once_with(
+            logger_provider=logger_provider, log_code_attributes=False
+        )
+
+    @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CODE_ATTRIBUTES": "true"})
+    def test_handler_setup_is_called_with_code_attributes_from_env_var(self):
+        LoggingInstrumentor().uninstrument()
+        with mock.patch(
+            "opentelemetry.instrumentation.logging._setup_logging_handler"
+        ) as setup_mock:
+            LoggingInstrumentor().instrument()
+
+        logger_provider = get_logger_provider()
+        setup_mock.assert_called_once_with(
+            logger_provider=logger_provider, log_code_attributes=True
+        )
+
+    def test_handler_setup_is_controlled_by_instrumentor_parameter(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument(
+                enable_log_auto_istrumentation=False
+            )
+
+        self.assertEqual(len(self.caplog.records), 0)
+        root_logger = logging.getLogger()
+        logging_handler_instances = [
+            handler
+            for handler in root_logger.handlers
+            if isinstance(handler, LoggingHandler)
+        ]
+        self.assertEqual(logging_handler_instances, [])
+
+    def test_handler_code_attributes_is_controlled_by_instrumentor_parameter(
+        self,
+    ):
+        LoggingInstrumentor().uninstrument()
+        with mock.patch(
+            "opentelemetry.instrumentation.logging._setup_logging_handler"
+        ) as setup_mock:
+            LoggingInstrumentor().instrument(log_code_attributes=True)
+
+        logger_provider = get_logger_provider()
+        setup_mock.assert_called_once_with(
+            logger_provider=logger_provider, log_code_attributes=True
+        )
