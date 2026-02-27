@@ -237,27 +237,27 @@ class TestBaseFastAPI(TestBase):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -1021,27 +1021,27 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -1964,7 +1964,7 @@ class TestTraceableExceptionHandling(TestBase):
             return PlainTextResponse("", status_code)
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             self.request_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
@@ -2031,7 +2031,7 @@ class TestTraceableExceptionHandling(TestBase):
         """Exceptions from user middlewares are recorded in the active span"""
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             return PlainTextResponse("Hello World")
 
         @self.app.middleware("http")
