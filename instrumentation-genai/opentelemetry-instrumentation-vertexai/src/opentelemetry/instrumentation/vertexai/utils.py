@@ -56,7 +56,7 @@ from opentelemetry.util.genai.types import (
     FinishReason,
     MessagePart,
     Text,
-    ToolCall,
+    ToolCallRequest,
     ToolCallResponse,
 )
 from opentelemetry.util.genai.utils import get_content_capturing_mode
@@ -341,7 +341,7 @@ def convert_content_to_message_parts(
         elif "function_call" in part:
             part = part.function_call
             parts.append(
-                ToolCall(
+                ToolCallRequest(
                     id=f"{part.name}_{idx}",
                     name=part.name,
                     arguments=json_format.MessageToDict(

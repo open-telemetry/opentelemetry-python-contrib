@@ -42,7 +42,7 @@ class ContentCapturingMode(Enum):
 
 
 @dataclass()
-class ToolCall:
+class ToolCallRequest:
     """Represents a tool call requested by the model
 
     This model is specified as part of semconv in `GenAI messages Python models - ToolCallRequestPart
@@ -53,6 +53,40 @@ class ToolCall:
     name: str
     id: str | None
     type: Literal["tool_call"] = "tool_call"
+
+
+@dataclass()
+class ToolCall(ToolCallRequest):
+    """Represents a tool call for execution tracking with spans and metrics.
+
+    This type extends ToolCallRequest with additional fields for tracking tool execution
+    per the execute_tool span semantic conventions.
+
+    Reference: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md#execute-tool-span
+
+    For simple message parts (tool calls requested by the model), consider using
+    ToolCallRequest instead to avoid unnecessary execution-tracking fields.
+
+    Semantic convention attributes for execute_tool spans:
+    - gen_ai.operation.name: "execute_tool" (Required)
+    - gen_ai.tool.name: Name of the tool (Recommended)
+    - gen_ai.tool.call.id: Tool call identifier (Recommended if available)
+    - gen_ai.tool.type: Type classification - "function", "extension", or "datastore" (Recommended if available)
+    - gen_ai.tool.description: Tool description (Recommended if available)
+    - gen_ai.tool.call.arguments: Parameters passed to tool (Opt-In, may contain sensitive data)
+    - gen_ai.tool.call.result: Result returned by tool (Opt-In, may contain sensitive data)
+    - error.type: Error type if operation failed (Conditionally Required)
+    """
+
+    # Execution-only fields (used for execute_tool spans):
+    # gen_ai.tool.type - Tool type: "function", "extension", or "datastore"
+    tool_type: str | None = None
+    # gen_ai.tool.description - Description of what the tool does
+    tool_description: str | None = None
+    # gen_ai.tool.call.result - Result returned by the tool (Opt-In, may contain sensitive data)
+    tool_result: Any = None
+    # error.type - Error type if the tool call failed
+    error_type: str | None = None
 
 
 @dataclass()
@@ -158,7 +192,15 @@ class GenericToolDefinition:
 ToolDefinition = Union[FunctionToolDefinition, GenericToolDefinition]
 
 MessagePart = Union[
-    Text, ToolCall, ToolCallResponse, Blob, File, Uri, Reasoning, Any
+    Text,
+    ToolCallRequest,
+    ToolCall,
+    ToolCallResponse,
+    Blob,
+    File,
+    Uri,
+    Reasoning,
+    Any,
 ]
 
 
