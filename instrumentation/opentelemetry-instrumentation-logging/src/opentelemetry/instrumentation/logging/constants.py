@@ -59,7 +59,7 @@ Environment variables
 
 .. envvar:: OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION
 
-This env var must be set to ``false`` in order to disable automatic instrumentation of the Python logging module with an handler
+This env var must be set to ``false`` in order to disable automatic instrumentation of the Python logging module with a handler
 that will convert log message into OpenTelemetry logs.
 
 The default value is ``true``.
