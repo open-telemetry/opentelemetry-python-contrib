@@ -14,7 +14,11 @@
 
 import grpc
 import grpc.aio
-import wrapt
+
+try:
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
@@ -25,7 +29,7 @@ from ._utilities import _server_status
 
 
 # pylint:disable=abstract-method
-class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
+class _OpenTelemetryAioServicerContext(BaseObjectProxy):
     def __init__(self, servicer_context, active_span):
         super().__init__(servicer_context)
         self._self_active_span = active_span
