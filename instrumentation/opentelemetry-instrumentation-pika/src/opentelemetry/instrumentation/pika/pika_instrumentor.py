@@ -60,6 +60,7 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
         tracer: Tracer,
         consume_hook: utils.HookT = utils.dummy_callback,
     ) -> Any:
+        consumer_infos = None
         if isinstance(channel, BlockingChannel):
             consumer_infos = channel._consumer_infos
         elif isinstance(channel, Channel):
