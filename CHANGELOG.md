@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- `opentelemetry-instrumentation` Add common gen AI utils into opentelemetry-instrumentation
+  ([#3188](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3188))
+
 ### Added
 
 - Add Python 3.14 support
