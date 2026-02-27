@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Any
+import logging
+from typing import TYPE_CHECKING, Any, Callable
 
 from opentelemetry.util.genai.types import Error
 
@@ -21,6 +22,9 @@ from .response_extractors import _set_invocation_response_attributes
 if TYPE_CHECKING:
     from opentelemetry.util.genai.handler import TelemetryHandler
     from opentelemetry.util.genai.types import LLMInvocation
+
+
+_logger = logging.getLogger(__name__)
 
 
 class _ResponseProxy:
@@ -68,9 +72,11 @@ class ResponseStreamWrapper:
         return False
 
     def close(self):
-        if hasattr(self.stream, "close"):
-            self.stream.close()
-        self._stop(None)
+        try:
+            if hasattr(self.stream, "close"):
+                self.stream.close()
+        finally:
+            self._stop(None)
 
     def __iter__(self):
         return self
@@ -78,14 +84,17 @@ class ResponseStreamWrapper:
     def __next__(self):
         try:
             event = next(self.stream)
-            self.process_event(event)
-            return event
         except StopIteration:
             self._stop(None)
             raise
         except Exception as error:
             self._fail(str(error), type(error))
             raise
+        self._safe_instrumentation(
+            lambda: self.process_event(event),
+            "event processing",
+        )
+        return event
 
     def get_final_response(self):
         if not hasattr(self.stream, "get_final_response"):
@@ -115,24 +124,43 @@ class ResponseStreamWrapper:
     def _stop(self, result: Any):
         if self._finalized:
             return
-        _set_invocation_response_attributes(
-            self.invocation, result, self._capture_content
+        self._safe_instrumentation(
+            lambda: _set_invocation_response_attributes(
+                self.invocation, result, self._capture_content
+            ),
+            "response attribute extraction",
         )
-        self.handler.stop_llm(self.invocation)
+        self._safe_instrumentation(
+            lambda: self.handler.stop_llm(self.invocation),
+            "stop_llm",
+        )
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]):
         if self._finalized:
             return
-        if Error is None:
-            raise ModuleNotFoundError(
-                "opentelemetry.util.genai.types is unavailable"
+        self._safe_instrumentation(
+            lambda: self.handler.fail_llm(
+                self.invocation, Error(message=message, type=error_type)
             )
-
-        self.handler.fail_llm(
-            self.invocation, Error(message=message, type=error_type)
+            if Error is not None
+            else None,
+            "fail_llm",
         )
         self._finalized = True
+
+    @staticmethod
+    def _safe_instrumentation(
+        callback: Callable[[], object], context: str
+    ) -> None:
+        try:
+            callback()
+        except Exception:  # pylint: disable=broad-exception-caught
+            _logger.debug(
+                "OpenAI responses instrumentation error during %s",
+                context,
+                exc_info=True,
+            )
 
     def process_event(self, event):
         event_type = getattr(event, "type", None)
