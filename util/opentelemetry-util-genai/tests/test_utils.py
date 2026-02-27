@@ -25,7 +25,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogRecordExporter,
+    InMemoryLogExporter,
     SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
@@ -49,6 +49,7 @@ from opentelemetry.util.genai.environment_variables import (
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
+    EmbeddingInvocation,
     Error,
     InputMessage,
     LLMInvocation,
@@ -222,7 +223,7 @@ class TestTelemetryHandler(unittest.TestCase):
         tracer_provider.add_span_processor(
             SimpleSpanProcessor(self.span_exporter)
         )
-        self.log_exporter = InMemoryLogRecordExporter()
+        self.log_exporter = InMemoryLogExporter()
         logger_provider = LoggerProvider()
         logger_provider.add_log_record_processor(
             SimpleLogRecordProcessor(self.log_exporter)
@@ -498,6 +499,82 @@ class TestTelemetryHandler(unittest.TestCase):
         assert child_span.parent is not None
         assert child_span.parent.span_id == parent_span.context.span_id
         # Parent should not have a parent (root)
+        assert parent_span.parent is None
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_embedding_parent_child_span_relationship(self):
+        parent_invocation = EmbeddingInvocation(
+            request_model="embed-parent-model",
+            provider="test-provider",
+            input_tokens=10,
+        )
+        child_invocation = EmbeddingInvocation(
+            request_model="embed-child-model",
+            provider="test-provider",
+            input_tokens=5,
+        )
+
+        self.telemetry_handler.start_embedding(parent_invocation)
+        assert parent_invocation.span is not None
+        self.telemetry_handler.start_embedding(child_invocation)
+        assert child_invocation.span is not None
+        self.telemetry_handler.stop_embedding(child_invocation)
+        self.telemetry_handler.stop_embedding(parent_invocation)
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+        child_span = next(
+            s for s in spans if s.name == "embeddings embed-child-model"
+        )
+        parent_span = next(
+            s for s in spans if s.name == "embeddings embed-parent-model"
+        )
+
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
+        assert parent_span.parent is None
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_llm_parent_embedding_child_span_relationship(self):
+        message = _create_input_message("hi")
+        chat_generation = _create_output_message("ok")
+        child_invocation = EmbeddingInvocation(
+            request_model="embed-child-model",
+            provider="test-provider",
+            input_tokens=3,
+        )
+
+        with self.telemetry_handler.llm() as parent_invocation:
+            for attr, value in {
+                "request_model": "parent-model",
+                "input_messages": [message],
+                "provider": "test-provider",
+            }.items():
+                setattr(parent_invocation, attr, value)
+            self.telemetry_handler.start_embedding(child_invocation)
+            assert child_invocation.span is not None
+            self.telemetry_handler.stop_embedding(child_invocation)
+            parent_invocation.output_messages = [chat_generation]
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+        child_span = next(
+            s for s in spans if s.name == "embeddings embed-child-model"
+        )
+        parent_span = next(s for s in spans if s.name == "chat parent-model")
+
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
         assert parent_span.parent is None
 
     def test_llm_context_manager_error_path_records_error_status_and_attrs(
@@ -860,6 +937,51 @@ class TestTelemetryHandler(unittest.TestCase):
             log_record.event_name, "gen_ai.client.inference.operation.details"
         )
         self.assertIn(GenAI.GEN_AI_INPUT_MESSAGES, log_record.attributes)
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_embedding_manual_start_and_stop_creates_span(self):
+        invocation = EmbeddingInvocation(
+            request_model="embed-model",
+            provider="test-provider",
+            dimension_count=1536,
+            encoding_formats=["float"],
+            input_tokens=123,
+            server_address="custom.server.com",
+            server_port=42,
+            attributes={"custom_embed_attr": "value"},
+        )
+
+        self.telemetry_handler.start_embedding(invocation)
+        assert invocation.span is not None
+        invocation.attributes.update({"extra_embed": "info"})
+        invocation.metric_attributes = {"should not be on span": "value"}
+        self.telemetry_handler.stop_embedding(invocation)
+
+        span = _get_single_span(self.span_exporter)
+        self.assertEqual(span.name, "embeddings embed-model")
+        self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+        _assert_span_time_order(span)
+
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "embeddings",
+                GenAI.GEN_AI_REQUEST_MODEL: "embed-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_EMBEDDINGS_DIMENSION_COUNT: 1536,
+                GenAI.GEN_AI_REQUEST_ENCODING_FORMATS: ("float",),
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS: 123,
+                server_attributes.SERVER_ADDRESS: "custom.server.com",
+                server_attributes.SERVER_PORT: 42,
+                "custom_embed_attr": "value",
+                "extra_embed": "info",
+            },
+        )
 
 
 class AnyNonNone:
