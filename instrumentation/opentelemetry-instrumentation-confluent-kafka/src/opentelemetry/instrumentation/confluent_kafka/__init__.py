@@ -380,27 +380,29 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def wrap_poll(func, instance, tracer, args, kwargs):
-        if instance._current_consume_span:
-            _end_current_consume_span(instance)
-
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            record = func(*args, **kwargs)
-            if record:
-                _create_new_consume_span(instance, tracer, [record])
+        record = func(*args, **kwargs)
+        if record:
+            ctx = propagate.extract(record.headers(), getter=_kafka_getter)
+            span_name = _get_span_name("recv", record.topic())
+            with tracer.start_as_current_span(
+                span_name,
+                end_on_exit=True,
+                kind=trace.SpanKind.CONSUMER,
+                context=ctx,
+            ) as current_consume_span:
                 _enrich_span(
-                    instance._current_consume_span,
+                    current_consume_span,
                     record.topic(),
                     record.partition(),
                     record.offset(),
                     operation=MessagingOperationTypeValues.PROCESS,
                 )
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
-
-        return record
+                propagate.inject(
+                    record.headers(),
+                    setter=_kafka_setter,
+                )
+            return record
+        return None
 
     @staticmethod
     def wrap_consume(func, instance, tracer, args, kwargs):
