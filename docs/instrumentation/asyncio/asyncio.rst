@@ -5,3 +5,8 @@ OpenTelemetry asyncio Instrumentation
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: opentelemetry.instrumentation.asyncio.environment_variables
+    :members:
+    :undoc-members:
+    :show-inheritance:
