@@ -1519,17 +1519,8 @@ class GenAISemanticProcessor(TracingProcessor):
                     return GenAIOperationName.CHAT
             return GenAIOperationName.TEXT_COMPLETION
         if _is_instance_of(span_data, AgentSpanData):
-            # Could be create_agent or invoke_agent based on context
-            operation = getattr(span_data, "operation", None)
-            normalized = (
-                operation.strip().lower()
-                if isinstance(operation, str)
-                else None
-            )
-            if normalized in {"create", "create_agent"}:
-                return GenAIOperationName.CREATE_AGENT
-            if normalized in {"invoke", "invoke_agent"}:
-                return GenAIOperationName.INVOKE_AGENT
+            # The real SDK AgentSpanData has no "operation" field;
+            # agent spans always represent invoke_agent.
             return GenAIOperationName.INVOKE_AGENT
         if _is_instance_of(span_data, FunctionSpanData):
             return GenAIOperationName.EXECUTE_TOOL
@@ -1831,24 +1822,20 @@ class GenAISemanticProcessor(TracingProcessor):
         if name:
             yield GEN_AI_AGENT_NAME, name
 
-        agent_id = (
-            self.agent_id
-            or getattr(span_data, "agent_id", None)
-            or self._agent_id_default
-        )
+        # agent_id and description are not available on the real SDK
+        # AgentSpanData; only use user-configured overrides.
+        agent_id = self.agent_id or self._agent_id_default
         if agent_id:
             yield GEN_AI_AGENT_ID, agent_id
 
-        description = (
-            self.agent_description
-            or getattr(span_data, "description", None)
-            or self._agent_description_default
-        )
+        description = self.agent_description or self._agent_description_default
         if description:
             yield GEN_AI_AGENT_DESCRIPTION, description
 
-        model = getattr(span_data, "model", None)
-        if not model and agent_content:
+        # The real SDK AgentSpanData has no "model" field; fall back to
+        # the model aggregated from child generation/response spans.
+        model = None
+        if agent_content:
             model = agent_content.get("request_model")
         if model:
             yield GEN_AI_REQUEST_MODEL, model
