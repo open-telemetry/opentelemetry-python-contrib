@@ -577,9 +577,6 @@ class TestBotocoreInstrumentor(TestBase):
                 },
             )
 
-    @unittest.skipIf(
-        aiobotocore_installed, "aiobotocore installed with botocore"
-    )
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
     )
