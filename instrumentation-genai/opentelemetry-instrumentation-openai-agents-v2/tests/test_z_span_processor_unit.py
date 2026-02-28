@@ -55,6 +55,11 @@ def _ensure_semconv_enums() -> None:
             CREATE_AGENT = "create_agent"
             INVOKE_AGENT = "invoke_agent"
             EXECUTE_TOOL = "execute_tool"
+            SEARCH_MEMORY = "search_memory"
+            UPDATE_MEMORY = "update_memory"
+            DELETE_MEMORY = "delete_memory"
+            CREATE_MEMORY_STORE = "create_memory_store"
+            DELETE_MEMORY_STORE = "delete_memory_store"
 
         class _GenAiOutputTypeValues(Enum):
             TEXT = "text"
@@ -174,6 +179,15 @@ def test_operation_and_span_naming(processor_setup):
         == sp.GenAIOperationName.INVOKE_AGENT
     )
 
+    class MemorySpanData:
+        operation = "search_memory"
+
+    memory_span = MemorySpanData()
+    assert (
+        processor._get_operation_name(memory_span)
+        == sp.GenAIOperationName.SEARCH_MEMORY
+    )
+
     function_data = FunctionSpanData()
     assert (
         processor._get_operation_name(function_data)
@@ -194,6 +208,7 @@ def test_operation_and_span_naming(processor_setup):
 
     assert processor._get_span_kind(GenerationSpanData()) is SpanKind.CLIENT
     assert processor._get_span_kind(FunctionSpanData()) is SpanKind.INTERNAL
+    assert processor._get_span_kind(memory_span) is SpanKind.CLIENT
 
     assert (
         sp.get_span_name(sp.GenAIOperationName.CHAT, model="gpt-4o")
@@ -212,6 +227,13 @@ def test_operation_and_span_naming(processor_setup):
     assert (
         sp.get_span_name(sp.GenAIOperationName.CREATE_AGENT, agent_name=None)
         == "create_agent"
+    )
+    assert (
+        sp.get_span_name(
+            sp.GenAIOperationName.SEARCH_MEMORY,
+            memory_store_name="session-memory",
+        )
+        == "search_memory session-memory"
     )
 
 
@@ -369,6 +391,46 @@ def test_attribute_builders(processor_setup):
     assert function_attrs[sp.GEN_AI_TOOL_CALL_ARGUMENTS] == {"city": "seattle"}
     assert function_attrs[sp.GEN_AI_TOOL_CALL_RESULT] == {"temperature": 70}
     assert function_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
+
+    class MemorySearchSpanData:
+        operation = "search_memory"
+        conversation_id = "thread-123"
+
+        @staticmethod
+        def export():
+            return {
+                "data": {
+                    "memory_store": {
+                        "id": "ms-1",
+                        "name": "session-store",
+                    },
+                    "query": "weather preferences",
+                    "result_count": 2,
+                    "similarity_threshold": 0.8,
+                    "memory_namespace": "user-42",
+                }
+            }
+
+    class MemorySpan:
+        def __init__(self) -> None:
+            self.span_data = MemorySearchSpanData()
+
+    memory_attrs = _collect(
+        processor._extract_genai_attributes(
+            MemorySpan(), sp.ContentPayload(), None
+        )
+    )
+    assert (
+        memory_attrs[sp.GEN_AI_OPERATION_NAME]
+        == sp.GenAIOperationName.SEARCH_MEMORY
+    )
+    assert memory_attrs[sp.GEN_AI_MEMORY_STORE_ID] == "ms-1"
+    assert memory_attrs[sp.GEN_AI_MEMORY_STORE_NAME] == "session-store"
+    assert memory_attrs[sp.GEN_AI_MEMORY_QUERY] == "weather preferences"
+    assert memory_attrs[sp.GEN_AI_MEMORY_SEARCH_RESULT_COUNT] == 2
+    assert memory_attrs[sp.GEN_AI_MEMORY_SEARCH_SIMILARITY_THRESHOLD] == 0.8
+    assert memory_attrs[sp.GEN_AI_MEMORY_NAMESPACE] == "user-42"
+    assert memory_attrs[sp.GEN_AI_CONVERSATION_ID] == "thread-123"
 
 
 def test_extract_genai_attributes_unknown_type(processor_setup):

@@ -342,6 +342,14 @@ class TestGetSpanName:
         name = sp.get_span_name("unknown_operation")
         assert name == "unknown_operation"
 
+    def test_span_name_memory_operation(self):
+        sp, _ = _get_modules()
+        name = sp.get_span_name(
+            "search_memory",
+            memory_store_name="customer-store",
+        )
+        assert name == "search_memory customer-store"
+
 
 class TestInferOutputType:
     """Tests for _infer_output_type method."""
