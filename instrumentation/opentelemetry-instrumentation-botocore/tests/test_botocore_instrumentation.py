@@ -14,7 +14,6 @@
 import importlib.util
 import json
 import os
-import unittest
 from importlib.metadata import EntryPoint
 from unittest.mock import ANY, Mock, call, patch
 
