@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 - Include thinking tokens in `gen_ai.usage.output_tokens` ([#4206](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4206)).
+- Add `gen_ai.usage.reasoning.output_tokens` to span attributes ([#4276](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4276)).
 
 
 ## Version 0.7b0 (2026-02-20)
