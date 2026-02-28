@@ -106,6 +106,9 @@ class StreamingTestCase(TestCase):
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 3)
+        self.assertEqual(
+            span.attributes["gen_ai.usage.reasoning.output_tokens"], 2
+        )
         self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 7)
 
     def test_new_semconv_log_has_extra_genai_attributes(self):

@@ -525,6 +525,7 @@ class _GenerateContentInstrumentationHelper:
         self._error_type = None
         self._input_tokens = 0
         self._output_tokens = 0
+        self._thoughts_tokens = 0
         self.sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.GEN_AI
         )
@@ -567,6 +568,8 @@ class _GenerateContentInstrumentationHelper:
         final_attributes = {
             gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS: self._input_tokens,
             gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS: self._output_tokens,
+            # TODO: Use the centralized attribute once it's created.
+            "gen_ai.usage.reasoning.output_tokens": self._thoughts_tokens,
             gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS: sorted(
                 self._finish_reasons_set
             ),
@@ -628,7 +631,8 @@ class _GenerateContentInstrumentationHelper:
         if candidates_tokens and isinstance(candidates_tokens, int):
             output_tokens += candidates_tokens
         if thoughts_tokens and isinstance(thoughts_tokens, int):
-            output_tokens += thoughts_tokens
+            self._thoughts_tokens = thoughts_tokens
+            output_tokens += self._thoughts_tokens
 
         if input_tokens and isinstance(input_tokens, int):
             self._input_tokens = input_tokens

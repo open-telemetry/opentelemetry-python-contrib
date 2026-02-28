@@ -267,6 +267,9 @@ class NonStreamingTestCase(TestCase):
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 123)
+        self.assertEqual(
+            span.attributes["gen_ai.usage.reasoning.output_tokens"], 789
+        )
         self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 1245)
 
     @patch.dict(
