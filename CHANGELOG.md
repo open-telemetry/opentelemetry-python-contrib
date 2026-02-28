@@ -203,6 +203,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3681](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3681))
 - `opentelemetry-instrumentation-flask`: Fix exemplars generation for `http.server.request.duration` and `http.server.duration` metrics
   ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
+- `opentelemetry-instrumentation-botocore`: Add support for instrumenting `aiobotocore` 
+  ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 
 ### Added
 

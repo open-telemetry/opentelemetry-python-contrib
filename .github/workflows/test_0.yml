@@ -2806,6 +2806,44 @@ jobs:
       - name: Run tests
         run: tox -e py39-test-instrumentation-botocore-1 -- -ra
 
+  py39-test-instrumentation-botocore-2_ubuntu-latest:
+    name: instrumentation-botocore-2 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-botocore-2 -- -ra
+
+  py39-test-instrumentation-botocore-3_ubuntu-latest:
+    name: instrumentation-botocore-3 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-botocore-3 -- -ra
+
   py310-test-instrumentation-botocore-0_ubuntu-latest:
     name: instrumentation-botocore-0 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -2843,6 +2881,44 @@ jobs:
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-botocore-1 -- -ra
+
+  py310-test-instrumentation-botocore-2_ubuntu-latest:
+    name: instrumentation-botocore-2 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-botocore-2 -- -ra
+
+  py310-test-instrumentation-botocore-3_ubuntu-latest:
+    name: instrumentation-botocore-3 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-botocore-3 -- -ra
 
   py311-test-instrumentation-botocore-0_ubuntu-latest:
     name: instrumentation-botocore-0 3.11 Ubuntu
@@ -2882,6 +2958,44 @@ jobs:
       - name: Run tests
         run: tox -e py311-test-instrumentation-botocore-1 -- -ra
 
+  py311-test-instrumentation-botocore-2_ubuntu-latest:
+    name: instrumentation-botocore-2 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-botocore-2 -- -ra
+
+  py311-test-instrumentation-botocore-3_ubuntu-latest:
+    name: instrumentation-botocore-3 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-botocore-3 -- -ra
+
   py312-test-instrumentation-botocore-0_ubuntu-latest:
     name: instrumentation-botocore-0 3.12 Ubuntu
     runs-on: ubuntu-latest
@@ -2919,6 +3033,44 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-botocore-1 -- -ra
+
+  py312-test-instrumentation-botocore-2_ubuntu-latest:
+    name: instrumentation-botocore-2 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-botocore-2 -- -ra
+
+  py312-test-instrumentation-botocore-3_ubuntu-latest:
+    name: instrumentation-botocore-3 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-botocore-3 -- -ra
 
   py313-test-instrumentation-botocore-0_ubuntu-latest:
     name: instrumentation-botocore-0 3.13 Ubuntu
@@ -2958,6 +3110,44 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-botocore-1 -- -ra
 
+  py313-test-instrumentation-botocore-2_ubuntu-latest:
+    name: instrumentation-botocore-2 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-botocore-2 -- -ra
+
+  py313-test-instrumentation-botocore-3_ubuntu-latest:
+    name: instrumentation-botocore-3 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-botocore-3 -- -ra
+
   py314-test-instrumentation-botocore-0_ubuntu-latest:
     name: instrumentation-botocore-0 3.14 Ubuntu
     runs-on: ubuntu-latest
@@ -2995,6 +3185,44 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-botocore-1 -- -ra
+
+  py314-test-instrumentation-botocore-2_ubuntu-latest:
+    name: instrumentation-botocore-2 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-botocore-2 -- -ra
+
+  py314-test-instrumentation-botocore-3_ubuntu-latest:
+    name: instrumentation-botocore-3 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-botocore-3 -- -ra
 
   py39-test-instrumentation-boto3sqs_ubuntu-latest:
     name: instrumentation-boto3sqs 3.9 Ubuntu
@@ -4553,231 +4781,3 @@ jobs:
 
       - name: Run tests
         run: tox -e py313-test-instrumentation-falcon-4 -- -ra
-
-  py314-test-instrumentation-falcon-4_ubuntu-latest:
-    name: instrumentation-falcon-4 3.14 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py314-test-instrumentation-falcon-4 -- -ra
-
-  pypy3-test-instrumentation-falcon-0_ubuntu-latest:
-    name: instrumentation-falcon-0 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-falcon-0 -- -ra
-
-  pypy3-test-instrumentation-falcon-1_ubuntu-latest:
-    name: instrumentation-falcon-1 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-falcon-1 -- -ra
-
-  pypy3-test-instrumentation-falcon-2_ubuntu-latest:
-    name: instrumentation-falcon-2 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-falcon-2 -- -ra
-
-  pypy3-test-instrumentation-falcon-3_ubuntu-latest:
-    name: instrumentation-falcon-3 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-falcon-3 -- -ra
-
-  pypy3-test-instrumentation-falcon-4_ubuntu-latest:
-    name: instrumentation-falcon-4 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-falcon-4 -- -ra
-
-  py39-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-fastapi -- -ra
-
-  py310-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi 3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-fastapi -- -ra
-
-  py311-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py311-test-instrumentation-fastapi -- -ra
-
-  py312-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-fastapi -- -ra
-
-  py313-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi 3.13 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py313-test-instrumentation-fastapi -- -ra
-
-  py314-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi 3.14 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py314-test-instrumentation-fastapi -- -ra
