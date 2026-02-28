@@ -15,7 +15,9 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
+import json
 import logging
 import posixpath
 import threading
@@ -50,6 +52,11 @@ GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
     gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS + "_ref"
 )
 
+GEN_AI_TOOL_DEFINITIONS = getattr(
+    gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
+)
+GEN_AI_TOOL_DEFINITIONS_REF: Final = GEN_AI_TOOL_DEFINITIONS + "_ref"
+
 _MESSAGE_INDEX_KEY = "index"
 _DEFAULT_MAX_QUEUE_SIZE = 20
 _DEFAULT_FORMAT = "json"
@@ -66,6 +73,7 @@ class Completion:
     inputs: list[types.InputMessage] | None
     outputs: list[types.OutputMessage] | None
     system_instruction: list[types.MessagePart] | None
+    tool_definitions: list[types.ToolDefinition] | None
 
 
 @dataclass
@@ -73,6 +81,7 @@ class CompletionRefs:
     inputs_ref: str
     outputs_ref: str
     system_instruction_ref: str
+    tool_definitions_ref: str
 
 
 JsonEncodeable = list[dict[str, Any]]
@@ -81,12 +90,37 @@ JsonEncodeable = list[dict[str, Any]]
 UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
 
 
-def is_system_instructions_hashable(
-    system_instruction: list[types.MessagePart] | None,
+def is_message_part_list_hashable(
+    message_parts: list[types.MessagePart] | None,
 ) -> bool:
-    return bool(system_instruction) and all(
-        isinstance(x, types.Text) for x in system_instruction
+    return bool(message_parts) and all(
+        isinstance(x, types.Text) for x in message_parts
     )
+
+
+def hash_tool_definitions(
+    tool_definitions: list[types.ToolDefinition] | None,
+) -> str | None:
+    if not tool_definitions:
+        return None
+    try:
+        tool_dicts = [
+            {k: v for k, v in dataclasses.asdict(t).items() if v is not None}
+            for t in tool_definitions
+        ]
+
+        encoded_tools = json.dumps(
+            tool_dicts,
+            sort_keys=True,
+        ).encode("utf-8")
+
+        return hashlib.sha256(
+            encoded_tools,
+            usedforsecurity=False,
+        ).hexdigest()
+
+    except (TypeError, AttributeError):
+        return None
 
 
 class UploadCompletionHook(CompletionHook):
@@ -169,12 +203,14 @@ class UploadCompletionHook(CompletionHook):
                 self._semaphore.release()
 
     def _calculate_ref_path(
-        self, system_instruction: list[types.MessagePart]
+        self,
+        system_instruction: list[types.MessagePart],
+        tool_definitions: list[types.ToolDefinition] | None = None,
     ) -> CompletionRefs:
         # TODO: experimental with using the trace_id and span_id, or fetching
         # gen_ai.response.id from the active span.
         system_instruction_hash = None
-        if is_system_instructions_hashable(system_instruction):
+        if is_message_part_list_hashable(system_instruction):
             # Get a hash of the text.
             system_instruction_hash = hashlib.sha256(
                 "\n".join(x.content for x in system_instruction).encode(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownArgumentType, reportCallIssue, reportArgumentType]
@@ -182,6 +218,9 @@ class UploadCompletionHook(CompletionHook):
                 ),
                 usedforsecurity=False,
             ).hexdigest()
+
+        tool_definitions_hash = hash_tool_definitions(tool_definitions)
+
         uuid_str = str(uuid4())
         return CompletionRefs(
             inputs_ref=posixpath.join(
@@ -193,6 +232,10 @@ class UploadCompletionHook(CompletionHook):
             system_instruction_ref=posixpath.join(
                 self._base_path,
                 f"{system_instruction_hash or uuid_str}_system_instruction.{self._format}",
+            ),
+            tool_definitions_ref=posixpath.join(
+                self._base_path,
+                f"{tool_definitions_hash or uuid_str}_tool.definitions.{self._format}",
             ),
         )
 
@@ -250,25 +293,30 @@ class UploadCompletionHook(CompletionHook):
         inputs: list[types.InputMessage],
         outputs: list[types.OutputMessage],
         system_instruction: list[types.MessagePart],
+        tool_definitions: list[types.ToolDefinition] | None = None,
         span: Span | None = None,
         log_record: LogRecord | None = None,
         **kwargs: Any,
     ) -> None:
-        if not any([inputs, outputs, system_instruction]):
+        if not any([inputs, outputs, system_instruction, tool_definitions]):
             return
         # An empty list will not be uploaded.
         completion = Completion(
             inputs=inputs or None,
             outputs=outputs or None,
             system_instruction=system_instruction or None,
+            tool_definitions=tool_definitions or None,
         )
         # generate the paths to upload to
-        ref_names = self._calculate_ref_path(system_instruction)
+        ref_names = self._calculate_ref_path(
+            system_instruction, tool_definitions
+        )
 
         def to_dict(
             dataclass_list: list[types.InputMessage]
             | list[types.OutputMessage]
-            | list[types.MessagePart],
+            | list[types.MessagePart]
+            | list[types.ToolDefinition],
         ) -> JsonEncodeable:
             return [asdict(dc) for dc in dataclass_list]
 
@@ -291,12 +339,18 @@ class UploadCompletionHook(CompletionHook):
                     ref_names.system_instruction_ref,
                     completion.system_instruction,
                     GEN_AI_SYSTEM_INSTRUCTIONS_REF,
-                    is_system_instructions_hashable(
+                    is_message_part_list_hashable(
                         completion.system_instruction
                     ),
                 ),
+                (
+                    ref_names.tool_definitions_ref,
+                    completion.tool_definitions,
+                    GEN_AI_TOOL_DEFINITIONS_REF,
+                    bool(completion.tool_definitions),
+                ),
             ]
-            if ref  # Filter out empty input/output/sys instruction
+            if ref  # Filter out empty input/output/sys instruction/tool defs
         ]
         self._submit_all(
             {
