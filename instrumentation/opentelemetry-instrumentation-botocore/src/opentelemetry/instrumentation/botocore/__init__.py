@@ -320,6 +320,10 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
         return _instruments_aiobotocore
 
     def _instrument(self, **kwargs):
+        # Verify that aiobotocore is present
+        # pylint: disable-next=import-outside-toplevel, unused-import
+        import aiobotocore.client  # noqa: PLC0415, F401
+
         # pylint: disable=attribute-defined-outside-init
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")

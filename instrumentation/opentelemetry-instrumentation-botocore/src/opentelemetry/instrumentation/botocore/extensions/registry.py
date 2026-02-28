@@ -159,7 +159,6 @@ class ExtensionRegistry:
         schema_version: str = extension.event_logger_schema_version()
         logger: Logger = get_logger(
             instrumentation_name,
-            "",
             schema_url=f"https://opentelemetry.io/schemas/{schema_version}",
             logger_provider=self._logger_provider,
         )

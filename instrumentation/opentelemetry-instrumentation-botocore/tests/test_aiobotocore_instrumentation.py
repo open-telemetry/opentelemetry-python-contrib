@@ -14,15 +14,19 @@
 
 # pylint:disable=too-many-public-methods
 import asyncio
+import importlib.util
 import json
+import unittest
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
-import aiobotocore.session
 import botocore.stub
 from botocore.exceptions import ClientError
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation.auto_instrumentation import (
+    _load_instrumentors,
+)
 from opentelemetry.instrumentation.botocore import AiobotocoreInstrumentor
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
@@ -49,11 +53,17 @@ from opentelemetry.test.test_base import TestBase
 
 _REQUEST_ID_REGEX_MATCH = r"[A-Za-z0-9]{52}"
 
+aiobotocore_installed = importlib.util.find_spec("aiobotocore") is not None
 
+
+@unittest.skipIf(not aiobotocore_installed, "aiobotocore is not installed")
 class TestAiobotocoreInstrumentor(TestBase):
     """Aiobotocore integration testsuite"""
 
     def setUp(self):
+        # pylint: disable-next=import-outside-toplevel
+        import aiobotocore.session  # noqa: PLC0415
+
         super().setUp()
         AiobotocoreInstrumentor().instrument()
         self.session = aiobotocore.session.get_session()
@@ -422,3 +432,29 @@ class TestAiobotocoreInstrumentor(TestBase):
 
         self.assertEqual("req-1", spans[0].attributes["aws.request_id"])
         self.assertEqual("req-2", spans[1].attributes["aws.request_id"])
+
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    def test_instruments_with_aiobotocore_installed(
+        self, mock_logger, mock_dep
+    ):
+        mock_distro = Mock()
+        mock_dep.return_value = None
+        mock_distro.load_instrumentor.return_value = None
+        _load_instrumentors(mock_distro)
+        self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 2)
+        eps = [
+            c[0][0].name for c in mock_distro.load_instrumentor.call_args_list
+        ]
+        assert "aiobotocore" in eps
+        assert "botocore" in eps
+
+        mock_logger.debug.assert_has_calls(
+            [
+                call("Instrumented %s", "aiobotocore"),
+                call("Instrumented %s", "botocore"),
+            ],
+            any_order=True,
+        )
