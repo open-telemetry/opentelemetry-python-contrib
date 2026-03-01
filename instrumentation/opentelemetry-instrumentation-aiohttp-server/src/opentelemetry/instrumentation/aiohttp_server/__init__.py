@@ -199,12 +199,10 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_SERVER_NAME,
     HTTP_URL,
 )
-from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -389,25 +387,21 @@ def set_status_code(
     if duration_attrs is None:
         duration_attrs = {}
 
+    status_code_str = str(status_code)
+
     try:
         status_code_int = int(status_code)
-        status_code_str = str(status_code)
     except ValueError:
-        span.set_status(
-            Status(
-                StatusCode.ERROR,
-                "Non-integer HTTP status: " + repr(status_code),
-            )
-        )
-    else:
-        _set_status(
-            span,
-            duration_attrs,
-            status_code_int,
-            status_code_str,
-            server_span=True,
-            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-        )
+        status_code_int = -1
+
+    _set_status(
+        span,
+        duration_attrs,
+        status_code_int,
+        status_code_str,
+        server_span=True,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+    )
 
 
 class AiohttpGetter(Getter):
@@ -468,13 +462,14 @@ def create_aiohttp_middleware(
             span_name,
             context=extract(request, getter=getter),
             kind=trace.SpanKind.SERVER,
+            attributes=request_attrs,
+            set_status_on_exception=False,
+            record_exception=False,
         ) as span:
             if span.is_recording():
-                request_headers_attributes = (
+                span.set_attributes(
                     collect_request_headers_attributes(request)
                 )
-                request_attrs.update(request_headers_attributes)
-                span.set_attributes(request_attrs)
             start = default_timer()
             active_requests_counter.add(1, active_requests_count_attrs)
             try:
@@ -490,17 +485,31 @@ def create_aiohttp_middleware(
                         collect_response_headers_attributes(resp)
                     )
                     span.set_attributes(response_headers_attributes)
-            except web.HTTPException as ex:
-                if _report_new(_sem_conv_opt_in_mode):
-                    request_attrs[ERROR_TYPE] = type(ex).__qualname__
-                    if span.is_recording():
-                        span.set_attribute(ERROR_TYPE, type(ex).__qualname__)
+            except web.HTTPServerError as ex:
                 set_status_code(
                     span,
                     ex.status_code,
                     request_attrs,
                     _sem_conv_opt_in_mode,
                 )
+                span.record_exception(ex)
+                raise
+            except web.HTTPException as ex:
+                set_status_code(
+                    span,
+                    ex.status_code,
+                    request_attrs,
+                    _sem_conv_opt_in_mode,
+                )
+                raise
+            except Exception as ex:
+                set_status_code(
+                    span,
+                    type(ex).__qualname__,
+                    request_attrs,
+                    _sem_conv_opt_in_mode,
+                )
+                span.record_exception(ex)
                 raise
             finally:
                 duration_s = default_timer() - start

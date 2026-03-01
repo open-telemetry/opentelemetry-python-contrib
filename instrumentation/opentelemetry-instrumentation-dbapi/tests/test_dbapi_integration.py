@@ -1274,6 +1274,89 @@ class TestDBApiIntegration(TestBase):
         # With NoOpTracer, no SQL comment should be added (invalid span context)
         self.assertEqual(cursor.query, "Select 1;")
 
+    def test_capture_mysql_version_primary_success(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "mysql.connector"
+        connect_module.__version__ = "2.2.9"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "mysql",
+            enable_commenter=True,
+            connect_module=connect_module,
+        )
+        mock_cursor = mock.MagicMock()
+        mock_cursor._cnx._cmysql.get_client_info.return_value = "8.0.32"
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor._cnx = mock_cursor._cnx
+        cursor.execute("SELECT 1;")
+        mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
+        self.assertEqual(
+            db_integration.commenter_data["mysql_client_version"], "8.0.32"
+        )
+
+    def test_capture_mysql_version_fallback_success(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "mysql.connector"
+        connect_module.__version__ = "2.2.9"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "mysql",
+            enable_commenter=True,
+            connect_module=connect_module,
+        )
+        mock_cursor = mock.MagicMock()
+        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError(
+            "Primary method failed"
+        )
+        mock_cursor._connection._cmysql.get_client_info.return_value = "8.0.33"
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor._cnx = mock_cursor._cnx
+        cursor._connection = mock_cursor._connection
+        cursor.execute("SELECT 1;")
+        mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
+        mock_cursor._connection._cmysql.get_client_info.assert_called_once()
+        self.assertEqual(
+            db_integration.commenter_data["mysql_client_version"], "8.0.33"
+        )
+
+    @mock.patch("opentelemetry.instrumentation.dbapi._logger")
+    def test_capture_mysql_version_fallback(self, mock_logger):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "mysql.connector"
+        connect_module.__version__ = "2.2.9"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "mysql",
+            enable_commenter=True,
+            connect_module=connect_module,
+        )
+        mock_cursor = mock.MagicMock()
+        mock_cursor._cnx._cmysql.get_client_info.side_effect = AttributeError(
+            "Primary method failed"
+        )
+        mock_cursor._connection._cmysql.get_client_info.side_effect = (
+            AttributeError("Fallback method failed")
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor._cnx = mock_cursor._cnx
+        cursor._connection = mock_cursor._connection
+        cursor.execute("SELECT 1;")
+        mock_cursor._cnx._cmysql.get_client_info.assert_called_once()
+        mock_cursor._connection._cmysql.get_client_info.assert_called_once()
+        mock_logger.debug.assert_called_once()
+        self.assertEqual(
+            db_integration.commenter_data["mysql_client_version"], "unknown"
+        )
+
 
 # pylint: disable=unused-argument
 def mock_connect(*args, **kwargs):

@@ -328,7 +328,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
             _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
-    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103
+    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103,W0237
         # Falcon 3 does not execute middleware within the context of the exception
         # so we capture the exception here and save it into the env dict
 
@@ -352,7 +352,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         req.env[_ENVIRON_EXC] = exc
 
         if _falcon_version == 1:
-            return super()._handle_exception(ex, req, resp, params)
+            return super()._handle_exception(ex, req, resp, params)  # pylint: disable=W1114
 
         return super()._handle_exception(req, resp, ex, params)
 
@@ -368,15 +368,16 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         start_time = time_ns()
 
+        attributes = otel_wsgi.collect_request_attributes(
+            env, self._sem_conv_opt_in_mode
+        )
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
             start_time=start_time,
             context_carrier=env,
             context_getter=otel_wsgi.wsgi_getter,
-        )
-        attributes = otel_wsgi.collect_request_attributes(
-            env, self._sem_conv_opt_in_mode
+            attributes=attributes,
         )
         active_requests_count_attrs = (
             otel_wsgi._parse_active_request_count_attrs(
@@ -386,8 +387,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
-            for key, value in attributes.items():
-                span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 custom_attributes = (
                     otel_wsgi.collect_custom_request_headers_attributes(env)
