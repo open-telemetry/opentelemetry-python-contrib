@@ -267,15 +267,31 @@ You can also use the filters directly on the provided interceptors:
 ``filter_`` option also applies to both global and manual client intrumentors.
 
 
-Environment variable
---------------------
+Environment variables
+---------------------
 
-If you'd like to exclude specific services for the instrumentations, you can use
-``OTEL_PYTHON_GRPC_EXCLUDED_SERVICES`` environment variables.
+``OTEL_PYTHON_GRPC_EXCLUDED_SERVICES``
+  Comma-separated list of service names to exclude from instrumentation.
+  For example, ``"GRPCTestServer,GRPCHealthServer"`` will exclude those services.
 
-For example, if you assign ``"GRPCTestServer,GRPCHealthServer"`` to the variable,
-then the global interceptor automatically adds the filters to exclude requests to
-services ``GRPCTestServer`` and ``GRPCHealthServer``.
+``OTEL_SEMCONV_STABILITY_OPT_IN``
+  Controls which version of the RPC semantic conventions the instrumentation
+  emits. Accepted values (comma-separated):
+
+  - ``rpc`` — emit only the stable (new) RPC conventions. Key changes:
+
+    - ``rpc.system`` → ``rpc.system.name``
+    - ``rpc.grpc.status_code`` (int) → ``rpc.response.status_code`` (string,
+      e.g. ``"OK"``, ``"UNAVAILABLE"``); non-OK codes also set ``error.type``
+    - ``rpc.method`` now contains the fully-qualified name
+      (e.g. ``"helloworld.Greeter/SayHello"``); ``rpc.service`` is removed
+    - ``net.peer.ip`` / ``net.peer.name`` / ``net.peer.port`` (server spans)
+      → ``client.address`` / ``client.port``
+
+  - ``rpc/dup`` — emit both old and new RPC conventions simultaneously,
+    useful for a phased rollout.
+
+  - *(default, no value)* — continue emitting the old RPC conventions.
 
 """
 
@@ -286,6 +302,11 @@ import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _StabilityMode,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.grpc.filters import (
     any_of,
     negate,
@@ -296,6 +317,7 @@ from opentelemetry.instrumentation.grpc.package import _instruments
 from opentelemetry.instrumentation.grpc.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.semconv.schemas import Schemas
 
 # pylint:disable=import-outside-toplevel
 # pylint:disable=import-self
@@ -586,11 +608,16 @@ def client_interceptor(
     """
     from . import _client  # noqa: PLC0415
 
+    _OpenTelemetrySemanticConventionStability._initialize()
+    sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.RPC
+    )
+
     tracer = trace.get_tracer(
         __name__,
         __version__,
         tracer_provider,
-        schema_url="https://opentelemetry.io/schemas/1.11.0",
+        schema_url=_get_rpc_schema_url(sem_conv_opt_in_mode),
     )
 
     return _client.OpenTelemetryClientInterceptor(
@@ -598,6 +625,7 @@ def client_interceptor(
         filter_=filter_,
         request_hook=request_hook,
         response_hook=response_hook,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
     )
 
 
@@ -616,14 +644,21 @@ def server_interceptor(tracer_provider=None, filter_=None):
     """
     from . import _server  # noqa: PLC0415
 
+    _OpenTelemetrySemanticConventionStability._initialize()
+    sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.RPC
+    )
+
     tracer = trace.get_tracer(
         __name__,
         __version__,
         tracer_provider,
-        schema_url="https://opentelemetry.io/schemas/1.11.0",
+        schema_url=_get_rpc_schema_url(sem_conv_opt_in_mode),
     )
 
-    return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
+    return _server.OpenTelemetryServerInterceptor(
+        tracer, filter_=filter_, sem_conv_opt_in_mode=sem_conv_opt_in_mode
+    )
 
 
 def aio_client_interceptors(
@@ -639,11 +674,16 @@ def aio_client_interceptors(
     """
     from . import _aio_client  # noqa: PLC0415
 
+    _OpenTelemetrySemanticConventionStability._initialize()
+    sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.RPC
+    )
+
     tracer = trace.get_tracer(
         __name__,
         __version__,
         tracer_provider,
-        schema_url="https://opentelemetry.io/schemas/1.11.0",
+        schema_url=_get_rpc_schema_url(sem_conv_opt_in_mode),
     )
 
     return [
@@ -652,24 +692,28 @@ def aio_client_interceptors(
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         ),
         _aio_client.UnaryStreamAioClientInterceptor(
             tracer,
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         ),
         _aio_client.StreamUnaryAioClientInterceptor(
             tracer,
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         ),
         _aio_client.StreamStreamAioClientInterceptor(
             tracer,
             filter_=filter_,
             request_hook=request_hook,
             response_hook=response_hook,
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         ),
     ]
 
@@ -685,15 +729,20 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
     """
     from . import _aio_server  # noqa: PLC0415
 
+    _OpenTelemetrySemanticConventionStability._initialize()
+    sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.RPC
+    )
+
     tracer = trace.get_tracer(
         __name__,
         __version__,
         tracer_provider,
-        schema_url="https://opentelemetry.io/schemas/1.11.0",
+        schema_url=_get_rpc_schema_url(sem_conv_opt_in_mode),
     )
 
     return _aio_server.OpenTelemetryAioServerInterceptor(
-        tracer, filter_=filter_
+        tracer, filter_=filter_, sem_conv_opt_in_mode=sem_conv_opt_in_mode
     )
 
 
@@ -715,3 +764,8 @@ def _parse_services(excluded_services: str) -> List[str]:
     else:
         excluded_service_list = []
     return excluded_service_list
+
+def _get_rpc_schema_url(mode: _StabilityMode) -> str:
+    if mode is _StabilityMode.DEFAULT:
+        return "https://opentelemetry.io/schemas/1.11.0"
+    return Schemas.V1_40_0.value

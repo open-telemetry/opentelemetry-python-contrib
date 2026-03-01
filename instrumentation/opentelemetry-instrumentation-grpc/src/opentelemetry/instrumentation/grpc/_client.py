@@ -26,17 +26,21 @@ from typing import Callable, MutableMapping
 import grpc
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _StabilityMode,
+    _report_new,
+)
+from opentelemetry.instrumentation.grpc._semconv import (
+    _apply_grpc_status,
+    _set_rpc_method,
+    _set_rpc_system,
+)
 from opentelemetry.instrumentation.grpc import grpcext
 from opentelemetry.instrumentation.grpc._utilities import RpcInfo
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
-from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
-    RPC_GRPC_STATUS_CODE,
-    RPC_METHOD,
-    RPC_SERVICE,
-    RPC_SYSTEM,
-)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
@@ -54,10 +58,12 @@ class _CarrierSetter(Setter):
 _carrier_setter = _CarrierSetter()
 
 
-def _make_future_done_callback(span, rpc_info):
+def _make_future_done_callback(span, rpc_info, sem_conv_opt_in_mode):
     def callback(response_future):
         with trace.use_span(span, end_on_exit=True):
             code = response_future.code()
+            details = response_future.details()
+            _apply_grpc_status(span, code, trace.SpanKind.CLIENT, sem_conv_opt_in_mode, details)
             if code != grpc.StatusCode.OK:
                 rpc_info.error = code
                 return
@@ -82,21 +88,23 @@ class OpenTelemetryClientInterceptor(
     grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
 ):
     def __init__(
-        self, tracer, filter_=None, request_hook=None, response_hook=None
+        self,
+        tracer,
+        filter_=None,
+        request_hook=None,
+        response_hook=None,
+        sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
     ):
         self._tracer = tracer
         self._filter = filter_
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
     def _start_span(self, method, **kwargs):
-        service, meth = method.lstrip("/").split("/", 1)
-        attributes = {
-            RPC_SYSTEM: "grpc",
-            RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
-            RPC_METHOD: meth,
-            RPC_SERVICE: service,
-        }
+        attributes = {}
+        _set_rpc_system(attributes, "grpc", self._sem_conv_opt_in_mode)
+        _set_rpc_method(attributes, method, self._sem_conv_opt_in_mode)
 
         return self._tracer.start_as_current_span(
             name=method,
@@ -105,13 +113,12 @@ class OpenTelemetryClientInterceptor(
             **kwargs,
         )
 
-    # pylint:disable=no-self-use
     def _trace_result(self, span, rpc_info, result):
         # If the RPC is called asynchronously, add a callback to end the span
         # when the future is done, else end the span immediately
         if isinstance(result, grpc.Future):
             result.add_done_callback(
-                _make_future_done_callback(span, rpc_info)
+                _make_future_done_callback(span, rpc_info, self._sem_conv_opt_in_mode)
             )
             return result
         response = result
@@ -122,6 +129,7 @@ class OpenTelemetryClientInterceptor(
         if isinstance(result, tuple):
             response = result[0]
         rpc_info.response = response
+        _apply_grpc_status(span, grpc.StatusCode.OK, trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode)
         if self._response_hook:
             self._call_response_hook(span, response)
         span.end()
@@ -157,16 +165,20 @@ class OpenTelemetryClientInterceptor(
                 result = invoker(request, metadata)
             except Exception as exc:
                 if isinstance(exc, grpc.RpcError):
-                    span.set_attribute(
-                        RPC_GRPC_STATUS_CODE,
-                        exc.code().value[0],
+                    _apply_grpc_status(
+                        span, exc.code(), trace.SpanKind.CLIENT,
+                        self._sem_conv_opt_in_mode,
+                        f"{type(exc).__name__}: {exc}",
                     )
-                span.set_status(
-                    Status(
-                        status_code=StatusCode.ERROR,
-                        description=f"{type(exc).__name__}: {exc}",
+                else:
+                    span.set_status(
+                        Status(
+                            status_code=StatusCode.ERROR,
+                            description=f"{type(exc).__name__}: {exc}",
+                        )
                     )
-                )
+                    if _report_new(self._sem_conv_opt_in_mode):
+                        span.set_attribute(ERROR_TYPE, "_OTHER")
                 span.record_exception(exc)
                 raise exc
             finally:
@@ -213,10 +225,15 @@ class OpenTelemetryClientInterceptor(
                 rpc_info.request = request_or_iterator
 
             try:
-                yield from invoker(request_or_iterator, metadata)
+                call = invoker(request_or_iterator, metadata)
+                yield from call
+                code = call.code()
+                _apply_grpc_status(span, code, trace.SpanKind.CLIENT, self._sem_conv_opt_in_mode)
             except grpc.RpcError as err:
-                span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
+                _apply_grpc_status(
+                    span, err.code(), trace.SpanKind.CLIENT,
+                    self._sem_conv_opt_in_mode, str(err),
+                )
                 raise err
 
     def intercept_stream(

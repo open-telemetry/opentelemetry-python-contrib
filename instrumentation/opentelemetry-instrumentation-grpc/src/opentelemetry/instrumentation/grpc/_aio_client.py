@@ -18,27 +18,33 @@ import logging
 import grpc
 from grpc.aio import ClientCallDetails, Metadata
 
+from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import _report_new
+from opentelemetry.instrumentation.grpc._semconv import _apply_grpc_status
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
     _carrier_setter,
 )
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
-from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
-    RPC_GRPC_STATUS_CODE,
-)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
 
 
-def _unary_done_callback(span, code, details, response_hook):
+def _unary_done_callback(span, code, details, response_hook, sem_conv_opt_in_mode):
     def callback(call):
         try:
-            span.set_attribute(
-                RPC_GRPC_STATUS_CODE,
-                code.value[0],
-            )
+            if _report_old(sem_conv_opt_in_mode):
+                span.set_attribute(
+                    RPC_GRPC_STATUS_CODE,
+                    code.value[0],
+                )
+            if _report_new(sem_conv_opt_in_mode):
+                span.set_attribute(RPC_RESPONSE_STATUS_CODE, code.name)
+                if code != grpc.StatusCode.OK:
+                    span.set_attribute(ERROR_TYPE, code.name)
             if code != grpc.StatusCode.OK:
                 span.set_status(
                     Status(
@@ -73,13 +79,18 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             client_call_details.wait_for_ready,
         )
 
-    @staticmethod
-    def add_error_details_to_span(span, exc):
+    def add_error_details_to_span(self, span, exc):
         if isinstance(exc, grpc.RpcError):
-            span.set_attribute(
-                RPC_GRPC_STATUS_CODE,
-                exc.code().value[0],
-            )
+            if _report_old(self._sem_conv_opt_in_mode):
+                span.set_attribute(
+                    RPC_GRPC_STATUS_CODE,
+                    exc.code().value[0],
+                )
+            if _report_new(self._sem_conv_opt_in_mode):
+                span.set_attribute(
+                    RPC_RESPONSE_STATUS_CODE, exc.code().name
+                )
+                span.set_attribute(ERROR_TYPE, exc.code().name)
         span.set_status(
             Status(
                 status_code=StatusCode.ERROR,
@@ -116,7 +127,11 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
 
             call.add_done_callback(
                 _unary_done_callback(
-                    span, code, details, self._call_response_hook
+                    span,
+                    code,
+                    details,
+                    self._call_response_hook,
+                    self._sem_conv_opt_in_mode,
                 )
             )
 
@@ -131,6 +146,11 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
                 if self._response_hook:
                     self._call_response_hook(span, response)
                 yield response
+            code = await call.code()
+            if _report_old(self._sem_conv_opt_in_mode):
+                span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
+            if _report_new(self._sem_conv_opt_in_mode):
+                span.set_attribute(RPC_RESPONSE_STATUS_CODE, code.name)
         except Exception as exc:
             self.add_error_details_to_span(span, exc)
             raise exc

@@ -16,48 +16,47 @@ import grpc
 import grpc.aio
 import wrapt
 
-from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
-    RPC_GRPC_STATUS_CODE,
+from opentelemetry import trace
+from opentelemetry.instrumentation.grpc._semconv import (
+    _apply_grpc_status,
 )
 
 from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
-from ._utilities import _server_status
 
 
 # pylint:disable=abstract-method
 class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
-    def __init__(self, servicer_context, active_span):
+    def __init__(self, servicer_context, active_span, sem_conv_opt_in_mode):
         super().__init__(servicer_context)
         self._self_active_span = active_span
         self._self_code = grpc.StatusCode.OK
         self._self_details = None
+        self._self_sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
     async def abort(self, code, details="", trailing_metadata=tuple()):
         self._self_code = code
         self._self_details = details
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
+        _apply_grpc_status(
+            self._self_active_span, code, trace.SpanKind.SERVER,
+            self._self_sem_conv_opt_in_mode, details,
         )
-        status = _server_status(code, details)
-        self._self_active_span.set_status(status)
         return await self.__wrapped__.abort(code, details, trailing_metadata)
 
     def set_code(self, code):
         self._self_code = code
         details = self._self_details or code.value[1]
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
+        _apply_grpc_status(
+            self._self_active_span, code, trace.SpanKind.SERVER,
+            self._self_sem_conv_opt_in_mode, details,
         )
-        if code != grpc.StatusCode.OK:
-            status = _server_status(code, details)
-            self._self_active_span.set_status(status)
         return self.__wrapped__.set_code(code)
 
     def set_details(self, details):
         self._self_details = details
-        if self._self_code != grpc.StatusCode.OK:
-            status = _server_status(self._self_code, details)
-            self._self_active_span.set_status(status)
+        _apply_grpc_status(
+            self._self_active_span, self._self_code, trace.SpanKind.SERVER,
+            self._self_sem_conv_opt_in_mode, details,
+        )
         return self.__wrapped__.set_details(details)
 
 
@@ -106,11 +105,19 @@ class OpenTelemetryAioServerInterceptor(
                     set_status_on_exception=False,
                 ) as span:
                     # wrap the context
-                    context = _OpenTelemetryAioServicerContext(context, span)
+                    context = _OpenTelemetryAioServicerContext(
+                        context, span, self._sem_conv_opt_in_mode
+                    )
 
                     # And now we run the actual RPC.
                     try:
-                        return await behavior(request_or_iterator, context)
+                        result = await behavior(request_or_iterator, context)
+                        if context._self_code == grpc.StatusCode.OK:
+                            _apply_grpc_status(
+                                span, grpc.StatusCode.OK, trace.SpanKind.SERVER,
+                                self._sem_conv_opt_in_mode,
+                            )
+                        return result
 
                     except Exception as error:
                         # Bare exceptions are likely to be gRPC aborts, which
@@ -131,13 +138,20 @@ class OpenTelemetryAioServerInterceptor(
                     context,
                     set_status_on_exception=False,
                 ) as span:
-                    context = _OpenTelemetryAioServicerContext(context, span)
+                    context = _OpenTelemetryAioServicerContext(
+                        context, span, self._sem_conv_opt_in_mode
+                    )
 
                     try:
                         async for response in behavior(
                             request_or_iterator, context
                         ):
                             yield response
+                        if context._self_code == grpc.StatusCode.OK:
+                            _apply_grpc_status(
+                                span, grpc.StatusCode.OK, trace.SpanKind.SERVER,
+                                self._sem_conv_opt_in_mode,
+                            )
 
                     except Exception as error:
                         # pylint:disable=unidiomatic-typecheck
