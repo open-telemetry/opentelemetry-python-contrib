@@ -35,6 +35,7 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.grpc._semconv import (
     _apply_grpc_status,
+    _apply_server_error,
     _set_rpc_method,
     _set_rpc_peer_ip_server,
     _set_rpc_peer_name_server,
@@ -76,12 +77,10 @@ def _wrap_rpc_behavior(handler, continuation):
 
 # pylint:disable=abstract-method
 class _OpenTelemetryServicerContext(grpc.ServicerContext):
-    def __init__(self, servicer_context, active_span, sem_conv_opt_in_mode):
+    def __init__(self, servicer_context):
         self._servicer_context = servicer_context
-        self._active_span = active_span
-        self._code = grpc.StatusCode.OK
+        self._code = None
         self._details = None
-        self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
         super().__init__()
 
     def __getattr__(self, attr):
@@ -132,13 +131,11 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
     def abort(self, code, details):
         self._code = code
         self._details = details
-        _apply_grpc_status(
-            self._active_span, code, trace.SpanKind.SERVER,
-            self._sem_conv_opt_in_mode, details,
-        )
         return self._servicer_context.abort(code, details)
 
     def abort_with_status(self, status):
+        self._code = status.code
+        self._details = status.details
         return self._servicer_context.abort_with_status(status)
 
     def code(self):
@@ -158,20 +155,10 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
 
     def set_code(self, code):
         self._code = code
-        # use details if we already have it, otherwise the status description
-        details = self._details or code.value[1]
-        _apply_grpc_status(
-            self._active_span, code, trace.SpanKind.SERVER,
-            self._sem_conv_opt_in_mode, details,
-        )
         return self._servicer_context.set_code(code)
 
     def set_details(self, details):
         self._details = details
-        _apply_grpc_status(
-            self._active_span, self._code, trace.SpanKind.SERVER,
-            self._sem_conv_opt_in_mode, details,
-        )
         return self._servicer_context.set_details(details)
 
 
@@ -236,45 +223,11 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                 self._sem_conv_opt_in_mode,
             )
 
-        # add some attributes from the metadata
-
         if _report_old(self._sem_conv_opt_in_mode):
+            # add some attributes from the metadata
             metadata = dict(context.invocation_metadata())
             if "user-agent" in metadata:
                 attributes["rpc.user_agent"] = metadata["user-agent"]
-
-        # Split up the peer to keep with how other telemetry sources
-        # do it.  This looks like:
-        # * ipv6:[::1]:57284
-        # * ipv4:127.0.0.1:57284
-        # * ipv4:10.2.1.1:57284,127.0.0.1:57284
-        #
-        if not context.peer().startswith("unix:"):
-            try:
-                ip, port = (
-                    context.peer()
-                    .split(",")[0]
-                    .split(":", 1)[1]
-                    .rsplit(":", 1)
-                )
-                ip = unquote(ip)
-                _set_rpc_peer_ip_server(
-                    attributes, ip, self._sem_conv_opt_in_mode
-                )
-                _set_rpc_peer_port_server(
-                    attributes, port, self._sem_conv_opt_in_mode
-                )
-
-                # other telemetry sources add this, so we will too
-                if ip in ("[::1]", "127.0.0.1"):
-                    _set_rpc_peer_name_server(
-                        attributes, "localhost", self._sem_conv_opt_in_mode
-                    )
-
-            except IndexError:
-                logger.warning(
-                    "Failed to parse peer address '%s'", context.peer()
-                )
 
         return self._tracer.start_as_current_span(
             name=handler_call_details.method,
@@ -282,6 +235,30 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             attributes=attributes,
             set_status_on_exception=set_status_on_exception,
         )
+
+    def _set_peer_attributes(self, span, context):
+        # Split up the peer to keep with how other telemetry sources
+        # do it.  This looks like:
+        # * ipv6:[::1]:57284
+        # * ipv4:127.0.0.1:57284
+        # * ipv4:10.2.1.1:57284,127.0.0.1:57284
+        if not span.is_recording():
+            return
+        peer = context.peer()
+        if peer.startswith("unix:"):
+            return
+        try:
+            ip, port = peer.split(",")[0].split(":", 1)[1].rsplit(":", 1)
+            ip = unquote(ip)
+            attrs = {}
+            _set_rpc_peer_ip_server(attrs, ip, self._sem_conv_opt_in_mode)
+            _set_rpc_peer_port_server(attrs, port, self._sem_conv_opt_in_mode)
+            if ip in ("[::1]", "127.0.0.1"):
+                _set_rpc_peer_name_server(attrs, "localhost", self._sem_conv_opt_in_mode)
+            for k, v in attrs.items():
+                span.set_attribute(k, v)
+        except IndexError:
+            logger.warning("Failed to parse peer address '%s'", peer)
 
     def intercept_service(self, continuation, handler_call_details):
         if self._filter is not None and not self._filter(handler_call_details):
@@ -304,28 +281,25 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         context,
                         set_status_on_exception=False,
                     ) as span:
+                        self._set_peer_attributes(span, context)
                         # wrap the context
                         context = _OpenTelemetryServicerContext(
-                            context, span, self._sem_conv_opt_in_mode
+                            context
                         )
 
                         # And now we run the actual RPC.
                         try:
                             result = behavior(request_or_iterator, context)
-                            if context._code == grpc.StatusCode.OK:
-                                _apply_grpc_status(
-                                    span, grpc.StatusCode.OK, trace.SpanKind.SERVER,
-                                    self._sem_conv_opt_in_mode,
+                            _apply_grpc_status(
+                                    span, context._code, trace.SpanKind.SERVER,
+                                    self._sem_conv_opt_in_mode, context._details,
                                 )
                             return result
-
                         except Exception as error:
-                            # Bare exceptions are likely to be gRPC aborts, which
-                            # we handle in our context wrapper.
-                            # Here, we're interested in uncaught exceptions.
-                            # pylint:disable=unidiomatic-typecheck
-                            if type(error) != Exception:  # noqa: E721
-                                span.record_exception(error)
+                            _apply_server_error(
+                                span, error, context._code, context._details,
+                                self._sem_conv_opt_in_mode,
+                            )
                             raise error
 
             return telemetry_interceptor
@@ -344,20 +318,21 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             with self._start_span(
                 handler_call_details, context, set_status_on_exception=False
             ) as span:
+                self._set_peer_attributes(span, context)
                 context = _OpenTelemetryServicerContext(
-                    context, span, self._sem_conv_opt_in_mode
+                    context
                 )
 
                 try:
                     yield from behavior(request_or_iterator, context)
-                    if context._code == grpc.StatusCode.OK:
-                        _apply_grpc_status(
-                            span, grpc.StatusCode.OK, trace.SpanKind.SERVER,
-                            self._sem_conv_opt_in_mode,
-                        )
-
+                    _apply_grpc_status(
+                        span, context._code, trace.SpanKind.SERVER,
+                        self._sem_conv_opt_in_mode, context._details,
+                    )
                 except Exception as error:
-                    # pylint:disable=unidiomatic-typecheck
-                    if type(error) != Exception:  # noqa: E721
-                        span.record_exception(error)
+                    _apply_server_error(
+                        span, error, context._code, context._details,
+                        self._sem_conv_opt_in_mode,
+                    )
                     raise error
+

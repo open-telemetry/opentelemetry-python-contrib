@@ -19,6 +19,7 @@ import wrapt
 from opentelemetry import trace
 from opentelemetry.instrumentation.grpc._semconv import (
     _apply_grpc_status,
+    _apply_server_error,
 )
 
 from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
@@ -26,37 +27,22 @@ from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
 
 # pylint:disable=abstract-method
 class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
-    def __init__(self, servicer_context, active_span, sem_conv_opt_in_mode):
+    def __init__(self, servicer_context):
         super().__init__(servicer_context)
-        self._self_active_span = active_span
-        self._self_code = grpc.StatusCode.OK
+        self._self_code = None
         self._self_details = None
-        self._self_sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
     async def abort(self, code, details="", trailing_metadata=tuple()):
         self._self_code = code
         self._self_details = details
-        _apply_grpc_status(
-            self._self_active_span, code, trace.SpanKind.SERVER,
-            self._self_sem_conv_opt_in_mode, details,
-        )
         return await self.__wrapped__.abort(code, details, trailing_metadata)
 
     def set_code(self, code):
         self._self_code = code
-        details = self._self_details or code.value[1]
-        _apply_grpc_status(
-            self._self_active_span, code, trace.SpanKind.SERVER,
-            self._self_sem_conv_opt_in_mode, details,
-        )
         return self.__wrapped__.set_code(code)
 
     def set_details(self, details):
         self._self_details = details
-        _apply_grpc_status(
-            self._self_active_span, self._self_code, trace.SpanKind.SERVER,
-            self._self_sem_conv_opt_in_mode, details,
-        )
         return self.__wrapped__.set_details(details)
 
 
@@ -104,28 +90,26 @@ class OpenTelemetryAioServerInterceptor(
                     context,
                     set_status_on_exception=False,
                 ) as span:
+                    self._set_peer_attributes(span, context)
                     # wrap the context
                     context = _OpenTelemetryAioServicerContext(
-                        context, span, self._sem_conv_opt_in_mode
+                        context
                     )
 
                     # And now we run the actual RPC.
                     try:
                         result = await behavior(request_or_iterator, context)
-                        if context._self_code == grpc.StatusCode.OK:
-                            _apply_grpc_status(
-                                span, grpc.StatusCode.OK, trace.SpanKind.SERVER,
-                                self._sem_conv_opt_in_mode,
-                            )
+                        _apply_grpc_status(
+                            span, context._self_code, trace.SpanKind.SERVER,
+                            self._sem_conv_opt_in_mode, context._self_details,
+                        )
                         return result
 
                     except Exception as error:
-                        # Bare exceptions are likely to be gRPC aborts, which
-                        # we handle in our context wrapper.
-                        # Here, we're interested in uncaught exceptions.
-                        # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:  # noqa: E721
-                            span.record_exception(error)
+                        _apply_server_error(
+                            span, error, context._self_code, context._self_details,
+                            self._sem_conv_opt_in_mode,
+                        )
                         raise error
 
         return _unary_interceptor
@@ -138,8 +122,9 @@ class OpenTelemetryAioServerInterceptor(
                     context,
                     set_status_on_exception=False,
                 ) as span:
+                    self._set_peer_attributes(span, context)
                     context = _OpenTelemetryAioServicerContext(
-                        context, span, self._sem_conv_opt_in_mode
+                        context
                     )
 
                     try:
@@ -147,16 +132,16 @@ class OpenTelemetryAioServerInterceptor(
                             request_or_iterator, context
                         ):
                             yield response
-                        if context._self_code == grpc.StatusCode.OK:
                             _apply_grpc_status(
-                                span, grpc.StatusCode.OK, trace.SpanKind.SERVER,
-                                self._sem_conv_opt_in_mode,
+                                span, context._self_code, trace.SpanKind.SERVER,
+                                self._sem_conv_opt_in_mode, context._self_details,
                             )
 
                     except Exception as error:
-                        # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:  # noqa: E721
-                            span.record_exception(error)
+                        _apply_server_error(
+                            span, error, context._self_code, context._self_details,
+                            self._sem_conv_opt_in_mode,
+                        )
                         raise error
 
         return _stream_interceptor

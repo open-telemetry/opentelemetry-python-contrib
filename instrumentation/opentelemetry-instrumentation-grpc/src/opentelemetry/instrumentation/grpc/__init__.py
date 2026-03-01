@@ -296,7 +296,7 @@ Environment variables
 """
 
 import os
-from typing import Callable, Collection, List, Union
+from typing import Callable, Collection, List, Optional, Tuple, Union
 
 import grpc  # pylint:disable=import-self
 from wrapt import wrap_function_wrapper as _wrap
@@ -307,6 +307,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
 )
+from opentelemetry.instrumentation.grpc._semconv import _parse_grpc_target
 from opentelemetry.instrumentation.grpc.filters import (
     any_of,
     negate,
@@ -504,15 +505,17 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
         tracer_provider = kwargs.get("tracer_provider")
-        request_hook = self._request_hook
-        response_hook = self._response_hook
+        target = args[0] if args else kwargs.get("target", "")
+        host, port = _parse_grpc_target(target)
         return intercept_channel(
             channel,
             client_interceptor(
                 tracer_provider=tracer_provider,
                 filter_=self._filter,
-                request_hook=request_hook,
-                response_hook=response_hook,
+                request_hook=self._request_hook,
+                response_hook=self._response_hook,
+                host=host,
+                port=port,
             ),
         )
 
@@ -544,26 +547,21 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _add_interceptors(self, tracer_provider, kwargs):
+    def _add_interceptors(self, tracer_provider, args, kwargs):
+        target = args[0] if args else kwargs.get("target", "")
+        host, port = _parse_grpc_target(target)
+        ours = aio_client_interceptors(
+            tracer_provider=tracer_provider,
+            filter_=self._filter,
+            request_hook=self._request_hook,
+            response_hook=self._response_hook,
+            host=host,
+            port=port,
+        )
         if "interceptors" in kwargs and kwargs["interceptors"]:
-            kwargs["interceptors"] = list(kwargs["interceptors"])
-            kwargs["interceptors"] = (
-                aio_client_interceptors(
-                    tracer_provider=tracer_provider,
-                    filter_=self._filter,
-                    request_hook=self._request_hook,
-                    response_hook=self._response_hook,
-                )
-                + kwargs["interceptors"]
-            )
+            kwargs["interceptors"] = ours + list(kwargs["interceptors"])
         else:
-            kwargs["interceptors"] = aio_client_interceptors(
-                tracer_provider=tracer_provider,
-                filter_=self._filter,
-                request_hook=self._request_hook,
-                response_hook=self._response_hook,
-            )
-
+            kwargs["interceptors"] = ours
         return kwargs
 
     def _instrument(self, **kwargs):
@@ -574,13 +572,11 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
 
         def insecure(*args, **kwargs):
-            kwargs = self._add_interceptors(tracer_provider, kwargs)
-
+            kwargs = self._add_interceptors(tracer_provider, args, kwargs)
             return self._original_insecure(*args, **kwargs)
 
         def secure(*args, **kwargs):
-            kwargs = self._add_interceptors(tracer_provider, kwargs)
-
+            kwargs = self._add_interceptors(tracer_provider, args, kwargs)
             return self._original_secure(*args, **kwargs)
 
         grpc.aio.insecure_channel = insecure
@@ -592,7 +588,8 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
 
 def client_interceptor(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
+    tracer_provider=None, filter_=None, request_hook=None, response_hook=None,
+    host=None, port=None,
 ):
     """Create a gRPC client channel interceptor.
 
@@ -602,6 +599,12 @@ def client_interceptor(
         filter_: filter function that returns True if gRPC requests
                  matches the condition. Default is None and intercept
                  all requests.
+
+        host: Server hostname parsed from the channel target.  Used to set
+              ``server.address`` / ``net.peer.name`` on client spans.
+
+        port: Server port parsed from the channel target.  Used to set
+              ``server.port`` / ``net.peer.port`` on client spans.
 
     Returns:
         An invocation-side interceptor object.
@@ -626,6 +629,8 @@ def client_interceptor(
         request_hook=request_hook,
         response_hook=response_hook,
         sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        host=host,
+        port=port,
     )
 
 
@@ -662,12 +667,16 @@ def server_interceptor(tracer_provider=None, filter_=None):
 
 
 def aio_client_interceptors(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
+    tracer_provider=None, filter_=None, request_hook=None, response_hook=None,
+    host=None, port=None,
 ):
     """Create a gRPC client channel interceptor.
 
     Args:
         tracer: The tracer to use to create client-side spans.
+
+        host: Server hostname parsed from the channel target.
+        port: Server port parsed from the channel target.
 
     Returns:
         An invocation-side interceptor object.
@@ -686,35 +695,19 @@ def aio_client_interceptors(
         schema_url=_get_rpc_schema_url(sem_conv_opt_in_mode),
     )
 
+    interceptor_kwargs = dict(
+        filter_=filter_,
+        request_hook=request_hook,
+        response_hook=response_hook,
+        sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+        host=host,
+        port=port,
+    )
     return [
-        _aio_client.UnaryUnaryAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-        ),
-        _aio_client.UnaryStreamAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-        ),
-        _aio_client.StreamUnaryAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-        ),
-        _aio_client.StreamStreamAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-        ),
+        _aio_client.UnaryUnaryAioClientInterceptor(tracer, **interceptor_kwargs),
+        _aio_client.UnaryStreamAioClientInterceptor(tracer, **interceptor_kwargs),
+        _aio_client.StreamUnaryAioClientInterceptor(tracer, **interceptor_kwargs),
+        _aio_client.StreamStreamAioClientInterceptor(tracer, **interceptor_kwargs),
     ]
 
 

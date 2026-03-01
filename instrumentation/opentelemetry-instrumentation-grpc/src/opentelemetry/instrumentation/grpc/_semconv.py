@@ -38,11 +38,19 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SERVICE,
     RPC_SYSTEM,
 )
-from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.error_attributes import (
+    ERROR_TYPE,
+    ErrorTypeValues,
+)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
 )
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+
 from opentelemetry.util.types import AttributeValue
 
 # New stable RPC attribute names. Not yet published as stable constants in the
@@ -66,7 +74,7 @@ _GRPC_SERVER_ERROR_STATUS_CODES = frozenset({
 
 def _apply_grpc_status(
     span,
-    code: grpc.StatusCode,
+    code: Optional[grpc.StatusCode],
     span_kind: trace.SpanKind,
     sem_conv_opt_in_mode: _StabilityMode,
     description: Optional[str] = None,
@@ -79,6 +87,8 @@ def _apply_grpc_status(
     * Server (SpanKind.SERVER): only the subset defined in
       _GRPC_SERVER_ERROR_STATUS_CODES.
     """
+    if code is None:
+        code = grpc.StatusCode.OK
     if _report_old(sem_conv_opt_in_mode):
         span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
     if _report_new(sem_conv_opt_in_mode):
@@ -92,8 +102,47 @@ def _apply_grpc_status(
 
     if is_error:
         if _report_new(sem_conv_opt_in_mode):
-            span.set_attribute(ERROR_TYPE, code.name)
+            span.set_attribute(ERROR_TYPE, code.name if code else  ErrorTypeValues.OTHER)
+        status_description = f"{code}:{description}" if description else str(code)
+        span.set_status(Status(StatusCode.ERROR, description=status_description))
+
+
+def _add_error_details_to_span(span, exc, span_kind, sem_conv_opt_in_mode):
+    """Record exception details on a span.
+
+    Sets the span status to ERROR with a description, sets error.type
+    (new semconv only), and records the exception (old semconv only).
+
+    For grpc.RpcError, delegates to _apply_grpc_status which handles
+    the gRPC status code attributes.  For all other exceptions, sets
+    error.type to the fully-qualified exception class name.
+    """
+    if _report_new(sem_conv_opt_in_mode):
+        description = str(exc)
+    else:
+        description = f"{type(exc).__name__}: {exc}"
+
+    if isinstance(exc, grpc.RpcError):
+        _apply_grpc_status(span, exc.code(), span_kind, sem_conv_opt_in_mode, description)
+    else:
         span.set_status(Status(StatusCode.ERROR, description=description))
+        if _report_new(sem_conv_opt_in_mode):
+            span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
+
+    if _report_old(sem_conv_opt_in_mode):
+        span.record_exception(exc)
+
+
+def _apply_server_error(span, exc, code, details, sem_conv_opt_in_mode):
+    """Handle span status for a server-side exception.
+
+    If a gRPC status code was explicitly set (via abort/set_code), apply it.
+    Otherwise record the unexpected exception details.
+    """
+    if code is not None:
+        _apply_grpc_status(span, code, trace.SpanKind.SERVER, sem_conv_opt_in_mode, details)
+    else:
+        _add_error_details_to_span(span, exc, trace.SpanKind.SERVER, sem_conv_opt_in_mode)
 
 
 def _set_rpc_system(
@@ -199,3 +248,103 @@ def _set_rpc_peer_name_server(
     if _report_new(sem_conv_opt_in_mode):
         if not result.get(NETWORK_PEER_ADDRESS):
             set_string_attribute(result, NETWORK_PEER_ADDRESS, name)
+
+
+def _parse_grpc_target(target: str) -> tuple:
+    """Parse a gRPC target string into a ``(server.address, server.port)`` 2-tuple.
+
+    Follows the OTel RPC semantic convention for ``server.address``/
+    ``server.port`` on client spans:
+
+    * ``"host:port"`` / ``"[ipv6]:port"`` — bare DNS address, parse normally
+    * ``"dns://[resolver]/host:port"`` — DNS URI, skip resolver, parse endpoint
+    * ``"unix:path"`` / ``"unix:///path"`` — socket path becomes
+      ``server.address``, no port
+    * ``"ipv4:..."`` / ``"ipv6:..."`` — ``scheme:addr`` format (no ``//``),
+      may list multiple addresses; whole target becomes ``server.address``, no port
+    * ``"scheme://..."`` with an unknown scheme (e.g. ``"zk://..."``) — whole
+      target becomes ``server.address``, no port
+
+    Returns ``(address, port)`` where *port* is an :class:`int` or ``None``.
+    """
+    if not target:
+        return None, None
+
+    # Unix domain sockets: server.address = the socket path, no port.
+    # Handles both "unix:path" and "unix:///path" (URI form).
+    if target.startswith("unix:") or target.startswith("unix-abstract:"):
+        prefix = "unix:" if target.startswith("unix:") else "unix-abstract:"
+        path = target[len(prefix):]
+        # Strip the authority component from URI form ("//[authority]/path")
+        if path.startswith("//"):
+            slash = path.find("/", 2)   # first "/" after the leading "//"
+            path = path[slash:] if slash != -1 else ""
+        return path or None, None
+
+    # ipv4/ipv6 scheme can list multiple addresses; no single low-cardinality
+    # identifier can be derived → return the whole target string, no port.
+    if target.startswith("ipv4:") or target.startswith("ipv6:"):
+        return target, None
+
+    # URI form: scheme://[authority]/endpoint
+    if "://" in target:
+        scheme, _, rest = target.partition("://")
+        if scheme == "dns":
+            # dns://[resolver]/host:port — endpoint follows the authority
+            slash = rest.find("/")
+            endpoint = rest[slash + 1:] if slash != -1 else rest
+            return _parse_host_port(endpoint)
+        # Unknown URI scheme — cannot determine a low-cardinality identifier.
+        return target, None
+
+    # Plain "host:port" (implicit DNS)
+    return _parse_host_port(target)
+
+
+def _parse_host_port(target: str) -> tuple:
+    """Parse a bare ``"host:port"`` or ``"[ipv6]:port"`` string."""
+    if not target:
+        return None, None
+
+    # IPv6 literal: "[::1]:50051"
+    if target.startswith("["):
+        bracket_end = target.find("]")
+        if bracket_end == -1:
+            return None, None
+        host = target[1:bracket_end]
+        remainder = target[bracket_end + 1:]
+        if remainder.startswith(":"):
+            try:
+                return host, int(remainder[1:])
+            except ValueError:
+                pass
+        return host, None
+
+    # Plain "host:port" or bare "host"
+    if ":" in target:
+        host, _, port_str = target.rpartition(":")
+        try:
+            return host, int(port_str)
+        except ValueError:
+            pass
+
+    return target, None
+
+
+def _set_server_address_port(
+    result: MutableMapping[str, AttributeValue],
+    host: Optional[str],
+    port: Optional[int],
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    """Set server address/port attributes on a gRPC client span.
+
+    New only: server.address + server.port
+    (The old implementation does not set these.)
+    """
+    if not _report_new(sem_conv_opt_in_mode):
+        return
+    if host:
+        result[SERVER_ADDRESS] = host
+    if port is not None:
+        result[SERVER_PORT] = port
