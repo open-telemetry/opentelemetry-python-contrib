@@ -136,6 +136,31 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 | ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
 +---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
 
+SQLComment for non-recording spans
+**********************************
+By default, sqlcommenter only adds comments to recording spans.
+You can enable sqlcommenter for all spans by setting
+``commenter_for_all_spans=True``. This is useful for context propagation
+to database logs regardless of sampling decisions.
+
+.. code:: python
+
+    import mysql.connector
+
+    from opentelemetry.instrumentation.dbapi import wrap_connect
+
+
+    # Opts into sqlcomment for MySQL trace integration.
+    # Enables sqlcomment for non-recording (unsampled) spans.
+    wrap_connect(
+        __name__,
+        mysql.connector,
+        "connect",
+        "mysql",
+        enable_commenter=True,
+        commenter_for_all_spans=True,
+    )
+
 SQLComment in span attribute
 ****************************
 If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
@@ -218,6 +243,7 @@ def trace_integration(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     enable_attribute_commenter: bool = False,
     commenter_options: dict[str, Any] | None = None,
+    commenter_for_all_spans: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -237,6 +263,7 @@ def trace_integration(
             default one is used.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
         commenter_options: Configurations for tags to be appended at the sql query.
+        commenter_for_all_spans: Flag to enable/disable sqlcommenter for unsampled spans. Only available if enable_commenter=True.
     """
     wrap_connect(
         __name__,
@@ -251,6 +278,7 @@ def trace_integration(
         db_api_integration_factory=db_api_integration_factory,
         enable_attribute_commenter=enable_attribute_commenter,
         commenter_options=commenter_options,
+        commenter_for_all_spans=commenter_for_all_spans,
     )
 
 
@@ -267,6 +295,7 @@ def wrap_connect(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
+    commenter_for_all_spans: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -286,6 +315,7 @@ def wrap_connect(
             default one is used.
         commenter_options: Configurations for tags to be appended at the sql query.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        commenter_for_all_spans: Flag to enable/disable sqlcommenter for unsampled spans. Only available if enable_commenter=True.
 
     """
     db_api_integration_factory = (
@@ -310,6 +340,7 @@ def wrap_connect(
             commenter_options=commenter_options,
             connect_module=connect_module,
             enable_attribute_commenter=enable_attribute_commenter,
+            commenter_for_all_spans=commenter_for_all_spans,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
@@ -347,6 +378,7 @@ def instrument_connection(
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
+    commenter_for_all_spans: bool = False,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
 
@@ -368,6 +400,7 @@ def instrument_connection(
             replacement for :class:`DatabaseApiIntegration`. Can be used to
             obtain connection attributes from the connect method instead of
             from the connection itself (as done by the pymssql intrumentor).
+        commenter_for_all_spans: Flag to enable/disable sqlcommenter for unsampled spans. Only available if enable_commenter=True.
 
     Returns:
         An instrumented connection.
@@ -391,6 +424,7 @@ def instrument_connection(
         commenter_options=commenter_options,
         connect_module=connect_module,
         enable_attribute_commenter=enable_attribute_commenter,
+        commenter_for_all_spans=commenter_for_all_spans,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -427,6 +461,7 @@ class DatabaseApiIntegration:
         commenter_options: dict[str, Any] | None = None,
         connect_module: Callable[..., Any] | None = None,
         enable_attribute_commenter: bool = False,
+        commenter_for_all_spans: bool = False,
     ):
         if connection_attributes is None:
             self.connection_attributes = {
@@ -449,6 +484,7 @@ class DatabaseApiIntegration:
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
         self.enable_attribute_commenter = enable_attribute_commenter
+        self.commenter_for_all_spans = commenter_for_all_spans
         self.database_system = database_system
         self.connection_props: dict[str, Any] = {}
         self.span_attributes: dict[str, Any] = {}
@@ -619,6 +655,9 @@ class CursorTracer(Generic[CursorT]):
         self._enable_attribute_commenter = (
             self._db_api_integration.enable_attribute_commenter
         )
+        self._commenter_for_all_spans = (
+            self._db_api_integration.commenter_for_all_spans
+        )
         self._connect_module = self._db_api_integration.connect_module
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -660,6 +699,17 @@ class CursorTracer(Generic[CursorT]):
             for k, v in commenter_data.items()
             if self._commenter_options.get(k, True)
         }
+
+    def _can_add_comment(self, span: trace_api.Span, args: tuple[Any, ...]):
+        has_valid_context = (
+            span.get_span_context() != trace_api.INVALID_SPAN_CONTEXT
+        )
+        return (
+            args
+            and self._commenter_enabled
+            and (span.is_recording() or self._commenter_for_all_spans)
+            and has_valid_context
+        )
 
     def _update_args_with_added_sql_comment(self, args, cursor) -> tuple:
         """Updates args with cursor info and adds sqlcomment to query statement"""
@@ -740,24 +790,23 @@ class CursorTracer(Generic[CursorT]):
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            if span.is_recording():
-                if args and self._commenter_enabled:
-                    if self._enable_attribute_commenter:
-                        # sqlcomment is added to executed query and db.statement span attribute
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                        self._populate_span(span, cursor, *args)
-                    else:
-                        # sqlcomment is only added to executed query
-                        # so db.statement is set before add_sql_comment
-                        self._populate_span(span, cursor, *args)
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                else:
-                    # no sqlcomment anywhere
-                    self._populate_span(span, cursor, *args)
+            can_add_comment = self._can_add_comment(span, args)
+
+            if can_add_comment:
+                commented_args = self._update_args_with_added_sql_comment(
+                    args, cursor
+                )
+                attr_args = (
+                    commented_args
+                    if self._enable_attribute_commenter
+                    else args
+                )
+                args = commented_args
+            else:
+                attr_args = args
+
+            self._populate_span(span, cursor, *attr_args)
+
             return query_method(*args, **kwargs)
 
     async def traced_execution_async(
@@ -778,24 +827,23 @@ class CursorTracer(Generic[CursorT]):
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            if span.is_recording():
-                if args and self._commenter_enabled:
-                    if self._enable_attribute_commenter:
-                        # sqlcomment is added to executed query and db.statement span attribute
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                        self._populate_span(span, cursor, *args)
-                    else:
-                        # sqlcomment is only added to executed query
-                        # so db.statement is set before add_sql_comment
-                        self._populate_span(span, cursor, *args)
-                        args = self._update_args_with_added_sql_comment(
-                            args, cursor
-                        )
-                else:
-                    # no sqlcomment anywhere
-                    self._populate_span(span, cursor, *args)
+            can_add_comment = self._can_add_comment(span, args)
+
+            if can_add_comment:
+                commented_args = self._update_args_with_added_sql_comment(
+                    args, cursor
+                )
+                attr_args = (
+                    commented_args
+                    if self._enable_attribute_commenter
+                    else args
+                )
+                args = commented_args
+            else:
+                attr_args = args
+
+            self._populate_span(span, cursor, *attr_args)
+
             return await query_method(*args, **kwargs)
 
 
