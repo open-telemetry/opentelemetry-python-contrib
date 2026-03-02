@@ -11,6 +11,8 @@ on:
         - opentelemetry-instrumentation-openai-v2
         - opentelemetry-instrumentation-openai-agents-v2
         - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-anthropic
+        - opentelemetry-instrumentation-claude-agent-sdk
         - opentelemetry-instrumentation-google-genai
         - opentelemetry-util-genai
         description: 'Package to be released'
@@ -31,6 +33,8 @@ jobs:
       next_version: ${{ steps.verify.outputs.next_version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - id: verify
         name: Verify prerequisites

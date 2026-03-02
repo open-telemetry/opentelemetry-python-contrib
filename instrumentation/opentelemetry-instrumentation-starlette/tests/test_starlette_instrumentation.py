@@ -64,6 +64,8 @@ _recommended_attrs = {
     "http.server.request.size": _duration_attrs,
 }
 
+SCOPE = "opentelemetry.instrumentation.starlette"
+
 
 class TestStarletteManualInstrumentation(TestBase):
     def _create_app(self):
@@ -182,9 +184,7 @@ class TestStarletteManualInstrumentation(TestBase):
         self._client.get("/foobar")
         number_data_point_seen = False
         histogram_data_point_seen = False
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertTrue(len(metrics) == 3)
         for metric in metrics:
             self.assertIn(metric.name, _expected_metric_names)
@@ -225,9 +225,7 @@ class TestStarletteManualInstrumentation(TestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -254,9 +252,7 @@ class TestStarletteManualInstrumentation(TestBase):
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
@@ -275,9 +271,7 @@ class TestStarletteManualInstrumentation(TestBase):
         client.get("/foobar")
         client.get("/foobar")
         client.get("/foobar")
-        metrics = self.get_sorted_metrics(
-            scope="opentelemetry.instrumentation.starlette"
-        )
+        metrics = self.get_sorted_metrics(SCOPE)
         for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):

@@ -184,9 +184,11 @@ API
 """
 
 import collections.abc
+import inspect
 import io
 import typing
 from dataclasses import dataclass
+from inspect import BoundArguments
 from timeit import default_timer
 from typing import Collection
 
@@ -286,12 +288,6 @@ _ResponseHookT = typing.Optional[
         None,
     ]
 ]
-
-_URL_OPEN_ARG_TO_INDEX_MAPPING = {
-    "method": 0,
-    "url": 1,
-    "body": 2,
-}
 
 
 class URLLib3Instrumentor(BaseInstrumentor):
@@ -428,6 +424,7 @@ def _get_span_name(method: str) -> str:
     return method
 
 
+# pylint: disable=too-many-locals
 def _instrument(
     tracer: Tracer,
     duration_histogram_old: Histogram,
@@ -445,18 +442,31 @@ def _instrument(
     captured_response_headers: typing.Optional[list[str]] = None,
     sensitive_headers: typing.Optional[list[str]] = None,
 ):
-    # pylint: disable=too-many-locals
+    urlopen_signature = inspect.signature(
+        urllib3.connectionpool.HTTPConnectionPool.urlopen
+    )
+
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
-        url = _get_url(instance, args, kwargs, url_filter)
+        try:
+            bound_args = urlopen_signature.bind(instance, *args, **kwargs)
+        except TypeError:
+            return wrapped(*args, **kwargs)
+
+        bound_args.apply_defaults()
+
+        method = bound_args.arguments.get("method").upper()
+        headers = bound_args.arguments.get("headers")
+        body = bound_args.arguments.get("body")
+        url = _get_url(instance, bound_args, url_filter)
+
         if excluded_urls and excluded_urls.url_disabled(url):
             return wrapped(*args, **kwargs)
 
-        method = _get_url_open_arg("method", args, kwargs).upper()
-        headers = _prepare_headers(kwargs)
-        body = _get_url_open_arg("body", args, kwargs)
+        # avoid modifying original headers on inject
+        headers = headers.copy() if headers is not None else {}
 
         span_name = _get_span_name(method)
         span_attributes = {}
@@ -496,10 +506,12 @@ def _instrument(
                     ),
                 )
             inject(headers)
+            bound_args.arguments["headers"] = headers
+
             # TODO: add error handling to also set exception `error.type` in new semconv
             with suppress_http_instrumentation():
                 start_time = default_timer()
-                response = wrapped(*args, **kwargs)
+                response = wrapped(*bound_args.args[1:], **bound_args.kwargs)
                 duration_s = default_timer() - start_time
             # set http status code based on semconv
             metric_attributes = {}
@@ -554,23 +566,12 @@ def _instrument(
     )
 
 
-def _get_url_open_arg(name: str, args: typing.List, kwargs: typing.Mapping):
-    arg_idx = _URL_OPEN_ARG_TO_INDEX_MAPPING.get(name)
-    if arg_idx is not None:
-        try:
-            return args[arg_idx]
-        except IndexError:
-            pass
-    return kwargs.get(name)
-
-
 def _get_url(
     instance: urllib3.connectionpool.HTTPConnectionPool,
-    args: typing.List,
-    kwargs: typing.Mapping,
+    bound_args: BoundArguments,
     url_filter: _UrlFilterT,
 ) -> str:
-    url_or_path = _get_url_open_arg("url", args, kwargs)
+    url_or_path = bound_args.arguments.get("url")
     if not url_or_path.startswith("/"):
         url = url_or_path
     else:
@@ -587,6 +588,7 @@ def _get_url(
 def _get_body_size(body: object) -> typing.Optional[int]:
     if body is None:
         return 0
+    # pylint: disable-next=no-member
     if isinstance(body, collections.abc.Sized):
         return len(body)
     if isinstance(body, io.BytesIO):
@@ -602,16 +604,6 @@ def _should_append_port(scheme: str, port: typing.Optional[int]) -> bool:
     if scheme == "https" and port == 443:
         return False
     return True
-
-
-def _prepare_headers(urlopen_kwargs: typing.Dict) -> typing.Dict:
-    headers = urlopen_kwargs.get("headers")
-
-    # avoid modifying original headers on inject
-    headers = headers.copy() if headers is not None else {}
-    urlopen_kwargs["headers"] = headers
-
-    return headers
 
 
 def _set_status_code_attribute(

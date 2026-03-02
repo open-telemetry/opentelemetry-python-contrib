@@ -92,6 +92,8 @@ _recommended_attrs = {
     MetricInstruments.HTTP_SERVER_DURATION: _server_duration_attrs_old,
 }
 
+SCOPE = "opentelemetry.instrumentation.pyramid.callbacks"
+
 
 class TestAutomatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
@@ -223,7 +225,7 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/756")
         self.client.get("/hello/756")
         self.client.get("/hello/756")
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
         self.assertEqual(len(metrics), 2)
@@ -262,10 +264,8 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
             "http.flavor": "1.1",
             "http.server_name": "localhost",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertDictEqual(
@@ -287,10 +287,8 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.config = Configurator()
         self._common_initialization(self.config)
         self.client.get("/hello/756")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -469,17 +467,15 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
             PyramidInstrumentor().uninstrument()
 
     def _verify_metric_names(
-        self, metrics_list, expected_names, not_expected_names=None
+        self, metrics, expected_names, not_expected_names=None
     ):
         metric_names = []
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    metric_names.append(metric.name)
-                    if expected_names:
-                        self.assertIn(metric.name, expected_names)
-                    if not_expected_names:
-                        self.assertNotIn(metric.name, not_expected_names)
+        for metric in metrics:
+            metric_names.append(metric.name)
+            if expected_names:
+                self.assertIn(metric.name, expected_names)
+            if not_expected_names:
+                self.assertNotIn(metric.name, not_expected_names)
         return metric_names
 
     def _verify_duration_point(self, point):
@@ -494,11 +490,9 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
                 if isinstance(point, HistogramDataPoint):
                     self._verify_duration_point(point)
 
-    def _verify_duration_attributes(self, metrics_list):
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    self._verify_metric_duration(metric)
+    def _verify_duration_attributes(self, metrics):
+        for metric in metrics:
+            self._verify_metric_duration(metric)
 
 
 class TestSemConvDefault(_SemConvTestBase):
@@ -535,27 +529,23 @@ class TestSemConvDefault(_SemConvTestBase):
     def test_metrics_old_semconv(self):
         self.client.get("/hello/123")
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 2)
 
         expected_metrics = [
             HTTP_SERVER_ACTIVE_REQUESTS,
             MetricInstruments.HTTP_SERVER_DURATION,
         ]
         self._verify_metric_names(
-            metrics_list, expected_metrics, [HTTP_SERVER_REQUEST_DURATION]
+            metrics, expected_metrics, [HTTP_SERVER_REQUEST_DURATION]
         )
 
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in metric.data.data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertIn("http.method", point.attributes)
-                            self.assertIn("http.scheme", point.attributes)
-                            self.assertNotIn(
-                                HTTP_REQUEST_METHOD, point.attributes
-                            )
+        for metric in metrics:
+            for point in metric.data.data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertIn("http.method", point.attributes)
+                    self.assertIn("http.scheme", point.attributes)
+                    self.assertNotIn(HTTP_REQUEST_METHOD, point.attributes)
 
 
 class TestSemConvNew(_SemConvTestBase):
@@ -601,21 +591,19 @@ class TestSemConvNew(_SemConvTestBase):
 
     def test_metrics_new_semconv(self):
         self.client.get("/hello/456")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 2)
 
         expected_metrics = [
             HTTP_SERVER_REQUEST_DURATION,
             HTTP_SERVER_ACTIVE_REQUESTS,
         ]
-        metric_names = self._verify_metric_names(
-            metrics_list, expected_metrics
-        )
+        metric_names = self._verify_metric_names(metrics, expected_metrics)
 
         self.assertIn(HTTP_SERVER_REQUEST_DURATION, metric_names)
         self.assertIn(HTTP_SERVER_ACTIVE_REQUESTS, metric_names)
 
-        self._verify_duration_attributes(metrics_list)
+        self._verify_duration_attributes(metrics)
 
 
 class TestSemConvDup(_SemConvTestBase):
@@ -656,15 +644,15 @@ class TestSemConvDup(_SemConvTestBase):
     def test_metrics_both_semconv(self):
         self.client.get("/hello/789")
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 3)
 
         expected_metrics = [
             MetricInstruments.HTTP_SERVER_DURATION,
             HTTP_SERVER_REQUEST_DURATION,
             HTTP_SERVER_ACTIVE_REQUESTS,
         ]
-        metric_names = self._verify_metric_names(metrics_list, None)
+        metric_names = self._verify_metric_names(metrics, None)
 
         for metric_name in expected_metrics:
             self.assertIn(metric_name, metric_names)

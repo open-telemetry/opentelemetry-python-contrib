@@ -204,6 +204,8 @@ _recommended_metrics_attrs_both = {
     "http.server.request.duration": _server_duration_attrs_new,
 }
 
+SCOPE = "opentelemetry.instrumentation.wsgi"
+
 
 class TestWsgiApplication(WsgiTestBase):
     def setUp(self):
@@ -430,7 +432,7 @@ class TestWsgiApplication(WsgiTestBase):
         number_data_point_seen = False
         histogram_data_point_seen = False
 
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertTrue(len(metrics) > 0)
         for metric in metrics:
             self.assertIn(metric.name, _expected_metric_names_old)
@@ -494,7 +496,7 @@ class TestWsgiApplication(WsgiTestBase):
         number_data_point_seen = False
         histogram_data_point_seen = False
 
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertTrue(len(metrics) != 0)
         for metric in metrics:
             self.assertIn(metric.name, _expected_metric_names_new)
@@ -525,7 +527,7 @@ class TestWsgiApplication(WsgiTestBase):
         number_data_point_seen = False
         histogram_data_point_seen = False
 
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertTrue(len(metrics) != 0)
         for metric in metrics:
             if metric.unit == "ms":
