@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add stale PR GitHub Action
+  ([#4220](https://github.com/open-telemetry/opentelemetry-python/pull/4220))
+
 ### Added
 
 - Add Python 3.14 support
