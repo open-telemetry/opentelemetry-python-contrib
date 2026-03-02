@@ -59,6 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 
 ### Fixed
+
+- `opentelemetry-instrumentation-asyncio`: Fix environment variables not appearing in Read the Docs documentation
+  ([#4256](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4256))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'` by routing bidi streams through `_intercept` instead of the generator-based `_intercept_server_stream`
   ([#1180](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1180))
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
@@ -117,6 +120,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4175](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4175))
 - `opentelemetry-docker-tests` Fix docker-tests assumption by Postgres-Sqlalchemy case about scope of metrics
   ([#4258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4258))
+- `opentelemetry-instrumentation-threading`: fix AttributeError when Thread is run without starting
+  ([#4246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4246))
 
 ### Breaking changes
 
