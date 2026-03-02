@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add stale PR GitHub Action
+  ([#4220](https://github.com/open-telemetry/opentelemetry-python/pull/4220))
+
 ### Added
 
 - Add Python 3.14 support
@@ -59,6 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 
 ### Fixed
+
+- `opentelemetry-instrumentation-asyncio`: Fix environment variables not appearing in Read the Docs documentation
+  ([#4256](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4256))
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
   ([#4116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4116))
 - `opentelemetry-instrumentation-cassandra`: Use `_instruments_any` instead of `_instruments` for driver dependencies so that having either `cassandra-driver` or `scylla-driver` installed is sufficient
