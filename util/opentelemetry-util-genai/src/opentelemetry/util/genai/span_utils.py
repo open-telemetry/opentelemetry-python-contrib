@@ -80,6 +80,7 @@ def _get_llm_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instruction: list[MessagePart] | None = None,
+    tool_definitions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Get message attributes formatted for span (JSON string format).
 
@@ -108,6 +109,12 @@ def _get_llm_messages_attributes_for_span(
             GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
             gen_ai_json_dumps([asdict(p) for p in system_instruction])
             if system_instruction
+            else None,
+        ),
+        (
+            GenAI.GEN_AI_TOOL_DEFINITIONS,
+            gen_ai_json_dumps(tool_definitions)
+            if tool_definitions
             else None,
         ),
     )
@@ -292,7 +299,7 @@ def _get_base_agent_common_attributes(
         (GenAI.GEN_AI_AGENT_NAME, agent.agent_name),
         (GenAI.GEN_AI_AGENT_ID, agent.agent_id),
         (GenAI.GEN_AI_AGENT_DESCRIPTION, agent.agent_description),
-        ("gen_ai.agent.version", agent.agent_version),
+        (GenAI.GEN_AI_AGENT_VERSION, agent.agent_version),
         (server_attributes.SERVER_ADDRESS, agent.server_address),
         (server_attributes.SERVER_PORT, agent.server_port),
     )
@@ -327,11 +334,6 @@ def _get_agent_common_attributes(
     )
 
     return attrs
-
-
-def _get_agent_span_name(invocation: AgentInvocation) -> str:
-    """Get the span name for an agent invocation."""
-    return _get_base_agent_span_name(invocation)
 
 
 def _get_agent_request_attributes(
@@ -381,48 +383,13 @@ def _get_agent_response_attributes(
         (GenAI.GEN_AI_RESPONSE_ID, invocation.response_id),
         (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
         (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens),
-    )
-
-    return {key: value for key, value in optional_attrs if value is not None}
-
-
-def _get_agent_messages_attributes_for_span(
-    input_messages: list[InputMessage],
-    output_messages: list[OutputMessage],
-    system_instruction: list[MessagePart] | None = None,
-    tool_definitions: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """Get message attributes formatted for span (JSON string format) for agent invocation."""
-    if not is_experimental_mode() or get_content_capturing_mode() not in (
-        ContentCapturingMode.SPAN_ONLY,
-        ContentCapturingMode.SPAN_AND_EVENT,
-    ):
-        return {}
-
-    optional_attrs = (
         (
-            GenAI.GEN_AI_INPUT_MESSAGES,
-            gen_ai_json_dumps([asdict(m) for m in input_messages])
-            if input_messages
-            else None,
+            GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+            invocation.cache_creation_input_tokens,
         ),
         (
-            GenAI.GEN_AI_OUTPUT_MESSAGES,
-            gen_ai_json_dumps([asdict(m) for m in output_messages])
-            if output_messages
-            else None,
-        ),
-        (
-            GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
-            gen_ai_json_dumps([asdict(p) for p in system_instruction])
-            if system_instruction
-            else None,
-        ),
-        (
-            GenAI.GEN_AI_TOOL_DEFINITIONS,
-            gen_ai_json_dumps(tool_definitions)
-            if tool_definitions
-            else None,
+            GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+            invocation.cache_read_input_tokens,
         ),
     )
 
@@ -433,14 +400,14 @@ def _apply_agent_finish_attributes(
     span: Span, invocation: AgentInvocation
 ) -> None:
     """Apply attributes/messages common to agent finish() paths."""
-    span.update_name(_get_agent_span_name(invocation))
+    span.update_name(_get_base_agent_span_name(invocation))
 
     attributes: dict[str, Any] = {}
     attributes.update(_get_agent_common_attributes(invocation))
     attributes.update(_get_agent_request_attributes(invocation))
     attributes.update(_get_agent_response_attributes(invocation))
     attributes.update(
-        _get_agent_messages_attributes_for_span(
+        _get_llm_messages_attributes_for_span(
             invocation.input_messages,
             invocation.output_messages,
             invocation.system_instruction,
@@ -453,26 +420,14 @@ def _apply_agent_finish_attributes(
         span.set_attributes(attributes)
 
 
-def _get_creation_common_attributes(
-    creation: AgentCreation,
-) -> dict[str, Any]:
-    """Get common agent creation attributes."""
-    return _get_base_agent_common_attributes(creation)
-
-
-def _get_creation_span_name(creation: AgentCreation) -> str:
-    """Get the span name for an agent creation."""
-    return _get_base_agent_span_name(creation)
-
-
 def _apply_creation_finish_attributes(
     span: Span, creation: AgentCreation
 ) -> None:
     """Apply attributes common to agent creation finish() paths."""
-    span.update_name(_get_creation_span_name(creation))
+    span.update_name(_get_base_agent_span_name(creation))
 
     attributes: dict[str, Any] = {}
-    attributes.update(_get_creation_common_attributes(creation))
+    attributes.update(_get_base_agent_common_attributes(creation))
 
     # System instructions (Opt-In)
     if (
@@ -509,7 +464,4 @@ __all__ = [
     "_get_agent_common_attributes",
     "_get_agent_request_attributes",
     "_get_agent_response_attributes",
-    "_get_agent_span_name",
-    "_get_creation_common_attributes",
-    "_get_creation_span_name",
 ]

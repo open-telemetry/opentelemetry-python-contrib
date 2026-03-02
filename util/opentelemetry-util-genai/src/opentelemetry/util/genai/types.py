@@ -270,25 +270,19 @@ class _BaseAgent(GenAIInvocation):
     Do not instantiate directly — use AgentInvocation or AgentCreation.
     """
 
-    # Agent identity
     agent_name: str | None = None
     agent_id: str | None = None
     agent_description: str | None = None
     agent_version: str | None = None
 
-    # Operation
     operation_name: str = ""
     provider: str | None = None
 
-    # Request
     request_model: str | None = None
 
-    # Content (Opt-In)
     system_instruction: list[MessagePart] = field(
         default_factory=_new_system_instruction
     )
-
-    # Server
     server_address: str | None = None
     server_port: int | None = None
 
@@ -314,7 +308,6 @@ class AgentCreation(_BaseAgent):
     The span and context_token attributes are set by the TelemetryHandler.
     """
 
-    # Override default operation name
     operation_name: str = "create_agent"
 
 
@@ -330,15 +323,11 @@ class AgentInvocation(_BaseAgent):
     The span and context_token attributes are set by the TelemetryHandler.
     """
 
-    # Override default operation name
     operation_name: str = "invoke_agent"
-
-    # Invoke-specific request attributes (Cond. Required)
     conversation_id: str | None = None
     data_source_id: str | None = None
     output_type: str | None = None
 
-    # Request parameters (Recommended)
     temperature: float | None = None
     top_p: float | None = None
     frequency_penalty: float | None = None
@@ -348,14 +337,14 @@ class AgentInvocation(_BaseAgent):
     seed: int | None = None
     choice_count: int | None = None
 
-    # Response (Recommended)
     response_model_name: str | None = None
     response_id: str | None = None
     finish_reasons: list[str] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    cache_creation_input_tokens: int | None = None
+    cache_read_input_tokens: int | None = None
 
-    # Content (Opt-In) — input/output messages and tool definitions
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -364,7 +353,6 @@ class AgentInvocation(_BaseAgent):
     )
     tool_definitions: list[dict[str, Any]] | None = None
 
-    # Span kind: CLIENT for remote agents, INTERNAL for in-process agents
     is_remote: bool = True
 
     metric_attributes: dict[str, Any] = field(
