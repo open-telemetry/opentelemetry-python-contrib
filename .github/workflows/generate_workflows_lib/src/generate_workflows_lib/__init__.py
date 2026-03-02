@@ -54,6 +54,7 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
         "py311": "3.11",
         "py312": "3.12",
         "py313": "3.13",
+        "py314": "3.14",
     }
 
     test_job_datas = []
@@ -143,7 +144,7 @@ def get_contrib_job_datas(tox_envs: list) -> list:
 
         contrib_job_datas.append(
             {
-                "ui_name": (f"{groups['name']}" f"{contrib_requirements}"),
+                "ui_name": (f"{groups['name']}{contrib_requirements}"),
                 "tox_env": tox_env,
             }
         )

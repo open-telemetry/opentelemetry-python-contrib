@@ -68,14 +68,14 @@ def _methods_to_wrap(
 ):
     # This import is very slow, do it lazily in case instrument() is not called
     # pylint: disable=import-outside-toplevel
-    from google.cloud.aiplatform_v1.services.prediction_service import (
+    from google.cloud.aiplatform_v1.services.prediction_service import (  # noqa: PLC0415
         async_client,
         client,
     )
-    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (  # noqa: PLC0415
         async_client as async_client_v1beta1,
     )
-    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (  # noqa: PLC0415
         client as client_v1beta1,
     )
 

@@ -528,7 +528,9 @@ class _Choice:
     def from_converse(
         cls, response: dict[str, Any], capture_content: bool
     ) -> _Choice:
-        orig_message = response["output"]["message"]
+        # be defensive about malformed responses, refer to #3958 for more context
+        output = response.get("output", {})
+        orig_message = output.get("message", {})
         if role := orig_message.get("role"):
             message = {"role": role}
         else:
@@ -537,8 +539,8 @@ class _Choice:
 
         if tool_calls := extract_tool_calls(orig_message, capture_content):
             message["tool_calls"] = tool_calls
-        elif capture_content:
-            message["content"] = orig_message["content"]
+        elif capture_content and (content := orig_message.get("content")):
+            message["content"] = content
 
         return cls(message, response["stopReason"], index=0)
 

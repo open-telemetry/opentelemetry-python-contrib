@@ -90,15 +90,17 @@ LEVELS = {
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     __doc__ = f"""An instrumentor for stdlib logging module.
 
-    This instrumentor injects tracing context into logging records and optionally sets the global logging format to the following:
+    This instrumentor optionally injects tracing context into logging records and sets the global logging format to the following:
 
     .. code-block::
 
         {DEFAULT_LOGGING_FORMAT}
 
         def log_hook(span: Span, record: LogRecord):
-                if span and span.is_recording():
-                    record.custom_user_attribute_from_log_hook = "some-value"
+            if span and span.is_recording():
+                record.custom_user_attribute_from_log_hook = "some-value"
+                span_ctx = span.get_span_context()
+                record.from_sampled_span = span_ctx.trace_flags.sampled
 
     Args:
         tracer_provider: Tracer provider instance that can be used to fetch a tracer.
@@ -130,44 +132,6 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         service_name = None
 
-        def record_factory(*args, **kwargs):
-            record = old_factory(*args, **kwargs)
-
-            record.otelSpanID = "0"
-            record.otelTraceID = "0"
-            record.otelTraceSampled = False
-
-            nonlocal service_name
-            if service_name is None:
-                resource = getattr(provider, "resource", None)
-                if resource:
-                    service_name = (
-                        resource.attributes.get("service.name") or ""
-                    )
-                else:
-                    service_name = ""
-
-            record.otelServiceName = service_name
-
-            span = get_current_span()
-            if span != INVALID_SPAN:
-                ctx = span.get_span_context()
-                if ctx != INVALID_SPAN_CONTEXT:
-                    record.otelSpanID = format(ctx.span_id, "016x")
-                    record.otelTraceID = format(ctx.trace_id, "032x")
-                    record.otelTraceSampled = ctx.trace_flags.sampled
-                    if callable(LoggingInstrumentor._log_hook):
-                        try:
-                            LoggingInstrumentor._log_hook(  # pylint: disable=E1102
-                                span, record
-                            )
-                        except Exception:  # pylint: disable=W0703
-                            pass
-
-            return record
-
-        logging.setLogRecordFactory(record_factory)
-
         set_logging_format = kwargs.get(
             "set_logging_format",
             environ.get(OTEL_PYTHON_LOG_CORRELATION, "false").lower()
@@ -186,6 +150,54 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             log_level = log_level or logging.INFO
 
             logging.basicConfig(format=log_format, level=log_level)
+
+        def record_factory(*args, **kwargs):
+            record = old_factory(*args, **kwargs)
+
+            # this factory is a no-op if log correlation or log hook are not set
+            if not set_logging_format and not callable(
+                LoggingInstrumentor._log_hook
+            ):
+                return record
+
+            # out of spec attributes are added to the log record only if log correlation is set
+            if set_logging_format:
+                record.otelSpanID = "0"
+                record.otelTraceID = "0"
+                record.otelTraceSampled = False
+
+                nonlocal service_name
+                if service_name is None:
+                    resource = getattr(provider, "resource", None)
+                    if resource:
+                        service_name = (
+                            resource.attributes.get("service.name") or ""
+                        )
+                    else:
+                        service_name = ""
+
+                record.otelServiceName = service_name
+
+            span = get_current_span()
+            if span != INVALID_SPAN:
+                ctx = span.get_span_context()
+                if ctx != INVALID_SPAN_CONTEXT:
+                    if set_logging_format:
+                        record.otelSpanID = format(ctx.span_id, "016x")
+                        record.otelTraceID = format(ctx.trace_id, "032x")
+                        record.otelTraceSampled = ctx.trace_flags.sampled
+
+                    if callable(LoggingInstrumentor._log_hook):
+                        try:
+                            LoggingInstrumentor._log_hook(  # pylint: disable=E1102
+                                span, record
+                            )
+                        except Exception:  # pylint: disable=W0703
+                            pass
+
+            return record
+
+        logging.setLogRecordFactory(record_factory)
 
     def _uninstrument(self, **kwargs):
         if LoggingInstrumentor._old_factory:

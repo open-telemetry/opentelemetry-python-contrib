@@ -172,6 +172,9 @@ def test_flatten_with_pydantic_model_value():
         "foo.str_value": "bar",
         "foo.int_value": 123,
     }
+    assert dict_util.flatten_dict({"foo": PydanticModel}) == {
+        "foo": "<class 'tests.utils.test_dict_util.PydanticModel'>"
+    }
 
 
 def test_flatten_with_model_dumpable_value():

@@ -57,7 +57,7 @@ dependencies = [
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-threading",
   "opentelemetry-instrumentation-tornado",
-  "opentelemetry-instrumentation-tortoiseorm",
+  "opentelemetry-instrumentation-tortoiseorm[instruments]",
   "opentelemetry-instrumentation-urllib",
   "opentelemetry-instrumentation-urllib3[instruments]",
   "opentelemetry-instrumentation-wsgi",
@@ -198,9 +198,12 @@ pythonVersion = "3.9"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [
+  "instrumentation/opentelemetry-instrumentation-aiohttp-client",
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
   "instrumentation/opentelemetry-instrumentation-threading",
+  "instrumentation-genai/opentelemetry-instrumentation-anthropic",
+  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "instrumentation-genai/opentelemetry-instrumentation-langchain",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate",
@@ -214,6 +217,10 @@ exclude = [
   "instrumentation/opentelemetry-instrumentation-aiokafka/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-asyncclick/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-threading/tests/**",
+  "instrumentation-genai/opentelemetry-instrumentation-anthropic/tests/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-anthropic/examples/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/tests/**/*.py",
+  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/examples/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-langchain/tests/**/*.py",
@@ -221,4 +228,12 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
+]
+
+[dependency-groups]
+dev = [
+    "tox",
+    "tox-uv>=1",
+    "pre-commit",
 ]

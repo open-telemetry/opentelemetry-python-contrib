@@ -47,7 +47,9 @@ class TestLoggingInstrumentorProxyTracerProvider(TestBase):
 
     def setUp(self):
         super().setUp()
-        LoggingInstrumentor().instrument(tracer_provider=FakeTracerProvider())
+        LoggingInstrumentor().instrument(
+            tracer_provider=FakeTracerProvider(), set_logging_format=True
+        )
 
     def tearDown(self):
         super().tearDown()
@@ -94,16 +96,46 @@ class TestLoggingInstrumentor(TestBase):
             self.assertEqual(record.otelTraceSampled, trace_sampled)
             self.assertEqual(record.otelServiceName, "unknown_service")
 
-    def test_trace_context_injection(self):
+    @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"})
+    def test_trace_context_injection_with_log_correlation_from_env_var(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument()
         with self.tracer.start_as_current_span("s1") as span:
-            span_id = format(span.get_span_context().span_id, "016x")
-            trace_id = format(span.get_span_context().trace_id, "032x")
-            trace_sampled = span.get_span_context().trace_flags.sampled
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
             self.assert_trace_context_injected(
                 span_id, trace_id, trace_sampled
             )
 
+    def test_trace_context_injection_with_log_correlation_instrument_arg(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(set_logging_format=True)
+        with self.tracer.start_as_current_span("s1") as span:
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
+
+    def test_no_trace_context_injection_by_default(self):
+        with self.tracer.start_as_current_span("s1"):
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                self.assertEqual(len(self.caplog.records), 1)
+                record = self.caplog.records[0]
+                self.assertFalse(hasattr(record, "otelServiceName"))
+                self.assertFalse(hasattr(record, "otelSpanID"))
+                self.assertFalse(hasattr(record, "otelTraceID"))
+                self.assertFalse(hasattr(record, "otelTraceSampled"))
+
     def test_trace_context_injection_without_span(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(set_logging_format=True)
         self.assert_trace_context_injected("0", "0", False)
 
     @mock.patch("logging.basicConfig")
@@ -113,15 +145,13 @@ class TestLoggingInstrumentor(TestBase):
         self.assertFalse(basic_config_mock.called)
         LoggingInstrumentor().uninstrument()
 
-        env_patch = mock.patch.dict(
+        with mock.patch.dict(
             "os.environ", {"OTEL_PYTHON_LOG_CORRELATION": "true"}
-        )
-        env_patch.start()
-        LoggingInstrumentor().instrument()
-        basic_config_mock.assert_called_with(
-            format=DEFAULT_LOGGING_FORMAT, level=logging.INFO
-        )
-        env_patch.stop()
+        ):
+            LoggingInstrumentor().instrument()
+            basic_config_mock.assert_called_with(
+                format=DEFAULT_LOGGING_FORMAT, level=logging.INFO
+            )
 
     @mock.patch("logging.basicConfig")
     def test_custom_format_and_level_env(self, basic_config_mock):
@@ -130,20 +160,18 @@ class TestLoggingInstrumentor(TestBase):
         self.assertFalse(basic_config_mock.called)
         LoggingInstrumentor().uninstrument()
 
-        env_patch = mock.patch.dict(
+        with mock.patch.dict(
             "os.environ",
             {
                 "OTEL_PYTHON_LOG_CORRELATION": "true",
                 "OTEL_PYTHON_LOG_FORMAT": "%(message)s %(otelSpanID)s",
                 "OTEL_PYTHON_LOG_LEVEL": "error",
             },
-        )
-        env_patch.start()
-        LoggingInstrumentor().instrument()
-        basic_config_mock.assert_called_with(
-            format="%(message)s %(otelSpanID)s", level=logging.ERROR
-        )
-        env_patch.stop()
+        ):
+            LoggingInstrumentor().instrument()
+            basic_config_mock.assert_called_with(
+                format="%(message)s %(otelSpanID)s", level=logging.ERROR
+            )
 
     @mock.patch("logging.basicConfig")
     def test_custom_format_and_level_api(self, basic_config_mock):  # pylint: disable=no-self-use
@@ -160,13 +188,33 @@ class TestLoggingInstrumentor(TestBase):
     def test_log_hook(self):
         LoggingInstrumentor().uninstrument()
         LoggingInstrumentor().instrument(
+            log_hook=log_hook,
+        )
+        with self.tracer.start_as_current_span("s1"):
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                self.assertEqual(len(self.caplog.records), 1)
+                record = self.caplog.records[0]
+                self.assertFalse(hasattr(record, "otelServiceName"))
+                self.assertFalse(hasattr(record, "otelSpanID"))
+                self.assertFalse(hasattr(record, "otelTraceID"))
+                self.assertFalse(hasattr(record, "otelTraceSampled"))
+                self.assertEqual(
+                    record.custom_user_attribute_from_log_hook, "some-value"
+                )
+
+    def test_log_hook_with_set_logging_format(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(
             set_logging_format=True,
             log_hook=log_hook,
         )
         with self.tracer.start_as_current_span("s1") as span:
-            span_id = format(span.get_span_context().span_id, "016x")
-            trace_id = format(span.get_span_context().trace_id, "032x")
-            trace_sampled = span.get_span_context().trace_flags.sampled
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
@@ -181,34 +229,23 @@ class TestLoggingInstrumentor(TestBase):
                 )
 
     def test_uninstrumented(self):
-        with self.tracer.start_as_current_span("s1") as span:
-            span_id = format(span.get_span_context().span_id, "016x")
-            trace_id = format(span.get_span_context().trace_id, "032x")
-            trace_sampled = span.get_span_context().trace_flags.sampled
-            self.assert_trace_context_injected(
-                span_id, trace_id, trace_sampled
-            )
-
         LoggingInstrumentor().uninstrument()
-
-        self.caplog.clear()
-        with self.tracer.start_as_current_span("s1") as span:
-            span_id = format(span.get_span_context().span_id, "016x")
-            trace_id = format(span.get_span_context().trace_id, "032x")
-            trace_sampled = span.get_span_context().trace_flags.sampled
+        with self.tracer.start_as_current_span("s1"):
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
                 self.assertEqual(len(self.caplog.records), 1)
                 record = self.caplog.records[0]
+                self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelSpanID"))
                 self.assertFalse(hasattr(record, "otelTraceID"))
-                self.assertFalse(hasattr(record, "otelServiceName"))
                 self.assertFalse(hasattr(record, "otelTraceSampled"))
 
     def test_no_op_tracer_provider(self):
         LoggingInstrumentor().uninstrument()
-        LoggingInstrumentor().instrument(tracer_provider=NoOpTracerProvider())
+        LoggingInstrumentor().instrument(
+            tracer_provider=NoOpTracerProvider(), set_logging_format=True
+        )
 
         with self.caplog.at_level(level=logging.INFO):
             logger = logging.getLogger("test logger")

@@ -112,7 +112,7 @@ def intercept_channel(channel, *interceptors):
       TypeError: If an interceptor derives from neither UnaryClientInterceptor
         nor StreamClientInterceptor.
     """
-    from . import _interceptor
+    from . import _interceptor  # noqa: PLC0415
 
     return _interceptor.intercept_channel(channel, *interceptors)
 

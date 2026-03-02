@@ -23,6 +23,10 @@ from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from opentelemetry.instrumentation.pika import utils
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.trace import (
     MessagingOperationValues,
     SpanAttributes,
@@ -115,11 +119,11 @@ class TestUtils(TestCase):
                     properties.correlation_id,
                 ),
                 mock.call(
-                    SpanAttributes.NET_PEER_NAME,
+                    NET_PEER_NAME,
                     channel.connection.params.host,
                 ),
                 mock.call(
-                    SpanAttributes.NET_PEER_PORT,
+                    NET_PEER_PORT,
                     channel.connection.params.port,
                 ),
             ],
@@ -167,11 +171,11 @@ class TestUtils(TestCase):
             any_order=True,
             calls=[
                 mock.call(
-                    SpanAttributes.NET_PEER_NAME,
+                    NET_PEER_NAME,
                     channel.connection._impl.params.host,
                 ),
                 mock.call(
-                    SpanAttributes.NET_PEER_PORT,
+                    NET_PEER_PORT,
                     channel.connection._impl.params.port,
                 ),
             ],
