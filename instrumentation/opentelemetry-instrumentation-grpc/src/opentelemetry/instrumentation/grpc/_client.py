@@ -60,6 +60,13 @@ def _make_future_done_callback(span, rpc_info):
             code = response_future.code()
             if code != grpc.StatusCode.OK:
                 rpc_info.error = code
+                span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
+                span.set_status(
+                    Status(
+                        status_code=StatusCode.ERROR,
+                        description=str(code),
+                    )
+                )
                 return
             response = response_future.result()
             rpc_info.response = response
