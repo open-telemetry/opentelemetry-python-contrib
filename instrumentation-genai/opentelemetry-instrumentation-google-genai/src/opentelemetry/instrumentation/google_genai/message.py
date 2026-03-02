@@ -23,6 +23,7 @@ from google.genai import types as genai_types
 
 from opentelemetry.util.genai.types import (
     FinishReason,
+    GenericPart,
     InputMessage,
     MessagePart,
     OutputMessage,
@@ -122,11 +123,15 @@ def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
         return Text(content=text)
 
     if data := part.inline_data:
-        return BlobPart(mime_type=data.mime_type or "", data=data.data or b"")
+        return GenericPart(
+            BlobPart(mime_type=data.mime_type or "", data=data.data or b"")
+        )
 
     if data := part.file_data:
-        return FileDataPart(
-            mime_type=data.mime_type or "", uri=data.file_uri or ""
+        return GenericPart(
+            FileDataPart(
+                mime_type=data.mime_type or "", uri=data.file_uri or ""
+            )
         )
 
     if call := part.function_call:

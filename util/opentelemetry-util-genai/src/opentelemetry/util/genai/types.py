@@ -17,7 +17,7 @@ from __future__ import annotations
 from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal, Type, Union
+from typing import Any, Literal, NewType, Type, Union
 
 from typing_extensions import TypeAlias
 
@@ -28,6 +28,12 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.trace import Span
 
 ContextToken: TypeAlias = Token[Context]
+
+# GenericPart is used for provider-specific message part types that don't match
+# the standard MessagePart types defined in semantic conventions. Wrap custom
+# types with GenericPart(value) to explicitly opt-in to non-standard types.
+# This will be removed in a future version when all instrumentations use core types.
+GenericPart = NewType("GenericPart", object)
 
 
 class ContentCapturingMode(Enum):
@@ -169,7 +175,7 @@ MessagePart = Union[
     File,
     Uri,
     Reasoning,
-    Any,
+    GenericPart,  # For provider-specific types; prefer standard types above
 ]
 
 

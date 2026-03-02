@@ -54,6 +54,7 @@ from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     FinishReason,
+    GenericPart,
     MessagePart,
     Text,
     ToolCallRequest,
@@ -354,13 +355,19 @@ def convert_content_to_message_parts(
         elif "inline_data" in part:
             part = part.inline_data
             parts.append(
-                BlobPart(mime_type=part.mime_type or "", data=part.data or b"")
+                GenericPart(
+                    BlobPart(
+                        mime_type=part.mime_type or "", data=part.data or b""
+                    )
+                )
             )
         elif "file_data" in part:
             part = part.file_data
             parts.append(
-                FileDataPart(
-                    mime_type=part.mime_type or "", uri=part.file_uri or ""
+                GenericPart(
+                    FileDataPart(
+                        mime_type=part.mime_type or "", uri=part.file_uri or ""
+                    )
                 )
             )
         else:
