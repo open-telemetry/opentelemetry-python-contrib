@@ -25,6 +25,7 @@ from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._labeler import clear_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
@@ -69,6 +70,7 @@ from .views import (
     excluded_noarg2,
     response_with_custom_header,
     route_span_name,
+    route_span_name_custom_attributes,
     traced,
     traced_template,
 )
@@ -95,6 +97,10 @@ urlpatterns = [
     re_path(r"^excluded_noarg/", excluded_noarg),
     re_path(r"^excluded_noarg2/", excluded_noarg2),
     re_path(r"^span_name/([0-9]{4})/$", route_span_name),
+    re_path(
+        r"^span_name_custom_attrs/([0-9]{4})/$",
+        route_span_name_custom_attributes,
+    ),
     path("", traced, name="empty"),
 ]
 _django_instrumentor = DjangoInstrumentor()
@@ -117,6 +123,7 @@ class TestMiddleware(WsgiTestBase):
 
     def setUp(self):
         super().setUp()
+        clear_labeler()
         setup_test_environment()
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -766,6 +773,61 @@ class TestMiddleware(WsgiTestBase):
                     )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
 
+    def test_wsgi_metrics_custom_attributes(self):
+        _expected_metric_names = [
+            "http.server.active_requests",
+            "http.server.duration",
+        ]
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "net.host.port": 80,
+            "http.status_code": 200,
+            "http.target": "^span_name_custom_attrs/([0-9]{4})/$",
+            "custom_attr": "test_value",
+            "endpoint_type": "test",
+            "feature_flag": True,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+        }
+        start = default_timer()
+        for _ in range(3):
+            response = Client().get("/span_name_custom_attrs/1234/")
+            self.assertEqual(response.status_code, 200)
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics = self.get_sorted_metrics(SCOPE)
+        number_data_point_seen = False
+        histrogram_data_point_seen = False
+
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histrogram_data_point_seen = True
+                    self.assertAlmostEqual(duration, point.sum, delta=100)
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                    self.assertEqual(point.value, 0)
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+
     # pylint: disable=too-many-locals
     def test_wsgi_metrics_new_semconv(self):
         _expected_metric_names = [
@@ -786,6 +848,62 @@ class TestMiddleware(WsgiTestBase):
         start = default_timer()
         for _ in range(3):
             response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+        duration_s = default_timer() - start
+        metrics = self.get_sorted_metrics(SCOPE)
+        number_data_point_seen = False
+        histrogram_data_point_seen = False
+
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histrogram_data_point_seen = True
+                    self.assertAlmostEqual(duration_s, point.sum, places=1)
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(
+                        point.explicit_bounds,
+                        HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                    )
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                    self.assertEqual(point.value, 0)
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+
+    # pylint: disable=too-many-locals
+    def test_wsgi_metrics_new_semconv_custom_attributes(self):
+        _expected_metric_names = [
+            "http.server.active_requests",
+            "http.server.request.duration",
+        ]
+        expected_duration_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
+            "http.route": "^span_name_custom_attrs/([0-9]{4})/$",
+            "custom_attr": "test_value",
+            "endpoint_type": "test",
+            "feature_flag": True,
+        }
+        expected_requests_count_attributes = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        start = default_timer()
+        for _ in range(3):
+            response = Client().get("/span_name_custom_attrs/1234/")
             self.assertEqual(response.status_code, 200)
         duration_s = default_timer() - start
         metrics = self.get_sorted_metrics(SCOPE)
@@ -854,6 +972,92 @@ class TestMiddleware(WsgiTestBase):
         start = default_timer()
         for _ in range(3):
             response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+        duration_s = max(default_timer() - start, 0)
+        duration = max(round(duration_s * 1000), 0)
+        metrics = self.get_sorted_metrics(SCOPE)
+        number_data_point_seen = False
+        histrogram_data_point_seen = False
+
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histrogram_data_point_seen = True
+                    if metric.name == "http.server.request.duration":
+                        self.assertAlmostEqual(duration_s, point.sum, places=1)
+                        self.assertDictEqual(
+                            expected_duration_attributes_new,
+                            dict(point.attributes),
+                        )
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                        )
+                    elif metric.name == "http.server.duration":
+                        self.assertAlmostEqual(duration, point.sum, delta=100)
+                        self.assertDictEqual(
+                            expected_duration_attributes_old,
+                            dict(point.attributes),
+                        )
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+                        )
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                    self.assertEqual(point.value, 0)
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+        self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-nested-blocks
+    def test_wsgi_metrics_both_semconv_custom_attributes(self):
+        _expected_metric_names = [
+            "http.server.duration",
+            "http.server.active_requests",
+            "http.server.request.duration",
+        ]
+        expected_duration_attributes_old = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "net.host.port": 80,
+            "http.status_code": 200,
+            "http.target": "^span_name_custom_attrs/([0-9]{4})/$",
+            "custom_attr": "test_value",
+            "endpoint_type": "test",
+            "feature_flag": True,
+        }
+        expected_duration_attributes_new = {
+            "http.request.method": "GET",
+            "url.scheme": "http",
+            "network.protocol.version": "1.1",
+            "http.response.status_code": 200,
+            "http.route": "^span_name_custom_attrs/([0-9]{4})/$",
+            "custom_attr": "test_value",
+            "endpoint_type": "test",
+            "feature_flag": True,
+        }
+        expected_requests_count_attributes = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "http.request.method": "GET",
+            "url.scheme": "http",
+        }
+        start = default_timer()
+        for _ in range(3):
+            response = Client().get("/span_name_custom_attrs/1234/")
             self.assertEqual(response.status_code, 200)
         duration_s = max(default_timer() - start, 0)
         duration = max(round(duration_s * 1000), 0)

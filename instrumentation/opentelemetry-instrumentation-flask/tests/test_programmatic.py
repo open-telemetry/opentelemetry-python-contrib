@@ -19,6 +19,10 @@ from unittest.mock import Mock, patch
 from flask import Flask, request
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._labeler import (
+    clear_labeler,
+    get_labeler,
+)
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -146,6 +150,22 @@ _recommended_metrics_attrs_both = {
     "http.server.request.duration": _server_duration_attrs_new_copy,
 }
 
+_custom_attributes = ["custom_attr", "endpoint_type", "feature_flag"]
+_server_duration_attrs_old_with_custom = _server_duration_attrs_old.copy()
+_server_duration_attrs_old_with_custom.append("http.target")
+_server_duration_attrs_old_with_custom.extend(_custom_attributes)
+_server_duration_attrs_new_with_custom = _server_duration_attrs_new.copy()
+_server_duration_attrs_new_with_custom.append("http.route")
+_server_duration_attrs_new_with_custom.extend(_custom_attributes)
+
+_recommended_metrics_attrs_old_with_custom = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old_with_custom,
+}
+_recommended_metrics_attrs_new_with_custom = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new_with_custom,
+}
 SCOPE = "opentelemetry.instrumentation.flask"
 
 
@@ -179,7 +199,23 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         )
         self.exclude_patch.start()
 
+        clear_labeler()
+
         self.app = Flask(__name__)
+
+        @self.app.route("/test_labeler")
+        def test_labeler_route():
+            labeler = get_labeler()
+            labeler.add("custom_attr", "test_value")
+            labeler.add_attributes(
+                {"endpoint_type": "test", "feature_flag": True}
+            )
+            return "OK"
+
+        @self.app.route("/no_labeler")
+        def test_no_labeler_route():
+            return "No labeler"
+
         FlaskInstrumentor().instrument_app(self.app)
 
         self._common_initialization()
@@ -521,6 +557,36 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    def test_flask_metrics_custom_attributes(self):
+        start = default_timer()
+        self.client.get("/test_labeler")
+        self.client.get("/test_labeler")
+        self.client.get("/test_labeler")
+        duration = max(round((default_timer() - start) * 1000), 0)
+        metrics = self.get_sorted_metrics(SCOPE)
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_old)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    self.assertAlmostEqual(duration, point.sum, delta=10)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_old_with_custom[
+                            metric.name
+                        ],
+                    )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
     def test_flask_metrics_new_semconv(self):
         start = default_timer()
         self.client.get("/hello/123")
@@ -550,6 +616,40 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     self.assertIn(
                         attr,
                         _recommended_metrics_attrs_new[metric.name],
+                    )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_flask_metrics_custom_attributes_new_semconv(self):
+        start = default_timer()
+        self.client.get("/test_labeler")
+        self.client.get("/test_labeler")
+        self.client.get("/test_labeler")
+        duration_s = max(default_timer() - start, 0)
+        metrics = self.get_sorted_metrics(SCOPE)
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_new)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    self.assertAlmostEqual(duration_s, point.sum, places=1)
+                    self.assertEqual(
+                        point.explicit_bounds,
+                        HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                    )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_new_with_custom[
+                            metric.name
+                        ],
                     )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 

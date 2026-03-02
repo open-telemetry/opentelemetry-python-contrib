@@ -22,6 +22,7 @@ from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._labeler import clear_labeler, get_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -125,6 +126,43 @@ _recommended_attrs_both.update(_recommended_attrs_new)
 _recommended_attrs_both["http.server.active_requests"].extend(
     _server_active_requests_count_attrs_old
 )
+
+_server_active_requests_count_attrs_both = (
+    _server_active_requests_count_attrs_old
+)
+_server_active_requests_count_attrs_both.extend(
+    _server_active_requests_count_attrs_new
+)
+
+_custom_attributes = ["custom_attr", "endpoint_type", "feature_flag"]
+_server_duration_attrs_old_with_custom = _server_duration_attrs_old.copy()
+_server_duration_attrs_old_with_custom.append("http.target")
+_server_duration_attrs_old_with_custom.extend(_custom_attributes)
+_server_duration_attrs_new_with_custom = _server_duration_attrs_new.copy()
+_server_duration_attrs_new_with_custom.append("http.route")
+_server_duration_attrs_new_with_custom.extend(_custom_attributes)
+
+_recommended_metrics_attrs_old_with_custom = {
+    "http.server.active_requests": _server_active_requests_count_attrs_old,
+    "http.server.duration": _server_duration_attrs_old_with_custom,
+    "http.server.request.size": _server_duration_attrs_old_with_custom,
+    "http.server.response.size": _server_duration_attrs_old_with_custom,
+}
+_recommended_metrics_attrs_new_with_custom = {
+    "http.server.active_requests": _server_active_requests_count_attrs_new,
+    "http.server.request.duration": _server_duration_attrs_new_with_custom,
+    "http.server.request.body.size": _server_duration_attrs_new_with_custom,
+    "http.server.response.body.size": _server_duration_attrs_new_with_custom,
+}
+_recommended_metrics_attrs_both_with_custom = {
+    "http.server.active_requests": _server_active_requests_count_attrs_both,
+    "http.server.duration": _server_duration_attrs_old_with_custom,
+    "http.server.request.duration": _server_duration_attrs_new_with_custom,
+    "http.server.request.size": _server_duration_attrs_old_with_custom,
+    "http.server.request.body.size": _server_duration_attrs_new_with_custom,
+    "http.server.response.size": _server_duration_attrs_old_with_custom,
+    "http.server.response.body.size": _server_duration_attrs_new_with_custom,
+}
 
 _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S = 0.01
 
@@ -272,6 +310,51 @@ async def background_execution_trailers_asgi(scope, receive, send):
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
+async def custom_attrs_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add_attributes({"endpoint_type": "test", "feature_flag": True})
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*"})
+
+
+async def override_attrs_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add("http.method", "POST")
+    labeler.add("http.request.method", "POST")
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*"})
+
+
 async def error_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
@@ -313,6 +396,7 @@ SCOPE = "opentelemetry.instrumentation.asgi"
 class TestAsgiApplication(AsyncAsgiTestBase):
     def setUp(self):
         super().setUp()
+        clear_labeler()
 
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -1483,6 +1567,78 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     self.assertIn(attr, _recommended_attrs_old[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    # pylint: disable=too-many-nested-blocks
+    async def test_asgi_metrics_custom_attributes(self):
+        app = otel_asgi.OpenTelemetryMiddleware(custom_attrs_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                if scope_metric.scope.name != SCOPE:
+                    continue
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_old)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            histogram_data_point_seen = True
+
+                            for attr in point.attributes:
+                                self.assertIn(
+                                    attr,
+                                    _recommended_metrics_attrs_old_with_custom[
+                                        metric.name
+                                    ],
+                                )
+
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+
+                            for attr in point.attributes:
+                                self.assertIn(
+                                    attr, _recommended_attrs_old[metric.name]
+                                )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    async def test_asgi_metrics_custom_attributes_skip_override_old_semconv(
+        self,
+    ):
+        app = otel_asgi.OpenTelemetryMiddleware(override_attrs_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        histogram_point_seen = False
+        for metric in metrics:
+            if metric.name != "http.server.duration":
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            histogram_point_seen = True
+
+        self.assertTrue(histogram_point_seen)
+
     async def test_asgi_metrics_new_semconv(self):
         # pylint: disable=too-many-nested-blocks
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
@@ -1518,6 +1674,75 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     self.assertIn(attr, _recommended_attrs_new[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
+    async def test_asgi_metrics_custom_attributes_skip_override_new_semconv(
+        self,
+    ):
+        app = otel_asgi.OpenTelemetryMiddleware(override_attrs_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        histogram_point_seen = False
+        for metric in metrics:
+            if metric.name != "http.server.request.duration":
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            histogram_point_seen = True
+
+        self.assertTrue(histogram_point_seen)
+
+    async def test_asgi_metrics_new_semconv_custom_attributes(self):
+        # pylint: disable=too-many-nested-blocks
+        app = otel_asgi.OpenTelemetryMiddleware(custom_attrs_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                if scope_metric.scope.name != SCOPE:
+                    continue
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_new)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_new_with_custom[
+                                    metric.name
+                                ],
+                            )
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
     async def test_asgi_metrics_both_semconv(self):
         # pylint: disable=too-many-nested-blocks
         app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
@@ -1551,6 +1776,52 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                     number_data_point_seen = True
                 for attr in point.attributes:
                     self.assertIn(attr, _recommended_attrs_both[metric.name])
+        self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    async def test_asgi_metrics_both_semconv_custom_attributes(self):
+        # pylint: disable=too-many-nested-blocks
+        app = otel_asgi.OpenTelemetryMiddleware(custom_attrs_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        number_data_point_seen = False
+        histogram_data_point_seen = False
+        self.assertTrue(len(metrics_list.resource_metrics) != 0)
+        for resource_metric in metrics_list.resource_metrics:
+            self.assertTrue(len(resource_metric.scope_metrics) != 0)
+            for scope_metric in resource_metric.scope_metrics:
+                if scope_metric.scope.name != SCOPE:
+                    continue
+                self.assertTrue(len(scope_metric.metrics) != 0)
+                for metric in scope_metric.metrics:
+                    self.assertIn(metric.name, _expected_metric_names_both)
+                    data_points = list(metric.data.data_points)
+                    self.assertEqual(len(data_points), 1)
+                    for point in data_points:
+                        if isinstance(point, HistogramDataPoint):
+                            self.assertEqual(point.count, 3)
+                            if metric.name == "http.server.request.duration":
+                                self.assertEqual(
+                                    point.explicit_bounds,
+                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                                )
+                            histogram_data_point_seen = True
+                        if isinstance(point, NumberDataPoint):
+                            number_data_point_seen = True
+                        for attr in point.attributes:
+                            self.assertIn(
+                                attr,
+                                _recommended_metrics_attrs_both_with_custom[
+                                    metric.name
+                                ],
+                            )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     async def test_asgi_metrics_exemplars_expected_old_semconv(self):
