@@ -27,7 +27,7 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
     Text,
-    ToolCall,
+    ToolCallRequest,
     ToolCallResponse,
 )
 
@@ -130,7 +130,7 @@ def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
         )
 
     if call := part.function_call:
-        return ToolCall(
+        return ToolCallRequest(
             id=call.id or tool_call_id(call.name),
             name=call.name or "",
             arguments=call.args,
