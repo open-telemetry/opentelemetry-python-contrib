@@ -17,6 +17,7 @@ import grpc.aio
 import wrapt
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import _report_new
 from opentelemetry.instrumentation.grpc._semconv import (
     _apply_grpc_status,
     _apply_server_error,
@@ -78,9 +79,16 @@ class OpenTelemetryAioServerInterceptor(
                 handler_call_details,
             )
 
-        next_handler = await continuation(handler_call_details)
-
-        return _wrap_rpc_behavior(next_handler, telemetry_wrapper)
+        handler = await continuation(handler_call_details)
+        if handler is None:
+            if _report_new(self._sem_conv_opt_in_mode):
+                async def _unimplemented(_request, context):
+                    self._handle_unimplemented(handler_call_details, context)
+                # TODO: I still don't like it, figure out how not to
+                # change server behavior.
+                return grpc.unary_unary_rpc_method_handler(_unimplemented)
+            return None
+        return _wrap_rpc_behavior(handler, telemetry_wrapper)
 
     def _intercept_aio_server_unary(self, behavior, handler_call_details):
         async def _unary_interceptor(request_or_iterator, context):

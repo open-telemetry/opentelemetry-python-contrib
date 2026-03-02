@@ -619,6 +619,98 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_error_streaming_mid_stream(self):
+        """Check that an error raised mid-stream ends the span with error status."""
+        rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+
+        class MidStreamErrorServicer(GRPCTestServerServicer):
+            # pylint:disable=C0103
+            async def ServerStreamingMethod(self, request, context):
+                yield Response(server_id=1, response_data="first")
+                await context.abort(grpc.StatusCode.INTERNAL, "mid-stream error")
+
+        testcase = self
+
+        async def request(channel):
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            with testcase.assertRaises(grpc.RpcError) as cm:
+                async for _ in channel.unary_stream(rpc_call)(msg):
+                    pass
+            testcase.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
+
+        await run_with_test_server(
+            request,
+            servicer=MidStreamErrorServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[0],
+            },
+        )
+
+    async def test_unimplemented(self):
+        """Check that calling an unimplemented method creates a span with UNIMPLEMENTED status."""
+        rpc_call = "/GRPCTestServer/SimpleMethod"
+
+        class UnimplementedServicer(GRPCTestServerServicer):
+            # pylint:disable=C0103
+            async def SimpleMethod(self, request, context):
+                await context.abort(
+                    grpc.StatusCode.UNIMPLEMENTED, "Method not implemented!"
+                )
+
+        testcase = self
+
+        async def request(channel):
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            with testcase.assertRaises(grpc.RpcError) as cm:
+                await channel.unary_unary(rpc_call)(msg)
+            testcase.assertEqual(
+                cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED
+            )
+
+        await run_with_test_server(
+            request,
+            servicer=UnimplementedServicer(),
+            interceptors=[aio_server_interceptor()],
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                NET_PEER_IP: "[::1]",
+                NET_PEER_NAME: "localhost",
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNIMPLEMENTED.value[0],
+            },
+        )
+
     async def test_non_list_interceptors(self):
         """Check that we handle non-list interceptors correctly."""
 

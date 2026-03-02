@@ -128,8 +128,8 @@ class OpenTelemetryClientInterceptor(
             code = call.code()
             details = call.details()
         else:
-            # Plain synchronous response: grpc.UnaryUnaryMultiCallable.__call__
-            # raises RpcError for any non-OK status, so reaching here means OK.
+            # Defensive fallback: should not be reached when using grpcext
+            # interceptors (which always use with_call), keeping it just in case
             response = result
             code = grpc.StatusCode.OK
             details = None

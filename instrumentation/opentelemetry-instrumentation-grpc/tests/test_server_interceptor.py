@@ -646,6 +646,93 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             },
         )
 
+    def test_error_streaming_mid_stream(self):
+        """Check that an error raised mid-stream ends the span with error status."""
+
+        class MidStreamErrorServicer(GRPCTestServerServicer):
+            # pylint:disable=C0103
+            def ServerStreamingMethod(self, request, context):
+                yield Response(server_id=1, response_data="first")
+                context.abort(grpc.StatusCode.INTERNAL, "mid-stream error")
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
+            add_GRPCTestServerServicer_to_server(MidStreamErrorServicer(), server)
+
+            rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(grpc.RpcError) as cm:
+                    list(channel.unary_stream(rpc_call)(msg))
+                self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[0],
+            },
+        )
+
+    def test_unimplemented(self):
+        """Check that calling an unimplemented method creates a span with UNIMPLEMENTED status."""
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
+            # The base servicer sets UNIMPLEMENTED and raises NotImplementedError
+            add_GRPCTestServerServicer_to_server(GRPCTestServerServicer(), server)
+
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(grpc.RpcError) as cm:
+                    channel.unary_unary(rpc_call)(msg)
+                self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNIMPLEMENTED.value[0],
+            },
+        )
+
     def test_non_list_interceptors(self):
         """Check that we handle non-list interceptors correctly."""
         grpc_server_instrumentor = GrpcInstrumentorServer()

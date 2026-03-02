@@ -36,22 +36,28 @@ async def client_streaming_method(stub, error=False):
     return await stub.ClientStreamingMethod(request_messages())
 
 
-def server_streaming_method(stub, error=False):
-    request = Request(
-        client_id=CLIENT_ID, request_data="error" if error else "data"
-    )
-
+def server_streaming_method(stub, error=False, error_mid_stream=False):
+    if error:
+        request_data = "error"
+    elif error_mid_stream:
+        request_data = "error_mid_stream"
+    else:
+        request_data = "data"
+    request = Request(client_id=CLIENT_ID, request_data=request_data)
     return stub.ServerStreamingMethod(request, metadata=(("key", "value"),))
 
 
-def bidirectional_streaming_method(stub, error=False):
-    # create a generator
+def bidirectional_streaming_method(stub, error=False, error_mid_stream=False):
+    if error:
+        request_data = "error"
+    elif error_mid_stream:
+        request_data = "error_mid_stream"
+    else:
+        request_data = "data"
+
     def request_messages():
         for _ in range(5):
-            request = Request(
-                client_id=CLIENT_ID, request_data="error" if error else "data"
-            )
-            yield request
+            yield Request(client_id=CLIENT_ID, request_data=request_data)
 
     return stub.BidirectionalStreamingMethod(
         request_messages(), metadata=(("key", "value"),)

@@ -43,6 +43,7 @@ from ._aio_client import (
 )
 from ._server import create_test_server
 from .protobuf import test_server_pb2_grpc  # pylint: disable=no-name-in-module
+from .protobuf.test_server_pb2 import Request
 
 
 class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
@@ -263,6 +264,71 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(
             span.status.status_code,
             trace.StatusCode.ERROR,
+        )
+
+    async def test_error_unary_stream_mid_stream(self):
+        with self.assertRaises(grpc.RpcError):
+            async for _ in server_streaming_method(
+                self._stub, error_mid_stream=True
+            ):
+                pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+            },
+        )
+
+    async def test_error_stream_stream_mid_stream(self):
+        with self.assertRaises(grpc.RpcError):
+            async for _ in bidirectional_streaming_method(
+                self._stub, error_mid_stream=True
+            ):
+                pass
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "BidirectionalStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+            },
+        )
+
+    async def test_unimplemented(self):
+        """Check that calling an unregistered method creates a span with UNIMPLEMENTED status."""
+        request = Request(client_id=1, request_data="data")
+        with self.assertRaises(grpc.RpcError) as cm:
+            await self._channel.unary_unary(
+                "/GRPCTestServer/UnimplementedMethod"
+            )(request.SerializeToString())
+        self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "UnimplementedMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNIMPLEMENTED.value[0],
+            },
         )
 
     # pylint:disable=no-self-use

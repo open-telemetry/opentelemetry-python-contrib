@@ -32,8 +32,10 @@ from opentelemetry.context import attach, detach
 from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
     _report_old,
+    _report_new,
 )
 from opentelemetry.instrumentation.grpc._semconv import (
+    RPC_METHOD_ORIGINAL,
     _apply_grpc_status,
     _apply_server_error,
     _set_rpc_method,
@@ -236,6 +238,27 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             set_status_on_exception=set_status_on_exception,
         )
 
+    def _handle_unimplemented(self, handler_call_details, context):
+        with self._set_remote_context(context):
+            attributes = {}
+            _set_rpc_system(attributes, "grpc", self._sem_conv_opt_in_mode)
+            attributes["rpc.method"] = "_OTHER"
+            if handler_call_details.method:
+                attributes[RPC_METHOD_ORIGINAL] = handler_call_details.method
+            with self._tracer.start_as_current_span(
+                name="_OTHER",
+                kind=trace.SpanKind.SERVER,
+                attributes=attributes,
+            ) as span:
+                self._set_peer_attributes(span, context)
+                _apply_grpc_status(
+                    span,
+                    grpc.StatusCode.UNIMPLEMENTED,
+                    trace.SpanKind.SERVER,
+                    self._sem_conv_opt_in_mode,
+                )
+                context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+
     def _set_peer_attributes(self, span, context):
         # Split up the peer to keep with how other telemetry sources
         # do it.  This looks like:
@@ -304,9 +327,14 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
             return telemetry_interceptor
 
-        return _wrap_rpc_behavior(
-            continuation(handler_call_details), telemetry_wrapper
-        )
+        handler = continuation(handler_call_details)
+        if handler is None:
+            if _report_new(self._sem_conv_opt_in_mode):
+                def _unimplemented(_request, context):
+                    self._handle_unimplemented(handler_call_details, context)
+                return grpc.unary_unary_rpc_method_handler(_unimplemented)
+            return None
+        return _wrap_rpc_behavior(handler, telemetry_wrapper)
 
     # Handle streaming responses separately - we have to do this
     # to return a *new* generator or various upstream things

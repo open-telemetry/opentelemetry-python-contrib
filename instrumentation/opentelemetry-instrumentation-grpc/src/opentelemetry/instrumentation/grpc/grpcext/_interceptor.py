@@ -165,7 +165,7 @@ class _InterceptorStreamUnaryMultiCallable(grpc.StreamUnaryMultiCallable):
         compression=None,
     ):
         def invoker(request_iterator, metadata):
-            return self._base_callable(
+            return self._base_callable.with_call(
                 request_iterator,
                 timeout,
                 metadata,
@@ -175,9 +175,10 @@ class _InterceptorStreamUnaryMultiCallable(grpc.StreamUnaryMultiCallable):
             )
 
         client_info = _StreamClientInfo(self._method, True, False, timeout)
-        return self._interceptor.intercept_stream(
+        result = self._interceptor.intercept_stream(
             request_iterator, metadata, client_info, invoker
         )
+        return result[0] if isinstance(result, tuple) else result
 
     def with_call(
         self,

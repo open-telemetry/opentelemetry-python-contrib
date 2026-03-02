@@ -58,6 +58,7 @@ from opentelemetry.util.types import AttributeValue
 # are still a work in progress.
 RPC_SYSTEM_NAME = "rpc.system.name"
 RPC_RESPONSE_STATUS_CODE = "rpc.response.status_code"
+RPC_METHOD_ORIGINAL = "rpc.method_original"
 
 # gRPC status codes that are considered errors on the server side under the
 # new stable RPC conventions. See:
