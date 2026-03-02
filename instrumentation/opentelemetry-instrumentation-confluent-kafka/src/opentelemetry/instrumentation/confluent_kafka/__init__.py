@@ -277,6 +277,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        # TODO: should probably wrap methods directly instead of going through
+        # these classes. Hopefully it'll make the patching work if called after
+        # the original classes have already been imported,  #4270
         self._original_kafka_producer = confluent_kafka.Producer
         self._original_kafka_consumer = confluent_kafka.Consumer
 
