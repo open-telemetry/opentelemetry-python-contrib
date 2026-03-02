@@ -761,4 +761,5 @@ def _parse_services(excluded_services: str) -> List[str]:
 def _get_rpc_schema_url(mode: _StabilityMode) -> str:
     if mode is _StabilityMode.DEFAULT:
         return "https://opentelemetry.io/schemas/1.11.0"
-    return Schemas.V1_40_0.value
+    # TODO: update to 1.40.0
+    return Schemas.V1_38_0.value
