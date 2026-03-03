@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
 - `opentelemetry-instrumentation-pyramid`: pass request attributes at span creation
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
+- `opentelemetry-instrumentation-logging`: Move there the SDK LoggingHandler
+  ([#4210](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4210))
 
 ### Fixed
 
@@ -127,6 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4258))
 - `opentelemetry-instrumentation-threading`: fix AttributeError when Thread is run without starting
   ([#4246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4246))
+- `opentelemetry-instrumentation-psycopg2`: Fix AttributeError by using instrumented connections weakref, instead of mutating connection object
+  ([#4257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4257))
 
 ### Breaking changes
 
