@@ -15,6 +15,7 @@ from agents.tracing import (
     AgentSpanData,
     FunctionSpanData,
     GenerationSpanData,
+    MCPListToolsSpanData,
     ResponseSpanData,
 )
 
@@ -550,3 +551,45 @@ def test_chat_span_renamed_with_model(processor_setup):
 
     span_names = {span.name for span in exporter.get_finished_spans()}
     assert "chat gpt-4o" in span_names
+
+
+def test_mcp_list_tools_span(processor_setup):
+    """MCPListToolsSpanData should produce mcp.list_tools spans, not unknown."""
+    processor, exporter = processor_setup
+
+    trace = FakeTrace(
+        name="mcp-workflow",
+        trace_id="trace-mcp",
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:05Z",
+    )
+    processor.on_trace_start(trace)
+
+    mcp_data = MCPListToolsSpanData(
+        server="Time", result=["get_time", "convert_timezone"]
+    )
+    mcp_span = FakeSpan(
+        trace_id="trace-mcp",
+        span_id="span-mcp-1",
+        span_data=mcp_data,
+        started_at="2025-01-01T00:00:01Z",
+        ended_at="2025-01-01T00:00:02Z",
+    )
+    processor.on_span_start(mcp_span)
+    processor.on_span_end(mcp_span)
+    processor.on_trace_end(trace)
+
+    spans = exporter.get_finished_spans()
+    # Find the MCP list tools span by operation name attribute
+    mcp_otel_span = [
+        s
+        for s in spans
+        if s.attributes.get("gen_ai.operation.name") == "mcp.list_tools"
+    ]
+    assert mcp_otel_span, (
+        f"No MCP span found; spans: {[(s.name, dict(s.attributes)) for s in spans]}"
+    )
+    s = mcp_otel_span[0]
+    assert "unknown" not in s.name
+    assert s.attributes.get("mcp.server.name") == "Time"
+    assert s.kind == SpanKind.CLIENT

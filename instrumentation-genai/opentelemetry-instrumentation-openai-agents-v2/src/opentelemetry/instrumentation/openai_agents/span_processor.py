@@ -34,6 +34,7 @@ try:
         GenerationSpanData,
         GuardrailSpanData,
         HandoffSpanData,
+        MCPListToolsSpanData,
         ResponseSpanData,
         SpeechSpanData,
         TranscriptionSpanData,
@@ -53,6 +54,7 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     TranscriptionSpanData = getattr(
         tracing_module, "TranscriptionSpanData", Any
     )  # type: ignore[assignment]
+    MCPListToolsSpanData = getattr(tracing_module, "MCPListToolsSpanData", Any)  # type: ignore[assignment]
 
 from opentelemetry.context import attach, detach
 from opentelemetry.metrics import Histogram, get_meter
@@ -1274,6 +1276,8 @@ class GenAISemanticProcessor(TracingProcessor):
             return SpanKind.CLIENT
         if _is_instance_of(span_data, (GuardrailSpanData, HandoffSpanData)):
             return SpanKind.INTERNAL  # Agent operations are internal
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return SpanKind.CLIENT  # MCP server interaction is a client call
         return SpanKind.INTERNAL
 
     def on_trace_start(self, trace: Trace) -> None:
@@ -1543,6 +1547,12 @@ class GenAISemanticProcessor(TracingProcessor):
             return GenAIOperationName.GUARDRAIL
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return "mcp.list_tools"
+        # Generic fallback: use span_data.type if available
+        span_type = getattr(span_data, "type", None)
+        if isinstance(span_type, str) and span_type:
+            return span_type
         return "unknown"
 
     def _extract_genai_attributes(
@@ -1603,6 +1613,10 @@ class GenAISemanticProcessor(TracingProcessor):
             yield from self._get_attributes_from_guardrail_span_data(span_data)
         elif _is_instance_of(span_data, HandoffSpanData):
             yield from self._get_attributes_from_handoff_span_data(span_data)
+        elif _is_instance_of(span_data, MCPListToolsSpanData):
+            yield from self._get_attributes_from_mcp_list_tools_span_data(
+                span_data
+            )
 
     def _get_attributes_from_generation_span_data(
         self, span_data: GenerationSpanData, payload: ContentPayload
@@ -2155,6 +2169,20 @@ class GenAISemanticProcessor(TracingProcessor):
             GEN_AI_OUTPUT_TYPE,
             normalize_output_type(self._infer_output_type(span_data)),
         )
+
+    def _get_attributes_from_mcp_list_tools_span_data(
+        self, span_data: Any
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from MCP list tools span data."""
+        yield GEN_AI_OPERATION_NAME, "mcp.list_tools"
+        server = getattr(span_data, "server", None)
+        if isinstance(server, str) and server:
+            yield "mcp.server.name", server
+        result = getattr(span_data, "result", None)
+        if isinstance(result, (list, tuple)) and result:
+            yield "mcp.tools.count", len(result)
+            if self.include_sensitive_data:
+                yield "mcp.tools.list", gen_ai_json_dumps(result)
 
     def _cleanup_spans_for_trace(self, trace_id: str) -> None:
         """Clean up spans for a trace to prevent memory leaks."""
