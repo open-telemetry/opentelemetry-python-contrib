@@ -6,6 +6,56 @@ import logging
 from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Generic, TypeVar
 
+try:
+    from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
+        ResponseCompletedEvent,
+    )
+    from openai.types.responses import (  # pylint: disable=no-name-in-module
+        ResponseCreatedEvent,
+        ResponseErrorEvent,
+        ResponseFailedEvent,
+        ResponseIncompleteEvent,
+        ResponseInProgressEvent,
+    )
+except ImportError:  # pragma: no cover
+    ResponseCompletedEvent = None
+    ResponseCreatedEvent = None
+    ResponseErrorEvent = None
+    ResponseFailedEvent = None
+    ResponseIncompleteEvent = None
+    ResponseInProgressEvent = None
+
+if (
+    ResponseCreatedEvent is not None
+    and ResponseInProgressEvent is not None
+    and ResponseFailedEvent is not None
+    and ResponseIncompleteEvent is not None
+    and ResponseCompletedEvent is not None
+):
+    _RESPONSE_EVENTS_WITH_RESPONSE = (
+        ResponseCreatedEvent,
+        ResponseInProgressEvent,
+        ResponseFailedEvent,
+        ResponseIncompleteEvent,
+        ResponseCompletedEvent,
+    )
+else:
+    _RESPONSE_EVENTS_WITH_RESPONSE = ()
+
+try:
+    from opentelemetry.instrumentation.openai_v2.response_extractors import (  # pylint: disable=no-name-in-module
+        _set_invocation_response_attributes,
+    )
+except ImportError:  # pragma: no cover
+    _set_invocation_response_attributes = None
+
+try:
+    from opentelemetry.util.genai.types import (  # pylint: disable=no-name-in-module
+        Error,
+    )
+except ImportError:  # pragma: no cover
+    Error = None
+
 if TYPE_CHECKING:
     from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
         ResponseStreamEvent,
@@ -35,10 +85,8 @@ def _set_response_attributes(
     result: "ParsedResponse[TextFormatT] | Response | None",
     capture_content: bool,
 ) -> None:
-    from .response_extractors import (  # pylint: disable=import-outside-toplevel
-        _set_invocation_response_attributes,
-    )
-
+    if _set_invocation_response_attributes is None:
+        return
     _set_invocation_response_attributes(invocation, result, capture_content)
 
 
@@ -159,11 +207,9 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]) -> None:
-        from opentelemetry.util.genai.types import (  # pylint: disable=import-outside-toplevel,no-name-in-module
-            Error,
-        )
-
         if self._finalized:
+            return
+        if Error is None:
             return
         self._safe_instrumentation(
             lambda: self.handler.fail_llm(
@@ -187,30 +233,10 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             )
 
     def process_event(self, event: "ResponseStreamEvent[TextFormatT]") -> None:
-        from openai.lib.streaming.responses._events import (  # pylint: disable=import-outside-toplevel,no-name-in-module
-            ResponseCompletedEvent,
-        )
-        from openai.types.responses import (  # pylint: disable=import-outside-toplevel,no-name-in-module
-            ResponseCreatedEvent,
-            ResponseErrorEvent,
-            ResponseFailedEvent,
-            ResponseInProgressEvent,
-            ResponseIncompleteEvent,
-        )
-
         event_type = event.type
         response: "ParsedResponse[TextFormatT] | Response | None" = None
 
-        if isinstance(
-            event,
-            (
-                ResponseCreatedEvent,
-                ResponseInProgressEvent,
-                ResponseFailedEvent,
-                ResponseIncompleteEvent,
-                ResponseCompletedEvent,
-            ),
-        ):
+        if isinstance(event, _RESPONSE_EVENTS_WITH_RESPONSE):
             response = event.response
 
         if response and not self.invocation.request_model:
@@ -218,11 +244,19 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             if model:
                 self.invocation.request_model = model
 
-        if isinstance(event, ResponseCompletedEvent):
+        if ResponseCompletedEvent is not None and isinstance(
+            event, ResponseCompletedEvent
+        ):
             self._stop(response)
             return
 
-        if isinstance(event, (ResponseFailedEvent, ResponseIncompleteEvent)):
+        if (
+            ResponseFailedEvent is not None
+            and ResponseIncompleteEvent is not None
+            and isinstance(
+                event, (ResponseFailedEvent, ResponseIncompleteEvent)
+            )
+        ):
             self._safe_instrumentation(
                 lambda: _set_response_attributes(
                     self.invocation, response, self._capture_content
@@ -232,7 +266,9 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             self._fail(event_type, RuntimeError)
             return
 
-        if isinstance(event, ResponseErrorEvent):
+        if ResponseErrorEvent is not None and isinstance(
+            event, ResponseErrorEvent
+        ):
             error_type = event.code or "response.error"
             message = event.message or error_type
             self._fail(message, RuntimeError)
