@@ -14,6 +14,7 @@
 
 """Patching functions for Anthropic instrumentation."""
 
+import logging
 from typing import TYPE_CHECKING, Any, Callable, Union, cast
 
 from anthropic._streaming import Stream as AnthropicStream
@@ -42,13 +43,19 @@ if TYPE_CHECKING:
     from anthropic.types import RawMessageStreamEvent
 
 
+_logger = logging.getLogger(__name__)
 ANTHROPIC = "anthropic"
 
 
 def messages_create(
     handler: TelemetryHandler,
 ) -> Callable[
-    ..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]"]
+    ...,
+    Union[
+        "AnthropicMessage",
+        "AnthropicStream[RawMessageStreamEvent]",
+        MessagesStreamWrapper,
+    ],
 ]:
     """Wrap the `create` method of the `Messages` class to trace it."""
     capture_content = should_capture_content()
@@ -64,7 +71,11 @@ def messages_create(
         instance: "Messages",
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
-    ) -> Union["AnthropicMessage", MessagesStreamWrapper]:
+    ) -> Union[
+        "AnthropicMessage",
+        "AnthropicStream[RawMessageStreamEvent]",
+        MessagesStreamWrapper,
+    ]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
         request_model_attribute = attributes.get(
@@ -88,23 +99,13 @@ def messages_create(
             attributes=attributes,
         )
 
-        is_streaming = params.stream is True
-
         # Use manual lifecycle management for both streaming and non-streaming
         handler.start_llm(invocation)
         try:
             result = wrapped(*args, **kwargs)
-            if is_streaming:
-                if not isinstance(result, AnthropicStream):
-                    raise TypeError(
-                        "Expected anthropic Stream when stream=True"
-                    )
+            if isinstance(result, AnthropicStream):
                 return MessagesStreamWrapper(
                     result, handler, invocation, capture_content
-                )
-            if not isinstance(result, AnthropicMessage):
-                raise TypeError(
-                    "Expected anthropic Message when stream is disabled"
                 )
 
             wrapper = MessageWrapper(result, capture_content)
@@ -123,6 +124,7 @@ def messages_create(
             Union[
                 "AnthropicMessage",
                 "AnthropicStream[RawMessageStreamEvent]",
+                MessagesStreamWrapper,
             ],
         ],
         traced_method,

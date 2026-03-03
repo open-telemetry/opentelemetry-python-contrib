@@ -19,7 +19,7 @@ from __future__ import annotations
 import base64
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from anthropic.types import (
     InputJSONDelta,
@@ -103,7 +103,7 @@ def _extract_base64_blob(source: object, modality: str) -> Blob | None:
 
 
 def _convert_dict_block_to_part(
-    block: Mapping[str, object],
+    block: Mapping[str, Any],
 ) -> MessagePart | None:
     """Convert a request-param content block (TypedDict/dict) to a MessagePart."""
     block_type = block.get("type")

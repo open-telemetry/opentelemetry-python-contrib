@@ -57,7 +57,7 @@ interactions:
       string: |-
         {
           "model": "claude-sonnet-4-20250514",
-          "id": "msg_016rZmFAqBwocMJPynTw59VW",
+          "id": "msg_01QnfZn8pVXgBGu2wtj3EZKJ",
           "type": "message",
           "role": "assistant",
           "content": [
@@ -83,7 +83,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9d43407bb986c34e-EWR
+      - 9d656857bc9cc794-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -91,7 +91,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Thu, 26 Feb 2026 23:34:14 GMT
+      - Tue, 03 Mar 2026 03:03:22 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -103,35 +103,37 @@ interactions:
       anthropic-ratelimit-input-tokens-remaining:
       - '450000'
       anthropic-ratelimit-input-tokens-reset:
-      - '2026-02-26T23:34:14Z'
+      - '2026-03-03T03:03:22Z'
       anthropic-ratelimit-output-tokens-limit:
       - '90000'
       anthropic-ratelimit-output-tokens-remaining:
       - '90000'
       anthropic-ratelimit-output-tokens-reset:
-      - '2026-02-26T23:34:14Z'
+      - '2026-03-03T03:03:22Z'
       anthropic-ratelimit-requests-limit:
       - '1000'
       anthropic-ratelimit-requests-remaining:
       - '999'
       anthropic-ratelimit-requests-reset:
-      - '2026-02-26T23:34:13Z'
+      - '2026-03-03T03:03:21Z'
       anthropic-ratelimit-tokens-limit:
       - '540000'
       anthropic-ratelimit-tokens-remaining:
       - '540000'
       anthropic-ratelimit-tokens-reset:
-      - '2026-02-26T23:34:14Z'
+      - '2026-03-03T03:03:22Z'
       cf-cache-status:
       - DYNAMIC
       content-length:
       - '441'
       request-id:
-      - req_011CYXZCJxUVNdTSnXuC8xvk
+      - req_011CYfQNyftvAdchCgU7PwhE
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
+      vary:
+      - Accept-Encoding
       x-envoy-upstream-service-time:
-      - '1182'
+      - '911'
     status:
       code: 200
       message: OK
