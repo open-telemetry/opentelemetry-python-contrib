@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
 - `opentelemetry-instrumentation-pyramid`: pass request attributes at span creation
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
+- `opentelemetry-instrumentation-logging`: Move there the SDK LoggingHandler
+  ([#4210](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4210))
 
 ### Fixed
 
