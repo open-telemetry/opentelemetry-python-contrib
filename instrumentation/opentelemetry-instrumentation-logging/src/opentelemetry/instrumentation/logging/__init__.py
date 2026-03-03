@@ -229,7 +229,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`"
             )
         elif kwargs.get(
-            "enable_log_auto_istrumentation",
+            "enable_log_auto_instrumentation",
             environ.get(OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION, "true")
             .strip()
             .lower()

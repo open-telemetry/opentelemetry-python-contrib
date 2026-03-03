@@ -17,16 +17,16 @@ DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(l
 
 _MODULE_DOC = """
 The OpenTelemetry ``logging`` instrumentation automatically instruments Python logging
-system with an handler to convert log messages into OpenTelemetry logs.
-You can disable this setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``false``.
+with a handler to convert Python log messages into OpenTelemetry logs and export them.
+You can disable this by setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``false``.
 
 .. warning::
 
-    The code in this instrumentation is based from code available in the ``opentelemetry-sdk`` that is now deprecated.
-    Therefore if you have opentelemetry-instrumentation-logging installed you don't need to set
+    This package provides a logging handler to replace the deprecated one in ``opentelemetry-sdk``.
+    Therefore if you have ``opentelemetry-instrumentation-logging`` installed, you don't need to set the
     ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`` environment variable to ``true``.
-    This instrumentation does not add by the default ``code`` namespace attributes, can be added back using the
-    ``OTEL_PYTHON_CODE_ATTRIBUTES`` environment variable.
+    By default, this instrumentation does not add ``code`` namespace attributes as the SDK's logger does, but adding them can be enabled by using the
+    ``OTEL_PYTHON_LOG_CODE_ATTRIBUTES`` environment variable.
 
 Enable trace context injection
 ------------------------------
@@ -59,14 +59,13 @@ Environment variables
 
 .. envvar:: OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION
 
-This env var must be set to ``false`` in order to disable automatic instrumentation of the Python logging module with a handler
-that will convert log message into OpenTelemetry logs.
+Set this env var to ``false`` to skip installing the logging handler provided by this package.
 
 The default value is ``true``.
 
 .. envvar:: OTEL_PYTHON_CODE_ATTRIBUTES
 
-This env var can be used to fill ``code`` attributes into OpenTelemetry logs referencing the Python code that is emitting log messages.
+Set this env var to ``true`` to add ``code`` attributes (``code.file.path``, ``code.function.name``, ``code.line.number``) to OpenTelemetry logs, referencing the Python source location that emitted each log message.
 
 The default value is ``false``.
 
