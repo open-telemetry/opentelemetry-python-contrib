@@ -30,7 +30,7 @@ dependencies = [
   "opentelemetry-instrumentation == 0.61b0.dev",
   "opentelemetry-semantic-conventions == 0.61b0.dev",
   "packaging >= 21.0",
-  "wrapt >= 1.11.2",
+  "wrapt >= 1.11.2, < 2.2.0",
 ]
 
 [project.optional-dependencies]
