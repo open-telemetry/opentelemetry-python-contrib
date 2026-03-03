@@ -550,3 +550,132 @@ def test_chat_span_renamed_with_model(processor_setup):
 
     span_names = {span.name for span in exporter.get_finished_spans()}
     assert "chat gpt-4o" in span_names
+
+
+def test_output_messages_tool_call_and_message(processor_setup):
+    """ResponseFunctionToolCall items are emitted as tool_call, not text."""
+    processor, exporter = processor_setup
+
+    class _ToolCall:
+        type = "function_call"
+        call_id = "call_abc123"
+        name = "get_weather"
+        arguments = '{"city": "Barcelona"}'
+        id = "fc_xyz"
+        status = "completed"
+
+    class _TextContent:
+        type = "output_text"
+        text = "The weather is sunny."
+
+    class _OutputMessage:
+        type = "message"
+        content = [_TextContent()]
+        status = "completed"
+
+    class _Usage:
+        input_tokens = 10
+        prompt_tokens = 10
+        output_tokens = 5
+        completion_tokens = 5
+        total_tokens = 15
+
+    class _Response:
+        id = "resp-tool"
+        model = "gpt-4o"
+        usage = _Usage()
+        output = [_ToolCall(), _OutputMessage()]
+        output_text = None
+
+    trace = FakeTrace(
+        name="tool-trace",
+        trace_id="trace-tool",
+        started_at="2024-01-01T00:00:00Z",
+        ended_at="2024-01-01T00:00:02Z",
+    )
+    processor.on_trace_start(trace)
+
+    response_data = ResponseSpanData(response=_Response())
+    span = FakeSpan(
+        trace_id="trace-tool",
+        span_id="span-tool",
+        span_data=response_data,
+        started_at="2024-01-01T00:00:00Z",
+        ended_at="2024-01-01T00:00:01Z",
+    )
+    processor.on_span_start(span)
+    processor.on_span_end(span)
+    processor.on_trace_end(trace)
+
+    finished = exporter.get_finished_spans()
+    response_span = next(s for s in finished if "chat" in s.name)
+    out_messages = json.loads(
+        response_span.attributes[sp.GEN_AI_OUTPUT_MESSAGES]
+    )
+    assert len(out_messages) == 1
+    msg = out_messages[0]
+    assert msg["role"] == "assistant"
+    parts = msg["parts"]
+    # Should have a tool_call part and a text part
+    tool_parts = [p for p in parts if p.get("type") == "tool_call"]
+    text_parts = [p for p in parts if p.get("type") == "text"]
+    assert len(tool_parts) == 1
+    assert tool_parts[0]["id"] == "call_abc123"
+    assert tool_parts[0]["name"] == "get_weather"
+    assert tool_parts[0]["arguments"] == '{"city": "Barcelona"}'
+    assert len(text_parts) == 1
+    assert text_parts[0]["content"] == "The weather is sunny."
+
+
+def test_output_messages_tool_call_redacted(processor_setup):
+    """Tool call arguments are redacted when sensitive data is off."""
+    processor, exporter = processor_setup
+    processor.include_sensitive_data = False
+
+    class _ToolCall:
+        type = "function_call"
+        call_id = "call_red"
+        name = "get_weather"
+        arguments = '{"city": "Secret"}'
+        id = "fc_red"
+        status = "completed"
+
+    class _Usage:
+        input_tokens = 10
+        prompt_tokens = 10
+        output_tokens = 5
+        completion_tokens = 5
+        total_tokens = 15
+
+    class _Response:
+        id = "resp-red"
+        model = "gpt-4o"
+        usage = _Usage()
+        output = [_ToolCall()]
+        output_text = None
+
+    trace = FakeTrace(
+        name="red-trace",
+        trace_id="trace-red",
+        started_at="2024-01-01T00:00:00Z",
+        ended_at="2024-01-01T00:00:02Z",
+    )
+    processor.on_trace_start(trace)
+
+    response_data = ResponseSpanData(response=_Response())
+    span = FakeSpan(
+        trace_id="trace-red",
+        span_id="span-red",
+        span_data=response_data,
+        started_at="2024-01-01T00:00:00Z",
+        ended_at="2024-01-01T00:00:01Z",
+    )
+    processor.on_span_start(span)
+    processor.on_span_end(span)
+    processor.on_trace_end(trace)
+
+    finished = exporter.get_finished_spans()
+    response_span = next(s for s in finished if "chat" in s.name)
+    # When sensitive data is off, output messages should not be captured
+    # (the _build_content_payload returns empty payload)
+    assert sp.GEN_AI_OUTPUT_MESSAGES not in response_span.attributes

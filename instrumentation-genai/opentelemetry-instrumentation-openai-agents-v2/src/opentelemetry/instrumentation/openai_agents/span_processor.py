@@ -905,7 +905,58 @@ class GenAISemanticProcessor(TracingProcessor):
                 output = getattr(response, "output", None)
                 if isinstance(output, Sequence):
                     for item in output:
-                        # ResponseOutputMessage may have a string representation
+                        item_type = getattr(item, "type", None)
+
+                        # Tool call items (ResponseFunctionToolCall)
+                        if item_type == "function_call" or (
+                            hasattr(item, "arguments")
+                            and hasattr(item, "call_id")
+                            and hasattr(item, "name")
+                        ):
+                            p: dict[str, Any] = {"type": "tool_call"}
+                            p["id"] = getattr(
+                                item, "call_id", None
+                            ) or getattr(item, "id", None)
+                            p["name"] = getattr(item, "name", None)
+                            p["arguments"] = (
+                                "readacted"
+                                if not self.include_sensitive_data
+                                else getattr(item, "arguments", None)
+                            )
+                            parts.append(p)
+                            if not finish_reason:
+                                finish_reason = "tool_calls"
+                            continue
+
+                        # Message items (ResponseOutputMessage)
+                        content_attr = getattr(item, "content", None)
+                        if item_type == "message" or isinstance(
+                            content_attr, (list, tuple)
+                        ):
+                            if isinstance(content_attr, (list, tuple)):
+                                for sub in content_attr:
+                                    txt = getattr(
+                                        sub, "text", None
+                                    ) or getattr(sub, "content", None)
+                                    if isinstance(txt, str) and txt:
+                                        parts.append(
+                                            {
+                                                "type": "text",
+                                                "content": (
+                                                    "readacted"
+                                                    if not self.include_sensitive_data
+                                                    else txt
+                                                ),
+                                            }
+                                        )
+                            fr = getattr(
+                                item, "finish_reason", None
+                            ) or getattr(item, "status", None)
+                            if isinstance(fr, str) and not finish_reason:
+                                finish_reason = fr
+                            continue
+
+                        # Fallback for plain string content
                         txt = getattr(item, "content", None)
                         if isinstance(txt, str) and txt:
                             parts.append(
@@ -919,7 +970,6 @@ class GenAISemanticProcessor(TracingProcessor):
                                 }
                             )
                         else:
-                            # Fallback: stringified
                             parts.append(
                                 {
                                     "type": "text",
