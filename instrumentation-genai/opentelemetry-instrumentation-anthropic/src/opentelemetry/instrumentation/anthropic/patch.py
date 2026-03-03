@@ -25,7 +25,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import Error, LLMInvocation
-from opentelemetry.util.genai.utils import should_capture_content
+from opentelemetry.util.genai.utils import should_capture_content_on_spans_in_experimental_mode
 
 from .messages_extractors import (
     extract_params,
@@ -58,7 +58,7 @@ def messages_create(
     ],
 ]:
     """Wrap the `create` method of the `Messages` class to trace it."""
-    capture_content = should_capture_content()
+    capture_content = should_capture_content_on_spans_in_experimental_mode()
 
     def traced_method(
         wrapped: Callable[

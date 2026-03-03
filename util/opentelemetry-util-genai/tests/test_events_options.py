@@ -25,7 +25,7 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.utils import (
-    should_capture_content,
+    should_capture_content_on_spans_in_experimental_mode,
     should_emit_event,
 )
 
@@ -215,37 +215,37 @@ class TestShouldCaptureContent(unittest.TestCase):
         content_capturing="SPAN_AND_EVENT",
         emit_event="true",
     )
-    def test_should_capture_content_false_when_not_experimental(
+    def test_should_capture_content_on_spans_in_experimental_mode_false_when_not_experimental(
         self,
     ):  # pylint: disable=no-self-use
-        assert should_capture_content() is False
+        assert should_capture_content_on_spans_in_experimental_mode() is False
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="NO_CONTENT",
         emit_event="true",
     )
-    def test_should_capture_content_false_when_no_content(
+    def test_should_capture_content_on_spans_in_experimental_mode_false_when_no_content(
         self,
     ):  # pylint: disable=no-self-use
-        assert should_capture_content() is False
+        assert should_capture_content_on_spans_in_experimental_mode() is False
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="EVENT_ONLY",
         emit_event="false",
     )
-    def test_should_capture_content_false_when_event_only_but_event_disabled(
+    def test_should_capture_content_on_spans_in_experimental_mode_false_when_event_only_but_event_disabled(
         self,
     ):  # pylint: disable=no-self-use
-        assert should_capture_content() is False
+        assert should_capture_content_on_spans_in_experimental_mode() is False
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
         emit_event="",
     )
-    def test_should_capture_content_true_for_span_only(
+    def test_should_capture_content_on_spans_in_experimental_mode_true_for_span_only(
         self,
     ):  # pylint: disable=no-self-use
-        assert should_capture_content() is True
+        assert should_capture_content_on_spans_in_experimental_mode() is True

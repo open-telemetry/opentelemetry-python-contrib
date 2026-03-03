@@ -111,7 +111,7 @@ def should_emit_event() -> bool:
         return False
 
 
-def should_capture_content() -> bool:
+def should_capture_content_on_spans_in_experimental_mode() -> bool:
     """Return True when content conversion should be performed."""
     if not is_experimental_mode():
         return False
