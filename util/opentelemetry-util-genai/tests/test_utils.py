@@ -861,6 +861,59 @@ class TestTelemetryHandler(unittest.TestCase):
         )
         self.assertIn(GenAI.GEN_AI_INPUT_MESSAGES, log_record.attributes)
 
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_llm_manual_start_and_stop_external_span(self):
+        message = _create_input_message("hi")
+        chat_generation = _create_output_message("ok")
+
+        # Create a custom Span
+        external_span = self.telemetry_handler._tracer.start_span(
+            name="external operation", kind=trace.SpanKind.INTERNAL
+        )
+
+        invocation = LLMInvocation(
+            span=external_span,
+            request_model="manual-model",
+            input_messages=[message],
+            provider="test-provider",
+            attributes={"external": True},
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        assert invocation.span == external_span
+        assert invocation.end_span_on_exit is False
+
+        invocation.output_messages = [chat_generation]
+        self.telemetry_handler.stop_llm(invocation)
+        # Verify that the external span is still recording after stop_llm is called
+        assert invocation.span.is_recording()
+        # Manually end the external span after stopping the LLM invocation
+        external_span.end()
+
+        span = _get_single_span(self.span_exporter)
+        # Make sure that external span is used and not overwritten by telemetry handler
+        assert span.kind == trace.SpanKind.INTERNAL
+        _assert_span_time_order(span)
+
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "manual-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_INPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_OUTPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("stop",),
+                "external": True,
+            },
+        )
+
 
 class AnyNonNone:
     def __eq__(self, other):

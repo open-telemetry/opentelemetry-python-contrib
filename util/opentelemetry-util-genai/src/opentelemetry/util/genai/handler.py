@@ -135,18 +135,24 @@ class TelemetryHandler:
         self,
         invocation: LLMInvocation,
     ) -> LLMInvocation:
-        """Start an LLM invocation and create a pending span entry."""
-        # Create a span and attach it as current; keep the token to detach later
-        span = self._tracer.start_span(
-            name=f"{invocation.operation_name} {invocation.request_model}",
-            kind=SpanKind.CLIENT,
-        )
+        """
+        Start an LLM invocation and create a pending span entry.
+
+        Creates a span and attach it as current; keep the token to detach later.
+        if the span is already set on the LLMInvocation - use it instead of creating a new one.
+        """
+        if invocation.span is None:
+            span = self._tracer.start_span(
+                name=f"{invocation.operation_name} {invocation.request_model}",
+                kind=SpanKind.CLIENT,
+            )
+            invocation.span = span
+            invocation.end_span_on_exit = True
         # Record a monotonic start timestamp (seconds) for duration
         # calculation using timeit.default_timer.
         invocation.monotonic_start_s = timeit.default_timer()
-        invocation.span = span
         invocation.context_token = otel_context.attach(
-            set_span_in_context(span)
+            set_span_in_context(invocation.span)
         )
         return invocation
 
@@ -162,7 +168,9 @@ class TelemetryHandler:
         _maybe_emit_llm_event(self._logger, span, invocation)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
-        span.end()
+        # End the span only if it was created by the handler
+        if invocation.end_span_on_exit:
+            span.end()
         return invocation
 
     def fail_llm(  # pylint: disable=no-self-use
@@ -181,7 +189,9 @@ class TelemetryHandler:
         _maybe_emit_llm_event(self._logger, span, invocation, error)
         # Detach context and end span
         otel_context.detach(invocation.context_token)
-        span.end()
+        # End the span only if it was created by the handler
+        if invocation.end_span_on_exit:
+            span.end()
         return invocation
 
     @contextmanager

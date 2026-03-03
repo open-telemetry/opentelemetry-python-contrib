@@ -201,6 +201,7 @@ class GenAIInvocation:
     context_token: ContextToken | None = None
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    end_span_on_exit: bool = False
 
 
 @dataclass
