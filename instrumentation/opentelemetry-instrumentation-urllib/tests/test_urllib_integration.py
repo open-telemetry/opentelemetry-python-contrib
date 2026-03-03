@@ -23,7 +23,7 @@ from urllib import request
 from urllib.error import HTTPError
 from urllib.request import OpenerDirector
 
-import httpretty
+import pook
 
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
 from opentelemetry import trace
@@ -96,37 +96,21 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.exclude_patch.start()
 
         URLLibInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
-        httpretty.register_uri(
-            httpretty.GET,
-            self.URL_TIMEOUT,
-            body=self.timeout_exception_callback,
+        pook.on()
+        self.main_mock = pook.get(
+            self.URL, reply=200, response_body=b"Hello!"
+        ).persist()
+        pook.get(self.URL_TIMEOUT).persist().error(socket.timeout())
+        pook.get(self.URL_EXCEPTION).persist().error(
+            Exception("test")  # pylint: disable=broad-exception-raised
         )
-        httpretty.register_uri(
-            httpretty.GET,
-            self.URL_EXCEPTION,
-            body=self.base_exception_callback,
-        )
-        httpretty.register_uri(
-            httpretty.GET,
-            "http://mock/status/500",
-            status=500,
-        )
+        pook.get("http://mock/status/500", reply=500).persist()
 
     # pylint: disable=invalid-name
     def tearDown(self):
         super().tearDown()
         URLLibInstrumentor().uninstrument()
-        httpretty.disable()
-
-    @staticmethod
-    def timeout_exception_callback(*_, **__):
-        raise socket.timeout
-
-    @staticmethod
-    def base_exception_callback(*_, **__):
-        raise Exception("test")  # pylint: disable=broad-exception-raised
+        pook.off()
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
@@ -225,11 +209,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_excluded_urls_explicit(self):
         url_201 = "http://mock/status/201"
-        httpretty.register_uri(
-            httpretty.GET,
-            url_201,
-            status=201,
-        )
+        pook.get(url_201, reply=201)
 
         URLLibInstrumentor().uninstrument()
         URLLibInstrumentor().instrument(excluded_urls=".*/201")
@@ -240,11 +220,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_excluded_urls_from_env(self):
         url = "http://localhost/env_excluded_arg/123"
-        httpretty.register_uri(
-            httpretty.GET,
-            url,
-            status=200,
-        )
+        pook.get(url, reply=200)
 
         URLLibInstrumentor().uninstrument()
         URLLibInstrumentor().instrument()
@@ -255,11 +231,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic(self):
         url_404 = "http://mock/status/404/"
-        httpretty.register_uri(
-            httpretty.GET,
-            url_404,
-            status=404,
-        )
+        pook.get(url_404, reply=404)
         exception = None
         try:
             self.perform_request(url_404)
@@ -279,11 +251,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic_new_semconv(self):
         url_404 = "http://mock/status/404/"
-        httpretty.register_uri(
-            httpretty.GET,
-            url_404,
-            status=404,
-        )
+        pook.get(url_404, reply=404)
         exception = None
         try:
             self.perform_request(url_404)
@@ -303,11 +271,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic_both_semconv(self):
         url_404 = "http://mock/status/404/"
-        httpretty.register_uri(
-            httpretty.GET,
-            url_404,
-            status=404,
-        )
+        pook.get(url_404, reply=404)
         exception = None
         try:
             self.perform_request(url_404)
@@ -416,12 +380,18 @@ class URLLibIntegrationTestBase(abc.ABC):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
+            captured_headers = {}
+
+            def capture_request_headers(req, _):
+                captured_headers.update(dict(req.headers))
+
+            self.main_mock.callback(capture_request_headers)
             result = self.perform_request(self.URL)
             self.assertEqual(result.read(), b"Hello!")
 
             span = self.assert_span()
 
-            headers_ = dict(httpretty.last_request().headers)
+            headers_ = dict(captured_headers)
             headers = {}
             for k, v in headers_.items():
                 headers[k.lower()] = v
@@ -570,8 +540,11 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Another-Header": "another-value",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url,
+            reply=200,
+            response_body="Hello!",
+            response_headers=response_headers,
         )
         self.perform_request(url)
 
@@ -625,8 +598,11 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Secret": "secret",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url,
+            reply=200,
+            response_body="Hello!",
+            response_headers=response_headers,
         )
         self.perform_request(
             url,
@@ -668,8 +644,11 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Other-Response-Header": "other-value",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url,
+            reply=200,
+            response_body="Hello!",
+            response_headers=response_headers,
         )
         self.perform_request(
             url,
@@ -714,8 +693,11 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url,
+            reply=200,
+            response_body="Hello!",
+            response_headers=response_headers,
         )
         self.perform_request(
             url,
@@ -745,8 +727,11 @@ class URLLibIntegrationTestBase(abc.ABC):
             "Server": "TestServer/1.0",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url,
+            reply=200,
+            response_body="Hello!",
+            response_headers=response_headers,
         )
         self.perform_request(
             url,
@@ -813,8 +798,11 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Response-Three": "value3",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url,
+            reply=200,
+            response_body="Hello!",
+            response_headers=response_headers,
         )
         self.perform_request(url)
 
@@ -875,8 +863,11 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Response-Two": "value2",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url,
+            reply=200,
+            response_body="Hello!",
+            response_headers=response_headers,
         )
         self.perform_request(
             url, headers=[("x-request-one", "one"), ("x-request-two", "two")]

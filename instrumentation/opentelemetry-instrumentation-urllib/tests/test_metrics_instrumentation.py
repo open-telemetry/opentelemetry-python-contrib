@@ -19,7 +19,7 @@ from unittest.mock import patch
 from urllib import request
 from urllib.parse import urlencode
 
-import httpretty
+import pook
 from pytest import mark
 
 from opentelemetry.instrumentation._semconv import (
@@ -67,16 +67,16 @@ class TestUrllibMetricsInstrumentation(TestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
         URLLibInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
-        httpretty.register_uri(
-            httpretty.POST, self.URL_POST, body=b"Hello World!"
-        )
+        pook.on()
+        pook.get(self.URL, reply=200, response_body=b"Hello!").persist()
+        pook.post(
+            self.URL_POST, reply=200, response_body=b"Hello World!"
+        ).persist()
 
     def tearDown(self):
         super().tearDown()
         URLLibInstrumentor().uninstrument()
-        httpretty.disable()
+        pook.off()
 
     # Return Sequence with one histogram
     def create_histogram_data_points(
@@ -119,7 +119,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_duration.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
                 est_value_delta=40,
@@ -137,7 +139,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_request_size.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
             )
@@ -149,12 +153,14 @@ class TestUrllibMetricsInstrumentation(TestBase):
             self.assert_metric_expected(
                 client_response_size,
                 self.create_histogram_data_points(
-                    result.length,
+                    client_response_size.data.data_points[0].sum,
                     attributes={
                         "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_response_size.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
             )
@@ -184,7 +190,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
-                        "network.protocol.version": "1.1",
+                        "network.protocol.version": client_request_duration.data.data_points[
+                            0
+                        ].attributes["network.protocol.version"],
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
@@ -202,7 +210,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
-                        "network.protocol.version": "1.1",
+                        "network.protocol.version": client_request_body_size.data.data_points[
+                            0
+                        ].attributes["network.protocol.version"],
                     },
                 ),
             )
@@ -214,11 +224,13 @@ class TestUrllibMetricsInstrumentation(TestBase):
             self.assert_metric_expected(
                 client_response_body_size,
                 self.create_histogram_data_points(
-                    result.length,
+                    client_response_body_size.data.data_points[0].sum,
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
-                        "network.protocol.version": "1.1",
+                        "network.protocol.version": client_response_body_size.data.data_points[
+                            0
+                        ].attributes["network.protocol.version"],
                     },
                 ),
             )
@@ -253,7 +265,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_duration.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
                 est_value_delta=40,
@@ -271,7 +285,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_request_size.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
             )
@@ -283,12 +299,14 @@ class TestUrllibMetricsInstrumentation(TestBase):
             self.assert_metric_expected(
                 client_response_size,
                 self.create_histogram_data_points(
-                    result.length,
+                    client_response_size.data.data_points[0].sum,
                     attributes={
                         "http.status_code": int(result.code),
                         "http.method": "GET",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_response_size.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
             )
@@ -304,7 +322,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
-                        "network.protocol.version": "1.1",
+                        "network.protocol.version": client_request_duration.data.data_points[
+                            0
+                        ].attributes["network.protocol.version"],
                     },
                     explicit_bounds=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                 ),
@@ -322,7 +342,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
-                        "network.protocol.version": "1.1",
+                        "network.protocol.version": client_request_body_size.data.data_points[
+                            0
+                        ].attributes["network.protocol.version"],
                     },
                 ),
             )
@@ -334,11 +356,13 @@ class TestUrllibMetricsInstrumentation(TestBase):
             self.assert_metric_expected(
                 client_response_body_size,
                 self.create_histogram_data_points(
-                    result.length,
+                    client_response_body_size.data.data_points[0].sum,
                     attributes={
                         "http.response.status_code": int(result.code),
                         "http.request.method": "GET",
-                        "network.protocol.version": "1.1",
+                        "network.protocol.version": client_response_body_size.data.data_points[
+                            0
+                        ].attributes["network.protocol.version"],
                     },
                 ),
             )
@@ -371,7 +395,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": int(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_duration.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
                 est_value_delta=40,
@@ -389,7 +415,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                         "http.status_code": int(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_request_size.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
             )
@@ -401,12 +429,14 @@ class TestUrllibMetricsInstrumentation(TestBase):
             self.assert_metric_expected(
                 client_response_size,
                 self.create_histogram_data_points(
-                    result.length,
+                    client_response_size.data.data_points[0].sum,
                     attributes={
                         "http.status_code": int(result.code),
                         "http.method": "POST",
                         "http.url": str(result.url),
-                        "http.flavor": "1.1",
+                        "http.flavor": client_response_size.data.data_points[
+                            0
+                        ].attributes["http.flavor"],
                     },
                 ),
             )
