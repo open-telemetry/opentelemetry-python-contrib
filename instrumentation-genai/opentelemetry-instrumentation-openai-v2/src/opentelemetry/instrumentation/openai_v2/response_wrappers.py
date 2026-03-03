@@ -58,7 +58,11 @@ class _ResponseProxy(Generic[ResponseT]):
 
 
 class ResponseStreamWrapper(Generic[TextFormatT]):
-    """Wrapper for OpenAI Responses API stream objects."""
+    """Wrapper for OpenAI Responses API stream objects.
+
+    Wraps ResponseStream from the OpenAI SDK:
+    https://github.com/openai/openai-python/blob/656e3cab4a18262a49b961d41293367e45ee71b9/src/openai/_streaming.py#L55
+    """
 
     def __init__(
         self,
@@ -235,7 +239,11 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
 
 
 class ResponseStreamManagerWrapper(Generic[TextFormatT]):
-    """Wrapper for OpenAI Responses API stream managers."""
+    """Wrapper for OpenAI Responses API stream managers.
+
+    Wraps ResponseStreamManager from the OpenAI SDK:
+    https://github.com/openai/openai-python/blob/656e3cab4a18262a49b961d41293367e45ee71b9/src/openai/lib/streaming/responses/_responses.py#L95
+    """
 
     def __init__(
         self,
