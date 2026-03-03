@@ -157,23 +157,30 @@ class TelemetryHandler:
         return
 
     def _start(self, invocation: _T) -> _T:
-        """Start a GenAI invocation and create a pending span entry."""
+        """
+        Start a GenAI invocation and create a pending span entry.
+
+        Creates a span and attach it as current; keep the token to detach later.
+        if the span is already set on the LLMInvocation - use it instead of creating a new one.
+        """
         if isinstance(invocation, LLMInvocation):
             span_name = _get_llm_span_name(invocation)
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
         else:
             span_name = ""
-        span = self._tracer.start_span(
-            name=span_name,
-            kind=SpanKind.CLIENT,
-        )
+        if invocation.span is None:
+            span = self._tracer.start_span(
+                name=span_name,
+                kind=SpanKind.CLIENT,
+            )
+            invocation.span = span
+            invocation.end_span_on_exit = True
         # Record a monotonic start timestamp (seconds) for duration
         # calculation using timeit.default_timer.
         invocation.monotonic_start_s = timeit.default_timer()
-        invocation.span = span
         invocation.context_token = otel_context.attach(
-            set_span_in_context(span)
+            set_span_in_context(invocation.span)
         )
         return invocation
 
@@ -195,6 +202,8 @@ class TelemetryHandler:
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
+        # End the span only if it was created by the handler
+        if invocation.end_span_on_exit:
             span.end()
         return invocation
 
@@ -225,7 +234,9 @@ class TelemetryHandler:
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
-            span.end()
+            # End the span only if it was created by the handler
+            if invocation.end_span_on_exit:
+                span.end()
         return invocation
 
     def start(

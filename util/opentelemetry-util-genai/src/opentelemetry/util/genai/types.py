@@ -258,6 +258,7 @@ def _new_str_any_dict() -> dict[str, Any]:
 class GenAIInvocation:
     context_token: ContextToken | None = None
     span: Span | None = None
+    end_span_on_exit: bool = False
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
     error_type: str | None = None
 
