@@ -284,8 +284,10 @@ class TestLoggingInstrumentor(TestBase):
         record = self.caplog.records[0]
         self.assertEqual(
             record.message,
-            "Disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging "
-            "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`",
+            "Skipping installation of LoggingHandler from `opentelemetry-instrumentation-logging` "
+            "to avoid duplicate logs. The SDK's deprecated LoggingHandler is already "
+            "active (OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true). To migrate, unset "
+            "this environment variable. The SDK's handler will be removed in a future release.",
         )
 
         root_logger = logging.getLogger()
@@ -383,7 +385,7 @@ class TestLoggingInstrumentor(TestBase):
         LoggingInstrumentor().uninstrument()
         with self.caplog.at_level(level=logging.WARNING):
             LoggingInstrumentor().instrument(
-                enable_log_auto_istrumentation=False
+                enable_log_auto_instrumentation=False
             )
 
         self.assertEqual(len(self.caplog.records), 0)

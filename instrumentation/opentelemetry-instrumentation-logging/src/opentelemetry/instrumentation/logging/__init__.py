@@ -225,8 +225,11 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         )
         if sdk_autoinstrumentation_env_var == "true":
             _logger.warning(
-                "Disabling logging auto-instrumentation. If you have opentelemetry-instrumentation-logging "
-                "you don't need to set `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`"
+                "Skipping installation of LoggingHandler from "
+                "`opentelemetry-instrumentation-logging` to avoid duplicate logs. "
+                "The SDK's deprecated LoggingHandler is already active "
+                "(OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true). To migrate, unset "
+                "this environment variable. The SDK's handler will be removed in a future release."
             )
         elif kwargs.get(
             "enable_log_auto_instrumentation",
