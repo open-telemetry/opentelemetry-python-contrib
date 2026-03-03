@@ -508,6 +508,57 @@ def test_span_lifecycle_and_shutdown(processor_setup):
     )
 
 
+def test_response_span_instructions_fallback(processor_setup):
+    """Instructions on Response object populate gen_ai.system_instructions."""
+    processor, exporter = processor_setup
+
+    class _Usage:
+        def __init__(self):
+            self.input_tokens = None
+            self.prompt_tokens = 5
+            self.output_tokens = None
+            self.completion_tokens = 3
+            self.total_tokens = 8
+
+    class _Response:
+        def __init__(self):
+            self.id = "resp-instr"
+            self.model = "gpt-4o"
+            self.usage = _Usage()
+            self.output = [{"finish_reason": "stop"}]
+            self.instructions = "You are a helpful assistant."
+
+    trace = FakeTrace(
+        name="instr-trace",
+        trace_id="trace-instr",
+        started_at="2024-01-01T00:00:00Z",
+        ended_at="2024-01-01T00:00:02Z",
+    )
+    processor.on_trace_start(trace)
+
+    response_data = ResponseSpanData(response=_Response())
+    # No system messages in input – instructions only on response object
+    response_data.input = [{"role": "user", "content": "Hello"}]
+    span = FakeSpan(
+        trace_id="trace-instr",
+        span_id="span-instr",
+        span_data=response_data,
+        started_at="2024-01-01T00:00:00Z",
+        ended_at="2024-01-01T00:00:01Z",
+    )
+    processor.on_span_start(span)
+    processor.on_span_end(span)
+    processor.on_trace_end(trace)
+
+    finished = exporter.get_finished_spans()
+    response_span = next(s for s in finished if s.name.startswith("chat"))
+    sys_instr = json.loads(
+        response_span.attributes[sp.GEN_AI_SYSTEM_INSTRUCTIONS]
+    )
+    assert len(sys_instr) == 1
+    assert sys_instr[0]["content"] == "You are a helpful assistant."
+
+
 def test_chat_span_renamed_with_model(processor_setup):
     processor, exporter = processor_setup
 

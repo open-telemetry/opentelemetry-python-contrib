@@ -29,6 +29,7 @@ __all__ = [
     "GenerationSpanData",
     "FunctionSpanData",
     "ResponseSpanData",
+    "MCPListToolsSpanData",
 ]
 
 
@@ -74,10 +75,24 @@ class GenerationSpanData:
 @dataclass
 class ResponseSpanData:
     response: Any = None
+    input: Sequence[Mapping[str, Any]] | None = None
 
     @property
     def type(self) -> str:
         return SPAN_TYPE_RESPONSE
+
+
+SPAN_TYPE_MCP_LIST_TOOLS = "mcp_tools"
+
+
+@dataclass
+class MCPListToolsSpanData:
+    server: str | None = None
+    result: list[str] | None = None
+
+    @property
+    def type(self) -> str:
+        return "mcp_tools"
 
 
 class _ProcessorFanout(TracingProcessor):

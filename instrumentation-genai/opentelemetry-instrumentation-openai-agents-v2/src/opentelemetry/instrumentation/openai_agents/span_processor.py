@@ -1064,6 +1064,13 @@ class GenAISemanticProcessor(TracingProcessor):
                 sys_instr = self._collect_system_instructions(span_input)
                 if sys_instr:
                     payload.system_instructions = sys_instr
+            if capture_system and not payload.system_instructions:
+                response = getattr(span_data, "response", None)
+                instructions = getattr(response, "instructions", None)
+                if isinstance(instructions, str) and instructions:
+                    payload.system_instructions = [
+                        {"type": "text", "content": instructions}
+                    ]
             if capture_messages:
                 normalized_out = self._normalize_output_messages_to_role_parts(
                     span_data
