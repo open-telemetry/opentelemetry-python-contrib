@@ -35,7 +35,6 @@ from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util.types import _ExtendedAttributes
 
-
 _OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME = {
     "notset": logging.NOTSET,
     "debug": logging.DEBUG,
