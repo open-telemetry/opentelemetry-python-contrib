@@ -100,6 +100,20 @@ The default value is:
 
     {default_logging_format}
 
+.. envvar:: OTEL_PYTHON_LOG_HANDLER_LEVEL
+
+Set this env var to configure the log level of the ``LoggingHandler`` installed by this instrumentation.
+Accepts case-insensitive level names: ``notset``, ``debug``, ``info``, ``warn``, ``warning``, ``error``.
+Unrecognized values fall back to ``notset``.
+
+Alternatively, the level can be set via the ``log_handler_level`` argument:
+
+.. code-block::
+
+    LoggingInstrumentor(log_handler_level=logging.WARNING)
+
+The default value is ``notset``.
+
 .. envvar:: OTEL_PYTHON_LOG_LEVEL
 
 This env var can be used to set a custom logging level.

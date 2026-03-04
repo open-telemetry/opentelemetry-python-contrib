@@ -22,6 +22,7 @@ from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
 from opentelemetry.instrumentation.logging.handler import (
     LoggingHandler,
+    _get_log_level,
     _setup_logging_handler,
 )
 from opentelemetry.sdk import trace
@@ -667,6 +668,66 @@ class SetupLoggingHandlerTestCase(unittest.TestCase):
             )
 
             root_logger.removeHandler(logging_handlers[0])
+
+    def test_setup_logging_handler_with_level(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(
+                logger_provider=logger_provider, level=logging.ERROR
+            )
+            self.assertEqual(handler.level, logging.ERROR)
+            logging.getLogger().removeHandler(handler)
+
+    def test_setup_logging_handler_with_format(self):
+        logger_provider = LoggerProvider()
+        custom_format = "%(levelname)s - %(message)s"
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(
+                logger_provider=logger_provider, log_format=custom_format
+            )
+            self.assertIsNotNone(handler.formatter)
+            self.assertEqual(handler.formatter._fmt, custom_format)
+            logging.getLogger().removeHandler(handler)
+
+    def test_setup_logging_handler_default_level_is_notset(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(logger_provider=logger_provider)
+            self.assertEqual(handler.level, logging.NOTSET)
+            logging.getLogger().removeHandler(handler)
+
+    def test_setup_logging_handler_default_format_is_none(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(logger_provider=logger_provider)
+            self.assertIsNone(handler.formatter)
+            logging.getLogger().removeHandler(handler)
+
+
+class GetLogLevelTestCase(unittest.TestCase):
+    def test_get_log_level_notset(self):
+        self.assertEqual(_get_log_level("notset"), logging.NOTSET)
+
+    def test_get_log_level_notset_with_whitespace(self):
+        self.assertEqual(_get_log_level(" NOTSET "), logging.NOTSET)
+
+    def test_get_log_level_debug(self):
+        self.assertEqual(_get_log_level(" DeBug "), logging.DEBUG)
+
+    def test_get_log_level_info(self):
+        self.assertEqual(_get_log_level(" info "), logging.INFO)
+
+    def test_get_log_level_warn(self):
+        self.assertEqual(_get_log_level(" warn"), logging.WARNING)
+
+    def test_get_log_level_warning(self):
+        self.assertEqual(_get_log_level(" warnING "), logging.WARNING)
+
+    def test_get_log_level_error(self):
+        self.assertEqual(_get_log_level(" eRroR"), logging.ERROR)
+
+    def test_get_log_level_invalid_falls_back_to_notset(self):
+        self.assertEqual(_get_log_level("foobar"), logging.NOTSET)
 
 
 def set_up_test_logging(

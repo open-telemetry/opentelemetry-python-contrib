@@ -36,14 +36,37 @@ from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util.types import _ExtendedAttributes
 
 
+_OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME = {
+    "notset": logging.NOTSET,
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warn": logging.WARNING,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+}
+
+
+def _get_log_level(level_name: str) -> int:
+    return _OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME.get(
+        level_name.lower().strip(), logging.NOTSET
+    )
+
+
 def _setup_logging_handler(
-    logger_provider: LoggerProvider, log_code_attributes: bool = False
+    logger_provider: LoggerProvider,
+    log_code_attributes: bool = False,
+    level: int | None = None,
+    log_format: str | None = None,
 ) -> LoggingHandler:
     handler = LoggingHandler(
         level=logging.NOTSET,
         logger_provider=logger_provider,
         log_code_attributes=log_code_attributes,
     )
+    if level is not None:
+        handler.setLevel(level)
+    if log_format is not None:
+        handler.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(handler)
     _overwrite_logging_config_fns(handler)
     return handler
