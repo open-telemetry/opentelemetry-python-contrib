@@ -1519,7 +1519,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     return GenAIOperationName.CHAT
             return GenAIOperationName.TEXT_COMPLETION
         if _is_instance_of(span_data, AgentSpanData):
-            # The real SDK AgentSpanData has no "operation" field;
+            # The OpenAI Agents SDK AgentSpanData has no "operation" field;
             # agent spans always represent invoke_agent.
             return GenAIOperationName.INVOKE_AGENT
         if _is_instance_of(span_data, FunctionSpanData):
@@ -1822,7 +1822,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if name:
             yield GEN_AI_AGENT_NAME, name
 
-        # agent_id and description are not available on the real SDK
+        # agent_id and description are not available on the OpenAI Agents SDK
         # AgentSpanData; only use user-configured overrides.
         agent_id = self.agent_id or self._agent_id_default
         if agent_id:
@@ -1832,7 +1832,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if description:
             yield GEN_AI_AGENT_DESCRIPTION, description
 
-        # The real SDK AgentSpanData has no "model" field; fall back to
+        # The OpenAI Agents SDK AgentSpanData has no "model" field; fall back to
         # the model aggregated from child generation/response spans.
         model = None
         if agent_content:

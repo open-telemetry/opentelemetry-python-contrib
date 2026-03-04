@@ -156,7 +156,7 @@ def test_operation_and_span_naming(processor_setup):
         == sp.GenAIOperationName.EMBEDDINGS
     )
 
-    # AgentSpanData always maps to invoke_agent (no operation field in real SDK)
+    # AgentSpanData always maps to invoke_agent (no operation field in OpenAI Agents SDK)
     agent_data = AgentSpanData(name="bot")
     assert (
         processor._get_operation_name(agent_data)
