@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -29,6 +29,7 @@ from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
     LLMInvocation,
+    MessagePart,
     OutputMessage,
     Text,
 )
@@ -133,7 +134,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                                     Text(content=text_value, type="text")
                                 )
 
-                input_messages.append(InputMessage(parts=parts, role=role))
+                input_messages.append(
+                    InputMessage(
+                        parts=cast(list[MessagePart], parts), role=role
+                    )
+                )
 
         llm_invocation = LLMInvocation(
             request_model=request_model,
@@ -206,7 +211,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     role = chat_generation.message.type
                     output_message = OutputMessage(
                         role=role,
-                        parts=parts,
+                        parts=cast(list[MessagePart], parts),
                         finish_reason=finish_reason,
                     )
                     output_messages.append(output_message)
