@@ -41,7 +41,7 @@ from opentelemetry.util.genai.types import (
     LLMInvocation,
     OutputMessage,
     Text,
-    ToolCall,
+    ToolCallRequest,
     ToolCallResponse,
 )
 
@@ -452,7 +452,7 @@ def _prepare_input_messages(messages) -> List[InputMessage]:
     return chat_messages
 
 
-def extract_tool_calls_new(tool_calls) -> list[ToolCall]:
+def extract_tool_calls_new(tool_calls) -> list[ToolCallRequest]:
     parts = []
     for tool_call in tool_calls:
         call_id = get_property_value(tool_call, "id")
@@ -470,7 +470,9 @@ def extract_tool_calls_new(tool_calls) -> list[ToolCall]:
                     arguments = arguments_str
 
         # TODO: support custom
-        parts.append(ToolCall(id=call_id, name=func_name, arguments=arguments))
+        parts.append(
+            ToolCallRequest(id=call_id, name=func_name, arguments=arguments)
+        )
     return parts
 
 
