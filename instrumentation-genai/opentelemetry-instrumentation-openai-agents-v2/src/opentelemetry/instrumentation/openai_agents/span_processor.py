@@ -377,11 +377,13 @@ def safe_json_dumps(obj: Any) -> str:
         return str(obj)
 
 
-def safe_json_loads(s: str) -> Any:
+def safe_json_loads(s: str | None) -> Any:
     """Safely parse JSON string (fallback to original string)."""
+    if s is None:
+        return None
     try:
         return json.loads(s)
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, TypeError) as e:
         logger.warning("Failed to parse JSON string: %s", e)
         return s
 
@@ -1032,6 +1034,8 @@ class GenAISemanticProcessor(TracingProcessor):
                         "status": getattr(item, "status", None),
                         "outputs": [
                             output.to_dict()
+                            if hasattr(output, "to_dict")
+                            else str(output)
                             for output in getattr(item, "outputs", [])
                         ],
                     },
@@ -1088,6 +1092,8 @@ class GenAISemanticProcessor(TracingProcessor):
                         "call_id": getattr(item, "call_id", None),
                         "result": [
                             output.to_dict()
+                            if hasattr(output, "to_dict")
+                            else str(output)
                             for output in getattr(item, "output", [])
                         ],
                     },
@@ -1142,7 +1148,10 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-            if getattr(item, "output", None) or getattr(item, "error", None):
+            if (
+                getattr(item, "output", None) is not None
+                or getattr(item, "error", None) is not None
+            ):
                 parts.append(
                     {
                         "type": "tool_call_response",
@@ -1167,7 +1176,10 @@ class GenAISemanticProcessor(TracingProcessor):
                     },
                 }
             ]
-            if getattr(item, "tools", None) or getattr(item, "error", None):
+            if (
+                getattr(item, "tools", None) is not None
+                or getattr(item, "error", None) is not None
+            ):
                 parts.append(
                     {
                         "type": "tool_call_response",
