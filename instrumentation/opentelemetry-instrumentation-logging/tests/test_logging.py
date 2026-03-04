@@ -420,9 +420,7 @@ class TestLoggingInstrumentor(TestBase):
             log_format=None,
         )
 
-    @mock.patch.dict(
-        "os.environ", {"OTEL_PYTHON_LOG_HANDLER_LEVEL": "error"}
-    )
+    @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_HANDLER_LEVEL": "error"})
     def test_handler_level_is_set_from_env_var(self):
         LoggingInstrumentor().uninstrument()
         with self.caplog.at_level(level=logging.WARNING):
