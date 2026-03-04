@@ -25,7 +25,9 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import Error, LLMInvocation
-from opentelemetry.util.genai.utils import should_capture_content_on_spans_in_experimental_mode
+from opentelemetry.util.genai.utils import (
+    should_capture_content_on_spans_in_experimental_mode,
+)
 
 from .messages_extractors import (
     extract_params,
