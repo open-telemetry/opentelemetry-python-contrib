@@ -1443,6 +1443,13 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
         self.assertIs(original, should_be_original)
 
 
+class TestUnwrapMiddleware(unittest.TestCase):
+    def test_unwrap_fastapi_app(self):
+        app = fastapi.FastAPI()
+        app.app = "should not be returned"
+        self.assertIs(otel_fastapi._unwrap_middleware(app), app)
+
+
 class TestWrappedApplication(TestBase):
     def setUp(self):
         super().setUp()

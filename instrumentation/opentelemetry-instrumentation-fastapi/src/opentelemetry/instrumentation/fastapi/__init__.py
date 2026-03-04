@@ -536,6 +536,8 @@ def _unwrap_middleware(app):
     Returns:
         The unwrapped FastAPI or Starlette application.
     """
+    if isinstance(app, fastapi.FastAPI):
+        return app
     while hasattr(app, "app"):
         app = app.app
     return app
