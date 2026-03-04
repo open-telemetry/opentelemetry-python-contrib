@@ -52,13 +52,14 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.util.genai.types import (
+    Blob,
     ContentCapturingMode,
     FinishReason,
-    GenericPart,
     MessagePart,
     Text,
     ToolCallRequest,
     ToolCallResponse,
+    Uri,
 )
 from opentelemetry.util.genai.utils import get_content_capturing_mode
 from opentelemetry.util.types import AnyValue, AttributeValue
@@ -309,21 +310,15 @@ def request_to_events(
         yield user_event(role=content.role, content=request_content)
 
 
-@dataclass
-class BlobPart:
-    data: bytes
-    mime_type: str
-    type: Literal["blob"] = "blob"
-
-
-@dataclass
-class FileDataPart:
-    mime_type: str
-    uri: str
-    type: Literal["file_data"] = "file_data"
-
-    class Config:
-        extra = "allow"
+def _modality_from_mime_type(mime_type: str) -> str:
+    """Infer modality from MIME type prefix."""
+    if mime_type.startswith("image/"):
+        return "image"
+    if mime_type.startswith("video/"):
+        return "video"
+    if mime_type.startswith("audio/"):
+        return "audio"
+    return mime_type
 
 
 def convert_content_to_message_parts(
@@ -354,20 +349,22 @@ def convert_content_to_message_parts(
             parts.append(Text(content=part.text))
         elif "inline_data" in part:
             part = part.inline_data
+            mime_type = part.mime_type or ""
             parts.append(
-                GenericPart(
-                    BlobPart(
-                        mime_type=part.mime_type or "", data=part.data or b""
-                    )
+                Blob(
+                    mime_type=mime_type,
+                    modality=_modality_from_mime_type(mime_type),
+                    content=part.data or b"",
                 )
             )
         elif "file_data" in part:
             part = part.file_data
+            mime_type = part.mime_type or ""
             parts.append(
-                GenericPart(
-                    FileDataPart(
-                        mime_type=part.mime_type or "", uri=part.file_uri or ""
-                    )
+                Uri(
+                    mime_type=mime_type,
+                    modality=_modality_from_mime_type(mime_type),
+                    uri=part.file_uri or "",
                 )
             )
         else:
