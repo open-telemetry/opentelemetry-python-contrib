@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
   ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
-- ``opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: `enrich_metric_attributes` with any Labeler-stored attributes in Context for HTTP server duration metrics
+- `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: `enrich_metric_attributes` with any Labeler-stored attributes in Context
   ([#4300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4300))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
