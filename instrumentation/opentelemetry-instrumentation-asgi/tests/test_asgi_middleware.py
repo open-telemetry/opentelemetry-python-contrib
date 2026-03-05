@@ -22,6 +22,7 @@ from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._labeler import clear_labeler, get_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -272,6 +273,28 @@ async def background_execution_trailers_asgi(scope, receive, send):
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
+async def custom_attrs_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add("http.method", "POST")
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*"})
+
+
 async def error_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
@@ -313,6 +336,7 @@ SCOPE = "opentelemetry.instrumentation.asgi"
 class TestAsgiApplication(AsyncAsgiTestBase):
     def setUp(self):
         super().setUp()
+        clear_labeler()
 
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -1552,6 +1576,27 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 for attr in point.attributes:
                     self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    async def test_asgi_metrics_custom_attributes_skip_override(self):
+        app = otel_asgi.OpenTelemetryMiddleware(custom_attrs_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        histogram_point_seen = False
+        for metric in metrics:
+            if metric.name != "http.server.duration":
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            histogram_point_seen = True
+
+        self.assertTrue(histogram_point_seen)
 
     async def test_asgi_metrics_exemplars_expected_old_semconv(self):
         """Failing test placeholder asserting exemplars should be present for duration histogram (old semconv)."""
