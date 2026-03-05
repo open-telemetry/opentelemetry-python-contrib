@@ -24,8 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
   ([#4305](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4305))
+
 - Don't import module in unwrap if not already imported
   ([#4321](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4321))
+
+- `opentelemetry-instrumentation-logging`: Add recursion guard in LoggingHandler.emit to prevent deadlock
+  ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
+
 
 ### Breaking changes
 
