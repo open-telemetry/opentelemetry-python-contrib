@@ -213,11 +213,15 @@ to a value that evaluates to true, e.g. ``1``.
 
 Custom Metrics Attributes using Labeler
 ***************************************
-The WSGI instrumentation reads from a labeler utility that supports adding custom
-attributes to HTTP duration metrics at record time. The custom attributes are
-stored only within the context of an instrumented request or operation. The
-instrumentor does not overwrite base attributes that exist at the same keys as
-any custom attributes.
+The WSGI instrumentation reads custom attributes from the labeler (when present)
+and applies them to all HTTP server metric points emitted by the middleware:
+
+- Active requests counter (`http.server.active_requests`)
+- Duration histograms (`http.server.duration` and/or
+    `http.server.request.duration` depending on semantic convention mode)
+
+Labeler attributes are request-scoped and merged without overriding base metric
+attributes at the same keys.
 
 .. code-block:: python
 
