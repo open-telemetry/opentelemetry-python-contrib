@@ -25,8 +25,9 @@ The client implements the following capabilities:
 * ReportsHeartbeat
 * AcceptsRemoteConfig
 * ReportsRemoteConfig
+* ReportsEffectiveConfig
 
-These capabilities are enough to get a remote config from an opamp server, parse it, apply it and ack it.
+These capabilities are enough to get a remote config from an OpAMP server, parse it, apply it and ack it.
 
 While the client supports pluggable transports, only an HTTP backends using the ``requests`` library is
 implemented. Adding WebSocket support shouldn't be hard but it will require some rework in the OpAMPAgent
