@@ -54,11 +54,12 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
             agent.send(payload=message)
 
     opamp_client = OpAMPClient(
-        endpoint="http://localhost:4320/v1/opamp",
+        endpoint="https://localhost:4320/v1/opamp",
         agent_identifying_attributes={
             "service.name": "foo",
             "deployment.environment.name": "foo",
         },
+        tls_certificate=False,
     )
     opamp_agent = OpAMPAgent(
         interval=1,
@@ -97,11 +98,12 @@ def test_with_server_not_responding(caplog):
     opamp_handler = mock.Mock()
 
     opamp_client = OpAMPClient(
-        endpoint="http://localhost:4321/v1/opamp",
+        endpoint="https://localhost:4399/v1/opamp",
         agent_identifying_attributes={
             "service.name": "foo",
             "deployment.environment.name": "foo",
         },
+        tls_certificate=False,
     )
     opamp_agent = OpAMPAgent(
         interval=1,

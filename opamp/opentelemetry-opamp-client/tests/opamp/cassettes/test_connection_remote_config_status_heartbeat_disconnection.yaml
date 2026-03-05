@@ -1,7 +1,7 @@
 interactions:
 - request:
     body: !!binary |
-      ChABnL5Ramh0Y4Y52kt7YrNoGj0KFQoMc2VydmljZS5uYW1lEgUKA2ZvbwokChtkZXBsb3ltZW50
+      ChABnL5b5k5046/FazbAJ7r4Gj0KFQoMc2VydmljZS5uYW1lEgUKA2ZvbwokChtkZXBsb3ltZW50
       LmVudmlyb25tZW50Lm5hbWUSBQoDZm9vIIdg
     headers:
       Accept:
@@ -17,27 +17,26 @@ interactions:
       User-Agent:
       - OTel-OpAMP-Python/0.1b0.dev
     method: POST
-    uri: http://localhost:4320/v1/opamp
+    uri: https://localhost:4320/v1/opamp
   response:
     body:
       string: !!binary |
-        ChABnL5Ramh0Y4Y52kt7YrNoGmYKOgo4CgdlbGFzdGljEi0KGXsibG9nZ2luZ19sZXZlbCI6ImRl
-        YnVnIn0SEGFwcGxpY2F0aW9uL2pzb24SKGY3MzA5M2VjZDEyNjkzZGMxNDUxYWQ2MjdlZDA2MWJl
-        ZWM5ZjU1OWM4AlIA
+        ChABnL5b5k5046/FazbAJ7r4GioKBgoECgASABIg47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZ
+        G3hSuFUwAVIA
     headers:
       Content-Length:
-      - '126'
+      - '66'
       Content-Type:
       - application/x-protobuf
       Date:
-      - Thu, 05 Mar 2026 14:05:32 GMT
+      - Thu, 05 Mar 2026 14:16:59 GMT
     status:
       code: 200
       message: OK
 - request:
     body: !!binary |
-      ChABnL5Ramh0Y4Y52kt7YrNoEAEgh2A6LAooZjczMDkzZWNkMTI2OTNkYzE0NTFhZDYyN2VkMDYx
-      YmVlYzlmNTU5YxAB
+      ChABnL5b5k5046/FazbAJ7r4EAEgh2A6JAog47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hS
+      uFUQAQ==
     headers:
       Accept:
       - '*/*'
@@ -46,30 +45,31 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '69'
+      - '61'
       Content-Type:
       - application/x-protobuf
       User-Agent:
       - OTel-OpAMP-Python/0.1b0.dev
     method: POST
-    uri: http://localhost:4320/v1/opamp
+    uri: https://localhost:4320/v1/opamp
   response:
     body:
       string: !!binary |
-        ChABnL5Ramh0Y4Y52kt7YrNoOAJSAA==
+        ChABnL5b5k5046/FazbAJ7r4GioKBgoECgASABIg47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZ
+        G3hSuFUwAVIA
     headers:
       Content-Length:
-      - '22'
+      - '66'
       Content-Type:
       - application/x-protobuf
       Date:
-      - Thu, 05 Mar 2026 14:05:32 GMT
+      - Thu, 05 Mar 2026 14:16:59 GMT
     status:
       code: 200
       message: OK
 - request:
     body: !!binary |
-      ChABnL5Ramh0Y4Y52kt7YrNoEAIgh2A=
+      ChABnL5b5k5046/FazbAJ7r4EAIgh2A=
     headers:
       Accept:
       - '*/*'
@@ -84,24 +84,25 @@ interactions:
       User-Agent:
       - OTel-OpAMP-Python/0.1b0.dev
     method: POST
-    uri: http://localhost:4320/v1/opamp
+    uri: https://localhost:4320/v1/opamp
   response:
     body:
       string: !!binary |
-        ChABnL5Ramh0Y4Y52kt7YrNoOAJSAA==
+        ChABnL5b5k5046/FazbAJ7r4GioKBgoECgASABIg47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZ
+        G3hSuFUwAVIA
     headers:
       Content-Length:
-      - '22'
+      - '66'
       Content-Type:
       - application/x-protobuf
       Date:
-      - Thu, 05 Mar 2026 14:05:33 GMT
+      - Thu, 05 Mar 2026 14:17:00 GMT
     status:
       code: 200
       message: OK
 - request:
     body: !!binary |
-      ChABnL5Ramh0Y4Y52kt7YrNoEAMgh2BKAA==
+      ChABnL5b5k5046/FazbAJ7r4EAMgh2BKAA==
     headers:
       Accept:
       - '*/*'
@@ -116,18 +117,19 @@ interactions:
       User-Agent:
       - OTel-OpAMP-Python/0.1b0.dev
     method: POST
-    uri: http://localhost:4320/v1/opamp
+    uri: https://localhost:4320/v1/opamp
   response:
     body:
       string: !!binary |
-        ChABnL5Ramh0Y4Y52kt7YrNoOAJSAA==
+        ChABnL5b5k5046/FazbAJ7r4GioKBgoECgASABIg47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZ
+        G3hSuFUwAVIA
     headers:
       Content-Length:
-      - '22'
+      - '66'
       Content-Type:
       - application/x-protobuf
       Date:
-      - Thu, 05 Mar 2026 14:05:34 GMT
+      - Thu, 05 Mar 2026 14:17:01 GMT
     status:
       code: 200
       message: OK
