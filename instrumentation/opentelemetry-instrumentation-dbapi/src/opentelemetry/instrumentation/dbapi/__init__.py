@@ -176,6 +176,7 @@ from typing import Any, Awaitable, Callable, Generic, TypeVar
 from wrapt import wrap_function_wrapper
 
 try:
+    # wrapt 2.0.0+
     from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy

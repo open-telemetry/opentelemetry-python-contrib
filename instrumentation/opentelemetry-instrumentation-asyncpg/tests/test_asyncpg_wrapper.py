@@ -5,6 +5,7 @@ import pytest
 from asyncpg import Connection, Record, cursor
 
 try:
+    # wrapt 2.0.0+
     from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
