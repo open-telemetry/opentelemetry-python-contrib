@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
 from types import TracebackType
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Callable, Generator, Generic, TypeVar
 
+from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.types import Error, LLMInvocation
+
+# OpenAI Responses internals are version-gated (added in openai>=1.66.0), so
+# pylint may not resolve them in all lint environments even though we guard
+# runtime usage with ImportError fallbacks below.
 try:
     from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
         ResponseCompletedEvent,
@@ -17,21 +24,7 @@ try:
         ResponseIncompleteEvent,
         ResponseInProgressEvent,
     )
-except ImportError:  # pragma: no cover
-    ResponseCompletedEvent = None
-    ResponseCreatedEvent = None
-    ResponseErrorEvent = None
-    ResponseFailedEvent = None
-    ResponseIncompleteEvent = None
-    ResponseInProgressEvent = None
 
-if (
-    ResponseCreatedEvent is not None
-    and ResponseInProgressEvent is not None
-    and ResponseFailedEvent is not None
-    and ResponseIncompleteEvent is not None
-    and ResponseCompletedEvent is not None
-):
     _RESPONSE_EVENTS_WITH_RESPONSE = (
         ResponseCreatedEvent,
         ResponseInProgressEvent,
@@ -39,22 +32,21 @@ if (
         ResponseIncompleteEvent,
         ResponseCompletedEvent,
     )
-else:
+except ImportError:
+    ResponseCompletedEvent = None
+    ResponseCreatedEvent = None
+    ResponseErrorEvent = None
+    ResponseFailedEvent = None
+    ResponseIncompleteEvent = None
+    ResponseInProgressEvent = None
     _RESPONSE_EVENTS_WITH_RESPONSE = ()
 
 try:
     from opentelemetry.instrumentation.openai_v2.response_extractors import (  # pylint: disable=no-name-in-module
         _set_invocation_response_attributes,
     )
-except ImportError:  # pragma: no cover
+except ImportError:
     _set_invocation_response_attributes = None
-
-try:
-    from opentelemetry.util.genai.types import (  # pylint: disable=no-name-in-module
-        Error,
-    )
-except ImportError:  # pragma: no cover
-    Error = None
 
 if TYPE_CHECKING:
     from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
@@ -68,12 +60,6 @@ if TYPE_CHECKING:
         ParsedResponse,
         Response,
     )
-
-    from opentelemetry.util.genai.handler import TelemetryHandler
-    from opentelemetry.util.genai.types import (  # pylint: disable=no-name-in-module
-        LLMInvocation,
-    )
-
 
 _logger = logging.getLogger(__name__)
 TextFormatT = TypeVar("TextFormatT")
@@ -115,7 +101,7 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         stream: "ResponseStream[TextFormatT]",
-        handler: "TelemetryHandler",
+        handler: TelemetryHandler,
         invocation: "LLMInvocation",
         capture_content: bool,
     ):
@@ -161,10 +147,8 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
         except Exception as error:
             self._fail(str(error), type(error))
             raise
-        self._safe_instrumentation(
-            lambda: self.process_event(event),
-            "event processing",
-        )
+        with self._safe_instrumentation("event processing"):
+            self.process_event(event)
         return event
 
     def get_final_response(self) -> "ParsedResponse[TextFormatT]":
@@ -179,6 +163,8 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
     def parse(self) -> "ResponseStreamWrapper":
         return self
 
+    # TODO: Migrate passthrough delegation to wrapt.ObjectProxy once wrapt 2
+    # typing support is available (wrapt PR #3903).
     def __getattr__(self, name: str):
         return getattr(self.stream, name)
 
@@ -194,42 +180,34 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
     ) -> None:
         if self._finalized:
             return
-        self._safe_instrumentation(
-            lambda: _set_response_attributes(
+        with self._safe_instrumentation("response attribute extraction"):
+            _set_response_attributes(
                 self.invocation, result, self._capture_content
-            ),
-            "response attribute extraction",
-        )
-        self._safe_instrumentation(
-            lambda: self.handler.stop_llm(self.invocation),
-            "stop_llm",
-        )
+            )
+        with self._safe_instrumentation("stop_llm"):
+            self.handler.stop_llm(self.invocation)
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]) -> None:
         if self._finalized:
             return
-        if Error is None:
-            return
-        self._safe_instrumentation(
-            lambda: self.handler.fail_llm(
+        with self._safe_instrumentation("fail_llm"):
+            self.handler.fail_llm(
                 self.invocation, Error(message=message, type=error_type)
-            ),
-            "fail_llm",
-        )
+            )
         self._finalized = True
 
     @staticmethod
-    def _safe_instrumentation(
-        callback: Callable[[], None], context: str
-    ) -> None:
+    @contextmanager
+    def _safe_instrumentation(context: str) -> Generator[None, None, None]:
         try:
-            callback()
+            yield
         except Exception:  # pylint: disable=broad-exception-caught
             _logger.debug(
                 "OpenAI responses instrumentation error during %s",
                 context,
                 exc_info=True,
+                stacklevel=2,
             )
 
     def process_event(self, event: "ResponseStreamEvent[TextFormatT]") -> None:
@@ -257,12 +235,10 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
                 event, (ResponseFailedEvent, ResponseIncompleteEvent)
             )
         ):
-            self._safe_instrumentation(
-                lambda: _set_response_attributes(
+            with self._safe_instrumentation("response attribute extraction"):
+                _set_response_attributes(
                     self.invocation, response, self._capture_content
-                ),
-                "response attribute extraction",
-            )
+                )
             self._fail(event_type, RuntimeError)
             return
 
@@ -284,7 +260,7 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         manager: "ResponseStreamManager[TextFormatT]",
-        handler: "TelemetryHandler",
+        handler: TelemetryHandler,
         invocation: "LLMInvocation",
         capture_content: bool,
     ):
@@ -292,15 +268,17 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
         self._handler = handler
         self._invocation = invocation
         self._capture_content = capture_content
+        self._stream_wrapper: ResponseStreamWrapper[TextFormatT] | None = None
 
     def __enter__(self) -> ResponseStreamWrapper[TextFormatT]:
         stream = self._manager.__enter__()
-        return ResponseStreamWrapper(
+        self._stream_wrapper = ResponseStreamWrapper(
             stream,
             self._handler,
             self._invocation,
             self._capture_content,
         )
+        return self._stream_wrapper
 
     def __exit__(
         self,
@@ -308,7 +286,19 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> bool:
-        return self._manager.__exit__(exc_type, exc_val, exc_tb)
+        suppressed = False
+        try:
+            suppressed = self._manager.__exit__(exc_type, exc_val, exc_tb)
+            return suppressed
+        finally:
+            if self._stream_wrapper is not None:
+                if suppressed:
+                    self._stream_wrapper.__exit__(None, None, None)
+                else:
+                    self._stream_wrapper.__exit__(exc_type, exc_val, exc_tb)
+                self._stream_wrapper = None
 
+    # TODO: Migrate passthrough delegation to wrapt.ObjectProxy once wrapt 2
+    # typing support is available (wrapt PR #3903).
     def __getattr__(self, name: str):
         return getattr(self._manager, name)
