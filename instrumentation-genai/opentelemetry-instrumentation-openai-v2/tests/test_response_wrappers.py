@@ -104,4 +104,3 @@ def test_manager_exit_still_finalizes_stream_wrapper_when_manager_raises():
     assert manager.exit_args == (ValueError, error, None)
     assert stream_wrapper.exit_args == (ValueError, error, None)
     assert wrapper._stream_wrapper is None
-    
