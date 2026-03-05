@@ -259,11 +259,11 @@ class TelemetryHandler:
         """Start an LLM invocation and create a pending span entry."""
         return self.start(invocation)
 
-    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pylint: disable=no-self-use
+    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
         """Finalize an LLM invocation successfully and end its span."""
         return self.stop(invocation)
 
-    def fail_llm(  # pylint: disable=no-self-use
+    def fail_llm(
         self, invocation: LLMInvocation, error: Error
     ) -> LLMInvocation:
         """Fail an LLM invocation and end its span with error status."""
