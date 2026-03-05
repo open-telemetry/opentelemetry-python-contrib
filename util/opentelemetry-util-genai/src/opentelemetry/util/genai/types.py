@@ -202,6 +202,25 @@ class GenAIInvocation:
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
 
+@dataclass
+class WorkflowInvocation(GenAIInvocation):
+    """ Represents predetermined static sequence of operations eg: Agent, LLM, tool, and retrieval invocations.
+    A workflow groups multiple operations together, accepting input(s) and producing final output(s).
+
+    Attributes:
+        name: Identifier for the workflow (e.g., "customer_support_pipeline")
+        input_messages: Structured input messages for the workflow
+        output_messages: Structured output messages from the workflow
+    """
+
+    name: str = ""
+    operation_name: str = "invoke_workflow"
+    input_messages: list[InputMessage] = field(
+        default_factory=_new_input_messages
+    )
+    output_messages: list[OutputMessage] = field(
+        default_factory=_new_output_messages
+    )
 
 @dataclass
 class LLMInvocation(GenAIInvocation):
