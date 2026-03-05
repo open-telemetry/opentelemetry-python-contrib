@@ -720,6 +720,8 @@ class OpenTelemetryMiddleware:
 
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-locals
+    # pylint: disable=too-many-public-methods
+    # pylint: disable=too-many-statements
     def __call__(
         self, environ: WSGIEnvironment, start_response: StartResponse
     ):
