@@ -124,7 +124,7 @@ class OpAMPAgent:
         atexit.register(self.stop)
 
         # enqueue the connection message so we can then enable heartbeat
-        payload = self._client.build_connection_message()
+        payload = self._client.build_full_state_message()
         self.send(
             payload,
             max_retries=self._max_retries,

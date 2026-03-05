@@ -79,21 +79,6 @@ def build_agent_description(
     )
 
 
-def build_presentation_message(
-    instance_uid: bytes,
-    sequence_num: int,
-    agent_description: opamp_pb2.AgentDescription,
-    capabilities: int,
-) -> opamp_pb2.AgentToServer:
-    command = opamp_pb2.AgentToServer(
-        instance_uid=instance_uid,
-        sequence_num=sequence_num,
-        agent_description=agent_description,
-        capabilities=capabilities,
-    )
-    return command
-
-
 def build_heartbeat_message(
     instance_uid: bytes, sequence_num: int, capabilities: int
 ) -> opamp_pb2.AgentToServer:

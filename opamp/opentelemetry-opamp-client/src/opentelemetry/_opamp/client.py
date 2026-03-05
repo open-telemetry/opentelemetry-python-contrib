@@ -90,16 +90,6 @@ class OpAMPClient:
         self._remote_config_status: opamp_pb2.RemoteConfigStatus | None = None
         self._effective_config: opamp_pb2.EffectiveConfig | None = None
 
-    def build_connection_message(self) -> bytes:
-        message = messages.build_presentation_message(
-            instance_uid=self._instance_uid,
-            agent_description=self._agent_description,
-            sequence_num=self._sequence_num,
-            capabilities=_HANDLED_CAPABILITIES,
-        )
-        data = messages.encode_message(message)
-        return data
-
     def build_agent_disconnect_message(self) -> bytes:
         message = messages.build_agent_disconnect_message(
             instance_uid=self._instance_uid,

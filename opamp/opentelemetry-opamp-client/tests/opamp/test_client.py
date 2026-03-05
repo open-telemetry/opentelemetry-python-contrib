@@ -126,23 +126,7 @@ def test_client_headers_override_defaults():
     )
 
 
-def test_build_connection_message(client):
-    data = client.build_connection_message()
-
-    message = opamp_pb2.AgentToServer()
-    message.ParseFromString(data)
-
-    assert message
-    assert message.instance_uid == client._instance_uid
-    assert message.sequence_num == 0
-    assert message.agent_description.identifying_attributes == [
-        PB2KeyValue(key="foo", value=PB2AnyValue(string_value="bar")),
-    ]
-    assert message.agent_description.non_identifying_attributes == []
-    assert message.capabilities == _HANDLED_CAPABILITIES
-
-
-def test_build_connection_message_can_serialize_attributes():
+def test_can_serialize_agent_identifying_attributes():
     client = OpAMPClient(
         endpoint="url",
         agent_identifying_attributes={
@@ -154,7 +138,7 @@ def test_build_connection_message_can_serialize_attributes():
             "float": 2.0,
         },
     )
-    data = client.build_connection_message()
+    data = client.build_full_state_message()
 
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
