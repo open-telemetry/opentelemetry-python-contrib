@@ -201,7 +201,7 @@ class GenAIInvocation:
     context_token: ContextToken | None = None
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
-    request_model: str | None = None
+
     operation_name: str | None = None
     # Monotonic start time in seconds (from timeit.default_timer) used
     # for duration calculations to avoid mixing clock sources. This is
@@ -221,6 +221,7 @@ class LLMInvocation(GenAIInvocation):
         if self.operation_name is None:
             self.operation_name = GenAI.GenAiOperationNameValues.CHAT.value
 
+    request_model: str | None = None
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -273,6 +274,7 @@ class EmbeddingInvocation(GenAIInvocation):
                 GenAI.GenAiOperationNameValues.EMBEDDINGS.value
             )
 
+    request_model: str | None = None
     provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
     server_address: str | None = None
     server_port: int | None = None
@@ -282,6 +284,7 @@ class EmbeddingInvocation(GenAIInvocation):
     encoding_formats: list[str] | None = None
     input_tokens: int | None = None
     dimension_count: int | None = None
+    response_model_name: str | None = None
 
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
     """

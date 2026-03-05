@@ -93,7 +93,8 @@ def _get_span_name(
     invocation: GenAIInvocation,
 ) -> str:
     """Get the span name for a GenAI invocation."""
-    return f"{invocation.operation_name} {invocation.request_model}".strip()
+    request_model = getattr(invocation, "request_model", None) or ""
+    return f"{invocation.operation_name} {request_model}".strip()
 
 
 def _get_llm_span_name(invocation: LLMInvocation) -> str:
@@ -350,6 +351,7 @@ def _get_embedding_response_attributes(
 ) -> dict[str, Any]:
     """Get GenAI response semantic convention attributes."""
     optional_attrs = (
+        (GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name),
         (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
     )
 
