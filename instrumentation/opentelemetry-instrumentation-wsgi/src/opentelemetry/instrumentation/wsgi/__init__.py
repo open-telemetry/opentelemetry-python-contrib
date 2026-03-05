@@ -738,6 +738,9 @@ class OpenTelemetryMiddleware:
             req_attrs,
             self._sem_conv_opt_in_mode,
         )
+        active_requests_count_attrs = enrich_metric_attributes(
+            active_requests_count_attrs
+        )
 
         span, token = _start_internal_or_server_span(
             tracer=self.tracer,
