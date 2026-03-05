@@ -11,8 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add stale PR GitHub Action
-  ([#4220](https://github.com/open-telemetry/opentelemetry-python/pull/4220))
+### Added
+
+- `opentelemetry-instrumentation`: Add experimental attributes Labeler utility
+  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
+
+## Version 1.40.0/0.61b0 (2026-03-04)
 
 ### Added
 
@@ -62,8 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
 - `opentelemetry-instrumentation-logging`: Move there the SDK LoggingHandler
   ([#4210](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4210))
-- `opentelemetry-instrumentation`: Add experimental attributes Labeler utility
-  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
+- Add stale PR GitHub Action
+  ([#4220](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4220))
 
 ### Fixed
 
