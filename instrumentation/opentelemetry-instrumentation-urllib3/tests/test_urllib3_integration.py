@@ -42,7 +42,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods,too-many-lines
 
 
 class TestURLLib3Instrumentor(TestBase):
@@ -950,4 +950,55 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertNotIn(
             "http.response.header.x_response_two",
             span.attributes,
+        )
+
+    def test_urlopen_positional_headers(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
+        url = "http://mock/status/200"
+        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pool = urllib3.HTTPConnectionPool("mock")
+        headers = {"X-Test": "Value"}
+        response = pool.urlopen("GET", "/status/200", None, headers)
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"], ("Value",)
+        )
+
+    def test_urlopen_all_positional(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
+        url = "http://mock/status/200"
+        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pool = urllib3.HTTPConnectionPool("mock")
+        response = pool.urlopen(
+            "GET",
+            "/status/200",
+            None,  # body
+            {"X-Test": "Value"},  # headers
+            None,  # retries
+            True,  # redirect
+            True,  # assert_same_host
+            urllib3.util.Timeout(5),  # timeout
+        )
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"], ("Value",)
+        )
+
+    def test_urlopen_mixed_args(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
+        url = "http://mock/status/200"
+        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pool = urllib3.HTTPConnectionPool("mock")
+        response = pool.urlopen(
+            "GET", "/status/200", headers={"X-Test": "Value"}, body=None
+        )
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"], ("Value",)
         )

@@ -69,6 +69,15 @@ FAKE_OUTPUTS = [
 ]
 FAKE_SYSTEM_INSTRUCTION = [types.Text(content="You are a helpful assistant.")]
 
+FAKE_TOOL_DEFINITIONS: list[types.ToolDefinition] = [
+    types.FunctionToolDefinition(
+        name="test_tool",
+        description="does something",
+        parameters=None,
+        type="function",
+    ),
+]
+
 
 class ThreadSafeMagicMock(MagicMock):
     def __init__(self, *args, **kwargs) -> None:
@@ -124,6 +133,7 @@ class TestUploadCompletionHook(TestCase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
         )
         # all items should be consumed
         self.hook.shutdown()
@@ -131,8 +141,8 @@ class TestUploadCompletionHook(TestCase):
         time.sleep(0.5)
         self.assertEqual(
             self.mock_fs.open.call_count,
-            3,
-            "should have uploaded 3 files",
+            4,
+            "should have uploaded 4 files",
         )
 
     def test_lru_cache_works(self):
@@ -141,6 +151,7 @@ class TestUploadCompletionHook(TestCase):
             inputs=[],
             outputs=[],
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=[],
             log_record=record,
         )
         # Wait a bit for file upload to finish..
@@ -161,6 +172,7 @@ class TestUploadCompletionHook(TestCase):
                 inputs=[],
                 outputs=[],
                 system_instruction=[types.Text(content=str(iteration))],
+                tool_definitions=[],
             )
         self.hook.shutdown()
         self.assertFalse(
@@ -174,6 +186,7 @@ class TestUploadCompletionHook(TestCase):
             inputs=[],
             outputs=[],
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=[],
             log_record=record,
         )
         # all items should be consumed
@@ -203,6 +216,7 @@ class TestUploadCompletionHook(TestCase):
                     inputs=FAKE_INPUTS,
                     outputs=FAKE_OUTPUTS,
                     system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                    tool_definitions=FAKE_TOOL_DEFINITIONS,
                 )
 
             self.assertLessEqual(
@@ -216,6 +230,7 @@ class TestUploadCompletionHook(TestCase):
                     inputs=FAKE_INPUTS,
                     outputs=FAKE_OUTPUTS,
                     system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                    tool_definitions=FAKE_TOOL_DEFINITIONS,
                 )
 
             self.assertIn(
@@ -228,6 +243,7 @@ class TestUploadCompletionHook(TestCase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
 
             # shutdown should timeout and return even though there are still items in the queue
@@ -241,6 +257,7 @@ class TestUploadCompletionHook(TestCase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
             self.hook.shutdown()
 
@@ -264,6 +281,7 @@ class TestUploadCompletionHook(TestCase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
             hook.shutdown()
 
@@ -278,8 +296,9 @@ class TestUploadCompletionHook(TestCase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
             )
-        self.assertEqual(len(logs.output), 3)
+        self.assertEqual(len(logs.output), 4)
         self.assertIn(
             "attempting to upload file after UploadCompletionHook.shutdown() was already called",
             logs.output[0],
@@ -337,6 +356,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=[],
             outputs=[],
             system_instruction=system_instructions,
+            tool_definitions=[],
             log_record=record,
         )
         self.hook.shutdown()
@@ -344,6 +364,42 @@ class TestUploadCompletionHookIntegration(TestBase):
 
         self.assertEqual(
             record.attributes["gen_ai.system_instructions_ref"],
+            expected_file_name,
+        )
+        # Content should not have been overwritten.
+        self.assert_fsspec_equal(expected_file_name, "asg")
+
+    def test_tool_definitions_is_hashed_to_avoid_reupload(self):
+        expected_hash = (
+            "1f559d0102f8c440a667fd5ed587beeed488ec9f3ce0828d39c424bed6546cf5"
+        )
+        # Create the file before upload..
+        expected_file_name = f"memory://{expected_hash}_tool.definitions.json"
+        with fsspec.open(expected_file_name, "wb") as file:
+            file.write(b"asg")
+        # FIle should exist.
+        self.assertTrue(self.hook._file_exists(expected_file_name))
+        tool_definitions = [
+            types.FunctionToolDefinition(
+                name="some_tool",
+                description="does something",
+                parameters=None,
+                type="function",
+            ),
+        ]
+        record = LogRecord()
+        self.hook.on_completion(
+            inputs=[],
+            outputs=[],
+            system_instruction=[],
+            tool_definitions=tool_definitions,
+            log_record=record,
+        )
+        self.hook.shutdown()
+        self.assertIsNotNone(record.attributes)
+
+        self.assertEqual(
+            record.attributes["gen_ai.tool.definitions_ref"],
             expected_file_name,
         )
         # Content should not have been overwritten.
@@ -358,6 +414,7 @@ class TestUploadCompletionHookIntegration(TestBase):
                 inputs=FAKE_INPUTS,
                 outputs=FAKE_OUTPUTS,
                 system_instruction=FAKE_SYSTEM_INSTRUCTION,
+                tool_definitions=FAKE_TOOL_DEFINITIONS,
                 span=span,
                 log_record=log_record,
             )
@@ -376,6 +433,7 @@ class TestUploadCompletionHookIntegration(TestBase):
                 "gen_ai.input.messages_ref",
                 "gen_ai.output.messages_ref",
                 "gen_ai.system_instructions_ref",
+                "gen_ai.tool.definitions_ref",
             ]:
                 self.assertIn(ref_key, attributes)
 
@@ -391,6 +449,10 @@ class TestUploadCompletionHookIntegration(TestBase):
             span.attributes["gen_ai.system_instructions_ref"],
             '[{"content":"You are a helpful assistant.","type":"text"}]\n',
         )
+        self.assert_fsspec_equal(
+            span.attributes["gen_ai.tool.definitions_ref"],
+            '[{"name":"test_tool","description":"does something","parameters":null,"type":"function"}]\n',
+        )
 
     def test_stamps_empty_log(self):
         log_record = LogRecord()
@@ -398,6 +460,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
 
@@ -405,6 +468,7 @@ class TestUploadCompletionHookIntegration(TestBase):
         self.assertIn("gen_ai.input.messages_ref", log_record.attributes)
         self.assertIn("gen_ai.output.messages_ref", log_record.attributes)
         self.assertIn("gen_ai.system_instructions_ref", log_record.attributes)
+        self.assertIn("gen_ai.tool.definitions_ref", log_record.attributes)
 
     def test_upload_bytes(self) -> None:
         log_record = LogRecord()
@@ -420,6 +484,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             ],
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         self.hook.shutdown()
@@ -438,6 +503,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         hook.shutdown()
@@ -461,6 +527,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         hook.shutdown()
@@ -492,6 +559,7 @@ class TestUploadCompletionHookIntegration(TestBase):
             inputs=FAKE_INPUTS,
             outputs=FAKE_OUTPUTS,
             system_instruction=FAKE_SYSTEM_INSTRUCTION,
+            tool_definitions=FAKE_TOOL_DEFINITIONS,
             log_record=log_record,
         )
         hook.shutdown()

@@ -25,6 +25,8 @@
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-anthropic
+> - opentelemetry-instrumentation-claude-agent-sdk
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
@@ -93,6 +95,8 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-anthropic
+> - opentelemetry-instrumentation-claude-agent-sdk
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
