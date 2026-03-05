@@ -25,6 +25,7 @@ from django.test.client import Client
 from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._labeler import clear_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
@@ -34,6 +35,9 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.django import (
     DjangoInstrumentor,
     _DjangoMiddleware,
+)
+from opentelemetry.instrumentation.django.middleware import (
+    otel_middleware as django_otel_middleware,
 )
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
@@ -69,6 +73,7 @@ from .views import (
     excluded_noarg2,
     response_with_custom_header,
     route_span_name,
+    route_span_name_custom_attributes,
     traced,
     traced_template,
 )
@@ -95,6 +100,10 @@ urlpatterns = [
     re_path(r"^excluded_noarg/", excluded_noarg),
     re_path(r"^excluded_noarg2/", excluded_noarg2),
     re_path(r"^span_name/([0-9]{4})/$", route_span_name),
+    re_path(
+        r"^span_name_custom_attrs/([0-9]{4})/$",
+        route_span_name_custom_attributes,
+    ),
     path("", traced, name="empty"),
 ]
 _django_instrumentor = DjangoInstrumentor()
@@ -117,6 +126,7 @@ class TestMiddleware(WsgiTestBase):
 
     def setUp(self):
         super().setUp()
+        clear_labeler()
         setup_test_environment()
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -765,6 +775,111 @@ class TestMiddleware(WsgiTestBase):
                         dict(point.attributes),
                     )
         self.assertTrue(histrogram_data_point_seen and number_data_point_seen)
+
+    def test_wsgi_metrics_custom_attributes_skip_override(self):
+        expected_duration_attributes = {
+            "http.method": "GET",
+            "http.scheme": "http",
+            "http.flavor": "1.1",
+            "http.server_name": "testserver",
+            "net.host.port": 80,
+            "http.status_code": 200,
+            "http.target": "^span_name_custom_attrs/([0-9]{4})/$",
+            "custom_attr": "test_value",
+        }
+
+        response = Client().get("/span_name_custom_attrs/1234/")
+        self.assertEqual(response.status_code, 200)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+        histogram_data_point_seen = False
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                data_points = list(metric.data.data_points)
+                for point in data_points:
+                    self.assertIsInstance(point, NumberDataPoint)
+                    if point.attributes.get("custom_attr") != "test_value":
+                        continue
+                    self.assertEqual(point.attributes["http.method"], "GET")
+                    active_requests_point_seen = True
+                continue
+
+            if metric.name != "http.server.duration":
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            histogram_data_point_seen = True
+            self.assertDictEqual(
+                expected_duration_attributes, dict(point.attributes)
+            )
+
+        self.assertTrue(active_requests_point_seen)
+        self.assertTrue(histogram_data_point_seen)
+
+    def test_wsgi_active_requests_custom_attributes_new_semconv(self):
+        response = Client().get("/span_name_custom_attrs/1234/")
+        self.assertEqual(response.status_code, 200)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+        for metric in metrics:
+            if metric.name != "http.server.active_requests":
+                continue
+            data_points = list(metric.data.data_points)
+            for point in data_points:
+                self.assertIsInstance(point, NumberDataPoint)
+                if point.attributes.get("custom_attr") != "test_value":
+                    continue
+                self.assertEqual(
+                    point.attributes["http.request.method"], "GET"
+                )
+                active_requests_point_seen = True
+
+        self.assertTrue(active_requests_point_seen)
+
+    def test_wsgi_active_requests_attrs_use_enrich_old_semconv(self):
+        with patch(
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.enrich_metric_attributes",
+            wraps=django_otel_middleware.enrich_metric_attributes,
+        ) as mock_enrich:
+            response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+
+        enriched_active_attrs_seen = False
+        for call in mock_enrich.call_args_list:
+            if not call.args:
+                continue
+            attrs = call.args[0]
+            if "http.method" in attrs and "http.status_code" not in attrs:
+                enriched_active_attrs_seen = True
+                break
+
+        self.assertTrue(enriched_active_attrs_seen)
+
+    def test_wsgi_active_requests_attrs_use_enrich_new_semconv(self):
+        with patch(
+            "opentelemetry.instrumentation.django.middleware.otel_middleware.enrich_metric_attributes",
+            wraps=django_otel_middleware.enrich_metric_attributes,
+        ) as mock_enrich:
+            response = Client().get("/span_name/1234/")
+            self.assertEqual(response.status_code, 200)
+
+        enriched_active_attrs_seen = False
+        for call in mock_enrich.call_args_list:
+            if not call.args:
+                continue
+            attrs = call.args[0]
+            if (
+                "http.request.method" in attrs
+                and "http.response.status_code" not in attrs
+            ):
+                enriched_active_attrs_seen = True
+                break
+
+        self.assertTrue(enriched_active_attrs_seen)
 
     # pylint: disable=too-many-locals
     def test_wsgi_metrics_new_semconv(self):
