@@ -818,6 +818,9 @@ class OpenTelemetryMiddleware:
             attributes,
             self._sem_conv_opt_in_mode,
         )
+        active_requests_count_attrs = enrich_metric_attributes(
+            active_requests_count_attrs
+        )
 
         if scope["type"] == "http":
             self.active_requests_counter.add(1, active_requests_count_attrs)
