@@ -1,9 +1,8 @@
-import pytest
 from opentelemetry.util.genai.types import (
-    WorkflowInvocation,
     InputMessage,
     OutputMessage,
     Text,
+    WorkflowInvocation,
 )
 
 
@@ -33,7 +32,9 @@ class TestWorkflowInvocation:
         assert invocation.input_messages[0].role == "user"
 
     def test_with_output_messages(self):
-        msg = OutputMessage(role="assistant", parts=[Text(content="hi")], finish_reason="stop")
+        msg = OutputMessage(
+            role="assistant", parts=[Text(content="hi")], finish_reason="stop"
+        )
         invocation = WorkflowInvocation(output_messages=[msg])
         assert len(invocation.output_messages) == 1
         assert invocation.output_messages[0].finish_reason == "stop"
@@ -57,7 +58,11 @@ class TestWorkflowInvocation:
 
     def test_full_construction(self):
         inp = InputMessage(role="user", parts=[Text(content="query")])
-        out = OutputMessage(role="assistant", parts=[Text(content="answer")], finish_reason="stop")
+        out = OutputMessage(
+            role="assistant",
+            parts=[Text(content="answer")],
+            finish_reason="stop",
+        )
         invocation = WorkflowInvocation(
             name="my_workflow",
             operation_name="invoke_workflow",
