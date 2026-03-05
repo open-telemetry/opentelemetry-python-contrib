@@ -41,6 +41,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -70,6 +77,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -101,6 +115,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -130,6 +151,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -161,6 +189,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -190,6 +225,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -221,6 +263,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -250,6 +299,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -281,6 +337,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -310,6 +373,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -341,6 +411,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -370,6 +447,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -401,6 +485,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -430,6 +521,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -461,6 +559,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -490,6 +595,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -521,6 +633,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -550,6 +669,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -581,6 +707,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -610,6 +743,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -641,6 +781,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -670,6 +817,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -701,6 +855,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -730,6 +891,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -761,6 +929,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -790,6 +965,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -821,6 +1003,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -850,6 +1039,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -881,6 +1077,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -910,6 +1113,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -941,6 +1151,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -970,6 +1187,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1001,6 +1225,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1030,6 +1261,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1061,6 +1299,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1090,6 +1335,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1121,6 +1373,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1150,6 +1409,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1181,6 +1447,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1210,6 +1483,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1241,6 +1521,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1270,6 +1557,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1301,6 +1595,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1330,6 +1631,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1361,6 +1669,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1390,6 +1705,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1421,6 +1743,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1450,6 +1779,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1481,6 +1817,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1510,6 +1853,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1541,6 +1891,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1570,6 +1927,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1601,6 +1965,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1630,6 +2001,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1661,6 +2039,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1690,6 +2075,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1721,6 +2113,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1750,6 +2149,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1781,6 +2187,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1810,6 +2223,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1841,6 +2261,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1870,6 +2297,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1901,6 +2335,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1930,6 +2371,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -1961,6 +2409,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -1990,6 +2445,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2021,6 +2483,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2050,6 +2519,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2081,6 +2557,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2110,6 +2593,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2141,6 +2631,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2170,6 +2667,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2201,6 +2705,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2230,6 +2741,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2261,6 +2779,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2290,6 +2815,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2321,6 +2853,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2350,6 +2889,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2381,6 +2927,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2410,6 +2963,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2441,6 +3001,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2470,6 +3037,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2501,6 +3075,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2530,6 +3111,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2561,6 +3149,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2590,6 +3185,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2621,6 +3223,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2650,6 +3259,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2681,6 +3297,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2710,6 +3333,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2741,6 +3371,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2770,6 +3407,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2801,6 +3445,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2830,6 +3481,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2861,6 +3519,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2890,6 +3555,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2921,6 +3593,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -2950,6 +3629,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -2981,6 +3667,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -3010,6 +3703,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -3041,6 +3741,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -3071,6 +3778,13 @@ jobs:
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
 
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
@@ -3100,6 +3814,13 @@ jobs:
           repository: open-telemetry/opentelemetry-python
           ref: ${{ env.CORE_REPO_SHA }}
           path: opentelemetry-python
+
+      - name: Set core package paths to local checkout
+        run: |
+          echo "CORE_REPO_API=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-api" >> $GITHUB_ENV
+          echo "CORE_REPO_SDK=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-sdk" >> $GITHUB_ENV
+          echo "CORE_REPO_SEMCONV=${GITHUB_WORKSPACE}/opentelemetry-python/opentelemetry-semantic-conventions" >> $GITHUB_ENV
+          echo "CORE_REPO_TEST_UTILS=${GITHUB_WORKSPACE}/opentelemetry-python/tests/opentelemetry-test-utils" >> $GITHUB_ENV
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
