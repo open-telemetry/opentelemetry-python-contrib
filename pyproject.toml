@@ -209,6 +209,7 @@ include = [
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
+  "opamp/opentelemetry-opamp-client",
   "opentelemetry-instrumentation/src/opentelemetry/instrumentation/_labeler",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
@@ -229,6 +230,8 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
+  "opamp/opentelemetry-opamp-client/tests/**/*.py",
+  "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
 
 [dependency-groups]
