@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("confluent-kafka >= 1.8.2, <= 2.13.2",)
+_instruments = ("confluent-kafka >= 1.8.2, < 3.0.0",)
