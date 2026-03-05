@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation`: Add experimental attributes Labeler utility
+- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
   ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
