@@ -180,6 +180,49 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Custom Metrics Attributes using Labeler
+***************************************
+The Falcon instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP server metrics at emit time, including:
+
+- Active requests counter (``http.server.active_requests``)
+- Duration histogram (``http.server.duration``)
+- Request duration histogram (``http.server.request.duration``)
+
+The custom attributes are stored only within the context of an instrumented
+request or operation. The instrumentor does not overwrite base attributes that
+exist at the same keys as any custom attributes.
+
+
+.. code-block:: python
+
+    import falcon
+
+    from opentelemetry.instrumentation._labeler import get_labeler
+    from opentelemetry.instrumentation.falcon import FalconInstrumentor
+
+    FalconInstrumentor().instrument()
+    app = falcon.App()
+
+    class UserProfileResource:
+        def on_get(self, req, resp, user_id):
+            # Get the labeler for the current request
+            labeler = get_labeler()
+
+            # Add custom attributes to Falcon instrumentation metrics
+            labeler.add("user_id", user_id)
+            labeler.add("user_type", "registered")
+
+            # Or, add multiple attributes at once
+            labeler.add_attributes({
+                "feature_flag": "new_ui",
+                "experiment_group": "control"
+            })
+
+            resp.text = f'User profile for {user_id}'
+
+    app.add_route('/users/{user_id}/', UserProfileResource())
+
 API
 ---
 """
@@ -195,6 +238,7 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._labeler import enrich_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
@@ -373,7 +417,9 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 attributes, self._sem_conv_opt_in_mode
             )
         )
-        self.active_requests_counter.add(1, active_requests_count_attrs)
+        self.active_requests_counter.add(
+            1, enrich_metric_attributes(active_requests_count_attrs)
+        )
 
         if span.is_recording():
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
@@ -408,6 +454,7 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 duration_attrs = otel_wsgi._parse_duration_attrs(
                     attributes, _StabilityMode.DEFAULT
                 )
+                duration_attrs = enrich_metric_attributes(duration_attrs)
                 self.duration_histogram_old.record(
                     max(round(duration_s * 1000), 0), duration_attrs
                 )
@@ -415,11 +462,14 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
                 duration_attrs = otel_wsgi._parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
                 )
+                duration_attrs = enrich_metric_attributes(duration_attrs)
                 self.duration_histogram_new.record(
                     max(duration_s, 0), duration_attrs
                 )
 
-            self.active_requests_counter.add(-1, active_requests_count_attrs)
+            self.active_requests_counter.add(
+                -1, enrich_metric_attributes(active_requests_count_attrs)
+            )
             if exception is None:
                 activation.__exit__(None, None, None)
             else:

@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
+  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
+- `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: `enrich_metric_attributes` with any Labeler-stored attributes in Context
+  ([#4300](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4300))
+- `opentelemetry-instrumentation-falcon`: `enrich_metric_attributes` with any Labeler-stored attributes in Context
+  ([#4309](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4309))
+
 ### Fixed
 
 - Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
