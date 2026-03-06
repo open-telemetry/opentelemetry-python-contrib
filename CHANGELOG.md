@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-flask`: `enrich_metric_attributes` with any Labeler-stored attributes in Context
   ([#4307](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4307))
 
+### Fixed
+
+- Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
+  ([#4305](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4305))
+
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
 ### Added
