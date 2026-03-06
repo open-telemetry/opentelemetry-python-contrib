@@ -15,7 +15,6 @@ click-didyoumean==0.3.0
 click-plugins==1.1.1
 click-repl==0.3.0
 cryptography==44.0.1
-Deprecated==1.2.14
 distro==1.9.0
 Django==4.2.17
 dnspython==2.6.1
@@ -34,13 +33,11 @@ jsonschema==3.2.0
 kombu==5.3.5
 mysql-connector-python==8.3.0
 mysqlclient==2.1.1
-opencensus-proto==0.1.0
 packaging==24.0
 paramiko==3.4.0
 pluggy==1.4.0
 prometheus_client==0.20.0
 prompt-toolkit==3.0.43
-protobuf==3.20.3
 # prerequisite: install libpq-dev (debian) or postgresql-devel (rhel), postgresql (mac)
 # see https://www.psycopg.org/docs/install.html#build-prerequisites
 # you might have to install additional packages depending on your OS
