@@ -204,6 +204,54 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Custom Metrics Attributes using Labeler
+***************************************
+The ASGI instrumentation reads custom attributes from the labeler (when present)
+and applies them to all HTTP server metric points emitted by the middleware:
+
+- Active requests counter (`http.server.active_requests`)
+- Duration histograms (`http.server.duration` and/or
+    `http.server.request.duration` depending on semantic convention mode)
+- Response size histograms (`http.server.response.size` and/or
+    `http.server.response.body.size`)
+- Request size histograms (`http.server.request.size` and/or
+    `http.server.request.body.size`)
+
+Labeler attributes are request-scoped and merged without overriding base metric
+attributes at the same keys.
+
+
+.. code-block:: python
+
+    .. code-block:: python
+
+    from quart import Quart
+    from opentelemetry.instrumentation._labeler import get_labeler
+    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+
+    app = Quart(__name__)
+    app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
+
+    @app.route("/users/<user_id>/")
+    async def user_profile(user_id):
+        # Get the labeler for the current request
+        labeler = get_labeler()
+
+        # Add custom attributes to ASGI instrumentation metrics
+        labeler.add("user_id", user_id)
+        labeler.add("user_type", "registered")
+
+        # Or, add multiple attributes at once
+        labeler.add_attributes({
+            "feature_flag": "new_ui",
+            "experiment_group": "control"
+        })
+
+        return f"User profile for {user_id}"
+
+    if __name__ == "__main__":
+        app.run(debug=True)
+
 API
 ---
 """
@@ -220,6 +268,11 @@ from typing import Any, Awaitable, Callable, DefaultDict, Tuple
 from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._labeler import (
+    enrich_metric_attributes,
+    get_labeler,
+    get_labeler_attributes,
+)
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
@@ -752,6 +805,9 @@ class OpenTelemetryMiddleware:
         if self.excluded_urls and self.excluded_urls.url_disabled(url):
             return await self.app(scope, receive, send)
 
+        # Required to create new instance for custom attributes in async context
+        _ = get_labeler()
+
         span_name, additional_attributes = self.default_span_details(scope)
 
         attributes = collect_request_attributes(
@@ -769,6 +825,9 @@ class OpenTelemetryMiddleware:
         active_requests_count_attrs = _parse_active_request_count_attrs(
             attributes,
             self._sem_conv_opt_in_mode,
+        )
+        active_requests_count_attrs = enrich_metric_attributes(
+            active_requests_count_attrs
         )
 
         if scope["type"] == "http":
@@ -800,12 +859,14 @@ class OpenTelemetryMiddleware:
                     span_name, scope, receive
                 )
 
+                labeler_metric_attributes = {}
                 otel_send = self._get_otel_send(
                     current_span,
                     span_name,
                     scope,
                     send,
                     attributes,
+                    labeler_metric_attributes,
                 )
 
                 await self.app(scope, otel_receive, otel_send)
@@ -827,9 +888,21 @@ class OpenTelemetryMiddleware:
                 )
                 if target:
                     duration_attrs_old[HTTP_TARGET] = target
+                duration_attrs_old = enrich_metric_attributes(
+                    duration_attrs_old
+                )
+                for key, value in labeler_metric_attributes.items():
+                    if key not in duration_attrs_old:
+                        duration_attrs_old[key] = value
                 duration_attrs_new = _parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
                 )
+                duration_attrs_new = enrich_metric_attributes(
+                    duration_attrs_new
+                )
+                for key, value in labeler_metric_attributes.items():
+                    if key not in duration_attrs_new:
+                        duration_attrs_new[key] = value
                 span_ctx = set_span_in_context(span)
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(
@@ -979,12 +1052,16 @@ class OpenTelemetryMiddleware:
         scope,
         send,
         duration_attrs,
+        labeler_metric_attributes,
     ):
         expecting_trailers = False
 
         @wraps(send)
         async def otel_send(message: dict[str, Any]):
             nonlocal expecting_trailers
+
+            if not labeler_metric_attributes:
+                labeler_metric_attributes.update(get_labeler_attributes())
 
             status_code = None
             if message["type"] == "http.response.start":

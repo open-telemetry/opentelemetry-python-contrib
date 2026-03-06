@@ -22,6 +22,7 @@ from unittest import mock
 
 import opentelemetry.instrumentation.asgi as otel_asgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._labeler import clear_labeler, get_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -272,6 +273,50 @@ async def background_execution_trailers_asgi(scope, receive, send):
         time.sleep(_SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S)
 
 
+async def custom_attrs_asgi(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add("http.method", "POST")
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*"})
+
+
+async def custom_attrs_asgi_new_semconv(scope, receive, send):
+    assert isinstance(scope, dict)
+    assert scope["type"] == "http"
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add("http.request.method", "POST")
+    message = await receive()
+    scope["headers"] = [(b"content-length", b"128")]
+    if message.get("type") == "http.request":
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"Content-Type", b"text/plain"],
+                    [b"content-length", b"1024"],
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": b"*"})
+
+
 async def error_asgi(scope, receive, send):
     assert isinstance(scope, dict)
     assert scope["type"] == "http"
@@ -313,6 +358,7 @@ SCOPE = "opentelemetry.instrumentation.asgi"
 class TestAsgiApplication(AsyncAsgiTestBase):
     def setUp(self):
         super().setUp()
+        clear_labeler()
 
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -1552,6 +1598,135 @@ class TestAsgiApplication(AsyncAsgiTestBase):
                 for attr in point.attributes:
                     self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    async def test_asgi_metrics_custom_attributes_skip_override(self):
+        app = otel_asgi.OpenTelemetryMiddleware(custom_attrs_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        enriched_histogram_metric_names = {
+            "http.server.duration",
+            "http.server.response.size",
+            "http.server.request.size",
+        }
+        active_requests_point_seen = False
+        enriched_histograms_seen = set()
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                data_points = list(metric.data.data_points)
+                self.assertEqual(len(data_points), 1)
+                point = data_points[0]
+                self.assertIsInstance(point, NumberDataPoint)
+                self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+                self.assertNotIn("custom_attr", point.attributes)
+                active_requests_point_seen = True
+                continue
+
+            if metric.name not in enriched_histogram_metric_names:
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            enriched_histograms_seen.add(metric.name)
+
+        self.assertTrue(active_requests_point_seen)
+        self.assertSetEqual(
+            enriched_histogram_metric_names,
+            enriched_histograms_seen,
+        )
+
+    async def test_asgi_metrics_custom_attributes_skip_override_new_semconv(
+        self,
+    ):
+        app = otel_asgi.OpenTelemetryMiddleware(custom_attrs_asgi_new_semconv)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        enriched_histogram_metric_names = {
+            "http.server.request.duration",
+            "http.server.response.body.size",
+            "http.server.request.body.size",
+        }
+        active_requests_point_seen = False
+        enriched_histograms_seen = set()
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                data_points = list(metric.data.data_points)
+                self.assertEqual(len(data_points), 1)
+                point = data_points[0]
+                self.assertIsInstance(point, NumberDataPoint)
+                self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+                self.assertNotIn("custom_attr", point.attributes)
+                active_requests_point_seen = True
+                continue
+
+            if metric.name not in enriched_histogram_metric_names:
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            enriched_histograms_seen.add(metric.name)
+
+        self.assertTrue(active_requests_point_seen)
+        self.assertSetEqual(
+            enriched_histogram_metric_names,
+            enriched_histograms_seen,
+        )
+
+    async def test_asgi_active_requests_attrs_use_enrich_old_semconv(self):
+        with mock.patch(
+            "opentelemetry.instrumentation.asgi.enrich_metric_attributes",
+            wraps=otel_asgi.enrich_metric_attributes,
+        ) as mock_enrich:
+            app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+
+        enriched_active_attrs_seen = False
+        for call in mock_enrich.call_args_list:
+            if not call.args:
+                continue
+            attrs = call.args[0]
+            if HTTP_METHOD in attrs and HTTP_STATUS_CODE not in attrs:
+                enriched_active_attrs_seen = True
+                break
+
+        self.assertTrue(enriched_active_attrs_seen)
+
+    async def test_asgi_active_requests_attrs_use_enrich_new_semconv(self):
+        with mock.patch(
+            "opentelemetry.instrumentation.asgi.enrich_metric_attributes",
+            wraps=otel_asgi.enrich_metric_attributes,
+        ) as mock_enrich:
+            app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+            self.seed_app(app)
+            await self.send_default_request()
+            await self.get_all_output()
+
+        enriched_active_attrs_seen = False
+        for call in mock_enrich.call_args_list:
+            if not call.args:
+                continue
+            attrs = call.args[0]
+            if (
+                HTTP_REQUEST_METHOD in attrs
+                and HTTP_RESPONSE_STATUS_CODE not in attrs
+            ):
+                enriched_active_attrs_seen = True
+                break
+
+        self.assertTrue(enriched_active_attrs_seen)
 
     async def test_asgi_metrics_exemplars_expected_old_semconv(self):
         """Failing test placeholder asserting exemplars should be present for duration histogram (old semconv)."""
