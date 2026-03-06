@@ -222,19 +222,11 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             if model:
                 self.invocation.request_model = model
 
-        if ResponseCompletedEvent is not None and isinstance(
-            event, ResponseCompletedEvent
-        ):
+        if isinstance(event, ResponseCompletedEvent):
             self._stop(response)
             return
 
-        if (
-            ResponseFailedEvent is not None
-            and ResponseIncompleteEvent is not None
-            and isinstance(
-                event, (ResponseFailedEvent, ResponseIncompleteEvent)
-            )
-        ):
+        if isinstance(event, (ResponseFailedEvent, ResponseIncompleteEvent)):
             with self._safe_instrumentation("response attribute extraction"):
                 _set_response_attributes(
                     self.invocation, response, self._capture_content
@@ -242,9 +234,7 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             self._fail(event_type, RuntimeError)
             return
 
-        if ResponseErrorEvent is not None and isinstance(
-            event, ResponseErrorEvent
-        ):
+        if isinstance(event, ResponseErrorEvent):
             error_type = event.code or "response.error"
             message = event.message or error_type
             self._fail(message, RuntimeError)
