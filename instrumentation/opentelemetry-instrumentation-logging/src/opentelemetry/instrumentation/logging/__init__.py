@@ -255,15 +255,11 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 handler_level = _get_log_level(
                     environ[OTEL_PYTHON_LOG_HANDLER_LEVEL]
                 )
-            handler_format = kwargs.get("log_handler_format", None)
-            if handler_format is None and OTEL_PYTHON_LOG_FORMAT in environ:
-                handler_format = environ[OTEL_PYTHON_LOG_FORMAT]
             logger_provider = get_logger_provider()
             handler = _setup_logging_handler(
                 logger_provider=logger_provider,
                 log_code_attributes=log_code_attributes,
                 level=handler_level,
-                log_format=handler_format,
             )
             LoggingInstrumentor._logging_handler = handler
 
