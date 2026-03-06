@@ -171,40 +171,31 @@ def test_function_span_records_tool_attributes():
         exporter.clear()
 
 
-def test_agent_create_span_records_attributes():
+def test_agent_invoke_span_records_attributes():
     instrumentor, exporter = _instrument_with_provider()
 
     try:
         with trace("workflow"):
             with agent_span(
-                operation="create",
                 name="support_bot",
-                description="Answers support questions",
-                agent_id="agt_123",
-                model="gpt-4o-mini",
+                handoffs=["escalation_bot"],
+                tools=["search"],
+                output_type="str",
             ):
                 pass
 
         spans = exporter.get_finished_spans()
-        create_span = next(
+        invoke_span = next(
             span
             for span in spans
             if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
-            == GenAI.GenAiOperationNameValues.CREATE_AGENT.value
+            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         )
 
-        assert create_span.kind is SpanKind.CLIENT
-        assert create_span.name == "create_agent support_bot"
-        assert create_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
-        assert create_span.attributes[GenAI.GEN_AI_AGENT_NAME] == "support_bot"
-        assert (
-            create_span.attributes[GenAI.GEN_AI_AGENT_DESCRIPTION]
-            == "Answers support questions"
-        )
-        assert create_span.attributes[GenAI.GEN_AI_AGENT_ID] == "agt_123"
-        assert (
-            create_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
-        )
+        assert invoke_span.kind is SpanKind.CLIENT
+        assert invoke_span.name == "invoke_agent support_bot"
+        assert invoke_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
+        assert invoke_span.attributes[GenAI.GEN_AI_AGENT_NAME] == "support_bot"
     finally:
         instrumentor.uninstrument()
         exporter.clear()
@@ -425,7 +416,7 @@ def test_agent_name_override_applied_to_agent_spans():
 
     try:
         with trace("workflow"):
-            with agent_span(operation="invoke", name="support_bot"):
+            with agent_span(name="support_bot"):
                 pass
 
         spans = exporter.get_finished_spans()
