@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -24,13 +24,59 @@ from langchain_core.outputs import LLMResult
 from opentelemetry.instrumentation.langchain.invocation_manager import (
     _InvocationManager,
 )
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
     Error,
     InputMessage,
     LLMInvocation,
     OutputMessage,
     Text,
+)
+from opentelemetry.util.genai.utils import (
+    get_content_capturing_mode,
+    is_experimental_mode,
+)
+
+GEN_AI_MEMORY_STORE_ID = getattr(
+    GenAI, "GEN_AI_MEMORY_STORE_ID", "gen_ai.memory.store.id"
+)
+GEN_AI_MEMORY_STORE_NAME = getattr(
+    GenAI, "GEN_AI_MEMORY_STORE_NAME", "gen_ai.memory.store.name"
+)
+GEN_AI_MEMORY_QUERY = getattr(
+    GenAI, "GEN_AI_MEMORY_QUERY", "gen_ai.memory.query"
+)
+GEN_AI_MEMORY_SEARCH_RESULT_COUNT = getattr(
+    GenAI,
+    "GEN_AI_MEMORY_SEARCH_RESULT_COUNT",
+    "gen_ai.memory.search.result.count",
+)
+GEN_AI_MEMORY_NAMESPACE = getattr(
+    GenAI, "GEN_AI_MEMORY_NAMESPACE", "gen_ai.memory.namespace"
+)
+
+_SEARCH_MEMORY_MEMBER = getattr(
+    getattr(GenAI, "GenAiOperationNameValues", object()),
+    "SEARCH_MEMORY",
+    None,
+)
+SEARCH_MEMORY_OPERATION = (
+    _SEARCH_MEMORY_MEMBER.value
+    if _SEARCH_MEMORY_MEMBER is not None
+    else "search_memory"
+)
+
+_RETRIEVAL_MEMBER = getattr(
+    getattr(GenAI, "GenAiOperationNameValues", object()),
+    "RETRIEVAL",
+    None,
+)
+RETRIEVAL_OPERATION = (
+    _RETRIEVAL_MEMBER.value if _RETRIEVAL_MEMBER is not None else "retrieval"
 )
 
 
@@ -43,6 +89,62 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         super().__init__()
         self._telemetry_handler = telemetry_handler
         self._invocation_manager = _InvocationManager()
+
+    @staticmethod
+    def _resolve_retriever_store_name(
+        serialized: dict[str, Any],
+        metadata: Optional[dict[str, Any]],
+    ) -> Optional[str]:
+        if metadata and metadata.get("memory_store_name"):
+            return str(metadata["memory_store_name"])
+        if metadata and metadata.get("ls_retriever_name"):
+            return str(metadata["ls_retriever_name"])
+        name = serialized.get("name")
+        return str(name) if isinstance(name, str) and name else None
+
+    @staticmethod
+    def _resolve_retriever_store_id(
+        serialized: dict[str, Any],
+        metadata: Optional[dict[str, Any]],
+    ) -> Optional[str]:
+        if metadata and metadata.get("memory_store_id"):
+            return str(metadata["memory_store_id"])
+
+        serialized_id = serialized.get("id")
+        if isinstance(serialized_id, str) and serialized_id:
+            return serialized_id
+        if isinstance(serialized_id, list) and serialized_id:
+            try:
+                return ".".join(str(part) for part in serialized_id)
+            except TypeError:
+                return None
+        return None
+
+    @staticmethod
+    def _should_capture_memory_query() -> bool:
+        if not is_experimental_mode():
+            return False
+        try:
+            mode = get_content_capturing_mode()
+        except ValueError:
+            return False
+        return mode in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+
+    @staticmethod
+    def _is_memory_retriever(
+        metadata: Optional[dict[str, Any]],
+    ) -> bool:
+        """Detect if a retriever is a memory retriever based on metadata hints."""
+        if not metadata:
+            return False
+        return bool(
+            metadata.get("memory_store_name")
+            or metadata.get("memory_store_id")
+            or metadata.get("is_memory_retriever")
+        )
 
     def on_chat_model_start(
         self,
@@ -260,6 +362,103 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             llm_invocation, LLMInvocation
         ):
             # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        error_otel = Error(message=str(error), type=type(error))
+        llm_invocation = self._telemetry_handler.fail_llm(
+            invocation=llm_invocation, error=error_otel
+        )
+        if llm_invocation.span and not llm_invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id=run_id)
+
+    def on_retriever_start(
+        self,
+        serialized: dict[str, Any],
+        query: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
+        provider = "unknown"
+        if metadata is not None:
+            provider = metadata.get("ls_provider", "unknown")
+
+        attributes: dict[str, Any] = {}
+        is_memory = self._is_memory_retriever(metadata)
+        operation = (
+            SEARCH_MEMORY_OPERATION if is_memory else RETRIEVAL_OPERATION
+        )
+
+        if store_name := self._resolve_retriever_store_name(
+            serialized, metadata
+        ):
+            attributes[GEN_AI_MEMORY_STORE_NAME] = store_name
+        if store_id := self._resolve_retriever_store_id(serialized, metadata):
+            attributes[GEN_AI_MEMORY_STORE_ID] = store_id
+        if (
+            query
+            and self._should_capture_memory_query()
+            and isinstance(query, str)
+        ):
+            attributes[GEN_AI_MEMORY_QUERY] = query
+        if metadata and metadata.get("memory_namespace"):
+            attributes[GEN_AI_MEMORY_NAMESPACE] = metadata["memory_namespace"]
+
+        llm_invocation = LLMInvocation(
+            request_model="",
+            provider=provider,
+            operation_name=operation,
+            attributes=attributes,
+        )
+        llm_invocation = self._telemetry_handler.start_llm(
+            invocation=llm_invocation
+        )
+        if llm_invocation.span and store_name:
+            llm_invocation.span.update_name(f"{operation} {store_name}")
+        self._invocation_manager.add_invocation_state(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            invocation=llm_invocation,
+        )
+
+    def on_retriever_end(
+        self,
+        documents: Sequence[Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if llm_invocation is None or not isinstance(
+            llm_invocation, LLMInvocation
+        ):
+            return
+
+        llm_invocation.attributes[GEN_AI_MEMORY_SEARCH_RESULT_COUNT] = len(
+            documents
+        )
+        llm_invocation = self._telemetry_handler.stop_llm(
+            invocation=llm_invocation
+        )
+        if llm_invocation.span and not llm_invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id=run_id)
+
+    def on_retriever_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if llm_invocation is None or not isinstance(
+            llm_invocation, LLMInvocation
+        ):
             return
 
         error_otel = Error(message=str(error), type=type(error))

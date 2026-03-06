@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 - Document official package metadata and README for the OpenAI Agents instrumentation.
   ([#3859](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3859))
+- Add support for GenAI memory operation spans and attributes (`search_memory`,
+  `update_memory`, `delete_memory`, `create_memory_store`,
+  `delete_memory_store`).
+  ([#3250](https://github.com/open-telemetry/semantic-conventions/pull/3250))
 
 ## Version 0.1.0 (2025-10-15)
 
