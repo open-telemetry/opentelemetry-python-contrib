@@ -11,11 +11,11 @@ class TestWorkflowInvocation:
         invocation = WorkflowInvocation()
         assert invocation.name == ""
         assert invocation.operation_name == "invoke_workflow"
-        assert invocation.input_messages == []
-        assert invocation.output_messages == []
+        assert not invocation.input_messages
+        assert not invocation.output_messages
         assert invocation.span is None
         assert invocation.context_token is None
-        assert invocation.attributes == {}
+        assert not invocation.attributes
 
     def test_custom_name(self):
         invocation = WorkflowInvocation(name="customer_support_pipeline")

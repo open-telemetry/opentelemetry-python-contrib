@@ -205,13 +205,9 @@ class GenAIInvocation:
 
 @dataclass
 class WorkflowInvocation(GenAIInvocation):
-    """Represents predetermined static sequence of operations eg: Agent, LLM, tool, and retrieval invocations.
+    """
+    Represents predetermined static sequence of operations eg: Agent, LLM, tool, and retrieval invocations.
     A workflow groups multiple operations together, accepting input(s) and producing final output(s).
-
-    Attributes:
-        name: Identifier for the workflow (e.g., "customer_support_pipeline")
-        input_messages: Structured input messages for the workflow
-        output_messages: Structured output messages from the workflow
     """
 
     name: str = ""
