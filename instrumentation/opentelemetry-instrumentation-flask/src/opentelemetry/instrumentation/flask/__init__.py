@@ -250,6 +250,51 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 | ``controller``    | Flask controller/endpoint name.                    | ``controller='home_view'``             |
 +-------------------+----------------------------------------------------+----------------------------------------+
 
+Custom Metrics Attributes using Labeler
+***************************************
+The Flask instrumentation reads from a labeler utility that supports adding custom
+attributes to HTTP server metrics at emit time, including:
+
+- Active requests counter (``http.server.active_requests``)
+- Duration histogram (``http.server.duration``)
+- Request duration histogram (``http.server.request.duration``)
+
+The custom attributes are stored in the current OpenTelemetry context and are
+typically request-scoped for instrumented Flask handlers. In normal application
+flow, context detach at request teardown prevents these attributes from leaking
+to later requests. Application code typically should not call ``clear_labeler``;
+use it primarily for test isolation or manual context-lifecycle management. The
+instrumentor does not overwrite base attributes that exist at the same keys as
+any custom attributes.
+
+
+.. code-block:: python
+
+    from flask import Flask
+
+    from opentelemetry.instrumentation._labeler import get_labeler
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
+    app = Flask(__name__)
+    FlaskInstrumentor().instrument_app(app)
+
+    @app.route("/users/<user_id>/")
+    def user_profile(user_id):
+        # Get the labeler for the current request
+        labeler = get_labeler()
+
+        # Add custom attributes to Flask instrumentation metrics
+        labeler.add("user_id", user_id)
+        labeler.add("user_type", "registered")
+
+        # Or, add multiple attributes at once
+        labeler.add_attributes({
+            "feature_flag": "new_ui",
+            "experiment_group": "control"
+        })
+
+        return f"User profile for {user_id}"
+
 API
 ---
 """
@@ -266,6 +311,10 @@ from packaging import version as package_version
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import context, trace
+from opentelemetry.instrumentation._labeler import (
+    enrich_metric_attributes,
+    get_labeler_attributes,
+)
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _get_schema_url,
@@ -312,6 +361,7 @@ _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
 _ENVIRON_ACTIVATION_KEY = "opentelemetry-flask.activation_key"
 _ENVIRON_REQCTX_REF_KEY = "opentelemetry-flask.reqctx_ref_key"
 _ENVIRON_TOKEN = "opentelemetry-flask.token"
+_ENVIRON_LABELER_ATTRIBUTES_KEY = "opentelemetry-flask.labeler_attributes"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
@@ -351,6 +401,7 @@ def _rewrapped_app(
     duration_histogram_new=None,
 ):
     # pylint: disable=too-many-statements
+    # pylint: disable=too-many-locals
     def _wrapped_app(wrapped_app_environ, start_response):
         # We want to measure the time for route matching, etc.
         # In theory, we could start the span here and use
@@ -366,6 +417,9 @@ def _rewrapped_app(
                 attributes,
                 sem_conv_opt_in_mode,
             )
+        )
+        active_requests_count_attrs = enrich_metric_attributes(
+            active_requests_count_attrs
         )
 
         active_requests_counter.add(1, active_requests_count_attrs)
@@ -437,6 +491,15 @@ def _rewrapped_app(
                 if request_route:
                     # http.target to be included in old semantic conventions
                     duration_attrs_old[HTTP_TARGET] = str(request_route)
+                duration_attrs_old = enrich_metric_attributes(
+                    duration_attrs_old
+                )
+                labeler_metric_attributes = wrapped_app_environ.get(
+                    _ENVIRON_LABELER_ATTRIBUTES_KEY, {}
+                )
+                for key, value in labeler_metric_attributes.items():
+                    if key not in duration_attrs_old:
+                        duration_attrs_old[key] = value
                 duration_histogram_old.record(
                     max(round(duration_s * 1000), 0),
                     duration_attrs_old,
@@ -450,11 +513,31 @@ def _rewrapped_app(
                 if request_route:
                     duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
+                duration_attrs_new = enrich_metric_attributes(
+                    duration_attrs_new
+                )
+                labeler_metric_attributes = wrapped_app_environ.get(
+                    _ENVIRON_LABELER_ATTRIBUTES_KEY, {}
+                )
+                for key, value in labeler_metric_attributes.items():
+                    if key not in duration_attrs_new:
+                        duration_attrs_new[key] = value
+
                 duration_histogram_new.record(
                     max(duration_s, 0),
                     duration_attrs_new,
                     context=metrics_context,
                 )
+
+        active_requests_count_attrs = enrich_metric_attributes(
+            active_requests_count_attrs
+        )
+        labeler_metric_attributes = wrapped_app_environ.get(
+            _ENVIRON_LABELER_ATTRIBUTES_KEY, {}
+        )
+        for key, value in labeler_metric_attributes.items():
+            if key not in active_requests_count_attrs:
+                active_requests_count_attrs[key] = value
 
         active_requests_counter.add(-1, active_requests_count_attrs)
         return result
@@ -561,6 +644,9 @@ def _wrapped_teardown_request(
 
         activation = flask.request.environ.get(_ENVIRON_ACTIVATION_KEY)
         token = flask.request.environ.get(_ENVIRON_TOKEN)
+        flask.request.environ[_ENVIRON_LABELER_ATTRIBUTES_KEY] = dict(
+            get_labeler_attributes()
+        )
 
         original_reqctx_ref = flask.request.environ.get(
             _ENVIRON_REQCTX_REF_KEY
