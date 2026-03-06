@@ -2350,25 +2350,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-opentelemetry-instrumentation-wrapt2 -- -ra
 
-  pypy3-test-opentelemetry-instrumentation-wrapt1_ubuntu-latest:
-    name: opentelemetry-instrumentation-wrapt1 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-opentelemetry-instrumentation-wrapt1 -- -ra
-
   pypy3-test-opentelemetry-instrumentation-wrapt2_ubuntu-latest:
     name: opentelemetry-instrumentation-wrapt2 pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -4781,3 +4762,22 @@ jobs:
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-elasticsearch-0 -- -ra
+
+  pypy3-test-instrumentation-elasticsearch-1_ubuntu-latest:
+    name: instrumentation-elasticsearch-1 pypy-3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-elasticsearch-1 -- -ra
