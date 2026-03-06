@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Generator, Generic, TypeVar
 
@@ -161,10 +161,12 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
         return self
 
     def parse(self) -> "ResponseStreamWrapper":
-        return self
+        raise NotImplementedError(
+            "ResponseStreamWrapper.parse() is not implemented"
+        )
 
-    # TODO: Migrate passthrough delegation to wrapt.ObjectProxy once wrapt 2
-    # typing support is available (wrapt PR #3903).
+    # TODO: Replace __getattr__ passthrough with wrapt.ObjectProxy in a future
+    # cleanup once wrapt 2 typing support is available (wrapt PR #3903).
     def __getattr__(self, name: str):
         return getattr(self.stream, name)
 
@@ -277,18 +279,27 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
         exc_tb: TracebackType | None,
     ) -> bool:
         suppressed = False
-        try:
+        stream_wrapper = self._stream_wrapper
+        self._stream_wrapper = None
+        with ExitStack() as cleanup:
+            if stream_wrapper is not None:
+
+                def finalize_stream_wrapper() -> None:
+                    if suppressed:
+                        stream_wrapper.__exit__(None, None, None)
+                    else:
+                        stream_wrapper.__exit__(exc_type, exc_val, exc_tb)
+
+                cleanup.callback(finalize_stream_wrapper)
             suppressed = self._manager.__exit__(exc_type, exc_val, exc_tb)
             return suppressed
-        finally:
-            if self._stream_wrapper is not None:
-                if suppressed:
-                    self._stream_wrapper.__exit__(None, None, None)
-                else:
-                    self._stream_wrapper.__exit__(exc_type, exc_val, exc_tb)
-                self._stream_wrapper = None
 
-    # TODO: Migrate passthrough delegation to wrapt.ObjectProxy once wrapt 2
-    # typing support is available (wrapt PR #3903).
+    def parse(self) -> "ResponseStreamManagerWrapper[TextFormatT]":
+        raise NotImplementedError(
+            "ResponseStreamManagerWrapper.parse() is not implemented"
+        )
+
+    # TODO: Replace __getattr__ passthrough with wrapt.ObjectProxy in a future
+    # cleanup once wrapt 2 typing support is available (wrapt PR #3903).
     def __getattr__(self, name: str):
         return getattr(self._manager, name)
