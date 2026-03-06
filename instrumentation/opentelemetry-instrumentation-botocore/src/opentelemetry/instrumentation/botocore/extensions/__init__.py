@@ -39,6 +39,7 @@ _BOTOCORE_EXTENSIONS = {
 }
 
 _AIOBOTOCORE_EXTENSIONS = {
+    # TODO: Add Bedrock support for aiobotocore
     "dynamodb": _lazy_load(".dynamodb", "_DynamoDbExtension"),
     "lambda": _lazy_load(".lmbd", "_LambdaExtension"),
     "secretsmanager": _lazy_load(

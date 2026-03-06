@@ -13,14 +13,15 @@
 # limitations under the License.
 
 """
-Instrument `Botocore`_ to trace service requests.
+Instrument `botocore`_ and `aiobotocore`_ to trace service requests.
 
 There are two options for instrumenting code. The first option is to use the
 ``opentelemetry-instrument`` executable which will automatically
-instrument your Botocore client. The second is to programmatically enable
+instrument your botocore or aiobotocore client. The second is to programmatically enable
 instrumentation via the following code:
 
-.. _Botocore: https://pypi.org/project/botocore/
+.. _botocore: https://pypi.org/project/botocore/
+.. _aiobotocore: https://pypi.org/project/aiobotocore/
 
 Usage
 -----
@@ -31,16 +32,37 @@ Usage
     import botocore.session
 
 
-    # Instrument Botocore
+    # Instrument botocore
     BotocoreInstrumentor().instrument()
 
-    # This will create a span with Botocore-specific attributes
+    # This will create a span with botocore-specific attributes
     session = botocore.session.get_session()
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
     )
     ec2 = session.create_client("ec2", region_name="us-west-2")
     ec2.describe_instances()
+
+Async Usage
+-----------
+
+.. code:: python
+
+    from opentelemetry.instrumentation.botocore import AiobotocoreInstrumentor
+    import aiobotocore.session
+    import asyncio
+
+
+    async def main():
+        # Instrument Aiobotocore
+        AiobotocoreInstrumentor().instrument()
+
+        # This will create a span with aiobotocore-specific attributes
+        session = aiobotocore.session.get_session()
+        async with session.create_client("ec2") as client:
+            await client.describe_instances()
+
+    asyncio.run(main())
 
 Thread Context Propagation
 --------------------------
@@ -63,7 +85,7 @@ are enabled automatically if their packages are installed.
 API
 ---
 
-The `instrument` method accepts the following keyword args:
+The `instrument` method (for both ``BotocoreInstrumentor`` and ``AiobotocoreInstrumentor``) accepts the following keyword args:
 
 * tracer_provider (``TracerProvider``) - an optional tracer provider
 * request_hook (``Callable[[Span, str, str, dict], None]``) - a function with extra user-defined logic to be performed before performing the request
@@ -84,10 +106,10 @@ for example:
         # response hook logic
         pass
 
-    # Instrument Botocore with hooks
+    # Instrument botocore with hooks
     BotocoreInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
-    # This will create a span with Botocore-specific attributes, including custom attributes added from the hooks
+    # This will create a span with botocore-specific attributes, including custom attributes added from the hooks
     session = botocore.session.get_session()
     session.set_credentials(
         access_key="access-key", secret_key="secret-key"
@@ -157,12 +179,14 @@ class BotocoreInstrumentor(BaseInstrumentor):
 
     def __init__(self):
         super().__init__()
-        self.request_hook = None
-        self.response_hook = None
-        self.extension_registry = ExtensionRegistry(
-            __name__, _BOTOCORE_EXTENSIONS, None, None, None
-        )
-        self.propagator = AwsXRayPropagator()
+        if not hasattr(self, "request_hook"):
+            self.request_hook = None
+        if not hasattr(self, "response_hook"):
+            self.response_hook = None
+        if not hasattr(self, "extension_registry"):
+            self.extension_registry = None
+        if not hasattr(self, "propagator"):
+            self.propagator = AwsXRayPropagator()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments_botocore
@@ -311,10 +335,14 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
 
     def __init__(self):
         super().__init__()
-        self.request_hook = None
-        self.response_hook = None
-        self.extension_registry = None
-        self.propagator = AwsXRayPropagator()
+        if not hasattr(self, "request_hook"):
+            self.request_hook = None
+        if not hasattr(self, "response_hook"):
+            self.response_hook = None
+        if not hasattr(self, "extension_registry"):
+            self.extension_registry = None
+        if not hasattr(self, "propagator"):
+            self.propagator = AwsXRayPropagator()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments_aiobotocore
