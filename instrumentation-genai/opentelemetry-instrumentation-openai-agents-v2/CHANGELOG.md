@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Align AgentSpanData test stubs and span processor with real OpenAI Agents SDK;
+  remove non-existent `operation`, `description`, `agent_id`, and `model` fields.
+  ([#4229](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4229))
 - Document official package metadata and README for the OpenAI Agents instrumentation.
   ([#3859](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3859))
 
