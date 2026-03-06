@@ -66,7 +66,7 @@ libraries = [
     },
     {
         "library": "aiobotocore ~= 2.0",
-        "instrumentation": "opentelemetry-instrumentation-botocore==0.61b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-botocore==0.62b0.dev",
     },
     {
         "library": "cassandra-driver ~= 3.25",
