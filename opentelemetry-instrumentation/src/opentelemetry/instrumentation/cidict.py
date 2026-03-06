@@ -31,7 +31,7 @@ KT = TypeVar("KT")
 VT = TypeVar("VT")
 
 
-class CIDict(MutableMapping[KT, VT], Generic[KT, VT]):
+class CIDict(MutableMapping[KT, VT]):
     def __init__(
         self,
         data: Optional[Union[Mapping[KT, VT], Iterable[Tuple[KT, VT]]]] = None,
