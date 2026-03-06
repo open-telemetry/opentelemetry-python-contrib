@@ -7,7 +7,7 @@ from opentelemetry.util.genai.types import (
 
 
 class TestWorkflowInvocation:
-    def test_default_values(self):
+    def test_default_values():
         invocation = WorkflowInvocation()
         assert invocation.name == ""
         assert invocation.operation_name == "invoke_workflow"
@@ -17,21 +17,21 @@ class TestWorkflowInvocation:
         assert invocation.context_token is None
         assert not invocation.attributes
 
-    def test_custom_name(self):
+    def test_custom_name():
         invocation = WorkflowInvocation(name="customer_support_pipeline")
         assert invocation.name == "customer_support_pipeline"
 
-    def test_custom_operation_name(self):
+    def test_custom_operation_name():
         invocation = WorkflowInvocation(operation_name="run_pipeline")
         assert invocation.operation_name == "run_pipeline"
 
-    def test_with_input_messages(self):
+    def test_with_input_messages():
         msg = InputMessage(role="user", parts=[Text(content="hello")])
         invocation = WorkflowInvocation(input_messages=[msg])
         assert len(invocation.input_messages) == 1
         assert invocation.input_messages[0].role == "user"
 
-    def test_with_output_messages(self):
+    def test_with_output_messages():
         msg = OutputMessage(
             role="assistant", parts=[Text(content="hi")], finish_reason="stop"
         )
@@ -39,24 +39,24 @@ class TestWorkflowInvocation:
         assert len(invocation.output_messages) == 1
         assert invocation.output_messages[0].finish_reason == "stop"
 
-    def test_inherits_genai_invocation(self):
+    def test_inherits_genai_invocation():
         invocation = WorkflowInvocation(attributes={"key": "value"})
         assert invocation.attributes == {"key": "value"}
 
-    def test_default_lists_are_independent(self):
+    def test_default_lists_are_independent():
         """Ensure default factory creates separate list instances."""
         inv1 = WorkflowInvocation()
         inv2 = WorkflowInvocation()
         inv1.input_messages.append(InputMessage(role="user", parts=[]))
         assert len(inv2.input_messages) == 0
 
-    def test_default_attributes_are_independent(self):
+    def test_default_attributes_are_independent():
         inv1 = WorkflowInvocation()
         inv2 = WorkflowInvocation()
         inv1.attributes["foo"] = "bar"
         assert "foo" not in inv2.attributes
 
-    def test_full_construction(self):
+    def test_full_construction():
         inp = InputMessage(role="user", parts=[Text(content="query")])
         out = OutputMessage(
             role="assistant",
