@@ -366,7 +366,6 @@ class TestLoggingInstrumentor(TestBase):
             logger_provider=logger_provider,
             log_code_attributes=False,
             level=None,
-            log_format=None,
         )
 
     @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CODE_ATTRIBUTES": "true"})
@@ -382,7 +381,6 @@ class TestLoggingInstrumentor(TestBase):
             logger_provider=logger_provider,
             log_code_attributes=True,
             level=None,
-            log_format=None,
         )
 
     def test_handler_setup_is_controlled_by_instrumentor_parameter(
@@ -417,7 +415,6 @@ class TestLoggingInstrumentor(TestBase):
             logger_provider=logger_provider,
             log_code_attributes=True,
             level=None,
-            log_format=None,
         )
 
     @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_HANDLER_LEVEL": "error"})
@@ -449,7 +446,6 @@ class TestLoggingInstrumentor(TestBase):
             logger_provider=logger_provider,
             log_code_attributes=False,
             level=logging.WARNING,
-            log_format=None,
         )
 
     def test_handler_level_is_controlled_by_instrumentor_parameter(self):
@@ -464,75 +460,4 @@ class TestLoggingInstrumentor(TestBase):
             logger_provider=logger_provider,
             log_code_attributes=False,
             level=logging.DEBUG,
-            log_format=None,
-        )
-
-    @mock.patch.dict(
-        "os.environ",
-        {"OTEL_PYTHON_LOG_FORMAT": "%(levelname)s - %(message)s"},
-    )
-    def test_handler_format_is_set_from_env_var(self):
-        LoggingInstrumentor().uninstrument()
-        with self.caplog.at_level(level=logging.WARNING):
-            LoggingInstrumentor().instrument()
-
-        root_logger = logging.getLogger()
-        logging_handlers = [
-            h for h in root_logger.handlers if isinstance(h, LoggingHandler)
-        ]
-        self.assertEqual(len(logging_handlers), 1)
-        self.assertIsNotNone(logging_handlers[0].formatter)
-        self.assertEqual(
-            logging_handlers[0].formatter._fmt,
-            "%(levelname)s - %(message)s",
-        )
-
-    @mock.patch.dict(
-        "os.environ",
-        {"OTEL_PYTHON_LOG_FORMAT": "%(levelname)s - %(message)s"},
-    )
-    def test_handler_setup_called_with_format_from_env_var(self):
-        LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
-            LoggingInstrumentor().instrument()
-
-        logger_provider = get_logger_provider()
-        setup_mock.assert_called_once_with(
-            logger_provider=logger_provider,
-            log_code_attributes=False,
-            level=None,
-            log_format="%(levelname)s - %(message)s",
-        )
-
-    def test_handler_format_is_controlled_by_instrumentor_parameter(self):
-        custom_format = "%(name)s - %(levelname)s - %(message)s"
-        LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
-            LoggingInstrumentor().instrument(log_handler_format=custom_format)
-
-        logger_provider = get_logger_provider()
-        setup_mock.assert_called_once_with(
-            logger_provider=logger_provider,
-            log_code_attributes=False,
-            level=None,
-            log_format=custom_format,
-        )
-
-    def test_handler_setup_called_with_no_level_or_format_by_default(self):
-        LoggingInstrumentor().uninstrument()
-        with mock.patch(
-            "opentelemetry.instrumentation.logging._setup_logging_handler"
-        ) as setup_mock:
-            LoggingInstrumentor().instrument()
-
-        logger_provider = get_logger_provider()
-        setup_mock.assert_called_once_with(
-            logger_provider=logger_provider,
-            log_code_attributes=False,
-            level=None,
-            log_format=None,
         )

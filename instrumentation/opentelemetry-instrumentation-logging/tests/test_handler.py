@@ -678,29 +678,11 @@ class SetupLoggingHandlerTestCase(unittest.TestCase):
             self.assertEqual(handler.level, logging.ERROR)
             logging.getLogger().removeHandler(handler)
 
-    def test_setup_logging_handler_with_format(self):
-        logger_provider = LoggerProvider()
-        custom_format = "%(levelname)s - %(message)s"
-        with ResetGlobalLoggingState():
-            handler = _setup_logging_handler(
-                logger_provider=logger_provider, log_format=custom_format
-            )
-            self.assertIsNotNone(handler.formatter)
-            self.assertEqual(handler.formatter._fmt, custom_format)
-            logging.getLogger().removeHandler(handler)
-
     def test_setup_logging_handler_default_level_is_notset(self):
         logger_provider = LoggerProvider()
         with ResetGlobalLoggingState():
             handler = _setup_logging_handler(logger_provider=logger_provider)
             self.assertEqual(handler.level, logging.NOTSET)
-            logging.getLogger().removeHandler(handler)
-
-    def test_setup_logging_handler_default_format_is_none(self):
-        logger_provider = LoggerProvider()
-        with ResetGlobalLoggingState():
-            handler = _setup_logging_handler(logger_provider=logger_provider)
-            self.assertIsNone(handler.formatter)
             logging.getLogger().removeHandler(handler)
 
 
