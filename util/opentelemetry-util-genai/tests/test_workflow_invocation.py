@@ -6,7 +6,7 @@ from opentelemetry.util.genai.types import (
 )
 
 
-class TestWorkflowInvocation:   # pylint: disable=no-self-use
+class TestWorkflowInvocation:  # pylint: disable=no-self-use
     def test_default_values(self):
         invocation = WorkflowInvocation()
         assert invocation.name == ""
