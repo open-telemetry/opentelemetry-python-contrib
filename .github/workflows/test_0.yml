@@ -4079,25 +4079,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-dbapi-wrapt2 -- -ra
 
-  pypy3-test-instrumentation-dbapi-wrapt1_ubuntu-latest:
-    name: instrumentation-dbapi-wrapt1 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-dbapi-wrapt1 -- -ra
-
   pypy3-test-instrumentation-dbapi-wrapt2_ubuntu-latest:
     name: instrumentation-dbapi-wrapt2 pypy-3.9 Ubuntu
     runs-on: ubuntu-latest
@@ -4781,3 +4762,22 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-elasticsearch-2 -- -ra
+
+  pypy3-test-instrumentation-elasticsearch-0_ubuntu-latest:
+    name: instrumentation-elasticsearch-0 pypy-3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-elasticsearch-0 -- -ra
