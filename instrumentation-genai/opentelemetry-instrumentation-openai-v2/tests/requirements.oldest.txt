@@ -35,3 +35,4 @@ opentelemetry-semantic-conventions==0.58b0  # when updating, also update in pypr
 
 -e util/opentelemetry-util-genai
 -e instrumentation-genai/opentelemetry-instrumentation-openai-v2
+-e util/opentelemetry-util-genai

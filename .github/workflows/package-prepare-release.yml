@@ -5,6 +5,7 @@ on:
       package:
         type: choice
         options:
+        - opentelemetry-opamp-client
         - opentelemetry-propagator-aws-xray
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
