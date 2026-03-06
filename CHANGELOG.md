@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Increase stale action `operations-per-run` to 500 to allow processing all stale PRs in a single run
+  ([#4312](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4312))
+
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
 ### Added
