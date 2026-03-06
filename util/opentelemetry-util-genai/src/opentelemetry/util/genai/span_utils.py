@@ -76,6 +76,32 @@ def _get_llm_span_name(invocation: LLMInvocation) -> str:
     return f"{invocation.operation_name} {invocation.request_model}".strip()
 
 
+def _get_system_instructions_for_span(
+    system_instruction: list[MessagePart] | None = None,
+) -> dict[str, Any]:
+    """Get system instructions attribute formatted for span (JSON string format).
+
+    Can be used with agent/llm/tool invocations.
+    Returns empty dict if not in experimental mode or content capturing is disabled.
+    """
+    if (
+        not is_experimental_mode()
+        or get_content_capturing_mode()
+        not in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+        or not system_instruction
+    ):
+        return {}
+
+    return {
+        GenAI.GEN_AI_SYSTEM_INSTRUCTIONS: gen_ai_json_dumps(
+            [asdict(p) for p in system_instruction]
+        )
+    }
+
+
 def _get_llm_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
@@ -429,20 +455,9 @@ def _apply_creation_finish_attributes(
     attributes: dict[str, Any] = {}
     attributes.update(_get_base_agent_common_attributes(creation))
 
-    # System instructions (Opt-In)
-    if (
-        is_experimental_mode()
-        and get_content_capturing_mode()
-        in (
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        )
-        and creation.system_instruction
-    ):
-        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
-            [asdict(p) for p in creation.system_instruction]
-        )
-
+    attributes.update(
+        _get_system_instructions_for_span(creation.system_instruction)
+    )
     attributes.update(creation.attributes)
 
     if attributes:
@@ -461,6 +476,7 @@ __all__ = [
     "_get_base_agent_span_name",
     "_apply_agent_finish_attributes",
     "_apply_creation_finish_attributes",
+    "_get_system_instructions_for_span",
     "_get_agent_common_attributes",
     "_get_agent_request_attributes",
     "_get_agent_response_attributes",
