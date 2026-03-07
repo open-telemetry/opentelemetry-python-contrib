@@ -16,6 +16,8 @@ import os
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+from tests.test_utils import patch_env_vars
+
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -25,6 +27,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.util.genai.completion_hook import _NoOpCompletionHook
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
     OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
@@ -52,6 +55,8 @@ class TestHandlerCompletionHook(TestCase):
         self.tracer_provider.add_span_processor(
             SimpleSpanProcessor(self.span_exporter)
         )
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
 
     def tearDown(self) -> None:
         # Reset semconv stability state between tests
@@ -173,3 +178,60 @@ class TestHandlerCompletionHook(TestCase):
             stamped_record.attributes.get("gen_ai.input_messages_ref"),
             "s3://bucket/inputs.json",
         )
+
+    def test_should_capture_content_false_by_default(self):
+        handler = self._make_handler()
+        self.assertFalse(handler.should_capture_content())
+
+    def test_should_capture_content_true_when_real_hook_set(self):
+        # A real (non-noop) hook forces content capture regardless of env vars
+        hook = MagicMock()
+        handler = self._make_handler(hook)
+        self.assertTrue(handler.should_capture_content())
+
+    def test_should_capture_content_false_when_noop_hook(self):
+        handler = self._make_handler(_NoOpCompletionHook())
+        self.assertFalse(handler.should_capture_content())
+
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "true"},
+    )
+    def test_should_capture_content_true_in_legacy_mode_when_content_env_true(
+        self,
+    ):
+        handler = self._make_handler()
+        self.assertTrue(handler.should_capture_content())
+
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "false"},
+    )
+    def test_should_capture_content_false_in_legacy_mode_when_content_env_false(
+        self,
+    ):
+        handler = self._make_handler()
+        self.assertFalse(handler.should_capture_content())
+
+    @patch_env_vars("gen_ai_latest_experimental", "span_only", "false")
+    def test_should_capture_content_true_in_experimental_mode_with_content(
+        self,
+    ):
+        handler = self._make_handler()
+        self.assertTrue(handler.should_capture_content())
+
+    @patch_env_vars("gen_ai_latest_experimental", "no_content", "false")
+    def test_should_capture_content_false_in_experimental_mode_with_no_content(
+        self,
+    ):
+        handler = self._make_handler()
+        self.assertFalse(handler.should_capture_content())
+
+    @patch_env_vars("gen_ai_latest_experimental", "no_content", "false")
+    def test_should_capture_content_true_in_experimental_mode_no_content_but_hook_set(
+        self,
+    ):
+        # Hook overrides no_content mode
+        hook = MagicMock()
+        handler = self._make_handler(hook)
+        self.assertTrue(handler.should_capture_content())

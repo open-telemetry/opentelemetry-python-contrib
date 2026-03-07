@@ -19,7 +19,6 @@ import pytest
 
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
-    _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.util.genai.environment_variables import (
@@ -29,53 +28,64 @@ from opentelemetry.util.genai.environment_variables import (
 from .test_utils import DEFAULT_MODEL, USER_ONLY_PROMPT
 
 
-@pytest.fixture(autouse=True)
-def reset_semconv():
-    _OpenTelemetrySemanticConventionStability._initialized = False
-    yield
-    _OpenTelemetrySemanticConventionStability._initialized = False
+# Run hook tests in experimental mode only — hooks are only active on the new path
+@pytest.fixture(params=[(True, "span_only")])
+def content_mode(request):
+    return request.param
 
 
-@patch.dict(os.environ, {
-    OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "span_only",
-})
+@pytest.fixture
+def completion_hook():
+    return MagicMock()
+
+
 def test_custom_hook_is_called(
-    span_exporter, tracer_provider, logger_provider, meter_provider, openai_client, vcr
+    span_exporter,
+    log_exporter,
+    instrument_no_content,
+    completion_hook,
+    openai_client,
+    vcr,
 ):
     """A hook passed to instrument() is called after each chat completion."""
-    hook = MagicMock()
-    instrumentor = OpenAIInstrumentor()
-    instrumentor.instrument(
-        tracer_provider=tracer_provider,
-        logger_provider=logger_provider,
-        meter_provider=meter_provider,
-        completion_hook=hook,
-    )
+    with vcr.use_cassette("test_chat_completion_with_content.yaml"):
+        openai_client.chat.completions.create(
+            messages=USER_ONLY_PROMPT,
+            model=DEFAULT_MODEL,
+            stream=False,
+        )
 
-    try:
-        with vcr.use_cassette("test_chat_completion_with_content.yaml"):
-            openai_client.chat.completions.create(
-                messages=USER_ONLY_PROMPT,
-                model=DEFAULT_MODEL,
-                stream=False,
-            )
-    finally:
-        instrumentor.uninstrument()
-
-    hook.on_completion.assert_called_once()
-    kwargs = hook.on_completion.call_args.kwargs
+    completion_hook.on_completion.assert_called_once()
+    kwargs = completion_hook.on_completion.call_args.kwargs
     assert kwargs["inputs"]
     assert kwargs["outputs"]
     assert kwargs["span"] is not None
 
+    # Content goes to the hook only — not to span attributes or log records
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span_attrs = spans[0].attributes or {}
+    assert "gen_ai.input.messages" not in span_attrs
+    assert "gen_ai.output.messages" not in span_attrs
 
-@patch.dict(os.environ, {
-    OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "span_only",
-})
+    assert log_exporter.get_finished_logs() == ()
+
+
+@patch.dict(
+    os.environ,
+    {
+        OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "span_only",
+    },
+)
 def test_default_hook_loaded_from_env(
-    span_exporter, tracer_provider, logger_provider, meter_provider, openai_client, vcr
+    span_exporter,
+    tracer_provider,
+    logger_provider,
+    meter_provider,
+    openai_client,
+    instrument_no_content,
+    vcr,
 ):
     """When no hook kwarg is given, load_completion_hook() provides the default."""
     default_hook = MagicMock()
@@ -106,3 +116,10 @@ def test_default_hook_loaded_from_env(
     assert kwargs["inputs"]
     assert kwargs["outputs"]
     assert kwargs["span"] is not None
+
+    # Content goes to the hook only — not to span attributes or log records
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span_attrs = spans[0].attributes or {}
+    assert "gen_ai.input.messages" not in span_attrs
+    assert "gen_ai.output.messages" not in span_attrs

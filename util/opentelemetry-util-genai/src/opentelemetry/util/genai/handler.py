@@ -144,8 +144,9 @@ class TelemetryHandler:
                 ).lower()
                 == "true"
             )
-        self._capture_content = content_enabled or not isinstance(
-            completion_hook, _NoOpCompletionHook
+        self._capture_content = content_enabled or (
+            completion_hook is not None
+            and not isinstance(completion_hook, _NoOpCompletionHook)
         )
 
     def should_capture_content(self) -> bool:
