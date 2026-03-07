@@ -16,7 +16,32 @@ This layer is responsible only for:
 Everything else (span creation, metric recording, event emission, context propagation)
 belongs in `util/opentelemetry-util-genai`.
 
-## 2. Invocation Pattern
+## 2. TelemetryHandler Initialization
+
+Construct `TelemetryHandler` once inside `_instrument()`, passing all OTel providers and the
+completion hook. Always prefer an explicitly injected hook (`kwargs.get("completion_hook")`)
+over the entry-point hook loaded by `load_completion_hook()`, so test code can override the
+hook without touching the environment.
+
+```python
+from opentelemetry.util.genai.completion_hook import load_completion_hook
+from opentelemetry.util.genai.handler import TelemetryHandler
+
+def _instrument(self, **kwargs):
+    tracer_provider = kwargs.get("tracer_provider")
+    meter_provider = kwargs.get("meter_provider")
+    logger_provider = kwargs.get("logger_provider")
+
+    handler = TelemetryHandler(
+        tracer_provider=tracer_provider,
+        meter_provider=meter_provider,
+        logger_provider=logger_provider,
+        completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
+    )
+    # pass handler to each patch/wrapper function
+```
+
+## 3. Invocation Pattern
 
 Use `start_*()` and control span lifetime manually:
 
@@ -33,7 +58,7 @@ except Exception as exc:
     raise
 ```
 
-## 3. Exception Handling
+## 4. Exception Handling
 
 - Do not add `raise {Error}` statements in instrumentation/telemetry code — validation belongs in
   tests and callers, not in the instrumentation layer.

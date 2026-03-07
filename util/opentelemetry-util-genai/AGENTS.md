@@ -15,7 +15,26 @@ Use the appropriate semconv attribute modules — do not hardcode attribute name
 - `error.*` attributes: `opentelemetry.semconv.attributes.error_attributes`
 - Other namespaces: use the corresponding module from `opentelemetry.semconv`
 
-## 2. Invocation Lifecycle Pattern
+## 2. TelemetryHandler Initialization
+
+Construct `TelemetryHandler` once per instrumentor, passing the OTel providers and the
+completion hook. Always resolve the hook with `kwargs.get("completion_hook") or
+load_completion_hook()` so callers can inject a hook directly, and fall back to the
+entry-point-loaded hook configured via `OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK`.
+
+```python
+from opentelemetry.util.genai.completion_hook import load_completion_hook
+from opentelemetry.util.genai.handler import TelemetryHandler
+
+handler = TelemetryHandler(
+    tracer_provider=tracer_provider,
+    meter_provider=meter_provider,
+    logger_provider=logger_provider,
+    completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
+)
+```
+
+## 3. Invocation Lifecycle Pattern
 
 Every new operation type must follow this pattern:
 
@@ -48,21 +67,21 @@ Context manager equivalents (`handler.inference()`, `handler.embedding()`, `hand
 etc.) in instrumentation or production code — direct construction skips span creation and context
 propagation, so all telemetry calls become no-ops. Always use `handler.start_*()`.
 
-## 3. Exception Handling
+## 4. Exception Handling
 
 - Do not add `raise {Error}` statements to `handler.py` or `types.py` — validation belongs in
   tests and callers, not telemetry internals.
 - When catching exceptions from the underlying library to record telemetry, always re-raise
   the original exception unmodified.
 
-## 4. Documentation
+## 5. Documentation
 
 - Docstrings for invocation types and span/event helpers must include a link to the
   corresponding operation in the semconv spec.
 - When adding or changing attributes, update the docstring to describe what is set and under
   what conditions (e.g., "set only when `server_address` is provided").
 
-## 5. Tests
+## 6. Tests
 
 - Every new operation type or attribute change must have tests verifying the exact attribute
   names and values produced, checked against the semconv spec.
@@ -71,7 +90,7 @@ propagation, so all telemetry calls become no-ops. Always use `handler.start_*()
 - Tests live in `tests/` — follow existing patterns there.
 - Don't call internal API in tests when the public API is available.
 
-## 6. Python API Conventions
+## 7. Python API Conventions
 
 - Mark private modules with an underscore.
 - Objects inside of a private module should be prefixed with underscopre if they

@@ -23,6 +23,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.types import AttributeValue
 
@@ -39,6 +40,7 @@ class EmbeddingInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         provider: str,
         *,
         request_model: str | None = None,
@@ -57,6 +59,7 @@ class EmbeddingInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
             span_name=f"{_operation_name} {request_model}"
             if request_model

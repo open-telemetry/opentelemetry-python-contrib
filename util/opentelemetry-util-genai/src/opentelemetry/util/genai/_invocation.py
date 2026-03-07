@@ -28,6 +28,7 @@ from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace import INVALID_SPAN as _INVALID_SPAN
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.types import Error
 
 if TYPE_CHECKING:
@@ -52,6 +53,7 @@ class GenAIInvocation(ABC):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         operation_name: str,
         span_name: str,
         span_kind: SpanKind = SpanKind.CLIENT,
@@ -61,6 +63,7 @@ class GenAIInvocation(ABC):
         self._tracer = tracer
         self._metrics_recorder = metrics_recorder
         self._logger = logger
+        self._completion_hook = completion_hook
         self._operation_name: str = operation_name
         self.attributes: dict[str, Any] = (
             {} if attributes is None else attributes

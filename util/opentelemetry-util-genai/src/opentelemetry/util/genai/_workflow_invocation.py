@@ -23,6 +23,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
     InputMessage,
@@ -51,6 +52,7 @@ class WorkflowInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         name: str | None,
         *,
         input_messages: list[InputMessage] | None = None,
@@ -64,6 +66,7 @@ class WorkflowInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
             span_name=f"{_operation_name} {name}" if name else _operation_name,
             span_kind=SpanKind.INTERNAL,
@@ -103,6 +106,15 @@ class WorkflowInvocation(GenAIInvocation):
             key: value for key, value in optional_attrs if value is not None
         }
 
+    def _call_completion_hook(self) -> None:
+        self._completion_hook.on_completion(
+            inputs=self.input_messages,
+            outputs=self.output_messages,
+            system_instruction=[],
+            span=self.span,
+            log_record=None,
+        )
+
     def _apply_finish(self, error: Error | None = None) -> None:
         attributes: dict[str, Any] = {
             GenAI.GEN_AI_OPERATION_NAME: self._operation_name
@@ -112,4 +124,5 @@ class WorkflowInvocation(GenAIInvocation):
             self._apply_error_attributes(error)
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
+        self._call_completion_hook()
         # TODO: Add workflow metrics when supported
