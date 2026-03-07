@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `OTEL_SEMCONV_STABILITY_OPT_IN` to `gen_ai_latest_experimental` to enable.
   Add dependency on `opentelemetry-util-genai` pypi package.
   ([#3715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3715))
-- Add completion hook support. ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
-- Fix `response_format` handling: map `json_object`/`json_schema` to `json` output type. ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
-- Skip attribute values with `openai.Omit` value. ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
+- Add completion hook support. ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Fix `response_format` handling: map `json_object`/`json_schema` to `json` output type. ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Skip attribute values with `openai.Omit` value. ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
 
 ## Version 2.3b0 (2025-12-24)
 

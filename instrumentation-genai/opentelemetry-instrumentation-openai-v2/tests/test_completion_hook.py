@@ -84,7 +84,6 @@ def test_default_hook_loaded_from_env(
     logger_provider,
     meter_provider,
     openai_client,
-    instrument_no_content,
     vcr,
 ):
     """When no hook kwarg is given, load_completion_hook() provides the default."""
@@ -121,5 +120,5 @@ def test_default_hook_loaded_from_env(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span_attrs = spans[0].attributes or {}
-    assert "gen_ai.input.messages" not in span_attrs
-    assert "gen_ai.output.messages" not in span_attrs
+    assert "gen_ai.input.messages" in span_attrs
+    assert "gen_ai.output.messages" in span_attrs
