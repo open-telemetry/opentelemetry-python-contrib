@@ -129,8 +129,17 @@ def fixture_content_mode(request):
 
 
 @pytest.fixture(scope="function")
+def completion_hook():
+    return None
+
+
+@pytest.fixture(scope="function")
 def instrument_no_content(
-    tracer_provider, logger_provider, meter_provider, content_mode
+    tracer_provider,
+    logger_provider,
+    meter_provider,
+    content_mode,
+    completion_hook,
 ):
     _OpenTelemetrySemanticConventionStability._initialized = False
     latest_experimental_enabled, _ = content_mode
@@ -143,10 +152,14 @@ def instrument_no_content(
     )
 
     instrumentor = OpenAIInstrumentor()
+    kwargs = {}
+    if completion_hook is not None:
+        kwargs["completion_hook"] = completion_hook
     instrumentor.instrument(
         tracer_provider=tracer_provider,
         logger_provider=logger_provider,
         meter_provider=meter_provider,
+        **kwargs,
     )
 
     yield instrumentor

@@ -7,10 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-
 - Add support for workflow in genAI utils handler.
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4366](#4366))
-- Enrich ToolCall type, breaking change: usage of ToolCall class renamed to ToolCallRequest 
+- Enrich ToolCall type, breaking change: usage of ToolCall class renamed to ToolCallRequest
   ([#4218](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4218))
 - Add EmbeddingInvocation span lifecycle support
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4219](#4219))
@@ -18,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
 - Add workflow invocation type to genAI utils
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310](#4310))
+- `TelemetryHandler` now accepts a `completion_hook` parameter and calls it after each LLM invocation, passing inputs, outputs, the active span, and the log record. Content capture is enabled automatically when a real hook is configured. ([#TODO](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/TODO))
 
 ## Version 0.3b0 (2026-02-20)
 

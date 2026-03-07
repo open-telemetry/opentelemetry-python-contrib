@@ -175,8 +175,9 @@ class TelemetryHandler:
                 ).lower()
                 == "true"
             )
-        self._capture_content = content_enabled or not isinstance(
-            completion_hook, _NoOpCompletionHook
+        self._capture_content = content_enabled or (
+            completion_hook is not None
+            and not isinstance(completion_hook, _NoOpCompletionHook)
         )
 
     def should_capture_content(self) -> bool:
@@ -290,7 +291,9 @@ class TelemetryHandler:
                 self._record_llm_metrics(
                     invocation, span, error_type=error_type
                 )
-                log_record = _maybe_build_llm_event_record(span, invocation, error_type)
+                log_record = _maybe_build_llm_event_record(
+                    span, invocation, error_type
+                )
                 if self._completion_hook is not None:
                     self._completion_hook.on_completion(
                         inputs=invocation.input_messages,
