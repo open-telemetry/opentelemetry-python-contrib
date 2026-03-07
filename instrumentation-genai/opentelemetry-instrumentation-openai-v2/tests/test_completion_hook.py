@@ -35,7 +35,7 @@ def content_mode(request):
 
 
 @pytest.fixture
-def completion_hook():
+def completion_hook():  # pylint: disable=redefined-outer-name
     return MagicMock()
 
 
