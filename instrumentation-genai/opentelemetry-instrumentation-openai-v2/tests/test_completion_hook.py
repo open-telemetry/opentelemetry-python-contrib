@@ -15,10 +15,9 @@
 import os
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.util.genai.environment_variables import (
@@ -28,35 +27,42 @@ from opentelemetry.util.genai.environment_variables import (
 from .test_utils import DEFAULT_MODEL, USER_ONLY_PROMPT
 
 
-# Run hook tests in experimental mode only — hooks are only active on the new path
-@pytest.fixture(params=[(True, "span_only")])
-def content_mode(request):
-    return request.param
-
-
-@pytest.fixture
-def completion_hook():  # pylint: disable=redefined-outer-name
-    return MagicMock()
-
-
+@patch.dict(
+    os.environ,
+    {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"},
+)
 def test_custom_hook_is_called(
     span_exporter,
     log_exporter,
-    instrument_no_content,
-    completion_hook,
+    tracer_provider,
+    logger_provider,
+    meter_provider,
     openai_client,
     vcr,
 ):
     """A hook passed to instrument() is called after each chat completion."""
-    with vcr.use_cassette("test_chat_completion_with_content.yaml"):
-        openai_client.chat.completions.create(
-            messages=USER_ONLY_PROMPT,
-            model=DEFAULT_MODEL,
-            stream=False,
-        )
+    hook = MagicMock()
+    instrumentor = OpenAIInstrumentor()
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+        completion_hook=hook,
+    )
 
-    completion_hook.on_completion.assert_called_once()
-    kwargs = completion_hook.on_completion.call_args.kwargs
+    try:
+        with vcr.use_cassette("test_chat_completion_with_content.yaml"):
+            openai_client.chat.completions.create(
+                messages=USER_ONLY_PROMPT,
+                model=DEFAULT_MODEL,
+                stream=False,
+            )
+    finally:
+        instrumentor.uninstrument()
+
+    hook.on_completion.assert_called_once()
+    kwargs = hook.on_completion.call_args.kwargs
     assert kwargs["inputs"]
     assert kwargs["outputs"]
     assert kwargs["span"] is not None
