@@ -129,7 +129,7 @@ def fixture_content_mode(request):
 
 
 @pytest.fixture(scope="function")
-def completion_hook():
+def completion_hook():  # pylint: disable=redefined-outer-name
     return None
 
 
