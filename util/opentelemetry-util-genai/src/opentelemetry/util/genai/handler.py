@@ -79,6 +79,7 @@ from opentelemetry.trace import (
     get_tracer,
     set_span_in_context,
 )
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
@@ -88,7 +89,7 @@ from opentelemetry.util.genai.span_utils import (
     _get_embedding_span_name,
     _get_llm_span_name,
     _get_workflow_span_name,
-    _maybe_emit_llm_event,
+    _maybe_build_llm_event_record,
 )
 from opentelemetry.util.genai.types import (
     EmbeddingInvocation,
@@ -130,6 +131,7 @@ class TelemetryHandler:
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         logger_provider: LoggerProvider | None = None,
+        completion_hook: CompletionHook | None = None,
     ):
         schema_url = Schemas.V1_37_0.value
         self._tracer = get_tracer(
@@ -149,6 +151,7 @@ class TelemetryHandler:
             logger_provider,
             schema_url=schema_url,
         )
+        self._completion_hook = completion_hook
 
     def _record_llm_metrics(
         self,
@@ -215,7 +218,17 @@ class TelemetryHandler:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
                 self._record_llm_metrics(invocation, span)
-                _maybe_emit_llm_event(self._logger, span, invocation)
+                log_record = _maybe_build_llm_event_record(span, invocation)
+                if self._completion_hook is not None:
+                    self._completion_hook.on_completion(
+                        inputs=invocation.input_messages,
+                        outputs=invocation.output_messages,
+                        system_instruction=invocation.system_instruction,
+                        span=span,
+                        log_record=log_record,
+                    )
+                if log_record is not None:
+                    self._logger.emit(log_record)
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_embedding_metrics(invocation, span)
@@ -243,9 +256,18 @@ class TelemetryHandler:
                 self._record_llm_metrics(
                     invocation, span, error_type=error_type
                 )
-                _maybe_emit_llm_event(
-                    self._logger, span, invocation, error_type
-                )
+                log_record = _maybe_build_llm_event_record(span, invocation, error_type)
+                if self._completion_hook is not None:
+                    self._completion_hook.on_completion(
+                        inputs=invocation.input_messages,
+                        outputs=invocation.output_messages,
+                        system_instruction=invocation.system_instruction,
+                        span=span,
+                        log_record=log_record,
+                    )
+                if log_record is not None:
+                    self._logger.emit(log_record)
+
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)

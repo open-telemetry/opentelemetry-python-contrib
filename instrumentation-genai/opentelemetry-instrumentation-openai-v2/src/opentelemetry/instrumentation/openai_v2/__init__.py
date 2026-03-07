@@ -52,6 +52,7 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.completion_hook import load_completion_hook
 from opentelemetry.util.genai.handler import (
     TelemetryHandler,
 )
@@ -116,6 +117,8 @@ class OpenAIInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             logger_provider=logger_provider,
+            completion_hook=kwargs.get("completion_hook")
+            or load_completion_hook(),
         )
 
         wrap_function_wrapper(
