@@ -20,6 +20,10 @@ env:
   CORE_REPO_SHA: ${{ inputs.CORE_REPO_SHA }}
   CONTRIB_REPO_SHA: ${{ inputs.CONTRIB_REPO_SHA }}
   PIP_EXISTS_ACTION: w
+  CORE_REPO_API: ${{ github.workspace }}/opentelemetry-python/opentelemetry-api
+  CORE_REPO_SDK: ${{ github.workspace }}/opentelemetry-python/opentelemetry-sdk
+  CORE_REPO_SEMCONV: ${{ github.workspace }}/opentelemetry-python/opentelemetry-semantic-conventions
+  CORE_REPO_TEST_UTILS: ${{ github.workspace }}/opentelemetry-python/tests/opentelemetry-test-utils
 
 jobs:
 
