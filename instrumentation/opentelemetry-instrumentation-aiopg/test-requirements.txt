@@ -13,4 +13,3 @@ zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-dbapi
 -e instrumentation/opentelemetry-instrumentation-aiopg
-wrapt>=1.0.0,<2.0.0
