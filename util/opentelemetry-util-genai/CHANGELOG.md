@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Populate schema_url on metrics ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
+
 ## Version 0.3b0 (2026-02-20)
 
 - Add `gen_ai.tool_definitions` to completion hook ([#4181](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4181))
