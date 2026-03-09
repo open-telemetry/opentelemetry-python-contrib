@@ -122,7 +122,6 @@ def test_default_hook_loaded_from_env(
     assert kwargs["outputs"]
     assert kwargs["span"] is not None
 
-    # Content goes to the hook only — not to span attributes or log records
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span_attrs = spans[0].attributes or {}
