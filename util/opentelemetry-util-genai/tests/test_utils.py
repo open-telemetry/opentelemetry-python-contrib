@@ -625,6 +625,47 @@ class TestTelemetryHandler(unittest.TestCase):
             },
         )
 
+    def test_embedding_context_manager_error_path_records_error_status_and_attrs(
+        self,
+    ):
+        class BoomError(RuntimeError):
+            pass
+
+        invocation = EmbeddingInvocation(
+            request_model="embed-model",
+            provider="test-provider",
+            dimension_count=1536,
+            input_tokens=7,
+            server_address="embed.example.com",
+            server_port=443,
+            attributes={"custom_embed_attr": "value"},
+        )
+
+        with self.assertRaises(BoomError):
+            with self.telemetry_handler.embedding(invocation):
+                invocation.response_model_name = "embed-response-model"
+                raise BoomError("embedding boom")
+
+        span = _get_single_span(self.span_exporter)
+        assert span.status.status_code == StatusCode.ERROR
+        _assert_span_time_order(span)
+        span_attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            span_attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "embeddings",
+                GenAI.GEN_AI_REQUEST_MODEL: "embed-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_EMBEDDING_DIMENSION_COUNT: 1536,
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS: 7,
+                GenAI.GEN_AI_RESPONSE_MODEL: "embed-response-model",
+                server_attributes.SERVER_ADDRESS: "embed.example.com",
+                server_attributes.SERVER_PORT: 443,
+                "custom_embed_attr": "value",
+                error_attributes.ERROR_TYPE: BoomError.__qualname__,
+            },
+        )
+
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="EVENT_ONLY",
