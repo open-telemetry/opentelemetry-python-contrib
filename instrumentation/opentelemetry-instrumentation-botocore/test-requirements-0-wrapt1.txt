@@ -1,2 +1,2 @@
 -r test-requirements-0.txt
-wrapt>=1.0.0,<2.0.0
+wrapt==1.17.3

@@ -20,7 +20,12 @@ from os import environ
 from typing import Any, Callable, Dict, Iterator, Sequence, Union
 
 from botocore.eventstream import EventStream, EventStreamError
-from wrapt import ObjectProxy
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.context import get_current
@@ -37,7 +42,7 @@ _StreamErrorCallableT = Callable[[Exception], None]
 
 
 # pylint: disable=abstract-method
-class ConverseStreamWrapper(ObjectProxy):
+class ConverseStreamWrapper(BaseObjectProxy):
     """Wrapper for botocore.eventstream.EventStream"""
 
     def __init__(
@@ -157,7 +162,7 @@ class ConverseStreamWrapper(ObjectProxy):
 
 
 # pylint: disable=abstract-method
-class InvokeModelWithResponseStreamWrapper(ObjectProxy):
+class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
     """Wrapper for botocore.eventstream.EventStream"""
 
     def __init__(
