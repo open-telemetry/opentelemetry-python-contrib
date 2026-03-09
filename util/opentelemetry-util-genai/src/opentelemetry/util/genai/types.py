@@ -209,6 +209,11 @@ class GenAIInvocation:
     by the TelemetryHandler when starting an invocation.
     """
 
+    @property
+    def operation_name(self) -> str:
+        """Defined by each concrete invocation type. Immutable."""
+        raise NotImplementedError
+
 
 @dataclass
 class LLMInvocation(GenAIInvocation):
@@ -218,7 +223,10 @@ class LLMInvocation(GenAIInvocation):
     set by the TelemetryHandler.
     """
 
-    operation_name: str = GenAI.GenAiOperationNameValues.CHAT.value
+    @property
+    def operation_name(self) -> str:
+        return GenAI.GenAiOperationNameValues.CHAT.value
+
     request_model: str | None = None
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
@@ -266,7 +274,10 @@ class EmbeddingInvocation(GenAIInvocation):
     and context_token attributes are set by the TelemetryHandler.
     """
 
-    operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+    @property
+    def operation_name(self) -> str:
+        return GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+
     request_model: str | None = None
     provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
     server_address: str | None = None
