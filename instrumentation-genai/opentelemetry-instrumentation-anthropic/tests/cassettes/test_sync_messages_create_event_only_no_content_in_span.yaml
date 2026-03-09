@@ -2,20 +2,14 @@ interactions:
 - request:
     body: |-
       {
-        "max_tokens": 50,
+        "max_tokens": 100,
         "messages": [
           {
             "role": "user",
-            "content": "Say hello."
+            "content": "Say hello in one word."
           }
         ],
-        "model": "claude-sonnet-4-20250514",
-        "stop_sequences": [
-          "STOP"
-        ],
-        "temperature": 0.7,
-        "top_k": 40,
-        "top_p": 0.9
+        "model": "claude-sonnet-4-20250514"
       }
     headers:
       accept:
@@ -27,7 +21,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '171'
+      - '117'
       content-type:
       - application/json
       host:
@@ -63,33 +57,33 @@ interactions:
       string: |-
         {
           "model": "claude-sonnet-4-20250514",
-          "id": "msg_015vKsHVeGGXxG7Q49sUsfwG",
+          "id": "msg_01FaPr9xcPcSjcy2XAU85Pyj",
           "type": "message",
           "role": "assistant",
           "content": [
             {
               "type": "text",
-              "text": "Hello! It's nice to meet you. How are you doing today?"
+              "text": "Hello!"
             }
           ],
           "stop_reason": "end_turn",
           "stop_sequence": null,
           "usage": {
-            "input_tokens": 10,
+            "input_tokens": 13,
             "cache_creation_input_tokens": 0,
             "cache_read_input_tokens": 0,
             "cache_creation": {
               "ephemeral_5m_input_tokens": 0,
               "ephemeral_1h_input_tokens": 0
             },
-            "output_tokens": 18,
+            "output_tokens": 5,
             "service_tier": "standard",
             "inference_geo": "not_available"
           }
         }
     headers:
       CF-RAY:
-      - 9d6567c6f9f51016-EWR
+      - 9d65687b3b23134a-EWR
       Connection:
       - keep-alive
       Content-Security-Policy:
@@ -97,7 +91,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Tue, 03 Mar 2026 03:02:59 GMT
+      - Tue, 03 Mar 2026 03:03:28 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -109,37 +103,37 @@ interactions:
       anthropic-ratelimit-input-tokens-remaining:
       - '450000'
       anthropic-ratelimit-input-tokens-reset:
-      - '2026-03-03T03:02:59Z'
+      - '2026-03-03T03:03:28Z'
       anthropic-ratelimit-output-tokens-limit:
       - '90000'
       anthropic-ratelimit-output-tokens-remaining:
       - '90000'
       anthropic-ratelimit-output-tokens-reset:
-      - '2026-03-03T03:02:59Z'
+      - '2026-03-03T03:03:28Z'
       anthropic-ratelimit-requests-limit:
       - '1000'
       anthropic-ratelimit-requests-remaining:
       - '999'
       anthropic-ratelimit-requests-reset:
-      - '2026-03-03T03:02:58Z'
+      - '2026-03-03T03:03:27Z'
       anthropic-ratelimit-tokens-limit:
       - '540000'
       anthropic-ratelimit-tokens-remaining:
       - '540000'
       anthropic-ratelimit-tokens-reset:
-      - '2026-03-03T03:02:59Z'
+      - '2026-03-03T03:03:28Z'
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '490'
+      - '441'
       request-id:
-      - req_011CYfQMGWs6c2NPKvC1SwEp
+      - req_011CYfQPPniijYhRkF7mjRn4
       strict-transport-security:
       - max-age=31536000; includeSubDomains; preload
       vary:
       - Accept-Encoding
       x-envoy-upstream-service-time:
-      - '1225'
+      - '905'
     status:
       code: 200
       message: OK
