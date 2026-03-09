@@ -19,6 +19,8 @@ import pytest
 from opentelemetry.util.genai.types import (
     GenAIInvocation,
     InputMessage,
+    ServerToolCall,
+    ServerToolCallResponse,
     ToolCall,
     ToolCallRequest,
 )
@@ -53,6 +55,63 @@ def test_toolcall_in_message_part_union():
     msg = InputMessage(role="assistant", parts=[tc])
     assert len(msg.parts) == 1
     assert isinstance(msg.parts[0], GenAIInvocation)
+
+
+def test_server_tool_call_basic():
+    """ServerToolCall can be created with required fields"""
+    stc = ServerToolCall(
+        name="code_interpreter",
+        server_tool_call={"type": "code_interpreter", "code": "print(1)"},
+    )
+    assert stc.name == "code_interpreter"
+    assert stc.server_tool_call == {
+        "type": "code_interpreter",
+        "code": "print(1)",
+    }
+    assert stc.id is None
+    assert stc.type == "server_tool_call"
+
+
+def test_server_tool_call_with_id():
+    """ServerToolCall can have an optional id"""
+    stc = ServerToolCall(
+        name="web_search",
+        server_tool_call={"type": "web_search", "query": "weather"},
+        id="stc_001",
+    )
+    assert stc.id == "stc_001"
+
+
+def test_server_tool_call_response_basic():
+    """ServerToolCallResponse can be created with required fields"""
+    stcr = ServerToolCallResponse(
+        server_tool_call_response={
+            "type": "code_interpreter",
+            "output": "1\n",
+        },
+    )
+    assert stcr.server_tool_call_response == {
+        "type": "code_interpreter",
+        "output": "1\n",
+    }
+    assert stcr.id is None
+    assert stcr.type == "server_tool_call_response"
+
+
+def test_server_tool_call_in_message():
+    """ServerToolCall and ServerToolCallResponse work as MessageParts"""
+    stc = ServerToolCall(
+        name="code_interpreter",
+        server_tool_call={"type": "code_interpreter", "code": "x = 1"},
+    )
+    stcr = ServerToolCallResponse(
+        server_tool_call_response={"type": "code_interpreter", "output": ""},
+        id="stc_001",
+    )
+    msg = InputMessage(role="assistant", parts=[stc, stcr])
+    assert len(msg.parts) == 2
+    assert isinstance(msg.parts[0], ServerToolCall)
+    assert isinstance(msg.parts[1], ServerToolCallResponse)
 
 
 if __name__ == "__main__":

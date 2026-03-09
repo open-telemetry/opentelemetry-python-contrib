@@ -83,6 +83,41 @@ class ToolCallResponse:
 
 
 @dataclass()
+class ServerToolCall:
+    """Represents a server-side tool call invocation.
+
+    Server tool calls are executed by the model provider on the server side rather
+    than by the client application. Provider-specific tools (e.g., code_interpreter,
+    web_search) can have well-defined schemas defined by the respective providers.
+
+    This model is specified as part of semconv in `GenAI messages Python models - ServerToolCallPart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
+    name: str
+    server_tool_call: Any
+    id: str | None = None
+    type: Literal["server_tool_call"] = "server_tool_call"
+
+
+@dataclass()
+class ServerToolCallResponse:
+    """Represents a server-side tool call response.
+
+    Contains the outcome and details of a server tool execution. Provider-specific
+    tools (e.g., code_interpreter, web_search) can have well-defined response schemas
+    defined by the respective providers.
+
+    This model is specified as part of semconv in `GenAI messages Python models - ServerToolCallResponsePart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
+    server_tool_call_response: Any
+    id: str | None = None
+    type: Literal["server_tool_call_response"] = "server_tool_call_response"
+
+
+@dataclass()
 class Text:
     """Represents text content sent to or received from the model
 
@@ -176,6 +211,8 @@ MessagePart = Union[
     ToolCallRequest,
     "ToolCall",
     ToolCallResponse,
+    ServerToolCall,
+    ServerToolCallResponse,
     Blob,
     File,
     Uri,
