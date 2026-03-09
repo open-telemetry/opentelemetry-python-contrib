@@ -74,6 +74,8 @@ def assert_all_metric_attributes(data_point, latest_experimental_enabled):
         data_point.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
         == "gpt-4o-mini-2024-07-18"
     )
+    assert (
+        OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER in data_point.attributes
 
     system_fingerprint_attr_key = (
         OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT
@@ -93,6 +95,8 @@ def assert_all_metric_attributes(data_point, latest_experimental_enabled):
 
     assert system_fingerprint_attr_key in data_point.attributes
     assert (
+        data_point.attributes[OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER]
+        == "default"
         data_point.attributes[system_fingerprint_attr_key] == "fp_0ba0d124f1"
     )
     assert request_service_tier_attr_key not in data_point.attributes

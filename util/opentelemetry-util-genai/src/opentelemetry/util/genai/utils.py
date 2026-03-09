@@ -111,6 +111,18 @@ def should_emit_event() -> bool:
         return False
 
 
+def should_capture_content() -> bool:
+    """Return True when content conversion should be performed."""
+    if not is_experimental_mode():
+        return False
+    mode = get_content_capturing_mode()
+    if mode == ContentCapturingMode.NO_CONTENT:
+        return False
+    if mode == ContentCapturingMode.EVENT_ONLY and not should_emit_event():
+        return False
+    return True
+
+
 class _GenAiJsonEncoder(json.JSONEncoder):
     def default(self, o: Any) -> Any:
         if isinstance(o, bytes):

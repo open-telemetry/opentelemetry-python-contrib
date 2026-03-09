@@ -148,6 +148,7 @@ def assert_all_attributes(
     )
     _assert_optional_attribute(
         span,
+        OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER,
         response_service_tier_attr_name,
         response_service_tier,
     )

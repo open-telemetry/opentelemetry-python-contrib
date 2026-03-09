@@ -226,6 +226,60 @@ def instrument_with_content_unsampled(
     instrumentor.uninstrument()
 
 
+@pytest.fixture(scope="function")
+def instrument_with_experimental_content(
+    tracer_provider, logger_provider, meter_provider
+):
+    # Reset global state for experimental mode
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
+    )
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "SPAN_AND_EVENT"}
+    )
+
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_with_experimental_no_content(
+    tracer_provider, logger_provider, meter_provider
+):
+    # Reset global state for experimental mode
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    os.environ.update(
+        {OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"}
+    )
+    os.environ.update(
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "NO_CONTENT"}
+    )
+
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    instrumentor.uninstrument()
+
+
 class LiteralBlockScalar(str):
     """Formats the string as a literal block scalar, preserving whitespace and
     without interpreting escape characters"""

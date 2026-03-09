@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+from typing import TYPE_CHECKING, Mapping, Optional
 import json
 from os import environ
 from typing import Any, Iterable, List, Mapping
@@ -36,6 +38,7 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.utils import should_capture_content
 from opentelemetry.util.genai.types import (
     InputMessage,
     LLMInvocation,
@@ -49,13 +52,19 @@ OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
 
+if TYPE_CHECKING:
+    from .instruments import Instruments
+
 
 def is_content_enabled() -> bool:
-    capture_content = environ.get(
+    capture_content = os.environ.get(
         OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
     )
+    legacy_enabled = capture_content.lower() == "true"
 
-    return capture_content.lower() == "true"
+    if should_capture_content is None:
+        return legacy_enabled
+    return legacy_enabled or should_capture_content()
 
 
 def extract_tool_calls(item, capture_content):
@@ -218,6 +227,10 @@ def get_llm_request_attributes(
         GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
     }
 
+    # Add chat-like attributes for chat operations
+    if operation_name in (
+        GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+    ):
     if latest_experimental_enabled:
         attributes.update(
             {
@@ -244,7 +257,8 @@ def get_llm_request_attributes(
                 or kwargs.get("top_p"),
                 GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get(
                     "max_tokens"
-                ),
+                )
+                or kwargs.get("max_output_tokens"),
                 GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
                     "presence_penalty"
                 ),
@@ -328,6 +342,90 @@ def get_llm_request_attributes(
     return {k: v for k, v in attributes.items() if value_is_set(v)}
 
 
+def _record_metrics(  # pylint: disable=too-many-branches
+    instruments: Instruments,
+    duration: float,
+    result,
+    request_attributes: dict,
+    error_type: Optional[str],
+    operation_name: str,
+):
+    common_attributes = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+    }
+    if request_model := request_attributes.get(
+        GenAIAttributes.GEN_AI_REQUEST_MODEL
+    ):
+        common_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = request_model
+
+    if "gen_ai.embeddings.dimension.count" in request_attributes:
+        common_attributes["gen_ai.embeddings.dimension.count"] = (
+            request_attributes["gen_ai.embeddings.dimension.count"]
+        )
+
+    if error_type:
+        common_attributes["error.type"] = error_type
+
+    if result and getattr(result, "model", None):
+        common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = result.model
+
+    if result and getattr(result, "service_tier", None):
+        common_attributes[OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER] = (
+            result.service_tier
+        )
+
+    if ServerAttributes.SERVER_ADDRESS in request_attributes:
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = (
+            request_attributes[ServerAttributes.SERVER_ADDRESS]
+        )
+
+    if ServerAttributes.SERVER_PORT in request_attributes:
+        common_attributes[ServerAttributes.SERVER_PORT] = request_attributes[
+            ServerAttributes.SERVER_PORT
+        ]
+
+    instruments.operation_duration_histogram.record(
+        duration,
+        attributes=common_attributes,
+    )
+
+    if result and getattr(result, "usage", None):
+        usage = result.usage
+        input_tokens = getattr(usage, "prompt_tokens", None)
+        if input_tokens is None:
+            input_tokens = getattr(usage, "input_tokens", None)
+        output_tokens = getattr(usage, "completion_tokens", None)
+        if output_tokens is None:
+            output_tokens = getattr(usage, "output_tokens", None)
+
+        # Always record input tokens
+        input_attributes = {
+            **common_attributes,
+            GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.INPUT.value,
+        }
+        if input_tokens is not None:
+            instruments.token_usage_histogram.record(
+                input_tokens,
+                attributes=input_attributes,
+            )
+
+        # For embeddings, don't record output tokens as all tokens are input tokens
+        if (
+            operation_name
+            != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
+        ):
+            output_attributes = {
+                **common_attributes,
+                GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
+            }
+            if output_tokens is not None:
+                instruments.token_usage_histogram.record(
+                    output_tokens, attributes=output_attributes
+                )
+
+
+def handle_span_exception(span, error):
 def create_chat_invocation(
     kwargs,
     client_instance,

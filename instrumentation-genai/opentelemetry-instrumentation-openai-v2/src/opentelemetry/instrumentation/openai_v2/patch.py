@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
 
 import json
 from timeit import default_timer
@@ -376,6 +377,9 @@ def _get_embeddings_span_name(span_attributes):
     return f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
 
 
+def _set_response_attributes(
+    span, result, logger: Logger, capture_content: bool
+):
 def _record_metrics(
     instruments: Instruments,
     duration: float,
@@ -476,7 +480,7 @@ def _set_response_attributes(span, result):
     if getattr(result, "service_tier", None):
         set_span_attribute(
             span,
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER,
+            OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER,
             result.service_tier,
         )
 
@@ -628,7 +632,91 @@ class BaseStreamWrapper:
         self._started = False
         self.capture_content = capture_content
         self._setup()
+        self.logger = logger
+        self.setup()
 
+    def setup(self):
+        if not self._span_started:
+            self._span_started = True
+
+    def cleanup(self):
+        if self._span_started:
+            if self.span.is_recording():
+                if self.response_model:
+                    set_span_attribute(
+                        self.span,
+                        GenAIAttributes.GEN_AI_RESPONSE_MODEL,
+                        self.response_model,
+                    )
+
+                if self.response_id:
+                    set_span_attribute(
+                        self.span,
+                        GenAIAttributes.GEN_AI_RESPONSE_ID,
+                        self.response_id,
+                    )
+
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS,
+                    self.prompt_tokens,
+                )
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+                    self.completion_tokens,
+                )
+
+                set_span_attribute(
+                    self.span,
+                    OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER,
+                    self.service_tier,
+                )
+
+                set_span_attribute(
+                    self.span,
+                    GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS,
+                    self.finish_reasons,
+                )
+
+            for idx, choice in enumerate(self.choice_buffers):
+                message = {"role": "assistant"}
+                if self.capture_content and choice.text_content:
+                    message["content"] = "".join(choice.text_content)
+                if choice.tool_calls_buffers:
+                    tool_calls = []
+                    for tool_call in choice.tool_calls_buffers:
+                        function = {"name": tool_call.function_name}
+                        if self.capture_content:
+                            function["arguments"] = "".join(
+                                tool_call.arguments
+                            )
+                        tool_call_dict = {
+                            "id": tool_call.tool_call_id,
+                            "type": "function",
+                            "function": function,
+                        }
+                        tool_calls.append(tool_call_dict)
+                    message["tool_calls"] = tool_calls
+
+                body = {
+                    "index": idx,
+                    "finish_reason": choice.finish_reason or "error",
+                    "message": message,
+                }
+
+                event_attributes = {
+                    GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+                }
+                context = set_span_in_context(self.span, get_current())
+                self.logger.emit(
+                    LogRecord(
+                        event_name="gen_ai.choice",
+                        attributes=event_attributes,
+                        body=body,
+                        context=context,
+                    )
+                )
     def _setup(self):
         if not self._started:
             self._started = True
