@@ -9,4 +9,3 @@ typing_extensions==4.12.2
 zipp==3.19.2
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-dbapi
-wrapt>=1.0.0,<2.0.0
