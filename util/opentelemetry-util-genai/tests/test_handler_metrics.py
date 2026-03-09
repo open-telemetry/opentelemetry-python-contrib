@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -14,8 +14,11 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import Error, LLMInvocation
+
+_DEFAULT_SCHEMA_URL = Schemas.V1_37_0.value
 
 
 class TelemetryHandlerMetricsTest(TestCase):
@@ -48,6 +51,9 @@ class TelemetryHandlerMetricsTest(TestCase):
             return_value=1002.0,
         ):
             handler.stop_llm(invocation)
+
+        for schema_url in self._get_metric_scope_schema_urls():
+            self.assertEqual(schema_url, _DEFAULT_SCHEMA_URL)
 
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
@@ -104,6 +110,9 @@ class TelemetryHandlerMetricsTest(TestCase):
         invocation.attributes = {"should not be on metrics": "value"}
         handler.stop_llm(invocation)
 
+        for schema_url in self._get_metric_scope_schema_urls():
+            self.assertEqual(schema_url, _DEFAULT_SCHEMA_URL)
+
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
         duration_points = metrics["gen_ai.client.operation.duration"]
@@ -138,6 +147,9 @@ class TelemetryHandlerMetricsTest(TestCase):
             return_value=2001.0,
         ):
             handler.fail_llm(invocation, error)
+
+        for schema_url in self._get_metric_scope_schema_urls():
+            self.assertEqual(schema_url, _DEFAULT_SCHEMA_URL)
 
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
@@ -177,3 +189,17 @@ class TelemetryHandlerMetricsTest(TestCase):
                     points = metric.data.data_points or []
                     metrics_by_name.setdefault(metric.name, []).extend(points)
         return metrics_by_name
+
+    def _get_metric_scope_schema_urls(self) -> Set[str]:
+        try:
+            self.meter_provider.force_flush()
+        except Exception:  # pylint: disable=broad-except
+            pass
+        self.metric_reader.collect()
+        schema_urls: Set[str] = set()
+        data = self.metric_reader.get_metrics_data()
+        for resource_metric in (data and data.resource_metrics) or []:
+            for scope_metric in resource_metric.scope_metrics or []:
+                if scope_metric.scope.schema_url is not None:
+                    schema_urls.add(scope_metric.scope.schema_url)
+        return schema_urls
