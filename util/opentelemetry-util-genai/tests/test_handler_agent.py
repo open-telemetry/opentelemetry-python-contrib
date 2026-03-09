@@ -37,7 +37,7 @@ class TestAgentCreationHandler(TestCase):
             name="New Agent",
             agent_id="agent-new-1",
             provider="openai",
-            model="gpt-4",
+            request_model="gpt-4",
         )
         handler.start_agent(creation)
         handler.stop_agent(creation)
@@ -68,7 +68,7 @@ class TestAgentCreationHandler(TestCase):
             description="A test agent",
             version="1.0.0",
             provider="openai",
-            model="gpt-4",
+            request_model="gpt-4",
             server_address="api.openai.com",
             server_port=443,
         )
@@ -157,7 +157,7 @@ class TestAgentCreationTypes(TestCase):
         self.assertIsNone(creation.description)
         self.assertIsNone(creation.version)
         self.assertIsNone(creation.provider)
-        self.assertIsNone(creation.model)
+        self.assertIsNone(creation.request_model)
         self.assertEqual(creation.system_instructions, [])
         self.assertIsNone(creation.server_address)
         self.assertIsNone(creation.server_port)

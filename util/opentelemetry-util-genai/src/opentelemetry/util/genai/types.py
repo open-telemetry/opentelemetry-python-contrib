@@ -202,6 +202,13 @@ class GenAIInvocation:
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
 
+    monotonic_start_s: float | None = None
+    """
+    Monotonic start time in seconds (from timeit.default_timer) used for
+    duration calculations to avoid mixing clock sources. This is populated
+    by the TelemetryHandler when starting an invocation.
+    """
+
 
 @dataclass
 class LLMInvocation(GenAIInvocation):
@@ -250,10 +257,6 @@ class LLMInvocation(GenAIInvocation):
     seed: int | None = None
     server_address: str | None = None
     server_port: int | None = None
-    # Monotonic start time in seconds (from timeit.default_timer) used
-    # for duration calculations to avoid mixing clock sources. This is
-    # populated by the TelemetryHandler when starting an invocation.
-    monotonic_start_s: float | None = None
 
 
 @dataclass
@@ -269,12 +272,9 @@ class _BaseAgent(GenAIInvocation):
     description: str | None = None
     version: str | None = None
 
-    # Operation
-    operation_name: str = ""
-    provider: str | None = None
-
     # Request
-    model: str | None = None  # primary model if applicable
+    request_model: str | None = None
+    provider: str | None = None
 
     # Content (Opt-In)
     system_instructions: list[MessagePart] = field(
@@ -289,10 +289,6 @@ class _BaseAgent(GenAIInvocation):
     """
     Additional attributes to set on spans and/or events.
     """
-    # Monotonic start time in seconds (from timeit.default_timer) used
-    # for duration calculations to avoid mixing clock sources. This is
-    # populated by the TelemetryHandler when starting an invocation.
-    monotonic_start_s: float | None = None
 
 
 @dataclass
@@ -303,7 +299,6 @@ class AgentCreation(_BaseAgent):
     attributes are set by the TelemetryHandler.
     """
 
-    # Override default operation name
     operation_name: str = GenAI.GenAiOperationNameValues.CREATE_AGENT.value
 
 

@@ -38,7 +38,6 @@ from opentelemetry.util.genai.types import (
     LLMInvocation,
     MessagePart,
     OutputMessage,
-    _BaseAgent,
 )
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
@@ -282,11 +281,11 @@ def _get_llm_response_attributes(
 
 
 def _get_base_agent_common_attributes(
-    agent: _BaseAgent,
+    agent: AgentCreation,
 ) -> dict[str, Any]:
     """Get common attributes shared by all agent operations (invoke_agent, create_agent)."""
     optional_attrs = (
-        (GenAI.GEN_AI_REQUEST_MODEL, agent.model),
+        (GenAI.GEN_AI_REQUEST_MODEL, agent.request_model),
         (GenAI.GEN_AI_PROVIDER_NAME, agent.provider),
         (GenAI.GEN_AI_AGENT_NAME, agent.name),
         (GenAI.GEN_AI_AGENT_ID, agent.agent_id),
@@ -296,13 +295,29 @@ def _get_base_agent_common_attributes(
         (server_attributes.SERVER_PORT, agent.server_port),
     )
 
-    return {
+    attributes: dict[str, Any] = {
         GenAI.GEN_AI_OPERATION_NAME: agent.operation_name,
         **{key: value for key, value in optional_attrs if value is not None},
     }
 
+    # System instructions (Opt-In)
+    if (
+        is_experimental_mode()
+        and get_content_capturing_mode()
+        in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+        and agent.system_instructions
+    ):
+        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
+            [asdict(p) for p in agent.system_instructions]
+        )
 
-def _get_base_agent_span_name(agent: _BaseAgent) -> str:
+    return attributes
+
+
+def _get_base_agent_span_name(agent: AgentCreation) -> str:
     """Get the span name for any agent operation."""
     if agent.name:
         return f"{agent.operation_name} {agent.name}"
@@ -329,21 +344,6 @@ def _apply_creation_finish_attributes(
 
     attributes: dict[str, Any] = {}
     attributes.update(_get_creation_common_attributes(creation))
-
-    # System instructions (Opt-In)
-    if (
-        is_experimental_mode()
-        and get_content_capturing_mode()
-        in (
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        )
-        and creation.system_instructions
-    ):
-        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
-            [asdict(p) for p in creation.system_instructions]
-        )
-
     attributes.update(creation.attributes)
 
     if attributes:
