@@ -68,6 +68,7 @@ from typing import Iterator
 from opentelemetry import context as otel_context
 from opentelemetry._logs import (
     LoggerProvider,
+    LogRecord,
     get_logger,
 )
 from opentelemetry.metrics import MeterProvider, get_meter
@@ -176,7 +177,7 @@ class TelemetryHandler:
         self,
         invocation: LLMInvocation,
         span: Span,
-        log_record: object,
+        log_record: LogRecord | None,
     ) -> None:
         if self._completion_hook is not None:
             self._completion_hook.on_completion(
