@@ -289,13 +289,13 @@ class UnwrapTestCase(unittest.TestCase):
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, ObjectProxy))
 
-    def test_raises_import_error_if_cannot_find_module(self):
+    def test_noop_if_cannot_find_module(self):
         self._wrap_method()
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, ObjectProxy))
 
-        with self.assertRaisesRegex(ImportError, "No module named 'does'"):
-            unwrap("does.not.exist.WrappedClass", "method")
+        # No error
+        unwrap("does.not.exist.WrappedClass", "method")
 
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, ObjectProxy))
