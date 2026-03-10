@@ -52,8 +52,7 @@ class TelemetryHandlerMetricsTest(TestCase):
         ):
             handler.stop_llm(invocation)
 
-        for schema_url in self._get_metric_scope_schema_urls():
-            self.assertEqual(schema_url, _DEFAULT_SCHEMA_URL)
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
 
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
@@ -110,8 +109,7 @@ class TelemetryHandlerMetricsTest(TestCase):
         invocation.attributes = {"should not be on metrics": "value"}
         handler.stop_llm(invocation)
 
-        for schema_url in self._get_metric_scope_schema_urls():
-            self.assertEqual(schema_url, _DEFAULT_SCHEMA_URL)
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
 
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
@@ -148,8 +146,7 @@ class TelemetryHandlerMetricsTest(TestCase):
         ):
             handler.fail_llm(invocation, error)
 
-        for schema_url in self._get_metric_scope_schema_urls():
-            self.assertEqual(schema_url, _DEFAULT_SCHEMA_URL)
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
 
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
@@ -190,7 +187,9 @@ class TelemetryHandlerMetricsTest(TestCase):
                     metrics_by_name.setdefault(metric.name, []).extend(points)
         return metrics_by_name
 
-    def _get_metric_scope_schema_urls(self) -> Set[str]:
+    def _assert_metric_scope_schema_urls(
+        self, expected_schema_url: str
+    ) -> None:
         try:
             self.meter_provider.force_flush()
         except Exception:  # pylint: disable=broad-except
@@ -200,6 +199,5 @@ class TelemetryHandlerMetricsTest(TestCase):
         data = self.metric_reader.get_metrics_data()
         for resource_metric in (data and data.resource_metrics) or []:
             for scope_metric in resource_metric.scope_metrics or []:
-                if scope_metric.scope.schema_url is not None:
-                    schema_urls.add(scope_metric.scope.schema_url)
-        return schema_urls
+                schema_urls.add(scope_metric.scope.schema_url)
+        self.assertEqual(schema_urls, {expected_schema_url})
