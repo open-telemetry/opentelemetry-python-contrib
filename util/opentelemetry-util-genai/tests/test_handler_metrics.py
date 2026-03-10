@@ -190,10 +190,7 @@ class TelemetryHandlerMetricsTest(TestCase):
     def _assert_metric_scope_schema_urls(
         self, expected_schema_url: str
     ) -> None:
-        try:
-            self.meter_provider.force_flush()
-        except Exception:  # pylint: disable=broad-except
-            pass
+        self.meter_provider.force_flush()
         self.metric_reader.collect()
         schema_urls: Set[str] = set()
         data = self.metric_reader.get_metrics_data()
