@@ -50,17 +50,20 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
                 code=grpc.StatusCode.INVALID_ARGUMENT,
                 details="server stream error",
             )
-            return test_server_pb2.Response()
 
-        # create a generator
-        def response_messages():
-            for _ in range(5):
-                response = test_server_pb2.Response(
-                    server_id=SERVER_ID, response_data="data"
-                )
-                yield response
+        if request.request_data == "error_mid_stream":
+            yield test_server_pb2.Response(
+                server_id=SERVER_ID, response_data="data"
+            )
+            context.abort(
+                code=grpc.StatusCode.INVALID_ARGUMENT,
+                details="server stream error mid-stream",
+            )
 
-        return response_messages()
+        for _ in range(5):
+            yield test_server_pb2.Response(
+                server_id=SERVER_ID, response_data="data"
+            )
 
     def BidirectionalStreamingMethod(self, request_iterator, context):
         data = list(request_iterator)
@@ -68,6 +71,16 @@ class TestServer(test_server_pb2_grpc.GRPCTestServerServicer):
             context.abort(
                 code=grpc.StatusCode.INVALID_ARGUMENT,
                 details="bidirectional error",
+            )
+            return
+
+        if data[0].request_data == "error_mid_stream":
+            yield test_server_pb2.Response(
+                server_id=SERVER_ID, response_data="data"
+            )
+            context.abort(
+                code=grpc.StatusCode.INVALID_ARGUMENT,
+                details="bidirectional error mid-stream",
             )
             return
 

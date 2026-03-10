@@ -25,9 +25,18 @@ import grpc
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.grpc import (
     GrpcInstrumentorServer,
     server_interceptor,
+)
+from opentelemetry.instrumentation.grpc._semconv import (
+    RPC_METHOD_ORIGINAL,
+    RPC_RESPONSE_STATUS_CODE,
+    RPC_SYSTEM_NAME,
 )
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
@@ -39,6 +48,10 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_METHOD,
     RPC_SERVICE,
     RPC_SYSTEM,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_PEER_ADDRESS,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -94,6 +107,40 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         NET_PEER_IP: "[::1]",
         NET_PEER_NAME: "localhost",
     }
+    new_semconv_net_peer_span_attributes = {
+        NETWORK_PEER_ADDRESS: "[::1]",
+    }
+
+    def setUp(self):
+        super().setUp()
+        test_name = self._testMethodName if hasattr(self, "_testMethodName") else ""
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "rpc"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "rpc/dup"
+        self.env_patch = mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode}
+        )
+        self.env_patch.start()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def tearDown(self):
+        super().tearDown()
+        self.env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def _new_server_rpc_attrs(self, full_method, status_name="OK", error_type=None):
+        """Build expected new-semconv attributes for a server RPC span."""
+        attrs = {
+            **self.new_semconv_net_peer_span_attributes,
+            RPC_SYSTEM_NAME: "grpc",
+            RPC_METHOD: full_method,
+            RPC_RESPONSE_STATUS_CODE: status_name,
+        }
+        if error_type:
+            attrs[ERROR_TYPE] = error_type
+        return attrs
 
     @contextlib.contextmanager
     def server(self, max_workers=1, interceptors=None):
@@ -646,6 +693,93 @@ class TestOpenTelemetryServerInterceptor(TestBase):
             },
         )
 
+    def test_error_streaming_mid_stream(self):
+        """Check that an error raised mid-stream ends the span with error status."""
+
+        class MidStreamErrorServicer(GRPCTestServerServicer):
+            # pylint:disable=C0103
+            def ServerStreamingMethod(self, request, context):
+                yield Response(server_id=1, response_data="first")
+                context.abort(grpc.StatusCode.INTERNAL, "mid-stream error")
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
+            add_GRPCTestServerServicer_to_server(MidStreamErrorServicer(), server)
+
+            rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(grpc.RpcError) as cm:
+                    list(channel.unary_stream(rpc_call)(msg))
+                self.assertEqual(cm.exception.code(), grpc.StatusCode.INTERNAL)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INTERNAL.value[0],
+            },
+        )
+
+    def test_unimplemented(self):
+        """Check that calling an unimplemented method creates a span with UNIMPLEMENTED status."""
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[interceptor],
+        ) as (server, channel):
+            # The base servicer sets UNIMPLEMENTED and raises NotImplementedError
+            add_GRPCTestServerServicer_to_server(GRPCTestServerServicer(), server)
+
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(grpc.RpcError) as cm:
+                    channel.unary_unary(rpc_call)(msg)
+                self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.net_peer_span_attributes,
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNIMPLEMENTED.value[0],
+            },
+        )
+
     def test_non_list_interceptors(self):
         """Check that we handle non-list interceptors correctly."""
         grpc_server_instrumentor = GrpcInstrumentorServer()
@@ -694,10 +828,251 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         )
 
 
+    # --- new semconv (OTEL_SEMCONV_STABILITY_OPT_IN=rpc) tests ---
+
+    def test_create_span_new_semconv(self):
+        """Check that the interceptor records new-semconv attributes on a unary span."""
+        interceptor = server_interceptor()
+
+        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                channel.unary_unary(rpc_call)(msg)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, rpc_call)
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            span, self._new_server_rpc_attrs(rpc_call)
+        )
+
+    def test_create_span_streaming_new_semconv(self):
+        """Check that the interceptor records new-semconv attributes on a streaming span."""
+        interceptor = server_interceptor()
+
+        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+            rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                list(channel.unary_stream(rpc_call)(msg))
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertSpanHasAttributes(
+            span, self._new_server_rpc_attrs(rpc_call)
+        )
+
+    def test_abort_new_semconv(self):
+        """Check that abort sets new-semconv error attributes correctly.
+
+        INTERNAL is a server error → error.type set; FAILED_PRECONDITION is not → no error.type.
+        """
+        interceptor = server_interceptor()
+
+        failure_message = "This is a test failure"
+
+        def internal_handler(request, context):
+            context.abort(grpc.StatusCode.INTERNAL, failure_message)
+
+        def precondition_handler(request, context):
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, failure_message)
+
+        for handler, expected_code, expect_error in [
+            (internal_handler, grpc.StatusCode.INTERNAL, True),
+            (precondition_handler, grpc.StatusCode.FAILED_PRECONDITION, False),
+        ]:
+            self.memory_exporter.clear()
+            with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+                server.add_generic_rpc_handlers((UnaryUnaryRpcHandler(handler),))
+                rpc_call = f"TestServicer/{handler.__name__}"
+                try:
+                    server.start()
+                    with self.assertRaises(Exception):
+                        channel.unary_unary(rpc_call)(b"")
+                finally:
+                    server.stop(None)
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            if expect_error:
+                self.assertEqual(span.status.status_code, StatusCode.ERROR)
+                self.assertSpanHasAttributes(
+                    span,
+                    {
+                        RPC_SYSTEM_NAME: "grpc",
+                        RPC_RESPONSE_STATUS_CODE: expected_code.name,
+                        ERROR_TYPE: expected_code.name,
+                    },
+                )
+            else:
+                self.assertEqual(span.status.status_code, StatusCode.UNSET)
+                self.assertSpanHasAttributes(
+                    span,
+                    {
+                        RPC_SYSTEM_NAME: "grpc",
+                        RPC_RESPONSE_STATUS_CODE: expected_code.name,
+                    },
+                )
+                self.assertNotIn(ERROR_TYPE, span.attributes or {})
+
+    def test_error_streaming_mid_stream_new_semconv(self):
+        """Check that a mid-stream error sets new-semconv error attributes."""
+
+        class MidStreamErrorServicer(GRPCTestServerServicer):
+            # pylint:disable=C0103
+            def ServerStreamingMethod(self, request, context):
+                yield Response(server_id=1, response_data="first")
+                context.abort(grpc.StatusCode.INTERNAL, "mid-stream error")
+
+        interceptor = server_interceptor()
+
+        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+            add_GRPCTestServerServicer_to_server(MidStreamErrorServicer(), server)
+            rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(grpc.RpcError):
+                    list(channel.unary_stream(rpc_call)(msg))
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            self._new_server_rpc_attrs(
+                rpc_call,
+                status_name="INTERNAL",
+                error_type="INTERNAL",
+            ),
+        )
+
+    def test_unimplemented_new_semconv(self):
+        """Check that an unimplemented handler records UNIMPLEMENTED in new semconv."""
+        interceptor = server_interceptor()
+
+        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+            add_GRPCTestServerServicer_to_server(GRPCTestServerServicer(), server)
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(grpc.RpcError) as cm:
+                    channel.unary_unary(rpc_call)(msg)
+                self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            self._new_server_rpc_attrs(
+                rpc_call,
+                status_name="UNIMPLEMENTED",
+                error_type="UNIMPLEMENTED",
+            ),
+        )
+
+    def test_unimplemented_unknown_method_new_semconv(self):
+        """In new-semconv mode, a totally unknown method produces an _OTHER span."""
+        interceptor = server_interceptor()
+
+        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+            rpc_call = "/GRPCTestServer/UnknownMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(grpc.RpcError) as cm:
+                    channel.unary_unary(rpc_call)(msg)
+                self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "_OTHER")
+        self.assertIs(span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                **self.new_semconv_net_peer_span_attributes,
+                RPC_SYSTEM_NAME: "grpc",
+                "rpc.method": "_OTHER",
+                RPC_METHOD_ORIGINAL: rpc_call,
+                RPC_RESPONSE_STATUS_CODE: "UNIMPLEMENTED",
+                ERROR_TYPE: "UNIMPLEMENTED",
+            },
+        )
+
+    # --- both semconv (OTEL_SEMCONV_STABILITY_OPT_IN=rpc/dup) tests ---
+
+    def test_create_span_both_semconv(self):
+        """Verify that dup mode reports both old and new semconv attributes on a server span."""
+        interceptor = server_interceptor()
+
+        with self.server(max_workers=1, interceptors=[interceptor]) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                channel.unary_unary(rpc_call)(msg)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertSpanHasAttributes(
+            span,
+            {
+                # old semconv
+                **self.net_peer_span_attributes,
+                RPC_SYSTEM: "grpc",
+                RPC_METHOD: "SimpleMethod",  # old value wins in dup mode
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+                # new semconv
+                **self.new_semconv_net_peer_span_attributes,
+                RPC_SYSTEM_NAME: "grpc",
+                RPC_RESPONSE_STATUS_CODE: "OK",
+            },
+        )
+
+
 class TestOpenTelemetryServerInterceptorUnix(
     TestOpenTelemetryServerInterceptor,
 ):
     net_peer_span_attributes = {}
+    new_semconv_net_peer_span_attributes = {}
 
     @contextlib.contextmanager
     def server(self, max_workers=1, interceptors=None):

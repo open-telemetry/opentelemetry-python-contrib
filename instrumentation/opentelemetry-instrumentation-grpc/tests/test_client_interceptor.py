@@ -19,9 +19,17 @@ import grpc
 
 import opentelemetry.instrumentation.grpc
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.grpc import GrpcInstrumentorClient
 from opentelemetry.instrumentation.grpc._client import (
     OpenTelemetryClientInterceptor,
+)
+from opentelemetry.instrumentation.grpc._semconv import (
+    RPC_RESPONSE_STATUS_CODE,
+    RPC_SYSTEM_NAME,
 )
 from opentelemetry.instrumentation.grpc.grpcext._interceptor import (
     _UnaryClientInfo,
@@ -34,6 +42,11 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_METHOD,
     RPC_SERVICE,
     RPC_SYSTEM,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
@@ -48,6 +61,23 @@ from ._client import (
 from ._server import create_test_server
 from .protobuf import test_server_pb2_grpc
 from .protobuf.test_server_pb2 import Request
+
+_CLIENT_SERVER_HOST = "localhost"
+_CLIENT_SERVER_PORT = 25565
+
+
+def _new_client_rpc_attrs(full_method, status_name="OK", error_type=None):
+    """Build expected new-semconv attributes for a client RPC span."""
+    attrs = {
+        RPC_SYSTEM_NAME: "grpc",
+        RPC_METHOD: full_method,
+        RPC_RESPONSE_STATUS_CODE: status_name,
+        SERVER_ADDRESS: _CLIENT_SERVER_HOST,
+        SERVER_PORT: _CLIENT_SERVER_PORT,
+    }
+    if error_type:
+        attrs[ERROR_TYPE] = error_type
+    return attrs
 
 
 # User defined interceptor. Is used in the tests along with the opentelemetry client interceptor.
@@ -94,6 +124,17 @@ class Interceptor(
 class TestClientProto(TestBase):
     def setUp(self):
         super().setUp()
+        test_name = self._testMethodName if hasattr(self, "_testMethodName") else ""
+        sem_conv_mode = "default"
+        if "new_semconv" in test_name:
+            sem_conv_mode = "rpc"
+        elif "both_semconv" in test_name:
+            sem_conv_mode = "rpc/dup"
+        self.env_patch = mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode}
+        )
+        self.env_patch.start()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         GrpcInstrumentorClient().instrument()
         self.server = create_test_server(25565)
         self.server.start()
@@ -108,6 +149,8 @@ class TestClientProto(TestBase):
         GrpcInstrumentorClient().uninstrument()
         self.server.stop(None)
         self.channel.close()
+        self.env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
     def test_unary_unary_future(self):
         simple_method_future(self._stub).result()
@@ -269,6 +312,65 @@ class TestClientProto(TestBase):
             trace.StatusCode.ERROR,
         )
 
+    def test_error_unary_stream_mid_stream(self):
+        with self.assertRaises(grpc.RpcError):
+            server_streaming_method(self._stub, error_mid_stream=True)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "ServerStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+            },
+        )
+
+    def test_error_stream_stream_mid_stream(self):
+        with self.assertRaises(grpc.RpcError):
+            bidirectional_streaming_method(self._stub, error_mid_stream=True)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "BidirectionalStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.INVALID_ARGUMENT.value[0],
+            },
+        )
+
+    def test_unimplemented(self):
+        """Check that calling an unregistered method creates a span with UNIMPLEMENTED status."""
+        request = Request(client_id=1, request_data="data")
+        with self.assertRaises(grpc.RpcError) as cm:
+            self.channel.unary_unary("/GRPCTestServer/UnimplementedMethod")(
+                request.SerializeToString()
+            )
+        self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "UnimplementedMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.UNIMPLEMENTED.value[0],
+            },
+        )
+
     def test_client_interceptor_falsy_response(
         self,
     ):
@@ -329,6 +431,192 @@ class TestClientProto(TestBase):
 
         finally:
             set_global_textmap(previous_propagator)
+
+    # --- new semconv (OTEL_SEMCONV_STABILITY_OPT_IN=rpc) tests ---
+
+    def test_unary_unary_new_semconv(self):
+        simple_method(self._stub)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "/GRPCTestServer/SimpleMethod")
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            span, _new_client_rpc_attrs("/GRPCTestServer/SimpleMethod")
+        )
+
+    def test_unary_stream_new_semconv(self):
+        server_streaming_method(self._stub)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "/GRPCTestServer/ServerStreamingMethod")
+        self.assertSpanHasAttributes(
+            span, _new_client_rpc_attrs("/GRPCTestServer/ServerStreamingMethod")
+        )
+
+    def test_stream_unary_new_semconv(self):
+        client_streaming_method(self._stub)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "/GRPCTestServer/ClientStreamingMethod")
+        self.assertSpanHasAttributes(
+            span, _new_client_rpc_attrs("/GRPCTestServer/ClientStreamingMethod")
+        )
+
+    def test_stream_stream_new_semconv(self):
+        bidirectional_streaming_method(self._stub)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "/GRPCTestServer/BidirectionalStreamingMethod")
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs("/GRPCTestServer/BidirectionalStreamingMethod"),
+        )
+
+    def test_error_simple_new_semconv(self):
+        with self.assertRaises(grpc.RpcError):
+            simple_method(self._stub, error=True)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/SimpleMethod",
+                status_name="INVALID_ARGUMENT",
+                error_type="INVALID_ARGUMENT",
+            ),
+        )
+
+    def test_error_stream_unary_new_semconv(self):
+        with self.assertRaises(grpc.RpcError):
+            client_streaming_method(self._stub, error=True)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/ClientStreamingMethod",
+                status_name="INVALID_ARGUMENT",
+                error_type="INVALID_ARGUMENT",
+            ),
+        )
+
+    def test_error_unary_stream_new_semconv(self):
+        with self.assertRaises(grpc.RpcError):
+            server_streaming_method(self._stub, error=True)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/ServerStreamingMethod",
+                status_name="INVALID_ARGUMENT",
+                error_type="INVALID_ARGUMENT",
+            ),
+        )
+
+    def test_error_stream_stream_new_semconv(self):
+        with self.assertRaises(grpc.RpcError):
+            bidirectional_streaming_method(self._stub, error=True)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/BidirectionalStreamingMethod",
+                status_name="INVALID_ARGUMENT",
+                error_type="INVALID_ARGUMENT",
+            ),
+        )
+
+    def test_error_unary_stream_mid_stream_new_semconv(self):
+        with self.assertRaises(grpc.RpcError):
+            server_streaming_method(self._stub, error_mid_stream=True)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/ServerStreamingMethod",
+                status_name="INVALID_ARGUMENT",
+                error_type="INVALID_ARGUMENT",
+            ),
+        )
+
+    def test_error_stream_stream_mid_stream_new_semconv(self):
+        with self.assertRaises(grpc.RpcError):
+            bidirectional_streaming_method(self._stub, error_mid_stream=True)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/BidirectionalStreamingMethod",
+                status_name="INVALID_ARGUMENT",
+                error_type="INVALID_ARGUMENT",
+            ),
+        )
+
+    def test_unimplemented_new_semconv(self):
+        """Check that calling an unregistered method records UNIMPLEMENTED in new semconv."""
+        request = Request(client_id=1, request_data="data")
+        with self.assertRaises(grpc.RpcError) as cm:
+            self.channel.unary_unary("/GRPCTestServer/UnimplementedMethod")(
+                request.SerializeToString()
+            )
+        self.assertEqual(cm.exception.code(), grpc.StatusCode.UNIMPLEMENTED)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
+        self.assertSpanHasAttributes(
+            span,
+            _new_client_rpc_attrs(
+                "/GRPCTestServer/UnimplementedMethod",
+                status_name="UNIMPLEMENTED",
+                error_type="UNIMPLEMENTED",
+            ),
+        )
+
+    # --- both semconv (OTEL_SEMCONV_STABILITY_OPT_IN=rpc/dup) tests ---
+
+    def test_unary_unary_both_semconv(self):
+        """Verify that dup mode reports both old and new semconv attributes."""
+        simple_method(self._stub)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "/GRPCTestServer/SimpleMethod")
+        self.assertSpanHasAttributes(
+            span,
+            {
+                # old semconv attributes
+                RPC_SYSTEM: "grpc",
+                RPC_METHOD: "SimpleMethod",  # old value wins in dup mode
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+                # new semconv attributes
+                RPC_SYSTEM_NAME: "grpc",
+                RPC_RESPONSE_STATUS_CODE: "OK",
+                SERVER_ADDRESS: _CLIENT_SERVER_HOST,
+                SERVER_PORT: _CLIENT_SERVER_PORT,
+            },
+        )
 
     def test_unary_unary_with_suppress_key(self):
         with suppress_instrumentation():

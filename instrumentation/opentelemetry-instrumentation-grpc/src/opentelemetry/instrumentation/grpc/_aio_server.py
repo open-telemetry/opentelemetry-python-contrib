@@ -16,48 +16,34 @@ import grpc
 import grpc.aio
 import wrapt
 
-from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
-    RPC_GRPC_STATUS_CODE,
+from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import _report_new
+from opentelemetry.instrumentation.grpc._semconv import (
+    _apply_grpc_status,
+    _apply_server_error,
 )
 
 from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
-from ._utilities import _server_status
 
 
 # pylint:disable=abstract-method
 class _OpenTelemetryAioServicerContext(wrapt.ObjectProxy):
-    def __init__(self, servicer_context, active_span):
+    def __init__(self, servicer_context):
         super().__init__(servicer_context)
-        self._self_active_span = active_span
-        self._self_code = grpc.StatusCode.OK
+        self._self_code = None
         self._self_details = None
 
     async def abort(self, code, details="", trailing_metadata=tuple()):
         self._self_code = code
         self._self_details = details
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
-        )
-        status = _server_status(code, details)
-        self._self_active_span.set_status(status)
         return await self.__wrapped__.abort(code, details, trailing_metadata)
 
     def set_code(self, code):
         self._self_code = code
-        details = self._self_details or code.value[1]
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
-        )
-        if code != grpc.StatusCode.OK:
-            status = _server_status(code, details)
-            self._self_active_span.set_status(status)
         return self.__wrapped__.set_code(code)
 
     def set_details(self, details):
         self._self_details = details
-        if self._self_code != grpc.StatusCode.OK:
-            status = _server_status(self._self_code, details)
-            self._self_active_span.set_status(status)
         return self.__wrapped__.set_details(details)
 
 
@@ -93,9 +79,16 @@ class OpenTelemetryAioServerInterceptor(
                 handler_call_details,
             )
 
-        next_handler = await continuation(handler_call_details)
-
-        return _wrap_rpc_behavior(next_handler, telemetry_wrapper)
+        handler = await continuation(handler_call_details)
+        if handler is None:
+            if _report_new(self._sem_conv_opt_in_mode):
+                async def _unimplemented(_request, context):
+                    self._handle_unimplemented(handler_call_details, context)
+                # TODO: I still don't like it, figure out how not to
+                # change server behavior.
+                return grpc.unary_unary_rpc_method_handler(_unimplemented)
+            return None
+        return _wrap_rpc_behavior(handler, telemetry_wrapper)
 
     def _intercept_aio_server_unary(self, behavior, handler_call_details):
         async def _unary_interceptor(request_or_iterator, context):
@@ -105,20 +98,26 @@ class OpenTelemetryAioServerInterceptor(
                     context,
                     set_status_on_exception=False,
                 ) as span:
+                    self._set_peer_attributes(span, context)
                     # wrap the context
-                    context = _OpenTelemetryAioServicerContext(context, span)
+                    context = _OpenTelemetryAioServicerContext(
+                        context
+                    )
 
                     # And now we run the actual RPC.
                     try:
-                        return await behavior(request_or_iterator, context)
+                        result = await behavior(request_or_iterator, context)
+                        _apply_grpc_status(
+                            span, context._self_code, trace.SpanKind.SERVER,
+                            self._sem_conv_opt_in_mode, context._self_details,
+                        )
+                        return result
 
                     except Exception as error:
-                        # Bare exceptions are likely to be gRPC aborts, which
-                        # we handle in our context wrapper.
-                        # Here, we're interested in uncaught exceptions.
-                        # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:  # noqa: E721
-                            span.record_exception(error)
+                        _apply_server_error(
+                            span, error, context._self_code, context._self_details,
+                            self._sem_conv_opt_in_mode,
+                        )
                         raise error
 
         return _unary_interceptor
@@ -131,18 +130,26 @@ class OpenTelemetryAioServerInterceptor(
                     context,
                     set_status_on_exception=False,
                 ) as span:
-                    context = _OpenTelemetryAioServicerContext(context, span)
+                    self._set_peer_attributes(span, context)
+                    context = _OpenTelemetryAioServicerContext(
+                        context
+                    )
 
                     try:
                         async for response in behavior(
                             request_or_iterator, context
                         ):
                             yield response
+                            _apply_grpc_status(
+                                span, context._self_code, trace.SpanKind.SERVER,
+                                self._sem_conv_opt_in_mode, context._self_details,
+                            )
 
                     except Exception as error:
-                        # pylint:disable=unidiomatic-typecheck
-                        if type(error) != Exception:  # noqa: E721
-                            span.record_exception(error)
+                        _apply_server_error(
+                            span, error, context._self_code, context._self_details,
+                            self._sem_conv_opt_in_mode,
+                        )
                         raise error
 
         return _stream_interceptor
