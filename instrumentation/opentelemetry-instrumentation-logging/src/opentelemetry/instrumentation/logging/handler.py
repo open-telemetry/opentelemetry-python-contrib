@@ -52,9 +52,8 @@ _OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME = {
 
 
 def _get_log_level(level_name: str) -> int:
-    return _OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME.get(
-        level_name.lower().strip(), logging.NOTSET
-    )
+    result = logging.getLevelName(level_name.upper().strip())
+    return result if isinstance(result, int) else logging.NOTSET
 
 
 def _setup_logging_handler(
