@@ -35,7 +35,7 @@ class.
 
 Since OpAMP APIs, config options or environment variables are not standardizes the distros are required
 to provide code doing so.
-OTel Python distros would need to provide their own message handler callback that implements the actual
+OTel Python distros would need to provide their own Callbacks subclass that implements the actual
 change of whatever configuration their backends sends.
 
 Please note that the API is not finalized yet and so the name is called ``_opamp`` with the underscore.
@@ -48,15 +48,16 @@ Usage
     import os
 
     from opentelemetry._opamp.agent import OpAMPAgent
+    from opentelemetry._opamp.callbacks import Callbacks
     from opentelemetry._opamp.client import OpAMPClient
-    from opentelemetry._opamp.proto import opamp_pb2 as opamp_pb2
     from opentelemetry.sdk._configuration import _OTelSDKConfigurator
     from opentelemetry.sdk.resources import OTELResourceDetector
 
 
-    def opamp_handler(agent: OpAMPAgent, client: OpAMPClient, message: opamp_pb2.ServerToAgent):
-        for config_filename, config in message.remote_config.config.config_map.items():
-            print("do something")
+    class MyCallbacks(Callbacks):
+        def on_message(self, agent, client, message):
+            for config_filename, config in message.remote_config.config.config_map.items():
+                print("do something")
 
 
     class MyOpenTelemetryConfigurator(_OTelSDKConfigurator):
@@ -79,7 +80,7 @@ Usage
                 )
                 opamp_agent = OpAMPAgent(
                     interval=30,
-                    message_handler=opamp_handler,
+                    callbacks=MyCallbacks(),
                     client=opamp_client,
                 )
                 opamp_agent.start()
@@ -90,6 +91,7 @@ API
 """
 
 from opentelemetry._opamp.agent import OpAMPAgent
+from opentelemetry._opamp.callbacks import Callbacks
 from opentelemetry._opamp.client import OpAMPClient
 
-__all__ = ["OpAMPAgent", "OpAMPClient"]
+__all__ = ["Callbacks", "OpAMPAgent", "OpAMPClient"]
