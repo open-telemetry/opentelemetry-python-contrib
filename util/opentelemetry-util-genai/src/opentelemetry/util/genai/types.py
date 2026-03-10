@@ -259,7 +259,7 @@ class LLMInvocation(GenAIInvocation):
 @dataclass
 class _BaseAgent(GenAIInvocation):
     """
-    Shared base class for agent lifecycle types (AgentInvocation, AgentCreation).
+    Shared base class for agent lifecycle types.
 
     Contains fields common to all agent operations: identity, provider,
     model, system instructions, server info, and telemetry plumbing.
@@ -267,7 +267,7 @@ class _BaseAgent(GenAIInvocation):
     Follows semconv for GenAI agent spans:
     https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md
 
-    Do not instantiate directly — use AgentInvocation or AgentCreation.
+    Do not instantiate directly — use AgentInvocation.
     """
 
     agent_name: str | None = None
@@ -275,7 +275,6 @@ class _BaseAgent(GenAIInvocation):
     agent_description: str | None = None
     agent_version: str | None = None
 
-    operation_name: str = ""
     provider: str | None = None
 
     request_model: str | None = None
@@ -297,21 +296,6 @@ class _BaseAgent(GenAIInvocation):
 
 
 @dataclass
-class AgentCreation(_BaseAgent):
-    """
-    Represents agent creation/initialization (create_agent operation).
-
-    Follows semconv for GenAI agent spans:
-    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#create-agent-span
-
-    When creating an AgentCreation object, only update the data attributes.
-    The span and context_token attributes are set by the TelemetryHandler.
-    """
-
-    operation_name: str = "create_agent"
-
-
-@dataclass
 class AgentInvocation(_BaseAgent):
     """
     Represents an agent invocation (invoke_agent operation).
@@ -323,7 +307,7 @@ class AgentInvocation(_BaseAgent):
     The span and context_token attributes are set by the TelemetryHandler.
     """
 
-    operation_name: str = "invoke_agent"
+    operation_name: str = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
     conversation_id: str | None = None
     data_source_id: str | None = None
     output_type: str | None = None
@@ -352,8 +336,6 @@ class AgentInvocation(_BaseAgent):
         default_factory=_new_output_messages
     )
     tool_definitions: list[dict[str, Any]] | None = None
-
-    is_remote: bool = True
 
     metric_attributes: dict[str, Any] = field(
         default_factory=_new_str_any_dict

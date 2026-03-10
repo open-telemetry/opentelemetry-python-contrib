@@ -60,9 +60,10 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import timeit
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Callable, Iterator, TypeVar
 
 from opentelemetry import context as otel_context
 from opentelemetry._logs import (
@@ -81,18 +82,57 @@ from opentelemetry.trace import (
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_agent_finish_attributes,
-    _apply_creation_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _get_base_agent_common_attributes,
+    _get_base_agent_span_name,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
-    AgentCreation,
     AgentInvocation,
     Error,
+    GenAIInvocation,
     LLMInvocation,
 )
 from opentelemetry.util.genai.version import __version__
+
+_logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T", bound=GenAIInvocation)
+
+
+@contextmanager
+def _lifecycle_context(
+    invocation: _T,
+    start: Callable[[_T], _T],
+    stop: Callable[[_T], _T],
+    fail: Callable[[_T, Error], _T],
+    label: str,
+) -> Iterator[_T]:
+    """Shared lifecycle context manager for GenAI invocations.
+
+    Wraps start/stop/fail calls with error handling so SDK-internal
+    errors never propagate to the caller.
+    """
+    try:
+        start(invocation)
+    except Exception:
+        _logger.warning("Failed to start %s span", label, exc_info=True)
+    try:
+        yield invocation
+    except Exception as exc:
+        try:
+            fail(invocation, Error(message=str(exc), type=type(exc)))
+        except Exception:
+            _logger.warning(
+                "Failed to record %s failure", label, exc_info=True
+            )
+        raise
+    else:
+        try:
+            stop(invocation)
+        except Exception:
+            _logger.warning("Failed to stop %s span", label, exc_info=True)
 
 
 class TelemetryHandler:
@@ -163,13 +203,13 @@ class TelemetryHandler:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
-        span = invocation.span
-        _apply_llm_finish_attributes(span, invocation)
-        self._record_llm_metrics(invocation, span)
-        _maybe_emit_llm_event(self._logger, span, invocation)
-        # Detach context and end span
-        otel_context.detach(invocation.context_token)
-        span.end()
+        try:
+            _apply_llm_finish_attributes(invocation.span, invocation)
+            self._record_llm_metrics(invocation, invocation.span)
+            _maybe_emit_llm_event(self._logger, invocation.span, invocation)
+        finally:
+            otel_context.detach(invocation.context_token)
+            invocation.span.end()
         return invocation
 
     def fail_llm(  # pylint: disable=no-self-use
@@ -180,15 +220,19 @@ class TelemetryHandler:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
-        span = invocation.span
-        _apply_llm_finish_attributes(invocation.span, invocation)
-        _apply_error_attributes(invocation.span, error)
-        error_type = getattr(error.type, "__qualname__", None)
-        self._record_llm_metrics(invocation, span, error_type=error_type)
-        _maybe_emit_llm_event(self._logger, span, invocation, error)
-        # Detach context and end span
-        otel_context.detach(invocation.context_token)
-        span.end()
+        try:
+            _apply_llm_finish_attributes(invocation.span, invocation)
+            _apply_error_attributes(invocation.span, error)
+            error_type = getattr(error.type, "__qualname__", None)
+            self._record_llm_metrics(
+                invocation, invocation.span, error_type=error_type
+            )
+            _maybe_emit_llm_event(
+                self._logger, invocation.span, invocation, error
+            )
+        finally:
+            otel_context.detach(invocation.context_token)
+            invocation.span.end()
         return invocation
 
     @contextmanager
@@ -207,13 +251,10 @@ class TelemetryHandler:
             invocation = LLMInvocation(
                 request_model="",
             )
-        self.start_llm(invocation)
-        try:
-            yield invocation
-        except Exception as exc:
-            self.fail_llm(invocation, Error(message=str(exc), type=type(exc)))
-            raise
-        self.stop_llm(invocation)
+        with _lifecycle_context(
+            invocation, self.start_llm, self.stop_llm, self.fail_llm, "llm"
+        ) as inv:
+            yield inv
 
     # ---- Agent invocation lifecycle ----
 
@@ -222,11 +263,10 @@ class TelemetryHandler:
         invocation: AgentInvocation,
     ) -> AgentInvocation:
         """Start an agent invocation and create a pending span entry."""
-        span_name = f"{invocation.operation_name} {invocation.agent_name}".strip()
-        kind = SpanKind.CLIENT if invocation.is_remote else SpanKind.INTERNAL
         span = self._tracer.start_span(
-            name=span_name,
-            kind=kind,
+            name=_get_base_agent_span_name(invocation),
+            kind=SpanKind.CLIENT,
+            attributes=_get_base_agent_common_attributes(invocation),
         )
         invocation.monotonic_start_s = timeit.default_timer()
         invocation.span = span
@@ -240,10 +280,11 @@ class TelemetryHandler:
         if invocation.context_token is None or invocation.span is None:
             return invocation
 
-        span = invocation.span
-        _apply_agent_finish_attributes(span, invocation)
-        otel_context.detach(invocation.context_token)
-        span.end()
+        try:
+            _apply_agent_finish_attributes(invocation.span, invocation)
+        finally:
+            otel_context.detach(invocation.context_token)
+            invocation.span.end()
         return invocation
 
     def fail_agent(  # pylint: disable=no-self-use
@@ -253,11 +294,12 @@ class TelemetryHandler:
         if invocation.context_token is None or invocation.span is None:
             return invocation
 
-        span = invocation.span
-        _apply_agent_finish_attributes(span, invocation)
-        _apply_error_attributes(span, error)
-        otel_context.detach(invocation.context_token)
-        span.end()
+        try:
+            _apply_agent_finish_attributes(invocation.span, invocation)
+            _apply_error_attributes(invocation.span, error)
+        finally:
+            otel_context.detach(invocation.context_token)
+            invocation.span.end()
         return invocation
 
     @contextmanager
@@ -274,83 +316,14 @@ class TelemetryHandler:
         """
         if invocation is None:
             invocation = AgentInvocation()
-        self.start_agent(invocation)
-        try:
-            yield invocation
-        except Exception as exc:
-            self.fail_agent(
-                invocation, Error(message=str(exc), type=type(exc))
-            )
-            raise
-        self.stop_agent(invocation)
-
-    # ---- Agent creation lifecycle ----
-
-    def start_create_agent(
-        self,
-        creation: AgentCreation,
-    ) -> AgentCreation:
-        """Start an agent creation and create a pending span entry."""
-        span_name = f"{creation.operation_name} {creation.agent_name}".strip()
-        span = self._tracer.start_span(
-            name=span_name,
-            kind=SpanKind.CLIENT,
-        )
-        creation.monotonic_start_s = timeit.default_timer()
-        creation.span = span
-        creation.context_token = otel_context.attach(
-            set_span_in_context(span)
-        )
-        return creation
-
-    def stop_create_agent(self, creation: AgentCreation) -> AgentCreation:  # pylint: disable=no-self-use
-        """Finalize an agent creation successfully and end its span."""
-        if creation.context_token is None or creation.span is None:
-            return creation
-
-        span = creation.span
-        _apply_creation_finish_attributes(span, creation)
-        otel_context.detach(creation.context_token)
-        span.end()
-        return creation
-
-    def fail_create_agent(  # pylint: disable=no-self-use
-        self, creation: AgentCreation, error: Error
-    ) -> AgentCreation:
-        """Fail an agent creation and end its span with error status."""
-        if creation.context_token is None or creation.span is None:
-            return creation
-
-        span = creation.span
-        _apply_creation_finish_attributes(span, creation)
-        _apply_error_attributes(span, error)
-        otel_context.detach(creation.context_token)
-        span.end()
-        return creation
-
-    @contextmanager
-    def create_agent(
-        self, creation: AgentCreation | None = None
-    ) -> Iterator[AgentCreation]:
-        """Context manager for agent creation.
-
-        Only set data attributes on the creation object, do not modify the span or context.
-
-        Starts the span on entry. On normal exit, finalizes the creation and ends the span.
-        If an exception occurs inside the context, marks the span as error, ends it, and
-        re-raises the original exception.
-        """
-        if creation is None:
-            creation = AgentCreation()
-        self.start_create_agent(creation)
-        try:
-            yield creation
-        except Exception as exc:
-            self.fail_create_agent(
-                creation, Error(message=str(exc), type=type(exc))
-            )
-            raise
-        self.stop_create_agent(creation)
+        with _lifecycle_context(
+            invocation,
+            self.start_agent,
+            self.stop_agent,
+            self.fail_agent,
+            "agent",
+        ) as inv:
+            yield inv
 
 
 def get_telemetry_handler(

@@ -32,7 +32,6 @@ from opentelemetry.trace import (
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
-    AgentCreation,
     AgentInvocation,
     Error,
     InputMessage,
@@ -139,9 +138,7 @@ def _get_llm_messages_attributes_for_span(
         ),
         (
             GenAI.GEN_AI_TOOL_DEFINITIONS,
-            gen_ai_json_dumps(tool_definitions)
-            if tool_definitions
-            else None,
+            gen_ai_json_dumps(tool_definitions) if tool_definitions else None,
         ),
     )
 
@@ -446,24 +443,6 @@ def _apply_agent_finish_attributes(
         span.set_attributes(attributes)
 
 
-def _apply_creation_finish_attributes(
-    span: Span, creation: AgentCreation
-) -> None:
-    """Apply attributes common to agent creation finish() paths."""
-    span.update_name(_get_base_agent_span_name(creation))
-
-    attributes: dict[str, Any] = {}
-    attributes.update(_get_base_agent_common_attributes(creation))
-
-    attributes.update(
-        _get_system_instructions_for_span(creation.system_instruction)
-    )
-    attributes.update(creation.attributes)
-
-    if attributes:
-        span.set_attributes(attributes)
-
-
 __all__ = [
     "_apply_llm_finish_attributes",
     "_apply_error_attributes",
@@ -475,7 +454,6 @@ __all__ = [
     "_get_base_agent_common_attributes",
     "_get_base_agent_span_name",
     "_apply_agent_finish_attributes",
-    "_apply_creation_finish_attributes",
     "_get_system_instructions_for_span",
     "_get_agent_common_attributes",
     "_get_agent_request_attributes",
