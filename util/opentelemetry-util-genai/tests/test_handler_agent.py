@@ -38,7 +38,6 @@ class _AgentTestBase(TestCase):
 
 
 class TestAgentInvocationHandler(_AgentTestBase):
-
     def test_start_stop_creates_span(self) -> None:
         handler = self._make_handler()
         invocation = AgentInvocation(
@@ -59,29 +58,16 @@ class TestAgentInvocationHandler(_AgentTestBase):
         self.assertEqual(
             span.attributes[GenAI.GEN_AI_AGENT_NAME], "Math Tutor"
         )
-        self.assertEqual(
-            span.attributes[GenAI.GEN_AI_PROVIDER_NAME], "openai"
-        )
-        self.assertEqual(
-            span.attributes[GenAI.GEN_AI_REQUEST_MODEL], "gpt-4"
-        )
+        self.assertEqual(span.attributes[GenAI.GEN_AI_PROVIDER_NAME], "openai")
+        self.assertEqual(span.attributes[GenAI.GEN_AI_REQUEST_MODEL], "gpt-4")
 
     def test_span_kind_client_by_default(self) -> None:
         handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Agent", is_remote=True)
+        invocation = AgentInvocation(agent_name="Agent")
         handler.start_agent(invocation)
         handler.stop_agent(invocation)
         self.assertEqual(
             self.span_exporter.get_finished_spans()[0].kind, SpanKind.CLIENT
-        )
-
-    def test_span_kind_internal_for_local(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Agent", is_remote=False)
-        handler.start_agent(invocation)
-        handler.stop_agent(invocation)
-        self.assertEqual(
-            self.span_exporter.get_finished_spans()[0].kind, SpanKind.INTERNAL
         )
 
     def test_all_attributes(self) -> None:
@@ -114,9 +100,7 @@ class TestAgentInvocationHandler(_AgentTestBase):
         attrs = self.span_exporter.get_finished_spans()[0].attributes
         self.assertEqual(attrs[GenAI.GEN_AI_AGENT_NAME], "Full Agent")
         self.assertEqual(attrs[GenAI.GEN_AI_AGENT_ID], "agent-123")
-        self.assertEqual(
-            attrs[GenAI.GEN_AI_AGENT_DESCRIPTION], "A test agent"
-        )
+        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_DESCRIPTION], "A test agent")
         self.assertEqual(attrs[GenAI.GEN_AI_RESPONSE_MODEL], "gpt-4-0613")
         self.assertEqual(attrs[GenAI.GEN_AI_RESPONSE_ID], "resp-abc")
         self.assertEqual(attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS], 100)
@@ -142,9 +126,7 @@ class TestAgentInvocationHandler(_AgentTestBase):
         self.assertEqual(
             attrs[GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS], 25
         )
-        self.assertEqual(
-            attrs[GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS], 50
-        )
+        self.assertEqual(attrs[GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS], 50)
 
     def test_fail_sets_error_status(self) -> None:
         handler = self._make_handler()
@@ -179,8 +161,9 @@ class TestAgentInvocationHandler(_AgentTestBase):
                 raise ValueError("test error")
 
         self.assertEqual(
-            self.span_exporter.get_finished_spans()[0]
-            .attributes.get("error.type"),
+            self.span_exporter.get_finished_spans()[0].attributes.get(
+                "error.type"
+            ),
             "ValueError",
         )
 
@@ -209,14 +192,12 @@ class TestAgentInvocationHandler(_AgentTestBase):
 
 
 class TestAgentInvocationType(TestCase):
-
     def test_defaults(self) -> None:
         inv = AgentInvocation()
         self.assertEqual(inv.operation_name, "invoke_agent")
         self.assertIsNone(inv.agent_name)
         self.assertIsNone(inv.provider)
         self.assertIsNone(inv.request_model)
-        self.assertTrue(inv.is_remote)
         self.assertEqual(inv.input_messages, [])
         self.assertEqual(inv.output_messages, [])
         self.assertIsNone(inv.tool_definitions)
