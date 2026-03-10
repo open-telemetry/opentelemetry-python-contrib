@@ -255,6 +255,21 @@ class LLMInvocation(GenAIInvocation):
     # populated by the TelemetryHandler when starting an invocation.
     monotonic_start_s: float | None = None
 
+@dataclass
+class WorkflowInvocation(GenAIInvocation):
+    """
+    Represents predetermined static sequence of operations eg: Agent, LLM, tool, and retrieval invocations.
+    A workflow groups multiple operations together, accepting input(s) and producing final output(s).
+    """
+
+    name: str = ""
+    operation_name: str = "invoke_workflow"
+    input_messages: list[InputMessage] = field(
+        default_factory=_new_input_messages
+    )
+    output_messages: list[OutputMessage] = field(
+        default_factory=_new_output_messages
+    )
 
 @dataclass
 class Error:

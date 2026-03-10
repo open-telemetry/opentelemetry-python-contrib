@@ -83,8 +83,9 @@ from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
     _apply_llm_finish_attributes,
     _maybe_emit_llm_event,
+    _apply_workflow_finish_attributes,
 )
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import Error, LLMInvocation, WorkflowInvocation
 from opentelemetry.util.genai.version import __version__
 
 
@@ -208,6 +209,76 @@ class TelemetryHandler:
             raise
         self.stop_llm(invocation)
 
+    def start_workflow(self, invocation: WorkflowInvocation) -> WorkflowInvocation:
+        """Start a workflow invocation and create a pending span entry."""
+        # Create a span and attach it as current; keep the token to detach later
+        span = self._tracer.start_span(
+            name=f"{invocation.operation_name} {invocation.name}",
+            kind=SpanKind.INTERNAL,
+        )
+        # Record a monotonic start timestamp (seconds) for duration
+        # calculation using timeit.default_timer.
+        invocation.monotonic_start_s = timeit.default_timer()
+        invocation.span = span
+        invocation.context_token = otel_context.attach(
+            set_span_in_context(span)
+        )
+        return invocation
+
+    def stop_workflow(self, invocation: WorkflowInvocation) -> WorkflowInvocation:
+        """Finalize a workflow successfully and end its span."""
+        if invocation.context_token is None or invocation.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return invocation
+
+        span = invocation.span
+        _apply_workflow_finish_attributes(span, invocation)
+
+        # Detach context and end span
+        otel_context.detach(invocation.context_token)
+        span.end()
+
+        return invocation
+
+    def fail_workflow(  # pylint: disable=no-self-use
+        self, invocation: WorkflowInvocation, error: Error
+    ) -> WorkflowInvocation:
+        """Fail an Workflow invocation and end its span with error status."""
+        if invocation.context_token is None or invocation.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return invocation
+
+        span = invocation.span
+        _apply_workflow_finish_attributes(invocation.span, invocation)
+        _apply_error_attributes(invocation.span, error)
+
+        # Detach context and end span
+        otel_context.detach(invocation.context_token)
+        span.end()
+        return invocation
+
+    @contextmanager
+    def workflow(
+        self, invocation: WorkflowInvocation | None = None
+    ) -> Iterator[WorkflowInvocation]:
+        """Context manager for Workflow invocations.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = WorkflowInvocation()
+
+        self.start_workflow(invocation)
+        try:
+            yield invocation
+        except Exception as exc:
+            self.fail_workflow(invocation, Error(message=str(exc), type=type(exc)))
+            raise
+        self.stop_workflow(invocation)
 
 def get_telemetry_handler(
     tracer_provider: TracerProvider | None = None,
