@@ -271,61 +271,61 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         if llm_invocation.span and not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 
-def on_chain_start(
-    self,
-    serialized: dict[str, Any],
-    inputs: dict[str, Any],
-    *,
-    run_id: UUID,
-    parent_run_id: Optional[UUID] = None,
-    tags: Optional[list[str]] = None,
-    metadata: Optional[dict[str, Any]] = None,
-    **kwargs: Any,
-) -> Any:
-    payload = serialized or {}
-    name_source = payload.get("name") or payload.get("id") or kwargs.get("name")
-    name = _safe_str(name_source or "chain")
+    def on_chain_start(
+        self,
+        serialized: dict[str, Any],
+        inputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        payload = serialized or {}
+        name_source = payload.get("name") or payload.get("id") or kwargs.get("name")
+        name = _safe_str(name_source or "chain")
 
-    if parent_run_id is None: # first chain, start workflow
-        workflow_invocation: WorkflowInvocation = WorkflowInvocation(name=name)
-        workflow_invocation.input_messages = _make_input_message(inputs)
-        workflow_invocation = self._telemetry_handler.start_workflow(workflow_invocation)
+        if parent_run_id is None: # first chain, start workflow
+            workflow_invocation: WorkflowInvocation = WorkflowInvocation(name=name)
+            workflow_invocation.input_messages = _make_input_message(inputs)
+            workflow_invocation = self._telemetry_handler.start_workflow(workflow_invocation)
 
-        self._invocation_manager.add_invocation_state(
-            run_id=run_id,
-            parent_run_id=parent_run_id,
-            invocation=workflow_invocation,
+            self._invocation_manager.add_invocation_state(
+                run_id=run_id,
+                parent_run_id=parent_run_id,
+                invocation=workflow_invocation,
+            )
+        else:
+        # TODO: else case support nested chains in the future, in if case above only top level chain is supported to create workflow span
+            self._invocation_manager.add_invocation_state(
+                run_id=run_id,
+                parent_run_id=parent_run_id,
+                invocation=None,
+            )
+
+    def on_chain_end(
+        self,
+        outputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        workflow_invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if workflow_invocation is None or not isinstance(
+                workflow_invocation, WorkflowInvocation
+        ):
+            if self._invocation_manager.has_invocation_state(run_id=run_id):
+                self._invocation_manager.delete_invocation_state(run_id=run_id)
+            return
+
+        workflow_invocation.output_messages = _make_last_output_message(outputs)
+        workflow_invocation = self._telemetry_handler.stop_workflow(
+            invocation=workflow_invocation
         )
-    else:
-    # TODO: else case support nested chains in the future, in if case above only top level chain is supported to create workflow span
-        self._invocation_manager.add_invocation_state(
-            run_id=run_id,
-            parent_run_id=parent_run_id,
-            invocation=None,
-        )
-
-def on_chain_end(
-    self,
-    outputs: dict[str, Any],
-    *,
-    run_id: UUID,
-    parent_run_id: Optional[UUID] = None,
-    **kwargs: Any,
-) -> Any:
-    workflow_invocation = self._invocation_manager.get_invocation(run_id=run_id)
-    if workflow_invocation is None or not isinstance(
-            workflow_invocation, WorkflowInvocation
-    ):
-        if self._invocation_manager.has_invocation_state(run_id=run_id):
+        if workflow_invocation.span and not workflow_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
-        return
-
-    workflow_invocation.output_messages = _make_last_output_message(outputs)
-    workflow_invocation = self._telemetry_handler.stop_workflow(
-        invocation=workflow_invocation
-    )
-    if workflow_invocation.span and not workflow_invocation.span.is_recording():
-        self._invocation_manager.delete_invocation_state(run_id=run_id)
 
 def _make_output_message(data: dict[str, Any]) -> list[OutputMessage]:
     """Create structured output message with full data as JSON."""
