@@ -85,7 +85,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-click==0.62b0.dev",
     },
     {
-        "library": "confluent-kafka >= 1.8.2, <= 2.13.0",
+        "library": "confluent-kafka >= 1.8.2, < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.62b0.dev",
     },
     {
