@@ -57,12 +57,10 @@ def _setup_logging_handler(
     level: int | None = None,
 ) -> LoggingHandler:
     handler = LoggingHandler(
-        level=logging.NOTSET,
+        level=level or logging.NOTSET,
         logger_provider=logger_provider,
         log_code_attributes=log_code_attributes,
     )
-    if level is not None:
-        handler.setLevel(level)
     logging.getLogger().addHandler(handler)
     _overwrite_logging_config_fns(handler)
     return handler
