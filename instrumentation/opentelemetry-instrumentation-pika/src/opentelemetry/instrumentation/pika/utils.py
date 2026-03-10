@@ -148,11 +148,11 @@ def _get_span(
         return None
     task_name = properties.type if properties.type else task_name
     span = tracer.start_span(
-        name=_generate_span_name(destination, operation),
+        name=_generate_span_name(task_name, operation),
         kind=span_kind,
     )
     if span.is_recording():
-        _enrich_span(span, channel, properties, task_name, operation)
+        _enrich_span(span, channel, properties, destination, operation)
     return span
 
 
