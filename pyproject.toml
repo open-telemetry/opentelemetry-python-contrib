@@ -4,6 +4,8 @@ name = "opentelemetry-python-contrib"
 version = "0.0.0" # This is not used.
 requires-python = ">=3.9"
 dependencies = [
+  # When adding or removing instrumentation-genai packages, ensure their
+  # pyproject.toml metadata is correct for discover_genai_packages.py.
   "opentelemetry-api",
   "opentelemetry-sdk",
   "opentelemetry-semantic-conventions",
@@ -201,11 +203,7 @@ include = [
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
   "instrumentation/opentelemetry-instrumentation-threading",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk",
-  "instrumentation-genai/opentelemetry-instrumentation-vertexai",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate",
+  "instrumentation-genai/*/src",
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
@@ -217,16 +215,8 @@ exclude = [
   "instrumentation/opentelemetry-instrumentation-aiokafka/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-asyncclick/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-threading/tests/**",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-anthropic/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-claude-agent-sdk/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-vertexai/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-langchain/examples/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate/tests/**/*.py",
-  "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
+  "instrumentation-genai/*/tests/**",
+  "instrumentation-genai/*/examples/**",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
@@ -238,4 +228,6 @@ dev = [
     "tox",
     "tox-uv>=1",
     "pre-commit",
+    "tomli",
+    "astor",
 ]

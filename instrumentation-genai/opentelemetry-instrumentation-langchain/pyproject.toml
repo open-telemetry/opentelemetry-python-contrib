@@ -50,6 +50,13 @@ include = [
   "/tests",
 ]
 
+[tool.opentelemetry.instrumentation]
+independent_release = true
+include_in_bootstrap = false
+readme_library = "Langchain"
+readme_metrics = false
+readme_status = "Development"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
 

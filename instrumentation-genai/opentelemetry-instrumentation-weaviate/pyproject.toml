@@ -36,6 +36,13 @@ instruments = [
   "weaviate-client >= 3.0",
 ]
 
+[tool.opentelemetry.instrumentation]
+independent_release = true
+include_in_bootstrap = false
+readme_library = "Weaviate"
+readme_metrics = false
+readme_status = "Development"
+
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation-genai/opentelemetry-instrumentation-weaviate"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"

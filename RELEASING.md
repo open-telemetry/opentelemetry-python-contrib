@@ -22,17 +22,16 @@
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
-> - opentelemetry-instrumentation-openai-v2
-> - opentelemetry-instrumentation-openai-agents-v2
-> - opentelemetry-instrumentation-vertexai
-> - opentelemetry-instrumentation-anthropic
-> - opentelemetry-instrumentation-claude-agent-sdk
-> - opentelemetry-instrumentation-google-genai
-> - opentelemetry-instrumentation-langchain
-> - opentelemetry-instrumentation-weaviate
-> - opentelemetry-util-genai
+> - All packages under `instrumentation-genai/` configured for independent release (see below).
 >
 > These libraries are also excluded from the general release.
+
+To configure an `instrumentation-genai/` package for individual release, add the following to its `pyproject.toml`:
+
+```toml
+[tool.opentelemetry.instrumentation]
+independent_release = true
+```
 
 Package release preparation is handled by the [`[Package] Prepare release`](./.github/workflows/package-prepare-release.yml) workflow that allows
 to pick a specific package to release. It follows the same versioning strategy and process as the general release.
@@ -87,21 +86,7 @@ The workflow will create a pull request that should be merged in order to procee
 ### Releasing individual package
 
 > [!NOTE]
-> Per-package patch release is supported for the following packages only:
-> - opentelemetry-opamp-client
-> - opentelemetry-propagator-aws-xray
-> - opentelemetry-resource-detector-azure
-> - opentelemetry-sdk-extension-aws
-> - opentelemetry-instrumentation-openai-v2
-> - opentelemetry-instrumentation-openai-agents-v2
-> - opentelemetry-instrumentation-vertexai
-> - opentelemetry-instrumentation-anthropic
-> - opentelemetry-instrumentation-claude-agent-sdk
-> - opentelemetry-instrumentation-google-genai
-> - opentelemetry-instrumentation-langchain
-> - opentelemetry-instrumentation-weaviate
-> - opentelemetry-util-genai
-> - opentelemetry-exporter-credential-provider-gcp
+> Per-package release is supported for the packages listed in the `[Package] Release` workflow, including GenAI packages configured for independent release.
 >
 > These libraries are also excluded from the general patch release.
 

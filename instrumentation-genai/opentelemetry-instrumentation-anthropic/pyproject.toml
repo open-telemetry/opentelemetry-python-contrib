@@ -57,6 +57,13 @@ include = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
 
+[tool.opentelemetry.instrumentation]
+independent_release = true
+include_in_bootstrap = false
+readme_library = "Anthropic SDK"
+readme_metrics = false
+readme_status = "Development"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

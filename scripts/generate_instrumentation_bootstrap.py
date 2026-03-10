@@ -21,6 +21,7 @@ import subprocess
 import sys
 
 import astor
+from discover_genai_packages import get_genai_packages
 from otel_packaging import (
     get_instrumentation_packages,
     root_path,
@@ -96,12 +97,17 @@ independent_packages = {
 
 def main():
     # pylint: disable=no-member
+    genai_packages = get_genai_packages()
+    genai_package_names = {pkg["name"] for pkg in genai_packages}
+
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
     for pkg in get_instrumentation_packages(
         independent_packages=independent_packages
     ):
         pkg_name = pkg.get("name")
+        if pkg_name in genai_package_names:
+            continue
         if pkg_name in packages_to_exclude:
             continue
         if not pkg["instruments"] and not pkg["instruments-any"]:
@@ -125,6 +131,12 @@ def main():
     tree = ast.parse(_source_tmpl)
     tree.body[0].value = libraries
     tree.body[1].value = default_instrumentations
+
+    for pkg in genai_packages:
+        if pkg.get("include_in_bootstrap"):
+            requirement = pkg["name"]
+            tree.body[1].value.elts.append(ast.Str(requirement))
+
     source = astor.to_source(tree)
 
     with open(

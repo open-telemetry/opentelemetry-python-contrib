@@ -7,20 +7,10 @@ on:
       package:
         type: choice
         options:
-        - opentelemetry-opamp-client
-        - opentelemetry-propagator-aws-xray
-        - opentelemetry-resource-detector-azure
-        - opentelemetry-sdk-extension-aws
-        - opentelemetry-util-genai
-        - opentelemetry-instrumentation-anthropic
-        - opentelemetry-instrumentation-claude-agent-sdk
-        - opentelemetry-instrumentation-google-genai
-        - opentelemetry-instrumentation-langchain
-        - opentelemetry-instrumentation-openai-agents-v2
-        - opentelemetry-instrumentation-openai-v2
-        - opentelemetry-instrumentation-vertexai
-        - opentelemetry-instrumentation-weaviate
-        description: 'Package to be released'
+{% for option in release_options %}
+        - {{ option }}
+{% endfor %}
+{% raw %}        description: 'Package to be released'
         required: true
 permissions:
   contents: read
@@ -139,3 +129,4 @@ jobs:
                        --body "$message." \
                        --head $branch \
                        --base $GITHUB_REF_NAME
+{% endraw %}
