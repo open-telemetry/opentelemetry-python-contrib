@@ -15,21 +15,20 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
 
 from google.genai import types as genai_types
 
 from opentelemetry.util.genai.types import (
+    Blob,
     FinishReason,
-    GenericPart,
     InputMessage,
     MessagePart,
     OutputMessage,
     Text,
     ToolCallRequest,
     ToolCallResponse,
+    Uri,
 )
 
 
@@ -38,23 +37,6 @@ class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     TOOL = "tool"
-
-
-@dataclass
-class BlobPart:
-    data: bytes
-    mime_type: str
-    type: Literal["blob"] = "blob"
-
-
-@dataclass
-class FileDataPart:
-    mime_type: str
-    uri: str
-    type: Literal["file_data"] = "file_data"
-
-    class Config:
-        extra = "allow"
 
 
 _logger = logging.getLogger(__name__)
@@ -122,16 +104,22 @@ def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
     if (text := part.text) is not None:
         return Text(content=text)
 
-    if data := part.inline_data:
-        return GenericPart(
-            BlobPart(mime_type=data.mime_type or "", data=data.data or b"")
+    if inline_data := part.inline_data:
+        mime_type = inline_data.mime_type or ""
+        modality = mime_type.split("/")[0] if mime_type else ""
+        return Blob(
+            mime_type=mime_type,
+            modality=modality,
+            content=inline_data.data or b"",
         )
 
-    if data := part.file_data:
-        return GenericPart(
-            FileDataPart(
-                mime_type=data.mime_type or "", uri=data.file_uri or ""
-            )
+    if file_data := part.file_data:
+        mime_type = file_data.mime_type or ""
+        modality = mime_type.split("/")[0] if mime_type else ""
+        return Uri(
+            mime_type=mime_type,
+            modality=modality,
+            uri=file_data.file_uri or "",
         )
 
     if call := part.function_call:
