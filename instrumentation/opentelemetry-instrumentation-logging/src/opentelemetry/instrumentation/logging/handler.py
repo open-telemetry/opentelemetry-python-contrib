@@ -35,20 +35,10 @@ from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util.types import _ExtendedAttributes
 
-_OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME = {
-    "notset": logging.NOTSET,
-    "debug": logging.DEBUG,
-    "info": logging.INFO,
-    "warn": logging.WARNING,
-    "warning": logging.WARNING,
-    "error": logging.ERROR,
-}
-
 
 def _get_log_level(level_name: str) -> int:
-    return _OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME.get(
-        level_name.lower().strip(), logging.NOTSET
-    )
+    result = logging.getLevelName(level_name.upper().strip())
+    return result if isinstance(result, int) else logging.NOTSET
 
 
 def _setup_logging_handler(

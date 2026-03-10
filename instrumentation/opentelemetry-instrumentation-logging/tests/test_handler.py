@@ -699,9 +699,6 @@ class GetLogLevelTestCase(unittest.TestCase):
     def test_get_log_level_info(self):
         self.assertEqual(_get_log_level(" info "), logging.INFO)
 
-    def test_get_log_level_warn(self):
-        self.assertEqual(_get_log_level(" warn"), logging.WARNING)
-
     def test_get_log_level_warning(self):
         self.assertEqual(_get_log_level(" warnING "), logging.WARNING)
 
