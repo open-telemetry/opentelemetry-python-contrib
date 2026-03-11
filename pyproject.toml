@@ -122,6 +122,7 @@ opentelemetry-instrumentation-pymongo = { workspace = true }
 opentelemetry-instrumentation-pymysql = { workspace = true }
 opentelemetry-instrumentation-pyramid = { workspace = true }
 opentelemetry-instrumentation-redis = { workspace = true }
+opentelemetry-instrumentation-redis-valkey-base = { workspace = true }
 opentelemetry-instrumentation-remoulade = { workspace = true }
 opentelemetry-instrumentation-requests = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }

@@ -13,70 +13,42 @@
 # limitations under the License.
 #
 """
-Some utils used by the valkey integration
+Utility functions for Valkey instrumentation.
+
+These functions delegate to the shared base in
+``opentelemetry.instrumentation._redis_valkey.util``, using Valkey-specific
+attribute names and conventions.
 """
 
-from opentelemetry.semconv.trace import (
-    NetTransportValues,
-    SpanAttributes,
+from __future__ import annotations
+
+from typing import Any
+
+from opentelemetry.instrumentation._redis_valkey.util import (
+    _extract_conn_attributes as _base_extract_conn_attributes,
 )
+from opentelemetry.instrumentation._redis_valkey.util import (
+    _format_command_args,
+    _set_span_attribute_if_value,
+    _value_or_none,
+)
+from opentelemetry.semconv.trace import SpanAttributes
+
+_BACKEND_NAME = "valkey"
+_DB_SYSTEM = "valkey"
+_DB_SYSTEM_ATTR = SpanAttributes.DB_SYSTEM
+_DB_INDEX_ATTR = "db.valkey.database_index"
+
+__all__ = [
+    "_extract_conn_attributes",
+    "_format_command_args",
+    "_set_span_attribute_if_value",
+    "_value_or_none",
+]
 
 
-def _extract_conn_attributes(conn_kwargs):
-    """Transform valkey conn info into dict"""
-    attributes = {
-        SpanAttributes.DB_SYSTEM: "valkey",
-    }
-    db = conn_kwargs.get("db", 0)
-    attributes["db.valkey.database_index"] = db
-    if "path" in conn_kwargs:
-        attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get("path", "")
-        attributes[SpanAttributes.NET_TRANSPORT] = (
-            NetTransportValues.OTHER.value
-        )
-    else:
-        attributes[SpanAttributes.NET_PEER_NAME] = conn_kwargs.get(
-            "host", "localhost"
-        )
-        attributes[SpanAttributes.NET_PEER_PORT] = conn_kwargs.get(
-            "port", 6379
-        )
-        attributes[SpanAttributes.NET_TRANSPORT] = (
-            NetTransportValues.IP_TCP.value
-        )
-
-    return attributes
-
-
-def _format_command_args(args):
-    """Format and sanitize command arguments, and trim them as needed"""
-    cmd_max_len = 1000
-    value_too_long_mark = "..."
-
-    # Sanitized query format: "COMMAND ? ?"
-    args_length = len(args)
-    if args_length > 0:
-        out = [str(args[0])] + ["?"] * (args_length - 1)
-        out_str = " ".join(out)
-
-        if len(out_str) > cmd_max_len:
-            out_str = (
-                out_str[: cmd_max_len - len(value_too_long_mark)]
-                + value_too_long_mark
-            )
-    else:
-        out_str = ""
-
-    return out_str
-
-
-def _set_span_attribute_if_value(span, name, value):
-    if value is not None and value != "":
-        span.set_attribute(name, value)
-
-
-def _value_or_none(values, n):
-    try:
-        return values[n]
-    except IndexError:
-        return None
+def _extract_conn_attributes(conn_kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Transform valkey conn info into dict."""
+    return _base_extract_conn_attributes(
+        conn_kwargs, _DB_SYSTEM, _DB_SYSTEM_ATTR, _DB_INDEX_ATTR
+    )
