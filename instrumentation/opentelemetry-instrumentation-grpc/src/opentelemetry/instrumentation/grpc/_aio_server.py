@@ -29,7 +29,7 @@ from ._server import OpenTelemetryServerInterceptor, _wrap_rpc_behavior
 from ._utilities import _server_status
 
 
-# pylint:disable=abstract-method
+# pylint:disable=abstract-method,no-member
 class _OpenTelemetryAioServicerContext(BaseObjectProxy):
     def __init__(self, servicer_context, active_span):
         super().__init__(servicer_context)
