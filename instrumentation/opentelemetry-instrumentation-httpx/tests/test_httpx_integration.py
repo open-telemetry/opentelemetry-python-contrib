@@ -2140,6 +2140,26 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.assert_span(num_spans=2)
         self.assert_metrics(num_metrics=1)
 
+    async def test_no_op_tracer_provider(self):
+        HTTPXClientInstrumentor().uninstrument()
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+        async with httpx.AsyncClient() as client:
+            await client.get("http://test.com")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_no_op_tracer_provider_sync(self):
+        HTTPXClientInstrumentor().uninstrument()
+        HTTPXClientInstrumentor().instrument(
+            tracer_provider=trace.NoOpTracerProvider()
+        )
+        with httpx.Client() as client:
+            client.get("http://test.com")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
     def test_async_response_hook_does_nothing_if_not_coroutine(self):
         HTTPXClientInstrumentor().instrument(
             tracer_provider=self.tracer_provider,
