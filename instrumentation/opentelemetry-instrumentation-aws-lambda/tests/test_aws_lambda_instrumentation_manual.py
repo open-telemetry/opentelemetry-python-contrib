@@ -808,3 +808,36 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(event.name, "exception")
 
         exc_env_patch.stop()
+
+    def test_handler_slash_notation(self):
+        test_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                **os.environ,
+                _HANDLER: "tests/mocks/subdir/slash_handler.slash_notation_handler",
+                "AWS_LAMBDA_FUNCTION_NAME": "mylambda",
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+                OTEL_PROPAGATORS: "tracecontext",
+            },
+        )
+        test_env_patch.start()
+        reload(propagate)
+
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda()
+
+        spans = self.memory_exporter.get_finished_spans()
+
+        assert spans
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "tests/mocks/subdir/slash_handler.slash_notation_handler")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            span,
+            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
+        )
+
+        test_env_patch.stop()
+

@@ -482,7 +482,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
         (
             self._wrapped_module_name,
             self._wrapped_function_name,
-        ) = lambda_handler.rsplit(".", 1)
+        ) = lambda_handler.replace("/",".").rsplit(".", 1)
 
         flush_timeout_env = os.environ.get(
             OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
