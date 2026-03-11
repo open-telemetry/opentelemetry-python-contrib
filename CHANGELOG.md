@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
   ([#4305](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4305))
+- Refactor unit tests to allow for population of the random trace id flag in the `traceparent` header
+  ([#4030](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4030))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
