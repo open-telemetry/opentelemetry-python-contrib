@@ -100,6 +100,9 @@ import logging
 import os
 import sys
 import threading
+import warnings
+from contextlib import contextmanager
+from copy import deepcopy
 from platform import python_implementation
 from typing import Any, Collection, Iterable
 
@@ -156,7 +159,7 @@ _DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "process.runtime.context_switches": ["involuntary", "voluntary"],
 }
 
-if sys.platform == "darwin":
+if psutil.MACOS:
     # see https://github.com/giampaolo/psutil/issues/1219
     _DEFAULT_CONFIG.pop("system.network.connections")
 
@@ -185,10 +188,48 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         config: dict[str, list[str] | None] | None = None,
     ):
         super().__init__()
-        self._config = _build_default_config() if config is None else config
+
+        self._config = deepcopy(_build_default_config() if config is None else config)
         self._labels = {} if labels is None else labels
         self._meter = None
         self._python_implementation = python_implementation().lower()
+
+        # If 'system.network.connections' is found in the config at this time,
+        # then the user chose to explicitly add it themselves.
+        # We therefore remove the metric and issue a warning.
+        if psutil.MACOS and "system.network.connections" in self._config:
+            _logger.warning(
+                "'psutil.net_connections' can not reliably be computed on macOS! "
+                "'system.network.connections' will be excluded from metrics."
+            )
+            self._config.pop("system.network.connections")
+
+        # Filter 'sin' and 'sout' from 'system.swap' metrics
+        # if '/proc/vmstat' is not available and issue a warning.
+        # See: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3740.
+        if psutil.LINUX and (
+            "system.swap.usage" in self._config
+            or "system.swap.utilization" in self._config
+        ):
+            vmstat = os.path.join(psutil.PROCFS_PATH, "vmstat")
+            if not os.path.exists(vmstat):
+                _logger.warning(
+                    "Could not find '%s'! The 'sin' and 'sout' states"
+                    "will not be included in 'system.swap' metrics.",
+                    vmstat,
+                )
+                if usage := self._config.get("system.swap.usage"):
+                    self._config["system.swap.usage"] = [
+                        state
+                        for state in usage
+                        if state not in ("sin", "sout")
+                    ]
+                if utilization := self._config.get("system.swap.utilization"):
+                    self._config["system.swap.utilization"] = [
+                        state
+                        for state in utilization
+                        if state not in ("sin", "sout")
+                    ]
 
         self._proc = psutil.Process(os.getpid())
 
@@ -649,7 +690,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self, options: CallbackOptions
     ) -> Iterable[Observation]:
         """Observer callback for swap usage"""
-        system_swap = psutil.swap_memory()
+        with self._suppress_psutil_swap_warnings():
+            system_swap = psutil.swap_memory()
 
         for metric in self._config["system.swap.usage"]:
             self._system_swap_usage_labels["state"] = metric
@@ -663,7 +705,8 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self, options: CallbackOptions
     ) -> Iterable[Observation]:
         """Observer callback for swap utilization"""
-        system_swap = psutil.swap_memory()
+        with self._suppress_psutil_swap_warnings():
+            system_swap = psutil.swap_memory()
 
         for metric in self._config["system.swap.utilization"]:
             if hasattr(system_swap, metric):
@@ -1032,3 +1075,17 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     getattr(ctx_switches, metric),
                     self._runtime_context_switches_labels.copy(),
                 )
+
+    @staticmethod
+    @contextmanager
+    def _suppress_psutil_swap_warnings():
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                action="ignore",
+                category=RuntimeWarning,
+                # language=regexp
+                message=r"^'sin' and 'sout' swap memory stats couldn't be determined and were set to 0",
+                # language=regexp
+                module=r"^psutil$",
+            )
+            yield
