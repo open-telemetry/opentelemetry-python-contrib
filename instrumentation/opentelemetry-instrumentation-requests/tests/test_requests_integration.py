@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 import abc
 from unittest import mock
 
@@ -35,6 +37,18 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_FLAVOR,
+    HTTP_HOST,
+    HTTP_METHOD,
+    HTTP_SCHEME,
+    HTTP_STATUS_CODE,
+    HTTP_URL,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.http_attributes import (
     HTTP_REQUEST_METHOD,
@@ -51,11 +65,18 @@ from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_PORT,
 )
 from opentelemetry.semconv.attributes.url_attributes import URL_FULL
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
+)
 from opentelemetry.test.mock_textmap import MockTextMapPropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
-from opentelemetry.util.http import get_excluded_urls
+from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    get_excluded_urls,
+)
 
 
 class TransportMock:
@@ -79,6 +100,9 @@ class InvalidResponseObjectException(Exception):
     def __init__(self):
         super().__init__()
         self.response = {}
+
+
+SCOPE = "opentelemetry.instrumentation.requests"
 
 
 class RequestsIntegrationTestBase(abc.ABC):
@@ -161,9 +185,10 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -187,7 +212,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            SpanAttributes.SCHEMA_URL,
+            "https://opentelemetry.io/schemas/1.21.0",
         )
         self.assertEqual(
             span.attributes,
@@ -200,6 +225,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -223,25 +249,26 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         self.assertEqual(
             span.instrumentation_scope.schema_url,
-            SpanAttributes.SCHEMA_URL,
+            "https://opentelemetry.io/schemas/1.21.0",
         )
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
+                HTTP_METHOD: "GET",
                 HTTP_REQUEST_METHOD: "GET",
-                SpanAttributes.HTTP_URL: url_with_port,
+                HTTP_URL: url_with_port,
                 URL_FULL: url_with_port,
-                SpanAttributes.HTTP_HOST: "mock",
+                HTTP_HOST: "mock",
                 SERVER_ADDRESS: "mock",
                 NETWORK_PEER_ADDRESS: "mock",
-                SpanAttributes.NET_PEER_PORT: 80,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                NET_PEER_PORT: 80,
+                HTTP_STATUS_CODE: 200,
                 HTTP_RESPONSE_STATUS_CODE: 200,
-                SpanAttributes.HTTP_FLAVOR: "1.1",
+                HTTP_FLAVOR: "1.1",
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -262,9 +289,10 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "_OTHER",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 405,
+                HTTP_METHOD: "_OTHER",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 405,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -289,6 +317,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 ERROR_TYPE: "405",
                 HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
@@ -365,9 +394,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
 
         self.assertIs(
             span.status.status_code,
@@ -406,9 +433,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
         span = self.assert_span()
 
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.HTTP_STATUS_CODE), 404
-        )
+        self.assertEqual(span.attributes.get(HTTP_STATUS_CODE), 404)
         self.assertEqual(span.attributes.get(HTTP_RESPONSE_STATUS_CODE), 404)
         self.assertEqual(span.attributes.get(ERROR_TYPE), "404")
 
@@ -523,10 +548,11 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 200,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 200,
                 "http.response.body": "Hello!",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -555,8 +581,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -584,6 +611,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PEER_PORT: 80,
                 NETWORK_PEER_ADDRESS: "mock",
                 ERROR_TYPE: "RequestException",
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -604,8 +632,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -626,9 +655,10 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.assertEqual(
             span.attributes,
             {
-                SpanAttributes.HTTP_METHOD: "GET",
-                SpanAttributes.HTTP_URL: self.URL,
-                SpanAttributes.HTTP_STATUS_CODE: 500,
+                HTTP_METHOD: "GET",
+                HTTP_URL: self.URL,
+                HTTP_STATUS_CODE: 500,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -668,6 +698,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 210,
+                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
             },
         )
 
@@ -679,17 +710,243 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
             return requests.get(url, timeout=5)
         return session.get(url)
 
-    def test_credential_removal(self):
-        new_url = "http://username:password@mock/status/200"
+    def test_remove_sensitive_params(self):
+        new_url = (
+            "http://username:password@mock/status/200?AWSAccessKeyId=secret"
+        )
         self.perform_request(new_url)
         span = self.assert_span()
 
-        self.assertEqual(span.attributes[SpanAttributes.HTTP_URL], self.URL)
+        self.assertEqual(
+            span.attributes[HTTP_URL],
+            "http://REDACTED:REDACTED@mock/status/200?AWSAccessKeyId=REDACTED",
+        )
 
     def test_if_headers_equals_none(self):
         result = requests.get(self.URL, headers=None, timeout=5)
         self.assertEqual(result.text, "Hello!")
         self.assert_span()
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "X-Custom-Header,X-Another-Header",
+        },
+    )
+    def test_custom_request_headers_captured(self):
+        """Test that specified request headers are captured as span attributes."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+
+        headers = {
+            "X-Custom-Header": "custom-value",
+            "X-Another-Header": "another-value",
+            "X-Excluded-Header": "excluded-value",
+        }
+        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+        result = requests.get(self.URL, headers=headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_another_header"],
+            ("another-value",),
+        )
+        self.assertNotIn("http.request.x_excluded_header", span.attributes)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "X-Custom-Header,X-Another-Header",
+        },
+    )
+    def test_custom_response_headers_captured(self):
+        """Test that specified request headers are captured as span attributes."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+
+        headers = {
+            "X-Custom-Header": "custom-value",
+            "X-Another-Header": "another-value",
+            "X-Excluded-Header": "excluded-value",
+        }
+        httpretty.register_uri(
+            httpretty.GET, self.URL, body="Hello!", adding_headers=headers
+        )
+        result = requests.get(self.URL, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_another_header"],
+            ("another-value",),
+        )
+        self.assertNotIn("http.response.x_excluded_header", span.attributes)
+
+    @mock.patch.dict("os.environ", {})
+    def test_custom_headers_not_captured_when_not_configured(self):
+        """Test that headers are not captured when env vars are not set."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+        headers = {"X-Request-Header": "request-value"}
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers={"X-Response-Header": "response-value"},
+        )
+        result = requests.get(self.URL, headers=headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertNotIn(
+            "http.request.header.x_request_header", span.attributes
+        )
+        self.assertNotIn(
+            "http.response.header.x_response_header", span.attributes
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "Set-Cookie,X-Secret",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "Authorization,X-Api-Key",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "Authorization,X-Api-Key,Set-Cookie,X-Secret",
+        },
+    )
+    def test_sensitive_headers_sanitized(self):
+        """Test that sensitive header values are redacted."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+
+        request_headers = {
+            "Authorization": "Bearer secret-token",
+            "X-Api-Key": "secret-key",
+        }
+        response_headers = {
+            "Set-Cookie": "session=abc123",
+            "X-Secret": "secret",
+        }
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers=response_headers,
+        )
+        result = requests.get(self.URL, headers=request_headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.authorization"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_api_key"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.set_cookie"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_secret"],
+            ("[REDACTED]",),
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "X-Custom-Response-.*",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "X-Custom-Request-.*",
+        },
+    )
+    def test_custom_headers_with_regex(self):
+        """Test that header capture works with regex patterns."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+        request_headers = {
+            "X-Custom-Request-One": "value-one",
+            "X-Custom-Request-Two": "value-two",
+            "X-Other-Request-Header": "other-value",
+        }
+        response_headers = {
+            "X-Custom-Response-A": "value-A",
+            "X-Custom-Response-B": "value-B",
+            "X-Other-Response-Header": "other-value",
+        }
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers=response_headers,
+        )
+        result = requests.get(self.URL, headers=request_headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_one"],
+            ("value-one",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_two"],
+            ("value-two",),
+        )
+        self.assertNotIn(
+            "http.request.header.x_other_request_header", span.attributes
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_a"],
+            ("value-A",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_b"],
+            ("value-B",),
+        )
+        self.assertNotIn(
+            "http.response.header.x_other_response_header", span.attributes
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE: "x-response-header",
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST: "x-request-header",
+        },
+    )
+    def test_custom_headers_case_insensitive(self):
+        """Test that header capture is case-insensitive."""
+        RequestsInstrumentor().uninstrument()
+        RequestsInstrumentor().instrument()
+        request_headers = {"X-ReQuESt-HeaDER": "custom-value"}
+        response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
+        httpretty.register_uri(
+            httpretty.GET,
+            self.URL,
+            body="Hello!",
+            adding_headers=response_headers,
+        )
+        result = requests.get(self.URL, headers=request_headers, timeout=5)
+        self.assertEqual(result.text, "Hello!")
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_request_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_header"],
+            ("custom-value",),
+        )
 
 
 class TestRequestsIntegrationPreparedRequest(
@@ -745,35 +1002,32 @@ class TestRequestsIntergrationMetric(TestBase):
         self.perform_request(self.URL)
 
         expected_attributes = {
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_HOST: "examplehost",
-            SpanAttributes.NET_PEER_PORT: 8000,
-            SpanAttributes.NET_PEER_NAME: "examplehost",
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SCHEME: "http",
+            HTTP_STATUS_CODE: 200,
+            HTTP_HOST: "examplehost",
+            NET_PEER_PORT: 8000,
+            NET_PEER_NAME: "examplehost",
+            HTTP_METHOD: "GET",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SCHEME: "http",
         }
 
-        for (
-            resource_metrics
-        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
-            for scope_metrics in resource_metrics.scope_metrics:
-                self.assertEqual(len(scope_metrics.metrics), 1)
-                for metric in scope_metrics.metrics:
-                    self.assertEqual(metric.unit, "ms")
-                    self.assertEqual(
-                        metric.description,
-                        "measures the duration of the outbound HTTP request",
-                    )
-                    for data_point in metric.data.data_points:
-                        self.assertEqual(
-                            data_point.explicit_bounds,
-                            HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
-                        )
-                        self.assertDictEqual(
-                            expected_attributes, dict(data_point.attributes)
-                        )
-                        self.assertEqual(data_point.count, 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 1)
+        for metric in metrics:
+            self.assertEqual(metric.unit, "ms")
+            self.assertEqual(
+                metric.description,
+                "measures the duration of the outbound HTTP request",
+            )
+            for data_point in metric.data.data_points:
+                self.assertEqual(
+                    data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+                )
+                self.assertDictEqual(
+                    expected_attributes, dict(data_point.attributes)
+                )
+                self.assertEqual(data_point.count, 1)
 
     def test_basic_metric_new_semconv(self):
         self.perform_request(self.URL)
@@ -785,37 +1039,34 @@ class TestRequestsIntergrationMetric(TestBase):
             HTTP_REQUEST_METHOD: "GET",
             NETWORK_PROTOCOL_VERSION: "1.1",
         }
-        for (
-            resource_metrics
-        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
-            for scope_metrics in resource_metrics.scope_metrics:
-                self.assertEqual(len(scope_metrics.metrics), 1)
-                for metric in scope_metrics.metrics:
-                    self.assertEqual(metric.unit, "s")
-                    self.assertEqual(
-                        metric.description, "Duration of HTTP client requests."
-                    )
-                    for data_point in metric.data.data_points:
-                        self.assertEqual(
-                            data_point.explicit_bounds,
-                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                        )
-                        self.assertDictEqual(
-                            expected_attributes, dict(data_point.attributes)
-                        )
-                        self.assertEqual(data_point.count, 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 1)
+        for metric in metrics:
+            self.assertEqual(metric.unit, "s")
+            self.assertEqual(
+                metric.description, "Duration of HTTP client requests."
+            )
+            for data_point in metric.data.data_points:
+                self.assertEqual(
+                    data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                )
+                self.assertDictEqual(
+                    expected_attributes, dict(data_point.attributes)
+                )
+                self.assertEqual(data_point.count, 1)
 
     def test_basic_metric_both_semconv(self):
         self.perform_request(self.URL)
 
         expected_attributes_old = {
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_HOST: "examplehost",
-            SpanAttributes.NET_PEER_PORT: 8000,
-            SpanAttributes.NET_PEER_NAME: "examplehost",
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SCHEME: "http",
+            HTTP_STATUS_CODE: 200,
+            HTTP_HOST: "examplehost",
+            NET_PEER_PORT: 8000,
+            NET_PEER_NAME: "examplehost",
+            HTTP_METHOD: "GET",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SCHEME: "http",
         }
 
         expected_attributes_new = {
@@ -826,24 +1077,21 @@ class TestRequestsIntergrationMetric(TestBase):
             NETWORK_PROTOCOL_VERSION: "1.1",
         }
 
-        for (
-            resource_metrics
-        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
-            for scope_metrics in resource_metrics.scope_metrics:
-                self.assertEqual(len(scope_metrics.metrics), 2)
-                for metric in scope_metrics.metrics:
-                    for data_point in metric.data.data_points:
-                        if metric.unit == "ms":
-                            self.assertDictEqual(
-                                expected_attributes_old,
-                                dict(data_point.attributes),
-                            )
-                        else:
-                            self.assertDictEqual(
-                                expected_attributes_new,
-                                dict(data_point.attributes),
-                            )
-                        self.assertEqual(data_point.count, 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 2)
+        for metric in metrics:
+            for data_point in metric.data.data_points:
+                if metric.unit == "ms":
+                    self.assertDictEqual(
+                        expected_attributes_old,
+                        dict(data_point.attributes),
+                    )
+                else:
+                    self.assertDictEqual(
+                        expected_attributes_new,
+                        dict(data_point.attributes),
+                    )
+                self.assertEqual(data_point.count, 1)
 
     def test_custom_histogram_boundaries(self):
         RequestsInstrumentor().uninstrument()
@@ -879,13 +1127,13 @@ class TestRequestsIntergrationMetric(TestBase):
 
     def test_basic_metric_non_recording_span(self):
         expected_attributes = {
-            SpanAttributes.HTTP_STATUS_CODE: 200,
-            SpanAttributes.HTTP_HOST: "examplehost",
-            SpanAttributes.NET_PEER_PORT: 8000,
-            SpanAttributes.NET_PEER_NAME: "examplehost",
-            SpanAttributes.HTTP_METHOD: "GET",
-            SpanAttributes.HTTP_FLAVOR: "1.1",
-            SpanAttributes.HTTP_SCHEME: "http",
+            HTTP_STATUS_CODE: 200,
+            HTTP_HOST: "examplehost",
+            NET_PEER_PORT: 8000,
+            NET_PEER_NAME: "examplehost",
+            HTTP_METHOD: "GET",
+            HTTP_FLAVOR: "1.1",
+            HTTP_SCHEME: "http",
         }
 
         with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
@@ -900,7 +1148,7 @@ class TestRequestsIntergrationMetric(TestBase):
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertDictEqual(

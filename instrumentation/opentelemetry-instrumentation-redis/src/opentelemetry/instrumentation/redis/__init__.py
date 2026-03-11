@@ -110,6 +110,35 @@ Request/Response Hooks
     client = redis.StrictRedis(host="localhost", port=6379)
     client.get("my-key")
 
+Suppress Instrumentation
+------------------------
+
+You can use the ``suppress_instrumentation`` context manager to prevent instrumentation
+from being applied to specific Redis operations. This is useful when you want to avoid
+creating spans for internal operations, health checks, or during specific code paths.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.instrumentation.utils import suppress_instrumentation
+    import redis
+
+    # Instrument redis
+    RedisInstrumentor().instrument()
+
+    client = redis.StrictRedis(host="localhost", port=6379)
+
+    # This will report a span
+    client.get("my-key")
+
+    # This will NOT report a span
+    with suppress_instrumentation():
+        client.get("internal-key")
+        client.set("cache-key", "value")
+
+    # This will report a span again
+    client.get("another-key")
+
 API
 ---
 """
@@ -134,8 +163,13 @@ from opentelemetry.instrumentation.redis.util import (
     _set_connection_attributes,
 )
 from opentelemetry.instrumentation.redis.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.trace import (
     StatusCode,
     Tracer,
@@ -194,13 +228,16 @@ def _traced_execute_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> R:
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
         with tracer.start_as_current_span(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                span.set_attribute(DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
                 if span.name == "redis.create_index":
@@ -229,6 +266,9 @@ def _traced_execute_pipeline_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> R:
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
         (
             command_stack,
             resource,
@@ -239,7 +279,7 @@ def _traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                span.set_attribute(DB_STATEMENT, resource)
                 _set_connection_attributes(span, instance)
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)
@@ -274,6 +314,9 @@ def _async_traced_execute_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Awaitable[R]:
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
@@ -281,7 +324,7 @@ def _async_traced_execute_factory(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                span.set_attribute(DB_STATEMENT, query)
                 _set_connection_attributes(span, instance)
                 span.set_attribute("db.redis.args_length", len(args))
             if callable(request_hook):
@@ -305,6 +348,9 @@ def _async_traced_execute_pipeline_factory(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Awaitable[R]:
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         (
             command_stack,
             resource,
@@ -317,7 +363,7 @@ def _async_traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                span.set_attribute(DB_STATEMENT, resource)
                 _set_connection_attributes(span, instance)
                 span.set_attribute(
                     "db.redis.pipeline_length", len(command_stack)

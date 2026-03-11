@@ -351,9 +351,9 @@ class ClickTestCase(TestBase, IsolatedAsyncioTestCase):
         async def command2() -> None:
             pass
 
-        async def run_both() -> (
-            tuple[asyncclick.testing.Result, asyncclick.testing.Result]
-        ):
+        async def run_both() -> tuple[
+            asyncclick.testing.Result, asyncclick.testing.Result
+        ]:
             runner = CliRunner()
             task1 = asyncio.create_task(runner.invoke(command1))
             task2 = asyncio.create_task(runner.invoke(command2))

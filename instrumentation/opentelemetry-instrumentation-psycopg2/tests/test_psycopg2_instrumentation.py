@@ -20,7 +20,6 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
 )
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.instrumentation.psycopg2.package import (
-    _instruments,
     _instruments_psycopg2,
     _instruments_psycopg2_binary,
 )
@@ -130,19 +129,29 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
                 call("psycopg2-binary"),
             ],
         )
-        self.assertEqual(package_to_instrument, _instruments)
+        self.assertEqual(
+            package_to_instrument,
+            (
+                _instruments_psycopg2,
+                _instruments_psycopg2_binary,
+            ),
+        )
 
     # This test is to verify that the auto instrumentation path
     # will auto instrument psycopg2 or psycopg2-binary is installed.
     # Note there is only one test here but it is run twice in tox
     # once with the psycopg2 package installed and once with
     # psycopg2-binary installed.
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
-    def test_instruments_with_psycopg2_installed(self, mock_logger):
+    def test_instruments_with_psycopg2_installed(self, mock_logger, mock_dep):
         def _instrumentation_loaded_successfully_call():
             return call("Instrumented %s", "psycopg2")
 
         mock_distro = Mock()
+        mock_dep.return_value = None
         mock_distro.load_instrumentor.return_value = None
         _load_instrumentors(mock_distro)
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)

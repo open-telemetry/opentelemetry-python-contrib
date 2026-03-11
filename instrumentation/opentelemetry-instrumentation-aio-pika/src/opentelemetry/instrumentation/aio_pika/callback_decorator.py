@@ -53,7 +53,8 @@ class CallbackDecorator:
                 with trace.use_span(span, end_on_exit=True):
                     return_value = await callback(message)
             finally:
-                context.detach(token)
+                if token:
+                    context.detach(token)
             return return_value
 
         return decorated

@@ -4,11 +4,11 @@ The Python special interest group (SIG) meets regularly. See the OpenTelemetry
 [community](https://github.com/open-telemetry/community#python-sdk) repo for
 information on this and other language SIGs.
 
-See the [public meeting notes](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit)
+See the [public meeting notes](https://docs.google.com/document/d/18w8zOBm_mbety0OqlPwxc7dvnfu641EgmrO4AdJef0U/edit?tab=t.0)
 for a summary description of past meetings. To request edit access, join the
 meeting or get in touch on [Slack](https://cloud-native.slack.com/archives/C01PD4HUVBL).
 
-See to the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
+See the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
 on how to become a [**Member**](https://github.com/open-telemetry/community/blob/main/community-membership.md#member),
 [**Approver**](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
 and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).
@@ -31,6 +31,7 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
     - [How to Receive Comments](#how-to-receive-comments)
     - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
     - [How to Get PRs Merged](#how-to-get-prs-merged)
+    - [Stale PRs](#stale-prs)
   - [Design Choices](#design-choices)
     - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
   - [Running Tests Locally](#running-tests-locally)
@@ -78,14 +79,15 @@ You can run `tox` with the following arguments:
 * `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
 * `tox -e docs` to regenerate all docs
-* `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+* `tox -e py314-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
 * `tox -e lint-some-package` to run lint checks on `some-package`
 * `tox -e generate-workflows` to run creation of new CI workflows if tox environments have been updated
 * `tox -e ruff` to run ruff linter and formatter checks against the entire codebase
+* `tox -e precommit` to run all `pre-commit` actions
 
-`ruff check` and `ruff format` are executed when `tox -e ruff` is run. We strongly recommend you to configure [pre-commit](https://pre-commit.com/) locally to run `ruff` automatically before each commit by installing it as git hooks. You just need to [install pre-commit](https://pre-commit.com/#install) in your environment:
+`ruff check` and `ruff format` are executed when `tox -e ruff` is run. We strongly recommend you to configure [pre-commit](https://pre-commit.com/) locally to run `ruff` and `rstcheck` automatically before each commit by installing it as git hooks. You just need to [install pre-commit](https://pre-commit.com/#install) in your environment:
 
 ```console
 pip install pre-commit -c dev-requirements.txt
@@ -120,6 +122,12 @@ This will create a virtual environment in the `.venv` directory and install all 
 Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
+
+If you are using `tox-uv` for tests and have issues with resolving OpenTelemetry dependencies try:
+
+```sh
+uv sync --refresh
+```
 
 ### Benchmarks
 
@@ -206,14 +214,17 @@ Open a pull request against the main `opentelemetry-python-contrib` repo.
 
 ### How to Get PRs Reviewed
 
-The maintainers and approvers of this repo are not experts in every instrumentation there is here.
-In fact each one of us knows enough about them to only review a few. Unfortunately it can be hard
+The maintainers and approvers of this repository are not experts in every instrumentation there is here.
+In fact, each one of us knows enough about them to only review a few. Unfortunately, it can be hard
 to find enough experts in every instrumentation to quickly review every instrumentation PR. The
 instrumentation experts are listed in `.github/component_owners.yml` with their corresponding files
 or directories that they own. The owners listed there will be notified when PRs that modify their
 files are opened.
 
 If you are not getting reviews, please contact the respective owners directly.
+
+> [!TIP]
+> Even if you’re new here, your review counts —and it’s valuable to the project. Feel free to jump into any open PR: check the docs, run the tests, ask questions, or give a +1 when things look good. The OpenTelemetry-Python community is intentionally flexible: anyone can review PRs and help them get merged. Every comment moves the project forward, so don’t hesitate if you have expertise to review a PR.
 
 ### How to Get PRs Merged
 
@@ -230,6 +241,12 @@ A PR is considered to be **ready to merge** when:
 * A changelog entry is added to the corresponding changelog for the code base, if there is any impact on behavior. e.g. doc entries are not required, but small bug entries are.
 
 Any Approver / Maintainer can merge the PR once it is **ready to merge**.
+
+### Stale PRs
+
+PRs with no activity for 14 days will be automatically marked as stale and closed after a further 14 days of inactivity. To prevent a PR from being marked stale, ensure there is regular activity (commits, comments, reviews, etc).
+
+Project managers can also exempt a PR from this by applying one of the following labels: `hold`, `WIP`, `blocked-by-spec`, `do not merge`.
 
 ## Design Choices
 
@@ -261,11 +278,11 @@ Some tests can be slow due to pre-steps that do dependencies installs. To help w
 
 1. First time run (e.g., opentelemetry-instrumentation-aiopg)
 ```console
-tox -e py312-test-instrumentation-aiopg
+tox -e py314-test-instrumentation-aiopg
 ```
 2. Run tests again without pre-steps:
 ```console
-.tox/py312-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
+.tox/py314-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
 ```
 
 ### Testing against a different Core repo branch/commit
@@ -325,9 +342,24 @@ Below is a checklist of things to be mindful of when implementing a new instrume
 ### Update supported instrumentation package versions
 
 - Navigate to the **instrumentation package directory:**
-  - Update **`pyproject.toml`** file by modifying _instruments_ entry in the `[project.optional-dependencies]` section with the new version constraint
-  - Update `_instruments` variable in instrumentation **`package.py`** file with the new version constraint
+  - Update **`pyproject.toml`** file by modifying `instruments` or `instruments-any` entry in the `[project.optional-dependencies]` section with the new version constraint
+  - Update `_instruments` or `_instruments_any` variable in instrumentation **`package.py`** file with the new version constraint
 - At the **root of the project directory**, run `tox -e generate` to regenerate necessary files
+
+Please note that `instruments-any` is an optional field that can be used instead of or in addition to `instruments`. While `instruments` is a list of dependencies, _all_ of which are expected by the instrumentation, `instruments-any` is a list _any_ of which but not all are expected. For example, the following entry requires both `util` and `common` plus either `foo` or `bar` to be present for the instrumentation to occur:
+```
+[project.optional-dependencies]
+instruments = [
+  "util ~= 1.0"
+  "common ~= 2.0"
+]
+instruments-any = [
+  "foo ~= 3.0"
+  "bar ~= 4.0"
+]
+```
+
+<!-- See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610 for details on instruments-any -->
 
 If you're adding support for a new version of the instrumentation package, follow these additional steps:
 

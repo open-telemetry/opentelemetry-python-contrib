@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from platform import python_implementation
 from unittest.mock import patch
 
 import pytest
@@ -123,9 +122,9 @@ def test_parse_metric(metric, prom_rw):
         "bool_value": True,
     }
 
-    assert (
-        len(metric.data.data_points) == 1
-    ), "We can only support a single datapoint in tests"
+    assert len(metric.data.data_points) == 1, (
+        "We can only support a single datapoint in tests"
+    )
     series = prom_rw._parse_metric(metric, tuple(attributes.items()))
     timestamp = metric.data.data_points[0].time_unix_nano // 1_000_000
     for single_series in series:
@@ -283,10 +282,6 @@ class TestValidation(unittest.TestCase):
             )
 
 
-@pytest.mark.skipif(
-    python_implementation() == "PyPy",
-    reason="Fails with pypy 3.8, bump cramjam when 3.9 is baseline",
-)
 # Ensures export is successful with valid export_records and config
 @patch("requests.post")
 def test_valid_export(mock_post, prom_rw, metric):

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from unittest import mock
 
 import pymemcache
@@ -26,7 +27,14 @@ from pymemcache.exceptions import (
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
 
@@ -82,18 +90,10 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
             command, *_ = query.split(" ")
             self.assertEqual(span.name, command)
             self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_NAME], TEST_HOST
-            )
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_PORT], TEST_PORT
-            )
-            self.assertEqual(
-                span.attributes[SpanAttributes.DB_SYSTEM], "memcached"
-            )
-            self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT], query
-            )
+            self.assertEqual(span.attributes[NET_PEER_NAME], TEST_HOST)
+            self.assertEqual(span.attributes[NET_PEER_PORT], TEST_PORT)
+            self.assertEqual(span.attributes[DB_SYSTEM], "memcached")
+            self.assertEqual(span.attributes[DB_STATEMENT], query)
 
     def test_set_success(self):
         client = self.make_client([b"STORED\r\n"])
@@ -248,12 +248,8 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         spans = self.memory_exporter.get_finished_spans()
 
         self.assertEqual(len(spans), 2)
-        self.assertEqual(
-            spans[0].attributes[SpanAttributes.NET_PEER_NAME], TEST_HOST
-        )
-        self.assertEqual(
-            spans[0].attributes[SpanAttributes.NET_PEER_PORT], TEST_PORT
-        )
+        self.assertEqual(spans[0].attributes[NET_PEER_NAME], TEST_HOST)
+        self.assertEqual(spans[0].attributes[NET_PEER_PORT], TEST_PORT)
 
     def test_append_stored(self):
         client = self.make_client([b"STORED\r\n"])
@@ -552,7 +548,7 @@ class PymemcacheHashClientTestCase(TestBase):
         current_port = TEST_PORT
 
         # pylint: disable=import-outside-toplevel
-        from pymemcache.client.hash import HashClient
+        from pymemcache.client.hash import HashClient  # noqa: PLC0415
 
         # pylint: disable=attribute-defined-outside-init
         self.client = HashClient([], **kwargs)
@@ -576,18 +572,10 @@ class PymemcacheHashClientTestCase(TestBase):
             command, *_ = query.split(" ")
             self.assertEqual(span.name, command)
             self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_NAME], TEST_HOST
-            )
-            self.assertEqual(
-                span.attributes[SpanAttributes.NET_PEER_PORT], TEST_PORT
-            )
-            self.assertEqual(
-                span.attributes[SpanAttributes.DB_SYSTEM], "memcached"
-            )
-            self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT], query
-            )
+            self.assertEqual(span.attributes[NET_PEER_NAME], TEST_HOST)
+            self.assertEqual(span.attributes[NET_PEER_PORT], TEST_PORT)
+            self.assertEqual(span.attributes[DB_SYSTEM], "memcached")
+            self.assertEqual(span.attributes[DB_STATEMENT], query)
 
     def test_delete_many_found(self):
         client = self.make_client([b"STORED\r", b"\n", b"DELETED\r\n"])

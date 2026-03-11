@@ -1,0 +1,102 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Create a poem about Open Telemetry."
+              }
+            ],
+            "role": "user"
+          }
+        ]
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - identity
+      connection:
+      - keep-alive
+      content-length:
+      - '92'
+      content-type:
+      - application/json
+      host:
+      - us-central1-aiplatform.googleapis.com
+      user-agent:
+      - google-genai-sdk/1.32.0 gl-python/3.10.18
+      x-goog-api-client:
+      - <REDACTED>
+      x-goog-user-project:
+      - <REDACTED>
+    method: POST
+    uri: https://test-location-aiplatform.googleapis.com/v1beta1/projects/test-project/locations/test-location/publishers/google/models/gemini-2.5-flash:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "candidates": [
+            {
+              "content": {
+                "role": "model",
+                "parts": [
+                  {
+                    "text": "When systems grow, a tangled, vast domain,\nWhere microservices dance, through sun and rain,\nA shadow falls, where logic hides its plea,\nAnd whispers vanish, lost for all to see.\n\nThen from the cloud, a guiding star takes flight,\nDispelling gloom with its clear, steady light.\nOpenTelemetry, the name we praise,\nUnifying vision through digital haze.\n\nA golden thread, a trace begins to gleam,\nThrough every service, like a waking dream.\nWith parent-child spans, a timeline clear,\nWhat once was hidden, now begins to appear.\n\nThe metrics flow, a system's vital pulse,\nWith counters climbing, no evasive impulse.\nGauges ascend and dip, where loads reside,\nThe heartbeat known, with nowhere left to hide.\n\nAnd logs appear, with context richly cast,\nEach crucial event, for future and for past.\nAttached to spans, a detailed, storied chime,\nUnveiling insights, lost to passing time.\n\nThrough RPC calls, and message queues that bind,\nContext propagates, for every searching mind.\nA hidden thread, connecting all the parts,\nRevealing patterns, igniting thoughtful starts.\n\nNo vendor lock, no proprietary chain,\nYour data streams, through sunshine and through rain.\nTo chosen backends, it will freely roam,\nObservability, now finds its rightful home.\n\nSo hail to Otel, the standard, strong and true,\nBringing clarity, for all our dev crews.\nFrom dark unknowns, to light, a clear display,\nOpenTelemetry illuminates the way."
+                  }
+                ]
+              },
+              "finishReason": "STOP",
+              "avgLogprobs": -2.441835476585546
+            }
+          ],
+          "usageMetadata": {
+            "promptTokenCount": 8,
+            "candidatesTokenCount": 339,
+            "totalTokenCount": 2639,
+            "trafficType": "ON_DEMAND",
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 8
+              }
+            ],
+            "candidatesTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 339
+              }
+            ],
+            "thoughtsTokenCount": 2292
+          },
+          "modelVersion": "gemini-2.5-flash",
+          "createTime": "2025-10-10T15:56:16.631749Z",
+          "responseId": "oCzpaMXHJo_B2PgPq7j_8AY"
+        }
+    headers:
+      Accept-Ranges:
+      - none
+      Content-Type:
+      - application/json; charset=UTF-8
+      Date:
+      - Fri, 10 Oct 2025 15:56:30 GMT
+      Server:
+      - scaffolding on HTTPServer2
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - X-Origin
+      - Referer
+      - Origin,Accept-Encoding
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-XSS-Protection:
+      - '0'
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -27,9 +27,6 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock import (
 from opentelemetry.sdk.metrics._internal.point import ResourceMetrics
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
-    event_attributes as EventAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
@@ -275,8 +272,6 @@ def remove_none_values(body):
             continue
         if isinstance(value, dict):
             result[key] = remove_none_values(value)
-        elif isinstance(value, list):
-            result[key] = [remove_none_values(i) for i in value]
         else:
             result[key] = value
     return result
@@ -284,7 +279,9 @@ def remove_none_values(body):
 
 def assert_log_parent(log, span):
     if span:
-        assert log.log_record.trace_id == span.get_span_context().trace_id
+        assert log.log_record.trace_id == span.get_span_context().trace_id, (
+            f"{span.get_span_context().trace_id} does not equal {log.log_record.trace_id}"
+        )
         assert log.log_record.span_id == span.get_span_context().span_id
         assert (
             log.log_record.trace_flags == span.get_span_context().trace_flags
@@ -292,9 +289,7 @@ def assert_log_parent(log, span):
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
-    assert (
-        log.log_record.attributes[EventAttributes.EVENT_NAME] == event_name
-    ), log.log_record.attributes[EventAttributes.EVENT_NAME]
+    assert log.log_record.event_name == event_name, log.log_record.event_name
     assert (
         log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
         == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value

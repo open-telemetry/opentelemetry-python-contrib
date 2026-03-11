@@ -20,7 +20,6 @@ from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.kafka import KafkaInstrumentor
 from opentelemetry.instrumentation.kafka.package import (
-    _instruments,
     _instruments_kafka_python,
     _instruments_kafka_python_ng,
 )
@@ -134,4 +133,7 @@ class TestKafka(TestCase):
                 call("kafka-python"),
             ],
         )
-        self.assertEqual(package_to_instrument, _instruments)
+        self.assertEqual(
+            package_to_instrument,
+            (_instruments_kafka_python, _instruments_kafka_python_ng),
+        )

@@ -11,17 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 
-# pylint: disable=protected-access
-
+# pylint: disable=protected-access,too-many-lines
 import sys
+import unittest
 from collections import namedtuple
 from platform import python_implementation
 from unittest import mock, skipIf
 
 from opentelemetry.instrumentation.system_metrics import (
     _DEFAULT_CONFIG,
+    OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS,
     SystemMetricsInstrumentor,
+    _build_default_config,
 )
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
@@ -113,7 +116,6 @@ class TestSystemMetrics(TestBase):
             "system.network.packets",
             "system.network.errors",
             "system.network.io",
-            "system.network.connections",
             "system.thread_count",
             "process.context_switches",
             "process.cpu.time",
@@ -137,6 +139,17 @@ class TestSystemMetrics(TestBase):
             observer_names.append(
                 f"process.runtime.{self.implementation}.gc_count",
             )
+            observer_names.append(
+                "cpython.gc.collections",
+            )
+            observer_names.append(
+                "cpython.gc.collected_objects",
+            )
+            observer_names.append(
+                "cpython.gc.uncollectable_objects",
+            )
+        if sys.platform != "darwin":
+            observer_names.append("system.network.connections")
 
         self.assertEqual(sorted(metric_names), sorted(observer_names))
 
@@ -235,13 +248,27 @@ class TestSystemMetrics(TestBase):
                                 assertions += 1
         self.assertEqual(len(expected), assertions)
 
-    def _test_metrics(self, observer_name, expected):
+    @staticmethod
+    def _setup_instrumentor() -> InMemoryMetricReader:
         reader = InMemoryMetricReader()
         meter_provider = MeterProvider(metric_readers=[reader])
 
         system_metrics = SystemMetricsInstrumentor()
         system_metrics.instrument(meter_provider=meter_provider)
+        return reader
+
+    def _test_metrics(self, observer_name, expected):
+        reader = self._setup_instrumentor()
         self._assert_metrics(observer_name, reader, expected)
+
+    def _assert_metrics_not_found(self, observer_name):
+        reader = self._setup_instrumentor()
+        seen_metrics = set()
+        for resource_metrics in reader.get_metrics_data().resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                for metric in scope_metrics.metrics:
+                    seen_metrics.add(metric.name)
+        self.assertNotIn(observer_name, seen_metrics)
 
     # This patch is added here to stop psutil from raising an exception
     # because we're patching cpu_times
@@ -753,6 +780,7 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics("system.network.io", expected)
 
+    @skipIf(sys.platform == "darwin", "No network connections on macOS")
     @mock.patch("psutil.net_connections")
     def test_system_network_connections(self, mock_net_connections):
         NetConnection = namedtuple(
@@ -855,6 +883,14 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics("process.context_switches", expected)
 
+    @mock.patch("psutil.Process.num_ctx_switches")
+    def test_context_switches_not_implemented_error(
+        self, mock_process_num_ctx_switches
+    ):
+        mock_process_num_ctx_switches.side_effect = NotImplementedError
+
+        self._assert_metrics_not_found("process.context_switches")
+
     @mock.patch("psutil.Process.num_threads")
     def test_thread_count(self, mock_process_thread_num):
         mock_process_thread_num.configure_mock(**{"return_value": 42})
@@ -922,13 +958,104 @@ class TestSystemMetrics(TestBase):
     def test_runtime_get_count(self, mock_gc_get_count):
         mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
 
-        expected = [
+        expected_gc_count = [
             _SystemMetricsResult({"count": "0"}, 1),
             _SystemMetricsResult({"count": "1"}, 2),
             _SystemMetricsResult({"count": "2"}, 3),
         ]
         self._test_metrics(
-            f"process.runtime.{self.implementation}.gc_count", expected
+            f"process.runtime.{self.implementation}.gc_count",
+            expected_gc_count,
+        )
+
+    @mock.patch("gc.get_stats")
+    @skipIf(
+        python_implementation().lower() == "pypy", "not supported for pypy"
+    )
+    def test_runtime_get_gc_collections(self, mock_gc_get_stats):
+        mock_gc_get_stats.configure_mock(
+            **{
+                "return_value": [
+                    {"collections": 10, "collected": 100, "uncollectable": 1},
+                    {"collections": 20, "collected": 200, "uncollectable": 2},
+                    {"collections": 30, "collected": 300, "uncollectable": 3},
+                ]
+            }
+        )
+        expected_gc_collections = [
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 0, "generation": "0"}, 10
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 1, "generation": "1"}, 20
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 2, "generation": "2"}, 30
+            ),
+        ]
+        self._test_metrics(
+            "cpython.gc.collections",
+            expected_gc_collections,
+        )
+
+    @mock.patch("gc.get_stats")
+    @skipIf(
+        python_implementation().lower() == "pypy", "not supported for pypy"
+    )
+    def test_runtime_get_gc_collected_objects(self, mock_gc_get_stats):
+        mock_gc_get_stats.configure_mock(
+            **{
+                "return_value": [
+                    {"collections": 10, "collected": 100, "uncollectable": 1},
+                    {"collections": 20, "collected": 200, "uncollectable": 2},
+                    {"collections": 30, "collected": 300, "uncollectable": 3},
+                ]
+            }
+        )
+        expected_gc_collected_objects = [
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 0, "generation": "0"}, 100
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 1, "generation": "1"}, 200
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 2, "generation": "2"}, 300
+            ),
+        ]
+        self._test_metrics(
+            "cpython.gc.collected_objects",
+            expected_gc_collected_objects,
+        )
+
+    @mock.patch("gc.get_stats")
+    @skipIf(
+        python_implementation().lower() == "pypy", "not supported for pypy"
+    )
+    def test_runtime_get_gc_uncollectable_objects(self, mock_gc_get_stats):
+        mock_gc_get_stats.configure_mock(
+            **{
+                "return_value": [
+                    {"collections": 10, "collected": 100, "uncollectable": 1},
+                    {"collections": 20, "collected": 200, "uncollectable": 2},
+                    {"collections": 30, "collected": 300, "uncollectable": 3},
+                ]
+            }
+        )
+        expected_gc_uncollectable_objects = [
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 0, "generation": "0"}, 1
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 1, "generation": "1"}, 2
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 2, "generation": "2"}, 3
+            ),
+        ]
+        self._test_metrics(
+            "cpython.gc.uncollectable_objects",
+            expected_gc_uncollectable_objects,
         )
 
     @mock.patch("psutil.Process.num_ctx_switches")
@@ -945,6 +1072,16 @@ class TestSystemMetrics(TestBase):
         ]
         self._test_metrics(
             f"process.runtime.{self.implementation}.context_switches", expected
+        )
+
+    @mock.patch("psutil.Process.num_ctx_switches")
+    def test_runtime_context_switches_not_implemented_error(
+        self, mock_process_num_ctx_switches
+    ):
+        mock_process_num_ctx_switches.side_effect = NotImplementedError
+
+        self._assert_metrics_not_found(
+            f"process.runtime.{self.implementation}.context_switches",
         )
 
     @mock.patch("psutil.Process.num_threads")
@@ -975,3 +1112,189 @@ class TestConfigSystemMetrics(TestBase):
             instrumentor.instrument(meter_provider=meter_provider)
             meter_provider.force_flush()
             instrumentor.uninstrument()
+
+
+class TestBuildDefaultConfig(unittest.TestCase):
+    def setUp(self):
+        self.env_patcher = mock.patch.dict("os.environ", {}, clear=False)
+        self.env_patcher.start()
+
+    def tearDown(self):
+        self.env_patcher.stop()
+        os.environ.pop(OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS, None)
+
+    def test_default_config_without_exclusions(self):
+        test_cases = [
+            {
+                "name": "no_env_var_set",
+                "env_value": None,
+            },
+            {
+                "name": "empty_string",
+                "env_value": "",
+            },
+            {
+                "name": "whitespace_only",
+                "env_value": "   ",
+            },
+        ]
+
+        for test_case in test_cases:
+            with self.subTest(test_case["name"]):
+                if test_case["env_value"] is None:
+                    # Don't set the environment variable
+                    result = _build_default_config()
+                else:
+                    with mock.patch.dict(
+                        "os.environ",
+                        {
+                            OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case[
+                                "env_value"
+                            ]
+                        },
+                    ):
+                        result = _build_default_config()
+
+                self.assertEqual(result, _DEFAULT_CONFIG)
+
+    def test_exact_metric_exclusions(self):
+        test_cases = [
+            {
+                "name": "single_metric",
+                "pattern": "system.cpu.time",
+                "excluded": ["system.cpu.time"],
+                "included": ["system.cpu.utilization", "system.memory.usage"],
+                "expected_count": len(_DEFAULT_CONFIG) - 1,
+            },
+            {
+                "name": "multiple_metrics",
+                "pattern": "system.cpu.time,system.memory.usage",
+                "excluded": ["system.cpu.time", "system.memory.usage"],
+                "included": ["system.cpu.utilization", "process.cpu.time"],
+                "expected_count": len(_DEFAULT_CONFIG) - 2,
+            },
+            {
+                "name": "with_whitespace",
+                "pattern": "system.cpu.time , system.memory.usage , process.cpu.time",
+                "excluded": [
+                    "system.cpu.time",
+                    "system.memory.usage",
+                    "process.cpu.time",
+                ],
+                "included": ["system.cpu.utilization"],
+                "expected_count": len(_DEFAULT_CONFIG) - 3,
+            },
+            {
+                "name": "non_existent_metric",
+                "pattern": "non.existent.metric",
+                "excluded": [],
+                "included": ["system.cpu.time", "process.cpu.time"],
+                "expected_count": len(_DEFAULT_CONFIG),
+            },
+        ]
+
+        for test_case in test_cases:
+            with self.subTest(test_case["name"]):
+                with mock.patch.dict(
+                    "os.environ",
+                    {
+                        OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case[
+                            "pattern"
+                        ]
+                    },
+                ):
+                    result = _build_default_config()
+
+                    for metric in test_case["excluded"]:
+                        self.assertNotIn(
+                            metric, result, f"{metric} should be excluded"
+                        )
+
+                    for metric in test_case["included"]:
+                        self.assertIn(
+                            metric, result, f"{metric} should be included"
+                        )
+
+                    self.assertEqual(len(result), test_case["expected_count"])
+
+    def test_wildcard_patterns(self):
+        test_cases = [
+            {
+                "name": "all_system_metrics",
+                "pattern": "system.*",
+                "excluded_prefixes": ["system."],
+                "included_prefixes": ["process.", "cpython."],
+            },
+            {
+                "name": "system_cpu_prefix",
+                "pattern": "system.cpu.*",
+                "excluded": ["system.cpu.time", "system.cpu.utilization"],
+                "included": ["system.memory.usage", "system.disk.io"],
+            },
+            {
+                "name": "utilization_suffix",
+                "pattern": "*.utilization",
+                "excluded_suffixes": [".utilization"],
+                "included": ["system.cpu.time", "system.memory.usage"],
+            },
+            {
+                "name": "all_metrics",
+                "pattern": "*",
+                "expected_count": 0,
+            },
+        ]
+
+        for test_case in test_cases:
+            with self.subTest(test_case["name"]):
+                with mock.patch.dict(
+                    "os.environ",
+                    {
+                        OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS: test_case[
+                            "pattern"
+                        ]
+                    },
+                ):
+                    result = _build_default_config()
+
+                    if "excluded" in test_case:
+                        for metric in test_case["excluded"]:
+                            self.assertNotIn(metric, result)
+
+                    if "included" in test_case:
+                        for metric in test_case["included"]:
+                            self.assertIn(metric, result)
+
+                    if "excluded_prefixes" in test_case:
+                        for prefix in test_case["excluded_prefixes"]:
+                            excluded_metrics = [
+                                k for k in result if k.startswith(prefix)
+                            ]
+                            self.assertEqual(
+                                len(excluded_metrics),
+                                0,
+                            )
+
+                    if "included_prefixes" in test_case:
+                        for prefix in test_case["included_prefixes"]:
+                            included_metrics = [
+                                k for k in result if k.startswith(prefix)
+                            ]
+                            self.assertGreater(
+                                len(included_metrics),
+                                0,
+                            )
+
+                    if "excluded_suffixes" in test_case:
+                        for suffix in test_case["excluded_suffixes"]:
+                            suffix_metrics = [
+                                k for k in result if k.endswith(suffix)
+                            ]
+                            self.assertEqual(
+                                len(suffix_metrics),
+                                0,
+                            )
+
+                    if "expected_count" in test_case:
+                        self.assertEqual(
+                            len(result), test_case["expected_count"]
+                        )

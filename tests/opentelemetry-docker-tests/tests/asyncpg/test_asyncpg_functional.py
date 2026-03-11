@@ -5,7 +5,13 @@ from unittest.mock import patch
 
 import asyncpg
 
+from opentelemetry import trace
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
@@ -425,3 +431,100 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.assertEqual(spans[0].name, "postgresql")
         self.assertEqual(spans[0].attributes[SpanAttributes.DB_STATEMENT], "")
+
+
+class _FakeParams:
+    def __init__(self, database="testdb", user="dbuser"):
+        self.database = database
+        self.user = user
+
+
+class _FakeConnection:
+    def __init__(self):
+        self._params = _FakeParams()
+        self._addr = ("db.example.com", 5432)
+
+
+class _FakeCursor:
+    def __init__(self, connection, query, args):
+        self._connection = connection
+        self._query = query
+        self._args = args
+
+
+class TestAsyncPGSamplingAttributes(TestBase):
+    def setUp(self):
+        super().setUp()
+        self.connection = _FakeConnection()
+        self.exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(self.exporter))
+        self.tracer = tracer_provider.get_tracer(__name__)
+        self.instrumentor = AsyncPGInstrumentor(capture_parameters=True)
+        self.instrumentor._tracer = self.tracer
+
+    def test_attributes_available_when_span_not_recording(self):
+        async def _fake_execute(*args, **kwargs):
+            return "ok"
+
+        async_call(
+            self.instrumentor._do_execute(
+                _fake_execute,
+                self.connection,
+                ("SELECT $1", "42"),
+                {},
+            )
+        )
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(
+            span.attributes,
+            {
+                SpanAttributes.DB_SYSTEM: "postgresql",
+                SpanAttributes.DB_NAME: "testdb",
+                SpanAttributes.DB_USER: "dbuser",
+                SpanAttributes.NET_PEER_NAME: "db.example.com",
+                SpanAttributes.NET_PEER_PORT: 5432,
+                SpanAttributes.NET_TRANSPORT: "ip_tcp",
+                SpanAttributes.DB_STATEMENT: "SELECT $1",
+                "db.statement.parameters": "('42',)",
+            },
+        )
+        self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "SELECT")
+
+    def test_cursor_attributes_available_when_span_not_recording(self):
+        async def _fake_cursor_execute(*args, **kwargs):
+            return "ok"
+
+        cursor = _FakeCursor(self.connection, "SELECT $1", ("99",))
+
+        async_call(
+            self.instrumentor._do_cursor_execute(
+                _fake_cursor_execute,
+                cursor,
+                (),
+                {},
+            )
+        )
+
+        spans = self.exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(
+            span.attributes,
+            {
+                SpanAttributes.DB_SYSTEM: "postgresql",
+                SpanAttributes.DB_NAME: "testdb",
+                SpanAttributes.DB_USER: "dbuser",
+                SpanAttributes.NET_PEER_NAME: "db.example.com",
+                SpanAttributes.NET_PEER_PORT: 5432,
+                SpanAttributes.NET_TRANSPORT: "ip_tcp",
+                SpanAttributes.DB_STATEMENT: "SELECT $1",
+                "db.statement.parameters": "('99',)",
+            },
+        )
+        self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+        self.assertEqual(span.name, "CURSOR: SELECT")

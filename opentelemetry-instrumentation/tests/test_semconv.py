@@ -20,8 +20,23 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _set_db_name,
+    _set_db_statement,
+    _set_db_system,
+    _set_db_user,
     _set_status,
     _StabilityMode,
+)
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
 )
 from opentelemetry.trace.status import StatusCode
 
@@ -51,6 +66,12 @@ class TestOpenTelemetrySemConvStability(TestCase):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
                 _OpenTelemetryStabilitySignalType.DATABASE
+            ),
+            _StabilityMode.DEFAULT,
+        )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.GEN_AI
             ),
             _StabilityMode.DEFAULT,
         )
@@ -91,7 +112,16 @@ class TestOpenTelemetrySemConvStability(TestCase):
             _StabilityMode.DATABASE_DUP,
         )
 
-    @stability_mode("database,http")
+    @stability_mode("gen_ai_latest_experimental")
+    def test_genai_latest_experimental(self):
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ),
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+        )
+
+    @stability_mode("database,http,gen_ai_latest_experimental")
     def test_multiple_stability_database_http_modes(self):
         self.assertEqual(
             _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -104,6 +134,12 @@ class TestOpenTelemetrySemConvStability(TestCase):
                 _OpenTelemetryStabilitySignalType.HTTP
             ),
             _StabilityMode.HTTP,
+        )
+        self.assertEqual(
+            _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ),
+            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
         )
 
     @stability_mode("database,http/dup")
@@ -256,3 +292,154 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         # Verify status code set for metrics independent of tracing decision
         self.assertIn("http.status_code", metrics_attributes)
         self.assertIn("http.response.status_code", metrics_attributes)
+
+
+class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
+    def test_db_system_default(self):
+        result = {}
+        _set_db_system(
+            result, "postgresql", sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertIn(DB_SYSTEM, result)
+        self.assertEqual(result[DB_SYSTEM], "postgresql")
+        self.assertNotIn(DB_SYSTEM_NAME, result)
+
+    def test_db_system_database_stable(self):
+        result = {}
+        _set_db_system(
+            result, "postgresql", sem_conv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        self.assertNotIn(DB_SYSTEM, result)
+        self.assertIn(DB_SYSTEM_NAME, result)
+        self.assertEqual(result[DB_SYSTEM_NAME], "postgresql")
+
+    def test_db_system_database_dup(self):
+        result = {}
+        _set_db_system(
+            result,
+            "postgresql",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        self.assertIn(DB_SYSTEM, result)
+        self.assertEqual(result[DB_SYSTEM], "postgresql")
+        self.assertIn(DB_SYSTEM_NAME, result)
+        self.assertEqual(result[DB_SYSTEM_NAME], "postgresql")
+
+    def test_db_system_none_value(self):
+        result = {}
+        _set_db_system(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        self.assertNotIn(DB_SYSTEM, result)
+        self.assertNotIn(DB_SYSTEM_NAME, result)
+
+    def test_db_name_default(self):
+        result = {}
+        _set_db_name(
+            result, "my_database", sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertIn(DB_NAME, result)
+        self.assertEqual(result[DB_NAME], "my_database")
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_name_database_stable(self):
+        result = {}
+        _set_db_name(
+            result, "my_database", sem_conv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        self.assertNotIn(DB_NAME, result)
+        self.assertIn(DB_NAMESPACE, result)
+        self.assertEqual(result[DB_NAMESPACE], "my_database")
+
+    def test_db_name_database_dup(self):
+        result = {}
+        _set_db_name(
+            result,
+            "my_database",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        self.assertIn(DB_NAME, result)
+        self.assertEqual(result[DB_NAME], "my_database")
+        self.assertIn(DB_NAMESPACE, result)
+        self.assertEqual(result[DB_NAMESPACE], "my_database")
+
+    def test_db_name_none_value(self):
+        result = {}
+        _set_db_name(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        self.assertNotIn(DB_NAME, result)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_statement_default(self):
+        result = {}
+        _set_db_statement(
+            result,
+            "SELECT * FROM users",
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertIn(DB_STATEMENT, result)
+        self.assertEqual(result[DB_STATEMENT], "SELECT * FROM users")
+        self.assertNotIn(DB_QUERY_TEXT, result)
+
+    def test_db_statement_database_stable(self):
+        result = {}
+        _set_db_statement(
+            result,
+            "SELECT * FROM users",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        self.assertNotIn(DB_STATEMENT, result)
+        self.assertIn(DB_QUERY_TEXT, result)
+        self.assertEqual(result[DB_QUERY_TEXT], "SELECT * FROM users")
+
+    def test_db_statement_database_dup(self):
+        result = {}
+        _set_db_statement(
+            result,
+            "SELECT * FROM users",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        self.assertIn(DB_STATEMENT, result)
+        self.assertEqual(result[DB_STATEMENT], "SELECT * FROM users")
+        self.assertIn(DB_QUERY_TEXT, result)
+        self.assertEqual(result[DB_QUERY_TEXT], "SELECT * FROM users")
+
+    def test_db_statement_none_value(self):
+        result = {}
+        _set_db_statement(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertNotIn(DB_STATEMENT, result)
+        self.assertNotIn(DB_QUERY_TEXT, result)
+
+    def test_db_user_default(self):
+        result = {}
+        _set_db_user(
+            result, "admin", sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertIn(DB_USER, result)
+        self.assertEqual(result[DB_USER], "admin")
+
+    def test_db_user_database_stable(self):
+        result = {}
+        _set_db_user(
+            result, "admin", sem_conv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        # No new attribute - db.user was removed with no replacement
+        self.assertNotIn(DB_USER, result)
+
+    def test_db_user_database_dup(self):
+        result = {}
+        _set_db_user(
+            result,
+            "admin",
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        self.assertIn(DB_USER, result)
+        self.assertEqual(result[DB_USER], "admin")
+
+    def test_db_user_none_value(self):
+        result = {}
+        _set_db_user(result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
+        self.assertNotIn(DB_USER, result)

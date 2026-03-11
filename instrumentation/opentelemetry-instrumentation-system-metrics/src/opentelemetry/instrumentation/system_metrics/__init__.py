@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=too-many-lines
+
 """
 Instrument to report system (CPU, memory, network) and
 process (CPU, memory, garbage collection) metrics. By default, the
@@ -44,6 +46,9 @@ following metrics are configured:
         "process.runtime.memory": ["rss", "vms"],
         "process.runtime.cpu.time": ["user", "system"],
         "process.runtime.gc_count": None,
+        "cpython.gc.collections": None,
+        "cpython.gc.collected_objects": None,
+        "cpython.gc.uncollectable_objects": None,
         "process.runtime.thread_count": None,
         "process.runtime.cpu.utilization": None,
         "process.runtime.context_switches": ["involuntary", "voluntary"],
@@ -89,6 +94,7 @@ API
 
 from __future__ import annotations
 
+import fnmatch
 import gc
 import logging
 import os
@@ -100,9 +106,15 @@ from typing import Any, Collection, Iterable
 import psutil
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.system_metrics.environment_variables import (
+    OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS,
+)
 from opentelemetry.instrumentation.system_metrics.package import _instruments
 from opentelemetry.instrumentation.system_metrics.version import __version__
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
+from opentelemetry.semconv._incubating.attributes.cpython_attributes import (
+    CPYTHON_GC_GENERATION,
+)
 from opentelemetry.semconv._incubating.metrics.process_metrics import (
     create_process_cpu_utilization,
 )
@@ -136,6 +148,9 @@ _DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "process.runtime.memory": ["rss", "vms"],
     "process.runtime.cpu.time": ["user", "system"],
     "process.runtime.gc_count": None,
+    "cpython.gc.collections": None,
+    "cpython.gc.collected_objects": None,
+    "cpython.gc.uncollectable_objects": None,
     "process.runtime.thread_count": None,
     "process.runtime.cpu.utilization": None,
     "process.runtime.context_switches": ["involuntary", "voluntary"],
@@ -146,6 +161,23 @@ if sys.platform == "darwin":
     _DEFAULT_CONFIG.pop("system.network.connections")
 
 
+def _build_default_config() -> dict[str, list[str] | None]:
+    excluded_metrics: list[str] = [
+        pat.strip()
+        for pat in os.environ.get(
+            OTEL_PYTHON_SYSTEM_METRICS_EXCLUDED_METRICS, ""
+        ).split(",")
+        if pat.strip()
+    ]
+    if excluded_metrics:
+        return {
+            key: value
+            for key, value in _DEFAULT_CONFIG.items()
+            if not any(fnmatch.fnmatch(key, pat) for pat in excluded_metrics)
+        }
+    return _DEFAULT_CONFIG
+
+
 class SystemMetricsInstrumentor(BaseInstrumentor):
     def __init__(
         self,
@@ -153,10 +185,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         config: dict[str, list[str] | None] | None = None,
     ):
         super().__init__()
-        if config is None:
-            self._config = _DEFAULT_CONFIG
-        else:
-            self._config = config
+        self._config = _build_default_config() if config is None else config
         self._labels = {} if labels is None else labels
         self._meter = None
         self._python_implementation = python_implementation().lower()
@@ -196,6 +225,9 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._runtime_memory_labels = self._labels.copy()
         self._runtime_cpu_time_labels = self._labels.copy()
         self._runtime_gc_count_labels = self._labels.copy()
+        self._runtime_gc_collections_labels = self._labels.copy()
+        self._runtime_gc_collected_objects_labels = self._labels.copy()
+        self._runtime_gc_uncollectable_objects_labels = self._labels.copy()
         self._runtime_thread_count_labels = self._labels.copy()
         self._runtime_cpu_utilization_labels = self._labels.copy()
         self._runtime_context_switches_labels = self._labels.copy()
@@ -395,7 +427,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 self._meter, callbacks=[self._get_cpu_utilization]
             )
 
-        if "process.context_switches" in self._config:
+        if (
+            "process.context_switches" in self._config
+            and self._can_read_context_switches()
+        ):
             self._meter.create_observable_counter(
                 name="process.context_switches",
                 callbacks=[self._get_context_switches],
@@ -467,6 +502,45 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                     unit="By",
                 )
 
+        if "cpython.gc.collections" in self._config:
+            if self._python_implementation == "pypy":
+                _logger.warning(
+                    "The cpython.gc.collections metric won't be collected because the interpreter is PyPy"
+                )
+            else:
+                self._meter.create_observable_counter(
+                    name="cpython.gc.collections",
+                    callbacks=[self._get_runtime_gc_collections],
+                    description="The number of times a generation was collected since interpreter start.",
+                    unit="{collection}",
+                )
+
+        if "cpython.gc.collected_objects" in self._config:
+            if self._python_implementation == "pypy":
+                _logger.warning(
+                    "The cpython.gc.collected_objects metric won't be collected because the interpreter is PyPy"
+                )
+            else:
+                self._meter.create_observable_counter(
+                    name="cpython.gc.collected_objects",
+                    callbacks=[self._get_runtime_gc_collected_objects],
+                    description="The total number of objects collected since interpreter start.",
+                    unit="{object}",
+                )
+
+        if "cpython.gc.uncollectable_objects" in self._config:
+            if self._python_implementation == "pypy":
+                _logger.warning(
+                    "The cpython.gc.uncollectable_objects metric won't be collected because the interpreter is PyPy"
+                )
+            else:
+                self._meter.create_observable_counter(
+                    name="cpython.gc.uncollectable_objects",
+                    callbacks=[self._get_runtime_gc_uncollectable_objects],
+                    description="The total number of uncollectable objects found since interpreter start.",
+                    unit="{object}",
+                )
+
         if "process.runtime.thread_count" in self._config:
             self._meter.create_observable_up_down_counter(
                 name=f"process.runtime.{self._python_implementation}.thread_count",
@@ -482,7 +556,10 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="1",
             )
 
-        if "process.runtime.context_switches" in self._config:
+        if (
+            "process.runtime.context_switches" in self._config
+            and self._can_read_context_switches()
+        ):
             self._meter.create_observable_counter(
                 name=f"process.runtime.{self._python_implementation}.context_switches",
                 callbacks=[self._get_runtime_context_switches],
@@ -492,6 +569,14 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs: Any):
         pass
+
+    def _can_read_context_switches(self) -> bool:
+        """On Google Cloud Run psutil is not able to read context switches, catch it before creating the observable instrument"""
+        try:
+            self._proc.num_ctx_switches()
+            return True
+        except NotImplementedError:
+            return False
 
     def _get_open_file_descriptors(
         self, options: CallbackOptions
@@ -870,6 +955,52 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         for index, count in enumerate(gc.get_count()):
             self._runtime_gc_count_labels["count"] = str(index)
             yield Observation(count, self._runtime_gc_count_labels.copy())
+
+    def _get_runtime_gc_collections(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for garbage collection"""
+        for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_collections_labels[CPYTHON_GC_GENERATION] = index
+            # TODO: remove this a few releases after 1.40.0
+            self._runtime_gc_collections_labels["generation"] = str(index)
+            yield Observation(
+                stat["collections"], self._runtime_gc_collections_labels.copy()
+            )
+
+    def _get_runtime_gc_collected_objects(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for garbage collection collected objects"""
+        for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_collected_objects_labels[
+                CPYTHON_GC_GENERATION
+            ] = index
+            # TODO: remove this a few releases after 1.40.0
+            self._runtime_gc_collected_objects_labels["generation"] = str(
+                index
+            )
+            yield Observation(
+                stat["collected"],
+                self._runtime_gc_collected_objects_labels.copy(),
+            )
+
+    def _get_runtime_gc_uncollectable_objects(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for garbage collection uncollectable objects"""
+        for index, stat in enumerate(gc.get_stats()):
+            self._runtime_gc_uncollectable_objects_labels[
+                CPYTHON_GC_GENERATION
+            ] = index
+            # TODO: remove this a few releases after 1.40.0
+            self._runtime_gc_uncollectable_objects_labels["generation"] = str(
+                index
+            )
+            yield Observation(
+                stat["uncollectable"],
+                self._runtime_gc_uncollectable_objects_labels.copy(),
+            )
 
     def _get_runtime_thread_count(
         self, options: CallbackOptions

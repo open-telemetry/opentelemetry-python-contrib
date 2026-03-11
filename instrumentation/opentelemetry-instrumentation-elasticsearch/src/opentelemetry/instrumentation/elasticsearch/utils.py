@@ -13,52 +13,25 @@
 # limitations under the License.
 import json
 
-sanitized_keys = (
-    "message",
-    "should",
-    "filter",
-    "query",
-    "queries",
-    "intervals",
-    "match",
-)
 sanitized_value = "?"
 
 
-# pylint: disable=C0103
-def _flatten_dict(d, parent_key=""):
-    items = []
-    for k, v in d.items():
-        new_key = parent_key + "." + k if parent_key else k
-        # recursive call _flatten_dict for a non-empty dict value
-        if isinstance(v, dict) and v:
-            items.extend(_flatten_dict(v, new_key).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-
-def _unflatten_dict(d):
-    res = {}
-    for k, v in d.items():
-        keys = k.split(".")
-        d = res
-        for key in keys[:-1]:
-            if key not in d:
-                d[key] = {}
-            d = d[key]
-        d[keys[-1]] = v
-    return res
+def _mask_leaf_nodes(obj):
+    """
+    Recursively traverses JSON structure and masks leaf node values.
+    Leaf nodes are final values that are no longer dict or list.
+    """
+    if isinstance(obj, dict):
+        return {key: _mask_leaf_nodes(value) for key, value in obj.items()}
+    if isinstance(obj, list):
+        return [_mask_leaf_nodes(item) for item in obj]
+    # Mask leaf node
+    return sanitized_value
 
 
 def sanitize_body(body) -> str:
     if isinstance(body, str):
         body = json.loads(body)
 
-    flatten_body = _flatten_dict(body)
-
-    for key in flatten_body:
-        if key.endswith(sanitized_keys):
-            flatten_body[key] = sanitized_value
-
-    return str(_unflatten_dict(flatten_body))
+    masked_body = _mask_leaf_nodes(body)
+    return str(masked_body)

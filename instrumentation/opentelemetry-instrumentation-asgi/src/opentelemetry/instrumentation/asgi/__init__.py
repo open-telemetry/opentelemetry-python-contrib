@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-lines
 
 """
 The opentelemetry-instrumentation-asgi package provides an ASGI middleware that can be used
@@ -81,24 +81,43 @@ For example,
 
 .. code-block:: python
 
-    def server_request_hook(span: Span, scope: dict[str, Any]):
+    from opentelemetry.trace import Span
+    from typing import Any
+    from asgiref.typing import Scope, ASGIReceiveEvent, ASGISendEvent
+    from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
+
+    async def application(scope: Scope, receive: ASGIReceiveEvent, send: ASGISendEvent):
+        await send({
+            'type': 'http.response.start',
+            'status': 200,
+            'headers': [
+                [b'content-type', b'text/plain'],
+            ],
+        })
+
+        await send({
+            'type': 'http.response.body',
+            'body': b'Hello, world!',
+        })
+
+    def server_request_hook(span: Span, scope: Scope):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
 
-    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+    def client_request_hook(span: Span, scope: Scope, message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
 
-    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+    def client_response_hook(span: Span, scope: Scope, message: dict[str, Any]):
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   OpenTelemetryMiddleware().(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+    OpenTelemetryMiddleware(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
 
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic convention <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers>`_.
+`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -202,6 +221,7 @@ from asgiref.compatibility import guarantee_single_callable
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (
+    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
     _get_schema_url,
@@ -238,6 +258,13 @@ from opentelemetry.instrumentation.propagators import (
 from opentelemetry.instrumentation.utils import _start_internal_or_server_span
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_SERVER_NAME,
+    HTTP_TARGET,
+)
+from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_SYNTHETIC_TYPE,
+)
 from opentelemetry.semconv._incubating.metrics.http_metrics import (
     create_http_server_active_requests,
     create_http_server_request_body_size,
@@ -247,18 +274,21 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import set_span_in_context
+from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
+    ExcludeList,
     SanitizeValue,
     _parse_url_query,
+    detect_synthetic_user_agent,
     get_custom_headers,
     normalise_request_header_name,
     normalise_response_header_name,
-    remove_url_credentials,
+    normalize_user_agent,
+    parse_excluded_urls,
+    redact_url,
     sanitize_method,
 )
 
@@ -355,7 +385,7 @@ def collect_request_attributes(
         if _report_old(sem_conv_opt_in_mode):
             _set_http_url(
                 result,
-                remove_url_credentials(http_url),
+                redact_url(http_url),
                 _StabilityMode.DEFAULT,
             )
     http_method = scope.get("method", "")
@@ -370,12 +400,20 @@ def collect_request_attributes(
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
-                http_host_value_list
-            )
+            result[HTTP_SERVER_NAME] = ",".join(http_host_value_list)
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
-        _set_http_user_agent(result, http_user_agent[0], sem_conv_opt_in_mode)
+        user_agent_raw = http_user_agent[0]
+        user_agent_value = normalize_user_agent(user_agent_raw)
+        if user_agent_value:
+            _set_http_user_agent(
+                result, user_agent_value, sem_conv_opt_in_mode
+            )
+
+        # Check for synthetic user agent type
+        synthetic_type = detect_synthetic_user_agent(user_agent_value)
+        if synthetic_type:
+            result[USER_AGENT_SYNTHETIC_TYPE] = synthetic_type
 
     if "client" in scope and scope["client"] is not None:
         _set_http_peer_ip_server(
@@ -400,8 +438,8 @@ def collect_custom_headers_attributes(
     """
     Returns custom HTTP request or response headers to be added into SERVER span as span attributes.
 
-    Refer specifications:
-     - https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-request-and-response-headers
+    Refer to semantic conventions:
+     - https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span
     """
     headers: DefaultDict[str, list[str]] = defaultdict(list)
     raw_headers = scope_or_response_message.get("headers")
@@ -423,7 +461,20 @@ def get_host_port_url_tuple(scope):
     """Returns (host, port, full_url) tuple."""
     server = scope.get("server") or ["0.0.0.0", 80]
     port = server[1]
+
+    host_header = asgi_getter.get(scope, "host")
+    if host_header:
+        host_value = host_header[0]
+        # Ensure host_value is a string, not bytes
+        if isinstance(host_value, bytes):
+            host_value = _decode_header_item(host_value)
+
+        url_host = host_value
+
+    else:
+        url_host = server[0] + (":" + str(port) if str(port) != "80" else "")
     server_host = server[0] + (":" + str(port) if str(port) != "80" else "")
+
     # using the scope path is enough, see:
     # - https://asgi.readthedocs.io/en/latest/specs/www.html#http-connection-scope (see: root_path and path)
     # - https://asgi.readthedocs.io/en/latest/specs/www.html#wsgi-compatibility (see: PATH_INFO)
@@ -431,7 +482,7 @@ def get_host_port_url_tuple(scope):
     #       -> that means that the path should contain the root_path already, so prefixing it again is not necessary
     # - https://wsgi.readthedocs.io/en/latest/definitions.html#envvar-PATH_INFO
     full_path = scope.get("path", "")
-    http_url = scope.get("scheme", "http") + "://" + server_host + full_path
+    http_url = scope.get("scheme", "http") + "://" + url_host + full_path
     return server_host, port, http_url
 
 
@@ -536,7 +587,7 @@ class OpenTelemetryMiddleware:
     def __init__(
         self,
         app,
-        excluded_urls=None,
+        excluded_urls: ExcludeList | str | None = None,
         default_span_details=None,
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
@@ -589,6 +640,7 @@ class OpenTelemetryMiddleware:
                 name=HTTP_SERVER_REQUEST_DURATION,
                 description="Duration of HTTP server requests.",
                 unit="s",
+                explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
         self.server_response_size_histogram = None
         if _report_old(sem_conv_opt_in_mode):
@@ -617,13 +669,29 @@ class OpenTelemetryMiddleware:
         self.active_requests_counter = create_http_server_active_requests(
             self.meter
         )
+        if isinstance(excluded_urls, str):
+            excluded_urls = parse_excluded_urls(excluded_urls)
         self.excluded_urls = excluded_urls
         self.default_span_details = (
             default_span_details or get_default_span_details
         )
-        self.server_request_hook = server_request_hook
-        self.client_request_hook = client_request_hook
-        self.client_response_hook = client_response_hook
+
+        def failsafe(func):
+            if func is None:
+                return None
+
+            @wraps(func)
+            def wrapper(span: Span, *args, **kwargs):
+                try:
+                    func(span, *args, **kwargs)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    span.record_exception(exc)
+
+            return wrapper
+
+        self.server_request_hook = failsafe(server_request_hook)
+        self.client_request_hook = failsafe(client_request_hook)
+        self.client_response_hook = failsafe(client_response_hook)
         self.content_length_header = None
         self._sem_conv_opt_in_mode = sem_conv_opt_in_mode
 
@@ -665,9 +733,9 @@ class OpenTelemetryMiddleware:
     # pylint: disable=too-many-statements
     async def __call__(
         self,
-        scope: dict[str, Any],
-        receive: Callable[[], Awaitable[dict[str, Any]]],
-        send: Callable[[dict[str, Any]], Awaitable[None]],
+        scope: typing.MutableMapping[str, Any],
+        receive: Callable[[], Awaitable[typing.MutableMapping[str, Any]]],
+        send: Callable[[typing.MutableMapping[str, Any]], Awaitable[None]],
     ) -> None:
         """The ASGI application
 
@@ -758,17 +826,22 @@ class OpenTelemetryMiddleware:
                     attributes, _StabilityMode.DEFAULT
                 )
                 if target:
-                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
+                    duration_attrs_old[HTTP_TARGET] = target
                 duration_attrs_new = _parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
                 )
+                span_ctx = set_span_in_context(span)
                 if self.duration_histogram_old:
                     self.duration_histogram_old.record(
-                        max(round(duration_s * 1000), 0), duration_attrs_old
+                        max(round(duration_s * 1000), 0),
+                        duration_attrs_old,
+                        context=span_ctx,
                     )
                 if self.duration_histogram_new:
                     self.duration_histogram_new.record(
-                        max(duration_s, 0), duration_attrs_new
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                        context=span_ctx,
                     )
                 self.active_requests_counter.add(
                     -1, active_requests_count_attrs
@@ -776,11 +849,15 @@ class OpenTelemetryMiddleware:
                 if self.content_length_header:
                     if self.server_response_size_histogram:
                         self.server_response_size_histogram.record(
-                            self.content_length_header, duration_attrs_old
+                            self.content_length_header,
+                            duration_attrs_old,
+                            context=span_ctx,
                         )
                     if self.server_response_body_size_histogram:
                         self.server_response_body_size_histogram.record(
-                            self.content_length_header, duration_attrs_new
+                            self.content_length_header,
+                            duration_attrs_new,
+                            context=span_ctx,
                         )
 
                 request_size = asgi_getter.get(scope, "content-length")
@@ -792,11 +869,15 @@ class OpenTelemetryMiddleware:
                     else:
                         if self.server_request_size_histogram:
                             self.server_request_size_histogram.record(
-                                request_size_amount, duration_attrs_old
+                                request_size_amount,
+                                duration_attrs_old,
+                                context=span_ctx,
                             )
                         if self.server_request_body_size_histogram:
                             self.server_request_body_size_histogram.record(
-                                request_size_amount, duration_attrs_new
+                                request_size_amount,
+                                duration_attrs_new,
+                                context=span_ctx,
                             )
             if token:
                 context.detach(token)

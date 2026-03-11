@@ -7,16 +7,30 @@ import pytest
 import yaml
 from openai import AsyncOpenAI, OpenAI
 
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
-from opentelemetry.instrumentation.openai_v2.utils import (
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
 )
-from opentelemetry.sdk._events import EventLoggerProvider
-from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import (
-    InMemoryLogExporter,
-    SimpleLogRecordProcessor,
-)
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs.export import (  # pylint: disable=no-name-in-module
+        InMemoryLogRecordExporter,
+        SimpleLogRecordProcessor,
+    )
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs.export import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
+    from opentelemetry.sdk._logs.export import (
+        SimpleLogRecordProcessor,
+    )
 from opentelemetry.sdk.metrics import (
     MeterProvider,
 )
@@ -39,7 +53,7 @@ def fixture_span_exporter():
 
 @pytest.fixture(scope="function", name="log_exporter")
 def fixture_log_exporter():
-    exporter = InMemoryLogExporter()
+    exporter = InMemoryLogRecordExporter()
     yield exporter
 
 
@@ -56,13 +70,11 @@ def fixture_tracer_provider(span_exporter):
     return provider
 
 
-@pytest.fixture(scope="function", name="event_logger_provider")
-def fixture_event_logger_provider(log_exporter):
+@pytest.fixture(scope="function", name="logger_provider")
+def fixture_logger_provider(log_exporter):
     provider = LoggerProvider()
     provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
-    event_logger_provider = EventLoggerProvider(provider)
-
-    return event_logger_provider
+    return provider
 
 
 @pytest.fixture(scope="function", name="meter_provider")
@@ -104,51 +116,98 @@ def vcr_config():
     }
 
 
+@pytest.fixture(
+    scope="function",
+    params=[(True, "span_only"), (False, "True")],
+    name="content_mode",
+)
+def fixture_content_mode(request):
+    # returns tuple: (latest_experimental_enabled: bool, content_mode: str)
+    # we don't test (True, "event_only"), (True, "span_and_event") because it's util's
+    # responsibility
+    return request.param
+
+
 @pytest.fixture(scope="function")
 def instrument_no_content(
-    tracer_provider, event_logger_provider, meter_provider
+    tracer_provider, logger_provider, meter_provider, content_mode
 ):
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    latest_experimental_enabled, _ = content_mode
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "False"}
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"
+            if latest_experimental_enabled
+            else ""
+        }
     )
 
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
-        event_logger_provider=event_logger_provider,
+        logger_provider=logger_provider,
         meter_provider=meter_provider,
     )
 
     yield instrumentor
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
     instrumentor.uninstrument()
 
 
 @pytest.fixture(scope="function")
 def instrument_with_content(
-    tracer_provider, event_logger_provider, meter_provider
+    tracer_provider, logger_provider, meter_provider, content_mode
 ):
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+    latest_experimental_enabled, content_mode_value = content_mode
+
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+        {
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value
+        }
     )
+
+    os.environ.update(
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"
+            if latest_experimental_enabled
+            else ""
+        }
+    )
+
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
-        event_logger_provider=event_logger_provider,
+        logger_provider=logger_provider,
         meter_provider=meter_provider,
     )
 
     yield instrumentor
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
     instrumentor.uninstrument()
 
 
 @pytest.fixture(scope="function")
 def instrument_with_content_unsampled(
-    span_exporter, event_logger_provider, meter_provider
+    span_exporter, logger_provider, meter_provider, content_mode
 ):
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    latest_experimental_enabled, content_mode_value = content_mode
     os.environ.update(
-        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "True"}
+        {
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_mode_value
+        }
+    )
+
+    os.environ.update(
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental"
+            if latest_experimental_enabled
+            else ""
+        }
     )
 
     tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
@@ -157,12 +216,13 @@ def instrument_with_content_unsampled(
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
-        event_logger_provider=event_logger_provider,
+        logger_provider=logger_provider,
         meter_provider=meter_provider,
     )
 
     yield instrumentor
     os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
     instrumentor.uninstrument()
 
 

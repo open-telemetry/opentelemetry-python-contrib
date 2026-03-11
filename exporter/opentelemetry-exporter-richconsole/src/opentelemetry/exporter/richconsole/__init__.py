@@ -64,7 +64,9 @@ from rich.tree import Tree
 import opentelemetry.trace
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 
 
 def _ns_to_time(nanoseconds):
@@ -120,7 +122,7 @@ def _child_add_optional_attributes(child: Tree, span: ReadableSpan):
             label=Text.from_markup("[bold cyan]Attributes :[/bold cyan] ")
         )
         for attribute in span.attributes:
-            if attribute == SpanAttributes.DB_STATEMENT:
+            if attribute == DB_STATEMENT:
                 attributes.add(
                     Text.from_markup(f"[bold cyan]{attribute} :[/bold cyan] ")
                 )
@@ -171,14 +173,17 @@ class RichConsoleSpanExporter(SpanExporter):
         trees = {}
         parents = {}
         spans = list(spans)
+        span_ids = {s.context.span_id for s in spans}
         while spans:
             for span in spans:
-                if not span.parent:
+                if not span.parent or span.parent.span_id not in span_ids:
                     trace_id = opentelemetry.trace.format_trace_id(
                         span.context.trace_id
                     )
-                    trees[trace_id] = Tree(label=f"Trace {trace_id}")
-                    child = trees[trace_id].add(
+                    tree = trees.setdefault(
+                        trace_id, Tree(label=f"Trace {trace_id}")
+                    )
+                    child = tree.add(
                         label=Text.from_markup(
                             f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
                         )

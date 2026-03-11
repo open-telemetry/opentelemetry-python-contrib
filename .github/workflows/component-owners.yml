@@ -6,6 +6,9 @@ name: 'Component Owners'
 on:
   pull_request_target:
 
+permissions:
+  contents: read
+
 jobs:
   run_self:
     runs-on: ubuntu-latest

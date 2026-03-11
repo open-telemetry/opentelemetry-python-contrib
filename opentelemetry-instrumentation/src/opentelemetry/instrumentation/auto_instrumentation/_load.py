@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from logging import getLogger
 from os import environ
 
-from opentelemetry.instrumentation.dependencies import DependencyConflictError
+from opentelemetry.instrumentation.dependencies import (
+    DependencyConflictError,
+    get_dist_dependency_conflicts,
+)
 from opentelemetry.instrumentation.distro import BaseDistro, DefaultDistro
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_CONFIGURATOR,
@@ -23,9 +27,36 @@ from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_DISTRO,
 )
 from opentelemetry.instrumentation.version import __version__
-from opentelemetry.util._importlib_metadata import entry_points
+from opentelemetry.util._importlib_metadata import (
+    EntryPoint,
+    distributions,
+    entry_points,
+)
 
 _logger = getLogger(__name__)
+
+SKIPPED_INSTRUMENTATIONS_WILDCARD = "*"
+
+
+class _EntryPointDistFinder:
+    @cached_property
+    def _mapping(self):
+        return {
+            self._key_for(ep): dist
+            for dist in distributions()
+            for ep in dist.entry_points
+        }
+
+    def dist_for(self, entry_point: EntryPoint):
+        dist = getattr(entry_point, "dist", None)
+        if dist:
+            return dist
+
+        return self._mapping.get(self._key_for(entry_point))
+
+    @staticmethod
+    def _key_for(entry_point: EntryPoint):
+        return f"{entry_point.group}:{entry_point.name}:{entry_point.value}"
 
 
 def _load_distro() -> BaseDistro:
@@ -55,6 +86,7 @@ def _load_distro() -> BaseDistro:
 
 def _load_instrumentors(distro):
     package_to_exclude = environ.get(OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, [])
+    entry_point_finder = _EntryPointDistFinder()
     if isinstance(package_to_exclude, str):
         package_to_exclude = package_to_exclude.split(",")
         # to handle users entering "requests , flask" or "requests, flask" with spaces
@@ -64,6 +96,9 @@ def _load_instrumentors(distro):
         entry_point.load()()
 
     for entry_point in entry_points(group="opentelemetry_instrumentor"):
+        if SKIPPED_INSTRUMENTATIONS_WILDCARD in package_to_exclude:
+            break
+
         if entry_point.name in package_to_exclude:
             _logger.debug(
                 "Instrumentation skipped for library %s", entry_point.name
@@ -71,11 +106,24 @@ def _load_instrumentors(distro):
             continue
 
         try:
-            distro.load_instrumentor(
-                entry_point, raise_exception_on_conflict=True
-            )
+            entry_point_dist = entry_point_finder.dist_for(entry_point)
+            conflict = get_dist_dependency_conflicts(entry_point_dist)
+            if conflict:
+                _logger.debug(
+                    "Skipping instrumentation %s: %s",
+                    entry_point.name,
+                    conflict,
+                )
+                continue
+
+            # tell instrumentation to not run dep checks again as we already did it above
+            distro.load_instrumentor(entry_point, skip_dep_check=True)
             _logger.debug("Instrumented %s", entry_point.name)
         except DependencyConflictError as exc:
+            # Dependency conflicts are generally caught from get_dist_dependency_conflicts
+            # returning a DependencyConflict. Keeping this error handling in case custom
+            # distro and instrumentor behavior raises a DependencyConflictError later.
+            # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
             _logger.debug(
                 "Skipping instrumentation %s: %s",
                 entry_point.name,

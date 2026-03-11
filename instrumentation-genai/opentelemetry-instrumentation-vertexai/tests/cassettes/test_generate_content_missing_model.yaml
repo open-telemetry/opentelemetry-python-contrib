@@ -34,7 +34,7 @@ interactions:
         {
           "error": {
             "code": 404,
-            "message": "Publisher Model `projects/otel-starter-project/locations/us-central1/publishers/google/models/gemini-does-not-exist` not found.",
+            "message": "Publisher Model `projects/fake-project/locations/us-central1/publishers/google/models/gemini-does-not-exist` not found.",
             "status": "NOT_FOUND",
             "details": []
           }
@@ -49,7 +49,7 @@ interactions:
       - X-Origin
       - Referer
       content-length:
-      - '672'
+      - '1139'
     status:
       code: 404
       message: Not Found
