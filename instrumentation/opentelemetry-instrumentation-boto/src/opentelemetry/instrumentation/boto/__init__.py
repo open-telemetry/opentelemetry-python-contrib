@@ -92,7 +92,6 @@ class BotoInstrumentor(BaseInstrumentor):
         # For example EC2 uses AWSQueryConnection and S3 uses
         # AWSAuthConnection
 
-        # pylint: disable=attribute-defined-outside-init
         self._tracer = get_tracer(
             __name__,
             __version__,

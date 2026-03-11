@@ -46,7 +46,7 @@ class FakeTracerProvider:
 class TestLoggingInstrumentorProxyTracerProvider(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
-        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+        self.caplog = caplog
 
     def setUp(self):
         super().setUp()
@@ -77,7 +77,7 @@ def log_hook(span, record):
 class TestLoggingInstrumentor(TestBase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
-        self.caplog = caplog  # pylint: disable=attribute-defined-outside-init
+        self.caplog = caplog
 
     def setUp(self):
         super().setUp()
