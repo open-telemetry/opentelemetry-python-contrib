@@ -491,6 +491,24 @@ class TestAiopgIntegration(TestBase):
             connection4 = wrappers.uninstrument_connection(connection)
         self.assertIs(connection4, connection)
 
+    def test_composable(self):
+        from psycopg2 import sql
+
+        db_integration = AiopgIntegration(self.tracer, "testcomponent")
+        mock_connection = async_call(
+            db_integration.wrapped_connection(mock_connect, {}, {})
+        )
+        cursor = async_call(mock_connection.cursor())
+        async_call(cursor.execute(sql.SQL("SELECT * FROM my_table")))
+        spans_list = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(
+            span.attributes[SpanAttributes.DB_STATEMENT],
+            "SELECT * FROM my_table",
+        )
+
 
 # pylint: disable=unused-argument
 async def mock_connect(*args, **kwargs):
