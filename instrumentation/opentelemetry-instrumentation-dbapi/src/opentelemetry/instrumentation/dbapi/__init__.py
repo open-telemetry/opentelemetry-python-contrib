@@ -570,7 +570,7 @@ class DatabaseApiIntegration:
             self.span_attributes[NET_PEER_PORT] = port
 
 
-# pylint: disable=abstract-method
+# pylint: disable=abstract-method,no-member
 class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
     # pylint: disable=unused-argument
     def __init__(
@@ -804,7 +804,7 @@ class CursorTracer(Generic[CursorT]):
             return await query_method(*args, **kwargs)
 
 
-# pylint: disable=abstract-method
+# pylint: disable=abstract-method,no-member
 class TracedCursorProxy(BaseObjectProxy, Generic[CursorT]):
     # pylint: disable=unused-argument
     def __init__(

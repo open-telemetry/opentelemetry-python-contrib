@@ -66,7 +66,7 @@ class ConverseStreamWrapper(BaseObjectProxy):
 
     def __iter__(self):
         try:
-            for event in self.__wrapped__:
+            for event in self.__wrapped__:  # pylint: disable=no-member
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:
@@ -148,7 +148,7 @@ class ConverseStreamWrapper(BaseObjectProxy):
             return
 
     def close(self):
-        self.__wrapped__.close()
+        self.__wrapped__.close()  # pylint: disable=no-member
         # Treat the stream as done to ensure the span end.
         self._complete_stream(self._response)
 
@@ -188,7 +188,7 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
         self._ended = False
 
     def close(self):
-        self.__wrapped__.close()
+        self.__wrapped__.close()  # pylint: disable=no-member
         # Treat the stream as done to ensure the span end.
         self._stream_done_callback(self._response, self._ended)
 
@@ -202,7 +202,7 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
 
     def __iter__(self):
         try:
-            for event in self.__wrapped__:
+            for event in self.__wrapped__:  # pylint: disable=no-member
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:

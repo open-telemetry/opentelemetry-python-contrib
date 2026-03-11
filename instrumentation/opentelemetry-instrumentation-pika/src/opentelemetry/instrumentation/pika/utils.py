@@ -223,7 +223,7 @@ class ReadyMessagesDequeProxy(BaseObjectProxy):
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
 
-        evt = self.__wrapped__.popleft(*args, **kwargs)
+        evt = self.__wrapped__.popleft(*args, **kwargs)  # pylint:disable=no-member
 
         try:
             # If a new message was received, create a span and set as active context
