@@ -64,7 +64,6 @@ def _make_future_done_callback(span, rpc_info):
                 span.set_status(
                     Status(
                         status_code=StatusCode.ERROR,
-                        description=str(code),
                     )
                 )
                 return
