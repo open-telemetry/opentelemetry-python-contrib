@@ -221,11 +221,10 @@ async def test_async_manager_enter_constructs_async_stream_wrapper():
     manager = _FakeAsyncManager(stream=stream)
     wrapper = _make_async_manager_wrapper(manager)
 
-    result = await wrapper.__aenter__()
-
-    assert isinstance(result, AsyncResponseStreamWrapper)
-    assert result.stream is stream
-    assert wrapper._stream_wrapper is result
+    async with wrapper as result:
+        assert isinstance(result, AsyncResponseStreamWrapper)
+        assert result.stream is stream
+        assert wrapper._stream_wrapper is result
 
 
 @pytest.mark.asyncio
@@ -269,7 +268,7 @@ async def test_async_stream_wrapper_exit_closes_without_exception():
     wrapper = _make_async_stream_wrapper(stream)
     stopped = []
 
-    wrapper._stop = lambda result: stopped.append(result)
+    wrapper._stop = stopped.append
 
     result = await wrapper.__aexit__(None, None, None)
 
@@ -285,10 +284,11 @@ async def test_async_stream_wrapper_exit_fails_and_closes_on_exception():
     stopped = []
     failures = []
 
-    wrapper._stop = lambda result: stopped.append(result)
-    wrapper._fail = lambda message, error_type: failures.append(
-        (message, error_type)
-    )
+    def record_failure(message, error_type):
+        failures.append((message, error_type))
+
+    wrapper._stop = stopped.append
+    wrapper._fail = record_failure
 
     error = ValueError("boom")
     result = await wrapper.__aexit__(ValueError, error, None)
@@ -305,7 +305,7 @@ async def test_async_stream_wrapper_close_closes_stream_and_stops():
     wrapper = _make_async_stream_wrapper(stream)
     stopped = []
 
-    wrapper._stop = lambda result: stopped.append(result)
+    wrapper._stop = stopped.append
 
     await wrapper.close()
 
@@ -321,8 +321,8 @@ async def test_async_stream_wrapper_processes_events_and_stops_on_completion():
     processed = []
     stopped = []
 
-    wrapper.process_event = lambda current: processed.append(current)
-    wrapper._stop = lambda result: stopped.append(result)
+    wrapper.process_event = processed.append
+    wrapper._stop = stopped.append
 
     result = await wrapper.__anext__()
 
@@ -346,8 +346,8 @@ async def test_async_stream_wrapper_until_done_consumes_stream():
     processed = []
     stopped = []
 
-    wrapper.process_event = lambda current: processed.append(current)
-    wrapper._stop = lambda result: stopped.append(result)
+    wrapper.process_event = processed.append
+    wrapper._stop = stopped.append
 
     result = await wrapper.until_done()
 
@@ -363,9 +363,10 @@ async def test_async_stream_wrapper_fails_and_reraises_stream_errors():
     wrapper = _make_async_stream_wrapper(stream)
     failures = []
 
-    wrapper._fail = lambda message, error_type: failures.append(
-        (message, error_type)
-    )
+    def record_failure(message, error_type):
+        failures.append((message, error_type))
+
+    wrapper._fail = record_failure
 
     with pytest.raises(ValueError, match="boom"):
         await wrapper.__anext__()
@@ -380,7 +381,7 @@ async def test_async_stream_response_aclose_finalizes_wrapper():
     wrapper = _make_async_stream_wrapper(stream)
     stopped = []
 
-    wrapper._stop = lambda result: stopped.append(result)
+    wrapper._stop = stopped.append
 
     await wrapper.response.aclose()
 
