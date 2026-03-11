@@ -40,7 +40,7 @@ interactions:
       Host:
       - api.openai.com
       User-Agent:
-      - OpenAI/Python 2.16.0
+      - OpenAI/Python 2.21.0
       X-Stainless-Arch:
       - arm64
       X-Stainless-Async:
@@ -50,7 +50,7 @@ interactions:
       X-Stainless-OS:
       - MacOS
       X-Stainless-Package-Version:
-      - 2.16.0
+      - 2.21.0
       X-Stainless-Raw-Response:
       - 'true'
       X-Stainless-Runtime:
@@ -59,8 +59,6 @@ interactions:
       - 3.13.5
       authorization:
       - Bearer test_openai_api_key
-      cookie:
-      - test_cookie
       x-stainless-retry-count:
       - '0'
     method: POST
@@ -69,9 +67,9 @@ interactions:
     body:
       string: |-
         {
-          "id": "chatcmpl-D5js6XcubHki2LoPJ6cG4o0tPn8LV",
+          "id": "chatcmpl-DB5VKnX0DBvthDkYqZDgfZVAqhZUk",
           "object": "chat.completion",
-          "created": 1770260342,
+          "created": 1771535138,
           "model": "gpt-3.5-turbo-0125",
           "choices": [
             {
@@ -106,13 +104,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9c8f263d4d5fa6c4-SJC
+      - 9d08b930cee533ed-SJC
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 05 Feb 2026 02:59:02 GMT
+      - Thu, 19 Feb 2026 21:05:38 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -132,27 +130,31 @@ interactions:
       - '822'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '195'
+      - '170'
       openai-project:
-      - proj_3o0Aqh32nPiGbrex8BJtPTCm
+      - proj_GLiYlAc06hF0Fm06IMReZLy4
       openai-version:
       - '2020-10-01'
+      set-cookie:
+      - __cf_bm=tYjXaOj8KokJGc56XWDShqpm2zPWeq3Q19yhnJcqKqU-1771535137.4012983-1.0.1.1-k50ojuWx4sSPmgdu8QLKD3OmGYDMjKIDSqQcANN1wo1SBWNjIE.yAsOYOgaalvDiPrXObJN80xhnlcC9mXOXnOfGb9HRyT5un2ASAG29wbujzo_b9a3zQg9hHU024Nkz;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Thu, 19 Feb 2026
+        21:35:38 GMT
       x-openai-proxy-wasm:
       - v0.1
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
-      - '10000000'
+      - '200000'
       x-ratelimit-remaining-requests:
       - '9999'
       x-ratelimit-remaining-tokens:
-      - '9999981'
+      - '199982'
       x-ratelimit-reset-requests:
-      - 6ms
+      - 8.64s
       x-ratelimit-reset-tokens:
-      - 0s
+      - 5ms
       x-request-id:
-      - req_11889cdfe9f548169adad4e04412b63c
+      - req_5f037f577c544db292661f8bbf12d569
     status:
       code: 200
       message: OK

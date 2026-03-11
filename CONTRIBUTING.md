@@ -31,6 +31,7 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
     - [How to Receive Comments](#how-to-receive-comments)
     - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
     - [How to Get PRs Merged](#how-to-get-prs-merged)
+    - [Stale PRs](#stale-prs)
   - [Design Choices](#design-choices)
     - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
   - [Running Tests Locally](#running-tests-locally)
@@ -78,7 +79,7 @@ You can run `tox` with the following arguments:
 * `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
 * `tox -e docs` to regenerate all docs
-* `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+* `tox -e py314-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
 * `tox -e lint-some-package` to run lint checks on `some-package`
@@ -241,6 +242,12 @@ A PR is considered to be **ready to merge** when:
 
 Any Approver / Maintainer can merge the PR once it is **ready to merge**.
 
+### Stale PRs
+
+PRs with no activity for 14 days will be automatically marked as stale and closed after a further 14 days of inactivity. To prevent a PR from being marked stale, ensure there is regular activity (commits, comments, reviews, etc).
+
+Project managers can also exempt a PR from this by applying one of the following labels: `hold`, `WIP`, `blocked-by-spec`, `do not merge`.
+
 ## Design Choices
 
 As with other OpenTelemetry clients, opentelemetry-python follows the
@@ -271,11 +278,11 @@ Some tests can be slow due to pre-steps that do dependencies installs. To help w
 
 1. First time run (e.g., opentelemetry-instrumentation-aiopg)
 ```console
-tox -e py312-test-instrumentation-aiopg
+tox -e py314-test-instrumentation-aiopg
 ```
 2. Run tests again without pre-steps:
 ```console
-.tox/py312-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
+.tox/py314-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
 ```
 
 ### Testing against a different Core repo branch/commit

@@ -23,6 +23,8 @@ from opentelemetry.semconv.trace import SpanAttributes
 
 from .mixins import SQLAlchemyTestMixin
 
+SCOPE = "opentelemetry.instrumentation.sqlalchemy"
+
 POSTGRES_CONFIG = {
     "host": "127.0.0.1",
     "port": int(os.getenv("TEST_POSTGRES_PORT", "5432")),
@@ -117,7 +119,7 @@ class PostgresMetricsTestCase(PostgresTestCase):
             POSTGRES_CONFIG["port"],
             self.SQL_DB,
         )
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 1)
         self.assert_metric_expected(
             metrics[0],
