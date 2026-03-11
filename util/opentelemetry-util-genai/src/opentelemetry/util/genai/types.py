@@ -209,7 +209,6 @@ ToolDefinition = Union[FunctionToolDefinition, GenericToolDefinition]
 MessagePart = Union[
     Text,
     ToolCallRequest,
-    "ToolCall",
     ToolCallResponse,
     ServerToolCall,
     ServerToolCallResponse,
