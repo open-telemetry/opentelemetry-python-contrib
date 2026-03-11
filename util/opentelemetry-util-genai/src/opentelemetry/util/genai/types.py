@@ -257,6 +257,96 @@ class LLMInvocation(GenAIInvocation):
 
 
 @dataclass
+class _BaseAgent(GenAIInvocation):
+    """
+    Shared base class for agent lifecycle types.
+
+    Contains fields common to all agent operations: identity, provider,
+    model, system instructions, server info, and telemetry plumbing.
+
+    Follows semconv for GenAI agent spans:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md
+
+    Do not instantiate directly — use AgentInvocation.
+    """
+
+    agent_name: str | None = None
+    agent_id: str | None = None
+    agent_description: str | None = None
+    agent_version: str | None = None
+
+    provider: str | None = None
+
+    request_model: str | None = None
+
+    system_instruction: list[MessagePart] = field(
+        default_factory=_new_system_instruction
+    )
+    server_address: str | None = None
+    server_port: int | None = None
+
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    """
+    Additional attributes to set on spans and/or events.
+    """
+    # Monotonic start time in seconds (from timeit.default_timer) used
+    # for duration calculations to avoid mixing clock sources. This is
+    # populated by the TelemetryHandler when starting an invocation.
+    monotonic_start_s: float | None = None
+
+
+@dataclass
+class AgentInvocation(_BaseAgent):
+    """
+    Represents an agent invocation (invoke_agent operation).
+
+    Follows semconv for GenAI agent spans:
+    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#invoke-agent-span
+
+    When creating an AgentInvocation object, only update the data attributes.
+    The span and context_token attributes are set by the TelemetryHandler.
+    """
+
+    operation_name: str = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+    conversation_id: str | None = None
+    data_source_id: str | None = None
+    output_type: str | None = None
+
+    temperature: float | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    max_tokens: int | None = None
+    stop_sequences: list[str] | None = None
+    seed: int | None = None
+    choice_count: int | None = None
+
+    response_model_name: str | None = None
+    response_id: str | None = None
+    finish_reasons: list[str] | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cache_creation_input_tokens: int | None = None
+    cache_read_input_tokens: int | None = None
+
+    input_messages: list[InputMessage] = field(
+        default_factory=_new_input_messages
+    )
+    output_messages: list[OutputMessage] = field(
+        default_factory=_new_output_messages
+    )
+    tool_definitions: list[dict[str, Any]] | None = None
+
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of a low cardinality.
+    These attributes will not be set on spans or events.
+    """
+
+
+@dataclass
 class Error:
     message: str
     type: Type[BaseException]
