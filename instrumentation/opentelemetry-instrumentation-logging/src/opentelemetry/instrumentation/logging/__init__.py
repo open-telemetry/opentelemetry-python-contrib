@@ -249,9 +249,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             )
             handler_level = kwargs.get(
                 "log_handler_level",
-                _get_log_level(environ[OTEL_PYTHON_LOG_HANDLER_LEVEL])
-                if OTEL_PYTHON_LOG_HANDLER_LEVEL in environ
-                else None,
+                _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
             )
             logger_provider = get_logger_provider()
             handler = _setup_logging_handler(

@@ -687,6 +687,9 @@ class SetupLoggingHandlerTestCase(unittest.TestCase):
 
 
 class GetLogLevelTestCase(unittest.TestCase):
+    def test_get_log_level_none_returns_none(self):
+        self.assertIsNone(_get_log_level(None))
+
     def test_get_log_level_notset(self):
         self.assertEqual(_get_log_level("notset"), logging.NOTSET)
 

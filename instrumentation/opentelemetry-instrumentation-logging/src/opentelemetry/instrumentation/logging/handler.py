@@ -36,7 +36,9 @@ from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util.types import _ExtendedAttributes
 
 
-def _get_log_level(level_name: str) -> int:
+def _get_log_level(level_name: str | None) -> int | None:
+    if level_name is None:
+        return None
     result = logging.getLevelName(level_name.upper().strip())
     return result if isinstance(result, int) else logging.NOTSET
 
