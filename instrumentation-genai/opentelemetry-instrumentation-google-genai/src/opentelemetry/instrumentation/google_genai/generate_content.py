@@ -21,14 +21,7 @@ import logging
 import os
 import time
 import typing
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Iterator,
-    Optional,
-    Union,
-)
+from typing import Any, AsyncIterator, Awaitable, Iterator, Optional, Union
 
 from google.genai.models import AsyncModels, Models
 from google.genai.models import t as transformers
@@ -65,14 +58,15 @@ from opentelemetry.trace.span import Span
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
+    FunctionToolDefinition,
+    GenericToolDefinition,
     InputMessage,
     MessagePart,
     OutputMessage,
+    ToolDefinition,
 )
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
-from opentelemetry.util.types import (
-    AttributeValue,
-)
+from opentelemetry.util.types import AttributeValue
 
 from .allowlist_util import AllowList
 from .custom_semconv import GCP_GENAI_OPERATION_CONFIG
@@ -208,66 +202,160 @@ def _to_dict(value: object):
     return json.loads(json.dumps(value))
 
 
-def _tool_to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+def _model_dump_to_tool_definition(tool: Any) -> ToolDefinition:
+    model_dump = tool.model_dump(exclude_none=True)
+
+    name = (
+        model_dump.get("name")
+        or getattr(tool, "name", None)
+        or type(tool).__name__
+    )
+    description = model_dump.get("description") or getattr(
+        tool, "description", None
+    )
+    parameters = model_dump.get("parameters") or model_dump.get("inputSchema")
+    return FunctionToolDefinition(
+        name=name,
+        description=description,
+        parameters=parameters,
+    )
+
+
+def _clean_parameters(params: Any) -> Any:
+    """Converts parameter objects into plain dicts."""
+    if params is None:
+        return None
+    if isinstance(params, dict):
+        return params
+    if hasattr(params, "to_dict"):
+        return params.to_dict()
+    if hasattr(params, "model_dump"):
+        return params.model_dump(exclude_none=True)
+
+    try:
+        # Check if it's already a standard JSON type.
+        json.dumps(params)
+        return params
+
+    except (TypeError, ValueError):
+        return {
+            "type": "object",
+            "properties": {
+                "serialization_error": {
+                    "type": "string",
+                    "description": f"Failed to serialize parameters: {type(params).__name__}",
+                }
+            },
+        }
+
+
+def _tool_to_tool_definition(tool: Tool) -> list[ToolDefinition]:
+    definitions = []
+    if tool.function_declarations:
+        for fd in tool.function_declarations:
+            definitions.append(
+                FunctionToolDefinition(
+                    name=getattr(fd, "name", type(fd).__name__),
+                    description=getattr(fd, "description", None),
+                    parameters=_clean_parameters(
+                        getattr(fd, "parameters", None)
+                    ),
+                )
+            )
+
+    # Generic types
     if hasattr(tool, "model_dump"):
-        return tool.model_dump(exclude_none=True)
+        exclude_fields = {"function_declarations"}
+        fields = {
+            k: v
+            for k, v in tool.model_dump().items()
+            if v is not None and k not in exclude_fields
+        }
 
-    return str(tool)
+        for tool_type, _ in fields.items():
+            definitions.append(
+                GenericToolDefinition(
+                    type=tool_type,
+                    name=tool_type,
+                )
+            )
+
+    return definitions
 
 
-def _callable_tool_to_tool_definition(tool: Any) -> MessagePart:
+def _callable_tool_to_tool_definition(tool: Any) -> ToolDefinition:
     doc = getattr(tool, "__doc__", "") or ""
-    return {
-        "name": getattr(tool, "__name__", type(tool).__name__),
-        "description": doc.strip(),
-    }
+    return FunctionToolDefinition(
+        name=getattr(tool, "__name__", type(tool).__name__),
+        description=doc.strip(),
+        parameters=None,
+    )
 
 
-def _mcp_tool_to_tool_definition(tool: McpTool) -> MessagePart:
+def _mcp_tool_to_tool_definition(tool: McpTool) -> ToolDefinition:
     if hasattr(tool, "model_dump"):
-        return tool.model_dump(exclude_none=True)
+        return _model_dump_to_tool_definition(tool)
 
-    return {
-        "name": getattr(tool, "name", type(tool).__name__),
-        "description": getattr(tool, "description", "") or "",
-        "input_schema": getattr(tool, "input_schema", {}),
-    }
+    return FunctionToolDefinition(
+        name=getattr(tool, "name", type(tool).__name__),
+        description=getattr(tool, "description", None),
+        parameters=getattr(tool, "input_schema", None),
+    )
 
 
-def _to_tool_definition_common(tool: ToolUnionDict) -> MessagePart:
-    if isinstance(tool, dict):
-        return tool
-
+def _to_tool_definition_common(tool: ToolUnionDict) -> list[ToolDefinition]:
     if isinstance(tool, Tool):
         return _tool_to_tool_definition(tool)
 
     if callable(tool):
-        return _callable_tool_to_tool_definition(tool)
+        return [_callable_tool_to_tool_definition(tool)]
 
     if _is_mcp_imported and isinstance(tool, McpTool):
-        return _mcp_tool_to_tool_definition(tool)
+        return [_mcp_tool_to_tool_definition(tool)]
 
-    try:
-        return {"raw_definition": json.loads(json.dumps(tool))}
-    except Exception:  # pylint: disable=broad-exception-caught
-        return {
-            "error": f"failed to serialize tool definition, tool type={type(tool).__name__}"
-        }
+    return [
+        GenericToolDefinition(
+            name="UnserializableTool",
+            type=type(tool).__name__,
+        )
+    ]
 
 
-def _to_tool_definition(tool: ToolUnionDict) -> MessagePart:
+def _to_tool_definition(tool: ToolUnionDict) -> list[ToolDefinition]:
     if _is_mcp_imported and isinstance(tool, McpClientSession):
-        return None
+        return []
 
     return _to_tool_definition_common(tool)
 
 
-async def _to_tool_definition_async(tool: ToolUnionDict) -> MessagePart:
+async def _to_tool_definition_async(
+    tool: ToolUnionDict,
+) -> list[ToolDefinition]:
     if _is_mcp_imported and isinstance(tool, McpClientSession):
         result = await tool.list_tools()
-        return [t.model_dump(exclude_none=True) for t in result.tools]
+        return [_model_dump_to_tool_definition(t) for t in result.tools]
 
     return _to_tool_definition_common(tool)
+
+
+def _tool_def_without_parameters_attr(
+    tool_def: list[ToolDefinition],
+) -> dict[str, AttributeValue]:
+    if tool_def == []:
+        return {}
+
+    return {
+        GEN_AI_TOOL_DEFINITIONS: [
+            dataclasses.asdict(
+                FunctionToolDefinition(
+                    name=td.name, description=td.description, parameters=None
+                )
+                if isinstance(td, FunctionToolDefinition)
+                else td
+            )
+            for td in tool_def
+        ]
+    }
 
 
 def _create_request_attributes(
@@ -385,7 +473,7 @@ def _create_completion_details_attributes(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instructions: list[MessagePart],
-    tool_definitions: list[MessagePart],
+    tool_definitions: list[ToolDefinition],
     as_str: bool = False,
 ) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue] = {
@@ -404,7 +492,9 @@ def _create_completion_details_attributes(
         ]
 
     if tool_definitions:
-        attributes[GEN_AI_TOOL_DEFINITIONS] = tool_definitions
+        attributes[GEN_AI_TOOL_DEFINITIONS] = [
+            dataclasses.asdict(tool_def) for tool_def in tool_definitions
+        ]
 
     return attributes
 
@@ -563,43 +653,86 @@ class _GenerateContentInstrumentationHelper:
         block_reason = response.prompt_feedback.block_reason.name.upper()
         self._error_type = f"BLOCKED_{block_reason}"
 
-    def _maybe_get_tool_definitions(self, config):
+    def _maybe_get_tool_definitions(self, config) -> list[ToolDefinition]:
         if (
             self.sem_conv_opt_in_mode
             != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         ):
-            return None
+            return []
 
-        tool_definitions = []
         if tools := _config_to_tools(config):
-            for tool in tools:
-                definition = _to_tool_definition(tool)
-                if definition is None:
-                    continue
-                if isinstance(definition, list):
-                    tool_definitions.extend(definition)
-                else:
-                    tool_definitions.append(definition)
-        return tool_definitions
+            return [
+                de for tool in tools for de in _to_tool_definition(tool) if de
+            ]
+        return []
 
-    async def _maybe_get_tool_definitions_async(self, config):
+    async def _maybe_get_tool_definitions_async(
+        self, config
+    ) -> list[ToolDefinition]:
         if (
             self.sem_conv_opt_in_mode
             != _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         ):
-            return None
+            return []
 
         tool_definitions = []
         if tools := _config_to_tools(config):
             for tool in tools:
-                definition = await _to_tool_definition_async(tool)
-                if definition is None:
-                    continue
-                if isinstance(definition, list):
-                    tool_definitions.extend(definition)
-                else:
-                    tool_definitions.append(definition)
+                definitions = await _to_tool_definition_async(tool)
+                for de in definitions:
+                    if de:
+                        tool_definitions.append(de)
+
         return tool_definitions
+
+    def _maybe_log_completion_details_in_log(
+        self,
+        event: LogRecord,
+        completion_details_attributes: dict[str, AttributeValue],
+        tool_definitions: Optional[list[ToolDefinition]] = None,
+    ):
+        if self._content_recording_enabled in [
+            ContentCapturingMode.EVENT_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ]:
+            event.attributes = {
+                **(event.attributes or {}),
+                **completion_details_attributes,
+            }
+        else:
+            event.attributes = {
+                **(event.attributes or {}),
+                **_tool_def_without_parameters_attr(tool_definitions),
+            }
+
+        self._otel_wrapper.log_completion_details(event=event)
+
+    def _maybe_log_completion_details_in_span(
+        self,
+        span: Span,
+        completion_details_attributes: dict[str, AttributeValue],
+        tool_definitions: Optional[list[ToolDefinition]] = None,
+    ):
+        if self._content_recording_enabled in [
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ]:
+            span.set_attributes(
+                {
+                    k: gen_ai_json_dumps(v)
+                    for k, v in completion_details_attributes.items()
+                }
+            )
+            # request attributes were already set on the span..
+        else:
+            span.set_attributes(
+                {
+                    k: gen_ai_json_dumps(v)
+                    for k, v in _tool_def_without_parameters_attr(
+                        tool_definitions
+                    ).items()
+                }
+            )
 
     def _maybe_log_completion_details(
         self,
@@ -609,7 +742,7 @@ class _GenerateContentInstrumentationHelper:
         request: Union[ContentListUnion, ContentListUnionDict],
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
-        tool_definitions: list[MessagePart] = None,
+        tool_definitions: Optional[list[ToolDefinition]] = None,
     ):
         if (
             self.sem_conv_opt_in_mode
@@ -633,10 +766,12 @@ class _GenerateContentInstrumentationHelper:
             | request_attributes
             | final_attributes,
         )
+        tool_definitions = tool_definitions or []
         self.completion_hook.on_completion(
             inputs=input_messages,
             outputs=output_messages,
             system_instruction=system_instructions,
+            tool_definitions=tool_definitions,
             span=span,
             log_record=event,
         )
@@ -646,27 +781,16 @@ class _GenerateContentInstrumentationHelper:
             system_instructions,
             tool_definitions,
         )
-        if self._content_recording_enabled in [
-            ContentCapturingMode.EVENT_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        ]:
-            event.attributes = {
-                **(event.attributes or {}),
-                **completion_details_attributes,
-            }
-        self._otel_wrapper.log_completion_details(event=event)
-
-        if self._content_recording_enabled in [
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        ]:
-            span.set_attributes(
-                {
-                    k: gen_ai_json_dumps(v)
-                    for k, v in completion_details_attributes.items()
-                }
-            )
-            # request attributes were already set on the span..
+        self._maybe_log_completion_details_in_log(
+            event=event,
+            completion_details_attributes=completion_details_attributes,
+            tool_definitions=tool_definitions,
+        )
+        self._maybe_log_completion_details_in_span(
+            span=span,
+            completion_details_attributes=completion_details_attributes,
+            tool_definitions=tool_definitions,
+        )
 
     def _maybe_log_system_instruction(
         self, config: Optional[GenerateContentConfigOrDict] = None
