@@ -26,9 +26,6 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
     InMemoryLogExporter,
-    InMemoryLogExporter as InMemoryLogRecordExporter,
-)
-from opentelemetry.sdk._logs.export import (
     SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
