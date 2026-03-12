@@ -94,7 +94,8 @@ def _get_span_name(
 ) -> str:
     """Get the span name for a GenAI invocation."""
     request_model = getattr(invocation, "request_model", None) or ""
-    return f"{invocation.operation_name} {request_model}".strip()
+    operation_name = getattr(invocation, "operation_name", None) or ""
+    return f"{operation_name} {request_model}".strip()
 
 
 def _get_llm_span_name(invocation: LLMInvocation) -> str:

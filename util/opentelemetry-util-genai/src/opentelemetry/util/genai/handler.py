@@ -47,15 +47,15 @@ Usage:
     )
 
     # Start the invocation (opens a span)
-    handler.start_llm(invocation)
+    handler.start(invocation)
 
     # Populate outputs and any additional attributes, then stop (closes the span)
     invocation.output_messages = [...]
     invocation.attributes.update({"more": "attrs"})
-    handler.stop_llm(invocation)
+    handler.stop(invocation)
 
     # Or, in case of error
-    handler.fail_llm(invocation, Error(type="...", message="..."))
+    handler.fail(invocation, Error(type="...", message="..."))
 """
 
 from __future__ import annotations
@@ -78,12 +78,13 @@ from opentelemetry.trace import (
     get_tracer,
     set_span_in_context,
 )
-from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _get_embedding_span_name,
+    _get_llm_span_name,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
@@ -157,8 +158,14 @@ class TelemetryHandler:
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
+        if isinstance(invocation, LLMInvocation):
+            span_name = _get_llm_span_name(invocation)
+        elif isinstance(invocation, EmbeddingInvocation):
+            span_name = _get_embedding_span_name(invocation)
+        else:
+            span_name = ""
         span = self._tracer.start_span(
-            name=invocation.operation_name or "",
+            name=span_name,
             kind=SpanKind.CLIENT,
         )
         # Record a monotonic start timestamp (seconds) for duration
@@ -185,16 +192,6 @@ class TelemetryHandler:
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_embedding_metrics(invocation, span)
-            else:
-                span.set_status(
-                    Status(
-                        StatusCode.ERROR,
-                        f"Unsupported invocation type: {type(invocation)!r}",
-                    )
-                )
-                raise TypeError(
-                    f"Unsupported invocation type: {type(invocation)!r}"
-                )
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -224,16 +221,6 @@ class TelemetryHandler:
                 self._record_embedding_metrics(
                     invocation, span, error_type=error_type
                 )
-            else:
-                span.set_status(
-                    Status(
-                        StatusCode.ERROR,
-                        f"Unsupported invocation type: {type(invocation)!r}",
-                    )
-                )
-                raise TypeError(
-                    f"Unsupported invocation type: {type(invocation)!r}"
-                )
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -255,23 +242,6 @@ class TelemetryHandler:
         """Fail a GenAI invocation and end its span with error status."""
         return self._fail(invocation, error)
 
-    def start_llm(
-        self,
-        invocation: LLMInvocation,
-    ) -> LLMInvocation:
-        """Start an LLM invocation and create a pending span entry."""
-        return self.start(invocation)
-
-    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
-        """Finalize an LLM invocation successfully and end its span."""
-        return self.stop(invocation)
-
-    def fail_llm(
-        self, invocation: LLMInvocation, error: Error
-    ) -> LLMInvocation:
-        """Fail an LLM invocation and end its span with error status."""
-        return self.fail(invocation, error)
-
     @contextmanager
     def llm(
         self, invocation: LLMInvocation | None = None
@@ -288,13 +258,13 @@ class TelemetryHandler:
             invocation = LLMInvocation(
                 request_model="",
             )
-        self.start_llm(invocation)
+        self.start(invocation)
         try:
             yield invocation
         except Exception as exc:
-            self.fail_llm(invocation, Error(message=str(exc), type=type(exc)))
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
             raise
-        self.stop_llm(invocation)
+        self.stop(invocation)
 
     @contextmanager
     def embedding(
@@ -310,33 +280,13 @@ class TelemetryHandler:
         """
         if invocation is None:
             invocation = EmbeddingInvocation()
-        self.start_embedding(invocation)
+        self.start(invocation)
         try:
             yield invocation
         except Exception as exc:
-            self.fail_embedding(
-                invocation, Error(message=str(exc), type=type(exc))
-            )
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
             raise
-        self.stop_embedding(invocation)
-
-    def start_embedding(
-        self, invocation: EmbeddingInvocation
-    ) -> EmbeddingInvocation:
-        """Start an embedding invocation and create a pending span entry."""
-        return self.start(invocation)
-
-    def stop_embedding(
-        self, invocation: EmbeddingInvocation
-    ) -> EmbeddingInvocation:
-        """Finalize an embedding invocation successfully and end its span."""
-        return self.stop(invocation)
-
-    def fail_embedding(
-        self, invocation: EmbeddingInvocation, error: Error
-    ) -> EmbeddingInvocation:
-        """Fail an embedding invocation and end its span with error status."""
-        return self.fail(invocation, error)
+        self.stop(invocation)
 
 
 def get_telemetry_handler(
