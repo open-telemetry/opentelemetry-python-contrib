@@ -78,6 +78,16 @@ def _set_response_attributes(
     _set_invocation_response_attributes(invocation, result, capture_content)
 
 
+def _get_stream_response(stream):
+    try:
+        return stream._response
+    except AttributeError:
+        try:
+            return stream.response
+        except AttributeError:
+            return None
+
+
 class _ResponseProxy(Generic[ResponseT]):
     def __init__(self, response: ResponseT, finalize: Callable[[], None]):
         self._response = response
@@ -189,7 +199,7 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
 
     @property
     def response(self):
-        response = self.stream._response
+        response = _get_stream_response(self.stream)
         if response is None:
             return None
         return _ResponseProxy(response, lambda: self._stop(None))
@@ -383,7 +393,7 @@ class AsyncResponseStreamWrapper(ResponseStreamWrapper[TextFormatT]):
 
     @property
     def response(self):
-        response = self.stream._response
+        response = _get_stream_response(self.stream)
         if response is None:
             return None
         return _AsyncResponseProxy(response, lambda: self._stop(None))

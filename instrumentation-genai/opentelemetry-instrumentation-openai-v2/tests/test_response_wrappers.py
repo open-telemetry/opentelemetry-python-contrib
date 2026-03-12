@@ -20,6 +20,7 @@ from opentelemetry.instrumentation.openai_v2.response_wrappers import (
     AsyncResponseStreamManagerWrapper,
     AsyncResponseStreamWrapper,
     ResponseStreamManagerWrapper,
+    ResponseStreamWrapper,
 )
 
 
@@ -57,11 +58,35 @@ class _FakeAsyncManager:
         return self._suppressed
 
 
+def _noop_stop_llm(invocation):
+    del invocation
+
+
+def _noop_fail_llm(invocation, error):
+    del invocation
+    del error
+
+
 def _make_wrapper(manager):
     handler = SimpleNamespace()
     invocation = SimpleNamespace(request_model=None)
     return ResponseStreamManagerWrapper(
         manager=manager,
+        handler=handler,
+        invocation=invocation,
+        capture_content=False,
+    )
+
+
+def _make_stream_wrapper(stream, handler=None):
+    if handler is None:
+        handler = SimpleNamespace(
+            stop_llm=_noop_stop_llm,
+            fail_llm=_noop_fail_llm,
+        )
+    invocation = SimpleNamespace(request_model=None)
+    return ResponseStreamWrapper(
+        stream=stream,
         handler=handler,
         invocation=invocation,
         capture_content=False,
@@ -82,8 +107,8 @@ def _make_async_manager_wrapper(manager):
 def _make_async_stream_wrapper(stream, handler=None):
     if handler is None:
         handler = SimpleNamespace(
-            stop_llm=lambda invocation: None,
-            fail_llm=lambda invocation, error: None,
+            stop_llm=_noop_stop_llm,
+            fail_llm=_noop_fail_llm,
         )
     invocation = SimpleNamespace(request_model=None)
     return AsyncResponseStreamWrapper(
@@ -118,6 +143,14 @@ class _FakeAsyncResponse:
 
     async def aclose(self):
         self.aclose_calls += 1
+
+
+class _FakeSyncResponse:
+    def __init__(self):
+        self.close_calls = 0
+
+    def close(self):
+        self.close_calls += 1
 
 
 class _FakeAsyncStream:
@@ -197,6 +230,20 @@ def test_manager_exit_still_finalizes_stream_wrapper_when_manager_raises():
     assert manager.exit_args == (ValueError, error, None)
     assert stream_wrapper.exit_args == (ValueError, error, None)
     assert wrapper._stream_wrapper is None
+
+
+def test_stream_wrapper_response_falls_back_to_public_response_attr():
+    response = _FakeSyncResponse()
+    stream = SimpleNamespace(response=response)
+    wrapper = _make_stream_wrapper(stream)
+    stopped = []
+
+    wrapper._stop = stopped.append
+
+    wrapper.response.close()
+
+    assert response.close_calls == 1
+    assert stopped == [None]
 
 
 @pytest.mark.asyncio
@@ -387,6 +434,13 @@ async def test_async_stream_response_aclose_finalizes_wrapper():
 
     assert response.aclose_calls == 1
     assert stopped == [None]
+
+
+@pytest.mark.asyncio
+async def test_async_stream_response_is_none_when_stream_has_no_response():
+    wrapper = _make_async_stream_wrapper(SimpleNamespace())
+
+    assert wrapper.response is None
 
 
 @pytest.mark.asyncio
