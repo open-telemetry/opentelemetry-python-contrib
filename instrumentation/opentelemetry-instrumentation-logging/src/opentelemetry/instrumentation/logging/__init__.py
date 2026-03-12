@@ -74,9 +74,11 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_CODE_ATTRIBUTES,
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
+    OTEL_PYTHON_LOG_HANDLER_LEVEL,
     OTEL_PYTHON_LOG_LEVEL,
 )
 from opentelemetry.instrumentation.logging.handler import (
+    _get_log_level,
     _setup_logging_handler,
 )
 from opentelemetry.instrumentation.logging.package import _instruments
@@ -245,10 +247,15 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 .lower()
                 == "true",
             )
+            handler_level = kwargs.get(
+                "log_handler_level",
+                _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
+            )
             logger_provider = get_logger_provider()
             handler = _setup_logging_handler(
                 logger_provider=logger_provider,
                 log_code_attributes=log_code_attributes,
+                level=handler_level,
             )
             LoggingInstrumentor._logging_handler = handler
 
