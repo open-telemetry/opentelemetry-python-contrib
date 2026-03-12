@@ -26,7 +26,6 @@ members = [
     "opentelemetry-instrumentation-asyncio",
     "opentelemetry-instrumentation-asyncpg",
     "opentelemetry-instrumentation-aws-lambda",
-    "opentelemetry-instrumentation-boto",
     "opentelemetry-instrumentation-boto3sqs",
     "opentelemetry-instrumentation-botocore",
     "opentelemetry-instrumentation-cassandra",
@@ -528,15 +527,6 @@ source = { registry = "https://pypi.org/simple/" }
 sdist = { url = "https://files.pythonhosted.org/packages/21/28/9b3f50ce0e048515135495f198351908d99540d69bfdc8c1d15b73dc55ce/blinker-1.9.0.tar.gz", hash = "sha256:b4ce2265a7abece45e7cc896e98dbebe6cead56bcf805a3d23136d145f5445bf", size = 22460, upload-time = "2024-11-08T17:25:47.436Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/cb/f2ad4230dc2eb1a74edf38f1a38b9b52277f75bef262d8908e60d957e13c/blinker-1.9.0-py3-none-any.whl", hash = "sha256:ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc", size = 8458, upload-time = "2024-11-08T17:25:46.184Z" },
-]
-
-[[package]]
-name = "boto"
-version = "2.49.0"
-source = { registry = "https://pypi.org/simple/" }
-sdist = { url = "https://files.pythonhosted.org/packages/c8/af/54a920ff4255664f5d238b5aebd8eedf7a07c7a5e71e27afcfe840b82f51/boto-2.49.0.tar.gz", hash = "sha256:ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a", size = 1478498, upload-time = "2018-07-11T20:58:58.057Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/10/c0b78c27298029e4454a472a1919bde20cb182dab1662cec7f2ca1dcc523/boto-2.49.0-py2.py3-none-any.whl", hash = "sha256:147758d41ae7240dc989f0039f27da8ca0d53734be0eb869ef16e3adcfa462e8", size = 1359202, upload-time = "2018-07-11T20:58:55.711Z" },
 ]
 
 [[package]]
@@ -2977,29 +2967,6 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-boto"
-source = { editable = "instrumentation/opentelemetry-instrumentation-boto" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-]
-
-[package.optional-dependencies]
-instruments = [
-    { name = "boto" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto", marker = "extra == 'instruments'", specifier = "~=2.0" },
-    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
-    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-]
-provides-extras = ["instruments"]
-
-[[package]]
 name = "opentelemetry-instrumentation-boto3sqs"
 source = { editable = "instrumentation/opentelemetry-instrumentation-boto3sqs" }
 dependencies = [
@@ -4176,7 +4143,6 @@ dependencies = [
     { name = "opentelemetry-instrumentation-asyncio" },
     { name = "opentelemetry-instrumentation-asyncpg", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-aws-lambda" },
-    { name = "opentelemetry-instrumentation-boto", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-boto3sqs", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-botocore", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-cassandra" },
@@ -4248,7 +4214,6 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-asyncio", editable = "instrumentation/opentelemetry-instrumentation-asyncio" },
     { name = "opentelemetry-instrumentation-asyncpg", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-asyncpg" },
     { name = "opentelemetry-instrumentation-aws-lambda", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-aws-lambda" },
-    { name = "opentelemetry-instrumentation-boto", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-boto" },
     { name = "opentelemetry-instrumentation-boto3sqs", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-boto3sqs" },
     { name = "opentelemetry-instrumentation-botocore", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-botocore" },
     { name = "opentelemetry-instrumentation-cassandra", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-cassandra" },
