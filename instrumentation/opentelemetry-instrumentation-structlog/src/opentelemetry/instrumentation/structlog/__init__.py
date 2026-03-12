@@ -137,7 +137,7 @@ def std_to_otel(levelno: int) -> SeverityNumber:
     return _STD_TO_OTEL[levelno]
 
 
-class OpenTelemetryProcessor:
+class StructlogHandler:
     """
     A structlog processor that translates structlog events into OpenTelemetry LogRecords.
 
@@ -255,7 +255,7 @@ class OpenTelemetryProcessor:
         attributes = self._get_attributes(event_dict)
 
         # Get the current OTel context (includes trace context and baggage)
-        context = get_current() or None
+        context = get_current()
 
         return LogRecord(
             timestamp=timestamp,
@@ -286,7 +286,7 @@ class StructlogInstrumentor(BaseInstrumentor):
     """
     An instrumentor for the structlog logging library.
 
-    This instrumentor adds an OpenTelemetryProcessor to the structlog processor
+    This instrumentor adds an StructlogHandler to the structlog processor
     chain, enabling automatic emission of structlog events as OpenTelemetry logs.
 
     Example:
@@ -305,21 +305,35 @@ class StructlogInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         """
-        Add the OpenTelemetryProcessor to structlog's processor chain.
+        Add the StructlogHandler to structlog's processor chain.
+
+        The handler is inserted before the last processor in the current chain.
+        This assumes the last processor is a renderer (e.g. ConsoleRenderer,
+        JSONRenderer). The handler must run before rendering so it receives the
+        raw event dict rather than a formatted string.
+
+        If your chain does not end with a renderer, or has post-processing steps
+        after the renderer, configure the chain manually instead of relying on
+        auto-instrumentation:
+
+            structlog.configure(processors=[
+                structlog.stdlib.add_log_level,
+                StructlogHandler(logger_provider=provider),
+                structlog.dev.ConsoleRenderer(),
+            ])
 
         Args:
             logger_provider: Optional LoggerProvider to use.
         """
         # Create the OTel processor
         logger_provider = kwargs.get("logger_provider")
-        processor = OpenTelemetryProcessor(logger_provider=logger_provider)
+        processor = StructlogHandler(logger_provider=logger_provider)
 
         # Get current structlog configuration
         config = structlog.get_config()
         current_processors = list(config.get("processors", []))
 
-        # Insert the OTel processor before the last processor (typically the renderer)
-        # This ensures we capture the event before it's formatted
+        # Insert before the last processor, assumed to be the renderer.
         if current_processors:
             insert_position = len(current_processors) - 1
         else:
@@ -335,7 +349,7 @@ class StructlogInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         """
-        Remove the OpenTelemetryProcessor from structlog's processor chain.
+        Remove the StructlogHandler from structlog's processor chain.
         """
         if StructlogInstrumentor._processor is None:
             return
@@ -344,10 +358,10 @@ class StructlogInstrumentor(BaseInstrumentor):
         config = structlog.get_config()
         current_processors = list(config.get("processors", []))
 
-        # Remove all OpenTelemetryProcessor instances
+        # Remove all StructlogHandler instances
         new_processors = [
             p for p in current_processors
-            if not isinstance(p, OpenTelemetryProcessor)
+            if not isinstance(p, StructlogHandler)
         ]
 
         # Reconfigure structlog

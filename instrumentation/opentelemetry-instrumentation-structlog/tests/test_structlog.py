@@ -18,7 +18,7 @@ import structlog
 
 from opentelemetry._logs import SeverityNumber
 from opentelemetry.instrumentation.structlog import (
-    OpenTelemetryProcessor,
+    StructlogHandler,
     StructlogInstrumentor,
 )
 from opentelemetry.sdk._logs import LoggerProvider
@@ -28,8 +28,8 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import TraceFlags
 
 
-class TestOpenTelemetryProcessor(TestBase):
-    """Tests for the OpenTelemetryProcessor class."""
+class TestStructlogHandler(TestBase):
+    """Tests for the StructlogHandler class."""
 
     def setUp(self):
         super().setUp()
@@ -41,7 +41,7 @@ class TestOpenTelemetryProcessor(TestBase):
         )
 
         # Configure structlog with OTel processor
-        self.processor = OpenTelemetryProcessor(
+        self.processor = StructlogHandler(
             logger_provider=self.logger_provider
         )
         structlog.configure(
@@ -285,7 +285,7 @@ class TestOpenTelemetryProcessor(TestBase):
 
         mock_provider = Mock()
         mock_provider.force_flush = Mock()
-        processor = OpenTelemetryProcessor(logger_provider=mock_provider)
+        processor = StructlogHandler(logger_provider=mock_provider)
 
         processor.flush()
 
@@ -340,9 +340,9 @@ class TestStructlogInstrumentor(TestBase):
         new_processors = structlog.get_config()["processors"]
         self.assertEqual(len(new_processors), initial_count + 1)
 
-        # Check that an OpenTelemetryProcessor is in the chain
+        # Check that a StructlogHandler is in the chain
         has_otel_processor = any(
-            isinstance(p, OpenTelemetryProcessor) for p in new_processors
+            isinstance(p, StructlogHandler) for p in new_processors
         )
         self.assertTrue(has_otel_processor)
 
@@ -361,7 +361,7 @@ class TestStructlogInstrumentor(TestBase):
         # Verify processor was added
         config_after_instrument = structlog.get_config()["processors"]
         has_otel = any(
-            isinstance(p, OpenTelemetryProcessor) for p in config_after_instrument
+            isinstance(p, StructlogHandler) for p in config_after_instrument
         )
         self.assertTrue(has_otel)
 
@@ -371,7 +371,7 @@ class TestStructlogInstrumentor(TestBase):
         # Verify processor was removed
         config_after_uninstrument = structlog.get_config()["processors"]
         has_otel = any(
-            isinstance(p, OpenTelemetryProcessor) for p in config_after_uninstrument
+            isinstance(p, StructlogHandler) for p in config_after_uninstrument
         )
         self.assertFalse(has_otel)
 
@@ -401,10 +401,7 @@ class TestStructlogInstrumentor(TestBase):
         custom_provider = LoggerProvider()
         custom_exporter = InMemoryLogRecordExporter()
         custom_provider.add_log_record_processor(
-            LoggingHandler(
-                level=0,
-                logger_provider=custom_provider,
-            )
+            SimpleLogRecordProcessor(custom_exporter)
         )
 
         structlog.configure(

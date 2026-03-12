@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-_instruments = ("structlog ~= 21.1",)
+_instruments = ("structlog >= 21.1",)

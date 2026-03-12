@@ -13,5 +13,3 @@
 # limitations under the License.
 
 __version__ = "0.59b0.dev"
-
-_instruments = ("structlog ~= 21.1",)
