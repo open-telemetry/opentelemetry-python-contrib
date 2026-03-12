@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
+  
+### Added
+
+- `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
+  ([#4289](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4289))
+- `opentelemetry-instrumentation`: Add support for wrapt 2.x
+  ([#4203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4203))
 
 ### Fixed
 
@@ -17,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4305](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4305))
 - Don't import module in unwrap if not already imported
   ([#4321](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4321))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-boto`: Remove instrumentation
+  ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
