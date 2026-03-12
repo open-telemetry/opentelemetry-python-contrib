@@ -143,8 +143,8 @@ class TelemetryHandler:
             error_type=error_type,
         )
 
+    @staticmethod
     def _record_embedding_metrics(
-        self,
         invocation: EmbeddingInvocation,
         span: Span | None = None,
         *,
