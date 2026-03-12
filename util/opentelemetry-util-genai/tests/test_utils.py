@@ -25,7 +25,9 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogRecordExporter,
+    InMemoryLogExporter as InMemoryLogRecordExporter,
+)
+from opentelemetry.sdk._logs.export import (
     SimpleLogRecordProcessor,
 )
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
@@ -455,6 +457,27 @@ class TestTelemetryHandler(unittest.TestCase):
         assert (
             getattr(instrumentation, "schema_url", None)
             == Schemas.V1_37_0.value
+        )
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="true",
+    )
+    def test_llm_log_uses_expected_schema_url(self):
+        invocation = LLMInvocation(
+            request_model="schema-model",
+            provider="schema-provider",
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        invocation.output_messages = [_create_output_message()]
+        self.telemetry_handler.stop_llm(invocation)
+
+        logs = self.log_exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(
+            logs[0].instrumentation_scope.schema_url, Schemas.V1_37_0.value
         )
 
     @patch_env_vars(
