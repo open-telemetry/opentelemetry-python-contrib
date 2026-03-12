@@ -16,7 +16,7 @@ import io
 from timeit import default_timer
 from unittest import mock
 
-import httpretty
+import pook
 import urllib3
 import urllib3.exceptions
 from urllib3 import encode_multipart_formdata
@@ -56,10 +56,20 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         )
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
+        pook.on()
         URLLib3Instrumentor().instrument()
-        httpretty.enable(allow_net_connect=False)
-        httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
-        httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
+        pook.get(
+            self.HTTP_URL,
+            response_body="Hello!",
+            response_headers={"Content-Length": "6"},
+            persist=True,
+        )
+        pook.post(
+            self.HTTP_URL,
+            response_body="Hello!",
+            response_headers={"Content-Length": "6"},
+            persist=True,
+        )
         self.pool = urllib3.PoolManager()
 
     def tearDown(self):
@@ -68,8 +78,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         self.pool.clear()
         URLLib3Instrumentor().uninstrument()
 
-        httpretty.disable()
-        httpretty.reset()
+        pook.off()
 
     def test_basic_metrics(self):
         start_time = default_timer()
@@ -345,10 +354,12 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             ],
         )
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
     def test_basic_metrics_nonstandard_http_method(self):
-        httpretty.register_uri(
-            "NONSTANDARD", self.HTTP_URL, body="", status=405
+        pook.mock(
+            self.HTTP_URL,
+            method="NONSTANDARD",
+            response_body="",
+            reply=405,
         )
 
         start_time = default_timer()
@@ -419,10 +430,12 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             ],
         )
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
     def test_basic_metrics_nonstandard_http_method_new_semconv(self):
-        httpretty.register_uri(
-            "NONSTANDARD", self.HTTP_URL, body="", status=405
+        pook.mock(
+            self.HTTP_URL,
+            method="NONSTANDARD",
+            response_body="",
+            reply=405,
         )
         start_time = default_timer()
         response = self.pool.request("NONSTANDARD", self.HTTP_URL)
