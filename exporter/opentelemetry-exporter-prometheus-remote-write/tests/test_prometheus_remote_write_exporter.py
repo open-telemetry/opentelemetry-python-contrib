@@ -15,6 +15,8 @@
 import unittest
 from unittest.mock import patch
 
+import requests
+
 import pytest
 
 # pylint: disable=no-name-in-module
@@ -283,9 +285,10 @@ class TestValidation(unittest.TestCase):
 
 
 # Ensures export is successful with valid export_records and config
-@patch("requests.post")
-def test_valid_export(mock_post, prom_rw, metric):
-    mock_post.return_value.configure_mock(**{"status_code": 200})
+def test_valid_export(prom_rw, metric):
+    mock_post = unittest.mock.Mock()
+    mock_post.return_value.configure_mock(ok=True, status_code=200)
+    prom_rw._session.post = mock_post
 
     # Assumed a "None" for Scope or Resource aren't valid, so build them here
     scope = ScopeMetrics(
@@ -314,12 +317,16 @@ def test_invalid_export(prom_rw):
 @patch("requests.post")
 def test_valid_send_message(mock_post, prom_rw):
     mock_post.return_value.configure_mock(**{"ok": True})
+    prom_rw._session.post = mock_post  # use the mocked session post
     result = prom_rw._send_message(bytes(), {})
     assert mock_post.call_count == 1
     assert result == MetricExportResult.SUCCESS
 
 
 def test_invalid_send_message(prom_rw):
+    prom_rw._session.post = unittest.mock.Mock(
+        side_effect=requests.exceptions.RequestException("boom")
+    )
     result = prom_rw._send_message(bytes(), {})
     assert result == MetricExportResult.FAILURE
 
@@ -341,3 +348,25 @@ def test_build_headers(prom_rw):
     assert headers["Content-Type"] == "application/x-protobuf"
     assert headers["X-Prometheus-Remote-Write-Version"] == "0.1.0"
     assert headers["Custom Header"] == "test_header"
+
+
+def test_session_retry_configuration(prom_rw):
+    adapter = prom_rw._session.adapters["https://"]
+    retry = adapter.max_retries
+    assert retry.total == prom_rw.max_retries
+    assert "POST" in retry.allowed_methods
+    assert 500 in retry.status_forcelist
+
+
+def test_non_retryable_status(prom_rw):
+    response = unittest.mock.Mock()
+    response.ok = False
+    response.status_code = 400
+    response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+        response=response
+    )
+    prom_rw._session.post = unittest.mock.Mock(return_value=response)
+
+    result = prom_rw._send_message(bytes(), {})
+    assert result == MetricExportResult.FAILURE
+    assert prom_rw._session.post.call_count == 1
