@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from abc import ABC
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from opentelemetry._opamp.proto import opamp_pb2
@@ -23,7 +25,29 @@ if TYPE_CHECKING:
     from opentelemetry._opamp.client import OpAMPClient
 
 
-class Callbacks:
+@dataclass
+class MessageData:
+    """Structured view of a ServerToAgent message for callback consumption.
+
+    Only fields the agent is expected to act on are exposed. Flags and
+    error_response are handled internally by the client before this
+    object reaches the callback.
+    """
+
+    remote_config: opamp_pb2.AgentRemoteConfig | None = None
+
+    @classmethod
+    def from_server_message(
+        cls, message: opamp_pb2.ServerToAgent
+    ) -> MessageData:
+        return cls(
+            remote_config=message.remote_config
+            if message.HasField("remote_config")
+            else None,
+        )
+
+
+class Callbacks(ABC):
     """OpAMP client callbacks with no-op defaults.
 
     All methods have no-op defaults so that subclasses only need to
@@ -65,6 +89,6 @@ class Callbacks:
         self,
         agent: OpAMPAgent,
         client: OpAMPClient,
-        message: opamp_pb2.ServerToAgent,
+        message: MessageData,
     ) -> None:
         """Called when the Agent receives a message that needs processing."""

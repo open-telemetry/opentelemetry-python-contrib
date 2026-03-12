@@ -18,17 +18,25 @@ from unittest import mock
 
 from opentelemetry._opamp.agent import OpAMPAgent, _safe_invoke
 from opentelemetry._opamp.agent import _Job as Job
-from opentelemetry._opamp.callbacks import Callbacks
+from opentelemetry._opamp.callbacks import Callbacks, MessageData
 from opentelemetry._opamp.proto import opamp_pb2
 
 
+class _NoOpCallbacks(Callbacks):
+    pass
+
+
 def test_can_instantiate_agent():
-    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=Callbacks())
+    agent = OpAMPAgent(
+        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
+    )
     assert isinstance(agent, OpAMPAgent)
 
 
 def test_can_start_agent():
-    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=Callbacks())
+    agent = OpAMPAgent(
+        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
+    )
     agent.start()
     agent.stop()
 
@@ -37,6 +45,7 @@ def test_agent_start_will_send_connection_and_disconnetion_messages():
     client_mock = mock.Mock()
     mock_message = mock.Mock()
     mock_message.HasField.return_value = False
+    mock_message.flags = 0
     client_mock.send.return_value = mock_message
 
     cb = mock.create_autospec(Callbacks, instance=True)
@@ -52,23 +61,31 @@ def test_agent_start_will_send_connection_and_disconnetion_messages():
     assert agent._schedule is True
     # on_connect and on_message called for the connection response
     cb.on_connect.assert_called_once_with(agent, client_mock)
-    cb.on_message.assert_called_once_with(agent, client_mock, mock_message)
+    cb.on_message.assert_called_once_with(
+        agent, client_mock, MessageData(remote_config=None)
+    )
 
 
 def test_agent_can_call_agent_stop_multiple_times():
-    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=Callbacks())
+    agent = OpAMPAgent(
+        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
+    )
     agent.start()
     agent.stop()
     agent.stop()
 
 
 def test_agent_can_call_agent_stop_before_start():
-    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=Callbacks())
+    agent = OpAMPAgent(
+        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
+    )
     agent.stop()
 
 
 def test_agent_send_warns_without_worker_thread(caplog):
-    agent = OpAMPAgent(interval=30, client=mock.Mock(), callbacks=Callbacks())
+    agent = OpAMPAgent(
+        interval=30, client=mock.Mock(), callbacks=_NoOpCallbacks()
+    )
     agent.send(payload="payload")
 
     assert caplog.record_tuples == [
@@ -87,8 +104,10 @@ def test_agent_retries_before_max_attempts(caplog):
     client_mock = mock.Mock()
     connection_message = mock.Mock()
     connection_message.HasField.return_value = False
+    connection_message.flags = 0
     server_message = mock.Mock()
     server_message.HasField.return_value = False
+    server_message.flags = 0
     disconnection_message = mock.Mock()
     client_mock.send.side_effect = [
         connection_message,
@@ -121,6 +140,7 @@ def test_agent_stops_after_max_attempts(caplog):
     client_mock = mock.Mock()
     connection_message = mock.Mock()
     connection_message.HasField.return_value = False
+    connection_message.flags = 0
     disconnection_message = mock.Mock()
     exc1 = Exception("fail1")
     exc2 = Exception("fail2")
@@ -155,6 +175,7 @@ def test_agent_send_enqueues_job():
     client_mock = mock.Mock()
     msg = mock.Mock()
     msg.HasField.return_value = False
+    msg.flags = 0
     client_mock.send.return_value = msg
 
     agent = OpAMPAgent(interval=30, client=client_mock, callbacks=cb)
@@ -223,7 +244,7 @@ def test_on_error_not_called_without_error_response():
 
 
 def test_dispatch_order():
-    """Verify the opamp-go dispatch order: on_connect -> on_message -> on_error."""
+    """Verify the opamp-client dispatch order: on_connect -> on_message -> on_error."""
     call_order = []
     client_mock = mock.Mock()
 
@@ -256,6 +277,33 @@ def test_dispatch_order():
     agent.stop()
 
     assert call_order == ["on_connect", "on_message", "on_error"]
+
+
+def test_report_full_state_flag_triggers_full_state_send():
+    cb = mock.create_autospec(Callbacks, instance=True)
+    client_mock = mock.Mock()
+
+    conn_msg = opamp_pb2.ServerToAgent()
+    flag_msg = opamp_pb2.ServerToAgent(
+        flags=opamp_pb2.ServerToAgentFlags_ReportFullState,
+    )
+
+    no_flag_msg = opamp_pb2.ServerToAgent()
+    client_mock.send.side_effect = [
+        conn_msg,  # connection
+        flag_msg,  # response with ReportFullState
+        no_flag_msg,  # full state response
+        no_flag_msg,  # disconnect
+    ]
+    client_mock.build_full_state_message.return_value = b"full-state"
+
+    agent = OpAMPAgent(interval=30, client=client_mock, callbacks=cb)
+    agent.start()
+    agent.send(payload="payload")
+    sleep(0.2)
+    agent.stop()
+
+    client_mock.build_full_state_message.assert_called()
 
 
 def test_safe_invoke_logs_error(caplog):

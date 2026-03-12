@@ -42,7 +42,10 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
             logger.debug("In opamp_handler")
 
             # we need to update the config only if we have a config
-            if not message.remote_config.config_hash:
+            if (
+                message.remote_config is None
+                or not message.remote_config.config_hash
+            ):
                 return
 
             updated_remote_config = client.update_remote_config_status(
@@ -82,10 +85,12 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
         for record in caplog.record_tuples
         if record[0] == "opentelemetry._opamp.agent.opamp_handler"
     ]
-    # one call is for connection, one is remote config status, one is heartbeat
+    # connection response has ReportFullState flag, triggering a full state send.
+    # on_message is called for: connection, full state response, config status response, heartbeat.
     assert handler_records == [
         "In opamp_handler",
         "Updated Remote Config",
+        "In opamp_handler",
         "In opamp_handler",
         "In opamp_handler",
     ]

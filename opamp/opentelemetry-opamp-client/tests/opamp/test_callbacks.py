@@ -14,13 +14,8 @@
 
 from unittest import mock
 
-from opentelemetry._opamp.callbacks import Callbacks
+from opentelemetry._opamp.callbacks import Callbacks, MessageData
 from opentelemetry._opamp.proto import opamp_pb2
-
-
-def test_can_instantiate_callbacks():
-    cb = Callbacks()
-    assert isinstance(cb, Callbacks)
 
 
 def test_subclass_override_subset():
@@ -37,5 +32,5 @@ def test_subclass_override_subset():
 
     # non-overridden methods still work as no-ops
     cb.on_connect_failed(mock.Mock(), mock.Mock(), Exception())
-    cb.on_message(mock.Mock(), mock.Mock(), opamp_pb2.ServerToAgent())
+    cb.on_message(mock.Mock(), mock.Mock(), MessageData())
     cb.on_error(mock.Mock(), mock.Mock(), opamp_pb2.ServerErrorResponse())

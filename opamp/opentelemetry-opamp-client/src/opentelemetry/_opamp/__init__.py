@@ -56,6 +56,8 @@ Usage
 
     class MyCallbacks(Callbacks):
         def on_message(self, agent, client, message):
+            if message.remote_config is None:
+                return
             for config_filename, config in message.remote_config.config.config_map.items():
                 print("do something")
 
@@ -91,7 +93,7 @@ API
 """
 
 from opentelemetry._opamp.agent import OpAMPAgent
-from opentelemetry._opamp.callbacks import Callbacks
+from opentelemetry._opamp.callbacks import Callbacks, MessageData
 from opentelemetry._opamp.client import OpAMPClient
 
-__all__ = ["Callbacks", "OpAMPAgent", "OpAMPClient"]
+__all__ = ["Callbacks", "MessageData", "OpAMPAgent", "OpAMPClient"]

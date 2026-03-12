@@ -21,8 +21,9 @@ import random
 import threading
 from typing import Any, Callable
 
-from opentelemetry._opamp.callbacks import Callbacks
+from opentelemetry._opamp.callbacks import Callbacks, MessageData
 from opentelemetry._opamp.client import OpAMPClient
+from opentelemetry._opamp.proto import opamp_pb2
 
 logger = logging.getLogger(__name__)
 
@@ -233,8 +234,17 @@ class OpAMPAgent:
                         break
 
             if message is not None:
+                if (
+                    message.flags
+                    & opamp_pb2.ServerToAgentFlags_ReportFullState
+                ):
+                    logger.debug("Server requested full state report")
+                    payload = self._client.build_full_state_message()
+                    self.send(payload)
+
+                msg_data = MessageData.from_server_message(message)
                 _safe_invoke(
-                    self._callbacks.on_message, self, self._client, message
+                    self._callbacks.on_message, self, self._client, msg_data
                 )
                 if message.HasField("error_response"):
                     _safe_invoke(
