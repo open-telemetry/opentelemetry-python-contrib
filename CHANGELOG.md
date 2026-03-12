@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4289](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4289))
 - `opentelemetry-instrumentation`: Add support for wrapt 2.x
   ([#4203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4203))
+- `opentelemetry-instrumentation-psycopg2`: Add parameter `capture_parameters` to instrumentor.
+  ([#4212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4212))
 
 ### Fixed
 
