@@ -103,6 +103,31 @@ To release a package as `1.0` stable, the package:
 
 In our efforts to maintain optimal user experience and prevent breaking changes for transitioning into stable semantic conventions, OpenTelemetry Python is adopting the semantic convention migration plan for several instrumentations. Currently this plan is only being adopted for [HTTP-related instrumentations](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/non-normative/http-migration.md), but will eventually cover all types. Please refer to the `semconv status` column of the [instrumentation README](instrumentation/README.md) of the current status of instrumentations' semantic conventions. The possible values are `development`, `stable` and `migration` referring to [status](https://github.com/open-telemetry/opentelemetry-specification/blob/v1.31.0/specification/document-status.md#lifecycle-status) of that particular semantic convention. `Migration` refers to an instrumentation that currently supports the migration plan.
 
+### Opting into stable semantic conventions
+
+You can control which semantic conventions are used by setting the `OTEL_SEMCONV_STABILITY_OPT_IN` environment variable. This is useful for transitioning from experimental to stable semantic conventions.
+
+For HTTP instrumentations, set `OTEL_SEMCONV_STABILITY_OPT_IN` to:
+
+- `http` - Emit the new, stable HTTP and networking conventions, and stop emitting the old experimental HTTP and networking conventions that the instrumentation emitted previously.
+- `http/dup` - Emit both the old and the stable HTTP and networking conventions, allowing for a seamless transition.
+
+By default (when the environment variable is not set), the old experimental HTTP and networking conventions are emitted.
+
+Example:
+```bash
+# Use stable HTTP conventions only
+export OTEL_SEMCONV_STABILITY_OPT_IN=http
+
+# Emit both old and new conventions for transition
+export OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+```
+
+You can also combine multiple opt-ins using commas:
+```bash
+export OTEL_SEMCONV_STABILITY_OPT_IN=http,database/dup
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)
