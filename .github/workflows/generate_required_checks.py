@@ -1,3 +1,11 @@
+"""
+This script builds a text file with the list of required checks based on
+the tox environments. Similarly to the system we are using to build the
+github workflows.
+The output is in the format than can be cut-and-pasted into the python-contrib
+terraform configuration in the admin repository.
+"""
+
 from pathlib import Path
 
 from generate_workflows_lib import (
