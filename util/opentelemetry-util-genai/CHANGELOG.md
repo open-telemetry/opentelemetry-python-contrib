@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Allow passing external Span to the manual LLMInvocation ([#4281](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4281))
+- Populate schema_url on metrics
+  ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
 
 ## Version 0.3b0 (2026-02-20)
 

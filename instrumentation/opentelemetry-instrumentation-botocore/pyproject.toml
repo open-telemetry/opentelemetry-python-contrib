@@ -27,9 +27,10 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.37",
-  "opentelemetry-instrumentation == 0.61b0.dev",
-  "opentelemetry-semantic-conventions == 0.61b0.dev",
+  "opentelemetry-instrumentation == 0.62b0.dev",
+  "opentelemetry-semantic-conventions == 0.62b0.dev",
   "opentelemetry-propagator-aws-xray ~= 1.0",
+  "wrapt >= 1.0.0, < 3.0.0",
 ]
 
 [project.optional-dependencies]
