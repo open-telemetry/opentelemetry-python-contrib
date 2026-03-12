@@ -6,11 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
-- Add workflow invocation type to genAI utils
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310](#4310))
 
 - Populate schema_url on metrics
   ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
+- Add workflow invocation type to genAI utils
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310](#4310))
 
 ## Version 0.3b0 (2026-02-20)
 
