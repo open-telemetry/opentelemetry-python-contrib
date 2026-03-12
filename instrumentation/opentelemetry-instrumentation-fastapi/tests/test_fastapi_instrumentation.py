@@ -25,6 +25,7 @@ from unittest.mock import Mock, call, patch
 
 import fastapi
 import pytest
+from fastapi.middleware.asyncexitstack import AsyncExitStackMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
@@ -2073,7 +2074,12 @@ class TestFastAPIFallback(TestBaseFastAPI):
         app = TestBaseFastAPI._create_fastapi_app()
 
         def build_middleware_stack():
-            return app.router
+            # Return something that is NOT a ServerErrorMiddleware so the
+            # instrumentation fallback path triggers, but still wrap the
+            # router with AsyncExitStackMiddleware so that newer FastAPI
+            # versions (which assert ``fastapi_middleware_astack`` exists in
+            # the request scope) can service requests normally.
+            return AsyncExitStackMiddleware(app.router)
 
         app.build_middleware_stack = build_middleware_stack
         return app
@@ -2098,7 +2104,7 @@ class TestFastAPIFallback(TestBaseFastAPI):
         self.assertEqual(len(errors), 1)
         self.assertEqual(
             errors[0].getMessage(),
-            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.routing.APIRouter'>",
+            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.middleware.asyncexitstack.AsyncExitStackMiddleware'>",
         )
 
 
