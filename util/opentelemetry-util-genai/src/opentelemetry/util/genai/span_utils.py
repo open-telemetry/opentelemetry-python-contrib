@@ -304,7 +304,7 @@ def _get_embedding_request_attributes(
     """Get GenAI request semantic convention attributes."""
     optional_attrs = (
         (GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),
-        (GenAI.GEN_AI_EMBEDDING_DIMENSION_COUNT, invocation.dimension_count),
+        (GenAI.GEN_AI_EMBEDDINGS_DIMENSION_COUNT, invocation.dimension_count),
         (GenAI.GEN_AI_REQUEST_ENCODING_FORMATS, invocation.encoding_formats),
     )
 
