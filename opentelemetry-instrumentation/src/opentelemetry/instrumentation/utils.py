@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import sys
 import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
@@ -103,6 +104,9 @@ def unwrap(obj: object, attr: str):
             raise ImportError(
                 f"Cannot parse '{obj}' as dotted import path"
             ) from exc
+        if module_path not in sys.modules:
+            # Was never imported, meaning it could never have been wrapped
+            return
         module = import_module(module_path)
         try:
             obj = getattr(module, class_name)
