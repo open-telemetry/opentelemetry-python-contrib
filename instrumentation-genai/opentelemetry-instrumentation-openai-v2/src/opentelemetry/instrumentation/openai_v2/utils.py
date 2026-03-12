@@ -19,6 +19,7 @@ from os import environ
 from typing import Any, Iterable, List, Mapping
 from urllib.parse import urlparse
 
+import openai
 from httpx import URL
 from openai import NotGiven
 
@@ -44,6 +45,8 @@ from opentelemetry.util.genai.types import (
     ToolCall,
     ToolCallResponse,
 )
+
+_OpenAIOmit = getattr(openai, "Omit", None)
 
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
     "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
@@ -202,7 +205,15 @@ def non_numerical_value_is_set(value: bool | str | NotGiven | None):
 
 
 def value_is_set(value):
+    if _OpenAIOmit is not None and isinstance(value, _OpenAIOmit):
+        return False
     return value is not None and not isinstance(value, NotGiven)
+
+
+def _openai_response_format_to_output_type(response_format_type: str) -> str:
+    if response_format_type in ("json_object", "json_schema"):
+        return "json"
+    return response_format_type
 
 
 def get_llm_request_attributes(
@@ -283,7 +294,7 @@ def get_llm_request_attributes(
                     attributes[request_response_format_attr_key] = (
                         response_format_type
                     )
-            else:
+            elif isinstance(response_format, str):
                 attributes[request_response_format_attr_key] = response_format
 
         # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
@@ -375,12 +386,14 @@ def create_chat_invocation(
                 response_format_type := get_value(response_format.get("type"))
             ) is not None:
                 attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
-                    response_format_type
+                    _openai_response_format_to_output_type(
+                        response_format_type
+                    )
                 )
-        else:
-            attributes[
-                GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-            ] = response_format
+        elif isinstance(response_format, str):
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                _openai_response_format_to_output_type(response_format)
+            )
 
     # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
     service_tier = get_value(kwargs.get("service_tier"))
