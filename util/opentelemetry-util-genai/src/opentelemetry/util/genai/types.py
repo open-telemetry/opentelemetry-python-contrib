@@ -202,6 +202,13 @@ class GenAIInvocation:
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
 
+    monotonic_start_s: float | None = None
+    """
+    Monotonic start time in seconds (from timeit.default_timer) used for
+    duration calculations to avoid mixing clock sources. This is populated
+    by the TelemetryHandler when starting an invocation.
+    """
+
 
 @dataclass
 class LLMInvocation(GenAIInvocation):
@@ -250,10 +257,49 @@ class LLMInvocation(GenAIInvocation):
     seed: int | None = None
     server_address: str | None = None
     server_port: int | None = None
-    # Monotonic start time in seconds (from timeit.default_timer) used
-    # for duration calculations to avoid mixing clock sources. This is
-    # populated by the TelemetryHandler when starting an invocation.
-    monotonic_start_s: float | None = None
+
+
+@dataclass
+class _BaseAgent(GenAIInvocation):
+    """Shared base class for agent lifecycle types. Do not instantiate
+    directly — use AgentCreation (or AgentInvocation in future).
+    The span and context_token attributes are set by the TelemetryHandler.
+    """
+
+    # Agent identity
+    name: str | None = None
+    agent_id: str | None = None
+    description: str | None = None
+    version: str | None = None
+
+    # Request
+    request_model: str | None = None
+    provider: str | None = None
+
+    # Content (Opt-In)
+    system_instructions: list[MessagePart] = field(
+        default_factory=_new_system_instruction
+    )
+
+    # Server
+    server_address: str | None = None
+    server_port: int | None = None
+
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    """
+    Additional attributes to set on spans and/or events.
+    """
+
+
+@dataclass
+class AgentCreation(_BaseAgent):
+    """
+    Represents an agent creation/initialization. When creating an AgentCreation
+    object, only update the data attributes. The span and context_token
+    attributes are set by the TelemetryHandler.
+    """
+
+    operation_name: str = GenAI.GenAiOperationNameValues.CREATE_AGENT.value
 
 
 @dataclass
