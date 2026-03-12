@@ -205,19 +205,20 @@ class TelemetryHandler:
             return invocation
 
         span = invocation.span
+        error_type = error.type.__qualname__
         try:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
-                _apply_error_attributes(span, error)
-                error_type = getattr(error.type, "__qualname__", None)
+                _apply_error_attributes(span, error, error_type)
                 self._record_llm_metrics(
                     invocation, span, error_type=error_type
                 )
-                _maybe_emit_llm_event(self._logger, span, invocation, error)
+                _maybe_emit_llm_event(
+                    self._logger, span, invocation, error_type
+                )
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
-                _apply_error_attributes(span, error)
-                error_type = getattr(error.type, "__qualname__", None)
+                _apply_error_attributes(span, error, error_type)
                 self._record_embedding_metrics(
                     invocation, span, error_type=error_type
                 )

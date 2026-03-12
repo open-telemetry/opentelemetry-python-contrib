@@ -186,7 +186,7 @@ def _maybe_emit_llm_event(
     logger: Logger | None,
     span: Span,
     invocation: LLMInvocation,
-    error: Error | None = None,
+    error_type: str | None = None,
 ) -> None:
     """Emit a gen_ai.client.inference.operation.details event to the logger.
 
@@ -214,8 +214,8 @@ def _maybe_emit_llm_event(
     )
 
     # Add error.type if operation ended in error
-    if error is not None:
-        attributes[error_attributes.ERROR_TYPE] = error.type.__qualname__
+    if error_type is not None:
+        attributes[error_attributes.ERROR_TYPE] = error_type
 
     # Create and emit the event
     context = set_span_in_context(span, get_current())
@@ -273,13 +273,11 @@ def _apply_embedding_finish_attributes(
         span.set_attributes(attributes)
 
 
-def _apply_error_attributes(span: Span, error: Error) -> None:
+def _apply_error_attributes(span: Span, error: Error, error_type: str) -> None:
     """Apply status and error attributes common to error() paths."""
     span.set_status(Status(StatusCode.ERROR, error.message))
     if span.is_recording():
-        span.set_attribute(
-            error_attributes.ERROR_TYPE, error.type.__qualname__
-        )
+        span.set_attribute(error_attributes.ERROR_TYPE, error_type)
 
 
 def _get_llm_request_attributes(

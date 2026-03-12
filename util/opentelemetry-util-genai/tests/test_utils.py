@@ -338,11 +338,11 @@ class TestTelemetryHandler(unittest.TestCase):
             attributes={"manual": True},
         )
 
-        self.telemetry_handler.start_llm(invocation)
+        self.telemetry_handler.start(invocation)
         assert invocation.span is not None
         invocation.output_messages = [chat_generation]
         invocation.attributes.update({"extra_manual": "yes"})
-        self.telemetry_handler.stop_llm(invocation)
+        self.telemetry_handler.stop(invocation)
 
         span = _get_single_span(self.span_exporter)
         assert span.name == "chat manual-model"
@@ -375,9 +375,9 @@ class TestTelemetryHandler(unittest.TestCase):
             output_tokens=34,
         )
 
-        self.telemetry_handler.start_llm(invocation)
+        self.telemetry_handler.start(invocation)
         assert invocation.span is not None
-        self.telemetry_handler.stop_llm(invocation)
+        self.telemetry_handler.stop(invocation)
 
         span = _get_single_span(self.span_exporter)
         _assert_span_time_order(span)
@@ -403,9 +403,9 @@ class TestTelemetryHandler(unittest.TestCase):
             finish_reasons=["stop", "length", "stop"],
         )
 
-        self.telemetry_handler.start_llm(invocation)
+        self.telemetry_handler.start(invocation)
         assert invocation.span is not None
-        self.telemetry_handler.stop_llm(invocation)
+        self.telemetry_handler.stop(invocation)
 
         span = _get_single_span(self.span_exporter)
         attrs = _get_span_attributes(span)
@@ -420,14 +420,14 @@ class TestTelemetryHandler(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start_llm(invocation)
+        self.telemetry_handler.start(invocation)
         assert invocation.span is not None
         invocation.output_messages = [
             _create_output_message("response-1", finish_reason="stop"),
             _create_output_message("response-2", finish_reason="length"),
             _create_output_message("response-3", finish_reason="stop"),
         ]
-        self.telemetry_handler.stop_llm(invocation)
+        self.telemetry_handler.stop(invocation)
 
         span = _get_single_span(self.span_exporter)
         attrs = _get_span_attributes(span)
@@ -442,9 +442,9 @@ class TestTelemetryHandler(unittest.TestCase):
             provider="schema-provider",
         )
 
-        self.telemetry_handler.start_llm(invocation)
+        self.telemetry_handler.start(invocation)
         assert invocation.span is not None
-        self.telemetry_handler.stop_llm(invocation)
+        self.telemetry_handler.stop(invocation)
 
         span = _get_single_span(self.span_exporter)
         instrumentation = getattr(span, "instrumentation_scope", None)
@@ -468,9 +468,9 @@ class TestTelemetryHandler(unittest.TestCase):
             provider="schema-provider",
         )
 
-        self.telemetry_handler.start_llm(invocation)
+        self.telemetry_handler.start(invocation)
         invocation.output_messages = [_create_output_message()]
-        self.telemetry_handler.stop_llm(invocation)
+        self.telemetry_handler.stop(invocation)
 
         logs = self.log_exporter.get_finished_logs()
         self.assertEqual(len(logs), 1)
@@ -538,12 +538,12 @@ class TestTelemetryHandler(unittest.TestCase):
             input_tokens=5,
         )
 
-        self.telemetry_handler.start_embedding(parent_invocation)
+        self.telemetry_handler.start(parent_invocation)
         assert parent_invocation.span is not None
-        self.telemetry_handler.start_embedding(child_invocation)
+        self.telemetry_handler.start(child_invocation)
         assert child_invocation.span is not None
-        self.telemetry_handler.stop_embedding(child_invocation)
-        self.telemetry_handler.stop_embedding(parent_invocation)
+        self.telemetry_handler.stop(child_invocation)
+        self.telemetry_handler.stop(parent_invocation)
 
         spans = self.span_exporter.get_finished_spans()
         assert len(spans) == 2
@@ -580,9 +580,9 @@ class TestTelemetryHandler(unittest.TestCase):
                 "provider": "test-provider",
             }.items():
                 setattr(parent_invocation, attr, value)
-            self.telemetry_handler.start_embedding(child_invocation)
+            self.telemetry_handler.start(child_invocation)
             assert child_invocation.span is not None
-            self.telemetry_handler.stop_embedding(child_invocation)
+            self.telemetry_handler.stop(child_invocation)
             parent_invocation.output_messages = [chat_generation]
 
         spans = self.span_exporter.get_finished_spans()
@@ -703,11 +703,11 @@ class TestTelemetryHandler(unittest.TestCase):
             attributes={"custom_embed_attr": "value"},
         )
 
-        self.telemetry_handler.start_embedding(invocation)
+        self.telemetry_handler.start(invocation)
         assert invocation.span is not None
         invocation.attributes.update({"extra_embed": "info"})
         invocation.metric_attributes = {"should not be on span": "value"}
-        self.telemetry_handler.stop_embedding(invocation)
+        self.telemetry_handler.stop(invocation)
 
         span = _get_single_span(self.span_exporter)
         self.assertEqual(span.name, "embeddings embed-model")
