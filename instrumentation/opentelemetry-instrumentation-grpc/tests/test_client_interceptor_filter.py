@@ -101,7 +101,12 @@ class TestClientProtoFilterMethodName(TestBase):
         self.server.start()
         # use a user defined interceptor along with the opentelemetry client interceptor
         interceptors = [Interceptor()]
-        self.channel = grpc.insecure_channel("localhost:25565")
+        self.channel = grpc.insecure_channel(
+            "localhost:25565",
+            options=[
+                (grpc.experimental.ChannelOptions.SingleThreadedUnaryStream, 1)
+            ],
+        )
         self.channel = grpc.intercept_channel(self.channel, *interceptors)
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self.channel)
 
