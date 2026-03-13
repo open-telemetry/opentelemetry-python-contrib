@@ -53,6 +53,7 @@ dependencies = [
   "opentelemetry-instrumentation-requests[instruments]",
   "opentelemetry-instrumentation-sqlalchemy[instruments]",
   "opentelemetry-instrumentation-sqlite3",
+  "opentelemetry-instrumentation-structlog[instruments]",
   "opentelemetry-instrumentation-system-metrics",
   "opentelemetry-instrumentation-threading",
   "opentelemetry-instrumentation-tornado",
@@ -123,6 +124,7 @@ opentelemetry-instrumentation-remoulade = { workspace = true }
 opentelemetry-instrumentation-requests = { workspace = true }
 opentelemetry-instrumentation-sqlalchemy = { workspace = true }
 opentelemetry-instrumentation-sqlite3 = { workspace = true }
+opentelemetry-instrumentation-structlog = { workspace = true }
 opentelemetry-instrumentation-system-metrics = { workspace = true }
 opentelemetry-instrumentation-threading = { workspace = true }
 opentelemetry-instrumentation-tornado = { workspace = true }
