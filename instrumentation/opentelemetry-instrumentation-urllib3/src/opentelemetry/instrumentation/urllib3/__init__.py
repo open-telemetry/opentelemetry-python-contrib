@@ -424,7 +424,7 @@ def _get_span_name(method: str) -> str:
     return method
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-positional-arguments
 def _instrument(
     tracer: Tracer,
     duration_histogram_old: Histogram,
@@ -687,6 +687,7 @@ def _filter_attributes_semconv(
     return (duration_attrs_old, duration_attrs_new)
 
 
+# pylint: disable=too-many-positional-arguments
 def _record_metrics(
     metric_attributes: dict,
     duration_histogram_old: Histogram,

@@ -59,7 +59,7 @@ def _normalize_request(args, kwargs):
     return (new_args, new_kwargs)
 
 
-def fetch_async(  # pylint: disable=too-many-locals
+def fetch_async(  # pylint: disable=too-many-locals,too-many-positional-arguments
     tracer,
     request_hook,
     response_hook,

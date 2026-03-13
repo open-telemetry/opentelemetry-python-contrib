@@ -244,7 +244,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
         http_capture_headers_server_response: list[str] | None = None,
         http_capture_headers_sanitize_fields: list[str] | None = None,
         exclude_spans: list[Literal["receive", "send"]] | None = None,
-    ):  # pylint: disable=too-many-locals
+    ):  # pylint: disable=too-many-locals,too-many-positional-arguments
         """Instrument an uninstrumented FastAPI application.
 
         Args:

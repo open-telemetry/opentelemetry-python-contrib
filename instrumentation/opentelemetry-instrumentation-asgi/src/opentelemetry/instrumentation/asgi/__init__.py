@@ -583,7 +583,7 @@ class OpenTelemetryMiddleware:
         exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
     """
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-positional-arguments
     def __init__(
         self,
         app,
