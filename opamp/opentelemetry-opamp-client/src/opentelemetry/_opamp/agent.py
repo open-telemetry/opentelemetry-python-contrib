@@ -234,25 +234,7 @@ class OpAMPAgent:
                         break
 
             if message is not None:
-                if (
-                    message.flags
-                    & opamp_pb2.ServerToAgentFlags_ReportFullState
-                ):
-                    logger.debug("Server requested full state report")
-                    payload = self._client.build_full_state_message()
-                    self.send(payload)
-
-                msg_data = MessageData.from_server_message(message)
-                _safe_invoke(
-                    self._callbacks.on_message, self, self._client, msg_data
-                )
-                if message.HasField("error_response"):
-                    _safe_invoke(
-                        self._callbacks.on_error,
-                        self,
-                        self._client,
-                        message.error_response,
-                    )
+                self._process_message(message)
 
             try:
                 if job.callback is not None:
@@ -261,6 +243,29 @@ class OpAMPAgent:
                 logging.warning("Callback for job failed: %s", exc)
             finally:
                 self._queue.task_done()
+
+    def _process_message(self, message: opamp_pb2.ServerToAgent) -> None:
+        if message.HasField("error_response"):
+            _safe_invoke(
+                self._callbacks.on_error,
+                self,
+                self._client,
+                message.error_response,
+            )
+            return
+
+        if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
+            logger.debug("Server requested full state report")
+            payload = self._client.build_full_state_message()
+            self.send(payload)
+
+        msg_data = MessageData.from_server_message(message)
+        _safe_invoke(
+            self._callbacks.on_message,
+            self,
+            self._client,
+            msg_data,
+        )
 
     def stop(self, timeout: float | None = None) -> None:
         """

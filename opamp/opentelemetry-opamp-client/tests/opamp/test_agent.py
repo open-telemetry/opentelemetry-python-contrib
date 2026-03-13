@@ -193,7 +193,7 @@ def test_agent_send_enqueues_job():
     assert cb.on_message.call_count == 2
 
 
-def test_on_message_and_on_error_both_called():
+def test_on_error_called_without_on_message_for_error_response():
     cb = mock.create_autospec(Callbacks, instance=True)
     client_mock = mock.Mock()
 
@@ -217,9 +217,9 @@ def test_on_message_and_on_error_both_called():
     sleep(0.1)
     agent.stop()
 
-    # on_message called for both connection and our message
-    assert cb.on_message.call_count == 2
-    # on_error called only for the message with error_response
+    # on_message called only for connection (not for error_response message)
+    assert cb.on_message.call_count == 1
+    # on_error called for the message with error_response
     cb.on_error.assert_called_once_with(agent, client_mock, error_response)
 
 
@@ -243,8 +243,8 @@ def test_on_error_not_called_without_error_response():
     cb.on_error.assert_not_called()
 
 
-def test_dispatch_order():
-    """Verify the opamp-client dispatch order: on_connect -> on_message -> on_error."""
+def test_dispatch_order_with_error():
+    """Verify that error_response skips on_message: on_connect -> on_error."""
     call_order = []
     client_mock = mock.Mock()
 
@@ -276,7 +276,38 @@ def test_dispatch_order():
     sleep(0.1)
     agent.stop()
 
-    assert call_order == ["on_connect", "on_message", "on_error"]
+    assert call_order == ["on_connect", "on_error"]
+
+
+def test_dispatch_order_without_error():
+    """Verify normal dispatch order: on_connect -> on_message."""
+    call_order = []
+    client_mock = mock.Mock()
+
+    server_msg = opamp_pb2.ServerToAgent()
+
+    class OrderTrackingCallbacks(Callbacks):
+        def on_connect(self, agent, client):
+            call_order.append("on_connect")
+
+        def on_message(self, agent, client, message):
+            call_order.append("on_message")
+
+        def on_error(self, agent, client, error_response):
+            call_order.append("on_error")
+
+    client_mock.send.side_effect = [
+        server_msg,  # connection message, no error
+        mock.Mock(),  # disconnect
+    ]
+    agent = OpAMPAgent(
+        interval=30, client=client_mock, callbacks=OrderTrackingCallbacks()
+    )
+    agent.start()
+    sleep(0.1)
+    agent.stop()
+
+    assert call_order == ["on_connect", "on_message"]
 
 
 def test_report_full_state_flag_triggers_full_state_send():
