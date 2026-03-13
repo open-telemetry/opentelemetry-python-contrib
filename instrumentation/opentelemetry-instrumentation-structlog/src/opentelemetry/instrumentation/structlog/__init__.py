@@ -76,7 +76,6 @@ _STRUCTLOG_LEVEL_TO_LEVELNO = {
 }
 
 # Mapping from stdlib log levels to OTel severity numbers
-# Based on the SDK's LoggingHandler implementation
 _STD_TO_OTEL = {
     10: SeverityNumber.DEBUG,
     11: SeverityNumber.DEBUG2,
@@ -128,7 +127,6 @@ _STD_TO_OTEL = {
 def std_to_otel(levelno: int) -> SeverityNumber:
     """
     Map python log levelno to OTel log severity number.
-    Based on the SDK's LoggingHandler implementation.
     """
     if levelno < 10:
         return SeverityNumber.UNSPECIFIED
@@ -272,8 +270,7 @@ class StructlogHandler:
         Flush the logger provider.
 
         This method flushes any pending logs. It runs in a separate thread
-        to avoid potential deadlocks, following the pattern from the SDK's
-        LoggingHandler.
+        to avoid potential deadlocks.
         """
         if hasattr(self._logger_provider, "force_flush") and callable(
             self._logger_provider.force_flush
