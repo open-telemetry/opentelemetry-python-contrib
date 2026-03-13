@@ -22,10 +22,13 @@ from sqlalchemy import (
 
 from opentelemetry import context
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
 )
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import NoOpTracerProvider
 
 
 class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
@@ -370,4 +373,62 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         engine = create_engine("sqlite:///:memory:")
         cnx = engine.connect()
         cnx.execute(text("SELECT 1;")).fetchall()
+        self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
+
+    def test_commenter_for_all_spans_disabled_by_default(self):
+        """Test that SQLCommenter does not add comments to non-recording spans by default."""
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
+        non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
+
+        engine = create_engine("sqlite:///:memory:", echo=True)
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=non_recording_tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1;")).fetchall()
+        # Without commenter_for_all_spans, no SQL comment should be added
+        self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
+
+    def test_commenter_for_all_spans_enabled(self):
+        """Test that SQLCommenter adds comments to all spans (including non-recording) when enabled."""
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        # Create a tracer provider with ALWAYS_OFF sampler (non-recording spans)
+        non_recording_tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
+
+        engine = create_engine("sqlite:///:memory:", echo=True)
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=non_recording_tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+            commenter_for_all_spans=True,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1;")).fetchall()
+        # With commenter_for_all_spans=True, SQL comment should be added even for non-recording spans
+        self.assertRegex(
+            self.caplog.records[-2].getMessage(),
+            r"SELECT 1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+
+    def test_commenter_for_all_spans_with_noop_tracer(self):
+        """Test that SQLCommenter does not add comments when using NoOpTracer (invalid span context)."""
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        noop_tracer_provider = NoOpTracerProvider()
+
+        engine = create_engine("sqlite:///:memory:", echo=True)
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=noop_tracer_provider,
+            enable_commenter=True,
+            commenter_options={"db_framework": False},
+            commenter_for_all_spans=True,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT 1;")).fetchall()
+        # With NoOpTracer, no SQL comment should be added (invalid span context)
         self.assertEqual(self.caplog.records[-2].getMessage(), "SELECT 1;")
