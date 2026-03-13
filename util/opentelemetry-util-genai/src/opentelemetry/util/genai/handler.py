@@ -301,13 +301,11 @@ class TelemetryHandler:
                     "Failed to record workflow failure", exc_info=True
                 )
             raise
-        else:
-            try:
-                self.stop_workflow(invocation)
-            except Exception:  # pylint: disable=broad-except
-                _logger.warning(
-                    "Failed to stop workflow telemetry", exc_info=True
-                )
+
+        try:
+            self.stop_workflow(invocation)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning("Failed to stop workflow telemetry", exc_info=True)
 
 
 def get_telemetry_handler(
