@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
   ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
 
+### Added
+
+- `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
+  ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
+
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
 ### Added
