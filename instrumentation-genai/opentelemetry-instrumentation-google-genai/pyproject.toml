@@ -64,6 +64,13 @@ include = ["/src", "/tests"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
 
+[tool.opentelemetry.instrumentation]
+independent_release = true
+include_in_bootstrap = false
+readme_library = "Google GenAI"
+readme_metrics = false
+readme_status = "Development"
+
 [tool.pyright]
 include = ["src"]
 exclude = ["**/__pycache__"]

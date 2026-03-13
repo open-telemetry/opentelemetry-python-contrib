@@ -53,5 +53,12 @@ include = [
   "/tests",
 ]
 
+[tool.opentelemetry.instrumentation]
+independent_release = true
+include_in_bootstrap = false
+readme_library = "OpenAI v2"
+readme_metrics = true
+readme_status = "Stable"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
