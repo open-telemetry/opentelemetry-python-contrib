@@ -279,6 +279,7 @@ def _get_llm_response_attributes(
 
     return {key: value for key, value in optional_attrs if value is not None}
 
+
 def _apply_workflow_finish_attributes(
     span: Span, invocation: WorkflowInvocation
 ) -> None:
@@ -299,6 +300,7 @@ def _apply_workflow_finish_attributes(
     if attributes:
         span.set_attributes(attributes)
 
+
 def _get_workflow_common_attributes(
     invocation: WorkflowInvocation,
 ) -> dict[str, Any]:
@@ -309,6 +311,7 @@ def _get_workflow_common_attributes(
     return {
         GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
     }
+
 
 def _get_workflow_messages_attributes_for_span(
     input_messages: list[InputMessage],
@@ -341,6 +344,7 @@ def _get_workflow_messages_attributes_for_span(
 
     return {key: value for key, value in optional_attrs if value is not None}
 
+
 __all__ = [
     "_apply_llm_finish_attributes",
     "_apply_error_attributes",
@@ -350,4 +354,5 @@ __all__ = [
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
     "_get_workflow_common_attributes",
+    "_apply_workflow_finish_attributes",
 ]

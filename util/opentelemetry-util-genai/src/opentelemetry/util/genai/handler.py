@@ -83,13 +83,18 @@ from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
     _apply_llm_finish_attributes,
-    _maybe_emit_llm_event,
     _apply_workflow_finish_attributes,
+    _maybe_emit_llm_event,
 )
-from opentelemetry.util.genai.types import Error, LLMInvocation, WorkflowInvocation
+from opentelemetry.util.genai.types import (
+    Error,
+    LLMInvocation,
+    WorkflowInvocation,
+)
 from opentelemetry.util.genai.version import __version__
 
 _logger = logging.getLogger(__name__)
+
 
 class TelemetryHandler:
     """
@@ -214,7 +219,9 @@ class TelemetryHandler:
             raise
         self.stop_llm(invocation)
 
-    def start_workflow(self, invocation: WorkflowInvocation) -> WorkflowInvocation:
+    def start_workflow(
+        self, invocation: WorkflowInvocation
+    ) -> WorkflowInvocation:
         """Start a workflow invocation and create a pending span entry."""
         # Create a span and attach it as current; keep the token to detach later
         span = self._tracer.start_span(
@@ -228,7 +235,9 @@ class TelemetryHandler:
         )
         return invocation
 
-    def stop_workflow( self, invocation: WorkflowInvocation) -> WorkflowInvocation: # pylint: disable=no-self-use
+    def stop_workflow(
+        self, invocation: WorkflowInvocation
+    ) -> WorkflowInvocation:  # pylint: disable=no-self-use
         """Finalize a workflow successfully and end its span."""
         if invocation.context_token is None or invocation.span is None:
             # TODO: Provide feedback that this invocation was not started
@@ -281,15 +290,20 @@ class TelemetryHandler:
             yield invocation
         except Exception as exc:
             try:
-                self.fail_workflow(invocation, Error(message=str(exc), type=type(exc)))
+                self.fail_workflow(
+                    invocation, Error(message=str(exc), type=type(exc))
+                )
             except Exception:
-                _logger.warning("Failed to record workflow failure", exc_info=True)
+                _logger.warning(
+                    "Failed to record workflow failure", exc_info=True
+                )
             raise
         else:
             try:
                 self.stop_workflow(invocation)
             except Exception:
                 _logger.warning("Failed to stop workflow span", exc_info=True)
+
 
 def get_telemetry_handler(
     tracer_provider: TracerProvider | None = None,
