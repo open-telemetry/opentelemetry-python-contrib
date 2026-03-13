@@ -15,6 +15,7 @@ _DEFAULT_SCHEMA_URL = Schemas.V1_37_0.value
 
 SCOPE = "opentelemetry.util.genai.handler"
 
+
 class TelemetryHandlerMetricsTest(TestBase):
     def test_stop_llm_records_duration_and_tokens(self) -> None:
         handler = TelemetryHandler(
@@ -171,7 +172,9 @@ class TelemetryHandlerMetricsTest(TestBase):
     def _assert_metric_scope_schema_urls(
         self, expected_schema_url: str
     ) -> None:
-        for resource_metric in self.memory_metrics_reader.get_metrics_data().resource_metrics:
+        for (
+            resource_metric
+        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 if scope_metric.scope.name != SCOPE:
                     continue
