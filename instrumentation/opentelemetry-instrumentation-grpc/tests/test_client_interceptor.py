@@ -221,6 +221,51 @@ class TestClientProto(TestBase):
             },
         )
 
+    def test_stream_stream_preserves_call_interface(self):
+        """Regression test for issue #1180.
+
+        Bidirectional streaming RPCs must return an object that implements
+        grpc.Call (add_done_callback, cancel, is_active, etc.) rather than
+        a bare generator.  Before the fix, bidi streams were routed through
+        the generator-based _intercept_server_stream, which stripped the
+        grpc.Call interface and caused downstream code to crash with:
+            AttributeError: 'generator' object has no attribute 'add_done_callback'
+        """
+
+        def request_messages():
+            for _ in range(5):
+                yield Request(client_id=1, request_data="data")
+
+        response_iterator = self._stub.BidirectionalStreamingMethod(
+            request_messages(), metadata=(("key", "value"),)
+        )
+
+        for attr in ("add_done_callback", "cancel", "is_active"):
+            self.assertTrue(
+                hasattr(response_iterator, attr),
+                f"bidi stream response missing grpc.Call method '{attr}'",
+            )
+
+        list(response_iterator)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(
+            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "BidirectionalStreamingMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+            },
+        )
+
     def test_error_simple(self):
         with self.assertRaises(grpc.RpcError):
             simple_method(self._stub, error=True)
