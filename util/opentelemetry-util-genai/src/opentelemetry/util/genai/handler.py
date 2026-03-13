@@ -282,15 +282,32 @@ class TelemetryHandler:
         if invocation is None:
             invocation = WorkflowInvocation()
 
-        self.start_workflow(invocation)
+        try:
+            self.start_workflow(invocation)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning(
+                "Failed to start workflow telemetry", exc_info=True
+            )
+
         try:
             yield invocation
         except Exception as exc:
-            self.fail_workflow(
-                invocation, Error(message=str(exc), type=type(exc))
-            )
+            try:
+                self.fail_workflow(
+                    invocation, Error(message=str(exc), type=type(exc))
+                )
+            except Exception:  # pylint: disable=broad-except
+                _logger.warning(
+                    "Failed to record workflow failure", exc_info=True
+                )
             raise
-        self.stop_workflow(invocation)
+        else:
+            try:
+                self.stop_workflow(invocation)
+            except Exception:  # pylint: disable=broad-except
+                _logger.warning(
+                    "Failed to stop workflow telemetry", exc_info=True
+                )
 
 
 def get_telemetry_handler(
