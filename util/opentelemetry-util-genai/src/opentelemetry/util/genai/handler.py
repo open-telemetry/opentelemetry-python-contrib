@@ -235,9 +235,9 @@ class TelemetryHandler:
         )
         return invocation
 
-    def stop_workflow(
+    def stop_workflow(  # pylint: disable=no-self-use
         self, invocation: WorkflowInvocation
-    ) -> WorkflowInvocation:  # pylint: disable=no-self-use
+    ) -> WorkflowInvocation:
         """Finalize a workflow successfully and end its span."""
         if invocation.context_token is None or invocation.span is None:
             # TODO: Provide feedback that this invocation was not started
@@ -249,7 +249,7 @@ class TelemetryHandler:
             # Detach context and end span
             otel_context.detach(invocation.context_token)
             invocation.span.end()
-            return invocation
+        return invocation
 
     def fail_workflow(  # pylint: disable=no-self-use
         self, invocation: WorkflowInvocation, error: Error
@@ -265,7 +265,7 @@ class TelemetryHandler:
         finally:
             otel_context.detach(invocation.context_token)
             invocation.span.end()
-            return invocation
+        return invocation
 
     @contextmanager
     def workflow(
@@ -282,27 +282,15 @@ class TelemetryHandler:
         if invocation is None:
             invocation = WorkflowInvocation()
 
-        try:
-            self.start_workflow(invocation)
-        except Exception:
-            _logger.warning("Failed to start workflow span", exc_info=True)
+        self.start_workflow(invocation)
         try:
             yield invocation
         except Exception as exc:
-            try:
-                self.fail_workflow(
-                    invocation, Error(message=str(exc), type=type(exc))
-                )
-            except Exception:
-                _logger.warning(
-                    "Failed to record workflow failure", exc_info=True
-                )
+            self.fail_workflow(
+                invocation, Error(message=str(exc), type=type(exc))
+            )
             raise
-        else:
-            try:
-                self.stop_workflow(invocation)
-            except Exception:
-                _logger.warning("Failed to stop workflow span", exc_info=True)
+        self.stop_workflow(invocation)
 
 
 def get_telemetry_handler(

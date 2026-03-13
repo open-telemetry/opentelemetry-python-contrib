@@ -25,7 +25,9 @@ from opentelemetry.util.genai.types import (
 )
 
 
-class TelemetryHandlerWorkflowTest(TestCase):
+class _WorkflowTestBase(TestCase):
+    """Shared setUp for workflow handler tests."""
+
     def setUp(self) -> None:
         self.span_exporter = InMemorySpanExporter()
         self.tracer_provider = TracerProvider()
@@ -39,6 +41,8 @@ class TelemetryHandlerWorkflowTest(TestCase):
     def _get_finished_spans(self):
         return self.span_exporter.get_finished_spans()
 
+
+class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
     # ------------------------------------------------------------------
     # start_workflow
     # ------------------------------------------------------------------
@@ -176,6 +180,8 @@ class TelemetryHandlerWorkflowTest(TestCase):
         result = self.handler.fail_workflow(invocation, error)
         self.assertIs(result, invocation)
 
+
+class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
     # ------------------------------------------------------------------
     # workflow context manager
     # ------------------------------------------------------------------
