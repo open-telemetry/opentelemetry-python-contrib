@@ -30,6 +30,17 @@ from opentelemetry.trace import Span
 ContextToken: TypeAlias = Token[Context]
 
 
+@dataclass()
+class GenericPart:
+    """Used for provider-specific message part types that don't match
+    the standard MessagePart types defined in semantic conventions. Wrap custom
+    types with GenericPart(value=...) to explicitly opt-in to non-standard types.
+    This will be removed in a future version when all instrumentations use core types."""
+
+    value: Any
+    type: Literal["generic"] = "generic"
+
+
 class ContentCapturingMode(Enum):
     # Do not capture content (default).
     NO_CONTENT = 0
@@ -42,8 +53,11 @@ class ContentCapturingMode(Enum):
 
 
 @dataclass()
-class ToolCall:
-    """Represents a tool call requested by the model
+class ToolCallRequest:
+    """Represents a tool call requested by the model (message part only).
+
+    Use this for tool calls in message history. For execution tracking with spans
+    and metrics, use ToolCall instead.
 
     This model is specified as part of semconv in `GenAI messages Python models - ToolCallRequestPart
     <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
@@ -66,6 +80,41 @@ class ToolCallResponse:
     response: Any
     id: str | None
     type: Literal["tool_call_response"] = "tool_call_response"
+
+
+@dataclass()
+class ServerToolCall:
+    """Represents a server-side tool call invocation.
+
+    Server tool calls are executed by the model provider on the server side rather
+    than by the client application. Provider-specific tools (e.g., code_interpreter,
+    web_search) can have well-defined schemas defined by the respective providers.
+
+    This model is specified as part of semconv in `GenAI messages Python models - ServerToolCallPart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
+    name: str
+    server_tool_call: Any
+    id: str | None = None
+    type: Literal["server_tool_call"] = "server_tool_call"
+
+
+@dataclass()
+class ServerToolCallResponse:
+    """Represents a server-side tool call response.
+
+    Contains the outcome and details of a server tool execution. Provider-specific
+    tools (e.g., code_interpreter, web_search) can have well-defined response schemas
+    defined by the respective providers.
+
+    This model is specified as part of semconv in `GenAI messages Python models - ServerToolCallResponsePart
+    <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
+    """
+
+    server_tool_call_response: Any
+    id: str | None = None
+    type: Literal["server_tool_call_response"] = "server_tool_call_response"
 
 
 @dataclass()
@@ -158,7 +207,16 @@ class GenericToolDefinition:
 ToolDefinition = Union[FunctionToolDefinition, GenericToolDefinition]
 
 MessagePart = Union[
-    Text, ToolCall, ToolCallResponse, Blob, File, Uri, Reasoning, Any
+    Text,
+    ToolCallRequest,
+    ToolCallResponse,
+    ServerToolCall,
+    ServerToolCallResponse,
+    Blob,
+    File,
+    Uri,
+    Reasoning,
+    GenericPart,  # For provider-specific types; prefer standard types above
 ]
 
 
@@ -270,6 +328,53 @@ class LLMInvocation(GenAIInvocation):
     # Monotonic start time in seconds (from timeit.default_timer) used
     # for duration calculations to avoid mixing clock sources. This is
     # populated by the TelemetryHandler when starting an invocation.
+    monotonic_start_s: float | None = None
+
+
+@dataclass()
+class ToolCall(GenAIInvocation):
+    """Represents a tool call for execution tracking with spans and metrics.
+
+    This type extends GenAIInvocation (like LLMInvocation) for consistent lifecycle
+    management across all invocation types. It is NOT used as a MessagePart directly -
+    use ToolCallRequest for that purpose.
+
+    Inherits from GenAIInvocation:
+    - context_token: Context tracking for span lifecycle
+    - span: Active span reference
+    - attributes: Custom attributes dict for extensibility
+
+    Reference: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md#execute-tool-span
+
+    Semantic convention attributes for execute_tool spans:
+    - gen_ai.operation.name: "execute_tool" (Required)
+    - gen_ai.tool.name: Name of the tool (Recommended)
+    - gen_ai.tool.call.id: Tool call identifier (Recommended if available)
+    - gen_ai.tool.type: Type classification - "function", "extension", or "datastore" (Recommended if available)
+    - gen_ai.tool.description: Tool description (Recommended if available)
+    - gen_ai.tool.call.arguments: Parameters passed to tool (Opt-In, may contain sensitive data)
+    - gen_ai.tool.call.result: Result returned by tool (Opt-In, may contain sensitive data)
+    - error.type: Error type if operation failed (Conditionally Required)
+    """
+
+    # Message identification fields (same as ToolCallRequest)
+    # Note: These are required fields but must have defaults due to dataclass inheritance
+    name: str = ""
+    arguments: Any = None
+    id: str | None = None
+    type: Literal["tool_call"] = "tool_call"
+
+    # Execution tracking fields (used for execute_tool spans):
+    # gen_ai.tool.type - Tool type: "function", "extension", or "datastore"
+    tool_type: str | None = None
+    # gen_ai.tool.description - Description of what the tool does
+    tool_description: str | None = None
+    # gen_ai.tool.call.result - Result returned by the tool (Opt-In, may contain sensitive data)
+    tool_result: Any = None
+    # error.type - Error type if the tool call failed
+    error_type: str | None = None
+
+    # Timing field (not inherited from GenAIInvocation, matches LLMInvocation pattern)
     monotonic_start_s: float | None = None
 
 
