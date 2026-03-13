@@ -472,7 +472,7 @@ class TestAiopgIntegration(TestBase):
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
     def test_uninstrument_connection(self):
         connection = mock.Mock()
@@ -482,7 +482,7 @@ class TestAiopgIntegration(TestBase):
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
         connection3 = wrappers.uninstrument_connection(connection2)
         self.assertIs(connection3, connection)

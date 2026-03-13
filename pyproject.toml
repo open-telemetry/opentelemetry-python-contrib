@@ -21,7 +21,6 @@ dependencies = [
   "opentelemetry-instrumentation-asyncio",
   "opentelemetry-instrumentation-asyncpg[instruments]",
   "opentelemetry-instrumentation-aws-lambda[instruments]",
-  "opentelemetry-instrumentation-boto[instruments]",
   "opentelemetry-instrumentation-boto3sqs[instruments]",
   "opentelemetry-instrumentation-botocore[instruments]",
   "opentelemetry-instrumentation-cassandra[instruments]",
@@ -96,7 +95,6 @@ opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-asyncio = { workspace = true }
 opentelemetry-instrumentation-asyncpg = { workspace = true }
 opentelemetry-instrumentation-aws-lambda = { workspace = true }
-opentelemetry-instrumentation-boto = { workspace = true }
 opentelemetry-instrumentation-boto3sqs = { workspace = true }
 opentelemetry-instrumentation-botocore = { workspace = true }
 opentelemetry-instrumentation-cassandra = { workspace = true }
