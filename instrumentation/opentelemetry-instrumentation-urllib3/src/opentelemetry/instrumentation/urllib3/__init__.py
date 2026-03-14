@@ -687,7 +687,6 @@ def _filter_attributes_semconv(
     return (duration_attrs_old, duration_attrs_new)
 
 
-# pylint: disable=too-many-positional-arguments
 def _record_metrics(
     metric_attributes: dict,
     duration_histogram_old: Histogram,

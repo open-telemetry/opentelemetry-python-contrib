@@ -1220,7 +1220,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         unwrap(httpx.AsyncHTTPTransport, "handle_async_request")
 
     @staticmethod
-    def _handle_request_wrapper(  # pylint: disable=too-many-locals,too-many-positional-arguments
+    def _handle_request_wrapper(  # pylint: disable=too-many-locals
         wrapped: typing.Callable[..., typing.Any],
         instance: httpx.HTTPTransport,
         args: tuple[typing.Any, ...],
@@ -1351,7 +1351,7 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         return response
 
     @staticmethod
-    async def _handle_async_request_wrapper(  # pylint: disable=too-many-locals,too-many-positional-arguments
+    async def _handle_async_request_wrapper(  # pylint: disable=too-many-locals
         wrapped: typing.Callable[..., typing.Awaitable[typing.Any]],
         instance: httpx.AsyncHTTPTransport,
         args: tuple[typing.Any, ...],

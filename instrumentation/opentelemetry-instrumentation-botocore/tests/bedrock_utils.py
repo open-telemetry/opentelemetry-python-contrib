@@ -210,7 +210,6 @@ def assert_equal_or_not_present(value, attribute_name, span):
         assert attribute_name not in span.attributes, attribute_name
 
 
-# pylint: disable=too-many-positional-arguments
 def assert_all_attributes(
     span: ReadableSpan,
     request_model: str,
