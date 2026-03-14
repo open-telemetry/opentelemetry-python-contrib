@@ -16,18 +16,32 @@
 Usage
 -----
 
+Configure a ``TracerProvider`` and call ``instrument_app()`` after creating
+the ``FastAPI`` instance and before the application starts serving requests:
+
 .. code-block:: python
 
     import fastapi
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+    # 1. Configure the TracerProvider
+    provider = TracerProvider()
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+
+    # 2. Create the FastAPI app
     app = fastapi.FastAPI()
+
+    # 3. Instrument before serving requests (after routes are registered is also supported)
+    FastAPIInstrumentor.instrument_app(app)
 
     @app.get("/foobar")
     async def foobar():
         return {"message": "hello world"}
-
-    FastAPIInstrumentor.instrument_app(app)
 
 Configuration
 -------------
@@ -50,7 +64,12 @@ You can also pass comma delimited regexes directly to the ``instrument_app`` met
 
 .. code-block:: python
 
-    FastAPIInstrumentor.instrument_app(app, excluded_urls="client/.*/info,healthcheck")
+    # Excludes any URL containing "healthz" or "metrics" (partial match)
+    # e.g. /healthz, /internal/healthz, /v1/metrics are all excluded
+    FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz,metrics")
+
+    # Use anchored patterns for exact path matching
+    FastAPIInstrumentor.instrument_app(app, excluded_urls="^/healthz$,^/metrics$")
 
 Request/Response hooks
 **********************
