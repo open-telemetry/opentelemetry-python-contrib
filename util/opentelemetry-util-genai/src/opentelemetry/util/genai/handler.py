@@ -96,6 +96,20 @@ from opentelemetry.util.genai.version import __version__
 _logger = logging.getLogger(__name__)
 
 
+def _safe_detach(invocation):
+    """Detach the context token if still present, as a safety net."""
+    if invocation.context_token is not None:
+        try:
+            otel_context.detach(invocation.context_token)
+        except Exception:  # pylint: disable=broad-except
+            pass
+    if invocation.span is not None:
+        try:
+            invocation.span.end()
+        except Exception:  # pylint: disable=broad-except
+            pass
+
+
 class TelemetryHandler:
     """
     High-level handler managing GenAI invocation lifecycles and emitting
@@ -300,12 +314,14 @@ class TelemetryHandler:
                 _logger.warning(
                     "Failed to record workflow failure", exc_info=True
                 )
+                _safe_detach(invocation)
             raise
 
         try:
             self.stop_workflow(invocation)
         except Exception:  # pylint: disable=broad-except
             _logger.warning("Failed to stop workflow telemetry", exc_info=True)
+            _safe_detach(invocation)
 
 
 def get_telemetry_handler(
