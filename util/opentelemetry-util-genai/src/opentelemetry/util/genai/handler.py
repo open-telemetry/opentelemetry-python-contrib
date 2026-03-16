@@ -88,6 +88,7 @@ from opentelemetry.util.genai.span_utils import (
 )
 from opentelemetry.util.genai.types import (
     Error,
+    GenAIInvocation,
     LLMInvocation,
     WorkflowInvocation,
 )
@@ -96,7 +97,7 @@ from opentelemetry.util.genai.version import __version__
 _logger = logging.getLogger(__name__)
 
 
-def _safe_detach(invocation):
+def _safe_detach(invocation: GenAIInvocation) -> None:
     """Detach the context token if still present, as a safety net."""
     if invocation.context_token is not None:
         try:
