@@ -30,6 +30,7 @@ dependencies = [
   "opentelemetry-instrumentation ~= 0.58b0",
   "opentelemetry-semantic-conventions ~= 0.58b0",
   "opentelemetry-util-genai",
+  "pydantic >= 2, < 3",
 ]
 
 [project.optional-dependencies]
