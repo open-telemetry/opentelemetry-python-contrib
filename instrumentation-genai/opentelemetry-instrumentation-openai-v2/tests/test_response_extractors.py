@@ -50,10 +50,12 @@ def _load_module(block_genai_types_import=False):
 
     original_import = builtins.__import__
 
-    def _patched_import(name, globals=None, locals=None, fromlist=(), level=0):
+    def _patched_import(
+        name, globalns=None, localns=None, fromlist=(), level=0
+    ):
         if name == "opentelemetry.util.genai.types":
             raise ImportError("simulated missing genai types")
-        return original_import(name, globals, locals, fromlist, level)
+        return original_import(name, globalns, localns, fromlist, level)
 
     with mock.patch("builtins.__import__", side_effect=_patched_import):
         spec.loader.exec_module(module)
@@ -65,18 +67,20 @@ def _module(block_genai_types_import=False):
     return _load_module(block_genai_types_import)
 
 
-@pytest.fixture(scope="module")
-def loaded_module():
+@pytest.fixture(scope="module", name="loaded_module")
+def _loaded_module_fixture():
     return _module()
 
 
-@pytest.fixture(scope="module")
-def gen_ai_usage_cache_creation_input_tokens(loaded_module):
+@pytest.fixture(
+    scope="module", name="gen_ai_usage_cache_creation_input_tokens"
+)
+def _gen_ai_usage_cache_creation_input_tokens_fixture(loaded_module):
     return loaded_module.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
 
 
-@pytest.fixture(scope="module")
-def gen_ai_usage_cache_read_input_tokens(loaded_module):
+@pytest.fixture(scope="module", name="gen_ai_usage_cache_read_input_tokens")
+def _gen_ai_usage_cache_read_input_tokens_fixture(loaded_module):
     return loaded_module.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
 
 
@@ -109,10 +113,12 @@ def test_extract_input_messages_supports_string_and_mixed_message_content(
         }
     )
 
-    assert [(msg.role, [part.content for part in msg.parts]) for msg in from_string] == [
-        ("user", ["Hello"])
-    ]
-    assert [(msg.role, [part.content for part in msg.parts]) for msg in from_list] == [
+    assert [
+        (msg.role, [part.content for part in msg.parts]) for msg in from_string
+    ] == [("user", ["Hello"])]
+    assert [
+        (msg.role, [part.content for part in msg.parts]) for msg in from_list
+    ] == [
         ("user", ["First"]),
         ("assistant", ["Second", "Third"]),
     ]
@@ -201,7 +207,10 @@ def test_extract_output_type_handles_text_format_mapping(loaded_module):
     )
     # Invalid request shapes should degrade to no extracted output type rather
     # than surfacing validation errors from instrumentation.
-    assert loaded_module._extract_output_type({"text": {"format": "plain"}}) is None
+    assert (
+        loaded_module._extract_output_type({"text": {"format": "plain"}})
+        is None
+    )
     assert loaded_module._extract_output_type({"text": "plain"}) is None
 
 
@@ -213,9 +222,14 @@ def test_extractors_handle_missing_genai_types_import():
     assert module.OutputMessage is None
     assert module._extract_system_instruction({"instructions": "hi"}) == []
     assert module._extract_input_messages({"input": "hi"}) == []
-    assert module._extract_output_messages(
-        SimpleNamespace(output=[SimpleNamespace(type="message", content=[])])
-    ) == []
+    assert (
+        module._extract_output_messages(
+            SimpleNamespace(
+                output=[SimpleNamespace(type="message", content=[])]
+            )
+        )
+        == []
+    )
 
 
 def test_set_invocation_response_attributes_populates_usage_and_metadata(
@@ -378,6 +392,6 @@ def test_response_validation_errors_are_logged_and_ignored(
     assert invocation.input_tokens is None
     assert invocation.output_tokens is None
     assert invocation.finish_reasons is None
-    assert invocation.output_messages == []
-    assert invocation.attributes == {}
+    assert not invocation.output_messages
+    assert not invocation.attributes
     assert "OpenAI responses extractor validation failed" in caplog.text

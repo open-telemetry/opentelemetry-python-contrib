@@ -33,7 +33,11 @@ if TYPE_CHECKING:
     )
 
 try:
-    from opentelemetry.util.genai.types import InputMessage, OutputMessage, Text
+    from opentelemetry.util.genai.types import (
+        InputMessage,
+        OutputMessage,
+        Text,
+    )
 except ImportError:
     InputMessage = None
     OutputMessage = None
@@ -138,7 +142,9 @@ def _validate_model(
 def _validate_request_kwargs(
     kwargs: Mapping[str, object],
 ) -> _ResponsesRequestModel | None:
-    return _validate_model(_ResponsesRequestModel, kwargs, "request parameters")
+    return _validate_model(
+        _ResponsesRequestModel, kwargs, "request parameters"
+    )
 
 
 def _validate_response_result(result: object) -> _ResponsesResultModel | None:
@@ -190,7 +196,9 @@ def _extract_input_messages(
 
         if isinstance(item.content, str):
             messages.append(
-                InputMessage(role=item.role, parts=[Text(content=item.content)])
+                InputMessage(
+                    role=item.role, parts=[Text(content=item.content)]
+                )
             )
             continue
 
@@ -357,9 +365,9 @@ def _set_invocation_response_attributes(
         invocation.response_id = validated_result.id
 
     if validated_result.service_tier is not None:
-        invocation.attributes[OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER] = (
-            validated_result.service_tier
-        )
+        invocation.attributes[
+            OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER
+        ] = validated_result.service_tier
 
     if validated_result.usage is not None:
         _set_invocation_usage_attributes(invocation, validated_result.usage)
