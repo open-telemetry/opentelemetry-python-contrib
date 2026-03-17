@@ -424,7 +424,7 @@ def _get_span_name(method: str) -> str:
     return method
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-positional-arguments
 def _instrument(
     tracer: Tracer,
     duration_histogram_old: Histogram,

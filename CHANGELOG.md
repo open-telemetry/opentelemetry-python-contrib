@@ -88,7 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4220](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4220))
 
 ### Fixed
-
+- Bump `pylint` to `4.0.5` to fix false-positive `no-name-in-module` errors for `concurrent.futures` imports on Python 3.14, and remove deprecated `suggestion-mode` option from `.pylintrc`.
+  ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-flask`: Align `http.server.active_requests` initialization with semantic convention helpers to ensure consistent names, units, and descriptions.
   ([#4094](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4094))
 - `opentelemetry-instrumentation-asyncio`: Fix environment variables not appearing in Read the Docs documentation
