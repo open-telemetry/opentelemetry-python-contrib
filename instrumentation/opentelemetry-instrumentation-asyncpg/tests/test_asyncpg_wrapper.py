@@ -3,7 +3,12 @@ from unittest import mock
 
 import pytest
 from asyncpg import Connection, Record, cursor
-from wrapt import ObjectProxy
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
@@ -50,7 +55,7 @@ class TestAsyncPGInstrumentation(TestBase):
                 for method_name in methods:
                     method = getattr(cls, method_name, None)
                     assert_fnc(
-                        isinstance(method, ObjectProxy),
+                        isinstance(method, BaseObjectProxy),
                         f"{method} isinstance {type(method)}",
                     )
 

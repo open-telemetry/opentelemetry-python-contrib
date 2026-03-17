@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add `AgentInvocation` type and agent invocation lifecycle support
-  ([#4274](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4274))
+- Populate schema_url on metrics
+  ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
+- Add workflow invocation type to genAI utils
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310](#4310))
 
 ## Version 0.3b0 (2026-02-20)
 
