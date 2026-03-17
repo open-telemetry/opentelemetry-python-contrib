@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-logging`: Add recursion guard in LoggingHandler.emit to prevent deadlock
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
-  ([#1180](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1180))
+  ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
 
 ### Breaking changes
 
