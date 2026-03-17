@@ -426,6 +426,7 @@ def get_span_name(
 class GenAISemanticProcessor(TracingProcessor):
     """Trace processor adding GenAI semantic convention attributes with metrics."""
 
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         tracer: Optional[Tracer] = None,
