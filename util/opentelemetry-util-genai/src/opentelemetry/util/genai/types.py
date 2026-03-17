@@ -259,6 +259,7 @@ class GenAIInvocation:
     context_token: ContextToken | None = None
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    error_type: str | None = None
 
 
 @dataclass
@@ -371,8 +372,6 @@ class ToolCall(GenAIInvocation):
     tool_description: str | None = None
     # gen_ai.tool.call.result - Result returned by the tool (Opt-In, may contain sensitive data)
     tool_result: Any = None
-    # error.type - Error type if the tool call failed
-    error_type: str | None = None
 
     # Timing field (not inherited from GenAIInvocation, matches LLMInvocation pattern)
     monotonic_start_s: float | None = None
