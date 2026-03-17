@@ -1,3 +1,0 @@
-pytest==7.4.4
-fsspec==2025.9.0
--e opentelemetry-instrumentation

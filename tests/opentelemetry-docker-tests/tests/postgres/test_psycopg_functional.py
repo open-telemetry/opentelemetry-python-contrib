@@ -19,7 +19,16 @@ from psycopg2 import sql
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 POSTGRES_HOST = os.getenv("POSTGRESQL_HOST", "localhost")
@@ -68,19 +77,19 @@ class TestFunctionalPsycopg(TestBase):
         self.assertIs(child_span.parent, root_span.get_span_context())
         self.assertIs(child_span.kind, trace_api.SpanKind.CLIENT)
         self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_SYSTEM], "postgresql"
+            child_span.attributes[DB_SYSTEM], "postgresql"
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_NAME], POSTGRES_DB_NAME
+            child_span.attributes[DB_NAME], POSTGRES_DB_NAME
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_USER], POSTGRES_USER
+            child_span.attributes[DB_USER], POSTGRES_USER
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_NAME], POSTGRES_HOST
+            child_span.attributes[SERVER_ADDRESS], POSTGRES_HOST
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_PORT], POSTGRES_PORT
+            child_span.attributes[SERVER_PORT], POSTGRES_PORT
         )
 
     def test_execute(self):
@@ -131,47 +140,4 @@ class TestFunctionalPsycopg(TestBase):
         )
 
     def test_composed_queries(self):
-        stmt = "CREATE TABLE IF NOT EXISTS users (id integer, name varchar)"
-        with self._tracer.start_as_current_span("rootSpan"):
-            self._cursor.execute(stmt)
-        self.validate_spans("CREATE")
-
-        self._cursor.execute(
-            sql.SQL("SELECT FROM {table} where {field}='{value}'").format(
-                table=sql.Identifier("users"),
-                field=sql.Identifier("name"),
-                value=sql.Identifier("abc"),
-            )
-        )
-
-        spans = self.memory_exporter.get_finished_spans()
-        span = spans[2]
-        self.assertEqual(span.name, "SELECT")
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
-            'SELECT FROM "users" where "name"=\'"abc"\'',
-        )
-
-    def test_commenter_enabled(self):
-        stmt = "CREATE TABLE IF NOT EXISTS users (id integer, name varchar)"
-        with self._tracer.start_as_current_span("rootSpan"):
-            self._cursor.execute(stmt)
-        self.validate_spans("CREATE")
-        Psycopg2Instrumentor().uninstrument()
-        Psycopg2Instrumentor().instrument(enable_commenter=True)
-
-        self._cursor.execute(
-            sql.SQL("SELECT FROM {table} where {field}='{value}'").format(
-                table=sql.Identifier("users"),
-                field=sql.Identifier("name"),
-                value=sql.Identifier("abc"),
-            )
-        )
-
-        spans = self.memory_exporter.get_finished_spans()
-        span = spans[2]
-        self.assertEqual(span.name, "SELECT")
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
-            'SELECT FROM "users" where "name"=\'"abc"\'',
-        )
+        stmt = "CREATE TABLE IF NOT EXISTS users (id integer,

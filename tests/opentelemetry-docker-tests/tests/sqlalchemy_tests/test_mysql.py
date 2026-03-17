@@ -18,7 +18,15 @@ import pytest
 from sqlalchemy.exc import ProgrammingError
 
 from opentelemetry import trace
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_USER,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 
 from .mixins import SQLAlchemyTestMixin
 
@@ -44,46 +52,41 @@ class MysqlConnectorTestCase(SQLAlchemyTestMixin):
     }
 
     def check_meta(self, span):
-        # check database connection tags
         self.assertEqual(
-            span.attributes.get(SpanAttributes.NET_PEER_NAME),
+            span.attributes.get(SERVER_ADDRESS),
             MYSQL_CONFIG["host"],
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.NET_PEER_PORT),
+            span.attributes.get(SERVER_PORT),
             MYSQL_CONFIG["port"],
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_NAME),
+            span.attributes.get(DB_NAME),
             MYSQL_CONFIG["database"],
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_USER), MYSQL_CONFIG["user"]
+            span.attributes.get(DB_USER), MYSQL_CONFIG["user"]
         )
 
     def test_engine_execute_errors(self):
-        # ensures that SQL errors are reported
         with pytest.raises(ProgrammingError):
             with self.connection() as conn:
                 conn.execute("SELECT * FROM a_wrong_table").fetchall()
 
         spans = self.memory_exporter.get_finished_spans()
-        # one span for the connection and one for the query
         self.assertEqual(len(spans), 2)
         self.check_meta(spans[0])
         span = spans[1]
-        # span fields
         self.assertEqual(span.name, "SELECT opentelemetry-tests")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SELECT * FROM a_wrong_table",
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_NAME), self.SQL_DB
+            span.attributes.get(DB_NAME), self.SQL_DB
         )
         self.check_meta(span)
         self.assertTrue(span.end_time - span.start_time > 0)
-        # check the error
         self.assertIs(
             span.status.status_code,
             trace.StatusCode.ERROR,

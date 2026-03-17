@@ -18,6 +18,14 @@ from pymongo import MongoClient
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
@@ -61,20 +69,20 @@ class TestFunctionalPymongo(TestBase):
         self.assertIs(pymongo_span.parent, root_span.get_span_context())
         self.assertIs(pymongo_span.kind, trace_api.SpanKind.CLIENT)
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_NAME], MONGODB_DB_NAME
+            pymongo_span.attributes[DB_NAME], MONGODB_DB_NAME
         )
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.NET_PEER_NAME], MONGODB_HOST
+            pymongo_span.attributes[SERVER_ADDRESS], MONGODB_HOST
         )
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.NET_PEER_PORT], MONGODB_PORT
+            pymongo_span.attributes[SERVER_PORT], MONGODB_PORT
         )
         self.assertEqual(
             pymongo_span.attributes[SpanAttributes.DB_MONGODB_COLLECTION],
             MONGODB_COLLECTION_NAME,
         )
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_STATEMENT],
+            pymongo_span.attributes[DB_STATEMENT],
             expected_db_statement,
         )
 

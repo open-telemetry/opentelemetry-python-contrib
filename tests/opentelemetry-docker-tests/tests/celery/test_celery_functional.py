@@ -22,10 +22,13 @@ from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.trace import TracerProvider, export
+from opentelemetry.semconv.attributes.exception_attributes import (
+    EXCEPTION_MESSAGE,
+    EXCEPTION_TYPE,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import StatusCode
 
-# set a high timeout for async executions due to issues in CI
 ASYNC_GET_TIMEOUT = 120
 
 
@@ -279,8 +282,8 @@ def test_fn_exception(celery_app, memory_exporter):
     assert len(span.events) == 1
     event = span.events[0]
     assert event.name == "exception"
-    assert event.attributes[SpanAttributes.EXCEPTION_TYPE] == "Exception"
-    assert SpanAttributes.EXCEPTION_MESSAGE in event.attributes
+    assert event.attributes[EXCEPTION_TYPE] == "Exception"
+    assert EXCEPTION_MESSAGE in event.attributes
     assert (
         span.attributes.get(SpanAttributes.MESSAGING_MESSAGE_ID)
         == result.task_id
@@ -354,7 +357,6 @@ def test_class_task(celery_app, memory_exporter):
             return 42
 
     task = BaseTask()
-    # register the Task class if it's available (required in Celery 4.0+)
     register_task = getattr(celery_app, "register_task", None)
     if register_task is not None:
         register_task(task)
@@ -389,7 +391,6 @@ def test_class_task_exception(celery_app, memory_exporter):
             raise Exception("Task class is failing")
 
     task = BaseTask()
-    # register the Task class if it's available (required in Celery 4.0+)
     register_task = getattr(celery_app, "register_task", None)
     if register_task is not None:
         register_task(task)
@@ -428,7 +429,6 @@ def test_class_task_exception_expected(celery_app, memory_exporter):
             raise MyException("Task class is failing")
 
     task = BaseTask()
-    # register the Task class if it's available (required in Celery 4.0+)
     register_task = getattr(celery_app, "register_task", None)
     if register_task is not None:
         register_task(task)
@@ -486,10 +486,6 @@ def test_shared_task(celery_app, memory_exporter):
 def test_apply_async_previous_style_tasks(
     celery_app, celery_worker, memory_exporter
 ):
-    """Ensures apply_async is properly patched if Celery 1.0 style tasks are
-    used even in newer versions. This should extend support to previous versions
-    of Celery."""
-
     class CelerySuperClass(celery.task.Task):
         abstract = True
 
@@ -499,7 +495,6 @@ def test_apply_async_previous_style_tasks(
 
         def run(self, *args, **kwargs):
             if "stop" in kwargs:
-                # avoid call loop
                 return
             CelerySubClass.apply_async(args=[], kwargs={"stop": True}).get(
                 timeout=ASYNC_GET_TIMEOUT
