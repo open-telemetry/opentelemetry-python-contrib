@@ -29,6 +29,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.types import (
     InputMessage,
+    LLMInvocation,
     MessagePart,
     OutputMessage,
 )
@@ -37,6 +38,7 @@ from opentelemetry.util.types import AttributeValue
 from .utils import (
     convert_content_to_parts,
     normalize_finish_reason,
+    stream_block_state_to_part,
 )
 
 if TYPE_CHECKING:
@@ -54,6 +56,8 @@ if TYPE_CHECKING:
         ToolUnionParam,
         Usage,
     )
+
+    from .utils import StreamBlockState
 
 
 @dataclass
@@ -151,6 +155,88 @@ def get_output_messages_from_message(
             finish_reason=finish_reason or "",
         )
     ]
+
+
+def set_invocation_message_response_attributes(
+    invocation: LLMInvocation,
+    message: Message | None,
+    capture_content: bool,
+) -> None:
+    if message is None:
+        return
+
+    if message.model:
+        invocation.response_model_name = message.model
+
+    if message.id:
+        invocation.response_id = message.id
+
+    finish_reason = normalize_finish_reason(message.stop_reason)
+    if finish_reason:
+        invocation.finish_reasons = [finish_reason]
+
+    if message.usage:
+        tokens = extract_usage_tokens(message.usage)
+        invocation.input_tokens = tokens.input_tokens
+        invocation.output_tokens = tokens.output_tokens
+        if tokens.cache_creation_input_tokens is not None:
+            invocation.attributes[
+                GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+            ] = tokens.cache_creation_input_tokens
+        if tokens.cache_read_input_tokens is not None:
+            invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
+                tokens.cache_read_input_tokens
+            )
+
+    if capture_content:
+        invocation.output_messages = get_output_messages_from_message(message)
+
+
+def set_invocation_stream_response_attributes(
+    invocation: LLMInvocation,
+    *,
+    response_model: str | None,
+    response_id: str | None,
+    stop_reason: str | None,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    cache_creation_input_tokens: int | None,
+    cache_read_input_tokens: int | None,
+    capture_content: bool,
+    content_blocks: dict[int, "StreamBlockState"],
+) -> None:
+    if response_model:
+        invocation.response_model_name = response_model
+    if response_id:
+        invocation.response_id = response_id
+    if stop_reason:
+        invocation.finish_reasons = [stop_reason]
+    if input_tokens is not None:
+        invocation.input_tokens = input_tokens
+    if output_tokens is not None:
+        invocation.output_tokens = output_tokens
+    if cache_creation_input_tokens is not None:
+        invocation.attributes[
+            GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+        ] = cache_creation_input_tokens
+    if cache_read_input_tokens is not None:
+        invocation.attributes[
+            GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
+        ] = cache_read_input_tokens
+
+    if capture_content and content_blocks:
+        parts: list[MessagePart] = []
+        for index in sorted(content_blocks):
+            part = stream_block_state_to_part(content_blocks[index])
+            if part is not None:
+                parts.append(part)
+        invocation.output_messages = [
+            OutputMessage(
+                role="assistant",
+                parts=parts,
+                finish_reason=stop_reason or "",
+            )
+        ]
 
 
 def extract_params(  # pylint: disable=too-many-locals
