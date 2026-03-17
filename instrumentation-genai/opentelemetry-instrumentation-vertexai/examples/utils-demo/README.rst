@@ -6,16 +6,40 @@ instrumentation of Vertex AI SDK calls) with manual
 ``TelemetryHandler.agent()`` spans from ``opentelemetry-util-genai``
 to extend existing instrumentation with agent invocation lifecycle spans.
 
-The demo performs the following steps:
+The ``generate_content`` call is made inside the ``invoke_agent`` context,
+so the auto-instrumented LLM span appears as a child of the ``invoke_agent``
+parent span — all within the same trace.
 
-1. **LLM call** — generates content via the ``google-genai`` SDK (API key).
-   Vertex AI SDK calls are auto-instrumented by ``VertexAIInstrumentor``.
-2. **Create local agent** — creates a ``LanggraphAgent`` with a currency
-   exchange tool.
-3. **Deploy to Agent Engine** — deploys the agent to Vertex AI Agent Engine.
-4. **Query the remote agent** — sends a currency exchange query wrapped in
-   an ``invoke_agent`` span via ``TelemetryHandler.agent()``.
-5. **Cleanup** — deletes the deployed agent.
+Sample Trace
+------------
+
+::
+
+    Trace ID: 0xe71e16deb2ecd162e3f4fc67c240818b
+    |
+    +-- invoke_agent Currency Exchange Agent          [4.16s, root span]
+        |   gen_ai.operation.name:        invoke_agent
+        |   gen_ai.agent.name:            Currency Exchange Agent
+        |   gen_ai.agent.description:     Currency exchange agent demo
+        |   gen_ai.provider.name:         gcp_vertex_ai
+        |   gen_ai.request.model:         gemini-2.5-flash
+        |   gen_ai.response.finish_reasons: ["stop"]
+        |   gen_ai.usage.input_tokens:    12
+        |   gen_ai.usage.output_tokens:   87
+        |   server.address:               us-central1-aiplatform.googleapis.com
+        |   scope:                        opentelemetry.util.genai.handler
+        |
+        +-- chat gemini-2.5-flash                     [4.12s, child span]
+            gen_ai.operation.name:        chat
+            gen_ai.system:                vertex_ai
+            gen_ai.request.model:         gemini-2.5-flash
+            gen_ai.response.model:        gemini-2.5-flash
+            gen_ai.response.finish_reasons: ["stop"]
+            gen_ai.usage.input_tokens:    12
+            gen_ai.usage.output_tokens:   87
+            server.address:               us-central1-aiplatform.googleapis.com
+            server.port:                  443
+            scope:                        opentelemetry.instrumentation.vertexai
 
 Prerequisites
 -------------
@@ -23,13 +47,6 @@ Prerequisites
 - A GCP project with the **Vertex AI API** enabled.
 - **Application Default Credentials** (ADC) configured:
   ``gcloud auth application-default login``
-- A **Google API key** for LLM calls (set as ``GOOGLE_API_KEY``).
-- A **GCS staging bucket** for agent deployment:
-
-::
-
-    gsutil mb -p <PROJECT_ID> -l us-central1 -b on gs://<PROJECT_ID>-agent-staging/
-    gsutil pap set enforced gs://<PROJECT_ID>-agent-staging/
 
 Setup
 -----
@@ -51,22 +68,16 @@ Run
 
 ::
 
-    export GOOGLE_API_KEY="AIza..."
     export GCP_PROJECT="your-project-id"
     python main.py
 
-The deploy step takes 3-5 minutes. You should see an ``invoke_agent``
-span printed to the console and exported to your OTLP endpoint wrapping
-the agent query, along with the agent's response to the currency
-exchange query.
+You should see an ``invoke_agent`` span wrapping a ``chat`` child span,
+both printed to the console and exported to your OTLP endpoint.
 
 Environment Variables
 ---------------------
 
-- ``GOOGLE_API_KEY`` — API key for ``google-genai`` SDK LLM calls.
 - ``GCP_PROJECT`` — GCP project ID (default: ``gcp-o11yinframon-nprd-81065``).
 - ``GCP_LOCATION`` — GCP region (default: ``us-central1``).
-- ``GCP_STAGING_BUCKET`` — GCS bucket for agent staging
-  (default: ``gs://<GCP_PROJECT>-agent-staging``).
 - ``OTEL_EXPORTER_OTLP_ENDPOINT`` — OTLP endpoint
   (default: ``http://localhost:4317``).
