@@ -61,7 +61,7 @@ initializing the `LoggingInstrumentor` class to achieve the same effect:
 
 import logging  # pylint: disable=import-self
 from os import environ
-from typing import Collection
+from typing import Collection, Optional
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -78,7 +78,6 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_LEVEL,
 )
 from opentelemetry.instrumentation.logging.handler import (
-    _get_log_level,
     _setup_logging_handler,
 )
 from opentelemetry.instrumentation.logging.package import _instruments
@@ -99,6 +98,20 @@ LEVELS = {
 }
 
 _logger = logging.getLogger(__name__)
+
+
+def _get_log_level(level_name: Optional[str]) -> Optional[int]:
+    if level_name is None:
+        return None
+    result = logging.getLevelName(level_name.upper().strip())
+    if not isinstance(result, int):
+        _logger.warning(
+            "Invalid log level %r for %s; defaulting to NOTSET",
+            level_name,
+            OTEL_PYTHON_LOG_HANDLER_LEVEL,
+        )
+        return logging.NOTSET
+    return result
 
 
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring

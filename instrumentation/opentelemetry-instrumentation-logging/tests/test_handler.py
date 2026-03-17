@@ -20,9 +20,9 @@ from unittest.mock import Mock, patch
 from opentelemetry._logs import NoOpLoggerProvider, SeverityNumber
 from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
+from opentelemetry.instrumentation.logging import _get_log_level
 from opentelemetry.instrumentation.logging.handler import (
     LoggingHandler,
-    _get_log_level,
     _setup_logging_handler,
 )
 from opentelemetry.sdk import trace
@@ -709,7 +709,11 @@ class GetLogLevelTestCase(unittest.TestCase):
         self.assertEqual(_get_log_level(" eRroR"), logging.ERROR)
 
     def test_get_log_level_invalid_falls_back_to_notset(self):
-        self.assertEqual(_get_log_level("foobar"), logging.NOTSET)
+        with self.assertLogs(
+            "opentelemetry.instrumentation.logging", level="WARNING"
+        ) as cm:
+            self.assertEqual(_get_log_level("foobar"), logging.NOTSET)
+        self.assertTrue(any("foobar" in line for line in cm.output))
 
 
 def set_up_test_logging(
