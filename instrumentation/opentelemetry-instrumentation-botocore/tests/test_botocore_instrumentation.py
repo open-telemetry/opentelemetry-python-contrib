@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import importlib.util
 import json
 import os
 from importlib.metadata import EntryPoint
@@ -53,8 +52,6 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.span import format_span_id, format_trace_id
 
 _REQUEST_ID_REGEX_MATCH = r"[A-Za-z0-9]{52}"
-
-aiobotocore_installed = importlib.util.find_spec("aiobotocore") is not None
 
 
 # pylint:disable=too-many-public-methods
