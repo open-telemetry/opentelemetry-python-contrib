@@ -100,20 +100,23 @@ class TelemetryHandler:
         meter_provider: MeterProvider | None = None,
         logger_provider: LoggerProvider | None = None,
     ):
+        schema_url = Schemas.V1_37_0.value
         self._tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_37_0.value,
+            schema_url=schema_url,
         )
         self._metrics_recorder: InvocationMetricsRecorder | None = None
-        meter = get_meter(__name__, meter_provider=meter_provider)
+        meter = get_meter(
+            __name__, meter_provider=meter_provider, schema_url=schema_url
+        )
         self._metrics_recorder = InvocationMetricsRecorder(meter)
         self._logger = get_logger(
             __name__,
             __version__,
             logger_provider,
-            schema_url=Schemas.V1_37_0.value,
+            schema_url=schema_url,
         )
 
     def _record_llm_metrics(
