@@ -5,9 +5,8 @@ name: Test 2
 
 on:
   push:
-    branches-ignore:
-    - 'release/*'
-    - 'otelbot/*'
+    branches:
+    - 'main'
   pull_request:
 
 permissions:
@@ -31,63 +30,6 @@ env:
   PIP_EXISTS_ACTION: w
 
 jobs:
-
-  py314-test-instrumentation-sqlite3_ubuntu-latest:
-    name: instrumentation-sqlite3 3.14 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py314-test-instrumentation-sqlite3 -- -ra
-
-  pypy3-test-instrumentation-sqlite3_ubuntu-latest:
-    name: instrumentation-sqlite3 pypy-3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-sqlite3 -- -ra
-
-  py39-test-instrumentation-wsgi_ubuntu-latest:
-    name: instrumentation-wsgi 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-wsgi -- -ra
 
   py310-test-instrumentation-wsgi_ubuntu-latest:
     name: instrumentation-wsgi 3.10 Ubuntu
@@ -4781,3 +4723,60 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-cassandra-scylla -- -ra
+
+  pypy3-test-instrumentation-cassandra-scylla_ubuntu-latest:
+    name: instrumentation-cassandra-scylla pypy-3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-cassandra-scylla -- -ra
+
+  py39-test-processor-baggage_ubuntu-latest:
+    name: processor-baggage 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-processor-baggage -- -ra
+
+  py310-test-processor-baggage_ubuntu-latest:
+    name: processor-baggage 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-processor-baggage -- -ra

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 from http import HTTPStatus
 
@@ -295,13 +296,21 @@ class UnwrapTestCase(unittest.TestCase):
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, BaseObjectProxy))
 
-    def test_raises_import_error_if_cannot_find_module(self):
+    def test_noop_if_module_not_imported(self):
+        # A module that exists but hasn't been imported, treated
+        # as no-op.
+        self.assertNotIn("email.generator", sys.modules)
+        unwrap("email.generator.BytesGenerator", "flatten")
+        self.assertNotIn("email.generator", sys.modules)
+
+    def test_noop_if_cannot_find_module(self):
         self._wrap_method()
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, BaseObjectProxy))
 
-        with self.assertRaisesRegex(ImportError, "No module named 'does'"):
-            unwrap("does.not.exist.WrappedClass", "method")
+        # Treated same as an existing module that hasn't been imported,
+        # as a no-op.
+        unwrap("does.not.exist.WrappedClass", "method")
 
         unwrap(WrappedClass, "method")
         self.assertFalse(isinstance(instance.method, BaseObjectProxy))
