@@ -25,6 +25,7 @@ from agents.tracing import (  # noqa: E402
     set_trace_processors,
     trace,
 )
+from openai.types.responses import FunctionTool  # noqa: E402
 
 from opentelemetry.instrumentation.openai_agents import (  # noqa: E402
     OpenAIAgentsInstrumentor,
@@ -61,6 +62,9 @@ GEN_AI_INPUT_MESSAGES = getattr(
 )
 GEN_AI_OUTPUT_MESSAGES = getattr(
     GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
+)
+GEN_AI_TOOL_DEFINITIONS = getattr(
+    GenAI, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
 )
 
 
@@ -171,40 +175,31 @@ def test_function_span_records_tool_attributes():
         exporter.clear()
 
 
-def test_agent_create_span_records_attributes():
+def test_agent_invoke_span_records_attributes():
     instrumentor, exporter = _instrument_with_provider()
 
     try:
         with trace("workflow"):
             with agent_span(
-                operation="create",
                 name="support_bot",
-                description="Answers support questions",
-                agent_id="agt_123",
-                model="gpt-4o-mini",
+                handoffs=["escalation_bot"],
+                tools=["search"],
+                output_type="str",
             ):
                 pass
 
         spans = exporter.get_finished_spans()
-        create_span = next(
+        invoke_span = next(
             span
             for span in spans
             if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
-            == GenAI.GenAiOperationNameValues.CREATE_AGENT.value
+            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         )
 
-        assert create_span.kind is SpanKind.CLIENT
-        assert create_span.name == "create_agent support_bot"
-        assert create_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
-        assert create_span.attributes[GenAI.GEN_AI_AGENT_NAME] == "support_bot"
-        assert (
-            create_span.attributes[GenAI.GEN_AI_AGENT_DESCRIPTION]
-            == "Answers support questions"
-        )
-        assert create_span.attributes[GenAI.GEN_AI_AGENT_ID] == "agt_123"
-        assert (
-            create_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
-        )
+        assert invoke_span.kind is SpanKind.CLIENT
+        assert invoke_span.name == "invoke_agent support_bot"
+        assert invoke_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
+        assert invoke_span.attributes[GenAI.GEN_AI_AGENT_NAME] == "support_bot"
     finally:
         instrumentor.uninstrument()
         exporter.clear()
@@ -425,7 +420,7 @@ def test_agent_name_override_applied_to_agent_spans():
 
     try:
         with trace("workflow"):
-            with agent_span(operation="invoke", name="support_bot"):
+            with agent_span(name="support_bot"):
                 pass
 
         spans = exporter.get_finished_spans()
@@ -487,8 +482,26 @@ def test_response_span_records_response_attributes():
     class _Response:
         def __init__(self) -> None:
             self.id = "resp-123"
+            self.instructions = "You are a helpful assistant."
             self.model = "gpt-4o-mini"
             self.usage = _Usage(42, 9)
+            self.tools = [
+                FunctionTool(
+                    name="get_current_weather",
+                    type="function",
+                    description="Get the current weather in a given location",
+                    parameters={
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "title": "Location",
+                                "type": "string",
+                            },
+                        },
+                        "required": ["location"],
+                    },
+                )
+            ]
             self.output = [{"finish_reason": "stop"}]
 
     try:
@@ -516,6 +529,30 @@ def test_response_span_records_response_attributes():
         assert response.attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == (
             "stop",
         )
+
+        system_instructions = json.loads(
+            response.attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS]
+        )
+        assert system_instructions == [
+            {"type": "text", "content": "You are a helpful assistant."}
+        ]
+        tool_definitions = json.loads(
+            response.attributes[GEN_AI_TOOL_DEFINITIONS]
+        )
+        assert tool_definitions == [
+            {
+                "type": "function",
+                "name": "get_current_weather",
+                "description": "Get the current weather in a given location",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {"title": "Location", "type": "string"},
+                    },
+                    "required": ["location"],
+                },
+            }
+        ]
     finally:
         instrumentor.uninstrument()
         exporter.clear()

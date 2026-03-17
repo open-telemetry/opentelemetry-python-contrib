@@ -19,7 +19,9 @@ import MySQLdb
 import opentelemetry.instrumentation.mysqlclient
 from opentelemetry.instrumentation.mysqlclient import MySQLClientInstrumentor
 from opentelemetry.sdk import resources
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -157,7 +159,7 @@ class TestMySQLClientIntegration(TestBase):
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 "Select 1;",
             )
 
@@ -201,7 +203,7 @@ class TestMySQLClientIntegration(TestBase):
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
@@ -249,7 +251,7 @@ class TestMySQLClientIntegration(TestBase):
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 "Select 1;",
             )
 
@@ -288,7 +290,7 @@ class TestMySQLClientIntegration(TestBase):
             spans_list = self.memory_exporter.get_finished_spans()
             span = spans_list[0]
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 "Select 1;",
             )
 
@@ -350,7 +352,7 @@ class TestMySQLClientIntegration(TestBase):
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 "Select 1;",
             )
 
@@ -395,7 +397,7 @@ class TestMySQLClientIntegration(TestBase):
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
 
@@ -444,7 +446,7 @@ class TestMySQLClientIntegration(TestBase):
                 f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
             )
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 "Select 1;",
             )
 
@@ -483,7 +485,7 @@ class TestMySQLClientIntegration(TestBase):
             spans_list = self.memory_exporter.get_finished_spans()
             span = spans_list[0]
             self.assertEqual(
-                span.attributes[SpanAttributes.DB_STATEMENT],
+                span.attributes[DB_STATEMENT],
                 "Select 1;",
             )
 

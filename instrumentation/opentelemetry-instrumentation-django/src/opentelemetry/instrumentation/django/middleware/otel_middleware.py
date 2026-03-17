@@ -53,8 +53,10 @@ from opentelemetry.instrumentation.wsgi import (
 from opentelemetry.instrumentation.wsgi import (
     collect_request_attributes as wsgi_collect_request_attributes,
 )
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_TARGET,
+)
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, SpanKind, use_span
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -77,30 +79,8 @@ try:
 except ImportError:
     from django.urls import Resolver404, resolve
 
-DJANGO_2_0 = django_version >= (2, 0)
 DJANGO_3_0 = django_version >= (3, 0)
 
-if DJANGO_2_0:
-    # Since Django 2.0, only `settings.MIDDLEWARE` is supported, so new-style
-    # middlewares can be used.
-    class MiddlewareMixin:
-        def __init__(self, get_response):
-            self.get_response = get_response
-
-        def __call__(self, request):
-            self.process_request(request)
-            response = self.get_response(request)
-            return self.process_response(request, response)
-
-else:
-    # Django versions 1.x can use `settings.MIDDLEWARE_CLASSES` and expect
-    # old-style middlewares, which are created by inheriting from
-    # `deprecation.MiddlewareMixin` since its creation in Django 1.10 and 1.11,
-    # or from `object` for older versions.
-    try:
-        from django.utils.deprecation import MiddlewareMixin
-    except ImportError:
-        MiddlewareMixin = object
 
 if DJANGO_3_0:
     from django.core.handlers.asgi import ASGIRequest
@@ -135,7 +115,7 @@ def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
 
-class _DjangoMiddleware(MiddlewareMixin):
+class _DjangoMiddleware:
     """Django Middleware for OpenTelemetry"""
 
     _environ_activation_key = (
@@ -164,6 +144,14 @@ class _DjangoMiddleware(MiddlewareMixin):
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
         None
     )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        self.process_request(request)
+        response = self.get_response(request)
+        return self.process_response(request, response)
 
     @staticmethod
     def _get_span_name(request):
@@ -283,7 +271,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 span.set_attribute(key, value)
 
         activation = use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation
@@ -320,12 +308,12 @@ class _DjangoMiddleware(MiddlewareMixin):
                 if route:
                     if span.is_recording():
                         # http.route is present for both old and new semconv
-                        span.set_attribute(SpanAttributes.HTTP_ROUTE, route)
+                        span.set_attribute(HTTP_ROUTE, route)
                     duration_attrs = request.META[
                         self._environ_duration_attr_key
                     ]
                     if _report_old(self._sem_conv_opt_in_mode):
-                        duration_attrs[SpanAttributes.HTTP_TARGET] = route
+                        duration_attrs[HTTP_TARGET] = route
                     if _report_new(self._sem_conv_opt_in_mode):
                         duration_attrs[HTTP_ROUTE] = route
 
@@ -424,9 +412,9 @@ class _DjangoMiddleware(MiddlewareMixin):
                     duration_attrs, _StabilityMode.DEFAULT
                 )
                 # http.target to be included in old semantic conventions
-                target = duration_attrs.get(SpanAttributes.HTTP_TARGET)
+                target = duration_attrs.get(HTTP_TARGET)
                 if target:
-                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
+                    duration_attrs_old[HTTP_TARGET] = target
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0),
                     duration_attrs_old,
