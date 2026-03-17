@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4321](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4321))
 - `opentelemetry-instrumentation-logging`: Add recursion guard in LoggingHandler.emit to prevent deadlock
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
+- `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
+  ([#1180](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1180))
 
 ### Breaking changes
 
@@ -93,8 +95,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4094](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4094))
 - `opentelemetry-instrumentation-asyncio`: Fix environment variables not appearing in Read the Docs documentation
   ([#4256](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4256))
-- `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'` by routing bidi streams through `_intercept` instead of the generator-based `_intercept_server_stream`
-  ([#1180](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1180))
 - `opentelemetry-instrumentation-mysql`: Refactor MySQL integration test mocks to use concrete DBAPI connection attributes, reducing noisy attribute type warnings.
   ([#4116](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4116))
 - `opentelemetry-instrumentation-cassandra`: Use `_instruments_any` instead of `_instruments` for driver dependencies so that having either `cassandra-driver` or `scylla-driver` installed is sufficient
