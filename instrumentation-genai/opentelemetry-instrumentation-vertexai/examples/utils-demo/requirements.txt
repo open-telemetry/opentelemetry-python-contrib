@@ -1,0 +1,9 @@
+google-cloud-aiplatform[agent_engines,langchain]>=1.64
+google-genai>=1.0
+langchain-google-vertexai
+requests
+
+opentelemetry-sdk>=1.29
+opentelemetry-exporter-otlp-proto-grpc>=1.29
+opentelemetry-instrumentation-vertexai>=2.0b0
+opentelemetry-util-genai>=0.4b0.dev0
