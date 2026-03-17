@@ -116,23 +116,22 @@ def _lifecycle_context(
     """
     try:
         start(invocation)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         _logger.warning("Failed to start %s span", label, exc_info=True)
     try:
         yield invocation
     except Exception as exc:
         try:
             fail(invocation, Error(message=str(exc), type=type(exc)))
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             _logger.warning(
                 "Failed to record %s failure", label, exc_info=True
             )
         raise
-    else:
-        try:
-            stop(invocation)
-        except Exception:
-            _logger.warning("Failed to stop %s span", label, exc_info=True)
+    try:
+        stop(invocation)
+    except Exception:  # pylint: disable=broad-exception-caught
+        _logger.warning("Failed to stop %s span", label, exc_info=True)
 
 
 class TelemetryHandler:
