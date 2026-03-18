@@ -277,6 +277,10 @@ class TestClientProto(TestBase):
             span.status.status_code,
             trace.StatusCode.ERROR,
         )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
+        )
 
     def test_error_stream_unary(self):
         with self.assertRaises(grpc.RpcError):
@@ -288,6 +292,10 @@ class TestClientProto(TestBase):
         self.assertIs(
             span.status.status_code,
             trace.StatusCode.ERROR,
+        )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
 
     def test_error_unary_stream(self):
@@ -301,6 +309,10 @@ class TestClientProto(TestBase):
             span.status.status_code,
             trace.StatusCode.ERROR,
         )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
+        )
 
     def test_error_stream_stream(self):
         with self.assertRaises(grpc.RpcError):
@@ -312,6 +324,10 @@ class TestClientProto(TestBase):
         self.assertIs(
             span.status.status_code,
             trace.StatusCode.ERROR,
+        )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
 
     def test_client_interceptor_falsy_response(
