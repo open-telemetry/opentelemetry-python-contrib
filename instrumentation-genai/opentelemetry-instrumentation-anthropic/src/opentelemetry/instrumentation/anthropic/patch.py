@@ -14,6 +14,8 @@
 
 """Patching functions for Anthropic instrumentation."""
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Union, cast
 
@@ -56,7 +58,7 @@ def messages_create(
     Union[
         "AnthropicMessage",
         "AnthropicStream[RawMessageStreamEvent]",
-        MessagesStreamWrapper,
+        MessagesStreamWrapper[RawMessageStreamEvent],
     ],
 ]:
     """Wrap the `create` method of the `Messages` class to trace it."""
@@ -76,7 +78,7 @@ def messages_create(
     ) -> Union[
         "AnthropicMessage",
         "AnthropicStream[RawMessageStreamEvent]",
-        MessagesStreamWrapper,
+        MessagesStreamWrapper[RawMessageStreamEvent],
     ]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
@@ -121,13 +123,6 @@ def messages_create(
             raise
 
     return cast(
-        Callable[
-            ...,
-            Union[
-                "AnthropicMessage",
-                "AnthropicStream[RawMessageStreamEvent]",
-                MessagesStreamWrapper,
-            ],
-        ],
+        'Callable[..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]", MessagesStreamWrapper[RawMessageStreamEvent]]]',
         traced_method,
     )

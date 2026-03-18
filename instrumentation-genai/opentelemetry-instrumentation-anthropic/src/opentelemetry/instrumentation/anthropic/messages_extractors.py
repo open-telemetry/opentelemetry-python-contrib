@@ -177,9 +177,9 @@ def set_invocation_response_attributes(
         invocation.input_tokens = tokens.input_tokens
         invocation.output_tokens = tokens.output_tokens
         if tokens.cache_creation_input_tokens is not None:
-            invocation.attributes[
-                GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
-            ] = tokens.cache_creation_input_tokens
+            invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = (
+                tokens.cache_creation_input_tokens
+            )
         if tokens.cache_read_input_tokens is not None:
             invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
                 tokens.cache_read_input_tokens
