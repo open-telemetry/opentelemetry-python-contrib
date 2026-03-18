@@ -643,6 +643,8 @@ def _wrapped_teardown_request(
 
             if token:
                 context.detach(token)
+                flask.request.environ.pop(_ENVIRON_ACTIVATION_KEY, None)
+                flask.request.environ.pop(_ENVIRON_TOKEN, None)
 
         except (RuntimeError, AttributeError, ValueError) as teardown_exc:
             # Log the error but don't raise it to avoid breaking the request handling
@@ -651,9 +653,6 @@ def _wrapped_teardown_request(
                 teardown_exc,
                 exc_info=True,
             )
-        finally:
-            flask.request.environ.pop(_ENVIRON_ACTIVATION_KEY, None)
-            flask.request.environ.pop(_ENVIRON_TOKEN, None)
 
     return _teardown_request
 
