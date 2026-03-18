@@ -389,7 +389,6 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         # Wrap the instrumentation's teardown to count calls and invoke it
         # a second time to simulate duplicate teardown.
-        original_teardown_funcs = app.teardown_request_funcs[None][:]
         instrumentation_teardown = app.teardown_request_funcs[None][-1]
 
         def counting_teardown(exc):
