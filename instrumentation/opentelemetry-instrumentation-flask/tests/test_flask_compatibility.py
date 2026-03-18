@@ -374,6 +374,7 @@ class TestFlaskCompatibility(WsgiTestBase):
         # Register the check handler BEFORE instrumenting so it runs AFTER
         # the instrumentation's teardown (Flask uses LIFO order).
         cleaned_up = {}
+        call_count = {"teardown_calls": 0}
 
         @app.teardown_request
         def check_cleanup(exc):
@@ -386,6 +387,19 @@ class TestFlaskCompatibility(WsgiTestBase):
 
         FlaskInstrumentor().instrument_app(app)
 
+        # Wrap the instrumentation's teardown to count calls and invoke it
+        # a second time to simulate duplicate teardown.
+        original_teardown_funcs = app.teardown_request_funcs[None][:]
+        instrumentation_teardown = app.teardown_request_funcs[None][-1]
+
+        def counting_teardown(exc):
+            call_count["teardown_calls"] += 1
+            instrumentation_teardown(exc)
+            # Call it again to simulate duplicate teardown - should not raise
+            instrumentation_teardown(exc)
+
+        app.teardown_request_funcs[None][-1] = counting_teardown
+
         @app.route("/test")
         def test_endpoint():
             return "OK"
@@ -393,6 +407,9 @@ class TestFlaskCompatibility(WsgiTestBase):
         client = app.test_client()
         response = client.get("/test")
         self.assertEqual(response.status_code, 200)
+        # Verify the teardown was actually called
+        self.assertGreater(call_count["teardown_calls"], 0)
+        # Verify env keys are cleaned up after teardown
         self.assertFalse(
             cleaned_up.get("activation_present", True),
             "_ENVIRON_ACTIVATION_KEY should be cleaned up after teardown",
