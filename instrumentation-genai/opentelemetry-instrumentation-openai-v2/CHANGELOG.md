@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3715](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3715))
 - Add wrappers for OpenAI Responses API streams and response stream managers
   ([#4280](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4280))
+- Add async wrappers for OpenAI Responses API streams and response stream managers
+  ([#4325](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4325))
 - Add strongly typed Responses API extractors with validation and content
   extraction improvements
   ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))

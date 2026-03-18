@@ -11,6 +11,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "opentelemetry-distro",
     "opentelemetry-exporter-credential-provider-gcp",
     "opentelemetry-exporter-prometheus-remote-write",
     "opentelemetry-exporter-richconsole",
@@ -2629,6 +2630,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry-distro"
+source = { editable = "opentelemetry-distro" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-sdk" },
+]
+
+[package.optional-dependencies]
+otlp = [
+    { name = "opentelemetry-exporter-otlp" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-exporter-otlp", marker = "extra == 'otlp'", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
+]
+provides-extras = ["otlp"]
+
+[[package]]
 name = "opentelemetry-exporter-credential-provider-gcp"
 source = { editable = "exporter/opentelemetry-exporter-credential-provider-gcp" }
 dependencies = [
@@ -2642,6 +2666,51 @@ requires-dist = [
     { name = "google-auth", specifier = ">=2.25" },
     { name = "grpcio", specifier = ">=1.67.0" },
     { name = "requests", specifier = ">=2.7" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-common"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp-proto-common&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "opentelemetry-proto" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-grpc"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp-proto-grpc&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "grpcio" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-common" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "typing-extensions" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-http"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp-proto-http&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-common" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "requests" },
+    { name = "typing-extensions" },
 ]
 
 [[package]]
@@ -4128,11 +4197,20 @@ requires-dist = [
 ]
 
 [[package]]
+name = "opentelemetry-proto"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-proto&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "protobuf" },
+]
+
+[[package]]
 name = "opentelemetry-python-contrib"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "opentelemetry-api" },
+    { name = "opentelemetry-distro" },
     { name = "opentelemetry-exporter-prometheus-remote-write" },
     { name = "opentelemetry-exporter-richconsole" },
     { name = "opentelemetry-instrumentation" },
@@ -4204,6 +4282,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-distro", editable = "opentelemetry-distro" },
     { name = "opentelemetry-exporter-prometheus-remote-write", editable = "exporter/opentelemetry-exporter-prometheus-remote-write" },
     { name = "opentelemetry-exporter-richconsole", editable = "exporter/opentelemetry-exporter-richconsole" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
