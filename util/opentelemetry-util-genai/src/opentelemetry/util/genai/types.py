@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from abc import ABC
 from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
@@ -237,9 +238,9 @@ class LLMInvocation(GenAIInvocation):
 
 
 @dataclass
-class _BaseAgent(GenAIInvocation):
+class _BaseAgent(GenAIInvocation, ABC):
     """
-    Shared base class for agent lifecycle types (AgentInvocation, AgentCreation).
+    Shared abstract base class for agent lifecycle types (AgentInvocation, AgentCreation).
 
     Contains fields common to all agent operations: identity, provider,
     model, system instructions, server info, and telemetry plumbing.

@@ -359,11 +359,6 @@ def _get_agent_common_attributes(
     return attrs
 
 
-def _get_agent_span_name(invocation: AgentInvocation) -> str:
-    """Get the span name for an agent invocation."""
-    return _get_base_agent_span_name(invocation)
-
-
 def _get_agent_request_attributes(
     invocation: AgentInvocation,
 ) -> dict[str, Any]:
@@ -424,12 +419,24 @@ def _get_agent_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
-def _apply_agent_finish_attributes(
+def _apply_agent_finish_attributes(span: Span, agent: _BaseAgent) -> None:
+    """Apply attributes common to any agent finish() path.
+
+    Dispatches to invocation-specific or creation-specific logic
+    based on the concrete type.
+    """
+    span.update_name(_get_base_agent_span_name(agent))
+
+    if isinstance(agent, AgentInvocation):
+        _apply_invocation_finish_attributes(span, agent)
+    elif isinstance(agent, AgentCreation):
+        _apply_creation_finish_attributes(span, agent)
+
+
+def _apply_invocation_finish_attributes(
     span: Span, invocation: AgentInvocation
 ) -> None:
-    """Apply attributes/messages common to agent finish() paths."""
-    span.update_name(_get_agent_span_name(invocation))
-
+    """Apply attributes specific to agent invocation finish() paths."""
     attributes: dict[str, Any] = {}
     attributes.update(_get_agent_common_attributes(invocation))
     attributes.update(_get_agent_request_attributes(invocation))
@@ -448,26 +455,13 @@ def _apply_agent_finish_attributes(
         span.set_attributes(attributes)
 
 
-def _get_creation_common_attributes(
-    creation: AgentCreation,
-) -> dict[str, Any]:
-    """Get common agent creation attributes."""
-    return _get_base_agent_common_attributes(creation)
-
-
-def _get_creation_span_name(creation: AgentCreation) -> str:
-    """Get the span name for an agent creation."""
-    return _get_base_agent_span_name(creation)
-
-
 def _apply_creation_finish_attributes(
     span: Span, creation: AgentCreation
 ) -> None:
     """Apply attributes common to agent creation finish() paths."""
-    span.update_name(_get_creation_span_name(creation))
 
     attributes: dict[str, Any] = {}
-    attributes.update(_get_creation_common_attributes(creation))
+    attributes.update(_get_base_agent_common_attributes(creation))
 
     # System instructions (Opt-In)
     if (
@@ -492,37 +486,40 @@ def _apply_creation_finish_attributes(
 def _maybe_emit_agent_event(
     logger: Logger | None,
     span: Span,
-    invocation: AgentInvocation,
+    agent: _BaseAgent,
     error: Error | None = None,
 ) -> None:
-    """Emit a gen_ai.client.inference.operation.details event for agent invocation."""
+    """Emit a gen_ai.client.inference.operation.details event for any agent operation."""
     if not is_experimental_mode() or not should_emit_event() or logger is None:
         return
 
     attributes: dict[str, Any] = {}
-    attributes.update(_get_agent_common_attributes(invocation))
-    attributes.update(_get_agent_request_attributes(invocation))
-    attributes.update(_get_agent_response_attributes(invocation))
+    attributes.update(_get_base_agent_common_attributes(agent))
 
-    # Event uses structured format for messages
-    if get_content_capturing_mode() in (
-        ContentCapturingMode.EVENT_ONLY,
-        ContentCapturingMode.SPAN_AND_EVENT,
-    ):
-        if invocation.input_messages:
-            attributes[GenAI.GEN_AI_INPUT_MESSAGES] = [
-                asdict(m) for m in invocation.input_messages
-            ]
-        if invocation.output_messages:
-            attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = [
-                asdict(m) for m in invocation.output_messages
-            ]
-        if invocation.system_instruction:
-            attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = [
-                asdict(p) for p in invocation.system_instruction
-            ]
-        if invocation.tool_definitions:
-            attributes[_GEN_AI_TOOL_DEFINITIONS] = invocation.tool_definitions
+    if isinstance(agent, AgentInvocation):
+        attributes.update(_get_agent_common_attributes(agent))
+        attributes.update(_get_agent_request_attributes(agent))
+        attributes.update(_get_agent_response_attributes(agent))
+
+        # Event uses structured format for messages
+        if get_content_capturing_mode() in (
+            ContentCapturingMode.EVENT_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ):
+            if agent.input_messages:
+                attributes[GenAI.GEN_AI_INPUT_MESSAGES] = [
+                    asdict(m) for m in agent.input_messages
+                ]
+            if agent.output_messages:
+                attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = [
+                    asdict(m) for m in agent.output_messages
+                ]
+            if agent.system_instruction:
+                attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = [
+                    asdict(p) for p in agent.system_instruction
+                ]
+            if agent.tool_definitions:
+                attributes[_GEN_AI_TOOL_DEFINITIONS] = agent.tool_definitions
 
     if error is not None:
         attributes[error_attributes.ERROR_TYPE] = error.type.__qualname__
@@ -547,12 +544,10 @@ __all__ = [
     "_get_base_agent_common_attributes",
     "_get_base_agent_span_name",
     "_apply_agent_finish_attributes",
+    "_apply_invocation_finish_attributes",
     "_apply_creation_finish_attributes",
     "_get_agent_common_attributes",
     "_get_agent_request_attributes",
     "_get_agent_response_attributes",
-    "_get_agent_span_name",
-    "_get_creation_common_attributes",
-    "_get_creation_span_name",
     "_maybe_emit_agent_event",
 ]

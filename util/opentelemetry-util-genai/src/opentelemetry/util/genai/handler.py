@@ -82,9 +82,9 @@ from opentelemetry.trace import (
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_agent_finish_attributes,
-    _apply_creation_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _get_base_agent_span_name,
     _maybe_emit_agent_event,
     _maybe_emit_llm_event,
 )
@@ -94,6 +94,7 @@ from opentelemetry.util.genai.types import (
     Error,
     GenAIInvocation,
     LLMInvocation,
+    _BaseAgent,
 )
 from opentelemetry.util.genai.version import __version__
 
@@ -257,31 +258,31 @@ class TelemetryHandler:
         ) as inv:
             yield inv
 
-    # ---- Agent invocation lifecycle ----
+    # ---- Unified agent lifecycle (invoke_agent / create_agent) ----
 
     def start_agent(
         self,
-        invocation: AgentInvocation,
-    ) -> AgentInvocation:
-        """Start an agent invocation and create a pending span entry."""
-        span_name = (
-            f"{invocation.operation_name} {invocation.agent_name}".strip()
-        )
-        kind = SpanKind.CLIENT if invocation.is_remote else SpanKind.INTERNAL
+        agent: _BaseAgent,
+    ) -> _BaseAgent:
+        """Start an agent operation and create a pending span entry.
+
+        Accepts any _BaseAgent subclass (AgentInvocation, AgentCreation).
+        """
+        span_name = _get_base_agent_span_name(agent)
+        is_remote = getattr(agent, "is_remote", True)
+        kind = SpanKind.CLIENT if is_remote else SpanKind.INTERNAL
         span = self._tracer.start_span(
             name=span_name,
             kind=kind,
         )
-        invocation.monotonic_start_s = timeit.default_timer()
-        invocation.span = span
-        invocation.context_token = otel_context.attach(
-            set_span_in_context(span)
-        )
-        return invocation
+        agent.monotonic_start_s = timeit.default_timer()
+        agent.span = span
+        agent.context_token = otel_context.attach(set_span_in_context(span))
+        return agent
 
     def _record_agent_metrics(
         self,
-        invocation: AgentInvocation,
+        agent: _BaseAgent,
         span: Span | None = None,
         *,
         error_type: str | None = None,
@@ -290,45 +291,41 @@ class TelemetryHandler:
             return
         self._metrics_recorder.record_agent(
             span,
-            invocation,
+            agent,
             error_type=error_type,
         )
 
-    def stop_agent(self, invocation: AgentInvocation) -> AgentInvocation:
-        """Finalize an agent invocation successfully and end its span."""
-        if invocation.context_token is None or invocation.span is None:
-            return invocation
+    def stop_agent(self, agent: _BaseAgent) -> _BaseAgent:
+        """Finalize an agent operation successfully and end its span."""
+        if agent.context_token is None or agent.span is None:
+            return agent
 
         try:
-            _apply_agent_finish_attributes(invocation.span, invocation)
-            self._record_agent_metrics(invocation, invocation.span)
-            _maybe_emit_agent_event(self._logger, invocation.span, invocation)
+            _apply_agent_finish_attributes(agent.span, agent)
+            self._record_agent_metrics(agent, agent.span)
+            _maybe_emit_agent_event(self._logger, agent.span, agent)
         finally:
-            otel_context.detach(invocation.context_token)
-            invocation.span.end()
-        return invocation
+            otel_context.detach(agent.context_token)
+            agent.span.end()
+        return agent
 
-    def fail_agent(
-        self, invocation: AgentInvocation, error: Error
-    ) -> AgentInvocation:
-        """Fail an agent invocation and end its span with error status."""
-        if invocation.context_token is None or invocation.span is None:
-            return invocation
+    def fail_agent(self, agent: _BaseAgent, error: Error) -> _BaseAgent:
+        """Fail an agent operation and end its span with error status."""
+        if agent.context_token is None or agent.span is None:
+            return agent
 
         try:
-            _apply_agent_finish_attributes(invocation.span, invocation)
-            _apply_error_attributes(invocation.span, error)
+            _apply_agent_finish_attributes(agent.span, agent)
+            _apply_error_attributes(agent.span, error)
             error_type = getattr(error.type, "__qualname__", None)
             self._record_agent_metrics(
-                invocation, invocation.span, error_type=error_type
+                agent, agent.span, error_type=error_type
             )
-            _maybe_emit_agent_event(
-                self._logger, invocation.span, invocation, error
-            )
+            _maybe_emit_agent_event(self._logger, agent.span, agent, error)
         finally:
-            otel_context.detach(invocation.context_token)
-            invocation.span.end()
-        return invocation
+            otel_context.detach(agent.context_token)
+            agent.span.end()
+        return agent
 
     @contextmanager
     def agent(
@@ -353,50 +350,6 @@ class TelemetryHandler:
         ) as inv:
             yield inv
 
-    # ---- Agent creation lifecycle ----
-
-    def start_create_agent(
-        self,
-        creation: AgentCreation,
-    ) -> AgentCreation:
-        """Start an agent creation and create a pending span entry."""
-        span_name = f"{creation.operation_name} {creation.agent_name}".strip()
-        span = self._tracer.start_span(
-            name=span_name,
-            kind=SpanKind.CLIENT,
-        )
-        creation.monotonic_start_s = timeit.default_timer()
-        creation.span = span
-        creation.context_token = otel_context.attach(set_span_in_context(span))
-        return creation
-
-    def stop_create_agent(self, creation: AgentCreation) -> AgentCreation:  # pylint: disable=no-self-use
-        """Finalize an agent creation successfully and end its span."""
-        if creation.context_token is None or creation.span is None:
-            return creation
-
-        try:
-            _apply_creation_finish_attributes(creation.span, creation)
-        finally:
-            otel_context.detach(creation.context_token)
-            creation.span.end()
-        return creation
-
-    def fail_create_agent(  # pylint: disable=no-self-use
-        self, creation: AgentCreation, error: Error
-    ) -> AgentCreation:
-        """Fail an agent creation and end its span with error status."""
-        if creation.context_token is None or creation.span is None:
-            return creation
-
-        try:
-            _apply_creation_finish_attributes(creation.span, creation)
-            _apply_error_attributes(creation.span, error)
-        finally:
-            otel_context.detach(creation.context_token)
-            creation.span.end()
-        return creation
-
     @contextmanager
     def create_agent(
         self, creation: AgentCreation | None = None
@@ -413,9 +366,9 @@ class TelemetryHandler:
             creation = AgentCreation()
         with _lifecycle_context(
             creation,
-            self.start_create_agent,
-            self.stop_create_agent,
-            self.fail_create_agent,
+            self.start_agent,
+            self.stop_agent,
+            self.fail_agent,
             "create_agent",
         ) as c:
             yield c
