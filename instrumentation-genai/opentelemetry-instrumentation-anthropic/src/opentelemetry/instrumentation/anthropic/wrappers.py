@@ -58,6 +58,24 @@ _logger = logging.getLogger(__name__)
 ResponseT = TypeVar("ResponseT")
 
 
+def _set_response_attributes(
+    invocation: LLMInvocation,
+    wrapper: "MessagesStreamWrapper",
+) -> None:
+    set_invocation_stream_response_attributes(
+        invocation,
+        response_model=wrapper._response_model,
+        response_id=wrapper._response_id,
+        stop_reason=wrapper._stop_reason,
+        input_tokens=wrapper._input_tokens,
+        output_tokens=wrapper._output_tokens,
+        cache_creation_input_tokens=wrapper._cache_creation_input_tokens,
+        cache_read_input_tokens=wrapper._cache_read_input_tokens,
+        capture_content=wrapper._capture_content,
+        content_blocks=wrapper._content_blocks,
+    )
+
+
 class _ResponseProxy(Generic[ResponseT]):
     def __init__(self, response: ResponseT, finalize: Callable[[], None]):
         self._response = response
@@ -188,26 +206,11 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
                 exc_info=True,
             )
 
-    def _set_invocation_response_attributes(self) -> None:
-        """Extract accumulated stream state into the invocation."""
-        set_invocation_stream_response_attributes(
-            self.invocation,
-            response_model=self._response_model,
-            response_id=self._response_id,
-            stop_reason=self._stop_reason,
-            input_tokens=self._input_tokens,
-            output_tokens=self._output_tokens,
-            cache_creation_input_tokens=self._cache_creation_input_tokens,
-            cache_read_input_tokens=self._cache_read_input_tokens,
-            capture_content=self._capture_content,
-            content_blocks=self._content_blocks,
-        )
-
     def _stop(self) -> None:
         if self._finalized:
             return
         with self._safe_instrumentation("response attribute extraction"):
-            self._set_invocation_response_attributes()
+            _set_response_attributes(self.invocation, self)
         with self._safe_instrumentation("stop_llm"):
             self.handler.stop_llm(self.invocation)
         self._finalized = True
