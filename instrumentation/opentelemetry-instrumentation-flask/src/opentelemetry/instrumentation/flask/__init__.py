@@ -651,6 +651,9 @@ def _wrapped_teardown_request(
                 teardown_exc,
                 exc_info=True,
             )
+        finally:
+            flask.request.environ.pop(_ENVIRON_ACTIVATION_KEY, None)
+            flask.request.environ.pop(_ENVIRON_TOKEN, None)
 
     return _teardown_request
 
