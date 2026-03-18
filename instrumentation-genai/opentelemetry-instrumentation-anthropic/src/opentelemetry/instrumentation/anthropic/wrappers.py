@@ -133,75 +133,6 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         self._capture_content = capture_content
         self._finalized = False
 
-    def _process_chunk(self, chunk: RawMessageStreamEvent) -> None:
-        """Accumulate a final message snapshot from a streaming chunk."""
-        if accumulate_event is None:
-            return
-        self._message = accumulate_event(
-            event=chunk,
-            current_snapshot=self._message,
-        )
-
-    @staticmethod
-    @contextmanager
-    def _safe_instrumentation(
-        context: str,
-    ) -> Generator[None, None, None]:
-        try:
-            yield
-        except Exception:  # pylint: disable=broad-exception-caught
-            _logger.debug(
-                "Anthropic MessagesStreamWrapper instrumentation error in %s",
-                context,
-                exc_info=True,
-            )
-
-    def _stop(self) -> None:
-        if self._finalized:
-            return
-        with self._safe_instrumentation("response attribute extraction"):
-            _set_response_attributes(
-                self.invocation, self._message, self._capture_content
-            )
-        with self._safe_instrumentation("stop_llm"):
-            self.handler.stop_llm(self.invocation)
-        self._finalized = True
-
-    def _fail(self, message: str, error_type: type[BaseException]) -> None:
-        if self._finalized:
-            return
-        with self._safe_instrumentation("fail_llm"):
-            self.handler.fail_llm(
-                self.invocation, Error(message=message, type=error_type)
-            )
-        self._finalized = True
-
-    def __iter__(self) -> MessagesStreamWrapper:
-        return self
-
-    def __getattr__(self, name: str) -> object:
-        return getattr(self.stream, name)
-
-    @property
-    def response(self):
-        response = getattr(self.stream, "response", None)
-        if response is None:
-            return None
-        return _ResponseProxy(response, self._stop)
-
-    def __next__(self) -> "RawMessageStreamEvent | MessageStreamEvent":
-        try:
-            chunk = next(self.stream)
-        except StopIteration:
-            self._stop()
-            raise
-        except Exception as exc:
-            self._fail(str(exc), type(exc))
-            raise
-        with self._safe_instrumentation("stream chunk processing"):
-            self._process_chunk(chunk)
-        return chunk
-
     def __enter__(self) -> MessagesStreamWrapper:
         return self
 
@@ -225,6 +156,75 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
             self.stream.close()
         finally:
             self._stop()
+
+    def __iter__(self) -> MessagesStreamWrapper:
+        return self
+
+    def __next__(self) -> "RawMessageStreamEvent | MessageStreamEvent":
+        try:
+            chunk = next(self.stream)
+        except StopIteration:
+            self._stop()
+            raise
+        except Exception as exc:
+            self._fail(str(exc), type(exc))
+            raise
+        with self._safe_instrumentation("stream chunk processing"):
+            self._process_chunk(chunk)
+        return chunk
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self.stream, name)
+
+    @property
+    def response(self):
+        response = getattr(self.stream, "response", None)
+        if response is None:
+            return None
+        return _ResponseProxy(response, self._stop)
+
+    def _stop(self) -> None:
+        if self._finalized:
+            return
+        with self._safe_instrumentation("response attribute extraction"):
+            _set_response_attributes(
+                self.invocation, self._message, self._capture_content
+            )
+        with self._safe_instrumentation("stop_llm"):
+            self.handler.stop_llm(self.invocation)
+        self._finalized = True
+
+    def _fail(self, message: str, error_type: type[BaseException]) -> None:
+        if self._finalized:
+            return
+        with self._safe_instrumentation("fail_llm"):
+            self.handler.fail_llm(
+                self.invocation, Error(message=message, type=error_type)
+            )
+        self._finalized = True
+
+    @staticmethod
+    @contextmanager
+    def _safe_instrumentation(
+        context: str,
+    ) -> Generator[None, None, None]:
+        try:
+            yield
+        except Exception:  # pylint: disable=broad-exception-caught
+            _logger.debug(
+                "Anthropic MessagesStreamWrapper instrumentation error in %s",
+                context,
+                exc_info=True,
+            )
+
+    def _process_chunk(self, chunk: RawMessageStreamEvent) -> None:
+        """Accumulate a final message snapshot from a streaming chunk."""
+        if accumulate_event is None:
+            return
+        self._message = accumulate_event(
+            event=chunk,
+            current_snapshot=self._message,
+        )
 
 
 class AsyncMessagesStreamWrapper(MessagesStreamWrapper):
