@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4321](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4321))
 - `opentelemetry-instrumentation-logging`: Add recursion guard in LoggingHandler.emit to prevent deadlock
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
-`opentelemetry-instrumentation-flask`: Clean up environ keys in `_teardown_request` to prevent duplicate execution ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
+- `opentelemetry-instrumentation-flask`: Clean up environ keys in `_teardown_request` to prevent duplicate execution ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
 
 ### Breaking changes
 
