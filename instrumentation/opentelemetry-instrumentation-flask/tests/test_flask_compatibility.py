@@ -27,9 +27,9 @@ import flask
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import (
-    FlaskInstrumentor,
     _ENVIRON_ACTIVATION_KEY,
     _ENVIRON_TOKEN,
+    FlaskInstrumentor,
     _request_ctx_ref,
 )
 from opentelemetry.test.wsgitestutil import WsgiTestBase
