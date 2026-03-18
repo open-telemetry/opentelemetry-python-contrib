@@ -25,17 +25,14 @@ from opentelemetry.util.genai.types import (
     LLMInvocation,
 )
 
-from .messages_extractors import (
-    extract_usage_tokens,
-    set_invocation_message_response_attributes,
-    set_invocation_stream_response_attributes,
-)
-from .utils import (
-    StreamBlockState,
-    create_stream_block_state,
-    normalize_finish_reason,
-    update_stream_block_state,
-)
+from .messages_extractors import set_invocation_response_attributes
+
+try:
+    from anthropic.lib.streaming._messages import (  # pylint: disable=no-name-in-module
+        accumulate_event,
+    )
+except ImportError:
+    accumulate_event = None
 
 if TYPE_CHECKING:
     from anthropic._streaming import AsyncStream, Stream
@@ -48,9 +45,7 @@ if TYPE_CHECKING:
     )
     from anthropic.types import (
         Message,
-        MessageDeltaUsage,
         RawMessageStreamEvent,
-        Usage,
     )
 
 
@@ -60,20 +55,10 @@ ResponseT = TypeVar("ResponseT")
 
 def _set_response_attributes(
     invocation: LLMInvocation,
-    wrapper: "MessagesStreamWrapper",
+    result: "Message | None",
+    capture_content: bool,
 ) -> None:
-    set_invocation_stream_response_attributes(
-        invocation,
-        response_model=wrapper._response_model,
-        response_id=wrapper._response_id,
-        stop_reason=wrapper._stop_reason,
-        input_tokens=wrapper._input_tokens,
-        output_tokens=wrapper._output_tokens,
-        cache_creation_input_tokens=wrapper._cache_creation_input_tokens,
-        cache_read_input_tokens=wrapper._cache_read_input_tokens,
-        capture_content=wrapper._capture_content,
-        content_blocks=wrapper._content_blocks,
-    )
+    set_invocation_response_attributes(invocation, result, capture_content)
 
 
 class _ResponseProxy(Generic[ResponseT]):
@@ -121,7 +106,7 @@ class MessageWrapper:
 
     def extract_into(self, invocation: LLMInvocation) -> None:
         """Extract response data into the invocation."""
-        set_invocation_message_response_attributes(
+        set_invocation_response_attributes(
             invocation, self._message, self._capture_content
         )
 
@@ -144,53 +129,18 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         self.stream = stream
         self.handler = handler
         self.invocation = invocation
-        self._response_id: Optional[str] = None
-        self._response_model: Optional[str] = None
-        self._stop_reason: Optional[str] = None
-        self._input_tokens: Optional[int] = None
-        self._output_tokens: Optional[int] = None
-        self._cache_creation_input_tokens: Optional[int] = None
-        self._cache_read_input_tokens: Optional[int] = None
+        self._message: "Message | None" = None
         self._capture_content = capture_content
-        self._content_blocks: dict[int, StreamBlockState] = {}
         self._finalized = False
 
-    def _update_usage(self, usage: Usage | MessageDeltaUsage | None) -> None:
-        tokens = extract_usage_tokens(usage)
-        if tokens.input_tokens is not None:
-            self._input_tokens = tokens.input_tokens
-        if tokens.output_tokens is not None:
-            self._output_tokens = tokens.output_tokens
-        if tokens.cache_creation_input_tokens is not None:
-            self._cache_creation_input_tokens = (
-                tokens.cache_creation_input_tokens
-            )
-        if tokens.cache_read_input_tokens is not None:
-            self._cache_read_input_tokens = tokens.cache_read_input_tokens
-
     def _process_chunk(self, chunk: RawMessageStreamEvent) -> None:
-        """Extract telemetry data from a streaming chunk."""
-        if chunk.type == "message_start":
-            message = chunk.message
-            if message.id:
-                self._response_id = message.id
-            if message.model:
-                self._response_model = message.model
-            self._update_usage(message.usage)
-        elif chunk.type == "message_delta":
-            if chunk.delta.stop_reason:
-                self._stop_reason = normalize_finish_reason(
-                    chunk.delta.stop_reason
-                )
-            self._update_usage(chunk.usage)
-        elif self._capture_content and chunk.type == "content_block_start":
-            self._content_blocks[chunk.index] = create_stream_block_state(
-                chunk.content_block
-            )
-        elif self._capture_content and chunk.type == "content_block_delta":
-            block = self._content_blocks.get(chunk.index)
-            if block is not None:
-                update_stream_block_state(block, chunk.delta)
+        """Accumulate a final message snapshot from a streaming chunk."""
+        if accumulate_event is None:
+            return
+        self._message = accumulate_event(
+            event=chunk,
+            current_snapshot=self._message,
+        )
 
     @staticmethod
     @contextmanager
@@ -210,7 +160,9 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         if self._finalized:
             return
         with self._safe_instrumentation("response attribute extraction"):
-            _set_response_attributes(self.invocation, self)
+            _set_response_attributes(
+                self.invocation, self._message, self._capture_content
+            )
         with self._safe_instrumentation("stop_llm"):
             self.handler.stop_llm(self.invocation)
         self._finalized = True
