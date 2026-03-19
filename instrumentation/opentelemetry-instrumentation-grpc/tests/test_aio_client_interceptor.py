@@ -224,6 +224,10 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.status.status_code,
             trace.StatusCode.ERROR,
         )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
+        )
 
     async def test_error_unary_stream(self):
         with self.assertRaises(grpc.RpcError):
@@ -237,6 +241,10 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             span.status.status_code,
             trace.StatusCode.ERROR,
         )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
+        )
 
     async def test_error_stream_unary(self):
         with self.assertRaises(grpc.RpcError):
@@ -248,6 +256,10 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(
             span.status.status_code,
             trace.StatusCode.ERROR,
+        )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
 
     async def test_error_stream_stream(self):
@@ -263,6 +275,10 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(
             span.status.status_code,
             trace.StatusCode.ERROR,
+        )
+        self.assertEqual(
+            span.attributes[RPC_GRPC_STATUS_CODE],
+            grpc.StatusCode.INVALID_ARGUMENT.value[0],
         )
 
     # pylint:disable=no-self-use

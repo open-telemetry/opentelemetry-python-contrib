@@ -776,7 +776,7 @@ def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
                 span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
-    activation.__enter__()  # pylint: disable=E1101
+    activation.__enter__()  # pylint: disable=unnecessary-dunder-call
     ctx = _TraceContext(activation, span, token)
     setattr(handler, _HANDLER_CONTEXT_KEY, ctx)
 
@@ -829,7 +829,7 @@ def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
             if len(custom_attributes) > 0:
                 ctx.span.set_attributes(custom_attributes)
 
-    ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
+    ctx.activation.__exit__(*finish_args)  # pylint: disable=unnecessary-dunder-call
     if ctx.token:
         context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)

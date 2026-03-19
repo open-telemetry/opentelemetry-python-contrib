@@ -11,13 +11,12 @@
 | [opentelemetry-instrumentation-asyncio](./opentelemetry-instrumentation-asyncio) | asyncio | No | development
 | [opentelemetry-instrumentation-asyncpg](./opentelemetry-instrumentation-asyncpg) | asyncpg >= 0.12.0 | No | development
 | [opentelemetry-instrumentation-aws-lambda](./opentelemetry-instrumentation-aws-lambda) | aws_lambda | No | development
-| [opentelemetry-instrumentation-boto](./opentelemetry-instrumentation-boto) | boto~=2.0 | No | development
 | [opentelemetry-instrumentation-boto3sqs](./opentelemetry-instrumentation-boto3sqs) | boto3 ~= 1.0 | No | development
-| [opentelemetry-instrumentation-botocore](./opentelemetry-instrumentation-botocore) | botocore ~= 1.0 | No | development
+| [opentelemetry-instrumentation-botocore](./opentelemetry-instrumentation-botocore) | botocore~=1.0,aiobotocore~=2.0 | No | development
 | [opentelemetry-instrumentation-cassandra](./opentelemetry-instrumentation-cassandra) | cassandra-driver ~= 3.25,scylla-driver ~= 3.25 | No | development
 | [opentelemetry-instrumentation-celery](./opentelemetry-instrumentation-celery) | celery >= 4.0, < 6.0 | No | development
 | [opentelemetry-instrumentation-click](./opentelemetry-instrumentation-click) | click >= 8.1.3, < 9.0.0 | No | development
-| [opentelemetry-instrumentation-confluent-kafka](./opentelemetry-instrumentation-confluent-kafka) | confluent-kafka >= 1.8.2, <= 2.13.0 | No | development
+| [opentelemetry-instrumentation-confluent-kafka](./opentelemetry-instrumentation-confluent-kafka) | confluent-kafka >= 1.8.2, < 3.0.0 | No | development
 | [opentelemetry-instrumentation-dbapi](./opentelemetry-instrumentation-dbapi) | dbapi | No | migration
 | [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 2.0 | Yes | development
 | [opentelemetry-instrumentation-elasticsearch](./opentelemetry-instrumentation-elasticsearch) | elasticsearch >= 6.0 | No | development
