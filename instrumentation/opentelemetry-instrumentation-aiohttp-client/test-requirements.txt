@@ -17,7 +17,7 @@ Jinja2==3.1.6
 MarkupSafe==2.1.5
 multidict==6.0.5
 packaging==24.0
-pluggy==1.5.0
+pluggy==1.6.0
 py-cpuinfo==9.0.0
 pytest==7.4.4
 requests==2.32.3

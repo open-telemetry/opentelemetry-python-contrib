@@ -56,7 +56,7 @@ packaging==24.0
     # via
     #   opentelemetry-instrumentation
     #   pytest
-pluggy==1.5.0
+pluggy==1.6.0
     # via pytest
 pytest==7.4.4
     # via

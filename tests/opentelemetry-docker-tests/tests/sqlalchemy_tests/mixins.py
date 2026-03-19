@@ -22,7 +22,11 @@ from sqlalchemy.orm import close_all_sessions, scoped_session, sessionmaker
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 
 Base = declarative_base()
@@ -116,7 +120,7 @@ class SQLAlchemyTestMixin(TestBase):
             name = f"{name} {self.SQL_DB}"
         self.assertEqual(span.name, name)
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_NAME), self.SQL_DB
+            span.attributes.get(DB_NAME), self.SQL_DB
         )
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertGreater((span.end_time - span.start_time), 0)
@@ -132,14 +136,14 @@ class SQLAlchemyTestMixin(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[1]
         stmt = "INSERT INTO players (id, name) VALUES "
-        if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
+        if span.attributes.get(DB_SYSTEM) == "sqlite":
             stmt += "(?, ?)"
         else:
             stmt += "(%(id)s, %(name)s)"
         self._check_span(span, "INSERT")
         self.assertIn(
             "INSERT INTO players",
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
         )
         self.check_meta(span)
 
@@ -153,14 +157,14 @@ class SQLAlchemyTestMixin(TestBase):
         self.assertEqual(len(spans), 2)
         span = spans[1]
         stmt = "SELECT players.id AS players_id, players.name AS players_name \nFROM players \nWHERE players.name = "
-        if span.attributes.get(SpanAttributes.DB_SYSTEM) == "sqlite":
+        if span.attributes.get(DB_SYSTEM) == "sqlite":
             stmt += "?"
         else:
             stmt += "%(name_1)s"
         self._check_span(span, "SELECT")
         self.assertIn(
             "SELECT players.id AS players_id, players.name AS players_name \nFROM players \nWHERE players.name",
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
         )
         self.check_meta(span)
 
@@ -177,7 +181,7 @@ class SQLAlchemyTestMixin(TestBase):
         span = spans[1]
         self._check_span(span, "SELECT")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SELECT * FROM players",
         )
         self.check_meta(span)
