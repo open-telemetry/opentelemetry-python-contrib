@@ -194,7 +194,7 @@ libraries = [
     },
     {
         "library": "structlog ~= 21.1",
-        "instrumentation": "opentelemetry-instrumentation-structlog==0.59b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-structlog==0.62b0.dev",
     },
     {
         "library": "psutil >= 5",
