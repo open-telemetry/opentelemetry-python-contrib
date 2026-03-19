@@ -58,7 +58,7 @@ def messages_create(
     Union[
         "AnthropicMessage",
         "AnthropicStream[RawMessageStreamEvent]",
-        MessagesStreamWrapper[RawMessageStreamEvent],
+        MessagesStreamWrapper[None],
     ],
 ]:
     """Wrap the `create` method of the `Messages` class to trace it."""
@@ -78,7 +78,7 @@ def messages_create(
     ) -> Union[
         "AnthropicMessage",
         "AnthropicStream[RawMessageStreamEvent]",
-        MessagesStreamWrapper[RawMessageStreamEvent],
+        MessagesStreamWrapper[None],
     ]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
@@ -123,6 +123,6 @@ def messages_create(
             raise
 
     return cast(
-        'Callable[..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]", MessagesStreamWrapper[RawMessageStreamEvent]]]',
+        'Callable[..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]", MessagesStreamWrapper[None]]]',
         traced_method,
     )
