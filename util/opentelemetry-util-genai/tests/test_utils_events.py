@@ -85,9 +85,9 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             output_tokens=20,
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         invocation.output_messages = [_create_output_message("test response")]
-        self.telemetry_handler.stop(invocation)
+        self.telemetry_handler.stop_llm(invocation)
 
         # Check that event was emitted
         logs = self.log_exporter.get_finished_logs()
@@ -164,9 +164,9 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         invocation.output_messages = [chat_generation]
-        self.telemetry_handler.stop(invocation)
+        self.telemetry_handler.stop_llm(invocation)
 
         # Check span was created
         span = _get_single_span(self.span_exporter)
@@ -223,9 +223,9 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         error = Error(message="Test error occurred", type=TestError)
-        self.telemetry_handler.fail(invocation, error)
+        self.telemetry_handler.fail_llm(invocation, error)
 
         # Check event was emitted
         logs = self.log_exporter.get_finished_logs()
@@ -262,9 +262,9 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         invocation.output_messages = [chat_generation]
-        self.telemetry_handler.stop(invocation)
+        self.telemetry_handler.stop_llm(invocation)
 
         # Check no event was emitted
         logs = self.log_exporter.get_finished_logs()
@@ -283,11 +283,11 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         invocation.output_messages = [
             _create_output_message("default response")
         ]
-        self.telemetry_handler.stop(invocation)
+        self.telemetry_handler.stop_llm(invocation)
 
         # Check that no event was emitted (NO_CONTENT defaults to False)
         logs = self.log_exporter.get_finished_logs()
@@ -306,11 +306,11 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         invocation.output_messages = [
             _create_output_message("default response")
         ]
-        self.telemetry_handler.stop(invocation)
+        self.telemetry_handler.stop_llm(invocation)
 
         # Check that no event was emitted (SPAN_ONLY defaults to False)
         logs = self.log_exporter.get_finished_logs()
@@ -329,11 +329,11 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         invocation.output_messages = [
             _create_output_message("default response")
         ]
-        self.telemetry_handler.stop(invocation)
+        self.telemetry_handler.stop_llm(invocation)
 
         # Check that event was emitted (EVENT_ONLY defaults to True)
         logs = self.log_exporter.get_finished_logs()
@@ -361,9 +361,9 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             provider="test-provider",
         )
 
-        self.telemetry_handler.start(invocation)
+        self.telemetry_handler.start_llm(invocation)
         invocation.output_messages = [chat_generation]
-        self.telemetry_handler.stop(invocation)
+        self.telemetry_handler.stop_llm(invocation)
 
         # Check span was created
         span = _get_single_span(self.span_exporter)

@@ -47,15 +47,15 @@ Usage:
     )
 
     # Start the invocation (opens a span)
-    handler.start(invocation)
+    handler.start_llm(invocation)
 
     # Populate outputs and any additional attributes, then stop (closes the span)
     invocation.output_messages = [...]
     invocation.attributes.update({"more": "attrs"})
-    handler.stop(invocation)
+    handler.stop_llm(invocation)
 
     # Or, in case of error
-    handler.fail(invocation, Error(type="...", message="..."))
+    handler.fail_llm(invocation, Error(type="...", message="..."))
 """
 
 from __future__ import annotations
@@ -83,8 +83,6 @@ from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
-    _get_embedding_span_name,
-    _get_llm_span_name,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
@@ -158,12 +156,9 @@ class TelemetryHandler:
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
-        if isinstance(invocation, LLMInvocation):
-            span_name = _get_llm_span_name(invocation)
-        elif isinstance(invocation, EmbeddingInvocation):
-            span_name = _get_embedding_span_name(invocation)
-        else:
-            span_name = ""
+        operation_name = getattr(invocation, "operation_name", "")
+        request_model = getattr(invocation, "request_model", "")
+        span_name = f"{operation_name} {request_model}".strip()
         span = self._tracer.start_span(
             name=span_name,
             kind=SpanKind.CLIENT,
@@ -243,6 +238,21 @@ class TelemetryHandler:
         """Fail a GenAI invocation and end its span with error status."""
         return self._fail(invocation, error)
 
+    # LLM-specific convenience methods
+    def start_llm(self, invocation: LLMInvocation) -> LLMInvocation:
+        """Start an LLM invocation and create a pending span entry."""
+        return self._start(invocation)
+
+    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
+        """Finalize an LLM invocation successfully and end its span."""
+        return self._stop(invocation)
+
+    def fail_llm(
+        self, invocation: LLMInvocation, error: Error
+    ) -> LLMInvocation:
+        """Fail an LLM invocation and end its span with error status."""
+        return self._fail(invocation, error)
+
     @contextmanager
     def llm(
         self, invocation: LLMInvocation | None = None
@@ -259,13 +269,13 @@ class TelemetryHandler:
             invocation = LLMInvocation(
                 request_model="",
             )
-        self.start(invocation)
+        self.start_llm(invocation)
         try:
             yield invocation
         except Exception as exc:
-            self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            self.fail_llm(invocation, Error(message=str(exc), type=type(exc)))
             raise
-        self.stop(invocation)
+        self.stop_llm(invocation)
 
     @contextmanager
     def embedding(
@@ -281,13 +291,33 @@ class TelemetryHandler:
         """
         if invocation is None:
             invocation = EmbeddingInvocation()
-        self.start(invocation)
+        self.start_embedding(invocation)
         try:
             yield invocation
         except Exception as exc:
-            self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            self.fail_embedding(
+                invocation, Error(message=str(exc), type=type(exc))
+            )
             raise
-        self.stop(invocation)
+        self.stop_embedding(invocation)
+
+    def start_embedding(
+        self, invocation: EmbeddingInvocation
+    ) -> EmbeddingInvocation:
+        """Start an embedding invocation and create a pending span entry."""
+        return self.start(invocation)
+
+    def stop_embedding(
+        self, invocation: EmbeddingInvocation
+    ) -> EmbeddingInvocation:
+        """Finalize an embedding invocation successfully and end its span."""
+        return self.stop(invocation)
+
+    def fail_embedding(
+        self, invocation: EmbeddingInvocation, error: Error
+    ) -> EmbeddingInvocation:
+        """Fail an embedding invocation and end its span with error status."""
+        return self.fail(invocation, error)
 
 
 def get_telemetry_handler(

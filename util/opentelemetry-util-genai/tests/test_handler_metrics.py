@@ -27,14 +27,14 @@ class TelemetryHandlerMetricsTest(TestBase):
         invocation.output_tokens = 7
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            handler.start(invocation)
+            handler.start_llm(invocation)
 
         # Simulate 2 seconds of elapsed monotonic time (seconds)
         with patch(
             "timeit.default_timer",
             return_value=1002.0,
         ):
-            handler.stop(invocation)
+            handler.stop_llm(invocation)
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -85,12 +85,12 @@ class TelemetryHandlerMetricsTest(TestBase):
         invocation.output_tokens = 7
         invocation.server_address = "custom.server.com"
         invocation.server_port = 42
-        handler.start(invocation)
+        handler.start_llm(invocation)
         invocation.metric_attributes = {
             "custom.attribute": "custom_value",
         }
         invocation.attributes = {"should not be on metrics": "value"}
-        handler.stop(invocation)
+        handler.stop_llm(invocation)
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -119,14 +119,14 @@ class TelemetryHandlerMetricsTest(TestBase):
         invocation.input_tokens = 11
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=2000.0):
-            handler.start(invocation)
+            handler.start_llm(invocation)
 
         error = Error(message="boom", type=ValueError)
         with patch(
             "timeit.default_timer",
             return_value=2001.0,
         ):
-            handler.fail(invocation, error)
+            handler.fail_llm(invocation, error)
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
