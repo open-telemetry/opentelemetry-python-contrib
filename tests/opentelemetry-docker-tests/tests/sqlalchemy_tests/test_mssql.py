@@ -18,7 +18,15 @@ import pytest
 from sqlalchemy.exc import ProgrammingError
 
 from opentelemetry import trace
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 
 from .mixins import Player, SQLAlchemyTestMixin
 
@@ -48,19 +56,19 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
     def check_meta(self, span):
         # check database connection tags
         self.assertEqual(
-            span.attributes.get(SpanAttributes.NET_PEER_NAME),
+            span.attributes.get(NET_PEER_NAME),
             MSSQL_CONFIG["host"],
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.NET_PEER_PORT),
+            span.attributes.get(NET_PEER_PORT),
             MSSQL_CONFIG["port"],
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_NAME),
+            span.attributes.get(DB_NAME),
             MSSQL_CONFIG["database"],
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_USER), MSSQL_CONFIG["user"]
+            span.attributes.get(DB_USER), MSSQL_CONFIG["user"]
         )
 
     def test_engine_execute_errors(self):
@@ -77,11 +85,11 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
         # span fields
         self.assertEqual(span.name, "SELECT opentelemetry-tests")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SELECT * FROM a_wrong_table",
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_NAME), self.SQL_DB
+            span.attributes.get(DB_NAME), self.SQL_DB
         )
         self.check_meta(span)
         self.assertTrue(span.end_time - span.start_time > 0)
@@ -106,6 +114,6 @@ class MssqlConnectorTestCase(SQLAlchemyTestMixin):
         self._check_span(span, "INSERT")
         self.assertIn(
             "INSERT INTO players",
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
         )
         self.check_meta(span)
