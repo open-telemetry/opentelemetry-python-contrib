@@ -37,8 +37,6 @@ persistent=yes
 # Specify a configuration file.
 #rcfile=
 
-
-
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
 unsafe-load-any-extension=no
