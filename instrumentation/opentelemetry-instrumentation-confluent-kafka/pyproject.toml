@@ -23,17 +23,16 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "opentelemetry-instrumentation == 0.60b0.dev",
+  "opentelemetry-instrumentation == 0.62b0.dev",
   "opentelemetry-api ~= 1.12",
-  "wrapt >= 1.0.0, < 2.0.0",
+  "wrapt >= 1.0.0, < 3.0.0",
 ]
 
 [project.optional-dependencies]
-instruments = [
-  "confluent-kafka >= 1.8.2, <= 2.11.0",
-]
+instruments = ["confluent-kafka >= 1.8.2, < 3.0.0"]
 
 [project.entry-points.opentelemetry_instrumentor]
 confluent_kafka = "opentelemetry.instrumentation.confluent_kafka:ConfluentKafkaInstrumentor"
@@ -46,10 +45,7 @@ Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 path = "src/opentelemetry/instrumentation/confluent_kafka/version.py"
 
 [tool.hatch.build.targets.sdist]
-include = [
-  "/src",
-  "/tests",
-]
+include = ["/src", "/tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]

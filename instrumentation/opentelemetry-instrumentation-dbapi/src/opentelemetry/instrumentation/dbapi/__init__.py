@@ -65,7 +65,7 @@ enabled will have configurable key-value pairs appended to them, e.g.
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -173,8 +173,13 @@ import logging
 import re
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
-import wrapt
 from wrapt import wrap_function_wrapper
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
@@ -184,7 +189,16 @@ from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     unwrap,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
 
@@ -363,7 +377,7 @@ def instrument_connection(
     Returns:
         An instrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, BaseObjectProxy):
         _logger.warning("Connection already instrumented")
         return connection
 
@@ -398,7 +412,7 @@ def uninstrument_connection(
     Returns:
         An uninstrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, BaseObjectProxy):
         return connection.__wrapped__
 
     _logger.warning("Connection is not instrumented")
@@ -547,24 +561,24 @@ class DatabaseApiIntegration:
         if user and isinstance(user, bytes):
             user = user.decode()
         if user is not None:
-            self.span_attributes[SpanAttributes.DB_USER] = str(user)
+            self.span_attributes[DB_USER] = str(user)
         host = self.connection_props.get("host")
         if host is not None:
-            self.span_attributes[SpanAttributes.NET_PEER_NAME] = host
+            self.span_attributes[NET_PEER_NAME] = host
         port = self.connection_props.get("port")
         if port is not None:
-            self.span_attributes[SpanAttributes.NET_PEER_PORT] = port
+            self.span_attributes[NET_PEER_PORT] = port
 
 
-# pylint: disable=abstract-method
-class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
+# pylint: disable=abstract-method,no-member
+class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         connection: ConnectionT,
         db_api_integration: DatabaseApiIntegration | None = None,
     ):
-        wrapt.ObjectProxy.__init__(self, connection)
+        BaseObjectProxy.__init__(self, connection)
         self._self_db_api_integration = db_api_integration
 
     def __getattribute__(self, name: str):
@@ -623,8 +637,22 @@ class CursorTracer(Generic[CursorT]):
                 "mysql_client_version"
             ]
         ):
+            try:
+                # Autoinstrumentation and some programmatic calls
+                client_version = cursor._cnx._cmysql.get_client_info()
+            except AttributeError:
+                # Other programmatic instrumentation with reassigned wrapped connection
+                try:
+                    client_version = (
+                        cursor._connection._cmysql.get_client_info()
+                    )
+                except AttributeError as exc:
+                    _logger.debug(
+                        "Could not set mysql_client_version: %s", exc
+                    )
+                    client_version = "unknown"
             self._db_api_integration.commenter_data["mysql_client_version"] = (
-                cursor._cnx._cmysql.get_client_info()
+                client_version
             )
 
     def _get_commenter_data(self) -> dict:
@@ -667,13 +695,9 @@ class CursorTracer(Generic[CursorT]):
         if not span.is_recording():
             return
         statement = self.get_statement(cursor, args)
-        span.set_attribute(
-            SpanAttributes.DB_SYSTEM, self._db_api_integration.database_system
-        )
-        span.set_attribute(
-            SpanAttributes.DB_NAME, self._db_api_integration.database
-        )
-        span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+        span.set_attribute(DB_SYSTEM, self._db_api_integration.database_system)
+        span.set_attribute(DB_NAME, self._db_api_integration.database)
+        span.set_attribute(DB_STATEMENT, statement)
 
         for (
             attribute_key,
@@ -780,15 +804,15 @@ class CursorTracer(Generic[CursorT]):
             return await query_method(*args, **kwargs)
 
 
-# pylint: disable=abstract-method
-class TracedCursorProxy(wrapt.ObjectProxy, Generic[CursorT]):
+# pylint: disable=abstract-method,no-member
+class TracedCursorProxy(BaseObjectProxy, Generic[CursorT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
     ):
-        wrapt.ObjectProxy.__init__(self, cursor)
+        BaseObjectProxy.__init__(self, cursor)
         self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):

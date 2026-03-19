@@ -22,10 +22,21 @@ from opentelemetry._logs import (
 )
 from opentelemetry.metrics import get_meter_provider, set_meter_provider
 from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import (
-    InMemoryLogExporter,
-    SimpleLogRecordProcessor,
-)
+
+# Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
+try:
+    from opentelemetry.sdk._logs.export import (  # pylint: disable=no-name-in-module
+        InMemoryLogRecordExporter,
+        SimpleLogRecordProcessor,
+    )
+except ImportError:
+    # Fallback to old name for compatibility with older SDK versions
+    from opentelemetry.sdk._logs.export import (
+        InMemoryLogExporter as InMemoryLogRecordExporter,
+    )
+    from opentelemetry.sdk._logs.export import (
+        SimpleLogRecordProcessor,
+    )
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics._internal.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
@@ -114,7 +125,7 @@ class _MetricDataPointWrapper:
 class OTelMocker:
     def __init__(self):
         self._snapshot = None
-        self._logs = InMemoryLogExporter()
+        self._logs = InMemoryLogRecordExporter()
         self._traces = InMemorySpanExporter()
         self._metrics = InMemoryMetricReader()
         self._spans = []
@@ -164,9 +175,9 @@ class OTelMocker:
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
         finished_spans = [span.name for span in self.get_finished_spans()]
-        assert (
-            span is not None
-        ), f'Could not find span named "{name}"; finished spans: {finished_spans}'
+        assert span is not None, (
+            f'Could not find span named "{name}"; finished spans: {finished_spans}'
+        )
 
     def assert_does_not_have_span_named(self, name):
         span = self.get_span_named(name)
@@ -192,9 +203,9 @@ class OTelMocker:
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
-        assert (
-            event is not None
-        ), f'Could not find event named "{name}"; finished logs: {finished_logs}'
+        assert event is not None, (
+            f'Could not find event named "{name}"; finished logs: {finished_logs}'
+        )
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)

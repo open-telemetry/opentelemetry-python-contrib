@@ -14,8 +14,13 @@
 
 import os
 import unittest
+from unittest.mock import patch
 
 import google.genai
+
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 
 from .auth import FakeCredentials
 from .instrumentation_context import InstrumentationContext
@@ -24,6 +29,16 @@ from .otel_mocker import OTelMocker
 
 class TestCase(unittest.TestCase):
     def setUp(self):
+        # Most tests want this environment variable setup. Need to figure out a less hacky way of doing this.
+        with patch.dict(
+            "os.environ",
+            {
+                "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+                "OTEL_SEMCONV_STABILITY_OPT_IN": "default",
+            },
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
         self._otel = OTelMocker()
         self._otel.install()
         self._instrumentation_context = None
