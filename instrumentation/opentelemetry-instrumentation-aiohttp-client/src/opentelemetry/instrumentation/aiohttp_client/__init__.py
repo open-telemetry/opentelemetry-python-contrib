@@ -98,14 +98,115 @@ For example,
 
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
+Capture HTTP request and response headers
+*****************************************
+You can configure the agent to capture specified HTTP headers as span attributes, according to the
+`semantic conventions <https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-client-span>`_.
+
+Request headers
+***************
+To capture HTTP request headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST`` to a comma delimited list of HTTP header names.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST="content-type,custom_request_header"
+
+will extract ``content-type`` and ``custom_request_header`` from the request headers and add them as span attributes.
+
+Request header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST="Accept.*,X-.*"
+
+Would match all request headers that start with ``Accept`` and ``X-``.
+
+To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST=".*"
+
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+single item list containing all the header values.
+
+For example:
+``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
+
+Response headers
+****************
+To capture HTTP response headers as span attributes, set the environment variable
+``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE`` to a comma delimited list of HTTP header names.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE="content-type,custom_response_header"
+
+will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
+
+Response header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
+variable will capture the header named ``custom-header``.
+
+Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE="Content.*,X-.*"
+
+Would match all response headers that start with ``Content`` and ``X-``.
+
+To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE`` to ``".*"``.
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE=".*"
+
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
+is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+list containing the header values.
+
+For example:
+``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
+
+Sanitizing headers
+******************
+In order to prevent storing sensitive data such as personally identifiable information (PII), session keys, passwords,
+etc, set the environment variable ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS``
+to a comma delimited list of HTTP header names to be sanitized.
+
+Regexes may be used, and all header names will be matched in a case-insensitive manner.
+
+For example using the environment variable,
+::
+
+    export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS=".*session.*,set-cookie"
+
+will replace the value of headers such as ``session-id`` and ``set-cookie`` with ``[REDACTED]`` in the span.
+
+Note:
+    The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
 API
 ---
 """
 
+from __future__ import annotations
+
 import types
 import typing
 from timeit import default_timer
-from typing import Collection
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Collection,
+    TypedDict,
+    Union,
+    cast,
+)
 from urllib.parse import urlparse
 
 import aiohttp
@@ -143,34 +244,60 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagate import inject
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
-from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics import (
+    MetricInstruments,  # type: ignore[reportDeprecated]
+)
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
 from opentelemetry.trace import Span, SpanKind, TracerProvider, get_tracer
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE,
+    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
+    get_custom_header_attributes,
+    get_custom_headers,
     get_excluded_urls,
+    normalise_request_header_name,
+    normalise_response_header_name,
     redact_url,
     sanitize_method,
 )
 
-_UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
-_RequestHookT = typing.Optional[
-    typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
-]
-_ResponseHookT = typing.Optional[
-    typing.Callable[
-        [
-            Span,
-            typing.Union[
-                aiohttp.TraceRequestEndParams,
-                aiohttp.TraceRequestExceptionParams,
-            ],
-        ],
-        None,
+if TYPE_CHECKING:
+    from typing_extensions import Unpack
+
+    UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
+    RequestHookT = typing.Optional[
+        typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
     ]
-]
+    ResponseHookT = typing.Optional[
+        typing.Callable[
+            [
+                Span,
+                typing.Union[
+                    aiohttp.TraceRequestEndParams,
+                    aiohttp.TraceRequestExceptionParams,
+                ],
+            ],
+            None,
+        ]
+    ]
+
+    class ClientSessionInitKwargs(TypedDict, total=False):
+        trace_configs: typing.Sequence[aiohttp.TraceConfig]
+
+    class InstrumentKwargs(TypedDict, total=False):
+        tracer_provider: trace.TracerProvider
+        meter_provider: MeterProvider
+        url_filter: UrlFilterT
+        request_hook: RequestHookT
+        response_hook: ResponseHookT
+        trace_configs: typing.Sequence[aiohttp.TraceConfig]
+
+    class UninstrumentKwargs(TypedDict, total=False):
+        pass
 
 
 def _get_span_name(method: str) -> str:
@@ -181,10 +308,10 @@ def _get_span_name(method: str) -> str:
 
 
 def _set_http_status_code_attribute(
-    span,
-    status_code,
-    metric_attributes=None,
-    sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+    span: Span,
+    status_code: int,
+    metric_attributes: Union[dict[str, Any], None] = None,
+    sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
     status_code_str = str(status_code)
     try:
@@ -209,12 +336,15 @@ def _set_http_status_code_attribute(
 # pylint: disable=too-many-locals
 # pylint: disable=too-many-statements
 def create_trace_config(
-    url_filter: _UrlFilterT = None,
-    request_hook: _RequestHookT = None,
-    response_hook: _ResponseHookT = None,
-    tracer_provider: TracerProvider = None,
-    meter_provider: MeterProvider = None,
+    url_filter: UrlFilterT = None,
+    request_hook: RequestHookT = None,
+    response_hook: ResponseHookT = None,
+    tracer_provider: Union[TracerProvider, None] = None,
+    meter_provider: Union[MeterProvider, None] = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    captured_request_headers: typing.Optional[list[str]] = None,
+    captured_response_headers: typing.Optional[list[str]] = None,
+    sensitive_headers: typing.Optional[list[str]] = None,
 ) -> aiohttp.TraceConfig:
     """Create an aiohttp-compatible trace configuration.
 
@@ -243,6 +373,15 @@ def create_trace_config(
     :param Callable response_hook: Optional callback that can modify span name and response params.
     :param tracer_provider: optional TracerProvider from which to get a Tracer
     :param meter_provider: optional Meter provider to use
+    :param captured_request_headers: List of HTTP request header regexes to capture as
+        span attributes. Header names matching these patterns will be added as span
+        attributes with the format ``http.request.header.<header_name>``.
+    :param captured_response_headers: List of HTTP response header regexes to capture as
+        span attributes. Header names matching these patterns will be added as span
+        attributes with the format ``http.response.header.<header_name>``.
+    :param sensitive_headers: List of HTTP header regexes whose values should be
+        sanitized (redacted) when captured. Header values matching these patterns
+        will be replaced with ``[REDACTED]``.
 
     :return: An object suitable for use with :py:class:`aiohttp.ClientSession`.
     :rtype: :py:class:`aiohttp.TraceConfig`
@@ -268,12 +407,10 @@ def create_trace_config(
         schema_url,
     )
 
-    start_time = 0
-
     duration_histogram_old = None
     if _report_old(sem_conv_opt_in_mode):
         duration_histogram_old = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_DURATION,
+            name=MetricInstruments.HTTP_CLIENT_DURATION,  # type: ignore[reportDeprecated]
             unit="ms",
             description="measures the duration of the outbound HTTP request",
             explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
@@ -293,32 +430,39 @@ def create_trace_config(
         elapsed_time = max(default_timer() - trace_config_ctx.start_time, 0)
         if trace_config_ctx.token:
             context_api.detach(trace_config_ctx.token)
-        trace_config_ctx.span.end()
+        if trace_config_ctx.span:
+            trace_config_ctx.span.end()
 
         if trace_config_ctx.duration_histogram_old is not None:
-            duration_attrs_old = _filter_semconv_duration_attrs(
-                trace_config_ctx.metric_attributes,
-                _client_duration_attrs_old,
-                _client_duration_attrs_new,
-                _StabilityMode.DEFAULT,
+            duration_attrs_old = cast(
+                dict[str, Any],
+                _filter_semconv_duration_attrs(
+                    trace_config_ctx.metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.DEFAULT,
+                ),
             )
             trace_config_ctx.duration_histogram_old.record(
                 max(round(elapsed_time * 1000), 0),
                 attributes=duration_attrs_old,
             )
         if trace_config_ctx.duration_histogram_new is not None:
-            duration_attrs_new = _filter_semconv_duration_attrs(
-                trace_config_ctx.metric_attributes,
-                _client_duration_attrs_old,
-                _client_duration_attrs_new,
-                _StabilityMode.HTTP,
+            duration_attrs_new = cast(
+                dict[str, Any],
+                _filter_semconv_duration_attrs(
+                    trace_config_ctx.metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.HTTP,
+                ),
             )
             trace_config_ctx.duration_histogram_new.record(
                 elapsed_time, attributes=duration_attrs_new
             )
 
     async def on_request_start(
-        unused_session: aiohttp.ClientSession,
+        _session: aiohttp.ClientSession,
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestStartParams,
     ):
@@ -326,19 +470,22 @@ def create_trace_config(
             not is_http_instrumentation_enabled()
             or trace_config_ctx.excluded_urls.url_disabled(str(params.url))
         ):
-            trace_config_ctx.span = None
             return
 
         trace_config_ctx.start_time = default_timer()
         method = params.method
         request_span_name = _get_span_name(method)
         request_url = (
-            redact_url(trace_config_ctx.url_filter(params.url))
+            redact_url(
+                cast(Callable[[yarl.URL], str], trace_config_ctx.url_filter)(
+                    params.url
+                )
+            )
             if callable(trace_config_ctx.url_filter)
             else redact_url(str(params.url))
         )
 
-        span_attributes = {}
+        span_attributes: dict[str, Any] = {}
         _set_http_method(
             span_attributes,
             method,
@@ -385,6 +532,18 @@ def create_trace_config(
         except ValueError:
             pass
 
+        span_attributes.update(
+            get_custom_header_attributes(
+                {
+                    key: params.headers.getall(key)
+                    for key in params.headers.keys()
+                },
+                captured_request_headers,
+                sensitive_headers,
+                normalise_request_header_name,
+            )
+        )
+
         trace_config_ctx.span = trace_config_ctx.tracer.start_span(
             request_span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         )
@@ -399,7 +558,7 @@ def create_trace_config(
         inject(params.headers)
 
     async def on_request_end(
-        unused_session: aiohttp.ClientSession,
+        _session: aiohttp.ClientSession,
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestEndParams,
     ):
@@ -415,10 +574,22 @@ def create_trace_config(
             sem_conv_opt_in_mode,
         )
 
+        trace_config_ctx.span.set_attributes(
+            get_custom_header_attributes(
+                {
+                    key: params.response.headers.getall(key)
+                    for key in params.response.headers.keys()
+                },
+                captured_response_headers,
+                sensitive_headers,
+                normalise_response_header_name,
+            )
+        )
+
         _end_trace(trace_config_ctx)
 
     async def on_request_exception(
-        unused_session: aiohttp.ClientSession,
+        _session: aiohttp.ClientSession,
         trace_config_ctx: types.SimpleNamespace,
         params: aiohttp.TraceRequestExceptionParams,
     ):
@@ -441,21 +612,25 @@ def create_trace_config(
 
         _end_trace(trace_config_ctx)
 
-    def _trace_config_ctx_factory(**kwargs):
+    def _trace_config_ctx_factory(**kwargs: Any) -> types.SimpleNamespace:
         kwargs.setdefault("trace_request_ctx", {})
         return types.SimpleNamespace(
             tracer=tracer,
-            url_filter=url_filter,
-            start_time=start_time,
+            span=None,
+            token=None,
             duration_histogram_old=duration_histogram_old,
             duration_histogram_new=duration_histogram_new,
-            excluded_urls=excluded_urls,
             metric_attributes={},
+            url_filter=url_filter,
+            excluded_urls=excluded_urls,
+            start_time=0,
             **kwargs,
         )
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_factory=_trace_config_ctx_factory
+        trace_config_ctx_factory=cast(
+            type[types.SimpleNamespace], _trace_config_ctx_factory
+        )
     )
 
     trace_config.on_request_start.append(on_request_start)
@@ -466,15 +641,18 @@ def create_trace_config(
 
 
 def _instrument(
-    tracer_provider: TracerProvider = None,
-    meter_provider: MeterProvider = None,
-    url_filter: _UrlFilterT = None,
-    request_hook: _RequestHookT = None,
-    response_hook: _ResponseHookT = None,
+    tracer_provider: Union[TracerProvider, None] = None,
+    meter_provider: Union[MeterProvider, None] = None,
+    url_filter: UrlFilterT = None,
+    request_hook: RequestHookT = None,
+    response_hook: ResponseHookT = None,
     trace_configs: typing.Optional[
         typing.Sequence[aiohttp.TraceConfig]
     ] = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
+    captured_request_headers: typing.Optional[list[str]] = None,
+    captured_response_headers: typing.Optional[list[str]] = None,
+    sensitive_headers: typing.Optional[list[str]] = None,
 ):
     """Enables tracing of all ClientSessions
 
@@ -485,7 +663,12 @@ def _instrument(
     trace_configs = trace_configs or ()
 
     # pylint:disable=unused-argument
-    def instrumented_init(wrapped, instance, args, kwargs):
+    def instrumented_init(
+        wrapped: Callable[..., None],
+        _instance: aiohttp.ClientSession,
+        args: tuple[Any, ...],
+        kwargs: ClientSessionInitKwargs,
+    ):
         client_trace_configs = list(kwargs.get("trace_configs") or [])
         client_trace_configs.extend(trace_configs)
 
@@ -496,14 +679,17 @@ def _instrument(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
+            captured_request_headers=captured_request_headers,
+            captured_response_headers=captured_response_headers,
+            sensitive_headers=sensitive_headers,
         )
-        trace_config._is_instrumented_by_opentelemetry = True
+        setattr(trace_config, "_is_instrumented_by_opentelemetry", True)
         client_trace_configs.append(trace_config)
 
         kwargs["trace_configs"] = client_trace_configs
         return wrapped(*args, **kwargs)
 
-    wrapt.wrap_function_wrapper(
+    wrapt.wrap_function_wrapper(  # type: ignore[reportUnknownVariableType]
         aiohttp.ClientSession, "__init__", instrumented_init
     )
 
@@ -533,7 +719,7 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs):
+    def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         """Instruments aiohttp ClientSession
 
         Args:
@@ -560,9 +746,18 @@ class AioHttpClientInstrumentor(BaseInstrumentor):
             response_hook=kwargs.get("response_hook"),
             trace_configs=kwargs.get("trace_configs"),
             sem_conv_opt_in_mode=_sem_conv_opt_in_mode,
+            captured_request_headers=get_custom_headers(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+            ),
+            captured_response_headers=get_custom_headers(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+            ),
+            sensitive_headers=get_custom_headers(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+            ),
         )
 
-    def _uninstrument(self, **kwargs):
+    def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]):
         _uninstrument()
 
     @staticmethod

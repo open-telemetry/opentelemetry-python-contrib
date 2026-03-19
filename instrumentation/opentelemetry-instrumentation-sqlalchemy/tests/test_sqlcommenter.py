@@ -22,7 +22,9 @@ from sqlalchemy import (
 
 from opentelemetry import context
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -83,7 +85,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             "SELECT  1;",
         )
 
@@ -109,7 +111,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             "SELECT  1;",
         )
 
@@ -138,7 +140,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             "SELECT  1;",
         )
 
@@ -167,13 +169,13 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertRegex(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
         cnx_span_id = re.search(r"[a-zA-Z0-9_]{16}", query_log).group()
         db_statement_span_id = re.search(
             r"[a-zA-Z0-9_]{16}",
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
         ).group()
         self.assertEqual(cnx_span_id, db_statement_span_id)
 
@@ -201,7 +203,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             r"SELECT  1;",
         )
 
@@ -230,7 +232,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertRegex(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             r"SELECT  1 /\*db_driver='(.*)'*/;",
         )
 
@@ -262,7 +264,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             "SELECT  1;",
         )
 
@@ -295,7 +297,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertRegex(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             r"SELECT  1 /\*db_driver='(.*)',flask=1,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -322,7 +324,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             "SELECT 1;",
         )
 
@@ -352,7 +354,7 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertRegex(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             r"SELECT 1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 

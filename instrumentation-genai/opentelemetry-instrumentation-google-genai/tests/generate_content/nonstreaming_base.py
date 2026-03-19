@@ -13,27 +13,104 @@
 # limitations under the License.
 
 import json
+import typing
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, create_autospec, patch
 
 import pytest
-from google.genai.types import GenerateContentConfig
+from google.genai.types import (
+    FunctionDeclarationDict,
+    GenerateContentConfig,
+    GoogleMaps,
+    Part,
+    ToolDict,
+)
 from pydantic import BaseModel, Field
 
-from opentelemetry._events import Event
+from opentelemetry import context as context_api
 from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _StabilityMode,
 )
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes,
+from opentelemetry.instrumentation.google_genai import (
+    GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
 )
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.util.genai.types import ContentCapturingMode
 
 from .base import TestCase
 
+_is_mcp_imported = False
+if typing.TYPE_CHECKING:
+    from mcp import ClientSession as McpClientSession
+    from mcp import ListToolsResult as McpListToolsResult
+    from mcp import Tool as McpTool
+
+    _is_mcp_imported = True
+else:
+    try:
+        from mcp import ClientSession as McpClientSession
+        from mcp import ListToolsResult as McpListToolsResult
+        from mcp import Tool as McpTool
+
+        _is_mcp_imported = True
+    except ImportError:
+        McpClientSession = None
+        McpListToolsResult = None
+        McpTool = None
 # pylint: disable=too-many-public-methods
+
+GEN_AI_TOOL_DEFINITIONS = getattr(
+    gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
+)
+
+
+def _mock_callable_tool():
+    """Description of some tool."""
+    return "result"
+
+
+def _mock_mcp_client_session() -> McpClientSession:
+    mock_session = create_autospec(spec=McpClientSession, instance=True)
+
+    mock_tool_obj = McpTool(
+        name="mcp_tool",
+        description="Tool from session",
+        inputSchema={
+            "type": "object",
+            "properties": {"id": {"type": "integer"}},
+        },
+    )
+    mock_result = create_autospec(McpListToolsResult, instance=True)
+    mock_result.tools = [mock_tool_obj]
+
+    mock_session.list_tools = AsyncMock(return_value=mock_result)
+
+    return mock_session
+
+
+def _mock_mcp_tool():
+    return McpTool(
+        name="mcp_tool",
+        description="A standalone mcp tool",
+        inputSchema={
+            "type": "object",
+            "properties": {"id": {"type": "integer"}},
+        },
+    )
+
+
+def _mock_tool_dict() -> ToolDict:
+    return ToolDict(
+        function_declarations=[
+            FunctionDeclarationDict(
+                name="mock_tool",
+                description="Description of mock tool.",
+            ),
+        ],
+        google_maps=GoogleMaps(),
+    )
 
 
 class ExampleResponseSchema(BaseModel):
@@ -99,6 +176,30 @@ class NonStreamingTestCase(TestCase):
         self.assertEqual(
             span.attributes["gen_ai.operation.name"], "generate_content"
         )
+
+    def test_generated_span_has_extra_genai_attributes(self):
+        self.configure_valid_response(text="Yep, it works!")
+        tok = context_api.attach(
+            context_api.set_value(
+                GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
+                {"extra_attribute_key": "extra_attribute_value"},
+            )
+        )
+        try:
+            self.generate_content(
+                model="gemini-2.0-flash", contents="Does this work?"
+            )
+            self.otel.assert_has_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            span = self.otel.get_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            self.assertEqual(
+                span.attributes["extra_attribute_key"], "extra_attribute_value"
+            )
+        finally:
+            context_api.detach(tok)
 
     def test_span_and_event_still_written_when_response_is_exception(self):
         self.configure_exception(ValueError("Uh oh!"))
@@ -180,6 +281,57 @@ class NonStreamingTestCase(TestCase):
         event_record = self.otel.get_event_named("gen_ai.system.message")
         self.assertEqual(event_record.attributes["gen_ai.system"], "gemini")
         self.assertEqual(event_record.body["content"], "foo")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text(self):
+        config = GenerateContentConfig(
+            system_instruction=["help", "me please."]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_as_list_of_text_parts(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_text(text="help"),
+                Part.from_text(text="me please."),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_has_event_named("gen_ai.system.message")
+        event_record = self.otel.get_event_named("gen_ai.system.message")
+        self.assertEqual(event_record.body["content"], "help me please.")
+
+    @patch.dict(
+        "os.environ",
+        {"OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true"},
+    )
+    def test_system_prompt_passed_is_invalid(self):
+        config = GenerateContentConfig(
+            system_instruction=[
+                Part.from_uri(file_uri="test.jpg"),
+            ]
+        )
+        self.configure_valid_response()
+        self.generate_content(
+            model="gemini-2.0-flash", contents="Some input", config=config
+        )
+        self.otel.assert_does_not_have_event_named("gen_ai.system.message")
 
     @patch.dict(
         "os.environ",
@@ -281,6 +433,13 @@ class NonStreamingTestCase(TestCase):
             content = "Some input"
             output = "Some response content"
             sys_instr = "System instruction"
+            tools = [
+                _mock_callable_tool,
+                _mock_tool_dict(),
+            ]
+            if _is_mcp_imported:
+                tools.append(_mock_mcp_client_session())
+                tools.append(_mock_mcp_tool())
             with self.subTest(
                 f"mode: {mode}", patched_environ=patched_environ
             ):
@@ -293,6 +452,7 @@ class NonStreamingTestCase(TestCase):
                         config=GenerateContentConfig(
                             system_instruction=sys_instr,
                             response_schema=ExampleResponseSchema,
+                            tools=tools,
                         ),
                     )
                     self.otel.assert_has_event_named(
@@ -311,6 +471,81 @@ class NonStreamingTestCase(TestCase):
                         ContentCapturingMode.NO_CONTENT,
                         ContentCapturingMode.SPAN_ONLY,
                     ]:
+                        expected_event_attributes = {
+                            "TOOL_DEFINITIONS_NO_CONTENT": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "A standalone mcp tool",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                            ),
+                            "TOOL_DEFINITIONS_ASYNC_NO_CONTENT": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "Tool from session",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "A standalone mcp tool",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                            ),
+                            "TOOL_DEFINITIONS_NO_MCP_NO_CONTENT": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
+                                },
+                            ),
+                        }
+
                         self.assertNotIn(
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES,
                             event.attributes,
@@ -323,8 +558,30 @@ class NonStreamingTestCase(TestCase):
                             gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS,
                             event.attributes,
                         )
+                        if _is_mcp_imported:
+                            self.assertIn(
+                                event.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS_NO_CONTENT"
+                                    ],
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS_ASYNC_NO_CONTENT"
+                                    ],
+                                ],
+                            )
+                        else:
+                            self.assertIn(
+                                event.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS_NO_MCP_NO_CONTENT"
+                                    ],
+                                ],
+                            )
+
                     else:
-                        attrs = {
+                        expected_event_attributes = {
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES: (
                                 {
                                     "role": "user",
@@ -345,16 +602,99 @@ class NonStreamingTestCase(TestCase):
                             gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS: (
                                 {"content": sys_instr, "type": "text"},
                             ),
+                            "TOOL_DEFINITIONS": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "A standalone mcp tool",
+                                    "parameters": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"}
+                                        },
+                                    },
+                                    "type": "function",
+                                },
+                            ),
+                            "TOOL_DEFINITIONS_ASYNC": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "Tool from session",
+                                    "parameters": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"}
+                                        },
+                                    },
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mcp_tool",
+                                    "description": "A standalone mcp tool",
+                                    "parameters": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "integer"}
+                                        },
+                                    },
+                                    "type": "function",
+                                },
+                            ),
+                            "TOOL_DEFINITIONS_NO_MCP": (
+                                {
+                                    "name": "_mock_callable_tool",
+                                    "description": "Description of some tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "mock_tool",
+                                    "description": "Description of mock tool.",
+                                    "parameters": None,
+                                    "type": "function",
+                                },
+                                {
+                                    "name": "google_maps",
+                                    "type": "google_maps",
+                                },
+                            ),
                         }
-                        expected_event = Event(
-                            "gen_ai.client.inference.operation.details",
-                            attributes=attrs,
-                        )
                         self.assertEqual(
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_INPUT_MESSAGES
                             ],
                         )
@@ -362,7 +702,7 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES
                             ],
                         )
@@ -370,10 +710,31 @@ class NonStreamingTestCase(TestCase):
                             event.attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
-                            expected_event.attributes[
+                            expected_event_attributes[
                                 gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS
                             ],
                         )
+                        if _is_mcp_imported:
+                            self.assertIn(
+                                event.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS"
+                                    ],
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS_ASYNC"
+                                    ],
+                                ],
+                            )
+                        else:
+                            self.assertIn(
+                                event.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    expected_event_attributes[
+                                        "TOOL_DEFINITIONS_NO_MCP"
+                                    ],
+                                ],
+                            )
                 self.tearDown()
 
     def test_new_semconv_record_completion_in_span(self):
@@ -391,6 +752,14 @@ class NonStreamingTestCase(TestCase):
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
                 },
             )
+            tools = [
+                _mock_callable_tool,
+                _mock_tool_dict(),
+            ]
+            if _is_mcp_imported:
+                tools.append(_mock_mcp_client_session())
+                tools.append(_mock_mcp_tool())
+
             with self.subTest(
                 f"mode: {mode}", patched_environ=patched_environ
             ):
@@ -403,6 +772,7 @@ class NonStreamingTestCase(TestCase):
                         config=GenerateContentConfig(
                             system_instruction="System instruction",
                             response_schema=ExampleResponseSchema,
+                            tools=tools,
                         ),
                     )
                     span = self.otel.get_span_named(
@@ -430,6 +800,19 @@ class NonStreamingTestCase(TestCase):
                             ],
                             '[{"content":"System instruction","type":"text"}]',
                         )
+                        if _is_mcp_imported:
+                            self.assertIn(
+                                span.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"},{"name":"mcp_tool","description":"Tool from session","parameters":{"type":"object","properties":{"id":{"type":"integer"}}},"type":"function"},{"name":"mcp_tool","description":"A standalone mcp tool","parameters":{"type":"object","properties":{"id":{"type":"integer"}}},"type":"function"}]',
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"},{"name":"mcp_tool","description":"A standalone mcp tool","parameters":{"type":"object","properties":{"id":{"type":"integer"}}},"type":"function"}]',
+                                ],
+                            )
+                        else:
+                            self.assertEqual(
+                                span.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"}]',
+                            )
                     else:
                         self.assertNotIn(
                             gen_ai_attributes.GEN_AI_INPUT_MESSAGES,
@@ -443,8 +826,61 @@ class NonStreamingTestCase(TestCase):
                             gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS,
                             span.attributes,
                         )
+                        if _is_mcp_imported:
+                            self.assertIn(
+                                span.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                [
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"},{"name":"mcp_tool","description":"Tool from session","parameters":null,"type":"function"},{"name":"mcp_tool","description":"A standalone mcp tool","parameters":null,"type":"function"}]',
+                                    '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"},{"name":"mcp_tool","description":"A standalone mcp tool","parameters":null,"type":"function"}]',
+                                ],
+                            )
+                        else:
+                            self.assertEqual(
+                                span.attributes[GEN_AI_TOOL_DEFINITIONS],
+                                '[{"name":"_mock_callable_tool","description":"Description of some tool.","parameters":null,"type":"function"},{"name":"mock_tool","description":"Description of mock tool.","parameters":null,"type":"function"},{"name":"google_maps","type":"google_maps"}]',
+                            )
 
                 self.tearDown()
+
+    def test_new_semconv_log_has_extra_genai_attributes(self):
+        patched_environ = patch.dict(
+            "os.environ",
+            {
+                "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "EVENT_ONLY",
+                "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+            },
+        )
+        patched_otel_mapping = patch.dict(
+            _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
+            {
+                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+            },
+        )
+        with patched_environ, patched_otel_mapping:
+            self.configure_valid_response(text="Yep, it works!")
+            tok = context_api.attach(
+                context_api.set_value(
+                    GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
+                    {"extra_attribute_key": "extra_attribute_value"},
+                )
+            )
+            try:
+                self.generate_content(
+                    model="gemini-2.0-flash",
+                    contents="Does this work?",
+                )
+                self.otel.assert_has_event_named(
+                    "gen_ai.client.inference.operation.details"
+                )
+                event = self.otel.get_event_named(
+                    "gen_ai.client.inference.operation.details"
+                )
+                assert (
+                    event.attributes["extra_attribute_key"]
+                    == "extra_attribute_value"
+                )
+            finally:
+                context_api.detach(tok)
 
     def test_records_metrics_data(self):
         self.configure_valid_response()

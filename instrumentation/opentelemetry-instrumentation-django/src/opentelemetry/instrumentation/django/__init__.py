@@ -45,7 +45,7 @@ For example,
 will exclude requests such as ``https://site/client/123/info`` and ``https://site/xyz/healthcheck``.
 
 Request attributes
-********************
+******************
 To extract attributes from Django's request object and use them as span attributes, set the environment variable
 ``OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS`` to a comma delimited list of request attribute names.
 
@@ -57,10 +57,10 @@ For example,
 
 will extract the ``path_info`` and ``content_type`` attributes from every traced request and add them as span attributes.
 
-Django Request object reference: https://docs.djangoproject.com/en/3.1/ref/request-response/#attributes
+* `Django Request object reference <https://docs.djangoproject.com/en/5.2/ref/request-response/#attributes>`_
 
 Request and Response hooks
-***************************
+**************************
 This instrumentation supports request and response hooks. These are functions that get called
 right after a span is created for a request and right before the span is finished for the response.
 The hooks can be configured as follows:
@@ -77,8 +77,76 @@ The hooks can be configured as follows:
 
     DjangoInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
-Django Request object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httprequest-objects
-Django Response object: https://docs.djangoproject.com/en/3.1/ref/request-response/#httpresponse-objects
+* `Django Request object <https://docs.djangoproject.com/en/5.2/ref/request-response/#httprequest-objects>`_
+* `Django Response object <https://docs.djangoproject.com/en/5.2/ref/request-response/#httpresponse-objects>`_
+
+Adding attributes from middleware context
+#########################################
+In many Django applications, certain request attributes become available only *after*
+specific middlewares have executed. For example:
+
+- ``django.contrib.auth.middleware.AuthenticationMiddleware`` populates ``request.user``
+- ``django.contrib.sites.middleware.CurrentSiteMiddleware`` populates ``request.site``
+
+Because the OpenTelemetry instrumentation creates the span **before** Django middlewares run,
+these attributes are **not yet available** in the ``request_hook`` stage.
+
+Therefore, such attributes should be safely attached in the **response_hook**, which executes
+after Django finishes processing the request (and after all middlewares have completed).
+
+Example: Attaching the authenticated user and current site to the span:
+
+.. code:: python
+
+    def response_hook(span, request, response):
+        # Attach user information if available
+        if request.user.is_authenticated:
+            span.set_attribute("enduser.id", request.user.pk)
+            span.set_attribute("enduser.username", request.user.get_username())
+
+        # Attach current site (if provided by CurrentSiteMiddleware)
+        if hasattr(request, "site"):
+            span.set_attribute("site.id", getattr(request.site, "pk", None))
+            span.set_attribute("site.domain", getattr(request.site, "domain", None))
+
+    DjangoInstrumentor().instrument(response_hook=response_hook)
+
+This ensures that middleware-dependent context (like user or site information) is properly
+recorded once Django’s middleware stack has finished execution.
+
+Custom Django middleware can also attach arbitrary data to the ``request`` object,
+which can later be included as span attributes in the ``response_hook``.
+
+* `Django middleware reference <https://docs.djangoproject.com/en/5.2/topics/http/middleware/>`_
+
+Best practices
+##############
+- Use **response_hook** (not request_hook) when accessing attributes added by Django middlewares.
+- Common middleware-provided attributes include:
+
+  - ``request.user`` (AuthenticationMiddleware)
+  - ``request.site`` (CurrentSiteMiddleware)
+
+- Avoid adding large or sensitive data (e.g., passwords, session tokens, PII) to spans.
+- Use **namespaced attribute keys**, e.g., ``enduser.*``, ``site.*``, or ``custom.*``, for clarity.
+- Hooks should execute quickly — avoid blocking or long-running operations.
+- Hooks can be safely combined with OpenTelemetry **Context propagation** or **Baggage**
+  for consistent tracing across services.
+
+* `OpenTelemetry semantic conventions <https://opentelemetry.io/docs/specs/semconv/http/http-spans/>`_
+
+Middleware execution order
+##########################
+In Django’s request lifecycle, the OpenTelemetry `request_hook` is executed before
+the first middleware runs. Therefore:
+
+- At `request_hook` time → only the bare `HttpRequest` object is available.
+- After middlewares → `request.user`, `request.site` etc. become available.
+- At `response_hook` time → all middlewares (including authentication and site middlewares)
+  have already run, making it the correct place to attach these attributes.
+
+Developers who need to trace attributes from middlewares should always use `response_hook`
+to ensure complete and accurate span data.
 
 Capture HTTP request and response headers
 *****************************************
@@ -180,7 +248,7 @@ enabled will have configurable key-value pairs appended to them, e.g.
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -235,7 +303,6 @@ from logging import getLogger
 from os import environ
 from typing import Collection
 
-from django import VERSION as django_version
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
@@ -267,19 +334,9 @@ from opentelemetry.semconv.metrics.http_metrics import (
 from opentelemetry.trace import get_tracer
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
-DJANGO_2_0 = django_version >= (2, 0)
-
 _excluded_urls_from_env = get_excluded_urls("DJANGO")
+_django_middleware_setting = "MIDDLEWARE"
 _logger = getLogger(__name__)
-
-
-def _get_django_middleware_setting() -> str:
-    # In Django versions 1.x, setting MIDDLEWARE_CLASSES can be used as a legacy
-    # alternative to MIDDLEWARE. This is the case when `settings.MIDDLEWARE` has
-    # its default value (`None`).
-    if not DJANGO_2_0 and getattr(settings, "MIDDLEWARE", None) is None:
-        return "MIDDLEWARE_CLASSES"
-    return "MIDDLEWARE"
 
 
 def _get_django_otel_middleware_position(
@@ -384,24 +441,29 @@ class DjangoInstrumentor(BaseInstrumentor):
         # https://docs.djangoproject.com/en/3.0/topics/http/middleware/#activating-middleware
         # https://docs.djangoproject.com/en/3.0/ref/middleware/#middleware-ordering
 
-        _middleware_setting = _get_django_middleware_setting()
         settings_middleware = []
         try:
-            settings_middleware = getattr(settings, _middleware_setting, [])
+            settings_middleware = getattr(
+                settings, _django_middleware_setting, []
+            )
         except ImproperlyConfigured as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(settings, _middleware_setting, [])
+            settings_middleware = getattr(
+                settings, _django_middleware_setting, []
+            )
         except ModuleNotFoundError as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE points to a non-existent module. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(settings, _middleware_setting, [])
+            settings_middleware = getattr(
+                settings, _django_middleware_setting, []
+            )
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
@@ -423,11 +485,12 @@ class DjangoInstrumentor(BaseInstrumentor):
             middleware_position, self._opentelemetry_middleware
         )
 
-        setattr(settings, _middleware_setting, settings_middleware)
+        setattr(settings, _django_middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        _middleware_setting = _get_django_middleware_setting()
-        settings_middleware = getattr(settings, _middleware_setting, None)
+        settings_middleware = getattr(
+            settings, _django_middleware_setting, None
+        )
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
@@ -440,4 +503,4 @@ class DjangoInstrumentor(BaseInstrumentor):
             return
 
         settings_middleware.remove(self._opentelemetry_middleware)
-        setattr(settings, _middleware_setting, settings_middleware)
+        setattr(settings, _django_middleware_setting, settings_middleware)

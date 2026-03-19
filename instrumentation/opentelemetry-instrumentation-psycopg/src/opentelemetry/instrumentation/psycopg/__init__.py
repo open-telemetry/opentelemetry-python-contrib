@@ -64,7 +64,7 @@ sqlcommenter enabled will have configurable key-value pairs appended to them, e.
 propagation between database client and server when database log records are enabled.
 For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -147,7 +147,7 @@ import logging
 from typing import Any, Callable, Collection, TypeVar
 
 import psycopg  # pylint: disable=import-self
-from psycopg.sql import Composed  # pylint: disable=no-name-in-module
+from psycopg.sql import Composable  # pylint: disable=no-name-in-module
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -268,9 +268,14 @@ class PsycopgInstrumentor(BaseInstrumentor):
             setattr(
                 connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
             )
-            connection.cursor_factory = _new_cursor_factory(
-                tracer_provider=tracer_provider
-            )
+            if isinstance(connection, psycopg.AsyncConnection):
+                connection.cursor_factory = _new_cursor_async_factory(
+                    tracer_provider=tracer_provider
+                )
+            else:
+                connection.cursor_factory = _new_cursor_factory(
+                    tracer_provider=tracer_provider
+                )
             connection._is_instrumented_by_opentelemetry = True
         else:
             _logger.warning(
@@ -333,7 +338,7 @@ class CursorTracer(dbapi.CursorTracer):
             return ""
 
         statement = args[0]
-        if isinstance(statement, Composed):
+        if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
 
         # `statement` can be empty string. See #2643
@@ -348,7 +353,7 @@ class CursorTracer(dbapi.CursorTracer):
             return ""
 
         statement = args[0]
-        if isinstance(statement, Composed):
+        if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
         return statement
 

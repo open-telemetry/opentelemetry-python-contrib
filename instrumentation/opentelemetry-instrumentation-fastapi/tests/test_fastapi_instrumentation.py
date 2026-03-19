@@ -25,6 +25,7 @@ from unittest.mock import Mock, call, patch
 
 import fastapi
 import pytest
+from fastapi.middleware.asyncexitstack import AsyncExitStackMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
@@ -151,6 +152,9 @@ class CustomRoute(APIRoute):
         return super().matches(scope)
 
 
+SCOPE = "opentelemetry.instrumentation.fastapi"
+
+
 class TestBaseFastAPI(TestBase):
     def _create_app(self):
         app = self._create_fastapi_app()
@@ -234,27 +238,27 @@ class TestBaseFastAPI(TestBase):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -454,7 +458,7 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             self.assertIn("GET /foobar", span.name)
             self.assertEqual(
                 span.instrumentation_scope.name,
-                "opentelemetry.instrumentation.fastapi",
+                SCOPE,
             )
 
     def test_uninstrument_app(self):
@@ -525,96 +529,66 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/foobar")
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) == 1)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.fastapi",
-                )
-                self.assertTrue(len(scope_metric.metrics) == 3)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_old)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_old[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) == 3)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_old)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_old[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_fastapi_metrics_new_semconv(self):
         self._client.get("/foobar")
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) == 1)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.fastapi",
-                )
-                self.assertTrue(len(scope_metric.metrics) == 3)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_new[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) == 3)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_new)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_new[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_fastapi_metrics_both_semconv(self):
         self._client.get("/foobar")
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) == 1)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.fastapi",
-                )
-                self.assertTrue(len(scope_metric.metrics) == 5)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_both)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs_both[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) == 5)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_both)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs_both[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_basic_metric_success(self):
@@ -638,10 +612,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_FLAVOR: "1.1",
             HTTP_SERVER_NAME: "testserver",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertDictEqual(
@@ -672,10 +644,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "GET",
             URL_SCHEME: "https",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertDictEqual(
@@ -729,10 +699,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "GET",
             URL_SCHEME: "https",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -803,10 +771,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_FLAVOR: "1.1",
             HTTP_SERVER_NAME: "testserver",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertDictEqual(
@@ -837,10 +803,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "_OTHER",
             URL_SCHEME: "https",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertDictEqual(
@@ -894,10 +858,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
             HTTP_REQUEST_METHOD: "_OTHER",
             URL_SCHEME: "https",
         }
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -955,10 +917,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration = max(round((default_timer() - start) * 1000), 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -980,10 +940,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration_s = max(default_timer() - start, 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -1008,10 +966,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         duration_s = max(default_timer() - start, 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -1036,10 +992,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -1053,10 +1007,8 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self._instrumentor.uninstrument()
         self._client.get("/foobar")
 
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -1070,27 +1022,27 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -2013,7 +1965,7 @@ class TestTraceableExceptionHandling(TestBase):
             return PlainTextResponse("", status_code)
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             self.request_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
@@ -2080,7 +2032,7 @@ class TestTraceableExceptionHandling(TestBase):
         """Exceptions from user middlewares are recorded in the active span"""
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             return PlainTextResponse("Hello World")
 
         @self.app.middleware("http")
@@ -2122,7 +2074,12 @@ class TestFastAPIFallback(TestBaseFastAPI):
         app = TestBaseFastAPI._create_fastapi_app()
 
         def build_middleware_stack():
-            return app.router
+            # Return something that is NOT a ServerErrorMiddleware so the
+            # instrumentation fallback path triggers, but still wrap the
+            # router with AsyncExitStackMiddleware so that newer FastAPI
+            # versions (which assert ``fastapi_middleware_astack`` exists in
+            # the request scope) can service requests normally.
+            return AsyncExitStackMiddleware(app.router)
 
         app.build_middleware_stack = build_middleware_stack
         return app
@@ -2147,7 +2104,7 @@ class TestFastAPIFallback(TestBaseFastAPI):
         self.assertEqual(len(errors), 1)
         self.assertEqual(
             errors[0].getMessage(),
-            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.routing.APIRouter'>",
+            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.middleware.asyncexitstack.AsyncExitStackMiddleware'>",
         )
 
 

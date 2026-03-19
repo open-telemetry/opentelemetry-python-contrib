@@ -62,7 +62,7 @@ enabled will have configurable key-value pairs appended to them, e.g.
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python

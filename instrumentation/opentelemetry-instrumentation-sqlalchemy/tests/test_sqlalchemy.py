@@ -30,7 +30,11 @@ from opentelemetry.instrumentation.sqlalchemy import (
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider, export
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -173,12 +177,8 @@ class TestSqlalchemyInstrumentation(TestBase):
         self.assertEqual(len(spans), 2)
         # first span - the connection to the db
         self.assertEqual(spans[0].name, "connect")
-        self.assertEqual(
-            spans[0].attributes[SpanAttributes.DB_NAME], ":memory:"
-        )
-        self.assertEqual(
-            spans[0].attributes[SpanAttributes.DB_SYSTEM], "sqlite"
-        )
+        self.assertEqual(spans[0].attributes[DB_NAME], ":memory:")
+        self.assertEqual(spans[0].attributes[DB_SYSTEM], "sqlite")
         self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
         # second span - the query
         self.assertEqual(spans[1].name, "SELECT :memory:")
@@ -226,7 +226,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             "SELECT  1;",
         )
 
@@ -256,7 +256,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertRegex(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
@@ -288,7 +288,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertEqual(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             "SELECT  1;",
         )
 
@@ -323,7 +323,7 @@ class TestSqlalchemyInstrumentation(TestBase):
         # second span is query itself
         query_span = spans[1]
         self.assertRegex(
-            query_span.attributes[SpanAttributes.DB_STATEMENT],
+            query_span.attributes[DB_STATEMENT],
             r"SELECT  1 /\*db_driver='(.*)'\*/;",
         )
 
@@ -378,12 +378,8 @@ class TestSqlalchemyInstrumentation(TestBase):
             self.assertEqual(len(spans), 2)
             # first span - the connection to the db
             self.assertEqual(spans[0].name, "connect")
-            self.assertEqual(
-                spans[0].attributes[SpanAttributes.DB_NAME], ":memory:"
-            )
-            self.assertEqual(
-                spans[0].attributes[SpanAttributes.DB_SYSTEM], "sqlite"
-            )
+            self.assertEqual(spans[0].attributes[DB_NAME], ":memory:")
+            self.assertEqual(spans[0].attributes[DB_SYSTEM], "sqlite")
             self.assertEqual(spans[0].kind, trace.SpanKind.CLIENT)
             # second span - the query
             self.assertEqual(spans[1].name, "SELECT :memory:")
@@ -427,7 +423,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             # second span is query itself
             query_span = spans[1]
             self.assertEqual(
-                query_span.attributes[SpanAttributes.DB_STATEMENT],
+                query_span.attributes[DB_STATEMENT],
                 "SELECT  1;",
             )
 
@@ -466,7 +462,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             # second span is query itself
             query_span = spans[1]
             self.assertRegex(
-                query_span.attributes[SpanAttributes.DB_STATEMENT],
+                query_span.attributes[DB_STATEMENT],
                 r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
             )
 
@@ -507,7 +503,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             # second span is query itself
             query_span = spans[1]
             self.assertEqual(
-                query_span.attributes[SpanAttributes.DB_STATEMENT],
+                query_span.attributes[DB_STATEMENT],
                 "SELECT  1;",
             )
 
@@ -549,7 +545,7 @@ class TestSqlalchemyInstrumentation(TestBase):
             # second span is query itself
             query_span = spans[1]
             self.assertRegex(
-                query_span.attributes[SpanAttributes.DB_STATEMENT],
+                query_span.attributes[DB_STATEMENT],
                 r"SELECT  1 /\*db_driver='(.*)'*/;",
             )
 
