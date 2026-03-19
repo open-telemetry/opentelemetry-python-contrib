@@ -1,7 +1,8 @@
 Performance Tests - Benchmarks
 ==============================
 
-Performance benchmarks for individual packages can be found within each package's directory
-(e.g., ``propagator/opentelemetry-propagator-aws-xray/benchmarks/``).
+For instructions on running and writing benchmarks locally, see the
+`Benchmarks section of CONTRIBUTING.md <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md#benchmarks>`_.
 
-To run benchmarks locally, install the package with its benchmark dependencies and use ``pytest --benchmark-only``.
+Live benchmark results are published at
+`opentelemetry.io/docs/languages/python/benchmarks <https://opentelemetry.io/docs/languages/python/benchmarks/>`_.
