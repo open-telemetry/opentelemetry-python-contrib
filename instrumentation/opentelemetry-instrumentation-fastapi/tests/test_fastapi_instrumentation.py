@@ -25,6 +25,7 @@ from unittest.mock import Mock, call, patch
 
 import fastapi
 import pytest
+from fastapi.middleware.asyncexitstack import AsyncExitStackMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
@@ -237,27 +238,27 @@ class TestBaseFastAPI(TestBase):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -1021,27 +1022,27 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -1964,7 +1965,7 @@ class TestTraceableExceptionHandling(TestBase):
             return PlainTextResponse("", status_code)
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             self.request_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
@@ -2031,7 +2032,7 @@ class TestTraceableExceptionHandling(TestBase):
         """Exceptions from user middlewares are recorded in the active span"""
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             return PlainTextResponse("Hello World")
 
         @self.app.middleware("http")
@@ -2073,7 +2074,12 @@ class TestFastAPIFallback(TestBaseFastAPI):
         app = TestBaseFastAPI._create_fastapi_app()
 
         def build_middleware_stack():
-            return app.router
+            # Return something that is NOT a ServerErrorMiddleware so the
+            # instrumentation fallback path triggers, but still wrap the
+            # router with AsyncExitStackMiddleware so that newer FastAPI
+            # versions (which assert ``fastapi_middleware_astack`` exists in
+            # the request scope) can service requests normally.
+            return AsyncExitStackMiddleware(app.router)
 
         app.build_middleware_stack = build_middleware_stack
         return app
@@ -2098,7 +2104,7 @@ class TestFastAPIFallback(TestBaseFastAPI):
         self.assertEqual(len(errors), 1)
         self.assertEqual(
             errors[0].getMessage(),
-            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.routing.APIRouter'>",
+            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.middleware.asyncexitstack.AsyncExitStackMiddleware'>",
         )
 
 

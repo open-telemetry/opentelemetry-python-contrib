@@ -12,5 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+_instruments_botocore = ("botocore~=1.0",)
+_instruments_aiobotocore = ("aiobotocore~=2.0",)
 
-_instruments = ("botocore ~= 1.0",)
+_instruments = ()
+_instruments_any = (*_instruments_botocore, *_instruments_aiobotocore)
