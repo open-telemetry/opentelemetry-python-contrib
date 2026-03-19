@@ -6,7 +6,7 @@ OpenTelemetry Botocore Tracing
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-botocore.svg
    :target: https://pypi.org/project/opentelemetry-instrumentation-botocore/
 
-This library allows tracing requests made by the Botocore library.
+This library allows tracing requests made by the botocore and aiobotocore libraries.
 
 Extensions
 ----------
@@ -14,14 +14,14 @@ Extensions
 The instrumentation supports creating extensions for AWS services for enriching what is collected. We have extensions
 for the following AWS services:
 
-- Bedrock Runtime
+- Bedrock Runtime (botocore only)
 - DynamoDB
 - Lambda
 - SNS
 - SQS
 
-Bedrock Runtime
-***************
+Bedrock Runtime (botocore only)
+*******************************
 
 This extension implements the GenAI semantic conventions for the following API calls:
 
