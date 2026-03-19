@@ -83,6 +83,8 @@ from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _get_embedding_span_name,
+    _get_llm_span_name,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
@@ -156,9 +158,12 @@ class TelemetryHandler:
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
-        operation_name = getattr(invocation, "operation_name", "")
-        request_model = getattr(invocation, "request_model", "")
-        span_name = f"{operation_name} {request_model}".strip()
+        if isinstance(invocation, LLMInvocation):
+            span_name = _get_llm_span_name(invocation)
+        elif isinstance(invocation, EmbeddingInvocation):
+            span_name = _get_embedding_span_name(invocation)
+        else:
+            span_name = ""
         span = self._tracer.start_span(
             name=span_name,
             kind=SpanKind.CLIENT,

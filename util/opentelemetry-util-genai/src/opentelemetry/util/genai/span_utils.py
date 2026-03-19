@@ -93,8 +93,8 @@ def _get_span_name(
     invocation: GenAIInvocation,
 ) -> str:
     """Get the span name for a GenAI invocation."""
-    operation_name = getattr(invocation, "operation_name", "")
-    request_model = getattr(invocation, "request_model", None)
+    operation_name = getattr(invocation, "operation_name", None) or ""
+    request_model = getattr(invocation, "request_model", None) or ""
     return f"{operation_name} {request_model}".strip()
 
 
