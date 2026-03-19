@@ -36,8 +36,7 @@ This package provides these span attributes:
 - `gen_ai.output.messages`: Str('[{"role": "AI", "parts": [{"content": "hello back", "type": "text"}], "finish_reason": "stop"}]')
 - `gen_ai.system_instructions`: Str('[{"content": "You are a helpful assistant.", "type": "text"}]') (when system instruction is provided)
 
-This package also supports embedding invocation spans via
-`EmbeddingInvocation` and `TelemetryHandler.start_embedding/stop_embedding/fail_embedding`.
+This package also supports embedding invocation spans via the `embedding` context manager.
 For embedding invocations, common attributes include:
 
 - `gen_ai.provider.name`: Str(openai)

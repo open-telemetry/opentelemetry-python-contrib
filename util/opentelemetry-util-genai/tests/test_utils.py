@@ -538,12 +538,12 @@ class TestTelemetryHandler(unittest.TestCase):
             input_tokens=5,
         )
 
-        self.telemetry_handler.start_embedding(parent_invocation)
+        self.telemetry_handler.start(parent_invocation)
         assert parent_invocation.span is not None
-        self.telemetry_handler.start_embedding(child_invocation)
+        self.telemetry_handler.start(child_invocation)
         assert child_invocation.span is not None
-        self.telemetry_handler.stop_embedding(child_invocation)
-        self.telemetry_handler.stop_embedding(parent_invocation)
+        self.telemetry_handler.stop(child_invocation)
+        self.telemetry_handler.stop(parent_invocation)
 
         spans = self.span_exporter.get_finished_spans()
         assert len(spans) == 2
@@ -580,9 +580,9 @@ class TestTelemetryHandler(unittest.TestCase):
                 "provider": "test-provider",
             }.items():
                 setattr(parent_invocation, attr, value)
-            self.telemetry_handler.start_embedding(child_invocation)
+            self.telemetry_handler.start(child_invocation)
             assert child_invocation.span is not None
-            self.telemetry_handler.stop_embedding(child_invocation)
+            self.telemetry_handler.stop(child_invocation)
             parent_invocation.output_messages = [chat_generation]
 
         spans = self.span_exporter.get_finished_spans()
@@ -703,11 +703,11 @@ class TestTelemetryHandler(unittest.TestCase):
             attributes={"custom_embed_attr": "value"},
         )
 
-        self.telemetry_handler.start_embedding(invocation)
+        self.telemetry_handler.start(invocation)
         assert invocation.span is not None
         invocation.attributes.update({"extra_embed": "info"})
         invocation.metric_attributes = {"should not be on span": "value"}
-        self.telemetry_handler.stop_embedding(invocation)
+        self.telemetry_handler.stop(invocation)
 
         span = _get_single_span(self.span_exporter)
         self.assertEqual(span.name, "embeddings embed-model")

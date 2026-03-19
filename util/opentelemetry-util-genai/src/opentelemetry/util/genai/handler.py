@@ -291,33 +291,13 @@ class TelemetryHandler:
         """
         if invocation is None:
             invocation = EmbeddingInvocation()
-        self.start_embedding(invocation)
+        self.start(invocation)
         try:
             yield invocation
         except Exception as exc:
-            self.fail_embedding(
-                invocation, Error(message=str(exc), type=type(exc))
-            )
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
             raise
-        self.stop_embedding(invocation)
-
-    def start_embedding(
-        self, invocation: EmbeddingInvocation
-    ) -> EmbeddingInvocation:
-        """Start an embedding invocation and create a pending span entry."""
-        return self.start(invocation)
-
-    def stop_embedding(
-        self, invocation: EmbeddingInvocation
-    ) -> EmbeddingInvocation:
-        """Finalize an embedding invocation successfully and end its span."""
-        return self.stop(invocation)
-
-    def fail_embedding(
-        self, invocation: EmbeddingInvocation, error: Error
-    ) -> EmbeddingInvocation:
-        """Fail an embedding invocation and end its span with error status."""
-        return self.fail(invocation, error)
+        self.stop(invocation)
 
 
 def get_telemetry_handler(
