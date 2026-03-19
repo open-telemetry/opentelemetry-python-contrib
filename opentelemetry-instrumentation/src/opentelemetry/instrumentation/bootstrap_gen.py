@@ -57,15 +57,15 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-asyncpg==0.62b0.dev",
     },
     {
-        "library": "boto~=2.0",
-        "instrumentation": "opentelemetry-instrumentation-boto==0.62b0.dev",
-    },
-    {
         "library": "boto3 ~= 1.0",
         "instrumentation": "opentelemetry-instrumentation-boto3sqs==0.62b0.dev",
     },
     {
         "library": "botocore ~= 1.0",
+        "instrumentation": "opentelemetry-instrumentation-botocore==0.62b0.dev",
+    },
+    {
+        "library": "aiobotocore ~= 2.0",
         "instrumentation": "opentelemetry-instrumentation-botocore==0.62b0.dev",
     },
     {
@@ -85,7 +85,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-click==0.62b0.dev",
     },
     {
-        "library": "confluent-kafka >= 1.8.2, <= 2.13.0",
+        "library": "confluent-kafka >= 1.8.2, < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.62b0.dev",
     },
     {
