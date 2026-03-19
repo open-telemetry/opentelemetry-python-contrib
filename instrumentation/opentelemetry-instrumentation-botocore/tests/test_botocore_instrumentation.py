@@ -13,13 +13,17 @@
 # limitations under the License.
 import json
 import os
-from unittest.mock import ANY, Mock, patch
+from importlib.metadata import EntryPoint
+from unittest.mock import ANY, Mock, call, patch
 
 import botocore.session
 from botocore.exceptions import ParamValidationError
 from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation.auto_instrumentation import (
+    _load_instrumentors,
+)
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
@@ -568,3 +572,33 @@ class TestBotocoreInstrumentor(TestBase):
                     SERVER_PORT: 2025,
                 },
             )
+
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    def test_instruments_with_botocore_installed(self, mock_logger, mock_dep):
+        def _load_instrumentor(ep: EntryPoint, **kwargs):
+            # simulate aiobotocore not being present
+            if ep.name == "aiobotocore":
+                raise ModuleNotFoundError("aiobotocore")
+
+        mock_distro = Mock()
+        mock_dep.return_value = None
+        mock_distro.load_instrumentor.side_effect = _load_instrumentor
+        _load_instrumentors(mock_distro)
+        eps = [
+            c[0][0].name for c in mock_distro.load_instrumentor.call_args_list
+        ]
+        self.assertIn("botocore", eps)
+        mock_logger.debug.assert_has_calls(
+            [
+                call("Instrumented %s", "botocore"),
+                call(
+                    "Skipping instrumentation %s: %s",
+                    "aiobotocore",
+                    "aiobotocore",
+                ),
+            ],
+            any_order=True,
+        )

@@ -19,7 +19,16 @@ from psycopg2 import sql
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 POSTGRES_HOST = os.getenv("POSTGRESQL_HOST", "localhost")
@@ -68,19 +77,19 @@ class TestFunctionalPsycopg(TestBase):
         self.assertIs(child_span.parent, root_span.get_span_context())
         self.assertIs(child_span.kind, trace_api.SpanKind.CLIENT)
         self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_SYSTEM], "postgresql"
+            child_span.attributes[DB_SYSTEM], "postgresql"
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_NAME], POSTGRES_DB_NAME
+            child_span.attributes[DB_NAME], POSTGRES_DB_NAME
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.DB_USER], POSTGRES_USER
+            child_span.attributes[DB_USER], POSTGRES_USER
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_NAME], POSTGRES_HOST
+            child_span.attributes[NET_PEER_NAME], POSTGRES_HOST
         )
         self.assertEqual(
-            child_span.attributes[SpanAttributes.NET_PEER_PORT], POSTGRES_PORT
+            child_span.attributes[NET_PEER_PORT], POSTGRES_PORT
         )
 
     def test_execute(self):
@@ -148,7 +157,7 @@ class TestFunctionalPsycopg(TestBase):
         span = spans[2]
         self.assertEqual(span.name, "SELECT")
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             'SELECT FROM "users" where "name"=\'"abc"\'',
         )
 
@@ -172,6 +181,6 @@ class TestFunctionalPsycopg(TestBase):
         span = spans[2]
         self.assertEqual(span.name, "SELECT")
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             'SELECT FROM "users" where "name"=\'"abc"\'',
         )
