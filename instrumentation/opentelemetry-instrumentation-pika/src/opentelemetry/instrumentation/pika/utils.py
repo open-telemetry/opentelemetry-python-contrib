@@ -7,7 +7,12 @@ from pika.adapters.blocking_connection import (
 )
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
-from wrapt import ObjectProxy
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
@@ -196,7 +201,7 @@ def _enrich_span(
 
 
 # pylint:disable=abstract-method
-class ReadyMessagesDequeProxy(ObjectProxy):
+class ReadyMessagesDequeProxy(BaseObjectProxy):
     def __init__(
         self,
         wrapped,
@@ -218,7 +223,7 @@ class ReadyMessagesDequeProxy(ObjectProxy):
         except Exception as inst_exception:  # pylint: disable=W0703
             _LOG.exception(inst_exception)
 
-        evt = self.__wrapped__.popleft(*args, **kwargs)
+        evt = self.__wrapped__.popleft(*args, **kwargs)  # pylint:disable=no-member
 
         try:
             # If a new message was received, create a span and set as active context
