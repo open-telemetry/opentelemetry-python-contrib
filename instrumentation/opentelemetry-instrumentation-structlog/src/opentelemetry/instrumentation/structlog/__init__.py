@@ -53,16 +53,18 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 
 # Reserved keys that structlog uses internally and should not be passed as attributes
-_STRUCTLOG_RESERVED_KEYS = frozenset({
-    "event",
-    "level",
-    "timestamp",
-    "exc_info",
-    "exception",
-    "_record",
-    "_logger",
-    "_name",
-})
+_STRUCTLOG_RESERVED_KEYS = frozenset(
+    {
+        "event",
+        "level",
+        "timestamp",
+        "exc_info",
+        "exception",
+        "_record",
+        "_logger",
+        "_name",
+    }
+)
 
 # Map structlog level names to standard library log level numbers
 _STRUCTLOG_LEVEL_TO_LEVELNO = {
@@ -175,7 +177,8 @@ class StructlogHandler:
 
         return event_dict
 
-    def _get_attributes(self, event_dict: dict) -> dict[str, Any]:
+    @staticmethod
+    def _get_attributes(event_dict: dict) -> dict[str, Any]:
         """
         Extract attributes from the structlog event dictionary.
 
@@ -190,7 +193,8 @@ class StructlogHandler:
         """
         # Start with all non-reserved keys
         attributes = {
-            k: v for k, v in event_dict.items()
+            k: v
+            for k, v in event_dict.items()
             if k not in _STRUCTLOG_RESERVED_KEYS
         }
 
@@ -200,13 +204,20 @@ class StructlogHandler:
         if exc_info is True:
             # exc_info=True means "get current exception"
             exc_info = sys.exc_info()
+        elif isinstance(exc_info, BaseException):
+            # exc_info can also be passed as an exception instance directly
+            exc_info = (type(exc_info), exc_info, exc_info.__traceback__)
 
         if isinstance(exc_info, tuple) and len(exc_info) == 3:
             exctype, value, tb = exc_info
             if exctype is not None:
-                attributes[exception_attributes.EXCEPTION_TYPE] = exctype.__name__
+                attributes[exception_attributes.EXCEPTION_TYPE] = (
+                    exctype.__name__
+                )
             if value is not None and value.args:
-                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(value.args[0])
+                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(
+                    value.args[0]
+                )
             if tb is not None:
                 attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
                     "".join(traceback.format_exception(*exc_info))
@@ -217,7 +228,9 @@ class StructlogHandler:
         if isinstance(exception_str, str):
             # If we don't already have a stacktrace from exc_info, use this
             if exception_attributes.EXCEPTION_STACKTRACE not in attributes:
-                attributes[exception_attributes.EXCEPTION_STACKTRACE] = exception_str
+                attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
+                    exception_str
+                )
 
         return attributes
 
@@ -357,7 +370,8 @@ class StructlogInstrumentor(BaseInstrumentor):
 
         # Remove all StructlogHandler instances
         new_processors = [
-            p for p in current_processors
+            p
+            for p in current_processors
             if not isinstance(p, StructlogHandler)
         ]
 

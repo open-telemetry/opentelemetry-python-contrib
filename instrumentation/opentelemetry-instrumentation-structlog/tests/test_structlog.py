@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import sys
+import time
+from unittest.mock import Mock
 
 import structlog
 
@@ -22,7 +24,10 @@ from opentelemetry.instrumentation.structlog import (
     StructlogInstrumentor,
 )
 from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter, SimpleLogRecordProcessor
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogRecordExporter,
+    SimpleLogRecordProcessor,
+)
 from opentelemetry.semconv._incubating.attributes import exception_attributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import TraceFlags
@@ -41,9 +46,7 @@ class TestStructlogHandler(TestBase):
         )
 
         # Configure structlog with OTel processor
-        self.processor = StructlogHandler(
-            logger_provider=self.logger_provider
-        )
+        self.processor = StructlogHandler(logger_provider=self.logger_provider)
         structlog.configure(
             processors=[
                 self.processor,
@@ -51,6 +54,7 @@ class TestStructlogHandler(TestBase):
             ]
         )
         self.logger = structlog.get_logger()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
 
     def tearDown(self):
         super().tearDown()
@@ -145,10 +149,14 @@ class TestStructlogHandler(TestBase):
         attrs = log.log_record.attributes
 
         self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "ValueError"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_MESSAGE], "test error")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_MESSAGE], "test error"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
         stacktrace = attrs[exception_attributes.EXCEPTION_STACKTRACE]
@@ -169,10 +177,36 @@ class TestStructlogHandler(TestBase):
         attrs = log.log_record.attributes
 
         self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_TYPE], "RuntimeError")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "RuntimeError"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_MESSAGE], "runtime error")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_MESSAGE], "runtime error"
+        )
+
+        self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
+
+    def test_exception_from_exception_instance(self):
+        """Test exception extraction when exc_info is an Exception instance."""
+        try:
+            raise KeyError("missing key")
+        except KeyError as exc:
+            self.logger.error("error occurred", exc_info=exc)
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        attrs = log.log_record.attributes
+
+        self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "KeyError"
+        )
+
+        self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
 
         self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
 
@@ -189,8 +223,7 @@ class TestStructlogHandler(TestBase):
 
         self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
         self.assertEqual(
-            attrs[exception_attributes.EXCEPTION_STACKTRACE],
-            exception_string
+            attrs[exception_attributes.EXCEPTION_STACKTRACE], exception_string
         )
 
     def test_trace_context_with_active_span(self):
@@ -212,7 +245,7 @@ class TestStructlogHandler(TestBase):
             self.assertEqual(log.log_record.span_id, span_context.span_id)
             self.assertEqual(
                 log.log_record.trace_flags,
-                TraceFlags(span_context.trace_flags)
+                TraceFlags(span_context.trace_flags),
             )
 
     def test_without_active_span(self):
@@ -278,11 +311,10 @@ class TestStructlogHandler(TestBase):
         self.assertEqual(attrs["duration"], 1.5)
         self.assertEqual(attrs["success"], True)
 
-    def test_flush(self):
+    @staticmethod
+    def test_flush():
         """Test that flush calls force_flush on the provider."""
         # Create a mock provider to verify flush is called
-        from unittest.mock import Mock
-
         mock_provider = Mock()
         mock_provider.force_flush = Mock()
         processor = StructlogHandler(logger_provider=mock_provider)
@@ -290,7 +322,6 @@ class TestStructlogHandler(TestBase):
         processor.flush()
 
         # Give the thread a moment to execute
-        import time
         time.sleep(0.1)
 
         # Verify force_flush was called
@@ -334,7 +365,9 @@ class TestStructlogInstrumentor(TestBase):
         initial_count = len(initial_processors)
 
         # Instrument
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         # Check that processor was added
         new_processors = structlog.get_config()["processors"]
@@ -356,7 +389,9 @@ class TestStructlogInstrumentor(TestBase):
         )
 
         # Instrument
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         # Verify processor was added
         config_after_instrument = structlog.get_config()["processors"]
@@ -384,12 +419,16 @@ class TestStructlogInstrumentor(TestBase):
         )
 
         # First instrumentation
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         config_after_first = structlog.get_config()["processors"]
         count_after_first = len(config_after_first)
 
         # Second instrumentation (should be no-op)
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         config_after_second = structlog.get_config()["processors"]
         count_after_second = len(config_after_second)
 
