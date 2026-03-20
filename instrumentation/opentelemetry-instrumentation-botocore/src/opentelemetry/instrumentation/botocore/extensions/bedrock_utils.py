@@ -20,7 +20,12 @@ from os import environ
 from typing import Any, Callable, Dict, Iterator, Sequence, Union
 
 from botocore.eventstream import EventStream, EventStreamError
-from wrapt import ObjectProxy
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.context import get_current
@@ -37,7 +42,7 @@ _StreamErrorCallableT = Callable[[Exception], None]
 
 
 # pylint: disable=abstract-method
-class ConverseStreamWrapper(ObjectProxy):
+class ConverseStreamWrapper(BaseObjectProxy):
     """Wrapper for botocore.eventstream.EventStream"""
 
     def __init__(
@@ -61,7 +66,7 @@ class ConverseStreamWrapper(ObjectProxy):
 
     def __iter__(self):
         try:
-            for event in self.__wrapped__:
+            for event in self.__wrapped__:  # pylint: disable=no-member
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:
@@ -143,7 +148,7 @@ class ConverseStreamWrapper(ObjectProxy):
             return
 
     def close(self):
-        self.__wrapped__.close()
+        self.__wrapped__.close()  # pylint: disable=no-member
         # Treat the stream as done to ensure the span end.
         self._complete_stream(self._response)
 
@@ -157,7 +162,7 @@ class ConverseStreamWrapper(ObjectProxy):
 
 
 # pylint: disable=abstract-method
-class InvokeModelWithResponseStreamWrapper(ObjectProxy):
+class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
     """Wrapper for botocore.eventstream.EventStream"""
 
     def __init__(
@@ -183,7 +188,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
         self._ended = False
 
     def close(self):
-        self.__wrapped__.close()
+        self.__wrapped__.close()  # pylint: disable=no-member
         # Treat the stream as done to ensure the span end.
         self._stream_done_callback(self._response, self._ended)
 
@@ -197,7 +202,7 @@ class InvokeModelWithResponseStreamWrapper(ObjectProxy):
 
     def __iter__(self):
         try:
-            for event in self.__wrapped__:
+            for event in self.__wrapped__:  # pylint: disable=no-member
                 self._process_event(event)
                 yield event
         except EventStreamError as exc:

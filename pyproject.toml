@@ -7,10 +7,11 @@ dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
   "opentelemetry-semantic-conventions",
+  "opentelemetry-instrumentation",
+  "opentelemetry-distro",
   "opentelemetry-test-utils",
   "opentelemetry-exporter-prometheus-remote-write",
   "opentelemetry-exporter-richconsole",
-  "opentelemetry-instrumentation",
   "opentelemetry-instrumentation-aio-pika[instruments]",
   "opentelemetry-instrumentation-aiohttp-client[instruments]",
   "opentelemetry-instrumentation-aiohttp-server[instruments]",
@@ -20,9 +21,8 @@ dependencies = [
   "opentelemetry-instrumentation-asyncio",
   "opentelemetry-instrumentation-asyncpg[instruments]",
   "opentelemetry-instrumentation-aws-lambda[instruments]",
-  "opentelemetry-instrumentation-boto[instruments]",
   "opentelemetry-instrumentation-boto3sqs[instruments]",
-  "opentelemetry-instrumentation-botocore[instruments]",
+  "opentelemetry-instrumentation-botocore[instruments-any]",
   "opentelemetry-instrumentation-cassandra[instruments]",
   "opentelemetry-instrumentation-celery[instruments]",
   "opentelemetry-instrumentation-click[instruments]",
@@ -81,9 +81,11 @@ opentelemetry-api = { git = "https://github.com/open-telemetry/opentelemetry-pyt
 opentelemetry-sdk = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-sdk" }
 opentelemetry-semantic-conventions = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "opentelemetry-semantic-conventions" }
 opentelemetry-test-utils = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "tests/opentelemetry-test-utils" }
+opentelemetry-exporter-otlp = { git = "https://github.com/open-telemetry/opentelemetry-python", branch = "main", subdirectory = "exporter/opentelemetry-exporter-otlp" }
+opentelemetry-instrumentation = { workspace = true }
+opentelemetry-distro = { workspace = true }
 opentelemetry-exporter-prometheus-remote-write = { workspace = true }
 opentelemetry-exporter-richconsole = { workspace = true }
-opentelemetry-instrumentation = { workspace = true }
 opentelemetry-instrumentation-aio-pika = { workspace = true }
 opentelemetry-instrumentation-aiohttp-client = { workspace = true }
 opentelemetry-instrumentation-aiohttp-server = { workspace = true }
@@ -93,7 +95,6 @@ opentelemetry-instrumentation-asgi = { workspace = true }
 opentelemetry-instrumentation-asyncio = { workspace = true }
 opentelemetry-instrumentation-asyncpg = { workspace = true }
 opentelemetry-instrumentation-aws-lambda = { workspace = true }
-opentelemetry-instrumentation-boto = { workspace = true }
 opentelemetry-instrumentation-boto3sqs = { workspace = true }
 opentelemetry-instrumentation-botocore = { workspace = true }
 opentelemetry-instrumentation-cassandra = { workspace = true }
@@ -146,6 +147,7 @@ members = [
   "instrumentation-genai/*",
   "exporter/*",
   "opentelemetry-instrumentation",
+  "opentelemetry-distro",
   "propagator/*",
   "util/*",
 ]
@@ -209,6 +211,8 @@ include = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate",
   "util/opentelemetry-util-genai",
   "exporter/opentelemetry-exporter-credential-provider-gcp",
+  "instrumentation/opentelemetry-instrumentation-aiohttp-client",
+  "opamp/opentelemetry-opamp-client",
   "sdk-extension/opentelemetry-sdk-extension-aws/src/opentelemetry/sdk/extension/aws/trace",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
@@ -229,6 +233,8 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-weaviate/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
+  "opamp/opentelemetry-opamp-client/tests/**/*.py",
+  "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
 
 [dependency-groups]

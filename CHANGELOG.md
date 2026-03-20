@@ -10,9 +10,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
+  
+### Added
 
-- Add stale PR GitHub Action
-  ([#4220](https://github.com/open-telemetry/opentelemetry-python/pull/4220))
+- `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
+  ([#4289](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4289))
+- `opentelemetry-instrumentation`: Add support for wrapt 2.x
+  ([#4203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4203))
+- `opentelemetry-instrumentation-psycopg2`: Add parameter `capture_parameters` to instrumentor.
+  ([#4212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4212))
+- `opentelemetry-instrumentation-botocore`: Add support for instrumenting `aiobotocore`
+  ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
+
+### Fixed
+
+- `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
+ ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
+- Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
+  ([#4305](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4305))
+- Don't import module in unwrap if not already imported
+  ([#4321](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4321))
+- `opentelemetry-instrumentation-logging`: Add recursion guard in LoggingHandler.emit to prevent deadlock
+  ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
+- `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
+  ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
+
+### Breaking changes
+
+- `opentelemetry-instrumentation-boto`: Remove instrumentation
+  ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
+
+## Version 1.40.0/0.61b0 (2026-03-04)
 
 ### Added
 
@@ -60,6 +88,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4141](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4141))
 - `opentelemetry-instrumentation-pyramid`: pass request attributes at span creation
   ([#4139](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4139))
+- `opentelemetry-instrumentation-logging`: Move there the SDK LoggingHandler
+  ([#4210](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4210))
+- Add stale PR GitHub Action
+  ([#4220](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4220))
 
 ### Fixed
 
@@ -127,6 +159,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4258](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4258))
 - `opentelemetry-instrumentation-threading`: fix AttributeError when Thread is run without starting
   ([#4246](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4246))
+- `opentelemetry-instrumentation-psycopg2`: Fix AttributeError by using instrumented connections weakref, instead of mutating connection object
+  ([#4257](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4257))
 
 ### Breaking changes
 
