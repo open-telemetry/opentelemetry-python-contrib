@@ -20,6 +20,7 @@ from unittest import mock
 import pytest
 
 from opentelemetry._opamp.agent import OpAMPAgent
+from opentelemetry._opamp.callbacks import Callbacks
 from opentelemetry._opamp.client import OpAMPClient
 from opentelemetry._opamp.proto import opamp_pb2
 
@@ -32,26 +33,32 @@ from opentelemetry._opamp.proto import opamp_pb2
 def test_connection_remote_config_status_heartbeat_disconnection(caplog):
     caplog.set_level(logging.DEBUG, logger="opentelemetry._opamp.agent")
 
-    def opamp_handler(agent, client, message):
-        logger = logging.getLogger("opentelemetry._opamp.agent.opamp_handler")
-
-        logger.debug("In opamp_handler")
-
-        # we need to update the config only if we have a config
-        if not message.remote_config.config_hash:
-            return
-
-        updated_remote_config = client.update_remote_config_status(
-            remote_config_hash=message.remote_config.config_hash,
-            status=opamp_pb2.RemoteConfigStatuses_APPLIED,
-            error_message="",
-        )
-        if updated_remote_config is not None:
-            logger.debug("Updated Remote Config")
-            message = client.build_remote_config_status_response_message(
-                updated_remote_config
+    class E2ECallbacks(Callbacks):
+        def on_message(self, agent, client, message):
+            logger = logging.getLogger(
+                "opentelemetry._opamp.agent.opamp_handler"
             )
-            agent.send(payload=message)
+
+            logger.debug("In opamp_handler")
+
+            # we need to update the config only if we have a config
+            if (
+                message.remote_config is None
+                or not message.remote_config.config_hash
+            ):
+                return
+
+            updated_remote_config = client.update_remote_config_status(
+                remote_config_hash=message.remote_config.config_hash,
+                status=opamp_pb2.RemoteConfigStatuses_APPLIED,
+                error_message="",
+            )
+            if updated_remote_config is not None:
+                logger.debug("Updated Remote Config")
+                msg = client.build_remote_config_status_response_message(
+                    updated_remote_config
+                )
+                agent.send(payload=msg)
 
     opamp_client = OpAMPClient(
         endpoint="https://localhost:4320/v1/opamp",
@@ -63,7 +70,7 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
     )
     opamp_agent = OpAMPAgent(
         interval=1,
-        message_handler=opamp_handler,
+        callbacks=E2ECallbacks(),
         client=opamp_client,
     )
     opamp_agent.start()
@@ -78,10 +85,12 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
         for record in caplog.record_tuples
         if record[0] == "opentelemetry._opamp.agent.opamp_handler"
     ]
-    # one call is for connection, one is remote config status, one is heartbeat
+    # connection response has ReportFullState flag, triggering a full state send.
+    # on_message is called for: connection, full state response, config status response, heartbeat.
     assert handler_records == [
         "In opamp_handler",
         "Updated Remote Config",
+        "In opamp_handler",
         "In opamp_handler",
         "In opamp_handler",
     ]
@@ -95,7 +104,7 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
 def test_with_server_not_responding(caplog):
     caplog.set_level(logging.DEBUG, logger="opentelemetry._opamp.agent")
 
-    opamp_handler = mock.Mock()
+    cb = mock.create_autospec(Callbacks, instance=True)
 
     opamp_client = OpAMPClient(
         endpoint="https://localhost:4399/v1/opamp",
@@ -107,11 +116,11 @@ def test_with_server_not_responding(caplog):
     )
     opamp_agent = OpAMPAgent(
         interval=1,
-        message_handler=opamp_handler,
+        callbacks=cb,
         client=opamp_client,
     )
     opamp_agent.start()
 
     opamp_agent.stop()
 
-    assert opamp_handler.call_count == 0
+    assert cb.on_message.call_count == 0

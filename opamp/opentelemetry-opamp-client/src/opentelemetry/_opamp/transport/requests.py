@@ -59,8 +59,7 @@ class RequestsTransport(HttpTransport):
             )
             response.raise_for_status()
         except Exception as exc:
-            logger.error(str(exc))
-            raise OpAMPException
+            raise OpAMPException(str(exc)) from exc
 
         message = messages.decode_message(response.content)
 
