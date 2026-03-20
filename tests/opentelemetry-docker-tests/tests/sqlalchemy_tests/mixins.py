@@ -119,9 +119,7 @@ class SQLAlchemyTestMixin(TestBase):
         if self.SQL_DB:
             name = f"{name} {self.SQL_DB}"
         self.assertEqual(span.name, name)
-        self.assertEqual(
-            span.attributes.get(DB_NAME), self.SQL_DB
-        )
+        self.assertEqual(span.attributes.get(DB_NAME), self.SQL_DB)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertGreater((span.end_time - span.start_time), 0)
 
