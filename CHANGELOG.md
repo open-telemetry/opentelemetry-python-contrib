@@ -201,7 +201,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3967](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3967))
 - `opentelemetry-instrumentation-redis`: add missing copyright header for opentelemetry-instrumentation-redis
   ([#3976](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3976))
->>>>>>> main
 
 ### Fixed
 
