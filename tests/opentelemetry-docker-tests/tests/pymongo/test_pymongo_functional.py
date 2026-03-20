@@ -68,15 +68,9 @@ class TestFunctionalPymongo(TestBase):
         self.assertIsNotNone(pymongo_span.parent)
         self.assertIs(pymongo_span.parent, root_span.get_span_context())
         self.assertIs(pymongo_span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(
-            pymongo_span.attributes[DB_NAME], MONGODB_DB_NAME
-        )
-        self.assertEqual(
-            pymongo_span.attributes[NET_PEER_NAME], MONGODB_HOST
-        )
-        self.assertEqual(
-            pymongo_span.attributes[NET_PEER_PORT], MONGODB_PORT
-        )
+        self.assertEqual(pymongo_span.attributes[DB_NAME], MONGODB_DB_NAME)
+        self.assertEqual(pymongo_span.attributes[NET_PEER_NAME], MONGODB_HOST)
+        self.assertEqual(pymongo_span.attributes[NET_PEER_PORT], MONGODB_PORT)
         self.assertEqual(
             pymongo_span.attributes[DB_MONGODB_COLLECTION],
             MONGODB_COLLECTION_NAME,

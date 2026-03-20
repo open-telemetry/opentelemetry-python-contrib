@@ -21,10 +21,22 @@ import random
 import threading
 from typing import Any, Callable
 
+from opentelemetry._opamp.callbacks import Callbacks, MessageData
 from opentelemetry._opamp.client import OpAMPClient
 from opentelemetry._opamp.proto import opamp_pb2
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_invoke(function: Callable[..., Any], *args: Any) -> None:
+    function_name = "<unknown>"
+    try:
+        function_name = function.__name__
+        function(*args)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.error(
+            "Error when invoking function '%s'", function_name, exc_info=exc
+        )
 
 
 class _Job:
@@ -73,9 +85,7 @@ class OpAMPAgent:
         self,
         *,
         interval: float = 30,
-        message_handler: Callable[
-            ["OpAMPAgent", OpAMPClient, opamp_pb2.ServerToAgent], None
-        ],
+        callbacks: Callbacks,
         max_retries: int = 10,
         heartbeat_max_retries: int = 1,
         initial_backoff: float = 1.0,
@@ -83,14 +93,14 @@ class OpAMPAgent:
     ):
         """
         :param interval: seconds between heartbeat calls
-        :param message_handler: user provided function that takes the received ServerToAgent message
+        :param callbacks: Callbacks instance for receiving client events
         :param max_retries: how many times to retry a failed job for ad-hoc messages
         :param heartbeat_max_retries: how many times to retry an heartbeat failed job
         :param initial_backoff: base seconds for exponential backoff
         :param client: an OpAMPClient instance
         """
         self._interval = interval
-        self._handler = message_handler
+        self._callbacks = callbacks
         self._max_retries = max_retries
         self._heartbeat_max_retries = heartbeat_max_retries
         self._initial_backoff = initial_backoff
@@ -186,15 +196,24 @@ class OpAMPAgent:
             while job.should_retry() and not self._stop.is_set():
                 try:
                     message = self._client.send(job.payload)
+                    _safe_invoke(
+                        self._callbacks.on_connect, self, self._client
+                    )
                     logger.debug("Job succeeded: %r", job.payload)
                     break
                 except Exception as exc:
                     job.attempt += 1
+                    _safe_invoke(
+                        self._callbacks.on_connect_failed,
+                        self,
+                        self._client,
+                        exc,
+                    )
                     logger.warning(
                         "Job %r failed attempt %d/%d: %s",
                         job.payload,
                         job.attempt,
-                        job.max_retries,
+                        job.max_retries + 1,
                         exc,
                     )
 
@@ -202,7 +221,6 @@ class OpAMPAgent:
                         logger.error(
                             "Job %r dropped after max retries", job.payload
                         )
-                        logger.exception(exc)
                         break
 
                     # exponential backoff with +/- 20% jitter, interruptible by stop event
@@ -216,14 +234,7 @@ class OpAMPAgent:
                         break
 
             if message is not None:
-                # we can't do much if the handler fails other than logging
-                try:
-                    self._handler(self, self._client, message)
-                    logger.debug("Called Job message handler for: %r", message)
-                except Exception as exc:
-                    logger.warning(
-                        "Job %r handler failed with: %s", job.payload, exc
-                    )
+                self._process_message(message)
 
             try:
                 if job.callback is not None:
@@ -232,6 +243,29 @@ class OpAMPAgent:
                 logging.warning("Callback for job failed: %s", exc)
             finally:
                 self._queue.task_done()
+
+    def _process_message(self, message: opamp_pb2.ServerToAgent) -> None:
+        if message.HasField("error_response"):
+            _safe_invoke(
+                self._callbacks.on_error,
+                self,
+                self._client,
+                message.error_response,
+            )
+            return
+
+        if message.flags & opamp_pb2.ServerToAgentFlags_ReportFullState:
+            logger.debug("Server requested full state report")
+            payload = self._client.build_full_state_message()
+            self.send(payload)
+
+        msg_data = MessageData.from_server_message(message)
+        _safe_invoke(
+            self._callbacks.on_message,
+            self,
+            self._client,
+            msg_data,
+        )
 
     def stop(self, timeout: float | None = None) -> None:
         """
