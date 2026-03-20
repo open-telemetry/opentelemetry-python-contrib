@@ -5,7 +5,7 @@ Deprecated==1.2.14
 geomet==0.2.1.post1
 iniconfig==2.0.0
 packaging==24.0
-pluggy==1.5.0
+pluggy==1.6.0
 py-cpuinfo==9.0.0
 pytest==7.4.4
 python-snappy==0.7.3
