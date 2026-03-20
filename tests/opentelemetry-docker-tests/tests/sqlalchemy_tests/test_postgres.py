@@ -80,9 +80,7 @@ class PostgresTestCase(SQLAlchemyTestMixin):
             span.attributes.get(DB_STATEMENT),
             "SELECT * FROM a_wrong_table",
         )
-        self.assertEqual(
-            span.attributes.get(DB_NAME), self.SQL_DB
-        )
+        self.assertEqual(span.attributes.get(DB_NAME), self.SQL_DB)
         self.check_meta(span)
         self.assertTrue(span.end_time - span.start_time > 0)
         # check the error

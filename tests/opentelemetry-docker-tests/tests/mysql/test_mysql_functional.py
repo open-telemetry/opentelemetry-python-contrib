@@ -74,18 +74,10 @@ class TestFunctionalMysql(TestBase):
         self.assertIs(db_span.parent, root_span.get_span_context())
         self.assertIs(db_span.kind, trace_api.SpanKind.CLIENT)
         self.assertEqual(db_span.attributes[DB_SYSTEM], "mysql")
-        self.assertEqual(
-            db_span.attributes[DB_NAME], MYSQL_DB_NAME
-        )
-        self.assertEqual(
-            db_span.attributes[DB_USER], MYSQL_USER
-        )
-        self.assertEqual(
-            db_span.attributes[NET_PEER_NAME], MYSQL_HOST
-        )
-        self.assertEqual(
-            db_span.attributes[NET_PEER_PORT], MYSQL_PORT
-        )
+        self.assertEqual(db_span.attributes[DB_NAME], MYSQL_DB_NAME)
+        self.assertEqual(db_span.attributes[DB_USER], MYSQL_USER)
+        self.assertEqual(db_span.attributes[NET_PEER_NAME], MYSQL_HOST)
+        self.assertEqual(db_span.attributes[NET_PEER_PORT], MYSQL_PORT)
 
     def test_execute(self):
         """Should create a child span for execute"""
