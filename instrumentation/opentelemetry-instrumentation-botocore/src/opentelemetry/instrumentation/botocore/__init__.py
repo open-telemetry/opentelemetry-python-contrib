@@ -202,7 +202,6 @@ class BotocoreInstrumentor(BaseInstrumentor):
         # metrics are lazy initialized per-extension in _get_metrics
         self._metrics: Dict[str, Dict[str, Instrument]] = {}
 
-
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
 
