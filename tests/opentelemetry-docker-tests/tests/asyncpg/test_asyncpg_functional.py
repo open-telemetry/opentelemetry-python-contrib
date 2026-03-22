@@ -40,21 +40,11 @@ def async_call(coro):
 
 class CheckSpanMixin:
     def check_span(self, span, expected_db_name=POSTGRES_DB_NAME):
-        self.assertEqual(
-            span.attributes[DB_SYSTEM], "postgresql"
-        )
-        self.assertEqual(
-            span.attributes[DB_NAME], expected_db_name
-        )
-        self.assertEqual(
-            span.attributes[DB_USER], POSTGRES_USER
-        )
-        self.assertEqual(
-            span.attributes[NET_PEER_NAME], POSTGRES_HOST
-        )
-        self.assertEqual(
-            span.attributes[NET_PEER_PORT], POSTGRES_PORT
-        )
+        self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+        self.assertEqual(span.attributes[DB_NAME], expected_db_name)
+        self.assertEqual(span.attributes[DB_USER], POSTGRES_USER)
+        self.assertEqual(span.attributes[NET_PEER_NAME], POSTGRES_HOST)
+        self.assertEqual(span.attributes[NET_PEER_PORT], POSTGRES_PORT)
 
 
 class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
@@ -84,9 +74,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT 42;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 42;")
 
     def test_instrumented_execute_method_error(self, *_, **__):
         """Should create an error span for execute() with the database name as the span name."""
@@ -107,9 +95,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT 42;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 42;")
 
     def test_instrumented_fetch_method_empty_query(self, *_, **__):
         """Should create an error span for fetch() with the database name as the span name."""
@@ -129,9 +115,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT 42;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 42;")
 
     def test_instrumented_fetchval_method_empty_query(self, *_, **__):
         """Should create an error span for fetchval() with the database name as the span name."""
@@ -151,9 +135,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT 42;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 42;")
 
     def test_instrumented_fetchrow_method_empty_query(self, *_, **__):
         """Should create an error span for fetchrow() with the database name as the span name."""
@@ -182,9 +164,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
 
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "BEGIN;")
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "BEGIN;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "BEGIN;")
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
 
         for span in spans[1:-1]:
@@ -198,9 +178,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
 
         self.check_span(spans[-1])
         self.assertEqual(spans[-1].name, "COMMIT;")
-        self.assertEqual(
-            spans[-1].attributes[DB_STATEMENT], "COMMIT;"
-        )
+        self.assertEqual(spans[-1].attributes[DB_STATEMENT], "COMMIT;")
 
     def test_instrumented_cursor_execute_method_empty_query(self, *_, **__):
         """Should create spans for the transaction and cursor fetches with the database name as the span name."""
@@ -215,9 +193,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertEqual(len(spans), 3)
 
         self.check_span(spans[0])
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "BEGIN;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "BEGIN;")
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
 
         self.check_span(spans[1])
@@ -226,9 +202,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.UNSET, spans[1].status.status_code)
 
         self.check_span(spans[2])
-        self.assertEqual(
-            spans[2].attributes[DB_STATEMENT], "COMMIT;"
-        )
+        self.assertEqual(spans[2].attributes[DB_STATEMENT], "COMMIT;")
 
     def test_instrumented_remove_comments(self, *_, **__):
         """Should remove comments from the query and set the span name correctly."""
@@ -275,21 +249,15 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(3, len(spans))
         self.check_span(spans[0])
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "BEGIN;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "BEGIN;")
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
 
         self.check_span(spans[1])
-        self.assertEqual(
-            spans[1].attributes[DB_STATEMENT], "SELECT 42;"
-        )
+        self.assertEqual(spans[1].attributes[DB_STATEMENT], "SELECT 42;")
         self.assertIs(StatusCode.UNSET, spans[1].status.status_code)
 
         self.check_span(spans[2])
-        self.assertEqual(
-            spans[2].attributes[DB_STATEMENT], "COMMIT;"
-        )
+        self.assertEqual(spans[2].attributes[DB_STATEMENT], "COMMIT;")
         self.assertIs(StatusCode.UNSET, spans[2].status.status_code)
 
     def test_instrumented_failed_transaction_method(self, *_, **__):
@@ -306,9 +274,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertEqual(3, len(spans))
 
         self.check_span(spans[0])
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "BEGIN;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "BEGIN;")
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
 
         self.check_span(spans[1])
@@ -319,9 +285,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertEqual(StatusCode.ERROR, spans[1].status.status_code)
 
         self.check_span(spans[2])
-        self.assertEqual(
-            spans[2].attributes[DB_STATEMENT], "ROLLBACK;"
-        )
+        self.assertEqual(spans[2].attributes[DB_STATEMENT], "ROLLBACK;")
         self.assertIs(StatusCode.UNSET, spans[2].status.status_code)
 
     def test_instrumented_method_doesnt_capture_parameters(self, *_, **__):
@@ -331,9 +295,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertEqual(len(spans), 1)
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT $1;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1;")
 
 
 class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
@@ -366,9 +328,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
 
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT $1;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1;")
         self.assertEqual(
             spans[0].attributes["db.statement.parameters"], "('1',)"
         )
@@ -381,9 +341,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
 
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT $1;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1;")
         self.assertEqual(
             spans[0].attributes["db.statement.parameters"], "('1',)"
         )
@@ -395,9 +353,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.assertEqual(len(spans), 1)
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT $1;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1;")
         self.assertEqual(
             spans[0].attributes["db.statement.parameters"], "([['1'], ['2']],)"
         )
@@ -410,9 +366,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.assertEqual(len(spans), 1)
         self.assertIs(StatusCode.ERROR, spans[0].status.status_code)
         self.check_span(spans[0])
-        self.assertEqual(
-            spans[0].attributes[DB_STATEMENT], "SELECT 42;"
-        )
+        self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 42;")
         self.assertEqual(
             spans[0].attributes["db.statement.parameters"], "(1, 2, 3)"
         )
