@@ -582,7 +582,8 @@ class ToolCallBuffer:
         self.arguments = []
 
     def append_arguments(self, arguments):
-        self.arguments.append(arguments)
+        if arguments is not None:
+            self.arguments.append(arguments)
 
 
 class ChoiceBuffer:
@@ -601,13 +602,18 @@ class ChoiceBuffer:
         for _ in range(len(self.tool_calls_buffers), idx + 1):
             self.tool_calls_buffers.append(None)
 
+        function = tool_call.function
         if not self.tool_calls_buffers[idx]:
             self.tool_calls_buffers[idx] = ToolCallBuffer(
-                idx, tool_call.id, tool_call.function.name
+                idx,
+                tool_call.id,
+                function.name if function else None,
             )
-        self.tool_calls_buffers[idx].append_arguments(
-            tool_call.function.arguments
-        )
+
+        if function:
+            self.tool_calls_buffers[idx].append_arguments(
+                function.arguments
+            )
 
 
 class BaseStreamWrapper:
