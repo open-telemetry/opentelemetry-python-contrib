@@ -447,3 +447,43 @@ class TestConfluentKafka(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self._assert_span_count(span_list, 1)
         self._assert_topic(span_list[0], "topic-1")
+
+    def test_proxied_producer_delegates_undefined_methods(
+        self,
+    ) -> None:
+        """Regression test for #4278: methods not defined on
+        ProxiedProducer must delegate to the underlying
+        producer instead of hitting an uninitialized handle."""
+        instrumentation = ConfluentKafkaInstrumentor()
+        message_queue = []
+
+        producer = MockedProducer(
+            message_queue,
+            {
+                "bootstrap.servers": "localhost:29092",
+            },
+        )
+
+        proxied = instrumentation.instrument_producer(producer)
+        self.assertEqual(proxied.list_topics(), "producer_topics")
+
+    def test_proxied_consumer_delegates_undefined_methods(
+        self,
+    ) -> None:
+        """Regression test for #4278: methods not defined on
+        ProxiedConsumer must delegate to the underlying
+        consumer instead of hitting an uninitialized handle."""
+        instrumentation = ConfluentKafkaInstrumentor()
+
+        consumer = MockConsumer(
+            [],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+
+        proxied = instrumentation.instrument_consumer(consumer)
+        self.assertEqual(proxied.list_topics(), "consumer_topics")
+        self.assertEqual(proxied.assignment(), [])
