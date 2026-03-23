@@ -611,9 +611,7 @@ class ChoiceBuffer:
             )
 
         if function:
-            self.tool_calls_buffers[idx].append_arguments(
-                function.arguments
-            )
+            self.tool_calls_buffers[idx].append_arguments(function.arguments)
 
 
 class BaseStreamWrapper:

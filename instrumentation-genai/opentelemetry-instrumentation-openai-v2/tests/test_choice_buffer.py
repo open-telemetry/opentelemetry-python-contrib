@@ -25,7 +25,7 @@ from opentelemetry.instrumentation.openai_v2.patch import (
 )
 
 
-class TestToolCallBuffer:
+class TestToolCallBuffer:  # pylint: disable=no-self-use
     def test_append_arguments_with_string(self):
         buf = ToolCallBuffer(0, "call_1", "get_weather")
         buf.append_arguments('{"city":')
@@ -58,7 +58,7 @@ class TestToolCallBuffer:
         assert "".join(buf.arguments) == '{"city": "NYC"}'
 
 
-class TestChoiceBuffer:
+class TestChoiceBuffer:  # pylint: disable=no-self-use
     def test_append_tool_call_with_none_arguments(self):
         """End-to-end regression test for issue #4344.
 
@@ -158,7 +158,9 @@ class TestChoiceBuffer:
             )
         )
 
-        assert "".join(buf.tool_calls_buffers[0].arguments) == '{"city": "NYC"}'
+        assert (
+            "".join(buf.tool_calls_buffers[0].arguments) == '{"city": "NYC"}'
+        )
         assert "".join(buf.tool_calls_buffers[1].arguments) == '{"tz": "EST"}'
 
     def test_append_tool_call_with_none_function(self):
