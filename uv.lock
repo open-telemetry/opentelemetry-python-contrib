@@ -4014,7 +4014,7 @@ instruments = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "structlog", marker = "extra == 'instruments'", specifier = "~=21.1" },
+    { name = "structlog", marker = "extra == 'instruments'", specifier = ">=21.1" },
 ]
 provides-extras = ["instruments"]
 

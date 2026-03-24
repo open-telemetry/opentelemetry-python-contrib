@@ -45,10 +45,11 @@ class TestStructlogHandler(TestBase):
             SimpleLogRecordProcessor(self.exporter)
         )
 
-        # Configure structlog with OTel processor
+        # Configure structlog with OTel handler
         self.processor = StructlogHandler(logger_provider=self.logger_provider)
         structlog.configure(
             processors=[
+                structlog.stdlib.add_log_level,
                 self.processor,
                 structlog.dev.ConsoleRenderer(),
             ]
@@ -352,7 +353,7 @@ class TestStructlogInstrumentor(TestBase):
         self.exporter.clear()
 
     def test_instrument_adds_processor(self):
-        """Test that instrument() adds the OTel processor to the chain."""
+        """Test that instrument() adds the OTel handler to the chain."""
         # Configure structlog with a simple processor chain
         structlog.configure(
             processors=[
@@ -374,13 +375,13 @@ class TestStructlogInstrumentor(TestBase):
         self.assertEqual(len(new_processors), initial_count + 1)
 
         # Check that a StructlogHandler is in the chain
-        has_otel_processor = any(
+        has_otel_handler = any(
             isinstance(p, StructlogHandler) for p in new_processors
         )
-        self.assertTrue(has_otel_processor)
+        self.assertTrue(has_otel_handler)
 
     def test_uninstrument_removes_processor(self):
-        """Test that uninstrument() removes the OTel processor."""
+        """Test that uninstrument() removes the OTel handler."""
         # Configure structlog
         structlog.configure(
             processors=[
@@ -393,7 +394,7 @@ class TestStructlogInstrumentor(TestBase):
             logger_provider=self.logger_provider
         )
 
-        # Verify processor was added
+        # Verify handler was added
         config_after_instrument = structlog.get_config()["processors"]
         has_otel = any(
             isinstance(p, StructlogHandler) for p in config_after_instrument
@@ -403,7 +404,7 @@ class TestStructlogInstrumentor(TestBase):
         # Uninstrument
         StructlogInstrumentor().uninstrument()
 
-        # Verify processor was removed
+        # Verify handler was removed
         config_after_uninstrument = structlog.get_config()["processors"]
         has_otel = any(
             isinstance(p, StructlogHandler) for p in config_after_uninstrument
@@ -460,6 +461,37 @@ class TestStructlogInstrumentor(TestBase):
         logs = custom_exporter.get_finished_logs()
         self.assertEqual(len(logs), 1)
         self.assertEqual(logs[0].log_record.body, "test message")
+
+    def test_configure_after_instrument_preserves_handler(self):
+        """Test that calling structlog.configure() after instrumentation preserves the handler."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        # Simulate user code calling structlog.configure after instrumentation
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        processors = structlog.get_config()["processors"]
+        has_otel_handler = any(
+            isinstance(p, StructlogHandler) for p in processors
+        )
+        self.assertTrue(has_otel_handler)
+
+    def test_uninstrument_restores_configure(self):
+        """Test that uninstrument() restores the original structlog.configure."""
+        original_configure = structlog.configure
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        self.assertIsNot(structlog.configure, original_configure)
+
+        StructlogInstrumentor().uninstrument()
+        self.assertIs(structlog.configure, original_configure)
 
     def test_instrumentation_dependencies(self):
         """Test that instrumentation_dependencies returns the correct value."""

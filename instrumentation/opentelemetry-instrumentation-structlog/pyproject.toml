@@ -31,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "structlog ~= 21.1",
+  "structlog >= 21.1",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
