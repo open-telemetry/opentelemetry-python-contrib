@@ -18,7 +18,15 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError
+
+try:
+    from pydantic import ConfigDict
+
+    _PYDANTIC_V2 = True
+except ImportError:
+    ConfigDict = None
+    _PYDANTIC_V2 = False
 
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
@@ -53,7 +61,13 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class _ExtractorModel(BaseModel):
-    model_config = ConfigDict(extra="ignore", from_attributes=True)
+    if _PYDANTIC_V2:
+        model_config = ConfigDict(extra="ignore", from_attributes=True)
+    else:
+
+        class Config:
+            extra = "ignore"
+            orm_mode = True
 
 
 class _ResponseTextFormatModel(_ExtractorModel):
@@ -117,19 +131,30 @@ class _ResponsesResultModel(_ExtractorModel):
     usage: Optional[_UsageModel] = None
 
 
-_ResponseTextConfigModel.model_rebuild()
-_ResponseInputItemModel.model_rebuild()
-_ResponsesRequestModel.model_rebuild()
-_ResponseOutputItemModel.model_rebuild()
-_UsageModel.model_rebuild()
-_ResponsesResultModel.model_rebuild()
+def _rebuild_model(model_type: type[BaseModel]) -> None:
+    if _PYDANTIC_V2:
+        model_type.model_rebuild(_types_namespace=globals())
+    else:
+        model_type.update_forward_refs(**globals())
+
+
+_rebuild_model(_ResponseTextConfigModel)
+_rebuild_model(_ResponseInputItemModel)
+_rebuild_model(_ResponsesRequestModel)
+_rebuild_model(_ResponseOutputItemModel)
+_rebuild_model(_UsageModel)
+_rebuild_model(_ResponsesResultModel)
 
 
 def _validate_model(
     model_type: type[ModelT], value: object, context: str
 ) -> ModelT | None:
     try:
-        return model_type.model_validate(value)
+        if _PYDANTIC_V2:
+            return model_type.model_validate(value)
+        if isinstance(value, Mapping):
+            return model_type.parse_obj(value)
+        return model_type.from_orm(value)
     except ValidationError:
         _logger.debug(
             "OpenAI responses extractor validation failed for %s",
