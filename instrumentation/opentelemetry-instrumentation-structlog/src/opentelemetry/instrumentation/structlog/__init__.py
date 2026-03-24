@@ -34,19 +34,19 @@ import sys
 import threading
 import traceback
 from time import time_ns
-from typing import Any, Collection
+from typing import Any, Callable, Collection, Optional
 
 import structlog
 
 from opentelemetry._logs import (
     LogRecord,
     NoOpLogger,
-    SeverityNumber,
     get_logger,
     get_logger_provider,
 )
 from opentelemetry.context import get_current
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.log_utils import std_to_otel
 from opentelemetry.instrumentation.structlog.package import _instruments
 from opentelemetry.semconv._incubating.attributes import (
     exception_attributes,
@@ -77,71 +77,12 @@ _STRUCTLOG_LEVEL_TO_LEVELNO = {
     "fatal": 50,
 }
 
-# Mapping from stdlib log levels to OTel severity numbers
-_STD_TO_OTEL = {
-    10: SeverityNumber.DEBUG,
-    11: SeverityNumber.DEBUG2,
-    12: SeverityNumber.DEBUG3,
-    13: SeverityNumber.DEBUG4,
-    14: SeverityNumber.DEBUG4,
-    15: SeverityNumber.DEBUG4,
-    16: SeverityNumber.DEBUG4,
-    17: SeverityNumber.DEBUG4,
-    18: SeverityNumber.DEBUG4,
-    19: SeverityNumber.DEBUG4,
-    20: SeverityNumber.INFO,
-    21: SeverityNumber.INFO2,
-    22: SeverityNumber.INFO3,
-    23: SeverityNumber.INFO4,
-    24: SeverityNumber.INFO4,
-    25: SeverityNumber.INFO4,
-    26: SeverityNumber.INFO4,
-    27: SeverityNumber.INFO4,
-    28: SeverityNumber.INFO4,
-    29: SeverityNumber.INFO4,
-    30: SeverityNumber.WARN,
-    31: SeverityNumber.WARN2,
-    32: SeverityNumber.WARN3,
-    33: SeverityNumber.WARN4,
-    34: SeverityNumber.WARN4,
-    35: SeverityNumber.WARN4,
-    36: SeverityNumber.WARN4,
-    37: SeverityNumber.WARN4,
-    38: SeverityNumber.WARN4,
-    39: SeverityNumber.WARN4,
-    40: SeverityNumber.ERROR,
-    41: SeverityNumber.ERROR2,
-    42: SeverityNumber.ERROR3,
-    43: SeverityNumber.ERROR4,
-    44: SeverityNumber.ERROR4,
-    45: SeverityNumber.ERROR4,
-    46: SeverityNumber.ERROR4,
-    47: SeverityNumber.ERROR4,
-    48: SeverityNumber.ERROR4,
-    49: SeverityNumber.ERROR4,
-    50: SeverityNumber.FATAL,
-    51: SeverityNumber.FATAL2,
-    52: SeverityNumber.FATAL3,
-    53: SeverityNumber.FATAL4,
-}
-
-
-def std_to_otel(levelno: int) -> SeverityNumber:
-    """
-    Map python log levelno to OTel log severity number.
-    """
-    if levelno < 10:
-        return SeverityNumber.UNSPECIFIED
-    if levelno > 53:
-        return SeverityNumber.FATAL4
-    return _STD_TO_OTEL[levelno]
-
 
 class StructlogHandler:
     """
-    A structlog processor that translates structlog events into OpenTelemetry LogRecords.
+    A structlog handler that translates structlog events into OpenTelemetry LogRecords.
 
-    This processor should be added to the structlog processor chain to emit logs
+    This handler should be added to the structlog processor chain to emit logs
     to OpenTelemetry. It translates structlog's event dictionary format into the
     OpenTelemetry Logs data model.
 
@@ -150,14 +91,14 @@ class StructlogHandler:
     """
 
     def __init__(self, logger_provider=None):
-        """Initialize the processor with an optional logger provider."""
+        """Initialize the handler with an optional logger provider."""
         self._logger_provider = logger_provider or get_logger_provider()
 
     def __call__(self, logger, name: str, event_dict: dict) -> dict:
         """
         Process a structlog event and emit it as an OpenTelemetry log.
 
-        This method implements the structlog processor interface. It receives
+        This method implements the structlog handler interface. It receives
         the event dictionary, translates it to an OTel LogRecord, and emits it.
 
         Args:
@@ -296,7 +237,7 @@ class StructlogInstrumentor(BaseInstrumentor):
     """
     An instrumentor for the structlog logging library.
 
-    This instrumentor adds an StructlogHandler to the structlog processor
+    This instrumentor adds a StructlogHandler to the structlog processor
     chain, enabling automatic emission of structlog events as OpenTelemetry logs.
 
     Example:
@@ -308,6 +249,7 @@ class StructlogInstrumentor(BaseInstrumentor):
     """
 
     _processor = None
+    _original_configure: Optional[Callable] = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         """Return the required instrumentation dependencies."""
@@ -357,6 +299,29 @@ class StructlogInstrumentor(BaseInstrumentor):
         # Store reference for uninstrumentation
         StructlogInstrumentor._processor = processor
 
+        # Wrap structlog.configure so that if user code calls it after
+        # instrumentation, the handler is re-inserted into the new chain.
+        StructlogInstrumentor._original_configure = structlog.configure
+
+        def _patched_configure(*args, **kwargs):
+            # If the user is supplying a processors list, ensure our handler
+            # is included before passing it to the original configure.
+            if "processors" in kwargs:
+                processors = list(kwargs["processors"])
+                if not any(
+                    isinstance(p, StructlogHandler) for p in processors
+                ):
+                    insert_position = max(len(processors) - 1, 0)
+                    processors.insert(
+                        insert_position, StructlogInstrumentor._processor
+                    )
+                    kwargs["processors"] = processors
+            original = StructlogInstrumentor._original_configure
+            if original is not None:
+                original(*args, **kwargs)
+
+        structlog.configure = _patched_configure
+
     def _uninstrument(self, **kwargs):
         """
         Remove the StructlogHandler from structlog's processor chain.
@@ -375,7 +340,13 @@ class StructlogInstrumentor(BaseInstrumentor):
             if not isinstance(p, StructlogHandler)
         ]
 
-        # Reconfigure structlog
+        # Restore the original structlog.configure before reconfiguring so
+        # the patched version does not re-insert the handler.
+        if StructlogInstrumentor._original_configure is not None:
+            structlog.configure = StructlogInstrumentor._original_configure
+            StructlogInstrumentor._original_configure = None
+
+        # Reconfigure structlog without the handler
         structlog.configure(processors=new_processors)
 
         # Clear reference
