@@ -26,12 +26,12 @@ from opentelemetry._logs import (
     LoggerProvider,
     LogRecord,
     NoOpLogger,
-    SeverityNumber,
     get_logger,
     get_logger_provider,
 )
 from opentelemetry.attributes import _VALID_ANY_VALUE_TYPES
 from opentelemetry.context import get_current
+from opentelemetry.instrumentation.log_utils import std_to_otel
 from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util.types import _ExtendedAttributes
@@ -244,63 +244,3 @@ class LoggingHandler(logging.Handler):
             # details see https://github.com/open-telemetry/opentelemetry-python/pull/4636.
             thread = threading.Thread(target=self._logger_provider.force_flush)  # type: ignore[reportAttributeAccessIssue]
             thread.start()
-
-
-_STD_TO_OTEL = {
-    10: SeverityNumber.DEBUG,
-    11: SeverityNumber.DEBUG2,
-    12: SeverityNumber.DEBUG3,
-    13: SeverityNumber.DEBUG4,
-    14: SeverityNumber.DEBUG4,
-    15: SeverityNumber.DEBUG4,
-    16: SeverityNumber.DEBUG4,
-    17: SeverityNumber.DEBUG4,
-    18: SeverityNumber.DEBUG4,
-    19: SeverityNumber.DEBUG4,
-    20: SeverityNumber.INFO,
-    21: SeverityNumber.INFO2,
-    22: SeverityNumber.INFO3,
-    23: SeverityNumber.INFO4,
-    24: SeverityNumber.INFO4,
-    25: SeverityNumber.INFO4,
-    26: SeverityNumber.INFO4,
-    27: SeverityNumber.INFO4,
-    28: SeverityNumber.INFO4,
-    29: SeverityNumber.INFO4,
-    30: SeverityNumber.WARN,
-    31: SeverityNumber.WARN2,
-    32: SeverityNumber.WARN3,
-    33: SeverityNumber.WARN4,
-    34: SeverityNumber.WARN4,
-    35: SeverityNumber.WARN4,
-    36: SeverityNumber.WARN4,
-    37: SeverityNumber.WARN4,
-    38: SeverityNumber.WARN4,
-    39: SeverityNumber.WARN4,
-    40: SeverityNumber.ERROR,
-    41: SeverityNumber.ERROR2,
-    42: SeverityNumber.ERROR3,
-    43: SeverityNumber.ERROR4,
-    44: SeverityNumber.ERROR4,
-    45: SeverityNumber.ERROR4,
-    46: SeverityNumber.ERROR4,
-    47: SeverityNumber.ERROR4,
-    48: SeverityNumber.ERROR4,
-    49: SeverityNumber.ERROR4,
-    50: SeverityNumber.FATAL,
-    51: SeverityNumber.FATAL2,
-    52: SeverityNumber.FATAL3,
-    53: SeverityNumber.FATAL4,
-}
-
-
-def std_to_otel(levelno: int) -> SeverityNumber:
-    """
-    Map python log levelno as defined in https://docs.python.org/3/library/logging.html#logging-levels
-    to OTel log severity number as defined here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#field-severitynumber
-    """
-    if levelno < 10:
-        return SeverityNumber.UNSPECIFIED
-    if levelno > 53:
-        return SeverityNumber.FATAL4
-    return _STD_TO_OTEL[levelno]
