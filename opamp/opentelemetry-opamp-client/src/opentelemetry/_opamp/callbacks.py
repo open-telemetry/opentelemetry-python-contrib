@@ -47,7 +47,7 @@ class MessageData:
         )
 
 
-class Callbacks(ABC):
+class OpAMPCallbacks(ABC):
     """OpAMP client callbacks with no-op defaults.
 
     All methods have no-op defaults so that subclasses only need to
