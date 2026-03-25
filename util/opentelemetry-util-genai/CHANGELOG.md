@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add `_BaseAgent` and `AgentCreation` types with `create_agent` context manager
+  ([#4217](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4217))
 - Populate schema_url on metrics
   ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
 - Add workflow invocation type to genAI utils
