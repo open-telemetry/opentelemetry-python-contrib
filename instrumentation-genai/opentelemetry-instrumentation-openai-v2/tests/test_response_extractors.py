@@ -67,6 +67,10 @@ def _module(block_genai_types_import=False):
     return _load_module(block_genai_types_import)
 
 
+def _validate_compat_model(loaded_module, model_type, value):
+    return loaded_module._validate_model(model_type, value, "test")
+
+
 @pytest.fixture(scope="module", name="loaded_module")
 def _loaded_module_fixture():
     return _module()
@@ -329,7 +333,9 @@ def test_set_invocation_response_attributes_populates_output_messages(
 def test_prevalidated_response_model_skips_revalidation(
     loaded_module, monkeypatch
 ):
-    validated_result = loaded_module._ResponsesResultModel.model_validate(
+    validated_result = _validate_compat_model(
+        loaded_module,
+        loaded_module._ResponsesResultModel,
         SimpleNamespace(
             output=[
                 SimpleNamespace(
@@ -338,8 +344,9 @@ def test_prevalidated_response_model_skips_revalidation(
                     content=[SimpleNamespace(type="output_text", text="Done")],
                 )
             ]
-        )
+        ),
     )
+    assert validated_result is not None
 
     def _unexpected_validation(_result):
         raise AssertionError("unexpected response revalidation")
@@ -358,7 +365,7 @@ def test_prevalidated_response_model_skips_revalidation(
     [
         ({"instructions": ["not-a-string"]}, "_extract_system_instruction"),
         ({"input": 42}, "_extract_input_messages"),
-        ({"text": {"format": 42}}, "_extract_output_type"),
+        ({"text": {"format": {"type": 42}}}, "_extract_output_type"),
     ],
 )
 def test_request_validation_errors_are_logged_and_ignored(

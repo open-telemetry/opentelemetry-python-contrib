@@ -18,19 +18,18 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
 
-from pydantic import BaseModel, Field, ValidationError
-
-try:
-    from pydantic import ConfigDict
-
-    _PYDANTIC_V2 = True
-except ImportError:
-    ConfigDict = None
-    _PYDANTIC_V2 = False
+from pydantic import BaseModel, Field, StrictInt, StrictStr, ValidationError
 
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
+
+_PYDANTIC_V2 = hasattr(BaseModel, "model_validate")
+
+if _PYDANTIC_V2:
+    from pydantic import ConfigDict
+else:
+    ConfigDict = None
 
 if TYPE_CHECKING:
     from opentelemetry.util.genai.types import (
@@ -71,7 +70,7 @@ class _ExtractorModel(BaseModel):
 
 
 class _ResponseTextFormatModel(_ExtractorModel):
-    type: Optional[str] = None
+    type: Optional[StrictStr] = None
 
 
 class _ResponseTextConfigModel(_ExtractorModel):
@@ -79,43 +78,45 @@ class _ResponseTextConfigModel(_ExtractorModel):
 
 
 class _ResponseInputContentModel(_ExtractorModel):
-    text: Optional[str] = None
+    text: Optional[StrictStr] = None
 
 
 class _ResponseInputItemModel(_ExtractorModel):
-    role: Optional[str] = None
-    content: Optional[Union[str, List[_ResponseInputContentModel]]] = None
+    role: Optional[StrictStr] = None
+    content: Optional[Union[StrictStr, List[_ResponseInputContentModel]]] = (
+        None
+    )
 
 
 class _ResponsesRequestModel(_ExtractorModel):
-    instructions: Optional[str] = None
-    input: Optional[Union[str, List[_ResponseInputItemModel]]] = None
+    instructions: Optional[StrictStr] = None
+    input: Optional[Union[StrictStr, List[_ResponseInputItemModel]]] = None
     text: Optional[_ResponseTextConfigModel] = None
 
 
 class _ResponseOutputContentModel(_ExtractorModel):
-    type: Optional[str] = None
-    text: Optional[str] = None
-    refusal: Optional[str] = None
+    type: Optional[StrictStr] = None
+    text: Optional[StrictStr] = None
+    refusal: Optional[StrictStr] = None
 
 
 class _ResponseOutputItemModel(_ExtractorModel):
-    type: Optional[str] = None
-    role: Optional[str] = None
-    status: Optional[str] = None
+    type: Optional[StrictStr] = None
+    role: Optional[StrictStr] = None
+    status: Optional[StrictStr] = None
     content: List[_ResponseOutputContentModel] = Field(default_factory=list)
 
 
 class _UsageDetailsModel(_ExtractorModel):
-    cached_tokens: Optional[int] = None
-    cache_creation_input_tokens: Optional[int] = None
+    cached_tokens: Optional[StrictInt] = None
+    cache_creation_input_tokens: Optional[StrictInt] = None
 
 
 class _UsageModel(_ExtractorModel):
-    input_tokens: Optional[int] = None
-    output_tokens: Optional[int] = None
-    prompt_tokens: Optional[int] = None
-    completion_tokens: Optional[int] = None
+    input_tokens: Optional[StrictInt] = None
+    output_tokens: Optional[StrictInt] = None
+    prompt_tokens: Optional[StrictInt] = None
+    completion_tokens: Optional[StrictInt] = None
     input_tokens_details: Optional[_UsageDetailsModel] = None
     prompt_tokens_details: Optional[_UsageDetailsModel] = None
 
@@ -125,9 +126,9 @@ class _ResponsesResultModel(_ExtractorModel):
     # terminal message items available yet" so downstream extraction helpers
     # naturally return empty lists instead of raising.
     output: List[_ResponseOutputItemModel] = Field(default_factory=list)
-    model: Optional[str] = None
-    id: Optional[str] = None
-    service_tier: Optional[str] = None
+    model: Optional[StrictStr] = None
+    id: Optional[StrictStr] = None
+    service_tier: Optional[StrictStr] = None
     usage: Optional[_UsageModel] = None
 
 
@@ -138,12 +139,19 @@ def _rebuild_model(model_type: type[BaseModel]) -> None:
         model_type.update_forward_refs(**globals())
 
 
-_rebuild_model(_ResponseTextConfigModel)
-_rebuild_model(_ResponseInputItemModel)
-_rebuild_model(_ResponsesRequestModel)
-_rebuild_model(_ResponseOutputItemModel)
-_rebuild_model(_UsageModel)
-_rebuild_model(_ResponsesResultModel)
+for _model_type in (
+    _ResponseTextFormatModel,
+    _ResponseTextConfigModel,
+    _ResponseInputContentModel,
+    _ResponseInputItemModel,
+    _ResponsesRequestModel,
+    _ResponseOutputContentModel,
+    _ResponseOutputItemModel,
+    _UsageDetailsModel,
+    _UsageModel,
+    _ResponsesResultModel,
+):
+    _rebuild_model(_model_type)
 
 
 def _validate_model(
