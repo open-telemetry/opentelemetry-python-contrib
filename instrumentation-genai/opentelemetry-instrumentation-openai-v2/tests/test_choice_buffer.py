@@ -80,9 +80,7 @@ def test_choicebuffer_append_tool_call_with_none_arguments():
     buf.append_tool_call(
         ChoiceDeltaToolCall(
             index=0,
-            function=ChoiceDeltaToolCallFunction(
-                arguments='{"city": "NYC"}'
-            ),
+            function=ChoiceDeltaToolCallFunction(arguments='{"city": "NYC"}'),
         )
     )
 
@@ -107,9 +105,7 @@ def test_choicebuffer_append_tool_call_normal_flow():
     buf.append_tool_call(
         ChoiceDeltaToolCall(
             index=0,
-            function=ChoiceDeltaToolCallFunction(
-                arguments='{"city": "NYC"}'
-            ),
+            function=ChoiceDeltaToolCallFunction(arguments='{"city": "NYC"}'),
         )
     )
 
@@ -135,9 +131,7 @@ def test_choicebuffer_append_multiple_tool_calls_with_none_arguments():
     buf.append_tool_call(
         ChoiceDeltaToolCall(
             index=0,
-            function=ChoiceDeltaToolCallFunction(
-                arguments='{"city": "NYC"}'
-            ),
+            function=ChoiceDeltaToolCallFunction(arguments='{"city": "NYC"}'),
         )
     )
 
@@ -155,15 +149,11 @@ def test_choicebuffer_append_multiple_tool_calls_with_none_arguments():
     buf.append_tool_call(
         ChoiceDeltaToolCall(
             index=1,
-            function=ChoiceDeltaToolCallFunction(
-                arguments='{"tz": "EST"}'
-            ),
+            function=ChoiceDeltaToolCallFunction(arguments='{"tz": "EST"}'),
         )
     )
 
-    assert (
-        "".join(buf.tool_calls_buffers[0].arguments) == '{"city": "NYC"}'
-    )
+    assert "".join(buf.tool_calls_buffers[0].arguments) == '{"city": "NYC"}'
     assert "".join(buf.tool_calls_buffers[1].arguments) == '{"tz": "EST"}'
 
 
