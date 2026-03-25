@@ -31,6 +31,25 @@ env:
 
 jobs:
 
+  py312-test-instrumentation-elasticsearch-1_ubuntu-latest:
+    name: instrumentation-elasticsearch-1 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-elasticsearch-1 -- -ra
+
   py312-test-instrumentation-elasticsearch-2_ubuntu-latest:
     name: instrumentation-elasticsearch-2 3.12 Ubuntu
     runs-on: ubuntu-latest
@@ -4761,22 +4780,3 @@ jobs:
 
       - name: Run tests
         run: tox -e py312-test-instrumentation-asyncpg-wrapt1 -- -ra
-
-  py312-test-instrumentation-asyncpg-wrapt2_ubuntu-latest:
-    name: instrumentation-asyncpg-wrapt2 3.12 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py312-test-instrumentation-asyncpg-wrapt2 -- -ra
