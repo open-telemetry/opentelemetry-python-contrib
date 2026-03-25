@@ -17,7 +17,7 @@ Telemetry handler for GenAI invocations.
 
 This module exposes the `TelemetryHandler` class, which manages the lifecycle of
 GenAI (Generative AI) invocations and emits telemetry data (spans and related attributes).
-It supports starting, stopping, and failing LLM invocations.
+It supports starting, stopping, and failing LLM invocations and tool call executions.
 
 Classes:
     - TelemetryHandler: Manages GenAI invocation lifecycles and emits telemetry.
@@ -25,12 +25,8 @@ Classes:
 Functions:
     - get_telemetry_handler: Returns a singleton `TelemetryHandler` instance.
 
-Usage:
+Usage - LLM Invocations:
     handler = get_telemetry_handler()
-
-    # Create an invocation object with your request data
-    # The span and context_token attributes are set by the TelemetryHandler, and
-    # managed by the TelemetryHandler during the lifecycle of the span.
 
     # Use the context manager to manage the lifecycle of an LLM invocation.
     with handler.llm(invocation) as invocation:
@@ -45,17 +41,24 @@ Usage:
         provider="my-provider",
         attributes={"custom": "attr"},
     )
-
-    # Start the invocation (opens a span)
     handler.start_llm(invocation)
-
-    # Populate outputs and any additional attributes, then stop (closes the span)
     invocation.output_messages = [...]
-    invocation.attributes.update({"more": "attrs"})
     handler.stop_llm(invocation)
 
-    # Or, in case of error
-    handler.fail_llm(invocation, Error(type="...", message="..."))
+Usage - Tool Call Executions:
+    handler = get_telemetry_handler()
+
+    # Use the context manager to manage the lifecycle of a tool call.
+    tool = ToolCall(name="get_weather", arguments={"location": "Paris"}, id="call_123")
+    with handler.tool_call(tool) as tc:
+        # Execute tool logic
+        tc.tool_result = {"temp": 20, "condition": "sunny"}
+
+    # Or, manage the lifecycle manually
+    tool = ToolCall(name="get_weather", arguments={"location": "Paris"})
+    handler.start_tool_call(tool)
+    tool.tool_result = {"temp": 20}
+    handler.stop_tool_call(tool)
 """
 
 from __future__ import annotations
@@ -78,13 +81,17 @@ from opentelemetry.trace import (
     get_tracer,
     set_span_in_context,
 )
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _apply_tool_call_attributes,
+    _finish_tool_call_span,
+    _get_tool_call_span_name,
     _maybe_emit_llm_event,
 )
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import Error, LLMInvocation, ToolCall
 from opentelemetry.util.genai.version import __version__
 
 
@@ -186,6 +193,138 @@ class TelemetryHandler:
         otel_context.detach(invocation.context_token)
         span.end()
         return invocation
+
+    def start_tool_call(
+        self,
+        tool_call: ToolCall,
+    ) -> ToolCall:
+        """Start a tool call execution and create a span.
+
+        Creates an execute_tool span per span.gen_ai.execute_tool.internal spec:
+        - Span kind: INTERNAL
+        - Span name: "execute_tool {tool_name}"
+        - Required attribute: gen_ai.operation.name = "execute_tool"
+
+        Args:
+            tool_call: ToolCall instance to track
+
+        Returns:
+            The same ToolCall with span and context_token set
+        """
+        # Create span with INTERNAL kind per spec
+        span = self._tracer.start_span(
+            name=_get_tool_call_span_name(tool_call),
+            kind=SpanKind.INTERNAL,
+        )
+
+        # Apply initial attributes (but not result yet)
+        # capture_content=False for start, only structure attributes
+        _apply_tool_call_attributes(span, tool_call, capture_content=False)
+
+        # Record monotonic start time for duration calculation
+        tool_call.monotonic_start_s = timeit.default_timer()
+
+        # Attach to context
+        tool_call.span = span
+        tool_call.context_token = otel_context.attach(
+            set_span_in_context(span)
+        )
+
+        return tool_call
+
+    def stop_tool_call(self, tool_call: ToolCall) -> ToolCall:  # pylint: disable=no-self-use
+        """Finalize a tool call execution successfully.
+
+        Applies final attributes including tool_result, sets OK status, and ends span.
+
+        Args:
+            tool_call: ToolCall instance with span to finalize
+
+        Returns:
+            The same ToolCall
+        """
+        if tool_call.context_token is None or tool_call.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return tool_call
+
+        span = tool_call.span
+
+        # Finalize span with result (capture_content=True allows result if mode permits)
+        _finish_tool_call_span(span, tool_call, capture_content=True)
+
+        # Detach context and end span
+        otel_context.detach(tool_call.context_token)
+        span.end()
+
+        return tool_call
+
+    def fail_tool_call(  # pylint: disable=no-self-use
+        self, tool_call: ToolCall, error: Error
+    ) -> ToolCall:
+        """Fail a tool call execution with error.
+
+        Sets error attributes, ERROR status, and ends span.
+
+        Args:
+            tool_call: ToolCall instance with span to fail
+            error: Error details
+
+        Returns:
+            The same ToolCall
+        """
+        if tool_call.context_token is None or tool_call.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return tool_call
+
+        span = tool_call.span
+
+        # Set error_type on tool_call so it's included in attributes
+        tool_call.error_type = error.type.__qualname__
+
+        # Finalize span with error
+        _finish_tool_call_span(span, tool_call, capture_content=True)
+
+        # Apply additional error status with message
+        span.set_status(Status(StatusCode.ERROR, error.message))
+
+        # Detach context and end span
+        otel_context.detach(tool_call.context_token)
+        span.end()
+
+        return tool_call
+
+    @contextmanager
+    def tool_call(
+        self, tool_call: ToolCall | None = None
+    ) -> Iterator[ToolCall]:
+        """Context manager for tool call invocations.
+
+        Only set data attributes on the tool_call object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the tool call and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+
+        Example:
+            with handler.tool_call(ToolCall(name="get_weather", arguments={"location": "Paris"})) as tc:
+                # Execute tool logic
+                tc.tool_result = {"temp": 20, "condition": "sunny"}
+        """
+        if tool_call is None:
+            tool_call = ToolCall(
+                name="",
+                arguments={},
+                id=None,
+            )
+        self.start_tool_call(tool_call)
+        try:
+            yield tool_call
+        except Exception as exc:
+            self.fail_tool_call(
+                tool_call, Error(message=str(exc), type=type(exc))
+            )
+            raise
+        self.stop_tool_call(tool_call)
 
     @contextmanager
     def llm(

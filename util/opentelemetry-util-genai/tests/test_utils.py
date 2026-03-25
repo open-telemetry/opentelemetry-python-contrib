@@ -16,7 +16,7 @@ import json
 import os
 import unittest
 from typing import Any, Mapping, Optional
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -49,6 +49,10 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
+from opentelemetry.util.genai.span_utils import (
+    _apply_tool_call_attributes,
+    _get_tool_call_span_name,
+)
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     Error,
@@ -57,6 +61,7 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
     Text,
+    ToolCall,
 )
 from opentelemetry.util.genai.utils import (
     get_content_capturing_mode,
@@ -888,3 +893,50 @@ class TestTelemetryHandler(unittest.TestCase):
 class AnyNonNone:
     def __eq__(self, other):
         return other is not None
+
+
+class TestToolSpanUtils(unittest.TestCase):
+    """Tests for tool call span utility functions"""
+
+    def test_get_tool_call_span_name(self):
+        """Test span name generation"""
+        tool = ToolCall(name="get_weather", arguments={}, id=None)
+        self.assertEqual(
+            _get_tool_call_span_name(tool), "execute_tool get_weather"
+        )
+
+        tool_no_name = ToolCall(name="", arguments={}, id=None)
+        self.assertEqual(
+            _get_tool_call_span_name(tool_no_name), "execute_tool"
+        )
+
+    def test_apply_tool_call_attributes_minimal(self):
+        """Test applying minimal tool call attributes"""
+        span = Mock()
+        tool = ToolCall(name="test_tool", arguments={}, id=None)
+
+        _apply_tool_call_attributes(span, tool, capture_content=False)
+
+        # Check required attribute
+        span.set_attribute.assert_any_call(
+            GenAI.GEN_AI_OPERATION_NAME, "execute_tool"
+        )
+        # Check recommended attribute
+        span.set_attribute.assert_any_call(GenAI.GEN_AI_TOOL_NAME, "test_tool")
+
+    def test_apply_tool_call_attributes_with_error(self):
+        """Test applying attributes when error present"""
+        span = Mock()
+        tool = ToolCall(
+            name="failing_tool",
+            arguments={},
+            id=None,
+            error_type="ValueError",
+        )
+
+        _apply_tool_call_attributes(span, tool, capture_content=False)
+
+        span.set_attribute.assert_any_call(
+            error_attributes.ERROR_TYPE, "ValueError"
+        )
+        span.set_status.assert_called_once()
