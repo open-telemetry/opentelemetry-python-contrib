@@ -20,7 +20,7 @@ from unittest import mock
 import pytest
 
 from opentelemetry._opamp.agent import OpAMPAgent
-from opentelemetry._opamp.callbacks import Callbacks
+from opentelemetry._opamp.callbacks import OpAMPCallbacks
 from opentelemetry._opamp.client import OpAMPClient
 from opentelemetry._opamp.proto import opamp_pb2
 
@@ -33,7 +33,7 @@ from opentelemetry._opamp.proto import opamp_pb2
 def test_connection_remote_config_status_heartbeat_disconnection(caplog):
     caplog.set_level(logging.DEBUG, logger="opentelemetry._opamp.agent")
 
-    class E2ECallbacks(Callbacks):
+    class E2ECallbacks(OpAMPCallbacks):
         def on_message(self, agent, client, message):
             logger = logging.getLogger(
                 "opentelemetry._opamp.agent.opamp_handler"
@@ -104,7 +104,7 @@ def test_connection_remote_config_status_heartbeat_disconnection(caplog):
 def test_with_server_not_responding(caplog):
     caplog.set_level(logging.DEBUG, logger="opentelemetry._opamp.agent")
 
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
 
     opamp_client = OpAMPClient(
         endpoint="https://localhost:4399/v1/opamp",
