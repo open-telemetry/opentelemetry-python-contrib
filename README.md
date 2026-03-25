@@ -127,7 +127,7 @@ For more information about the maintainer role, see the [community repository](h
 - [Jeremy Voss](https://github.com/jeremydvoss), Microsoft
 - [Keith Decker](https://github.com/keith-decker), Cisco/Splunk
 - [Liudmila Molkova](https://github.com/lmolkova), Grafana Labs
-- [Lukas Hering](https://github.com/herin049), Capital One
+- [Lukas Hering](https://github.com/herin049), Oracle
 - [Owais Lone](https://github.com/owais), Splunk
 - [Pablo Collins](https://github.com/pmcollins), Splunk
 - [Sanket Mehta](https://github.com/sanketmehta28), Cisco
