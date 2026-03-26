@@ -46,7 +46,7 @@ class Labeler:
                 String values exceeding this length will be truncated.
         """
         self._lock = threading.Lock()
-        self._attributes: Dict[str, Union[str, int, float, bool]] = {}
+        self._attributes: dict[str, Union[str, int, float, bool]] = {}
         self._max_custom_attrs = max_custom_attrs
         self._max_attr_value_length = max_attr_value_length
 
