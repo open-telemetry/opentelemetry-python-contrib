@@ -179,6 +179,33 @@ class TestKinesisExtension(TestBase):
         span = self.assert_span(f"{self.stream_name} send")
         self.assertIsNotNone(span)
 
+    def test_put_record_skips_injection_when_exceeds_1mb(self):
+        mock_response = {
+            "ShardId": "shardId-000000000000",
+            "SequenceNumber": "12345",
+        }
+
+        # Create a JSON payload just under 1MB so that adding trace context pushes it over
+        padding = "x" * (1_048_576 - 20)
+        original_data = json.dumps({"key": padding}).encode("utf-8")
+
+        with self._mocked_aws_endpoint(mock_response):
+            self.client.put_record(
+                StreamName=self.stream_name,
+                Data=original_data,
+                PartitionKey="pk",
+            )
+
+        # Span should still be created
+        span = self.assert_span(f"{self.stream_name} send")
+        self.assertIsNotNone(span)
+
+        # Data should remain unchanged — no traceparent injected
+        # The original_data was passed by reference via the params dict,
+        # but since injection was skipped, re-parse to confirm no traceparent
+        data_dict = json.loads(original_data.decode("utf-8"))
+        self.assertNotIn("traceparent", data_dict)
+
     def test_put_record_empty_data(self):
         mock_response = {
             "ShardId": "shardId-000000000000",

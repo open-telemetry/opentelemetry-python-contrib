@@ -112,7 +112,14 @@ class _OpPutRecord(_KinesisOperation):
 
         inject(data_dict)
         data_dump = json.dumps(data_dict)
-        entry["Data"] = json.dumps(data_dict).encode("utf-8") if use_bytes else data_dump
+        data_bytes = data_dump.encode("utf-8")
+        if len(data_bytes) > 1_048_576:
+            _logger.debug(
+                "botocore instrumentation: skipping Kinesis context injection, "
+                "record would exceed 1MB limit"
+            )
+            return
+        entry["Data"] = data_bytes if use_bytes else data_dump
 
 
 class _OpPutRecords(_OpPutRecord):
