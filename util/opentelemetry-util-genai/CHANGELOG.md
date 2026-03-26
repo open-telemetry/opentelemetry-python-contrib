@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Enrich ToolCall type ([#4218](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4218))
+- Enrich ToolCall type, breaking change: usage of ToolCall class renamed to ToolCallRequest 
+  ([#4218](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4218))
+- Add EmbeddingInvocation span lifecycle support
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4219](#4219))
 - Populate schema_url on metrics
   ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
 - Add workflow invocation type to genAI utils
@@ -42,9 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3795](#3795))
 - Make inputs / outputs / system instructions optional params to `on_completion`,
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3802](#3802)).
-  - Use a SHA256 hash of the system instructions as it's upload filename, and check
+- Use a SHA256 hash of the system instructions as it's upload filename, and check
   if the file exists before re-uploading it, ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3814](#3814)).
-
 
 ## Version 0.1b0 (2025-09-25)
 
@@ -58,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3752](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3752))
   ([#3759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3759))
   ([#3763](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3763))
+
 - Add a utility to parse the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable.
   Add `gen_ai_latest_experimental` as a new value to the Sem Conv stability flag ([#3716](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3716)).
 
