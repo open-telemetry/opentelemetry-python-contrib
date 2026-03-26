@@ -312,6 +312,7 @@ class EmbeddingInvocation(GenAIInvocation):
 >>>>>>> 195bcdb7a (GenAI Utils | Embedding Type and Span Creation (#4219))
 
 
+
 @dataclass
 class Error:
     message: str
