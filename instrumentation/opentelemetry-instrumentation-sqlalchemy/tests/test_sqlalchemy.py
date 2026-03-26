@@ -722,6 +722,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         connect_span = spans[0]
+        self.assertEqual(
+            connect_span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
         self.assertIn(DB_SYSTEM, connect_span.attributes)
         self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
         self.assertIn(DB_NAME, connect_span.attributes)
@@ -757,6 +761,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         connect_span = spans[0]
+        self.assertEqual(
+            connect_span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
         # HTTP attributes should use new semconv
         self.assertNotIn(NET_PEER_NAME, connect_span.attributes)
         # DB attributes should still use old semconv
@@ -792,6 +800,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         connect_span = spans[0]
+        self.assertEqual(
+            connect_span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
         self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
         self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
         self.assertIn(DB_NAMESPACE, connect_span.attributes)
@@ -829,6 +841,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         connect_span = spans[0]
+        self.assertEqual(
+            connect_span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
         # New DB conventions should be present
         self.assertIn(DB_SYSTEM_NAME, connect_span.attributes)
         self.assertEqual(connect_span.attributes[DB_SYSTEM_NAME], "sqlite")
@@ -862,6 +878,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         connect_span = spans[0]
+        self.assertEqual(
+            connect_span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
         # DB attributes should use old semconv only
         self.assertIn(DB_SYSTEM, connect_span.attributes)
         self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
@@ -895,6 +915,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         connect_span = spans[0]
+        self.assertEqual(
+            connect_span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
         # Old conventions
         self.assertIn(DB_SYSTEM, connect_span.attributes)
         self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
@@ -933,6 +957,10 @@ class TestSqlalchemyInstrumentation(TestBase):
         spans = self.memory_exporter.get_finished_spans()
 
         connect_span = spans[0]
+        self.assertEqual(
+            connect_span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
         # Both old and new DB conventions
         self.assertIn(DB_SYSTEM, connect_span.attributes)
         self.assertEqual(connect_span.attributes[DB_SYSTEM], "sqlite")
