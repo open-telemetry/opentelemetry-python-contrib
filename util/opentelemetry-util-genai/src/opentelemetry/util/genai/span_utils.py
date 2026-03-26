@@ -32,6 +32,7 @@ from opentelemetry.trace import (
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
+    AgentInvocation,
     EmbeddingInvocation,
     Error,
     GenAIInvocation,
@@ -108,10 +109,37 @@ def _get_embedding_span_name(invocation: EmbeddingInvocation) -> str:
     return _get_span_name(invocation)
 
 
+def _get_system_instructions_for_span(
+    system_instruction: list[MessagePart] | None = None,
+) -> dict[str, Any]:
+    """Get system instructions attribute formatted for span (JSON string format).
+
+    Can be used with agent/llm/tool invocations.
+    Returns empty dict if not in experimental mode or content capturing is disabled.
+    """
+    if (
+        not is_experimental_mode()
+        or get_content_capturing_mode()
+        not in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+        or not system_instruction
+    ):
+        return {}
+
+    return {
+        GenAI.GEN_AI_SYSTEM_INSTRUCTIONS: gen_ai_json_dumps(
+            [asdict(p) for p in system_instruction]
+        )
+    }
+
+
 def _get_llm_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instruction: list[MessagePart] | None = None,
+    tool_definitions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Get message attributes formatted for span (JSON string format).
 
@@ -141,6 +169,10 @@ def _get_llm_messages_attributes_for_span(
             gen_ai_json_dumps([asdict(p) for p in system_instruction])
             if system_instruction
             else None,
+        ),
+        (
+            GenAI.GEN_AI_TOOL_DEFINITIONS,
+            gen_ai_json_dumps(tool_definitions) if tool_definitions else None,
         ),
     )
 
@@ -357,6 +389,121 @@ def _get_embedding_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
+def _get_agent_span_name(invocation: AgentInvocation) -> str:
+    """Get the span name for an agent invocation."""
+    if invocation.agent_name:
+        return f"{invocation.operation_name} {invocation.agent_name}"
+    return invocation.operation_name
+
+
+def _get_agent_common_attributes(
+    invocation: AgentInvocation,
+) -> dict[str, Any]:
+    """Get common agent invocation attributes shared by finish() and error() paths."""
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),
+        (GenAI.GEN_AI_AGENT_NAME, invocation.agent_name),
+        (GenAI.GEN_AI_AGENT_ID, invocation.agent_id),
+        (GenAI.GEN_AI_AGENT_DESCRIPTION, invocation.agent_description),
+        ("gen_ai.agent.version", invocation.agent_version),
+        (GenAI.GEN_AI_CONVERSATION_ID, invocation.conversation_id),
+        (GenAI.GEN_AI_DATA_SOURCE_ID, invocation.data_source_id),
+        (GenAI.GEN_AI_OUTPUT_TYPE, invocation.output_type),
+        (server_attributes.SERVER_ADDRESS, invocation.server_address),
+        (server_attributes.SERVER_PORT, invocation.server_port),
+    )
+
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+        GenAI.GEN_AI_PROVIDER_NAME: invocation.provider,
+        **{key: value for key, value in optional_attrs if value is not None},
+    }
+
+
+def _get_agent_request_attributes(
+    invocation: AgentInvocation,
+) -> dict[str, Any]:
+    """Get GenAI request semantic convention attributes for agent invocation."""
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_TEMPERATURE, invocation.temperature),
+        (GenAI.GEN_AI_REQUEST_TOP_P, invocation.top_p),
+        (GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, invocation.frequency_penalty),
+        (GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, invocation.presence_penalty),
+        (GenAI.GEN_AI_REQUEST_MAX_TOKENS, invocation.max_tokens),
+        (GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, invocation.stop_sequences),
+        (GenAI.GEN_AI_REQUEST_SEED, invocation.seed),
+        (GenAI.GEN_AI_REQUEST_CHOICE_COUNT, invocation.choice_count),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
+def _get_agent_response_attributes(
+    invocation: AgentInvocation,
+) -> dict[str, Any]:
+    """Get GenAI response semantic convention attributes for agent invocation."""
+    finish_reasons: list[str] | None
+    if invocation.finish_reasons is not None:
+        finish_reasons = invocation.finish_reasons
+    elif invocation.output_messages:
+        finish_reasons = [
+            message.finish_reason
+            for message in invocation.output_messages
+            if message.finish_reason
+        ]
+    else:
+        finish_reasons = None
+
+    unique_finish_reasons = (
+        sorted(set(finish_reasons)) if finish_reasons else None
+    )
+
+    optional_attrs = (
+        (
+            GenAI.GEN_AI_RESPONSE_FINISH_REASONS,
+            unique_finish_reasons if unique_finish_reasons else None,
+        ),
+        (GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name),
+        (GenAI.GEN_AI_RESPONSE_ID, invocation.response_id),
+        (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
+        (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens),
+        (
+            "gen_ai.usage.cache_creation_input_tokens",
+            invocation.cache_creation_input_tokens,
+        ),
+        (
+            "gen_ai.usage.cache_read_input_tokens",
+            invocation.cache_read_input_tokens,
+        ),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
+def _apply_agent_finish_attributes(
+    span: Span, invocation: AgentInvocation
+) -> None:
+    """Apply attributes/messages common to agent finish() paths."""
+    span.update_name(_get_agent_span_name(invocation))
+
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_agent_common_attributes(invocation))
+    attributes.update(_get_agent_request_attributes(invocation))
+    attributes.update(_get_agent_response_attributes(invocation))
+    attributes.update(
+        _get_llm_messages_attributes_for_span(
+            invocation.input_messages,
+            invocation.output_messages,
+            invocation.system_instruction,
+            invocation.tool_definitions,
+        )
+    )
+    attributes.update(invocation.attributes)
+
+    if attributes:
+        span.set_attributes(attributes)
+
+
 __all__ = [
     "_apply_llm_finish_attributes",
     "_apply_error_attributes",
@@ -370,4 +517,10 @@ __all__ = [
     "_get_embedding_request_attributes",
     "_get_embedding_response_attributes",
     "_get_embedding_span_name",
+    "_get_agent_span_name",
+    "_apply_agent_finish_attributes",
+    "_get_system_instructions_for_span",
+    "_get_agent_common_attributes",
+    "_get_agent_request_attributes",
+    "_get_agent_response_attributes",
 ]

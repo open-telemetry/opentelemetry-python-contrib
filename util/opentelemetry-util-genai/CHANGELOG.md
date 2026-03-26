@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add `_BaseAgent` and `AgentInvocation` types with agent lifecycle support
+  ([#4274](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4274))
 - Add EmbeddingInvocation span lifecycle support
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4219](#4219))
 - Populate schema_url on metrics
