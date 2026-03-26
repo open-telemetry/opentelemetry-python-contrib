@@ -111,7 +111,9 @@ class CeleryGetter(Getter):
         if isinstance(value, str):
             value = (value,)
         elif isinstance(value, Iterable):
-            value = tuple(str(v) if not isinstance(v, str) else v for v in value)
+            value = tuple(
+                str(v) if not isinstance(v, str) else v for v in value
+            )
         else:
             value = (str(value),)
         return value
