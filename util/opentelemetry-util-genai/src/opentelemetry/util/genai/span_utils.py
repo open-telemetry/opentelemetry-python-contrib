@@ -445,4 +445,5 @@ __all__ = [
     "_get_embedding_request_attributes",
     "_get_embedding_response_attributes",
     "_get_embedding_span_name",
+    "_get_workflow_span_name",
 ]

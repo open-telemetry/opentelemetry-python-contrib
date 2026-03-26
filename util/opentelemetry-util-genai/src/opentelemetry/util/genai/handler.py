@@ -187,10 +187,10 @@ class TelemetryHandler:
             kind = SpanKind.CLIENT
         elif isinstance(invocation, WorkflowInvocation):
             span_name = _get_workflow_span_name(invocation)
-            kind = SpanKind.CLIENT
+            kind = SpanKind.INTERNAL
         else:
             span_name = ""
-            kind = ""
+            kind = SpanKind.CLIENT
         span = self._tracer.start_span(
             name=span_name,
             kind=kind,
