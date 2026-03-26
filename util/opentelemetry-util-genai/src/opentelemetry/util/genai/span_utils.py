@@ -40,7 +40,6 @@ from opentelemetry.util.genai.types import (
     LLMInvocation,
     MessagePart,
     OutputMessage,
-    _BaseAgent,
 )
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
@@ -390,51 +389,35 @@ def _get_embedding_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
-def _get_base_agent_common_attributes(
-    agent: _BaseAgent,
-) -> dict[str, Any]:
-    """Get common attributes shared by all agent operations (invoke_agent, create_agent)."""
-    optional_attrs = (
-        (GenAI.GEN_AI_REQUEST_MODEL, agent.request_model),
-        (GenAI.GEN_AI_PROVIDER_NAME, agent.provider),
-        (GenAI.GEN_AI_AGENT_NAME, agent.agent_name),
-        (GenAI.GEN_AI_AGENT_ID, agent.agent_id),
-        (GenAI.GEN_AI_AGENT_DESCRIPTION, agent.agent_description),
-        (GenAI.GEN_AI_AGENT_VERSION, agent.agent_version),
-        (server_attributes.SERVER_ADDRESS, agent.server_address),
-        (server_attributes.SERVER_PORT, agent.server_port),
-    )
-
-    return {
-        GenAI.GEN_AI_OPERATION_NAME: agent.operation_name,
-        **{key: value for key, value in optional_attrs if value is not None},
-    }
-
-
-def _get_base_agent_span_name(agent: _BaseAgent) -> str:
-    """Get the span name for any agent operation."""
-    if agent.agent_name:
-        return f"{agent.operation_name} {agent.agent_name}"
-    return agent.operation_name
+def _get_agent_span_name(invocation: AgentInvocation) -> str:
+    """Get the span name for an agent invocation."""
+    if invocation.agent_name:
+        return f"{invocation.operation_name} {invocation.agent_name}"
+    return invocation.operation_name
 
 
 def _get_agent_common_attributes(
     invocation: AgentInvocation,
 ) -> dict[str, Any]:
     """Get common agent invocation attributes shared by finish() and error() paths."""
-    attrs = _get_base_agent_common_attributes(invocation)
-
-    # Invoke-specific conditionally required attributes
-    invoke_attrs = (
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),
+        (GenAI.GEN_AI_AGENT_NAME, invocation.agent_name),
+        (GenAI.GEN_AI_AGENT_ID, invocation.agent_id),
+        (GenAI.GEN_AI_AGENT_DESCRIPTION, invocation.agent_description),
+        ("gen_ai.agent.version", invocation.agent_version),
         (GenAI.GEN_AI_CONVERSATION_ID, invocation.conversation_id),
         (GenAI.GEN_AI_DATA_SOURCE_ID, invocation.data_source_id),
         (GenAI.GEN_AI_OUTPUT_TYPE, invocation.output_type),
-    )
-    attrs.update(
-        {key: value for key, value in invoke_attrs if value is not None}
+        (server_attributes.SERVER_ADDRESS, invocation.server_address),
+        (server_attributes.SERVER_PORT, invocation.server_port),
     )
 
-    return attrs
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+        GenAI.GEN_AI_PROVIDER_NAME: invocation.provider,
+        **{key: value for key, value in optional_attrs if value is not None},
+    }
 
 
 def _get_agent_request_attributes(
@@ -485,11 +468,11 @@ def _get_agent_response_attributes(
         (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
         (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens),
         (
-            GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+            "gen_ai.usage.cache_creation_input_tokens",
             invocation.cache_creation_input_tokens,
         ),
         (
-            GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+            "gen_ai.usage.cache_read_input_tokens",
             invocation.cache_read_input_tokens,
         ),
     )
@@ -501,7 +484,7 @@ def _apply_agent_finish_attributes(
     span: Span, invocation: AgentInvocation
 ) -> None:
     """Apply attributes/messages common to agent finish() paths."""
-    span.update_name(_get_base_agent_span_name(invocation))
+    span.update_name(_get_agent_span_name(invocation))
 
     attributes: dict[str, Any] = {}
     attributes.update(_get_agent_common_attributes(invocation))
@@ -534,8 +517,7 @@ __all__ = [
     "_get_embedding_request_attributes",
     "_get_embedding_response_attributes",
     "_get_embedding_span_name",
-    "_get_base_agent_common_attributes",
-    "_get_base_agent_span_name",
+    "_get_agent_span_name",
     "_apply_agent_finish_attributes",
     "_get_system_instructions_for_span",
     "_get_agent_common_attributes",

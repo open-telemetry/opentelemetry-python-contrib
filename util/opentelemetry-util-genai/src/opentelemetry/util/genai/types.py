@@ -315,13 +315,6 @@ class EmbeddingInvocation(GenAIInvocation):
 class _BaseAgent(GenAIInvocation):
     """
     Shared base class for agent lifecycle types.
-
-    Contains fields common to all agent operations: identity, provider,
-    model, system instructions, server info, and telemetry plumbing.
-
-    Follows semconv for GenAI agent spans:
-    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md
-
     Do not instantiate directly — use AgentInvocation.
     """
 
@@ -340,26 +333,13 @@ class _BaseAgent(GenAIInvocation):
     server_address: str | None = None
     server_port: int | None = None
 
-    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
-    """
-    Additional attributes to set on spans and/or events.
-    """
-    # Monotonic start time in seconds (from timeit.default_timer) used
-    # for duration calculations to avoid mixing clock sources. This is
-    # populated by the TelemetryHandler when starting an invocation.
-    monotonic_start_s: float | None = None
-
 
 @dataclass
 class AgentInvocation(_BaseAgent):
     """
-    Represents an agent invocation (invoke_agent operation).
-
-    Follows semconv for GenAI agent spans:
-    https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#invoke-agent-span
-
-    When creating an AgentInvocation object, only update the data attributes.
-    The span and context_token attributes are set by the TelemetryHandler.
+    Represents a single agent invocation. When creating an AgentInvocation object,
+    only update the data attributes. The span and context_token attributes are
+    set by the TelemetryHandler.
     """
 
     operation_name: str = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
@@ -392,6 +372,11 @@ class AgentInvocation(_BaseAgent):
     )
     tool_definitions: list[dict[str, Any]] | None = None
 
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    """
+    Additional attributes to set on spans and/or events. These attributes
+    will not be set on metrics.
+    """
     metric_attributes: dict[str, Any] = field(
         default_factory=_new_str_any_dict
     )

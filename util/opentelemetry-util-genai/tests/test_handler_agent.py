@@ -63,7 +63,7 @@ class TestAgentInvocationHandler(_AgentTestBase):
 
     def test_span_kind_client_by_default(self) -> None:
         handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Agent")
+        invocation = AgentInvocation(agent_name="Agent", provider="openai")
         handler.start_agent(invocation)
         handler.stop_agent(invocation)
         self.assertEqual(
@@ -123,10 +123,8 @@ class TestAgentInvocationHandler(_AgentTestBase):
 
         attrs = self.span_exporter.get_finished_spans()[0].attributes
         self.assertEqual(attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS], 100)
-        self.assertEqual(
-            attrs[GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS], 25
-        )
-        self.assertEqual(attrs[GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS], 50)
+        self.assertEqual(attrs["gen_ai.usage.cache_creation_input_tokens"], 25)
+        self.assertEqual(attrs["gen_ai.usage.cache_read_input_tokens"], 50)
 
     def test_fail_sets_error_status(self) -> None:
         handler = self._make_handler()
@@ -157,7 +155,9 @@ class TestAgentInvocationHandler(_AgentTestBase):
     def test_context_manager_error(self) -> None:
         handler = self._make_handler()
         with self.assertRaises(ValueError):
-            with handler.agent(AgentInvocation(agent_name="Agent")):
+            with handler.agent(
+                AgentInvocation(agent_name="Agent", provider="openai")
+            ):
                 raise ValueError("test error")
 
         self.assertEqual(
