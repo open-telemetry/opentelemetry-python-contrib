@@ -60,6 +60,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import timeit
 from contextlib import contextmanager
 from typing import Iterator, TypeVar
@@ -83,8 +84,10 @@ from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _apply_workflow_finish_attributes,
     _get_embedding_span_name,
     _get_llm_span_name,
+    _get_workflow_span_name,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
@@ -92,8 +95,26 @@ from opentelemetry.util.genai.types import (
     Error,
     GenAIInvocation,
     LLMInvocation,
+    WorkflowInvocation,
 )
 from opentelemetry.util.genai.version import __version__
+
+_logger = logging.getLogger(__name__)
+
+
+def _safe_detach(invocation: GenAIInvocation) -> None:
+    """Detach the context token if still present, as a safety net."""
+    if invocation.context_token is not None:
+        try:
+            otel_context.detach(invocation.context_token)
+        except Exception:  # pylint: disable=broad-except
+            pass
+    if invocation.span is not None:
+        try:
+            invocation.span.end()
+        except Exception:  # pylint: disable=broad-except
+            pass
+
 
 _T = TypeVar("_T", bound=GenAIInvocation)
 
@@ -160,13 +181,19 @@ class TelemetryHandler:
         """Start a GenAI invocation and create a pending span entry."""
         if isinstance(invocation, LLMInvocation):
             span_name = _get_llm_span_name(invocation)
+            kind = SpanKind.CLIENT
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
+            kind = SpanKind.CLIENT
+        elif isinstance(invocation, WorkflowInvocation):
+            span_name = _get_workflow_span_name(invocation)
+            kind = SpanKind.CLIENT
         else:
             span_name = ""
+            kind = ""
         span = self._tracer.start_span(
             name=span_name,
-            kind=SpanKind.CLIENT,
+            kind=kind,
         )
         # Record a monotonic start timestamp (seconds) for duration
         # calculation using timeit.default_timer.
@@ -192,6 +219,9 @@ class TelemetryHandler:
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_embedding_metrics(invocation, span)
+            elif isinstance(invocation, WorkflowInvocation):
+                _apply_workflow_finish_attributes(span, invocation)
+                # TODO: Add workflow metrics when supported
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -222,6 +252,10 @@ class TelemetryHandler:
                 self._record_embedding_metrics(
                     invocation, span, error_type=error_type
                 )
+            elif isinstance(invocation, WorkflowInvocation):
+                _apply_workflow_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+                # TODO: Add workflow metrics when supported
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -303,6 +337,46 @@ class TelemetryHandler:
             self.fail(invocation, Error(message=str(exc), type=type(exc)))
             raise
         self.stop(invocation)
+
+    @contextmanager
+    def workflow(
+        self, invocation: WorkflowInvocation | None = None
+    ) -> Iterator[WorkflowInvocation]:
+        """Context manager for Workflow invocations.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = WorkflowInvocation()
+
+        try:
+            self.start(invocation)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning(
+                "Failed to start workflow telemetry", exc_info=True
+            )
+
+        try:
+            yield invocation
+        except Exception as exc:
+            try:
+                self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            except Exception:  # pylint: disable=broad-except
+                _logger.warning(
+                    "Failed to record workflow failure", exc_info=True
+                )
+                _safe_detach(invocation)
+            raise
+
+        try:
+            self.stop(invocation)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning("Failed to stop workflow telemetry", exc_info=True)
+            _safe_detach(invocation)
 
 
 def get_telemetry_handler(
