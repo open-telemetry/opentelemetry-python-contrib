@@ -22,6 +22,7 @@ from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
 
 from opentelemetry.context import detach
+from opentelemetry.instrumentation._labeler import enrich_metric_attributes
 from opentelemetry.instrumentation._semconv import (
     _filter_semconv_active_request_count_attr,
     _filter_semconv_duration_attrs,
@@ -227,7 +228,9 @@ class _DjangoMiddleware:
         )
         # Pass all of attributes to duration key because we will filter during response
         request.META[self._environ_duration_attr_key] = attributes
-        self._active_request_counter.add(1, active_requests_count_attrs)
+        self._active_request_counter.add(
+            1, enrich_metric_attributes(active_requests_count_attrs)
+        )
         if span.is_recording():
             attributes = extract_attributes_from_object(
                 request, self._traced_request_attrs, attributes
@@ -415,6 +418,9 @@ class _DjangoMiddleware:
                 target = duration_attrs.get(HTTP_TARGET)
                 if target:
                     duration_attrs_old[HTTP_TARGET] = target
+                duration_attrs_old = enrich_metric_attributes(
+                    duration_attrs_old
+                )
                 self._duration_histogram_old.record(
                     max(round(duration_s * 1000), 0),
                     duration_attrs_old,
@@ -423,11 +429,16 @@ class _DjangoMiddleware:
                 duration_attrs_new = _parse_duration_attrs(
                     duration_attrs, _StabilityMode.HTTP
                 )
+                duration_attrs_new = enrich_metric_attributes(
+                    duration_attrs_new
+                )
                 self._duration_histogram_new.record(
                     max(duration_s, 0),
                     duration_attrs_new,
                 )
-        self._active_request_counter.add(-1, active_requests_count_attrs)
+        self._active_request_counter.add(
+            -1, enrich_metric_attributes(active_requests_count_attrs)
+        )
 
         if activation and span:
             if exception:
