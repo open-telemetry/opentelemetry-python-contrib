@@ -17,6 +17,7 @@ from sqlite3 import dbapi2
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.test.test_base import TestBase
 
 
@@ -120,3 +121,83 @@ class TestSQLite3(TestBase):
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")
+
+
+class TestSQLite3Integration(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        SQLite3Instrumentor().uninstrument()
+
+    def test_uninstrument(self):
+        """Should stop generating spans after uninstrument."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = sqlite3.connect(":memory:")
+        cursor = cnx.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        SQLite3Instrumentor().uninstrument()
+
+        cnx = sqlite3.connect(":memory:")
+        cursor = cnx.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_uninstrument_connection(self):
+        """Should stop generating spans for uninstrumented connection."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = sqlite3.connect(":memory:")
+        cursor = cnx.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = SQLite3Instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute("INSERT INTO test (id) VALUES (1)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_no_op_tracer_provider(self):
+        """Should produce no spans with NoOpTracerProvider."""
+        SQLite3Instrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+        cnx = sqlite3.connect(":memory:")
+        cursor = cnx.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_suppress_instrumentation(self):
+        """Should produce no spans when suppressed."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = sqlite3.connect(":memory:")
+
+        with suppress_instrumentation():
+            cursor = cnx.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_span_failed(self):
+        """Should set error status on span when query fails."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = sqlite3.connect(":memory:")
+        cursor = cnx.cursor()
+
+        with self.assertRaises(Exception):
+            cursor.execute("SELECT * FROM nonexistent_table")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
