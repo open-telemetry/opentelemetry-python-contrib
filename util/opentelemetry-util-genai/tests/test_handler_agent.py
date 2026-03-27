@@ -39,8 +39,8 @@ class TestAgentCreationHandler(TestCase):
             provider="openai",
             request_model="gpt-4",
         )
-        handler.start_agent(creation)
-        handler.stop_agent(creation)
+        handler.start(creation)
+        handler.stop(creation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -54,8 +54,8 @@ class TestAgentCreationHandler(TestCase):
     def test_create_agent_span_kind_is_client(self) -> None:
         handler = self._make_handler()
         creation = AgentCreation(name="Client Agent")
-        handler.start_agent(creation)
-        handler.stop_agent(creation)
+        handler.start(creation)
+        handler.stop(creation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(spans[0].kind, SpanKind.CLIENT)
@@ -72,8 +72,8 @@ class TestAgentCreationHandler(TestCase):
             server_address="api.openai.com",
             server_port=443,
         )
-        handler.start_agent(creation)
-        handler.stop_agent(creation)
+        handler.start(creation)
+        handler.stop(creation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -89,9 +89,9 @@ class TestAgentCreationHandler(TestCase):
     def test_fail_create_agent(self) -> None:
         handler = self._make_handler()
         creation = AgentCreation(name="Bad Agent")
-        handler.start_agent(creation)
+        handler.start(creation)
         error = Error(message="creation failed", type=RuntimeError)
-        handler.fail_agent(creation, error)
+        handler.fail(creation, error)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -133,7 +133,7 @@ class TestAgentCreationHandler(TestCase):
     def test_stop_agent_without_start_is_noop(self) -> None:
         handler = self._make_handler()
         creation = AgentCreation(name="Not Started")
-        result = handler.stop_agent(creation)
+        result = handler.stop(creation)
         self.assertIs(result, creation)
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 
@@ -141,7 +141,7 @@ class TestAgentCreationHandler(TestCase):
         handler = self._make_handler()
         creation = AgentCreation(name="Not Started")
         error = Error(message="boom", type=RuntimeError)
-        result = handler.fail_agent(creation, error)
+        result = handler.fail(creation, error)
         self.assertIs(result, creation)
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 

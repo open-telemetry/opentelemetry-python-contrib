@@ -62,7 +62,7 @@ from __future__ import annotations
 
 import timeit
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Iterator, TypeVar
 
 from opentelemetry import context as otel_context
 from opentelemetry._logs import (
@@ -81,16 +81,24 @@ from opentelemetry.trace import (
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_creation_finish_attributes,
+    _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _get_creation_span_name,
+    _get_embedding_span_name,
+    _get_llm_span_name,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
     AgentCreation,
+    EmbeddingInvocation,
     Error,
+    GenAIInvocation,
     LLMInvocation,
 )
 from opentelemetry.util.genai.version import __version__
+
+_T = TypeVar("_T", bound=GenAIInvocation)
 
 
 class TelemetryHandler:
@@ -139,14 +147,30 @@ class TelemetryHandler:
             error_type=error_type,
         )
 
-    def start_llm(
-        self,
-        invocation: LLMInvocation,
-    ) -> LLMInvocation:
-        """Start an LLM invocation and create a pending span entry."""
-        # Create a span and attach it as current; keep the token to detach later
+    @staticmethod
+    def _record_embedding_metrics(
+        invocation: EmbeddingInvocation,
+        span: Span | None = None,
+        *,
+        error_type: str | None = None,
+    ) -> None:
+        # Metrics recorder currently supports LLMInvocation fields only.
+        # Keep embedding metrics as a no-op until dedicated embedding
+        # metric support is added.
+        return
+
+    def _start(self, invocation: _T) -> _T:
+        """Start a GenAI invocation and create a pending span entry."""
+        if isinstance(invocation, LLMInvocation):
+            span_name = _get_llm_span_name(invocation)
+        elif isinstance(invocation, EmbeddingInvocation):
+            span_name = _get_embedding_span_name(invocation)
+        elif isinstance(invocation, AgentCreation):
+            span_name = _get_creation_span_name(invocation)
+        else:
+            span_name = ""
         span = self._tracer.start_span(
-            name=f"{invocation.operation_name} {invocation.request_model}",
+            name=span_name,
             kind=SpanKind.CLIENT,
         )
         # Record a monotonic start timestamp (seconds) for duration
@@ -158,39 +182,91 @@ class TelemetryHandler:
         )
         return invocation
 
-    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pylint: disable=no-self-use
-        """Finalize an LLM invocation successfully and end its span."""
+    def _stop(self, invocation: _T) -> _T:
+        """Finalize a GenAI invocation successfully and end its span."""
         if invocation.context_token is None or invocation.span is None:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
         span = invocation.span
-        _apply_llm_finish_attributes(span, invocation)
-        self._record_llm_metrics(invocation, span)
-        _maybe_emit_llm_event(self._logger, span, invocation)
-        # Detach context and end span
-        otel_context.detach(invocation.context_token)
-        span.end()
+        try:
+            if isinstance(invocation, LLMInvocation):
+                _apply_llm_finish_attributes(span, invocation)
+                self._record_llm_metrics(invocation, span)
+                _maybe_emit_llm_event(self._logger, span, invocation)
+            elif isinstance(invocation, EmbeddingInvocation):
+                _apply_embedding_finish_attributes(span, invocation)
+                self._record_embedding_metrics(invocation, span)
+            elif isinstance(invocation, AgentCreation):
+                _apply_creation_finish_attributes(span, invocation)
+        finally:
+            # Detach context and end span even if finishing fails
+            otel_context.detach(invocation.context_token)
+            span.end()
         return invocation
 
-    def fail_llm(  # pylint: disable=no-self-use
+    def _fail(self, invocation: _T, error: Error) -> _T:
+        """Fail a GenAI invocation and end its span with error status."""
+        if invocation.context_token is None or invocation.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return invocation
+
+        span = invocation.span
+        error_type = error.type.__qualname__
+        try:
+            if isinstance(invocation, LLMInvocation):
+                _apply_llm_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+                self._record_llm_metrics(
+                    invocation, span, error_type=error_type
+                )
+                _maybe_emit_llm_event(
+                    self._logger, span, invocation, error_type
+                )
+            elif isinstance(invocation, EmbeddingInvocation):
+                _apply_embedding_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+                self._record_embedding_metrics(
+                    invocation, span, error_type=error_type
+                )
+            elif isinstance(invocation, AgentCreation):
+                _apply_creation_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+        finally:
+            # Detach context and end span even if finishing fails
+            otel_context.detach(invocation.context_token)
+            span.end()
+        return invocation
+
+    def start(
+        self,
+        invocation: _T,
+    ) -> _T:
+        """Start a GenAI invocation and create a pending span entry."""
+        return self._start(invocation)
+
+    def stop(self, invocation: _T) -> _T:
+        """Finalize a GenAI invocation successfully and end its span."""
+        return self._stop(invocation)
+
+    def fail(self, invocation: _T, error: Error) -> _T:
+        """Fail a GenAI invocation and end its span with error status."""
+        return self._fail(invocation, error)
+
+    # LLM-specific convenience methods
+    def start_llm(self, invocation: LLMInvocation) -> LLMInvocation:
+        """Start an LLM invocation and create a pending span entry."""
+        return self._start(invocation)
+
+    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
+        """Finalize an LLM invocation successfully and end its span."""
+        return self._stop(invocation)
+
+    def fail_llm(
         self, invocation: LLMInvocation, error: Error
     ) -> LLMInvocation:
         """Fail an LLM invocation and end its span with error status."""
-        if invocation.context_token is None or invocation.span is None:
-            # TODO: Provide feedback that this invocation was not started
-            return invocation
-
-        span = invocation.span
-        _apply_llm_finish_attributes(invocation.span, invocation)
-        _apply_error_attributes(invocation.span, error)
-        error_type = getattr(error.type, "__qualname__", None)
-        self._record_llm_metrics(invocation, span, error_type=error_type)
-        _maybe_emit_llm_event(self._logger, span, invocation, error)
-        # Detach context and end span
-        otel_context.detach(invocation.context_token)
-        span.end()
-        return invocation
+        return self._fail(invocation, error)
 
     @contextmanager
     def llm(
@@ -216,69 +292,49 @@ class TelemetryHandler:
             raise
         self.stop_llm(invocation)
 
-    # ---- Agent lifecycle ----
-
-    def start_agent(
-        self,
-        agent: AgentCreation,
-    ) -> AgentCreation:
-        """Start an agent operation (create or invoke) and create a pending span entry."""
-        span_name = f"{agent.operation_name} {agent.name}".strip()
-        span = self._tracer.start_span(
-            name=span_name,
-            kind=SpanKind.CLIENT,
-        )
-        agent.monotonic_start_s = timeit.default_timer()
-        agent.span = span
-        agent.context_token = otel_context.attach(set_span_in_context(span))
-        return agent
-
-    def stop_agent(self, agent: AgentCreation) -> AgentCreation:  # pylint: disable=no-self-use
-        """Finalize an agent operation successfully and end its span."""
-        if agent.context_token is None or agent.span is None:
-            return agent
-
-        span = agent.span
-        _apply_creation_finish_attributes(span, agent)
-        otel_context.detach(agent.context_token)
-        span.end()
-        return agent
-
-    def fail_agent(  # pylint: disable=no-self-use
-        self, agent: AgentCreation, error: Error
-    ) -> AgentCreation:
-        """Fail an agent operation and end its span with error status."""
-        if agent.context_token is None or agent.span is None:
-            return agent
-
-        span = agent.span
-        _apply_creation_finish_attributes(span, agent)
-        _apply_error_attributes(span, error)
-        otel_context.detach(agent.context_token)
-        span.end()
-        return agent
-
     @contextmanager
-    def create_agent(
-        self, creation: AgentCreation | None = None
-    ) -> Iterator[AgentCreation]:
-        """Context manager for agent creation.
+    def embedding(
+        self, invocation: EmbeddingInvocation | None = None
+    ) -> Iterator[EmbeddingInvocation]:
+        """Context manager for Embedding invocations.
 
-        Only set data attributes on the creation object, do not modify the span or context.
+        Only set data attributes on the invocation object, do not modify the span or context.
 
-        Starts the span on entry. On normal exit, finalizes the creation and ends the span.
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
         If an exception occurs inside the context, marks the span as error, ends it, and
         re-raises the original exception.
         """
-        if creation is None:
-            creation = AgentCreation()
-        self.start_agent(creation)
+        if invocation is None:
+            invocation = EmbeddingInvocation()
+        self.start(invocation)
         try:
-            yield creation
+            yield invocation
         except Exception as exc:
-            self.fail_agent(creation, Error(message=str(exc), type=type(exc)))
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
             raise
-        self.stop_agent(creation)
+        self.stop(invocation)
+
+    @contextmanager
+    def create_agent(
+        self, invocation: AgentCreation | None = None
+    ) -> Iterator[AgentCreation]:
+        """Context manager for agent creation.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = AgentCreation()
+        self.start(invocation)
+        try:
+            yield invocation
+        except Exception as exc:
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            raise
+        self.stop(invocation)
 
 
 def get_telemetry_handler(

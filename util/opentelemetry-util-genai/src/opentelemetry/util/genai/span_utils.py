@@ -33,7 +33,9 @@ from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
     AgentCreation,
+    EmbeddingInvocation,
     Error,
+    GenAIInvocation,
     InputMessage,
     LLMInvocation,
     MessagePart,
@@ -69,9 +71,42 @@ def _get_llm_common_attributes(
     }
 
 
+def _get_embedding_common_attributes(
+    invocation: EmbeddingInvocation,
+) -> dict[str, Any]:
+    """Get common Embedding attributes shared by finish() and error() paths.
+
+    Returns a dictionary of attributes.
+    """
+    optional_attrs = (
+        (server_attributes.SERVER_ADDRESS, invocation.server_address),
+        (server_attributes.SERVER_PORT, invocation.server_port),
+    )
+
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+        GenAI.GEN_AI_PROVIDER_NAME: invocation.provider,
+        **{key: value for key, value in optional_attrs if value is not None},
+    }
+
+
+def _get_span_name(
+    invocation: GenAIInvocation,
+) -> str:
+    """Get the span name for a GenAI invocation."""
+    operation_name = getattr(invocation, "operation_name", None) or ""
+    request_model = getattr(invocation, "request_model", None) or ""
+    return f"{operation_name} {request_model}".strip()
+
+
 def _get_llm_span_name(invocation: LLMInvocation) -> str:
     """Get the span name for an LLM invocation."""
-    return f"{invocation.operation_name} {invocation.request_model}".strip()
+    return _get_span_name(invocation)
+
+
+def _get_embedding_span_name(invocation: EmbeddingInvocation) -> str:
+    """Get the span name for an Embedding invocation."""
+    return _get_span_name(invocation)
 
 
 def _get_llm_messages_attributes_for_span(
@@ -152,7 +187,7 @@ def _maybe_emit_llm_event(
     logger: Logger | None,
     span: Span,
     invocation: LLMInvocation,
-    error: Error | None = None,
+    error_type: str | None = None,
 ) -> None:
     """Emit a gen_ai.client.inference.operation.details event to the logger.
 
@@ -180,8 +215,8 @@ def _maybe_emit_llm_event(
     )
 
     # Add error.type if operation ended in error
-    if error is not None:
-        attributes[error_attributes.ERROR_TYPE] = error.type.__qualname__
+    if error_type is not None:
+        attributes[error_attributes.ERROR_TYPE] = error_type
 
     # Create and emit the event
     context = set_span_in_context(span, get_current())
@@ -219,13 +254,31 @@ def _apply_llm_finish_attributes(
         span.set_attributes(attributes)
 
 
-def _apply_error_attributes(span: Span, error: Error) -> None:
+def _apply_embedding_finish_attributes(
+    span: Span, invocation: EmbeddingInvocation
+) -> None:
+    """Apply attributes common to embedding finish() paths."""
+    # Update span name
+    span.update_name(_get_embedding_span_name(invocation))
+
+    # Build all attributes by reusing the attribute getter functions
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_embedding_common_attributes(invocation))
+    attributes.update(_get_embedding_request_attributes(invocation))
+    attributes.update(_get_embedding_response_attributes(invocation))
+
+    attributes.update(invocation.attributes)
+
+    # Set all attributes on the span
+    if attributes:
+        span.set_attributes(attributes)
+
+
+def _apply_error_attributes(span: Span, error: Error, error_type: str) -> None:
     """Apply status and error attributes common to error() paths."""
     span.set_status(Status(StatusCode.ERROR, error.message))
     if span.is_recording():
-        span.set_attribute(
-            error_attributes.ERROR_TYPE, error.type.__qualname__
-        )
+        span.set_attribute(error_attributes.ERROR_TYPE, error_type)
 
 
 def _get_llm_request_attributes(
@@ -240,6 +293,19 @@ def _get_llm_request_attributes(
         (GenAI.GEN_AI_REQUEST_MAX_TOKENS, invocation.max_tokens),
         (GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, invocation.stop_sequences),
         (GenAI.GEN_AI_REQUEST_SEED, invocation.seed),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
+def _get_embedding_request_attributes(
+    invocation: EmbeddingInvocation,
+) -> dict[str, Any]:
+    """Get GenAI request semantic convention attributes."""
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),
+        (GenAI.GEN_AI_EMBEDDINGS_DIMENSION_COUNT, invocation.dimension_count),
+        (GenAI.GEN_AI_REQUEST_ENCODING_FORMATS, invocation.encoding_formats),
     )
 
     return {key: value for key, value in optional_attrs if value is not None}
@@ -280,23 +346,34 @@ def _get_llm_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
+def _get_embedding_response_attributes(
+    invocation: EmbeddingInvocation,
+) -> dict[str, Any]:
+    """Get GenAI response semantic convention attributes."""
+    optional_attrs = (
+        (GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name),
+        (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
 def _get_base_agent_common_attributes(
-    agent: AgentCreation,
+    invocation: AgentCreation,
 ) -> dict[str, Any]:
     """Get common attributes shared by all agent operations (invoke_agent, create_agent)."""
     optional_attrs = (
-        (GenAI.GEN_AI_REQUEST_MODEL, agent.request_model),
-        (GenAI.GEN_AI_PROVIDER_NAME, agent.provider),
-        (GenAI.GEN_AI_AGENT_NAME, agent.name),
-        (GenAI.GEN_AI_AGENT_ID, agent.agent_id),
-        (GenAI.GEN_AI_AGENT_DESCRIPTION, agent.description),
-        ("gen_ai.agent.version", agent.version),
-        (server_attributes.SERVER_ADDRESS, agent.server_address),
-        (server_attributes.SERVER_PORT, agent.server_port),
+        (GenAI.GEN_AI_AGENT_NAME, invocation.name),
+        (GenAI.GEN_AI_AGENT_ID, invocation.agent_id),
+        (GenAI.GEN_AI_AGENT_DESCRIPTION, invocation.description),
+        ("gen_ai.agent.version", invocation.version),
+        (server_attributes.SERVER_ADDRESS, invocation.server_address),
+        (server_attributes.SERVER_PORT, invocation.server_port),
     )
 
     attributes: dict[str, Any] = {
-        GenAI.GEN_AI_OPERATION_NAME: agent.operation_name,
+        GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+        GenAI.GEN_AI_PROVIDER_NAME: invocation.provider,
         **{key: value for key, value in optional_attrs if value is not None},
     }
 
@@ -308,44 +385,50 @@ def _get_base_agent_common_attributes(
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         )
-        and agent.system_instructions
+        and invocation.system_instructions
     ):
         attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
-            [asdict(p) for p in agent.system_instructions]
+            [asdict(p) for p in invocation.system_instructions]
         )
 
     return attributes
 
 
-def _get_base_agent_span_name(agent: AgentCreation) -> str:
-    """Get the span name for any agent operation."""
-    if agent.name:
-        return f"{agent.operation_name} {agent.name}"
-    return agent.operation_name
-
-
-def _get_creation_common_attributes(
-    creation: AgentCreation,
+def _get_creation_request_attributes(
+    invocation: AgentCreation,
 ) -> dict[str, Any]:
-    """Get common agent creation attributes."""
-    return _get_base_agent_common_attributes(creation)
+    """Get GenAI request semantic convention attributes for agent creation."""
+    optional_attrs = ((GenAI.GEN_AI_REQUEST_MODEL, invocation.request_model),)
+
+    return {key: value for key, value in optional_attrs if value is not None}
 
 
-def _get_creation_span_name(creation: AgentCreation) -> str:
+def _get_base_agent_span_name(invocation: AgentCreation) -> str:
+    """Get the span name for any agent operation."""
+    if invocation.name:
+        return f"{invocation.operation_name} {invocation.name}"
+    return invocation.operation_name
+
+
+def _get_creation_span_name(invocation: AgentCreation) -> str:
     """Get the span name for an agent creation."""
-    return _get_base_agent_span_name(creation)
+    return _get_base_agent_span_name(invocation)
 
 
 def _apply_creation_finish_attributes(
-    span: Span, creation: AgentCreation
+    span: Span, invocation: AgentCreation
 ) -> None:
     """Apply attributes common to agent creation finish() paths."""
-    span.update_name(_get_creation_span_name(creation))
+    # Update span name
+    span.update_name(_get_creation_span_name(invocation))
 
+    # Build all attributes by reusing the attribute getter functions
     attributes: dict[str, Any] = {}
-    attributes.update(_get_creation_common_attributes(creation))
-    attributes.update(creation.attributes)
+    attributes.update(_get_base_agent_common_attributes(invocation))
+    attributes.update(_get_creation_request_attributes(invocation))
+    attributes.update(invocation.attributes)
 
+    # Set all attributes on the span
     if attributes:
         span.set_attributes(attributes)
 
@@ -358,9 +441,14 @@ __all__ = [
     "_get_llm_response_attributes",
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
+    "_apply_embedding_finish_attributes",
+    "_get_embedding_common_attributes",
+    "_get_embedding_request_attributes",
+    "_get_embedding_response_attributes",
+    "_get_embedding_span_name",
     "_get_base_agent_common_attributes",
     "_get_base_agent_span_name",
     "_apply_creation_finish_attributes",
-    "_get_creation_common_attributes",
+    "_get_creation_request_attributes",
     "_get_creation_span_name",
 ]

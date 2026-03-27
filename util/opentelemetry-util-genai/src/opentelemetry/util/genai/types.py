@@ -235,9 +235,8 @@ class LLMInvocation(GenAIInvocation):
     set by the TelemetryHandler.
     """
 
-    request_model: str | None = None
-    # Chat by default
     operation_name: str = GenAI.GenAiOperationNameValues.CHAT.value
+    request_model: str | None = None
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -277,34 +276,72 @@ class LLMInvocation(GenAIInvocation):
 
 
 @dataclass
+class EmbeddingInvocation(GenAIInvocation):
+    """
+    Represents a single embedding model invocation. When creating an
+    EmbeddingInvocation object, only update the data attributes. The span
+    and context_token attributes are set by the TelemetryHandler.
+    """
+
+    operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+    request_model: str | None = None
+    provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
+    server_address: str | None = None
+    server_port: int | None = None
+
+    # encoding_formats can be multi-value -> combinational cardinality risk.
+    # Keep on spans/events only.
+    encoding_formats: list[str] | None = None
+    input_tokens: int | None = None
+    dimension_count: int | None = None
+    response_model_name: str | None = None
+
+    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    """
+    Additional attributes to set on spans and/or events. These attributes
+    will not be set on metrics.
+    """
+
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of a low cardinality.
+    These attributes will not be set on spans or events.
+    """
+
+
+@dataclass
 class _BaseAgent(GenAIInvocation):
     """Shared base class for agent lifecycle types. Do not instantiate
     directly — use AgentCreation (or AgentInvocation in future).
     The span and context_token attributes are set by the TelemetryHandler.
     """
 
-    # Agent identity
     name: str | None = None
     agent_id: str | None = None
     description: str | None = None
     version: str | None = None
-
-    # Request
     request_model: str | None = None
     provider: str | None = None
-
-    # Content (Opt-In)
     system_instructions: list[MessagePart] = field(
         default_factory=_new_system_instruction
     )
-
-    # Server
     server_address: str | None = None
     server_port: int | None = None
 
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
     """
-    Additional attributes to set on spans and/or events.
+    Additional attributes to set on spans and/or events. These attributes
+    will not be set on metrics.
+    """
+
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of a low cardinality.
+    These attributes will not be set on spans or events.
     """
 
 
