@@ -152,6 +152,12 @@ import redis
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _set_db_statement,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.redis.package import _instruments
 from opentelemetry.instrumentation.redis.util import (
@@ -166,9 +172,6 @@ from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     unwrap,
-)
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_STATEMENT,
 )
 from opentelemetry.trace import (
     StatusCode,
@@ -222,6 +225,15 @@ def _traced_execute_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
+    # Get semconv opt-in modes for database and HTTP signal types
+    _OpenTelemetrySemanticConventionStability._initialize()
+    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.DATABASE
+    )
+    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.HTTP
+    )
+
     def _traced_execute_command(
         func: Callable[..., R],
         instance: RedisInstance,
@@ -237,9 +249,20 @@ def _traced_execute_factory(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, query)
-                _set_connection_attributes(span, instance)
-                span.set_attribute("db.redis.args_length", len(args))
+                span_attrs = {}
+                _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
+                span_attrs["db.redis.args_length"] = len(args)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
+                )
                 if span.name == "redis.create_index":
                     _add_create_attributes(span, args)
             if callable(request_hook):
@@ -260,6 +283,15 @@ def _traced_execute_pipeline_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
+    # Get semconv opt-in modes for database and HTTP signal types
+    _OpenTelemetrySemanticConventionStability._initialize()
+    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.DATABASE
+    )
+    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.HTTP
+    )
+
     def _traced_execute_pipeline(
         func: Callable[..., R],
         instance: PipelineInstance,
@@ -279,10 +311,21 @@ def _traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, resource)
-                _set_connection_attributes(span, instance)
-                span.set_attribute(
-                    "db.redis.pipeline_length", len(command_stack)
+                span_attrs = {}
+                _set_db_statement(
+                    span_attrs, resource, db_sem_conv_opt_in_mode
+                )
+                span_attrs["db.redis.pipeline_length"] = len(command_stack)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
                 )
 
             response = None
@@ -308,6 +351,15 @@ def _async_traced_execute_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
+    # Get semconv opt-in modes for database and HTTP signal types
+    _OpenTelemetrySemanticConventionStability._initialize()
+    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.DATABASE
+    )
+    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.HTTP
+    )
+
     async def _async_traced_execute_command(
         func: Callable[..., Awaitable[R]],
         instance: AsyncRedisInstance,
@@ -324,9 +376,20 @@ def _async_traced_execute_factory(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, query)
-                _set_connection_attributes(span, instance)
-                span.set_attribute("db.redis.args_length", len(args))
+                span_attrs = {}
+                _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
+                span_attrs["db.redis.args_length"] = len(args)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
+                )
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = await func(*args, **kwargs)
@@ -342,6 +405,15 @@ def _async_traced_execute_pipeline_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
+    # Get semconv opt-in modes for database and HTTP signal types
+    _OpenTelemetrySemanticConventionStability._initialize()
+    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.DATABASE
+    )
+    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        _OpenTelemetryStabilitySignalType.HTTP
+    )
+
     async def _async_traced_execute_pipeline(
         func: Callable[..., Awaitable[R]],
         instance: AsyncPipelineInstance,
@@ -363,10 +435,21 @@ def _async_traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, resource)
-                _set_connection_attributes(span, instance)
-                span.set_attribute(
-                    "db.redis.pipeline_length", len(command_stack)
+                span_attrs = {}
+                _set_db_statement(
+                    span_attrs, resource, db_sem_conv_opt_in_mode
+                )
+                span_attrs["db.redis.pipeline_length"] = len(command_stack)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
                 )
 
             response = None
@@ -540,12 +623,20 @@ def _instrument_client(
 class RedisInstrumentor(BaseInstrumentor):
     @staticmethod
     def _get_tracer(**kwargs):
+        # Initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        # Redis instrumentation supports both DATABASE and HTTP signal types
+        signal_types = [
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        ]
+
         tracer_provider = kwargs.get("tracer_provider")
         return get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types(signal_types),
         )
 
     def instrument(
