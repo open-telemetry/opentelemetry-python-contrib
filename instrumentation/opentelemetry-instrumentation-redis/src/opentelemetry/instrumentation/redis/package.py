@@ -14,3 +14,5 @@
 
 
 _instruments = ("redis >= 2.6",)
+
+_semconv_status = "migration"
