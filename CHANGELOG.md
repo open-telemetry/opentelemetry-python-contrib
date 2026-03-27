@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
   ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
 
+### Changed
+
+- Remove redundant `pylint: disable=attribute-defined-outside-init` comments and add rule to global `.pylintrc` disable list
+  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
+
 ### Breaking changes
 
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
