@@ -65,6 +65,7 @@ members = [
     "opentelemetry-instrumentation-sqlalchemy",
     "opentelemetry-instrumentation-sqlite3",
     "opentelemetry-instrumentation-starlette",
+    "opentelemetry-instrumentation-structlog",
     "opentelemetry-instrumentation-system-metrics",
     "opentelemetry-instrumentation-threading",
     "opentelemetry-instrumentation-tornado",
@@ -3997,6 +3998,27 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
+name = "opentelemetry-instrumentation-structlog"
+source = { editable = "instrumentation/opentelemetry-instrumentation-structlog" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+]
+
+[package.optional-dependencies]
+instruments = [
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "structlog", marker = "extra == 'instruments'", specifier = ">=21.1" },
+]
+provides-extras = ["instruments"]
+
+[[package]]
 name = "opentelemetry-instrumentation-system-metrics"
 source = { editable = "instrumentation/opentelemetry-instrumentation-system-metrics" }
 dependencies = [
@@ -4282,6 +4304,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-requests", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-sqlalchemy", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-sqlite3" },
+    { name = "opentelemetry-instrumentation-structlog", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-system-metrics" },
     { name = "opentelemetry-instrumentation-threading" },
     { name = "opentelemetry-instrumentation-tornado" },
@@ -4356,6 +4379,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-requests", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-requests" },
     { name = "opentelemetry-instrumentation-sqlalchemy", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-sqlalchemy" },
     { name = "opentelemetry-instrumentation-sqlite3", editable = "instrumentation/opentelemetry-instrumentation-sqlite3" },
+    { name = "opentelemetry-instrumentation-structlog", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-structlog" },
     { name = "opentelemetry-instrumentation-system-metrics", editable = "instrumentation/opentelemetry-instrumentation-system-metrics" },
     { name = "opentelemetry-instrumentation-threading", editable = "instrumentation/opentelemetry-instrumentation-threading" },
     { name = "opentelemetry-instrumentation-tornado", editable = "instrumentation/opentelemetry-instrumentation-tornado" },
@@ -5890,6 +5914,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
+]
+
+[[package]]
+name = "structlog"
+version = "21.5.0"
+source = { registry = "https://pypi.org/simple/" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/77/e38019e698b0c0134f903ab40e87f0975813ca7f74dad287272788134f03/structlog-21.5.0.tar.gz", hash = "sha256:68c4c29c003714fe86834f347cb107452847ba52414390a7ee583472bde00fc9", size = 473089, upload-time = "2021-12-16T12:48:11.976Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/a2/7c5d78fa0b6fc4f249d0a732811b2cef979d16677e21f10637bbedcd0e6a/structlog-21.5.0-py3-none-any.whl", hash = "sha256:fd7922e195262b337da85c2a91c84be94ccab1f8fd1957bd6986f6904e3761c8", size = 53394, upload-time = "2021-12-16T12:48:09.837Z" },
 ]
 
 [[package]]
