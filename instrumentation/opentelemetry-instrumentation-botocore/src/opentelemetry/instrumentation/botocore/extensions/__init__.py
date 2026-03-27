@@ -36,6 +36,7 @@ _BOTOCORE_EXTENSIONS = {
     "stepfunctions": _lazy_load(".sfns", "_StepFunctionsExtension"),
     "sns": _lazy_load(".sns", "_SnsExtension"),
     "sqs": _lazy_load(".sqs", "_SqsExtension"),
+    "kinesis": _lazy_load(".kinesis", "_KinesisExtension"),
 }
 
 _AIOBOTOCORE_EXTENSIONS = {
