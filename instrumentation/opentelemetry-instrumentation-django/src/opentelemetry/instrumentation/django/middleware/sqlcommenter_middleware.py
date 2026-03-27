@@ -18,7 +18,6 @@ from typing import Any, Type, TypeVar
 # pylint: disable=no-name-in-module
 from django import conf, get_version
 from django.db import connections
-from django.db.backends.utils import CursorDebugWrapper
 
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
@@ -121,9 +120,5 @@ class _QueryWrapper:
         # See:
         #  * https://github.com/basecamp/marginalia/issues/61
         #  * https://github.com/basecamp/marginalia/pull/80
-
-        # Add the query to the query log if debugging.
-        if isinstance(context["cursor"], CursorDebugWrapper):
-            context["connection"].queries_log.append(sql)
 
         return execute(sql, params, many, context)
