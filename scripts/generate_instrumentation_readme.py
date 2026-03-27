@@ -90,7 +90,3 @@ if __name__ == "__main__":
     root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     instrumentation_path = os.path.join(root_path, "instrumentation")
     main(instrumentation_path)
-    genai_instrumentation_path = os.path.join(
-        root_path, "instrumentation-genai"
-    )
-    main(genai_instrumentation_path)
