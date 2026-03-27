@@ -5,9 +5,8 @@ name: Lint 0
 
 on:
   push:
-    branches-ignore:
-    - 'release/*'
-    - 'otelbot/*'
+    branches:
+    - 'main'
   pull_request:
 
 permissions:
@@ -392,25 +391,6 @@ jobs:
 
       - name: Run tests
         run: tox -e lint-instrumentation-dbapi
-
-  lint-instrumentation-boto:
-    name: instrumentation-boto
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e lint-instrumentation-boto
 
   lint-instrumentation-asyncclick:
     name: instrumentation-asyncclick
