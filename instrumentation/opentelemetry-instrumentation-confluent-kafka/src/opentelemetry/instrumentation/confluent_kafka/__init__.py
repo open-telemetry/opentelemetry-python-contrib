@@ -370,7 +370,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationTypeValues.RECEIVE,
+                operation=MessagingOperationTypeValues.SEND,
             )  # Replace
             propagate.inject(
                 headers,
