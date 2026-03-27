@@ -533,7 +533,7 @@ class _GenerateContentInstrumentationHelper:
             _StabilityMode.DEFAULT,
             _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
         }:
-            raise RuntimeError(f"{sem_conv_opt_in_mode} mode not supported")
+            raise ValueError(f"{sem_conv_opt_in_mode} mode not supported")
         self.experimental_sem_convs_enabled = (
             sem_conv_opt_in_mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
         )
