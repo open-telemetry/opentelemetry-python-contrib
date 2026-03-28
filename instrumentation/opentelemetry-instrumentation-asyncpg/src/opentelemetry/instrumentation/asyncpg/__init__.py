@@ -114,11 +114,24 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
 
 class AsyncPGInstrumentor(BaseInstrumentor):
     _leading_comment_remover = re.compile(r"^/\*.*?\*/")
+    _CLEANUP_QUERIES = frozenset([
+        "SELECT pg_advisory_unlock_all()",
+        "CLOSE ALL",
+        "UNLISTEN *",
+        "RESET ALL",
+    ])
     _tracer = None
+    
 
-    def __init__(self, capture_parameters=False):
+    def _is_cleanup_query(self, query: str) -> bool:
+        if query is None:
+            return False
+        return any(q in query for q in self._CLEANUP_QUERIES)
+
+    def __init__(self, capture_parameters=False, capture_connection_cleanup=True):
         super().__init__()
         self.capture_parameters = capture_parameters
+        self.capture_connection_cleanup = capture_connection_cleanup
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -184,7 +197,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             args[0],
             args[1:] if self.capture_parameters else None,
         )
-
+        if not self.capture_connection_cleanup and self._is_cleanup_query(args[0]):
+            return await func(*args, **kwargs)
+        
         with self._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:

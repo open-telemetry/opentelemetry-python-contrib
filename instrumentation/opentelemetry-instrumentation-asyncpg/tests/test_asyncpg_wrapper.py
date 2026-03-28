@@ -1,20 +1,20 @@
 import asyncio
 from unittest import mock
-
+ 
 import pytest
 from asyncpg import Connection, Record, cursor
-
+ 
 try:
     # wrapt 2.0.0+
     from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
-
+ 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 from opentelemetry.test.test_base import TestBase
-
-
+ 
+ 
 class TestAsyncPGInstrumentation(TestBase):
     def test_duplicated_instrumentation_can_be_uninstrumented(self):
         AsyncPGInstrumentor().instrument()
@@ -26,7 +26,7 @@ class TestAsyncPGInstrumentation(TestBase):
             self.assertFalse(
                 hasattr(method, "_opentelemetry_ext_asyncpg_applied")
             )
-
+ 
     def test_duplicated_instrumentation_works(self):
         first = AsyncPGInstrumentor()
         first.instrument()
@@ -34,7 +34,7 @@ class TestAsyncPGInstrumentation(TestBase):
         second.instrument()
         self.assertIsNotNone(first._tracer)
         self.assertIsNotNone(second._tracer)
-
+ 
     def test_duplicated_uninstrumentation(self):
         AsyncPGInstrumentor().instrument()
         AsyncPGInstrumentor().uninstrument()
@@ -45,7 +45,7 @@ class TestAsyncPGInstrumentation(TestBase):
             self.assertFalse(
                 hasattr(method, "_opentelemetry_ext_asyncpg_applied")
             )
-
+ 
     def test_cursor_instrumentation(self):
         def assert_wrapped(assert_fnc):
             for cls, methods in [
@@ -58,89 +58,119 @@ class TestAsyncPGInstrumentation(TestBase):
                         isinstance(method, BaseObjectProxy),
                         f"{method} isinstance {type(method)}",
                     )
-
+ 
         assert_wrapped(self.assertFalse)
         AsyncPGInstrumentor().instrument()
         assert_wrapped(self.assertTrue)
         AsyncPGInstrumentor().uninstrument()
         assert_wrapped(self.assertFalse)
-
+ 
     def test_cursor_span_creation(self):
         """Test the cursor wrapper if it creates spans correctly."""
-
+ 
         # Mock out all interaction with postgres
         async def bind_mock(*args, **kwargs):
             return []
-
+ 
         async def exec_mock(*args, **kwargs):
             return [], None, True
-
+ 
         conn = mock.Mock()
         conn.is_closed = lambda: False
-
+ 
         conn._protocol = mock.Mock()
         conn._protocol.bind = bind_mock
         conn._protocol.execute = exec_mock
         conn._protocol.bind_execute = exec_mock
         conn._protocol.close_portal = bind_mock
-
+ 
         state = mock.Mock()
         state.closed = False
-
+ 
         apg = AsyncPGInstrumentor()
         apg.instrument(tracer_provider=self.tracer_provider)
-
+ 
         # init the cursor and fetch a single record
         crs = cursor.Cursor(conn, "SELECT * FROM test", state, [], Record)
         asyncio.run(crs._init(1))
         asyncio.run(crs.fetch(1))
-
+ 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].name, "CURSOR: SELECT")
         self.assertTrue(spans[0].status.is_ok)
-
+ 
         # Now test that the StopAsyncIteration of the cursor does not get recorded as an ERROR
         crs_iter = cursor.CursorIterator(
             conn, "SELECT * FROM test", state, [], Record, 1, 1
         )
-
+ 
         with pytest.raises(StopAsyncIteration):
             asyncio.run(crs_iter.__anext__())
-
+ 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         self.assertEqual([span.status.is_ok for span in spans], [True, True])
-
+ 
     def test_no_op_tracer_provider(self):
         AsyncPGInstrumentor().uninstrument()
         AsyncPGInstrumentor().instrument(
             tracer_provider=trace_api.NoOpTracerProvider()
         )
-
+ 
         # Mock out all interaction with postgres
         async def bind_mock(*args, **kwargs):
             return []
-
+ 
         async def exec_mock(*args, **kwargs):
             return [], None, True
-
+ 
         conn = mock.Mock()
         conn.is_closed = lambda: False
-
+ 
         conn._protocol = mock.Mock()
         conn._protocol.bind = bind_mock
         conn._protocol.execute = exec_mock
         conn._protocol.bind_execute = exec_mock
         conn._protocol.close_portal = bind_mock
-
+ 
         state = mock.Mock()
         state.closed = False
-
+ 
         # init the cursor and fetch a single record
         crs = cursor.Cursor(conn, "SELECT * FROM test", state, [], Record)
         asyncio.run(crs._init(1))
         asyncio.run(crs.fetch(1))
-
+ 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+ 
+    def test_capture_connection_cleanup_false(self):
+        """Test that cleanup queries are not traced when capture_connection_cleanup=False."""
+        AsyncPGInstrumentor().uninstrument()
+        apg = AsyncPGInstrumentor(capture_connection_cleanup=False)
+        apg.instrument(tracer_provider=self.tracer_provider)
+ 
+        async def mock_execute(*args, **kwargs):
+            return None
+ 
+        conn = mock.Mock()
+        conn._params = mock.Mock()
+        conn._params.database = "testdb"
+        conn._params.user = "testuser"
+        conn._addr = ("localhost", 5432)
+ 
+        for cleanup_query in [
+            "SELECT pg_advisory_unlock_all()",
+            "CLOSE ALL",
+            "UNLISTEN *",
+            "RESET ALL",
+        ]:
+            asyncio.run(
+                apg._do_execute(mock_execute, conn, (cleanup_query,), {})
+            )
+ 
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+        
+ 
