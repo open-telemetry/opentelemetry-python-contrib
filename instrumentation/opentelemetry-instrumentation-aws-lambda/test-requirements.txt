@@ -12,3 +12,4 @@ zipp==3.19.2
 -e opentelemetry-instrumentation
 -e propagator/opentelemetry-propagator-aws-xray
 -e instrumentation/opentelemetry-instrumentation-aws-lambda
+-e util/opentelemetry-util-http
