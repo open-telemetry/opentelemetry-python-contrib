@@ -115,10 +115,4 @@ class _QueryWrapper:
             **_get_opentelemetry_values() if with_opentelemetry else {},
         )
 
-        # TODO: MySQL truncates logs > 1024B so prepend comments
-        # instead of statements, if the engine is MySQL.
-        # See:
-        #  * https://github.com/basecamp/marginalia/issues/61
-        #  * https://github.com/basecamp/marginalia/pull/80
-
         return execute(sql, params, many, context)
