@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
   ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
+- `opentelemetry-instrumentation-logging`: Use `LogRecord.getMessage()` to format and extract each log record's body text to more closely match the expected usage of the logging system
+  ([#4372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4372))
 
 ### Breaking changes
 
