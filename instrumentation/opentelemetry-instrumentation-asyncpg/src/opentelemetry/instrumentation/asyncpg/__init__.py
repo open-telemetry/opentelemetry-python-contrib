@@ -1,4 +1,4 @@
-﻿# Copyright The OpenTelemetry Authors
+# Copyright The OpenTelemetry Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -114,12 +114,14 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
 
 class AsyncPGInstrumentor(BaseInstrumentor):
     _leading_comment_remover = re.compile(r"^/\*.*?\*/")
-    _CLEANUP_QUERIES = frozenset([
-        "SELECT pg_advisory_unlock_all()",
-        "CLOSE ALL",
-        "UNLISTEN *",
-        "RESET ALL",
-    ])
+    _CLEANUP_QUERIES = frozenset(
+        [
+            "SELECT pg_advisory_unlock_all()",
+            "CLOSE ALL",
+            "UNLISTEN *",
+            "RESET ALL",
+        ]
+    )
     _tracer = None
 
     def _is_cleanup_query(self, query: str) -> bool:
@@ -127,7 +129,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             return False
         return any(q in query for q in self._CLEANUP_QUERIES)
 
-    def __init__(self, capture_parameters=False, capture_connection_cleanup=True):
+    def __init__(
+        self, capture_parameters=False, capture_connection_cleanup=True
+    ):
         super().__init__()
         self.capture_parameters = capture_parameters
         self.capture_connection_cleanup = capture_connection_cleanup
@@ -196,7 +200,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             args[0],
             args[1:] if self.capture_parameters else None,
         )
-        if not self.capture_connection_cleanup and self._is_cleanup_query(args[0]):
+        if not self.capture_connection_cleanup and self._is_cleanup_query(
+            args[0]
+        ):
             return await func(*args, **kwargs)
 
         with self._tracer.start_as_current_span(

@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 from unittest import mock
 
 import pytest
@@ -172,5 +172,3 @@ class TestAsyncPGInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
-
-
