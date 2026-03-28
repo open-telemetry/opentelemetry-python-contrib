@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4212))
 - `opentelemetry-instrumentation-botocore`: Add support for instrumenting `aiobotocore`
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
+- `opentelemetry-exporter-richconsole`: Add support for suppressing resource information
+  ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
 
 ### Fixed
 

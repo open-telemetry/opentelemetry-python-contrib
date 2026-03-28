@@ -76,12 +76,16 @@ def _ns_to_time(nanoseconds):
     return ts.strftime("%H:%M:%S.%f")
 
 
-def _child_to_tree(child: Tree, span: ReadableSpan):
+def _child_to_tree(
+    child: Tree, span: ReadableSpan, *, suppress_resource: bool
+):
     child.add(
         Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
     )
     _add_status(child, span)
-    _child_add_optional_attributes(child, span)
+    _child_add_optional_attributes(
+        child, span, suppress_resource=suppress_resource
+    )
 
 
 def _add_status(child: Tree, span: ReadableSpan):
@@ -106,7 +110,9 @@ def _add_status(child: Tree, span: ReadableSpan):
         )
 
 
-def _child_add_optional_attributes(child: Tree, span: ReadableSpan):
+def _child_add_optional_attributes(
+    child: Tree, span: ReadableSpan, *, suppress_resource: bool
+):
     if span.events:
         events = child.add(
             label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
@@ -133,7 +139,7 @@ def _child_add_optional_attributes(child: Tree, span: ReadableSpan):
                         f"[bold cyan]{attribute} :[/bold cyan] {span.attributes[attribute]}"
                     )
                 )
-    if span.resource:
+    if span.resource and not suppress_resource:
         resources = child.add(
             label=Text.from_markup("[bold cyan]Resources :[/bold cyan] ")
         )
@@ -155,21 +161,29 @@ class RichConsoleSpanExporter(SpanExporter):
     def __init__(
         self,
         service_name: Optional[str] = None,
+        suppress_resource: bool = False,
     ):
         self.service_name = service_name
+        self.suppress_resource = suppress_resource
         self.console = Console()
 
     def export(self, spans: typing.Sequence[ReadableSpan]) -> SpanExportResult:
         if not spans:
             return SpanExportResult.SUCCESS
 
-        for tree in self.spans_to_tree(spans).values():
+        for tree in self.spans_to_tree(
+            spans, suppress_resource=self.suppress_resource
+        ).values():
             self.console.print(tree)
 
         return SpanExportResult.SUCCESS
 
     @staticmethod
-    def spans_to_tree(spans: typing.Sequence[ReadableSpan]) -> Dict[str, Tree]:
+    def spans_to_tree(
+        spans: typing.Sequence[ReadableSpan],
+        *,
+        suppress_resource: bool = False,
+    ) -> Dict[str, Tree]:
         trees = {}
         parents = {}
         spans = list(spans)
@@ -189,7 +203,9 @@ class RichConsoleSpanExporter(SpanExporter):
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(child, span)
+                    _child_to_tree(
+                        child, span, suppress_resource=suppress_resource
+                    )
                     spans.remove(span)
                 elif span.parent and span.parent.span_id in parents:
                     child = parents[span.parent.span_id].add(
@@ -198,6 +214,8 @@ class RichConsoleSpanExporter(SpanExporter):
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(child, span)
+                    _child_to_tree(
+                        child, span, suppress_resource=suppress_resource
+                    )
                     spans.remove(span)
         return trees
