@@ -121,7 +121,6 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         "RESET ALL",
     ])
     _tracer = None
-    
 
     def _is_cleanup_query(self, query: str) -> bool:
         if query is None:
@@ -199,7 +198,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         )
         if not self.capture_connection_cleanup and self._is_cleanup_query(args[0]):
             return await func(*args, **kwargs)
-        
+
         with self._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
