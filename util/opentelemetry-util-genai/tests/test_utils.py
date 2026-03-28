@@ -41,6 +41,7 @@ from opentelemetry.semconv.attributes import (
     server_attributes,
 )
 from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.trace.span import INVALID_SPAN
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
@@ -728,6 +729,122 @@ class TestTelemetryHandler(unittest.TestCase):
                 server_attributes.SERVER_PORT: 42,
                 "custom_embed_attr": "value",
                 "extra_embed": "info",
+            },
+        )
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_llm_manual_start_and_stop_external_span(self):
+        message = _create_input_message("hi")
+        chat_generation = _create_output_message("ok")
+
+        # Create a custom Span
+        external_span = self.telemetry_handler._tracer.start_span(
+            name="external operation", kind=trace.SpanKind.INTERNAL
+        )
+
+        invocation = LLMInvocation(
+            span=external_span,
+            request_model="manual-model",
+            input_messages=[message],
+            provider="test-provider",
+            attributes={"external": True},
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        assert invocation.span == external_span
+        assert invocation.end_span_on_exit is False
+
+        invocation.output_messages = [chat_generation]
+        self.telemetry_handler.stop_llm(invocation)
+        # Verify that the external span is still recording after stop_llm is called
+        assert invocation.span.is_recording()
+        # Manually end the external span after stopping the LLM invocation
+        external_span.end()
+
+        span = _get_single_span(self.span_exporter)
+        # Make sure that external span is used and not overwritten by telemetry handler
+        assert span.kind == trace.SpanKind.INTERNAL
+        _assert_span_time_order(span)
+
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "manual-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_INPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_OUTPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("stop",),
+                "external": True,
+            },
+        )
+
+    def test_llm_creates_span_on_invalid_external_span(self):
+        invocation = LLMInvocation(
+            span=INVALID_SPAN,
+            request_model="manual-model",
+            provider="test-provider",
+            attributes={"invalid": True},
+        )
+
+        self.telemetry_handler.start_llm(invocation)
+        assert invocation.span is not None
+        assert invocation.span != INVALID_SPAN
+        assert invocation.end_span_on_exit is True
+        self.telemetry_handler.stop_llm(invocation)
+
+        span = _get_single_span(self.span_exporter)
+        # Make sure that internal span is used
+        assert span.kind == trace.SpanKind.CLIENT
+        _assert_span_time_order(span)
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "manual-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                "invalid": True,
+            },
+        )
+
+    def test_llm_external_active_span(self):
+        # Create a custom active Span
+        with self.telemetry_handler._tracer.start_as_current_span(
+            name="external operation", kind=trace.SpanKind.INTERNAL
+        ) as external_span:
+            invocation = LLMInvocation(
+                span=external_span,
+                request_model="manual-model",
+                provider="test-provider",
+                attributes={"active": True},
+            )
+
+            self.telemetry_handler.start_llm(invocation)
+            assert invocation.span is not None
+            assert invocation.span == external_span
+            assert invocation.end_span_on_exit is False
+            assert invocation.context_token is None
+            self.telemetry_handler.stop_llm(invocation)
+
+        span = _get_single_span(self.span_exporter)
+        # Make sure that external span is used
+        assert span.kind == trace.SpanKind.INTERNAL
+        _assert_span_time_order(span)
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "manual-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                "active": True,
             },
         )
 
