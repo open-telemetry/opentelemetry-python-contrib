@@ -230,6 +230,9 @@ class TelemetryHandlerToolTest(TestCase):
         # Check kind is INTERNAL (value 1)
         self.assertEqual(tool.span.kind, SpanKind.INTERNAL)
 
+        # Clean up: stop the tool call to detach context
+        self.handler.stop(tool)
+
     def test_stop_tool_call_ends_span(self):
         """Test stop ends span successfully for ToolCall"""
         tool = ToolCall(
