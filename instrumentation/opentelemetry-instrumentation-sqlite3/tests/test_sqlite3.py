@@ -18,6 +18,9 @@ from sqlite3 import dbapi2
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.instrumentation.utils import suppress_instrumentation
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -139,6 +142,7 @@ class TestSQLite3Integration(TestBase):
         SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
         cnx = self._connect()
         cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
         cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -149,6 +153,7 @@ class TestSQLite3Integration(TestBase):
 
         cnx2 = self._connect()
         cursor2 = cnx2.cursor()
+        self.addCleanup(cursor2.close)
         cursor2.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -160,6 +165,7 @@ class TestSQLite3Integration(TestBase):
         cnx = self._connect()
         query = "CREATE TABLE IF NOT EXISTS test (id integer)"
         cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
         cursor.execute(query)
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -168,6 +174,7 @@ class TestSQLite3Integration(TestBase):
         self.memory_exporter.clear()
         cnx = SQLite3Instrumentor.uninstrument_connection(cnx)
         cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
         cursor.execute(query)
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -180,6 +187,7 @@ class TestSQLite3Integration(TestBase):
         )
         cnx = self._connect()
         cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
         cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -192,6 +200,7 @@ class TestSQLite3Integration(TestBase):
 
         with suppress_instrumentation():
             cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
             cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -202,6 +211,7 @@ class TestSQLite3Integration(TestBase):
         SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
         cnx = self._connect()
         cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
 
         with self.assertRaises(sqlite3.OperationalError):
             cursor.execute("SELECT * FROM nonexistent_table")
@@ -209,6 +219,10 @@ class TestSQLite3Integration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
+        self.assertEqual(
+            span.attributes[DB_STATEMENT],
+            "SELECT * FROM nonexistent_table",
+        )
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
         self.assertEqual(
             span.status.description,
