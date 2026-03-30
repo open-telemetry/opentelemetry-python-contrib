@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Add metrics support for EmbeddingInvocation
+  ([#4377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4377))
+- Add metrics support for EmbeddingInvocation
   ([#5022](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/5022))
 - Add support for workflow in genAI utils handler.
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4366](#4366))
