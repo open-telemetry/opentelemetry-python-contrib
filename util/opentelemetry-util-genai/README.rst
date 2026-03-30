@@ -100,6 +100,30 @@ This package sets the following span attributes on LLM invocations:
 
 - ``error.type``: Str(TimeoutError)
 
+Embedding Span Attributes
+-------------------------
+
+This package also supports embedding invocation spans via the ``embedding`` context manager.
+For embedding invocations, the following attributes are set:
+
+**Common attributes:**
+
+- ``gen_ai.operation.name``: Str(embeddings)
+- ``gen_ai.provider.name``: Str(openai)
+- ``server.address``: Str(api.openai.com)
+- ``server.port``: Int(443)
+
+**Request attributes:**
+
+- ``gen_ai.request.model``: Str(text-embedding-3-small)
+- ``gen_ai.embeddings.dimension.count``: Int(1536)
+- ``gen_ai.request.encoding_formats``: Slice(["float"])
+
+**Response attributes:**
+
+- ``gen_ai.response.model``: Str(text-embedding-3-small)
+- ``gen_ai.usage.input_tokens``: Int(24)
+
 
 Installation
 ------------
