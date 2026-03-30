@@ -50,7 +50,8 @@ message content (as dictionaries instead of JSON strings). Note that when using 
 or ``SPAN_AND_EVENT``, the ``OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT`` environment variable defaults
 to ``true``, so events will be emitted automatically unless explicitly set to ``false``.
 
-**Completion Hook / Upload**
+Completion Hook / Upload
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 - ``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK``: Name of the completion hook entry point to load (e.g. ``upload``).
 - ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH``: An ``fsspec``-compatible URI/path for uploading prompts and responses
