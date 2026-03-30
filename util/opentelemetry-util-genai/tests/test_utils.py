@@ -757,6 +757,7 @@ class TestToolSpanUtils(unittest.TestCase):
             _get_tool_call_span_name(tool_no_name), "execute_tool"
         )
 
+    # pylint: disable=no-self-use
     def test_apply_tool_call_attributes_minimal(self):
         """Test applying minimal tool call attributes"""
         span = Mock()
@@ -771,6 +772,7 @@ class TestToolSpanUtils(unittest.TestCase):
         # Check recommended attribute
         span.set_attribute.assert_any_call(GenAI.GEN_AI_TOOL_NAME, "test_tool")
 
+    # pylint: disable=no-self-use
     def test_apply_tool_call_attributes_with_error(self):
         """Test applying attributes when error present"""
         span = Mock()
