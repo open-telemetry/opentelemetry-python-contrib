@@ -382,3 +382,150 @@ class TelemetryHandlerToolTest(TestCase):
             "ToolExecutionError",
             span.attributes[error_attributes.ERROR_TYPE],
         )
+
+
+class TelemetryHandlerToolMetricsTest(TestBase):
+    """Tests for tool call metrics recording"""
+
+    def _harvest_metrics(self) -> Dict[str, List[Any]]:
+        """Returns metrics_by_name mapping metric name to list of data points."""
+        metrics = self.get_sorted_metrics(SCOPE)
+        metrics_by_name: Dict[str, List[Any]] = {}
+        for metric in metrics or []:
+            points = metric.data.data_points or []
+            metrics_by_name.setdefault(metric.name, []).extend(points)
+        return metrics_by_name
+
+    def test_stop_tool_call_records_duration(self) -> None:
+        """Test stop records duration metric for tool call"""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        tool = ToolCall(
+            name="get_weather",
+            arguments={"location": "Paris"},
+            id="call_123",
+            provider="test-provider",
+        )
+
+        with patch("timeit.default_timer", return_value=1000.0):
+            handler.start(tool)
+
+        with patch("timeit.default_timer", return_value=1002.5):
+            handler.stop(tool)
+
+        metrics = self._harvest_metrics()
+        self.assertIn("gen_ai.client.operation.duration", metrics)
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        self.assertEqual(len(duration_points), 1)
+        duration_point = duration_points[0]
+
+        # Check required attributes
+        self.assertEqual(
+            duration_point.attributes[GenAI.GEN_AI_OPERATION_NAME],
+            "execute_tool",
+        )
+        self.assertEqual(
+            duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME],
+            "test-provider",
+        )
+
+        # Check duration value
+        self.assertAlmostEqual(duration_point.sum, 2.5, places=3)
+
+        # Token metrics should NOT be recorded for tool calls
+        self.assertNotIn("gen_ai.client.token.usage", metrics)
+
+    def test_stop_tool_call_records_duration_with_server_address(self) -> None:
+        """Test stop records duration with server attributes for tool call"""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        tool = ToolCall(
+            name="api_call",
+            arguments={},
+            id="call_456",
+            provider="custom-provider",
+            server_address="api.example.com",
+            server_port=443,
+        )
+
+        with patch("timeit.default_timer", return_value=100.0):
+            handler.start(tool)
+
+        with patch("timeit.default_timer", return_value=100.5):
+            handler.stop(tool)
+
+        metrics = self._harvest_metrics()
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        self.assertEqual(len(duration_points), 1)
+        duration_point = duration_points[0]
+
+        self.assertEqual(
+            duration_point.attributes["server.address"], "api.example.com"
+        )
+        self.assertEqual(duration_point.attributes["server.port"], 443)
+
+    def test_stop_tool_call_records_metric_attributes(self) -> None:
+        """Test stop includes custom metric_attributes for tool call"""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        tool = ToolCall(
+            name="custom_tool",
+            arguments={},
+            provider="my-provider",
+        )
+        tool.metric_attributes = {"custom.key": "custom_value"}
+
+        with patch("timeit.default_timer", return_value=0.0):
+            handler.start(tool)
+
+        with patch("timeit.default_timer", return_value=1.0):
+            handler.stop(tool)
+
+        metrics = self._harvest_metrics()
+        duration_point = metrics["gen_ai.client.operation.duration"][0]
+
+        self.assertEqual(
+            duration_point.attributes["custom.key"], "custom_value"
+        )
+
+    def test_fail_tool_call_records_duration_with_error(self) -> None:
+        """Test fail records duration with error.type for tool call"""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        tool = ToolCall(
+            name="failing_tool",
+            arguments={},
+            id="call_err",
+            provider="err-provider",
+        )
+
+        with patch("timeit.default_timer", return_value=500.0):
+            handler.start(tool)
+
+        error = Error(message="Tool execution failed", type=RuntimeError)
+        with patch("timeit.default_timer", return_value=501.5):
+            handler.fail(tool, error)
+
+        metrics = self._harvest_metrics()
+        self.assertIn("gen_ai.client.operation.duration", metrics)
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        self.assertEqual(len(duration_points), 1)
+        duration_point = duration_points[0]
+
+        # Check error.type is recorded
+        self.assertEqual(
+            duration_point.attributes["error.type"], "RuntimeError"
+        )
+        self.assertEqual(
+            duration_point.attributes[GenAI.GEN_AI_OPERATION_NAME],
+            "execute_tool",
+        )
+        self.assertAlmostEqual(duration_point.sum, 1.5, places=3)

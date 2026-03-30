@@ -411,6 +411,17 @@ class ToolCall(GenAIInvocation):
     # gen_ai.tool.call.result - Result returned by the tool (Opt-In, may contain sensitive data)
     tool_result: Any = None
 
+    # Metric-related fields (for gen_ai.client.operation.duration)
+    provider: str | None = None  # gen_ai.provider.name (Required for metrics)
+    server_address: str | None = None  # server.address (Recommended)
+    server_port: int | None = None  # server.port (Conditionally Required)
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of low cardinality.
+    """
+
     # Timing field (not inherited from GenAIInvocation, matches LLMInvocation pattern)
     monotonic_start_s: float | None = None
 
