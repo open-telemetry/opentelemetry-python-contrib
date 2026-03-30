@@ -80,14 +80,17 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
+    _apply_agent_finish_attributes,
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _get_agent_span_name,
     _get_embedding_span_name,
     _get_llm_span_name,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
+    AgentInvocation,
     EmbeddingInvocation,
     Error,
     GenAIInvocation,
@@ -158,15 +161,19 @@ class TelemetryHandler:
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
+        kind = SpanKind.CLIENT
         if isinstance(invocation, LLMInvocation):
             span_name = _get_llm_span_name(invocation)
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
+        elif isinstance(invocation, AgentInvocation):
+            span_name = _get_agent_span_name(invocation)
+            kind = invocation.span_kind
         else:
             span_name = ""
         span = self._tracer.start_span(
             name=span_name,
-            kind=SpanKind.CLIENT,
+            kind=kind,
         )
         # Record a monotonic start timestamp (seconds) for duration
         # calculation using timeit.default_timer.
@@ -192,6 +199,8 @@ class TelemetryHandler:
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_embedding_metrics(invocation, span)
+            elif isinstance(invocation, AgentInvocation):
+                _apply_agent_finish_attributes(span, invocation)
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -222,6 +231,9 @@ class TelemetryHandler:
                 self._record_embedding_metrics(
                     invocation, span, error_type=error_type
                 )
+            elif isinstance(invocation, AgentInvocation):
+                _apply_agent_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -296,6 +308,28 @@ class TelemetryHandler:
         """
         if invocation is None:
             invocation = EmbeddingInvocation()
+        self.start(invocation)
+        try:
+            yield invocation
+        except Exception as exc:
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            raise
+        self.stop(invocation)
+
+    @contextmanager
+    def agent(
+        self, invocation: AgentInvocation | None = None
+    ) -> Iterator[AgentInvocation]:
+        """Context manager for agent invocations.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = AgentInvocation()
         self.start(invocation)
         try:
             yield invocation
