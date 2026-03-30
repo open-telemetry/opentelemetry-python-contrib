@@ -56,9 +56,9 @@ Usage - Tool Call Executions:
 
     # Or, manage the lifecycle manually
     tool = ToolCall(name="get_weather", arguments={"location": "Paris"})
-    handler.start_tool_call(tool)
+    handler.start(tool)
     tool.tool_result = {"temp": 20}
-    handler.stop_tool_call(tool)
+    handler.stop(tool)
 """
 
 from __future__ import annotations
@@ -87,10 +87,10 @@ from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
-    _get_embedding_span_name,
-    _get_llm_span_name,
     _apply_tool_call_attributes,
     _finish_tool_call_span,
+    _get_embedding_span_name,
+    _get_llm_span_name,
     _get_tool_call_span_name,
     _maybe_emit_llm_event,
 )
@@ -166,17 +166,25 @@ class TelemetryHandler:
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
+        span_kind = SpanKind.CLIENT
         if isinstance(invocation, LLMInvocation):
             span_name = _get_llm_span_name(invocation)
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
+        elif isinstance(invocation, ToolCall):
+            span_name = _get_tool_call_span_name(invocation)
+            span_kind = SpanKind.INTERNAL
         else:
             span_name = ""
+
         span = self._tracer.start_span(
             name=span_name,
-            kind=SpanKind.CLIENT,
+            kind=span_kind,
         )
-        # Record a monotonic start timestamp (seconds) for duration
+        if isinstance(invocation, ToolCall):
+            _apply_tool_call_attributes(
+                span, invocation, capture_content=False
+            )
         # calculation using timeit.default_timer.
         invocation.monotonic_start_s = timeit.default_timer()
         invocation.span = span
@@ -200,6 +208,8 @@ class TelemetryHandler:
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_embedding_metrics(invocation, span)
+            elif isinstance(invocation, ToolCall):
+                _finish_tool_call_span(span, invocation, capture_content=True)
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -230,6 +240,10 @@ class TelemetryHandler:
                 self._record_embedding_metrics(
                     invocation, span, error_type=error_type
                 )
+            elif isinstance(invocation, ToolCall):
+                invocation.error_type = error_type
+                _finish_tool_call_span(span, invocation, capture_content=True)
+                span.set_status(Status(StatusCode.ERROR, error.message))
         finally:
             # Detach context and end span even if finishing fails
             otel_context.detach(invocation.context_token)
@@ -266,105 +280,6 @@ class TelemetryHandler:
         """Fail an LLM invocation and end its span with error status."""
         return self._fail(invocation, error)
 
-    def start_tool_call(
-        self,
-        tool_call: ToolCall,
-    ) -> ToolCall:
-        """Start a tool call execution and create a span.
-
-        Creates an execute_tool span per span.gen_ai.execute_tool.internal spec:
-        - Span kind: INTERNAL
-        - Span name: "execute_tool {tool_name}"
-        - Required attribute: gen_ai.operation.name = "execute_tool"
-
-        Args:
-            tool_call: ToolCall instance to track
-
-        Returns:
-            The same ToolCall with span and context_token set
-        """
-        # Create span with INTERNAL kind per spec
-        span = self._tracer.start_span(
-            name=_get_tool_call_span_name(tool_call),
-            kind=SpanKind.INTERNAL,
-        )
-
-        # Apply initial attributes (but not result yet)
-        # capture_content=False for start, only structure attributes
-        _apply_tool_call_attributes(span, tool_call, capture_content=False)
-
-        # Record monotonic start time for duration calculation
-        tool_call.monotonic_start_s = timeit.default_timer()
-
-        # Attach to context
-        tool_call.span = span
-        tool_call.context_token = otel_context.attach(
-            set_span_in_context(span)
-        )
-
-        return tool_call
-
-    def stop_tool_call(self, tool_call: ToolCall) -> ToolCall:  # pylint: disable=no-self-use
-        """Finalize a tool call execution successfully.
-
-        Applies final attributes including tool_result, sets OK status, and ends span.
-
-        Args:
-            tool_call: ToolCall instance with span to finalize
-
-        Returns:
-            The same ToolCall
-        """
-        if tool_call.context_token is None or tool_call.span is None:
-            # TODO: Provide feedback that this invocation was not started
-            return tool_call
-
-        span = tool_call.span
-
-        # Finalize span with result (capture_content=True allows result if mode permits)
-        _finish_tool_call_span(span, tool_call, capture_content=True)
-
-        # Detach context and end span
-        otel_context.detach(tool_call.context_token)
-        span.end()
-
-        return tool_call
-
-    def fail_tool_call(  # pylint: disable=no-self-use
-        self, tool_call: ToolCall, error: Error
-    ) -> ToolCall:
-        """Fail a tool call execution with error.
-
-        Sets error attributes, ERROR status, and ends span.
-
-        Args:
-            tool_call: ToolCall instance with span to fail
-            error: Error details
-
-        Returns:
-            The same ToolCall
-        """
-        if tool_call.context_token is None or tool_call.span is None:
-            # TODO: Provide feedback that this invocation was not started
-            return tool_call
-
-        span = tool_call.span
-
-        # Set error_type on tool_call so it's included in attributes
-        tool_call.error_type = error.type.__qualname__
-
-        # Finalize span with error
-        _finish_tool_call_span(span, tool_call, capture_content=True)
-
-        # Apply additional error status with message
-        span.set_status(Status(StatusCode.ERROR, error.message))
-
-        # Detach context and end span
-        otel_context.detach(tool_call.context_token)
-        span.end()
-
-        return tool_call
-
     @contextmanager
     def tool_call(
         self, tool_call: ToolCall | None = None
@@ -388,15 +303,13 @@ class TelemetryHandler:
                 arguments={},
                 id=None,
             )
-        self.start_tool_call(tool_call)
+        self.start(tool_call)
         try:
             yield tool_call
         except Exception as exc:
-            self.fail_tool_call(
-                tool_call, Error(message=str(exc), type=type(exc))
-            )
+            self.fail(tool_call, Error(message=str(exc), type=type(exc)))
             raise
-        self.stop_tool_call(tool_call)
+        self.stop(tool_call)
 
     @contextmanager
     def llm(

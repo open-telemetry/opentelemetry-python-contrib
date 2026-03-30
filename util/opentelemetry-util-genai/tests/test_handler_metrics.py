@@ -213,13 +213,13 @@ class TelemetryHandlerToolTest(TestCase):
         self.handler = TelemetryHandler(tracer_provider=self.tracer_provider)
 
     def test_start_tool_call_creates_span(self):
-        """Test start_tool_call creates span with correct name and kind"""
+        """Test start creates span with correct name and kind for ToolCall"""
         tool = ToolCall(
             name="get_weather",
             arguments={"location": "Paris"},
             id="call_123",
         )
-        self.handler.start_tool_call(tool)
+        self.handler.start(tool)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)  # Span not finished yet
@@ -231,7 +231,7 @@ class TelemetryHandlerToolTest(TestCase):
         self.assertEqual(tool.span.kind, SpanKind.INTERNAL)
 
     def test_stop_tool_call_ends_span(self):
-        """Test stop_tool_call ends span successfully"""
+        """Test stop ends span successfully for ToolCall"""
         tool = ToolCall(
             name="get_weather",
             arguments={"location": "Paris"},
@@ -239,9 +239,9 @@ class TelemetryHandlerToolTest(TestCase):
             tool_type="function",
             tool_description="Get current weather",
         )
-        self.handler.start_tool_call(tool)
+        self.handler.start(tool)
         tool.tool_result = {"temp": 20, "condition": "sunny"}
-        self.handler.stop_tool_call(tool)
+        self.handler.stop(tool)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -272,21 +272,21 @@ class TelemetryHandlerToolTest(TestCase):
         self.assertEqual(span.status.status_code, StatusCode.OK)
 
     def test_stop_tool_call_without_start(self):
-        """Test stop_tool_call without prior start is a no-op"""
+        """Test stop without prior start is a no-op for ToolCall"""
         tool = ToolCall(name="test", arguments={}, id=None)
-        # Don't call start_tool_call
-        self.handler.stop_tool_call(tool)
+        # Don't call start
+        self.handler.stop(tool)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
     def test_fail_tool_call_sets_error_status(self):
-        """Test fail_tool_call sets error status and attributes"""
+        """Test fail sets error status and attributes for ToolCall"""
         tool = ToolCall(name="failing_tool", arguments={}, id="call_456")
-        self.handler.start_tool_call(tool)
+        self.handler.start(tool)
 
         error = Error(message="Tool execution failed", type=ValueError)
-        self.handler.fail_tool_call(tool, error)
+        self.handler.fail(tool, error)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -316,9 +316,9 @@ class TelemetryHandlerToolTest(TestCase):
             arguments={"location": "Paris"},
             id="call_123",
         )
-        self.handler.start_tool_call(tool)
+        self.handler.start(tool)
         tool.tool_result = {"temp": 20, "condition": "sunny"}
-        self.handler.stop_tool_call(tool)
+        self.handler.stop(tool)
 
         spans = self.span_exporter.get_finished_spans()
         span = spans[0]
