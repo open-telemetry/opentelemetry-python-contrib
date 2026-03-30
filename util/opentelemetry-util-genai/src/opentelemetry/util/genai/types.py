@@ -25,7 +25,7 @@ from opentelemetry.context import Context
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.trace import Span
+from opentelemetry.trace import Span, SpanKind
 
 ContextToken: TypeAlias = Token[Context]
 
@@ -343,6 +343,7 @@ class AgentInvocation(_BaseAgent):
     """
 
     operation_name: str = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+    span_kind: SpanKind = SpanKind.CLIENT
     conversation_id: str | None = None
     data_source_id: str | None = None
     output_type: str | None = None

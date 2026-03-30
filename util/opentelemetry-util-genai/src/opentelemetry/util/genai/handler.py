@@ -168,6 +168,7 @@ class TelemetryHandler:
             span_name = _get_embedding_span_name(invocation)
         elif isinstance(invocation, AgentInvocation):
             span_name = _get_agent_span_name(invocation)
+            kind = invocation.span_kind
         else:
             span_name = ""
         span = self._tracer.start_span(
@@ -314,21 +315,6 @@ class TelemetryHandler:
             self.fail(invocation, Error(message=str(exc), type=type(exc)))
             raise
         self.stop(invocation)
-
-    # Agent-specific convenience methods
-    def start_agent(self, invocation: AgentInvocation) -> AgentInvocation:
-        """Start an agent invocation and create a pending span entry."""
-        return self._start(invocation)
-
-    def stop_agent(self, invocation: AgentInvocation) -> AgentInvocation:
-        """Finalize an agent invocation successfully and end its span."""
-        return self._stop(invocation)
-
-    def fail_agent(
-        self, invocation: AgentInvocation, error: Error
-    ) -> AgentInvocation:
-        """Fail an agent invocation and end its span with error status."""
-        return self._fail(invocation, error)
 
     @contextmanager
     def agent(

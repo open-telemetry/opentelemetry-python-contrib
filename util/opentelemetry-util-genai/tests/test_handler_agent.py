@@ -45,8 +45,8 @@ class TestAgentInvocationHandler(_AgentTestBase):
             provider="openai",
             request_model="gpt-4",
         )
-        handler.start_agent(invocation)
-        handler.stop_agent(invocation)
+        handler.start(invocation)
+        handler.stop(invocation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -64,8 +64,8 @@ class TestAgentInvocationHandler(_AgentTestBase):
     def test_span_kind_client_by_default(self) -> None:
         handler = self._make_handler()
         invocation = AgentInvocation(agent_name="Agent", provider="openai")
-        handler.start_agent(invocation)
-        handler.stop_agent(invocation)
+        handler.start(invocation)
+        handler.stop(invocation)
         self.assertEqual(
             self.span_exporter.get_finished_spans()[0].kind, SpanKind.CLIENT
         )
@@ -89,13 +89,13 @@ class TestAgentInvocationHandler(_AgentTestBase):
             server_address="api.openai.com",
             server_port=443,
         )
-        handler.start_agent(invocation)
+        handler.start(invocation)
         invocation.response_model_name = "gpt-4-0613"
         invocation.response_id = "resp-abc"
         invocation.input_tokens = 100
         invocation.output_tokens = 200
         invocation.finish_reasons = ["stop"]
-        handler.stop_agent(invocation)
+        handler.stop(invocation)
 
         attrs = self.span_exporter.get_finished_spans()[0].attributes
         self.assertEqual(attrs[GenAI.GEN_AI_AGENT_NAME], "Full Agent")
@@ -115,22 +115,22 @@ class TestAgentInvocationHandler(_AgentTestBase):
         invocation = AgentInvocation(
             agent_name="Cache Agent", provider="openai"
         )
-        handler.start_agent(invocation)
+        handler.start(invocation)
         invocation.input_tokens = 100
         invocation.cache_creation_input_tokens = 25
         invocation.cache_read_input_tokens = 50
-        handler.stop_agent(invocation)
+        handler.stop(invocation)
 
         attrs = self.span_exporter.get_finished_spans()[0].attributes
         self.assertEqual(attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS], 100)
-        self.assertEqual(attrs["gen_ai.usage.cache_creation_input_tokens"], 25)
-        self.assertEqual(attrs["gen_ai.usage.cache_read_input_tokens"], 50)
+        self.assertEqual(attrs["gen_ai.usage.cache_creation.input_tokens"], 25)
+        self.assertEqual(attrs["gen_ai.usage.cache_read.input_tokens"], 50)
 
     def test_fail_sets_error_status(self) -> None:
         handler = self._make_handler()
         invocation = AgentInvocation(agent_name="Agent", provider="openai")
-        handler.start_agent(invocation)
-        handler.fail_agent(
+        handler.start(invocation)
+        handler.fail(
             invocation, Error(message="agent crashed", type=RuntimeError)
         )
 
@@ -177,14 +177,14 @@ class TestAgentInvocationHandler(_AgentTestBase):
     def test_stop_without_start_is_noop(self) -> None:
         handler = self._make_handler()
         invocation = AgentInvocation(agent_name="Not Started")
-        result = handler.stop_agent(invocation)
+        result = handler.stop(invocation)
         self.assertIs(result, invocation)
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 
     def test_fail_without_start_is_noop(self) -> None:
         handler = self._make_handler()
         invocation = AgentInvocation(agent_name="Not Started")
-        result = handler.fail_agent(
+        result = handler.fail(
             invocation, Error(message="boom", type=RuntimeError)
         )
         self.assertIs(result, invocation)

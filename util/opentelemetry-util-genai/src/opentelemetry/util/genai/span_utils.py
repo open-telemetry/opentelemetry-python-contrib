@@ -49,6 +49,13 @@ from opentelemetry.util.genai.utils import (
     should_emit_event,
 )
 
+# Constants for semconv attributes not yet available in opentelemetry-semantic-conventions 0.60b0
+GEN_AI_AGENT_VERSION = "gen_ai.agent.version"
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
+)
+GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
+
 
 def _get_llm_common_attributes(
     invocation: LLMInvocation,
@@ -107,32 +114,6 @@ def _get_llm_span_name(invocation: LLMInvocation) -> str:
 def _get_embedding_span_name(invocation: EmbeddingInvocation) -> str:
     """Get the span name for an Embedding invocation."""
     return _get_span_name(invocation)
-
-
-def _get_system_instructions_for_span(
-    system_instruction: list[MessagePart] | None = None,
-) -> dict[str, Any]:
-    """Get system instructions attribute formatted for span (JSON string format).
-
-    Can be used with agent/llm/tool invocations.
-    Returns empty dict if not in experimental mode or content capturing is disabled.
-    """
-    if (
-        not is_experimental_mode()
-        or get_content_capturing_mode()
-        not in (
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        )
-        or not system_instruction
-    ):
-        return {}
-
-    return {
-        GenAI.GEN_AI_SYSTEM_INSTRUCTIONS: gen_ai_json_dumps(
-            [asdict(p) for p in system_instruction]
-        )
-    }
 
 
 def _get_llm_messages_attributes_for_span(
@@ -405,7 +386,7 @@ def _get_agent_common_attributes(
         (GenAI.GEN_AI_AGENT_NAME, invocation.agent_name),
         (GenAI.GEN_AI_AGENT_ID, invocation.agent_id),
         (GenAI.GEN_AI_AGENT_DESCRIPTION, invocation.agent_description),
-        ("gen_ai.agent.version", invocation.agent_version),
+        (GEN_AI_AGENT_VERSION, invocation.agent_version),
         (GenAI.GEN_AI_CONVERSATION_ID, invocation.conversation_id),
         (GenAI.GEN_AI_DATA_SOURCE_ID, invocation.data_source_id),
         (GenAI.GEN_AI_OUTPUT_TYPE, invocation.output_type),
@@ -468,11 +449,11 @@ def _get_agent_response_attributes(
         (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
         (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens),
         (
-            "gen_ai.usage.cache_creation_input_tokens",
+            GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
             invocation.cache_creation_input_tokens,
         ),
         (
-            "gen_ai.usage.cache_read_input_tokens",
+            GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
             invocation.cache_read_input_tokens,
         ),
     )
@@ -519,7 +500,6 @@ __all__ = [
     "_get_embedding_span_name",
     "_get_agent_span_name",
     "_apply_agent_finish_attributes",
-    "_get_system_instructions_for_span",
     "_get_agent_common_attributes",
     "_get_agent_request_attributes",
     "_get_agent_response_attributes",
