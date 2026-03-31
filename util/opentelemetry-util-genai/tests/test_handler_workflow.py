@@ -47,6 +47,10 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
     # start_workflow
     # ------------------------------------------------------------------
 
+    def test_operation_name_is_immutable(self) -> None:
+        invocation = WorkflowInvocation(name="wf", operation_name="custom_op")
+        self.assertEqual(invocation.operation_name, "invoke_workflow")
+
     def test_start_workflow_creates_span(self) -> None:
         invocation = WorkflowInvocation(name="my_workflow")
         self.handler.start(invocation)
