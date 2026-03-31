@@ -111,9 +111,9 @@ def _get_embedding_span_name(invocation: EmbeddingInvocation) -> str:
 
 def _get_workflow_span_name(invocation: WorkflowInvocation) -> str:
     """Get the span name for an Workflow invocation."""
-    operation_name = getattr(invocation, "operation_name", None) or ""
-    name = getattr(invocation, "name", None) or ""
-    return f"{operation_name} {name}".strip()
+    operation_name = invocation.operation_name
+    name = invocation.name
+    return f"{operation_name} {name}" if name else operation_name
 
 
 def _get_llm_messages_attributes_for_span(

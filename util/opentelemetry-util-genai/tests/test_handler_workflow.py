@@ -60,14 +60,23 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
 
     def test_start_workflow_span_name(self) -> None:
         invocation = WorkflowInvocation(
-            name="my_pipeline", operation_name="run_pipeline"
+            name="my_pipeline"
         )
         self.handler.start(invocation)
         self.handler.stop(invocation)
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "run_pipeline my_pipeline")
+        self.assertEqual(spans[0].name, "invoke_workflow my_pipeline")
+
+    def test_start_workflow_span_name_without_name(self) -> None:
+        invocation = WorkflowInvocation()
+        self.handler.start(invocation)
+        self.handler.stop(invocation)
+
+        spans = self._get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "invoke_workflow")
 
     def test_start_workflow_span_kind_is_internal(self) -> None:
         invocation = WorkflowInvocation(name="wf")
