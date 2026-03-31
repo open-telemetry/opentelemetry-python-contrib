@@ -1,0 +1,70 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from typing import Callable, Optional, Sequence, Union
+
+from opentelemetry.baggage import get_all as get_all_baggage
+from opentelemetry.sdk._logs import LogRecordProcessor, ReadWriteLogRecord
+
+from opentelemetry.processor.baggage.processor import BaggageKeyPredicateT
+
+BaggageKeyPredicatesT = Union[BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]]
+
+
+class BaggageLogProcessor(LogRecordProcessor):
+    """
+    The BaggageLogProcessor reads entries stored in Baggage
+    from the current context and adds the baggage entries' keys and
+    values to the log record as attributes on emit.
+
+    Add this log processor to a logger provider.
+
+    ⚠ Warning ⚠️
+
+    Do not put sensitive information in Baggage.
+
+    To repeat: a consequence of adding data to Baggage is that the keys and
+    values will appear in all outgoing HTTP headers from the application.
+    """
+
+    def __init__(
+        self,
+        baggage_key_predicate: BaggageKeyPredicatesT,
+        max_baggage_attributes: Optional[int] = None,
+    ) -> None:
+        if callable(baggage_key_predicate):
+            self._predicates = [baggage_key_predicate]
+        else:
+            self._predicates = list(baggage_key_predicate)
+        self._max_baggage_attributes = max_baggage_attributes
+
+    def _matches(self, key: str) -> bool:
+        return any(predicate(key) for predicate in self._predicates)
+
+    def on_emit(self, log_record: ReadWriteLogRecord) -> None:
+        baggage = get_all_baggage()
+        count = 0
+        for key, value in baggage.items():
+            if self._max_baggage_attributes is not None and count >= self._max_baggage_attributes:
+                break
+            if self._matches(key):
+                if key not in log_record.log_record.attributes:
+                    log_record.log_record.attributes[key] = value
+                    count += 1
+
+    def shutdown(self) -> None:
+        pass
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return True
