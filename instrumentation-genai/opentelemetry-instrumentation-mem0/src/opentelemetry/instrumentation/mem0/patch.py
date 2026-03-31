@@ -54,22 +54,17 @@ GEN_AI_PROVIDER_NAME = _attr("GEN_AI_PROVIDER_NAME", "gen_ai.provider.name")
 GEN_AI_MEMORY_STORE_ID = _attr(
     "GEN_AI_MEMORY_STORE_ID", "gen_ai.memory.store.id"
 )
-GEN_AI_MEMORY_STORE_NAME = _attr(
-    "GEN_AI_MEMORY_STORE_NAME", "gen_ai.memory.store.name"
+GEN_AI_MEMORY_RECORD_ID = _attr(
+    "GEN_AI_MEMORY_RECORD_ID", "gen_ai.memory.record.id"
 )
-GEN_AI_MEMORY_ID = _attr("GEN_AI_MEMORY_ID", "gen_ai.memory.id")
-GEN_AI_MEMORY_TYPE = _attr("GEN_AI_MEMORY_TYPE", "gen_ai.memory.type")
-GEN_AI_MEMORY_SCOPE = _attr("GEN_AI_MEMORY_SCOPE", "gen_ai.memory.scope")
-GEN_AI_MEMORY_QUERY = _attr("GEN_AI_MEMORY_QUERY", "gen_ai.memory.query")
-GEN_AI_MEMORY_CONTENT = _attr("GEN_AI_MEMORY_CONTENT", "gen_ai.memory.content")
-GEN_AI_MEMORY_NAMESPACE = _attr(
-    "GEN_AI_MEMORY_NAMESPACE", "gen_ai.memory.namespace"
+GEN_AI_MEMORY_RECORD_CONTENT = _attr(
+    "GEN_AI_MEMORY_RECORD_CONTENT", "gen_ai.memory.record.content"
+)
+GEN_AI_MEMORY_QUERY_TEXT = _attr(
+    "GEN_AI_MEMORY_QUERY_TEXT", "gen_ai.memory.query.text"
 )
 GEN_AI_MEMORY_SEARCH_RESULT_COUNT = _attr(
     "GEN_AI_MEMORY_SEARCH_RESULT_COUNT", "gen_ai.memory.search.result.count"
-)
-GEN_AI_MEMORY_UPDATE_STRATEGY = _attr(
-    "GEN_AI_MEMORY_UPDATE_STRATEGY", "gen_ai.memory.update.strategy"
 )
 ERROR_TYPE = getattr(ErrorAttributes, "ERROR_TYPE", "error.type")
 
@@ -87,28 +82,6 @@ def _capture_content() -> bool:
     ).lower() in ("true", "1")
 
 
-def _scope_from_kwargs(kwargs: dict[str, Any]) -> Optional[str]:
-    """Infer memory scope from Mem0 filter kwargs."""
-    if kwargs.get("user_id"):
-        return "user"
-    if kwargs.get("agent_id"):
-        return "agent"
-    if kwargs.get("run_id"):
-        return "session"
-    return None
-
-
-def _namespace_from_kwargs(kwargs: dict[str, Any]) -> Optional[str]:
-    """Build namespace string from Mem0 identity kwargs."""
-    user_id = kwargs.get("user_id")
-    agent_id = kwargs.get("agent_id")
-    if user_id:
-        return f"user:{user_id}"
-    if agent_id:
-        return f"agent:{agent_id}"
-    return None
-
-
 def _set_common_attributes(
     span: trace.Span,
     operation: str,
@@ -118,14 +91,6 @@ def _set_common_attributes(
     span.set_attribute(GEN_AI_OPERATION_NAME, operation)
     span.set_attribute(GEN_AI_SYSTEM, _PROVIDER)
     span.set_attribute(GEN_AI_PROVIDER_NAME, _PROVIDER)
-
-    scope = _scope_from_kwargs(kwargs)
-    if scope:
-        span.set_attribute(GEN_AI_MEMORY_SCOPE, scope)
-
-    namespace = _namespace_from_kwargs(kwargs)
-    if namespace:
-        span.set_attribute(GEN_AI_MEMORY_NAMESPACE, namespace)
 
 
 def _set_error(span: trace.Span, exc: BaseException) -> str:
@@ -198,13 +163,11 @@ def wrap_memory_add(
             span_name, kind=SpanKind.CLIENT
         ) as span:
             _set_common_attributes(span, "update_memory", kwargs)
-            # Mem0 add() is an upsert
-            span.set_attribute(GEN_AI_MEMORY_UPDATE_STRATEGY, "merge")
 
             if _capture_content() and args:
                 messages = args[0] if args else kwargs.get("messages")
                 if messages and isinstance(messages, str):
-                    span.set_attribute(GEN_AI_MEMORY_CONTENT, messages)
+                    span.set_attribute(GEN_AI_MEMORY_RECORD_CONTENT, messages)
 
             try:
                 result = wrapped(*args, **kwargs)
@@ -221,7 +184,7 @@ def wrap_memory_add(
 
             mem_id = _first_memory_id(result)
             if mem_id:
-                span.set_attribute(GEN_AI_MEMORY_ID, mem_id)
+                span.set_attribute(GEN_AI_MEMORY_RECORD_ID, mem_id)
 
             return result
 
@@ -251,7 +214,7 @@ def wrap_memory_search(
 
             query = args[0] if args else kwargs.get("query")
             if _capture_content() and query and isinstance(query, str):
-                span.set_attribute(GEN_AI_MEMORY_QUERY, query)
+                span.set_attribute(GEN_AI_MEMORY_QUERY_TEXT, query)
 
             try:
                 result = wrapped(*args, **kwargs)
@@ -296,14 +259,13 @@ def wrap_memory_update(
             span_name, kind=SpanKind.CLIENT
         ) as span:
             _set_common_attributes(span, "update_memory", kwargs)
-            span.set_attribute(GEN_AI_MEMORY_UPDATE_STRATEGY, "overwrite")
             if memory_id:
-                span.set_attribute(GEN_AI_MEMORY_ID, str(memory_id))
+                span.set_attribute(GEN_AI_MEMORY_RECORD_ID, str(memory_id))
 
             if _capture_content():
                 data = kwargs.get("data")
                 if data and isinstance(data, str):
-                    span.set_attribute(GEN_AI_MEMORY_CONTENT, data)
+                    span.set_attribute(GEN_AI_MEMORY_RECORD_CONTENT, data)
 
             try:
                 result = wrapped(*args, **kwargs)
@@ -345,7 +307,7 @@ def wrap_memory_delete(
         ) as span:
             _set_common_attributes(span, "delete_memory", kwargs)
             if memory_id:
-                span.set_attribute(GEN_AI_MEMORY_ID, str(memory_id))
+                span.set_attribute(GEN_AI_MEMORY_RECORD_ID, str(memory_id))
 
             try:
                 result = wrapped(*args, **kwargs)

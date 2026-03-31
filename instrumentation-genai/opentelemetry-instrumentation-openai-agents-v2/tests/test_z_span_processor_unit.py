@@ -55,11 +55,6 @@ def _ensure_semconv_enums() -> None:
             CREATE_AGENT = "create_agent"
             INVOKE_AGENT = "invoke_agent"
             EXECUTE_TOOL = "execute_tool"
-            SEARCH_MEMORY = "search_memory"
-            UPDATE_MEMORY = "update_memory"
-            DELETE_MEMORY = "delete_memory"
-            CREATE_MEMORY_STORE = "create_memory_store"
-            DELETE_MEMORY_STORE = "delete_memory_store"
 
         class _GenAiOutputTypeValues(Enum):
             TEXT = "text"
@@ -161,31 +156,17 @@ def test_operation_and_span_naming(processor_setup):
         == sp.GenAIOperationName.EMBEDDINGS
     )
 
-    agent_create = AgentSpanData(operation=" CREATE ")
+    # AgentSpanData always maps to invoke_agent (no operation field in OpenAI Agents SDK)
+    agent_data = AgentSpanData(name="bot")
     assert (
-        processor._get_operation_name(agent_create)
-        == sp.GenAIOperationName.CREATE_AGENT
-    )
-
-    agent_invoke = AgentSpanData(operation="invoke_agent")
-    assert (
-        processor._get_operation_name(agent_invoke)
+        processor._get_operation_name(agent_data)
         == sp.GenAIOperationName.INVOKE_AGENT
     )
 
-    agent_default = AgentSpanData(operation=None)
+    agent_default = AgentSpanData()
     assert (
         processor._get_operation_name(agent_default)
         == sp.GenAIOperationName.INVOKE_AGENT
-    )
-
-    class MemorySpanData:
-        operation = "search_memory"
-
-    memory_span = MemorySpanData()
-    assert (
-        processor._get_operation_name(memory_span)
-        == sp.GenAIOperationName.SEARCH_MEMORY
     )
 
     function_data = FunctionSpanData()
@@ -208,7 +189,6 @@ def test_operation_and_span_naming(processor_setup):
 
     assert processor._get_span_kind(GenerationSpanData()) is SpanKind.CLIENT
     assert processor._get_span_kind(FunctionSpanData()) is SpanKind.INTERNAL
-    assert processor._get_span_kind(memory_span) is SpanKind.CLIENT
 
     assert (
         sp.get_span_name(sp.GenAIOperationName.CHAT, model="gpt-4o")
@@ -227,13 +207,6 @@ def test_operation_and_span_naming(processor_setup):
     assert (
         sp.get_span_name(sp.GenAIOperationName.CREATE_AGENT, agent_name=None)
         == "create_agent"
-    )
-    assert (
-        sp.get_span_name(
-            sp.GenAIOperationName.SEARCH_MEMORY,
-            memory_store_name="session-memory",
-        )
-        == "search_memory session-memory"
     )
 
 
@@ -337,26 +310,19 @@ def test_attribute_builders(processor_setup):
     agent_span = AgentSpanData(
         name="helper",
         output_type="json",
-        description="desc",
-        agent_id="agent-123",
-        model="model-x",
-        operation="invoke_agent",
     )
     agent_attrs = _collect(
         processor._get_attributes_from_agent_span_data(agent_span, None)
     )
     assert agent_attrs[sp.GEN_AI_AGENT_NAME] == "helper"
-    assert agent_attrs[sp.GEN_AI_AGENT_ID] == "agent-123"
-    assert agent_attrs[sp.GEN_AI_REQUEST_MODEL] == "model-x"
+    assert sp.GEN_AI_AGENT_ID not in agent_attrs
+    assert sp.GEN_AI_REQUEST_MODEL not in agent_attrs
     assert agent_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.TEXT
 
     # Fallback to aggregated model when span data lacks it
     agent_span_no_model = AgentSpanData(
         name="helper-2",
         output_type="json",
-        description="desc",
-        agent_id="agent-456",
-        operation="invoke_agent",
     )
     agent_content = {
         "input_messages": [],
@@ -391,46 +357,6 @@ def test_attribute_builders(processor_setup):
     assert function_attrs[sp.GEN_AI_TOOL_CALL_ARGUMENTS] == {"city": "seattle"}
     assert function_attrs[sp.GEN_AI_TOOL_CALL_RESULT] == {"temperature": 70}
     assert function_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
-
-    class MemorySearchSpanData:
-        operation = "search_memory"
-        conversation_id = "thread-123"
-
-        @staticmethod
-        def export():
-            return {
-                "data": {
-                    "memory_store": {
-                        "id": "ms-1",
-                        "name": "session-store",
-                    },
-                    "query": "weather preferences",
-                    "result_count": 2,
-                    "similarity_threshold": 0.8,
-                    "memory_namespace": "user-42",
-                }
-            }
-
-    class MemorySpan:
-        def __init__(self) -> None:
-            self.span_data = MemorySearchSpanData()
-
-    memory_attrs = _collect(
-        processor._extract_genai_attributes(
-            MemorySpan(), sp.ContentPayload(), None
-        )
-    )
-    assert (
-        memory_attrs[sp.GEN_AI_OPERATION_NAME]
-        == sp.GenAIOperationName.SEARCH_MEMORY
-    )
-    assert memory_attrs[sp.GEN_AI_MEMORY_STORE_ID] == "ms-1"
-    assert memory_attrs[sp.GEN_AI_MEMORY_STORE_NAME] == "session-store"
-    assert memory_attrs[sp.GEN_AI_MEMORY_QUERY] == "weather preferences"
-    assert memory_attrs[sp.GEN_AI_MEMORY_SEARCH_RESULT_COUNT] == 2
-    assert memory_attrs[sp.GEN_AI_MEMORY_SEARCH_SIMILARITY_THRESHOLD] == 0.8
-    assert memory_attrs[sp.GEN_AI_MEMORY_NAMESPACE] == "user-42"
-    assert memory_attrs[sp.GEN_AI_CONVERSATION_ID] == "thread-123"
 
 
 def test_extract_genai_attributes_unknown_type(processor_setup):
@@ -497,9 +423,7 @@ def test_span_lifecycle_and_shutdown(processor_setup):
     parent_span = FakeSpan(
         trace_id="trace-1",
         span_id="span-1",
-        span_data=AgentSpanData(
-            operation="invoke", name="agent", model="gpt-4o"
-        ),
+        span_data=AgentSpanData(name="agent"),
         started_at="2024-01-01T00:00:00Z",
         ended_at="2024-01-01T00:00:02Z",
     )
@@ -538,7 +462,7 @@ def test_span_lifecycle_and_shutdown(processor_setup):
     linger_span = FakeSpan(
         trace_id="trace-2",
         span_id="span-3",
-        span_data=AgentSpanData(operation=None),
+        span_data=AgentSpanData(),
         started_at="2024-01-01T00:00:06Z",
     )
     processor.on_span_start(linger_span)
@@ -580,7 +504,6 @@ def test_chat_span_renamed_with_model(processor_setup):
         trace_id=trace.trace_id,
         span_id="agent-span",
         span_data=AgentSpanData(
-            operation="invoke_agent",
             name="Agent",
         ),
         started_at="2025-01-01T00:00:00Z",

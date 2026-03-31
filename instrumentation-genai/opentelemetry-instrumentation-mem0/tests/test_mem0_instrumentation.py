@@ -22,13 +22,10 @@ import pytest
 
 from opentelemetry.instrumentation.mem0.patch import (
     ERROR_TYPE,
-    GEN_AI_MEMORY_CONTENT,
-    GEN_AI_MEMORY_ID,
-    GEN_AI_MEMORY_NAMESPACE,
-    GEN_AI_MEMORY_QUERY,
-    GEN_AI_MEMORY_SCOPE,
+    GEN_AI_MEMORY_QUERY_TEXT,
+    GEN_AI_MEMORY_RECORD_CONTENT,
+    GEN_AI_MEMORY_RECORD_ID,
     GEN_AI_MEMORY_SEARCH_RESULT_COUNT,
-    GEN_AI_MEMORY_UPDATE_STRATEGY,
     GEN_AI_OPERATION_NAME,
     GEN_AI_PROVIDER_NAME,
     GEN_AI_SYSTEM,
@@ -125,10 +122,7 @@ class TestMemoryAdd:
         assert attrs[GEN_AI_OPERATION_NAME] == "update_memory"
         assert attrs[GEN_AI_SYSTEM] == "mem0"
         assert attrs[GEN_AI_PROVIDER_NAME] == "mem0"
-        assert attrs[GEN_AI_MEMORY_SCOPE] == "user"
-        assert attrs[GEN_AI_MEMORY_NAMESPACE] == "user:alice"
-        assert attrs[GEN_AI_MEMORY_ID] == "mem-1"
-        assert attrs[GEN_AI_MEMORY_UPDATE_STRATEGY] == "merge"
+        assert attrs[GEN_AI_MEMORY_RECORD_ID] == "mem-1"
 
         # Duration metric recorded
         points = _get_duration_metric(metric_reader)
@@ -145,7 +139,7 @@ class TestMemoryAdd:
         wrapper(wrapped, None, ("I like dark mode",), {"user_id": "bob"})
 
         span, attrs = _get_attrs(exporter)
-        assert attrs[GEN_AI_MEMORY_CONTENT] == "I like dark mode"
+        assert attrs[GEN_AI_MEMORY_RECORD_CONTENT] == "I like dark mode"
 
     def test_add_does_not_capture_content_by_default(
         self, tracer_provider, exporter, meter_provider, monkeypatch
@@ -158,7 +152,7 @@ class TestMemoryAdd:
         wrapper(wrapped, None, ("secret data",), {"user_id": "bob"})
 
         span, attrs = _get_attrs(exporter)
-        assert GEN_AI_MEMORY_CONTENT not in attrs
+        assert GEN_AI_MEMORY_RECORD_CONTENT not in attrs
 
     def test_add_error_records_exception_and_type(
         self, tracer_provider, exporter, meter_provider, metric_reader
@@ -195,7 +189,6 @@ class TestMemorySearch:
         assert attrs[GEN_AI_OPERATION_NAME] == "search_memory"
         assert attrs[GEN_AI_PROVIDER_NAME] == "mem0"
         assert attrs[GEN_AI_MEMORY_SEARCH_RESULT_COUNT] == 2
-        assert attrs[GEN_AI_MEMORY_SCOPE] == "user"
 
         points = _get_duration_metric(metric_reader)
         assert len(points) >= 1
@@ -211,8 +204,7 @@ class TestMemorySearch:
         wrapper(wrapped, None, ("my query",), {"agent_id": "bot-1"})
 
         span, attrs = _get_attrs(exporter)
-        assert attrs[GEN_AI_MEMORY_QUERY] == "my query"
-        assert attrs[GEN_AI_MEMORY_SCOPE] == "agent"
+        assert attrs[GEN_AI_MEMORY_QUERY_TEXT] == "my query"
 
     def test_search_list_result(
         self, tracer_provider, exporter, meter_provider
@@ -240,8 +232,7 @@ class TestMemoryUpdate:
         span, attrs = _get_attrs(exporter)
         assert span.name == "update_memory mem0"
         assert attrs[GEN_AI_OPERATION_NAME] == "update_memory"
-        assert attrs[GEN_AI_MEMORY_ID] == "mem-42"
-        assert attrs[GEN_AI_MEMORY_UPDATE_STRATEGY] == "overwrite"
+        assert attrs[GEN_AI_MEMORY_RECORD_ID] == "mem-42"
         assert attrs[GEN_AI_PROVIDER_NAME] == "mem0"
 
         points = _get_duration_metric(metric_reader)
@@ -258,7 +249,7 @@ class TestMemoryUpdate:
         wrapper(wrapped, None, ("mem-42",), {"data": "updated content"})
 
         span, attrs = _get_attrs(exporter)
-        assert attrs[GEN_AI_MEMORY_CONTENT] == "updated content"
+        assert attrs[GEN_AI_MEMORY_RECORD_CONTENT] == "updated content"
 
 
 class TestMemoryDelete:
@@ -272,7 +263,7 @@ class TestMemoryDelete:
         span, attrs = _get_attrs(exporter)
         assert span.name == "delete_memory mem0"
         assert attrs[GEN_AI_OPERATION_NAME] == "delete_memory"
-        assert attrs[GEN_AI_MEMORY_ID] == "mem-99"
+        assert attrs[GEN_AI_MEMORY_RECORD_ID] == "mem-99"
         assert attrs[GEN_AI_PROVIDER_NAME] == "mem0"
 
         points = _get_duration_metric(metric_reader)
@@ -290,7 +281,6 @@ class TestMemoryDeleteAll:
         span, attrs = _get_attrs(exporter)
         assert span.name == "delete_memory mem0"
         assert attrs[GEN_AI_OPERATION_NAME] == "delete_memory"
-        assert attrs[GEN_AI_MEMORY_SCOPE] == "user"
         assert attrs[GEN_AI_PROVIDER_NAME] == "mem0"
 
 
