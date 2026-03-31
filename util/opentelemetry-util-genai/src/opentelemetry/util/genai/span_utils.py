@@ -404,7 +404,7 @@ def _get_tool_call_span_name(tool_call: ToolCall) -> str:
 
     Format: "execute_tool {gen_ai.tool.name}"
     """
-    return f"execute_tool {tool_call.name}".strip()
+    return f"{tool_call.operation_name} {tool_call.name}"
 
 
 def _apply_tool_call_attributes(
