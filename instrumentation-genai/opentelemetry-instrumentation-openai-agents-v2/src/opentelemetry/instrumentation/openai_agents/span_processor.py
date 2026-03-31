@@ -1056,9 +1056,19 @@ class GenAISemanticProcessor(TracingProcessor):
 
         elif _is_instance_of(span_data, ResponseSpanData):
             span_input = getattr(span_data, "input", None)
+            response_obj = getattr(span_data, "response", None)
             if capture_messages and span_input:
                 payload.input_messages = (
                     self._normalize_messages_to_role_parts(span_input)
+                )
+
+            if (
+                capture_system
+                and response_obj
+                and hasattr(response_obj, "instructions")
+            ):
+                payload.system_instructions = self._normalize_to_text_parts(
+                    response_obj.instructions
                 )
             if capture_system and span_input:
                 sys_instr = self._collect_system_instructions(span_input)
@@ -1519,17 +1529,8 @@ class GenAISemanticProcessor(TracingProcessor):
                     return GenAIOperationName.CHAT
             return GenAIOperationName.TEXT_COMPLETION
         if _is_instance_of(span_data, AgentSpanData):
-            # Could be create_agent or invoke_agent based on context
-            operation = getattr(span_data, "operation", None)
-            normalized = (
-                operation.strip().lower()
-                if isinstance(operation, str)
-                else None
-            )
-            if normalized in {"create", "create_agent"}:
-                return GenAIOperationName.CREATE_AGENT
-            if normalized in {"invoke", "invoke_agent"}:
-                return GenAIOperationName.INVOKE_AGENT
+            # The OpenAI Agents SDK AgentSpanData has no "operation" field;
+            # agent spans always represent invoke_agent.
             return GenAIOperationName.INVOKE_AGENT
         if _is_instance_of(span_data, FunctionSpanData):
             return GenAIOperationName.EXECUTE_TOOL
@@ -1831,24 +1832,20 @@ class GenAISemanticProcessor(TracingProcessor):
         if name:
             yield GEN_AI_AGENT_NAME, name
 
-        agent_id = (
-            self.agent_id
-            or getattr(span_data, "agent_id", None)
-            or self._agent_id_default
-        )
+        # agent_id and description are not available on the OpenAI Agents SDK
+        # AgentSpanData; only use user-configured overrides.
+        agent_id = self.agent_id or self._agent_id_default
         if agent_id:
             yield GEN_AI_AGENT_ID, agent_id
 
-        description = (
-            self.agent_description
-            or getattr(span_data, "description", None)
-            or self._agent_description_default
-        )
+        description = self.agent_description or self._agent_description_default
         if description:
             yield GEN_AI_AGENT_DESCRIPTION, description
 
-        model = getattr(span_data, "model", None)
-        if not model and agent_content:
+        # The OpenAI Agents SDK AgentSpanData has no "model" field; fall back to
+        # the model aggregated from child generation/response spans.
+        model = None
+        if agent_content:
             model = agent_content.get("request_model")
         if model:
             yield GEN_AI_REQUEST_MODEL, model
@@ -2028,6 +2025,22 @@ class GenAISemanticProcessor(TracingProcessor):
                     output_tokens = getattr(usage, "completion_tokens", None)
                 if output_tokens is not None:
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
+
+            # Tool definitions from response
+            if self._capture_tool_definitions and hasattr(
+                span_data.response, "tools"
+            ):
+                yield (
+                    GEN_AI_TOOL_DEFINITIONS,
+                    safe_json_dumps(
+                        list(
+                            map(
+                                lambda tool: tool.to_dict(),
+                                span_data.response.tools,
+                            )
+                        )
+                    ),
+                )
 
         # Input/output messages
         if (
