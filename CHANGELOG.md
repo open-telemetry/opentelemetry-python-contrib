@@ -10,11 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
-  
+
 ### Added
 
-- `opentelemetry-instrumentation-asyncpg`: Add `capture_connection_cleanup` option to silence connection cleanup spans when using a pool
-  ([#4264](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4264))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
   ([#4289](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4289))
 - `opentelemetry-instrumentation`: Add support for wrapt 2.x
@@ -23,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4212))
 - `opentelemetry-instrumentation-botocore`: Add support for instrumenting `aiobotocore`
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
+  - `opentelemetry-instrumentation-asyncpg`: Add `capture_connection_cleanup` option to `AsyncPGInstrumentor` to silence connection pool cleanup spans
+  ([#4373](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4373))
 
 ### Fixed
 

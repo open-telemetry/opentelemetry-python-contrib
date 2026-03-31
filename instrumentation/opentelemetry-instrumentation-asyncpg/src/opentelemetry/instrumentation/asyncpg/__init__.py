@@ -35,6 +35,7 @@ Run instrumented code:
 
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
+    AsyncPGInstrumentor(capture_connection_cleanup=False).instrument()
 
     async def main():
         conn = await asyncpg.connect(user='user', password='password')
