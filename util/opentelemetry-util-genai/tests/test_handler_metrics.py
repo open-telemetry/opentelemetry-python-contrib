@@ -271,9 +271,6 @@ class TelemetryHandlerToolTest(TestCase):
             "Get current weather",
         )
 
-        # Check status is OK
-        self.assertEqual(span.status.status_code, StatusCode.OK)
-
     def test_stop_tool_call_without_start(self):
         """Test stop without prior start is a no-op for ToolCall"""
         tool = ToolCall(name="test", arguments={}, id=None)
@@ -355,7 +352,6 @@ class TelemetryHandlerToolTest(TestCase):
 
         span = spans[0]
         self.assertEqual(span.name, "execute_tool calculate_sum")
-        self.assertEqual(span.status.status_code, StatusCode.OK)
         self.assertEqual(
             span.attributes[GenAI.GEN_AI_TOOL_NAME], "calculate_sum"
         )

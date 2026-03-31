@@ -393,7 +393,10 @@ def _apply_tool_call_attributes(
     - error.type (if operation ended in error)
     """
     # Set REQUIRED attribute
-    span.set_attribute(GenAI.GEN_AI_OPERATION_NAME, "execute_tool")
+    span.set_attribute(
+        GenAI.GEN_AI_OPERATION_NAME,
+        GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value,
+    )
 
     # Set RECOMMENDED attributes (if present)
     if tool_call.name:
@@ -450,12 +453,6 @@ def _finish_tool_call_span(
 
     # Apply all attributes including result if available
     _apply_tool_call_attributes(span, tool_call, capture_content)
-
-    # Set status based on error presence
-    if tool_call.error_type:
-        span.set_status(Status(StatusCode.ERROR))
-    else:
-        span.set_status(Status(StatusCode.OK))
 
 
 __all__ = [

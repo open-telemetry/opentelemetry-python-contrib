@@ -62,7 +62,9 @@ class InvocationMetricsRecorder:
                 )
         else:
             # ToolCall
-            attributes[GenAI.GEN_AI_OPERATION_NAME] = "execute_tool"
+            attributes[GenAI.GEN_AI_OPERATION_NAME] = (
+                GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+            )
 
         # Common attributes across invocation types
         if invocation.provider:
@@ -95,7 +97,7 @@ class InvocationMetricsRecorder:
                 context=span_context,
             )
 
-        # Token metrics only for LLMInvocation
+        # Token metrics for LLMInvocations.
         if isinstance(invocation, LLMInvocation):
             token_counts: list[tuple[int, str]] = []
             if invocation.input_tokens is not None:
