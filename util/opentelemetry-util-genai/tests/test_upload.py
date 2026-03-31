@@ -44,7 +44,7 @@ FAKE_INPUTS = [
     types.InputMessage(
         role="assistant",
         parts=[
-            types.ToolCall(
+            types.ToolCallRequest(
                 id="get_capital_0",
                 name="get_capital",
                 arguments={"city": "Paris"},
