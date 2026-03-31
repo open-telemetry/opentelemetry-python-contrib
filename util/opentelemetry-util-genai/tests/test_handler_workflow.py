@@ -59,9 +59,7 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
         self.handler.stop(invocation)
 
     def test_start_workflow_span_name(self) -> None:
-        invocation = WorkflowInvocation(
-            name="my_pipeline"
-        )
+        invocation = WorkflowInvocation(name="my_pipeline")
         self.handler.start(invocation)
         self.handler.stop(invocation)
 
