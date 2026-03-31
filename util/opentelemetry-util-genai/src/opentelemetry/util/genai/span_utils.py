@@ -116,7 +116,7 @@ def _get_workflow_span_name(invocation: WorkflowInvocation) -> str:
     return f"{operation_name} {name}" if name else operation_name
 
 
-def _get_llm_messages_attributes_for_span(
+def _get_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instruction: list[MessagePart] | None = None,
@@ -248,7 +248,7 @@ def _apply_llm_finish_attributes(
     attributes.update(_get_llm_request_attributes(invocation))
     attributes.update(_get_llm_response_attributes(invocation))
     attributes.update(
-        _get_llm_messages_attributes_for_span(
+        _get_messages_attributes_for_span(
             invocation.input_messages,
             invocation.output_messages,
             invocation.system_instruction,
@@ -362,7 +362,7 @@ def _apply_workflow_finish_attributes(
     attributes: dict[str, Any] = {}
     attributes.update(_get_workflow_common_attributes(invocation))
     attributes.update(
-        _get_workflow_messages_attributes_for_span(
+        _get_messages_attributes_for_span(
             invocation.input_messages,
             invocation.output_messages,
         )
@@ -384,38 +384,6 @@ def _get_workflow_common_attributes(
     return {
         GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
     }
-
-
-def _get_workflow_messages_attributes_for_span(
-    input_messages: list[InputMessage],
-    output_messages: list[OutputMessage],
-) -> dict[str, Any]:
-    """Get message attributes formatted for span (JSON string format).
-
-    Returns empty dict if not in experimental mode or content capturing is disabled.
-    """
-    if not is_experimental_mode() or get_content_capturing_mode() not in (
-        ContentCapturingMode.SPAN_ONLY,
-        ContentCapturingMode.SPAN_AND_EVENT,
-    ):
-        return {}
-
-    optional_attrs = (
-        (
-            GenAI.GEN_AI_INPUT_MESSAGES,
-            gen_ai_json_dumps([asdict(m) for m in input_messages])
-            if input_messages
-            else None,
-        ),
-        (
-            GenAI.GEN_AI_OUTPUT_MESSAGES,
-            gen_ai_json_dumps([asdict(m) for m in output_messages])
-            if output_messages
-            else None,
-        ),
-    )
-
-    return {key: value for key, value in optional_attrs if value is not None}
 
 
 def _get_embedding_response_attributes(
