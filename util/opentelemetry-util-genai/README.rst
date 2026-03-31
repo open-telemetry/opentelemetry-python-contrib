@@ -91,7 +91,7 @@ This package sets the following span attributes on LLM invocations:
 - ``gen_ai.request.stop_sequences``: Slice(["\\n"])
 - ``gen_ai.request.seed``: Int(42)
 
-**Content attributes (experimental, requires content capturing enabled):**
+**Content attributes (sensitive, requires content capturing enabled):**
 
 - ``gen_ai.input.messages``: Str('[{"role": "user", "parts": [{"content": "hello world", "type": "text"}]}]')
 - ``gen_ai.output.messages``: Str('[{"role": "assistant", "parts": [{"content": "hello back", "type": "text"}], "finish_reason": "stop"}]')
