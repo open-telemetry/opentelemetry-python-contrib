@@ -208,7 +208,6 @@ class TelemetryHandler:
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_metrics(invocation, span)
-                _maybe_emit_embedding_event(self._logger, span, invocation)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 # TODO: Add workflow metrics when supported
@@ -238,9 +237,6 @@ class TelemetryHandler:
                 _apply_embedding_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
                 self._record_metrics(invocation, span, error_type=error_type)
-                _maybe_emit_embedding_event(
-                    self._logger, span, invocation, error_type
-                )
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
