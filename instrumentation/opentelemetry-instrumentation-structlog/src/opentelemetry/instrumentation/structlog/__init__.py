@@ -48,7 +48,7 @@ from opentelemetry.context import get_current
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.log_utils import std_to_otel
 from opentelemetry.instrumentation.structlog.package import _instruments
-from opentelemetry.semconv._incubating.attributes import (
+from opentelemetry.semconv.attributes import (
     exception_attributes,
 )
 
@@ -306,7 +306,18 @@ class StructlogInstrumentor(BaseInstrumentor):
         def _patched_configure(*args, **kwargs):
             # If the user is supplying a processors list, ensure our handler
             # is included before passing it to the original configure.
-            if "processors" in kwargs:
+            # processors may be passed as the first positional arg or as a kwarg.
+            if args:
+                processors = list(args[0])
+                if not any(
+                    isinstance(p, StructlogHandler) for p in processors
+                ):
+                    insert_position = max(len(processors) - 1, 0)
+                    processors.insert(
+                        insert_position, StructlogInstrumentor._processor
+                    )
+                args = (processors,) + args[1:]
+            elif "processors" in kwargs:
                 processors = list(kwargs["processors"])
                 if not any(
                     isinstance(p, StructlogHandler) for p in processors
@@ -318,7 +329,7 @@ class StructlogInstrumentor(BaseInstrumentor):
                     kwargs["processors"] = processors
             original = StructlogInstrumentor._original_configure
             if original is not None:
-                original(*args, **kwargs)
+                return original(*args, **kwargs)
 
         structlog.configure = _patched_configure
 
