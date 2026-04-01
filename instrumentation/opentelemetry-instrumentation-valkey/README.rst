@@ -1,5 +1,5 @@
 OpenTelemetry Valkey Instrumentation
-===================================
+====================================
 
 |pypi|
 

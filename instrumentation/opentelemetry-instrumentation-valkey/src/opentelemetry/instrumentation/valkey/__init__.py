@@ -152,7 +152,6 @@ import valkey
 import valkey.asyncio
 from wrapt import wrap_function_wrapper
 
-from opentelemetry import trace
 from opentelemetry.instrumentation._redis_valkey import (
     KVStoreConfig,
     _async_traced_execute_factory,
@@ -165,7 +164,7 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.valkey.package import _instruments
 from opentelemetry.instrumentation.valkey.version import __version__
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span, TracerProvider, get_tracer
+from opentelemetry.trace import TracerProvider, get_tracer
 
 if TYPE_CHECKING:
     import valkey.asyncio.client
@@ -436,7 +435,9 @@ class ValkeyInstrumentor(BaseInstrumentor):
         if not getattr(client, _INSTRUMENTATION_ATTR):
             _instrument_client(
                 client,
-                ValkeyInstrumentor._get_tracer(tracer_provider=tracer_provider),
+                ValkeyInstrumentor._get_tracer(
+                    tracer_provider=tracer_provider
+                ),
                 request_hook=request_hook,
                 response_hook=response_hook,
             )

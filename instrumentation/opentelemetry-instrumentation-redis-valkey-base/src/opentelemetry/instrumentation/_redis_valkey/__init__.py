@@ -23,7 +23,7 @@ both ``opentelemetry-instrumentation-redis`` and
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Callable
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._redis_valkey.util import (
@@ -57,7 +57,9 @@ class KVStoreConfig:
     db_system_attr: str  # DB_SYSTEM semconv key
     db_index_attr: str  # DB_REDIS_DATABASE_INDEX or "db.valkey.database_index"
     args_length_attr: str  # "db.redis.args_length" or "db.valkey.args_length"
-    pipeline_length_attr: str  # "db.redis.pipeline_length" or "db.valkey.pipeline_length"
+    pipeline_length_attr: (
+        str  # "db.redis.pipeline_length" or "db.valkey.pipeline_length"
+    )
 
     # WatchError class from the backend library
     watch_error_class: type
@@ -91,9 +93,7 @@ def _traced_execute_factory(
                 )
                 span.set_attribute(config.args_length_attr, len(args))
                 if span.name == f"{config.backend_name}.create_index":
-                    _add_create_attributes(
-                        span, args, config.backend_name
-                    )
+                    _add_create_attributes(span, args, config.backend_name)
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = func(*args, **kwargs)
