@@ -57,15 +57,15 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-asyncpg==0.62b0.dev",
     },
     {
-        "library": "boto~=2.0",
-        "instrumentation": "opentelemetry-instrumentation-boto==0.62b0.dev",
-    },
-    {
         "library": "boto3 ~= 1.0",
         "instrumentation": "opentelemetry-instrumentation-boto3sqs==0.62b0.dev",
     },
     {
         "library": "botocore ~= 1.0",
+        "instrumentation": "opentelemetry-instrumentation-botocore==0.62b0.dev",
+    },
+    {
+        "library": "aiobotocore ~= 2.0",
         "instrumentation": "opentelemetry-instrumentation-botocore==0.62b0.dev",
     },
     {
