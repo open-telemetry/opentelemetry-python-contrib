@@ -330,6 +330,7 @@ class StructlogInstrumentor(BaseInstrumentor):
             original = StructlogInstrumentor._original_configure
             if original is not None:
                 return original(*args, **kwargs)
+            return None
 
         structlog.configure = _patched_configure
 
