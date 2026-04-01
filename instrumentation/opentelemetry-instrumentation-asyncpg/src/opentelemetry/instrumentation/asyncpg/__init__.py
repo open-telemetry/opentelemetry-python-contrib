@@ -35,6 +35,8 @@ Run instrumented code:
 
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
+
+    # OR opt into not tracing connection pool cleanup
     AsyncPGInstrumentor(capture_connection_cleanup=False).instrument()
 
     async def main():
