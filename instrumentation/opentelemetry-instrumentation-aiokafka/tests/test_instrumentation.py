@@ -126,7 +126,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
     @staticmethod
     async def producer_factory() -> AIOKafkaProducer:
-        producer = AIOKafkaProducer(api_version="1.0")
+        producer = AIOKafkaProducer()
 
         producer.client._wait_on_metadata = mock.AsyncMock()
         producer.client.bootstrap = mock.AsyncMock()
