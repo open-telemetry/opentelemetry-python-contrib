@@ -8,7 +8,7 @@ idna==3.7
 iniconfig==2.0.0
 multidict==6.0.5
 packaging==24.0
-pluggy==1.5.0
+pluggy==1.6.0
 py-cpuinfo==9.0.0
 pytest==7.4.4
 pytest-aiohttp==1.0.5

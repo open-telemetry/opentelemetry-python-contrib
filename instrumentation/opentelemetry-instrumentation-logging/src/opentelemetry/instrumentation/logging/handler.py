@@ -18,6 +18,7 @@ import logging
 import logging.config
 import threading
 import traceback
+from contextvars import ContextVar
 from time import time_ns
 from typing import Callable
 
@@ -34,6 +35,10 @@ from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util.types import _ExtendedAttributes
+
+_internal_logger = logging.getLogger(__name__ + ".internal")
+_internal_logger.propagate = False
+_internal_logger.addHandler(logging.StreamHandler())
 
 
 def _setup_logging_handler(
@@ -114,6 +119,8 @@ class LoggingHandler(logging.Handler):
     https://docs.python.org/3/library/logging.html
     """
 
+    _is_emitting: ContextVar[bool] = ContextVar("_is_emitting", default=False)
+
     def __init__(
         self,
         level: int = logging.NOTSET,
@@ -183,10 +190,14 @@ class LoggingHandler(logging.Handler):
             else:
                 body = record.getMessage()
 
-        # related to https://github.com/open-telemetry/opentelemetry-python/issues/3548
-        # Severity Text = WARN as defined in https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity.
-        level_name = (
-            "WARN" if record.levelname == "WARNING" else record.levelname
+        # Map Python log level names to OTel severity text as defined in
+        # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
+        _python_to_otel_severity_text = {
+            "WARNING": "WARN",
+            "CRITICAL": "FATAL",
+        }
+        level_name = _python_to_otel_severity_text.get(
+            record.levelname, record.levelname
         )
 
         return LogRecord(
@@ -205,9 +216,28 @@ class LoggingHandler(logging.Handler):
 
         The record is translated to OTel format, and then sent across the pipeline.
         """
-        logger = get_logger(record.name, logger_provider=self._logger_provider)
-        if not isinstance(logger, NoOpLogger):
-            logger.emit(self._translate(record))
+        # Prevent recursive logging that can cause infinite recursion or deadlock.
+        # During _translate(), internal OTel code (e.g., _clean_extended_attribute)
+        # may call _logger.warning() for invalid attributes. If the OTel
+        # LoggingHandler is in the logger chain, this warning re-enters emit(),
+        # creating an infinite loop that prevents the handler lock from ever
+        # being released, blocking all other threads.
+        # See: https://github.com/open-telemetry/opentelemetry-python/issues/3858
+
+        if self._is_emitting.get():
+            _internal_logger.warning(
+                "LoggingHandler.emit detected recursive logging, skipping to prevent deadlock."
+            )
+            return
+        token = self._is_emitting.set(True)
+        try:
+            logger = get_logger(
+                record.name, logger_provider=self._logger_provider
+            )
+            if not isinstance(logger, NoOpLogger):
+                logger.emit(self._translate(record))
+        finally:
+            self._is_emitting.reset(token)
 
     def flush(self) -> None:
         """
