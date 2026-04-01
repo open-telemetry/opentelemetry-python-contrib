@@ -28,7 +28,7 @@ from opentelemetry.sdk._logs.export import (
     InMemoryLogRecordExporter,
     SimpleLogRecordProcessor,
 )
-from opentelemetry.semconv._incubating.attributes import exception_attributes
+from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import TraceFlags
 
