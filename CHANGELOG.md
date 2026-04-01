@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4305](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4305))
 - Don't import module in unwrap if not already imported
   ([#4321](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4321))
+- `opentelemetry-instrumentation-logging`: Map Python `CRITICAL` log level to OTel `FATAL` severity text and `WARNING` to `WARN`
+  ([#4365](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4365))
 - `opentelemetry-instrumentation-logging`: Add recursion guard in LoggingHandler.emit to prevent deadlock
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
