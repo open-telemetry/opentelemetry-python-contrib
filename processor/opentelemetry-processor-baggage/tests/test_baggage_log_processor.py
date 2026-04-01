@@ -111,7 +111,31 @@ class BaggageLogProcessorTest(unittest.TestCase):
     @staticmethod
     def matches_regex(baggage_key: str) -> bool:
         return re.match(r"que.*", baggage_key) is not None
+    def test_multiple_predicates(self):
+        token1 = attach(set_baggage("queen", "bee"))
+        token2 = attach(set_baggage("king", "cobra"))
+        logger_provider = LoggerProvider()
+        logger_provider.add_log_record_processor(
+            BaggageLogProcessor([
+                lambda key: key.startswith("que"),
+                lambda key: key.startswith("kin"),
+            ])
+        )
+        exporter = InMemoryLogRecordExporter()
+        logger_provider.add_log_record_processor(
+            BatchLogRecordProcessor(exporter)
+        )
+        logger = logger_provider.get_logger("test-logger")
+        logger.emit(None)
+        logger_provider.force_flush()
+        logs = exporter.get_finished_logs()
+        attributes = logs[-1].log_record.attributes
+        self.assertEqual(attributes.get("queen"), "bee")
+        self.assertEqual(attributes.get("king"), "cobra")
+        detach(token2)
+        detach(token1)
 
 
 if __name__ == "__main__":
     unittest.main()
+    

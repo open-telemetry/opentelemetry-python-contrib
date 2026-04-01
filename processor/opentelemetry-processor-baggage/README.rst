@@ -101,6 +101,16 @@ For example, to only copy baggage entries that match the regex `^key.+`:
     regex_predicate = lambda baggage_key: re.match(r"^key.+", baggage_key) is not None
     logger_provider.add_log_record_processor(BaggageLogProcessor(regex_predicate))
 
+For example, to copy baggage entries matching multiple predicates:
+
+::
+
+    multiple_predicates = [
+        lambda baggage_key: baggage_key.startswith("my-key"),
+        lambda baggage_key: baggage_key.startswith("other-key"),
+    ]
+    logger_provider.add_log_record_processor(BaggageLogProcessor(multiple_predicates))
+
 References
 ----------
 * `OpenTelemetry Project <https://opentelemetry.io/>`_

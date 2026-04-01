@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Optional, Sequence, Union
+from typing import Sequence, Union
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.sdk._logs import LogRecordProcessor, ReadWriteLogRecord
 
 from opentelemetry.processor.baggage.processor import BaggageKeyPredicateT
 
-BaggageKeyPredicatesT = Union[BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]]
+_BaggageKeyPredicatesT = Union[BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]]
 
 
 class BaggageLogProcessor(LogRecordProcessor):
@@ -40,8 +40,8 @@ class BaggageLogProcessor(LogRecordProcessor):
 
     def __init__(
         self,
-        baggage_key_predicate: BaggageKeyPredicatesT,
-        max_baggage_attributes: Optional[int] = None,
+        baggage_key_predicate: _BaggageKeyPredicatesT,
+        max_baggage_attributes: int = 128,
     ) -> None:
         if callable(baggage_key_predicate):
             self._predicates = [baggage_key_predicate]
@@ -53,10 +53,19 @@ class BaggageLogProcessor(LogRecordProcessor):
         return any(predicate(key) for predicate in self._predicates)
 
     def on_emit(self, log_record: ReadWriteLogRecord) -> None:
+        """Add baggage entries as log record attributes on emit.
+
+        Baggage keys are filtered using the provided predicate(s).
+        If a baggage key already exists in the log record attributes,
+        it will not be overwritten to avoid collisions with attributes
+        added by stdlib logging, calls to logging.emit, or custom
+        LogRecordProcessors. At most max_baggage_attributes baggage
+        entries will be added.
+        """
         baggage = get_all_baggage()
         count = 0
         for key, value in baggage.items():
-            if self._max_baggage_attributes is not None and count >= self._max_baggage_attributes:
+            if count >= self._max_baggage_attributes:
                 break
             if self._matches(key):
                 if key not in log_record.log_record.attributes:
@@ -68,3 +77,4 @@ class BaggageLogProcessor(LogRecordProcessor):
 
     def force_flush(self, timeout_millis: int = 30000) -> bool:
         return True
+    
