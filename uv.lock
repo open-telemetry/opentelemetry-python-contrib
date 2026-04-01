@@ -4003,6 +4003,7 @@ source = { editable = "instrumentation/opentelemetry-instrumentation-structlog" 
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
 ]
 
 [package.optional-dependencies]
@@ -4014,6 +4015,7 @@ instruments = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "structlog", marker = "extra == 'instruments'", specifier = ">=21.1" },
 ]
 provides-extras = ["instruments"]
