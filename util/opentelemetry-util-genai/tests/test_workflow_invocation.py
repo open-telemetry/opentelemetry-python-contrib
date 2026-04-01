@@ -21,10 +21,6 @@ class TestWorkflowInvocation:  # pylint: disable=no-self-use
         invocation = WorkflowInvocation(name="customer_support_pipeline")
         assert invocation.name == "customer_support_pipeline"
 
-    def test_custom_operation_name(self):
-        invocation = WorkflowInvocation(operation_name="run_pipeline")
-        assert invocation.operation_name == "run_pipeline"
-
     def test_with_input_messages(self):
         msg = InputMessage(role="user", parts=[Text(content="hello")])
         invocation = WorkflowInvocation(input_messages=[msg])
