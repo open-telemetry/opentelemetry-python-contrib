@@ -190,8 +190,6 @@ class LoggingHandler(logging.Handler):
 
         # Map Python log level names to OTel severity text as defined in
         # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
-        # Python "WARNING" -> OTel "WARN" (see open-telemetry/opentelemetry-python#3548)
-        # Python "CRITICAL" -> OTel "FATAL" (see open-telemetry/opentelemetry-python#4984)
         _python_to_otel_severity_text = {
             "WARNING": "WARN",
             "CRITICAL": "FATAL",
