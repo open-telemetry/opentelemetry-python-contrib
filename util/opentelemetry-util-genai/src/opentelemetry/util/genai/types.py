@@ -286,6 +286,9 @@ class WorkflowInvocation(GenAIInvocation):
         default_factory=_new_output_messages
     )
 
+    def __post_init__(self) -> None:
+        self.operation_name = "invoke_workflow"
+
 
 @dataclass
 class LLMInvocation(GenAIInvocation):
