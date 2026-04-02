@@ -48,8 +48,8 @@ class TestAgentInvocationHandler(TestCase):
             provider="openai",
             request_model="gpt-4",
         )
-        handler.start_agent(invocation)
-        handler.stop_agent(invocation)
+        handler.start(invocation)
+        handler.stop(invocation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -64,21 +64,11 @@ class TestAgentInvocationHandler(TestCase):
         self.assertEqual(span.attributes[GenAI.GEN_AI_PROVIDER_NAME], "openai")
         self.assertEqual(span.attributes[GenAI.GEN_AI_REQUEST_MODEL], "gpt-4")
 
-    def test_agent_span_kind_client_by_default(self) -> None:
+    def test_agent_span_kind_internal_by_default(self) -> None:
         handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Remote Agent", is_remote=True)
-        handler.start_agent(invocation)
-        handler.stop_agent(invocation)
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
-
-    def test_agent_span_kind_internal_for_local(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Local Agent", is_remote=False)
-        handler.start_agent(invocation)
-        handler.stop_agent(invocation)
+        invocation = AgentInvocation(agent_name="Local Agent")
+        handler.start(invocation)
+        handler.stop(invocation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -103,13 +93,13 @@ class TestAgentInvocationHandler(TestCase):
             server_address="api.openai.com",
             server_port=443,
         )
-        handler.start_agent(invocation)
+        handler.start(invocation)
         invocation.response_model_name = "gpt-4-0613"
         invocation.response_id = "resp-abc"
         invocation.input_tokens = 100
         invocation.output_tokens = 200
         invocation.finish_reasons = ["stop"]
-        handler.stop_agent(invocation)
+        handler.stop(invocation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -132,9 +122,9 @@ class TestAgentInvocationHandler(TestCase):
         invocation = AgentInvocation(
             agent_name="Failing Agent", provider="openai"
         )
-        handler.start_agent(invocation)
+        handler.start(invocation)
         error = Error(message="agent crashed", type=RuntimeError)
-        handler.fail_agent(invocation, error)
+        handler.fail(invocation, error)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -182,7 +172,7 @@ class TestAgentInvocationHandler(TestCase):
     def test_stop_agent_without_start_is_noop(self) -> None:
         handler = self._make_handler()
         invocation = AgentInvocation(agent_name="Not Started")
-        result = handler.stop_agent(invocation)
+        result = handler.stop(invocation)
         self.assertIs(result, invocation)
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 
@@ -190,7 +180,7 @@ class TestAgentInvocationHandler(TestCase):
         handler = self._make_handler()
         invocation = AgentInvocation(agent_name="Not Started")
         error = Error(message="boom", type=RuntimeError)
-        result = handler.fail_agent(invocation, error)
+        result = handler.fail(invocation, error)
         self.assertIs(result, invocation)
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 
@@ -216,8 +206,8 @@ class TestAgentCreationHandler(TestCase):
             provider="openai",
             request_model="gpt-4",
         )
-        handler.start_agent(creation)
-        handler.stop_agent(creation)
+        handler.start(creation)
+        handler.stop(creation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -228,14 +218,14 @@ class TestAgentCreationHandler(TestCase):
         )
         self.assertEqual(span.attributes[GenAI.GEN_AI_AGENT_NAME], "New Agent")
 
-    def test_create_agent_span_kind_is_client(self) -> None:
+    def test_create_agent_span_kind_is_internal(self) -> None:
         handler = self._make_handler()
-        creation = AgentCreation(agent_name="Client Agent")
-        handler.start_agent(creation)
-        handler.stop_agent(creation)
+        creation = AgentCreation(agent_name="Local Agent")
+        handler.start(creation)
+        handler.stop(creation)
 
         spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(spans[0].kind, SpanKind.CLIENT)
+        self.assertEqual(spans[0].kind, SpanKind.INTERNAL)
 
     def test_create_agent_with_all_base_attributes(self) -> None:
         handler = self._make_handler()
@@ -249,8 +239,8 @@ class TestAgentCreationHandler(TestCase):
             server_address="api.openai.com",
             server_port=443,
         )
-        handler.start_agent(creation)
-        handler.stop_agent(creation)
+        handler.start(creation)
+        handler.stop(creation)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -266,9 +256,9 @@ class TestAgentCreationHandler(TestCase):
     def test_fail_create_agent(self) -> None:
         handler = self._make_handler()
         creation = AgentCreation(agent_name="Bad Agent")
-        handler.start_agent(creation)
+        handler.start(creation)
         error = Error(message="creation failed", type=RuntimeError)
-        handler.fail_agent(creation, error)
+        handler.fail(creation, error)
 
         spans = self.span_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -310,7 +300,7 @@ class TestAgentCreationHandler(TestCase):
     def test_stop_create_agent_without_start_is_noop(self) -> None:
         handler = self._make_handler()
         creation = AgentCreation(agent_name="Not Started")
-        result = handler.stop_agent(creation)
+        result = handler.stop(creation)
         self.assertIs(result, creation)
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 
@@ -318,7 +308,7 @@ class TestAgentCreationHandler(TestCase):
         handler = self._make_handler()
         creation = AgentCreation(agent_name="Not Started")
         error = Error(message="boom", type=RuntimeError)
-        result = handler.fail_agent(creation, error)
+        result = handler.fail(creation, error)
         self.assertIs(result, creation)
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 
@@ -333,7 +323,6 @@ class TestAgentTypes(TestCase):
         self.assertIsNone(inv.agent_id)
         self.assertIsNone(inv.provider)
         self.assertIsNone(inv.request_model)
-        self.assertTrue(inv.is_remote)
         self.assertEqual(inv.input_messages, [])
         self.assertEqual(inv.output_messages, [])
         self.assertEqual(inv.system_instruction, [])
@@ -433,10 +422,10 @@ class TestAgentMetrics(TestCase):
         invocation.output_tokens = 100
 
         with patch("timeit.default_timer", return_value=1000.0):
-            handler.start_agent(invocation)
+            handler.start(invocation)
 
         with patch("timeit.default_timer", return_value=1003.0):
-            handler.stop_agent(invocation)
+            handler.stop(invocation)
 
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)

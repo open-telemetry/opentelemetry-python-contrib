@@ -42,8 +42,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 def async_call(coro):
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 class TestAiopgInstrumentor(TestBase):
@@ -473,7 +472,7 @@ class TestAiopgIntegration(TestBase):
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
     def test_uninstrument_connection(self):
         connection = mock.Mock()
@@ -483,7 +482,7 @@ class TestAiopgIntegration(TestBase):
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
         connection3 = wrappers.uninstrument_connection(connection2)
         self.assertIs(connection3, connection)

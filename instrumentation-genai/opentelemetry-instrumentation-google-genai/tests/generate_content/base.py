@@ -124,8 +124,7 @@ class TestCase(CommonTestCaseBase):
         mock = unittest.mock.MagicMock()
 
         def _default_impl(*args, **kwargs):
-            for response in self._responses:
-                yield response
+            yield from self._responses
 
         if not e:
             mock.side_effect = _default_impl
