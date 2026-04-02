@@ -14,16 +14,58 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import threading
+import timeit
 from typing import Any, Optional, cast
 from uuid import UUID
 
+from langchain_core.agents import AgentAction, AgentFinish
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import LLMResult
 
+from opentelemetry.instrumentation.langchain.content_recording import (
+    get_content_policy,
+    should_record_retriever_content,
+    should_record_tool_content,
+)
 from opentelemetry.instrumentation.langchain.invocation_manager import (
     _InvocationManager,
 )
+from opentelemetry.instrumentation.langchain.message_formatting import (
+    format_documents,
+    prepare_messages,
+)
+from opentelemetry.instrumentation.langchain.operation_mapping import (
+    OperationName,
+    classify_chain_run,
+    resolve_agent_name,
+)
+from opentelemetry.instrumentation.langchain.semconv_attributes import (
+    GEN_AI_WORKFLOW_NAME,
+    METRIC_TIME_PER_OUTPUT_CHUNK,
+    METRIC_TIME_TO_FIRST_CHUNK,
+    OP_EXECUTE_TOOL,
+)
+from opentelemetry.instrumentation.langchain.span_manager import (
+    _SpanManager,
+)
+from opentelemetry.instrumentation.langchain.utils import (
+    extract_propagation_context,
+    infer_provider_name,
+    infer_server_address,
+    infer_server_port,
+    propagated_context,
+)
+from opentelemetry.metrics import get_meter
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
+from opentelemetry.semconv.attributes import server_attributes
+from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
@@ -34,32 +76,80 @@ from opentelemetry.util.genai.types import (
     Text,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _extract_chain_messages(data: Any) -> Any:
+    """Extract message content from chain inputs or outputs.
+
+    LangChain stores messages under various keys depending on the
+    chain type.  Returns the first non-None value found, or ``None``.
+    """
+    if not isinstance(data, dict):
+        return data
+
+    for key in (
+        "messages",
+        "input",
+        "output",
+        "question",
+        "query",
+        "result",
+        "answer",
+        "response",
+    ):
+        value = data.get(key)
+        if value is not None:
+            return value
+
+    return None
+
 
 class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     """
     A callback handler for LangChain that uses OpenTelemetry to create spans for LLM calls and chains, tools etc,. in future.
     """
 
-    def __init__(self, telemetry_handler: TelemetryHandler) -> None:
+    def __init__(
+        self,
+        telemetry_handler: TelemetryHandler,
+        span_manager: Optional[_SpanManager] = None,
+    ) -> None:
         super().__init__()
         self._telemetry_handler = telemetry_handler
+        self._span_manager = span_manager
         self._invocation_manager = _InvocationManager()
 
-    def on_chat_model_start(
+        # Streaming state: str(run_id) → monotonic timestamp of the last chunk
+        self._streaming_state: dict[str, float] = {}
+
+        # The TelemetryHandler handles duration and token usage metrics.
+        # Streaming metrics are not yet in the shared handler, so we create
+        # them here using the same meter.
+        meter = get_meter(__name__)
+        self._ttfc_histogram = meter.create_histogram(
+            name=METRIC_TIME_TO_FIRST_CHUNK,
+            description="Time to generate first chunk in a streaming response",
+            unit="s",
+        )
+        self._tpoc_histogram = meter.create_histogram(
+            name=METRIC_TIME_PER_OUTPUT_CHUNK,
+            description="Time between consecutive chunks in a streaming response",
+            unit="s",
+        )
+
+    def _handle_model_start(
         self,
         serialized: dict[str, Any],
-        messages: list[list[BaseMessage]],
+        input_messages: list[InputMessage],
+        operation_name: str,
         *,
         run_id: UUID,
         parent_run_id: Optional[UUID] = None,
-        tags: Optional[list[str]] = None,
         metadata: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        # Other providers/LLMs may be supported in the future and telemetry for them is skipped for now.
-        if serialized.get("name") not in ("ChatOpenAI", "ChatBedrock"):
-            return
-
+        """Shared logic for on_chat_model_start and on_llm_start."""
         if "invocation_params" in kwargs:
             params = (
                 kwargs["invocation_params"].get("params")
@@ -70,8 +160,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         request_model = "unknown"
         for model_tag in (
-            "model_name",  # ChatOpenAI
-            "model_id",  # ChatBedrock
+            "model_name",
+            "model_id",
+            "model",
+            "engine",
+            "deployment_name",
         ):
             if (model := (params or {}).get(model_tag)) is not None:
                 request_model = model
@@ -79,10 +172,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             elif (model := (metadata or {}).get(model_tag)) is not None:
                 request_model = model
                 break
-
-        # Skip telemetry for unsupported request models
-        if request_model == "unknown":
-            return
 
         # Initialize variables with default values to avoid "possibly unbound" errors
         top_p = None
@@ -102,16 +191,86 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             temperature = params.get("temperature")
             max_tokens = params.get("max_completion_tokens")
 
-        provider = "unknown"
-        if metadata is not None:
-            provider = metadata.get("ls_provider", "unknown")
+        invocation_params = kwargs.get("invocation_params") or {}
+        provider = infer_provider_name(serialized, metadata, invocation_params)
+        if provider is None:
+            provider = "unknown"
 
-            # Override with ChatBedrock values if present
+        if metadata is not None:
+            # Override with metadata values if present (e.g. ChatBedrock)
             if "ls_temperature" in metadata:
                 temperature = metadata.get("ls_temperature")
             if "ls_max_tokens" in metadata:
                 max_tokens = metadata.get("ls_max_tokens")
 
+        server_address = infer_server_address(serialized, invocation_params)
+        server_port = infer_server_port(serialized, invocation_params)
+
+        # Additional semconv request attributes
+        extra_attrs: dict[str, Any] = {}
+
+        top_k = params.get("top_k") if params else None
+        if top_k is not None:
+            extra_attrs[GenAI.GEN_AI_REQUEST_TOP_K] = top_k
+
+        # Choice count (n) — only set if != 1
+        choice_count = params.get("n") if params else None
+        if isinstance(choice_count, int) and choice_count != 1:
+            extra_attrs[GenAI.GEN_AI_REQUEST_CHOICE_COUNT] = choice_count
+
+        # Output type from response_format
+        if params:
+            response_format = params.get("response_format")
+            if isinstance(response_format, dict):
+                output_type = response_format.get("type")
+                if output_type is not None:
+                    extra_attrs[GenAI.GEN_AI_OUTPUT_TYPE] = output_type
+            elif isinstance(response_format, str):
+                extra_attrs[GenAI.GEN_AI_OUTPUT_TYPE] = response_format
+
+        # Encoding formats
+        encoding_format = params.get("encoding_format") if params else None
+        if encoding_format is not None:
+            extra_attrs[GenAI.GEN_AI_REQUEST_ENCODING_FORMATS] = [
+                encoding_format
+            ]
+
+        llm_invocation = LLMInvocation(
+            operation_name=operation_name,
+            request_model=request_model,
+            input_messages=input_messages,
+            provider=provider,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            stop_sequences=stop_sequences,
+            seed=seed,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            server_address=server_address,
+            server_port=server_port,
+            attributes=extra_attrs,
+        )
+        llm_invocation = self._telemetry_handler.start_llm(
+            invocation=llm_invocation
+        )
+        self._invocation_manager.add_invocation_state(
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            invocation=llm_invocation,
+        )
+
+    def on_chat_model_start(
+        self,
+        serialized: dict[str, Any],
+        messages: list[list[BaseMessage]],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
         input_messages: list[InputMessage] = []
         for sub_messages in messages:
             for message in sub_messages:
@@ -140,26 +299,102 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     )
                 )
 
-        llm_invocation = LLMInvocation(
-            request_model=request_model,
-            input_messages=input_messages,
-            provider=provider,
-            top_p=top_p,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            stop_sequences=stop_sequences,
-            seed=seed,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        llm_invocation = self._telemetry_handler.start_llm(
-            invocation=llm_invocation
-        )
-        self._invocation_manager.add_invocation_state(
+        self._handle_model_start(
+            serialized,
+            input_messages,
+            "chat",
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,
+            metadata=metadata,
+            **kwargs,
         )
+
+    def on_llm_start(
+        self,
+        serialized: dict[str, Any],
+        prompts: list[str],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
+        input_messages: list[InputMessage] = [
+            InputMessage(
+                role="user",
+                parts=cast(
+                    list[MessagePart], [Text(content=prompt, type="text")]
+                ),
+            )
+            for prompt in prompts
+        ]
+
+        self._handle_model_start(
+            serialized,
+            input_messages,
+            "text_completion",
+            run_id=run_id,
+            parent_run_id=parent_run_id,
+            metadata=metadata,
+            **kwargs,
+        )
+
+    def on_llm_new_token(
+        self,
+        token: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        invocation = self._invocation_manager.get_invocation(run_id)
+        if invocation is None or not isinstance(invocation, LLMInvocation):
+            return
+
+        now = timeit.default_timer()
+        started_at = invocation.monotonic_start_s
+        if started_at is None:
+            return
+
+        # Build metric attributes matching InvocationMetricsRecorder's pattern
+        metric_attrs: dict[str, Any] = {}
+        if invocation.operation_name:
+            metric_attrs[GenAI.GEN_AI_OPERATION_NAME] = (
+                invocation.operation_name
+            )
+        if invocation.request_model:
+            metric_attrs[GenAI.GEN_AI_REQUEST_MODEL] = invocation.request_model
+        if invocation.provider:
+            metric_attrs[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
+        if invocation.response_model_name:
+            metric_attrs[GenAI.GEN_AI_RESPONSE_MODEL] = (
+                invocation.response_model_name
+            )
+        if invocation.server_address:
+            metric_attrs[server_attributes.SERVER_ADDRESS] = (
+                invocation.server_address
+            )
+        if invocation.server_port is not None:
+            metric_attrs[server_attributes.SERVER_PORT] = (
+                invocation.server_port
+            )
+
+        run_key = str(run_id)
+        last_chunk_at = self._streaming_state.get(run_key)
+
+        if last_chunk_at is None:
+            # First token — record time to first chunk
+            self._ttfc_histogram.record(
+                max(now - started_at, 0.0), attributes=metric_attrs
+            )
+        else:
+            # Subsequent token — record time per output chunk
+            self._tpoc_histogram.record(
+                max(now - last_chunk_at, 0.0), attributes=metric_attrs
+            )
+
+        self._streaming_state[run_key] = now
 
     def on_llm_end(
         self,
@@ -246,6 +481,26 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             if response_id is not None:
                 llm_invocation.response_id = str(response_id)
 
+        # OpenAI-specific response attributes
+        if llm_output is not None:
+            system_fingerprint = llm_output.get("system_fingerprint")
+            if system_fingerprint:
+                if llm_invocation.span:
+                    llm_invocation.span.set_attribute(
+                        "openai.response.system_fingerprint",
+                        str(system_fingerprint),
+                    )
+
+            service_tier = llm_output.get("service_tier")
+            if service_tier:
+                if llm_invocation.span:
+                    llm_invocation.span.set_attribute(
+                        "openai.response.service_tier",
+                        str(service_tier),
+                    )
+
+        self._streaming_state.pop(str(run_id), None)
+
         llm_invocation = self._telemetry_handler.stop_llm(
             invocation=llm_invocation
         )
@@ -268,8 +523,427 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             return
 
         error_otel = Error(message=str(error), type=type(error))
+        self._streaming_state.pop(str(run_id), None)
+
         llm_invocation = self._telemetry_handler.fail_llm(
             invocation=llm_invocation, error=error_otel
         )
         if llm_invocation.span and not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
+
+    # ------------------------------------------------------------------
+    # Chain callbacks (agent / workflow spans)
+    # ------------------------------------------------------------------
+
+    def on_chain_start(
+        self,
+        serialized: dict[str, Any],
+        inputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        operation = classify_chain_run(
+            serialized, metadata, kwargs, parent_run_id
+        )
+        if operation is None:
+            self._span_manager.ignore_run(run_id, parent_run_id)
+            return
+
+        attributes: dict[str, Any] = {
+            GenAI.GEN_AI_OPERATION_NAME: operation,
+        }
+        span_name = operation
+
+        if operation == OperationName.INVOKE_AGENT:
+            agent_name = resolve_agent_name(serialized, metadata, kwargs)
+            if agent_name:
+                attributes[GenAI.GEN_AI_AGENT_NAME] = agent_name
+                span_name = f"{operation} {agent_name}"
+
+            if metadata:
+                agent_id = metadata.get("agent_id")
+                if agent_id:
+                    attributes[GenAI.GEN_AI_AGENT_ID] = str(agent_id)
+
+                agent_desc = metadata.get("agent_description")
+                if agent_desc:
+                    attributes[GenAI.GEN_AI_AGENT_DESCRIPTION] = str(
+                        agent_desc
+                    )
+
+                for key in ("thread_id", "session_id", "conversation_id"):
+                    conv_id = metadata.get(key)
+                    if conv_id:
+                        attributes[GenAI.GEN_AI_CONVERSATION_ID] = str(conv_id)
+                        break
+
+            provider = infer_provider_name(serialized, metadata, None)
+            if provider:
+                attributes[GenAI.GEN_AI_PROVIDER_NAME] = provider
+            elif metadata:
+                provider_name = metadata.get("provider_name")
+                if provider_name:
+                    attributes[GenAI.GEN_AI_PROVIDER_NAME] = str(provider_name)
+
+        elif operation == OperationName.INVOKE_WORKFLOW:
+            workflow_name = kwargs.get("name") or serialized.get("name")
+            if workflow_name:
+                attributes[GEN_AI_WORKFLOW_NAME] = str(workflow_name)
+                span_name = f"{operation} {workflow_name}"
+
+        # Content recording (opt-in)
+        policy = get_content_policy()
+        if policy.should_record_content_on_spans:
+            raw_messages = _extract_chain_messages(inputs)
+            if raw_messages:
+                formatted, system_instructions = prepare_messages(
+                    raw_messages, record_content=True
+                )
+                if formatted:
+                    attributes[GenAI.GEN_AI_INPUT_MESSAGES] = formatted
+                if system_instructions:
+                    attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = (
+                        system_instructions
+                    )
+
+        headers = extract_propagation_context(metadata, inputs, kwargs)
+        thread_key = str(threading.get_ident())
+
+        with propagated_context(headers):
+            self._span_manager.start_span(
+                run_id=run_id,
+                name=span_name,
+                operation=operation,
+                parent_run_id=parent_run_id,
+                attributes=attributes,
+                thread_key=thread_key,
+            )
+
+    def on_chain_end(
+        self,
+        outputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        if self._span_manager.is_ignored(run_id):
+            return
+
+        record = self._span_manager.get_record(run_id)
+        if record is None:
+            return
+
+        policy = get_content_policy()
+        if policy.should_record_content_on_spans:
+            raw_messages = _extract_chain_messages(outputs)
+            if raw_messages:
+                formatted, _ = prepare_messages(
+                    raw_messages, record_content=True
+                )
+                if formatted:
+                    record.span.set_attribute(
+                        GenAI.GEN_AI_OUTPUT_MESSAGES, formatted
+                    )
+
+        self._span_manager.end_span(run_id, status=StatusCode.OK)
+
+    def on_chain_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        if self._span_manager.is_ignored(run_id):
+            return
+
+        self._span_manager.end_span(run_id, error=error)
+
+    def on_agent_action(
+        self,
+        action: AgentAction,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager and parent_run_id:
+            parent_key = self._span_manager.resolve_parent_id(parent_run_id)
+            record = (
+                self._span_manager.get_record(parent_key)
+                if parent_key
+                else None
+            )
+            if record:
+                record.stash.setdefault("pending_actions", {})[str(run_id)] = {
+                    "tool": action.tool,
+                    "tool_input": action.tool_input,
+                    "log": action.log,
+                }
+
+    def on_agent_finish(
+        self,
+        finish: AgentFinish,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if not self._span_manager:
+            return
+        record = self._span_manager.get_record(str(run_id))
+        if not record:
+            return
+        if finish.return_values:
+            record.span.set_attribute(
+                GenAI.GEN_AI_OUTPUT_MESSAGES,
+                json.dumps(finish.return_values, default=str),
+            )
+        record.span.set_status(Status(StatusCode.OK))
+        self._span_manager.end_span(run_id)
+
+    # ------------------------------------------------------------------
+    # Tool callbacks
+    # ------------------------------------------------------------------
+
+    def on_tool_start(
+        self,
+        serialized: dict[str, Any],
+        input_str: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        inputs: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        metadata = metadata or {}
+        inputs = inputs or {}
+
+        # Resolve tool name from multiple sources
+        tool_name = (
+            serialized.get("name")
+            or metadata.get("tool_name")
+            or kwargs.get("name")
+            or "unknown_tool"
+        )
+
+        span_name = f"{OP_EXECUTE_TOOL} {tool_name}"
+
+        # Build initial attributes
+        attributes: dict[str, Any] = {
+            GenAI.GEN_AI_OPERATION_NAME: OP_EXECUTE_TOOL,
+            GenAI.GEN_AI_TOOL_NAME: tool_name,
+        }
+
+        # Tool description
+        description = serialized.get("description")
+        if description:
+            attributes[GenAI.GEN_AI_TOOL_DESCRIPTION] = str(description)
+
+        # Tool type: from serialized or infer from definition
+        tool_type = serialized.get("type")
+        if tool_type:
+            attributes[GenAI.GEN_AI_TOOL_TYPE] = str(tool_type)
+
+        # Tool call ID
+        tool_call_id = inputs.get("tool_call_id") or metadata.get(
+            "tool_call_id"
+        )
+        if tool_call_id:
+            attributes[GenAI.GEN_AI_TOOL_CALL_ID] = str(tool_call_id)
+
+        # Inherit provider from parent span if available
+        prid = str(parent_run_id) if parent_run_id is not None else None
+        if prid is not None:
+            parent_record = self._span_manager.get_record(prid)
+            if parent_record is not None:
+                provider = parent_record.attributes.get(
+                    GenAI.GEN_AI_PROVIDER_NAME
+                )
+                if provider:
+                    attributes[GenAI.GEN_AI_PROVIDER_NAME] = provider
+
+        # Tool call arguments (opt-in content)
+        policy = get_content_policy()
+        if should_record_tool_content(policy):
+            arguments = None
+            if inputs:
+                # Exclude internal keys, serialize the actual input
+                arg_data = {
+                    k: v for k, v in inputs.items() if k != "tool_call_id"
+                }
+                if arg_data:
+                    arguments = json.dumps(arg_data, default=str)
+            if not arguments and input_str:
+                arguments = input_str
+            if arguments:
+                attributes[GenAI.GEN_AI_TOOL_CALL_ARGUMENTS] = arguments
+
+        # Thread key for agent stack tracking
+        thread_key = metadata.get("thread_id")
+
+        self._span_manager.start_span(
+            run_id=str(run_id),
+            name=span_name,
+            operation=OP_EXECUTE_TOOL,
+            parent_run_id=str(parent_run_id) if parent_run_id else None,
+            attributes=attributes,
+            thread_key=str(thread_key) if thread_key else None,
+        )
+
+    def on_tool_end(
+        self,
+        output: Any,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        record = self._span_manager.get_record(str(run_id))
+        if record is None:
+            return
+
+        # Record tool result (opt-in content)
+        policy = get_content_policy()
+        if should_record_tool_content(policy) and output is not None:
+            try:
+                result_str = json.dumps(output, default=str)
+            except (TypeError, ValueError):
+                result_str = str(output)
+            record.span.set_attribute(
+                GenAI.GEN_AI_TOOL_CALL_RESULT, result_str
+            )
+
+        self._span_manager.end_span(run_id=str(run_id), status=StatusCode.OK)
+
+    def on_tool_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        self._span_manager.end_span(run_id=str(run_id), error=error)
+
+    # ------------------------------------------------------------------
+    # Retriever callbacks
+    # ------------------------------------------------------------------
+
+    def on_retriever_start(
+        self,
+        serialized: dict[str, Any],
+        query: str,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        metadata = metadata or {}
+
+        tool_name = serialized.get("name", "retriever")
+        span_name = f"{OP_EXECUTE_TOOL} {tool_name}"
+
+        attributes: dict[str, Any] = {
+            GenAI.GEN_AI_OPERATION_NAME: OP_EXECUTE_TOOL,
+            GenAI.GEN_AI_TOOL_NAME: tool_name,
+            GenAI.GEN_AI_TOOL_DESCRIPTION: serialized.get(
+                "description", "retriever"
+            ),
+            GenAI.GEN_AI_TOOL_TYPE: "retriever",
+        }
+
+        # Inherit provider from parent span if available
+        prid = str(parent_run_id) if parent_run_id is not None else None
+        if prid is not None:
+            parent_record = self._span_manager.get_record(prid)
+            if parent_record is not None:
+                provider = parent_record.attributes.get(
+                    GenAI.GEN_AI_PROVIDER_NAME
+                )
+                if provider:
+                    attributes[GenAI.GEN_AI_PROVIDER_NAME] = provider
+
+        # Query text (opt-in content)
+        policy = get_content_policy()
+        if should_record_retriever_content(policy):
+            attributes["gen_ai.retrieval.query.text"] = query
+
+        thread_key = metadata.get("thread_id")
+
+        self._span_manager.start_span(
+            run_id=str(run_id),
+            name=span_name,
+            operation=OP_EXECUTE_TOOL,
+            kind=SpanKind.INTERNAL,
+            parent_run_id=str(parent_run_id) if parent_run_id else None,
+            attributes=attributes,
+            thread_key=str(thread_key) if thread_key else None,
+        )
+
+    def on_retriever_end(
+        self,
+        documents: Any,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        record = self._span_manager.get_record(str(run_id))
+        if record is None:
+            return
+
+        policy = get_content_policy()
+        record_content = should_record_retriever_content(policy)
+        formatted = format_documents(documents, record_content=record_content)
+        if formatted is not None:
+            record.span.set_attribute("gen_ai.retrieval.documents", formatted)
+
+        self._span_manager.end_span(run_id=str(run_id), status=StatusCode.OK)
+
+    def on_retriever_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> None:
+        if self._span_manager is None:
+            return
+
+        self._span_manager.end_span(run_id=str(run_id), error=error)
