@@ -261,7 +261,7 @@ class TelemetryHandler:
             elif isinstance(invocation, ToolCall):
                 invocation.error_type = error_type
                 _finish_tool_call_span(span, invocation, capture_content=True)
-                self._record_metrics(invocation, span, error_type=error_type)
+                self._record_metrics(invocation, span, error_type)
                 _apply_error_attributes(span, error, error_type)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
