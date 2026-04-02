@@ -79,6 +79,39 @@ from opentelemetry.util.genai.types import (
 logger = logging.getLogger(__name__)
 
 
+def _has_goto(output: Any) -> bool:
+    """Detect LangGraph ``Command(goto=...)`` patterns in chain/tool output.
+
+    LangGraph ``Command`` objects have both ``.goto`` and ``.update``
+    attributes.  The output may be the object directly, wrapped in a
+    dict, or inside a list/tuple.
+    """
+    if output is None:
+        return False
+
+    # Direct Command-like object
+    if hasattr(output, "goto") and hasattr(output, "update"):
+        return bool(getattr(output, "goto", None))
+
+    # Dict — check for "goto" key or Command-like values
+    if isinstance(output, dict):
+        if output.get("goto"):
+            return True
+        for val in output.values():
+            if hasattr(val, "goto") and hasattr(val, "update"):
+                if getattr(val, "goto", None):
+                    return True
+
+    # List/tuple — check elements
+    if isinstance(output, (list, tuple)):
+        for item in output:
+            if hasattr(item, "goto") and hasattr(item, "update"):
+                if getattr(item, "goto", None):
+                    return True
+
+    return False
+
+
 def _extract_chain_messages(data: Any) -> Any:
     """Extract message content from chain inputs or outputs.
 
@@ -467,6 +500,50 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                         )
                         llm_invocation.output_tokens = output_tokens
 
+                        # Cache token attributes (when provider exposes them)
+                        # Check direct keys (Anthropic-style) and input_token_details (LangChain-style)
+                        cache_read = (
+                            chat_generation.message.usage_metadata.get(
+                                "cache_read_input_tokens"
+                            )
+                        )
+                        if cache_read is None:
+                            input_token_details = (
+                                chat_generation.message.usage_metadata.get(
+                                    "input_token_details"
+                                )
+                            )
+                            if isinstance(input_token_details, dict):
+                                cache_read = input_token_details.get(
+                                    "cache_read"
+                                )
+                        if cache_read is not None and llm_invocation.span:
+                            llm_invocation.span.set_attribute(
+                                "gen_ai.usage.cache_read.input_tokens",
+                                int(cache_read),
+                            )
+
+                        cache_creation = (
+                            chat_generation.message.usage_metadata.get(
+                                "cache_creation_input_tokens"
+                            )
+                        )
+                        if cache_creation is None:
+                            input_token_details = (
+                                chat_generation.message.usage_metadata.get(
+                                    "input_token_details"
+                                )
+                            )
+                            if isinstance(input_token_details, dict):
+                                cache_creation = input_token_details.get(
+                                    "cache_creation"
+                                )
+                        if cache_creation is not None and llm_invocation.span:
+                            llm_invocation.span.set_attribute(
+                                "gen_ai.usage.cache_creation.input_tokens",
+                                int(cache_creation),
+                            )
+
         llm_invocation.output_messages = output_messages
 
         llm_output = getattr(response, "llm_output", None)
@@ -504,6 +581,15 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         llm_invocation = self._telemetry_handler.stop_llm(
             invocation=llm_invocation
         )
+
+        # Propagate token usage to the nearest ancestor agent span.
+        if self._span_manager and parent_run_id:
+            self._span_manager.accumulate_llm_usage_to_agent(
+                parent_run_id,
+                llm_invocation.input_tokens,
+                llm_invocation.output_tokens,
+            )
+
         if llm_invocation.span and not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 
@@ -614,14 +700,29 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     )
 
         headers = extract_propagation_context(metadata, inputs, kwargs)
-        thread_key = str(threading.get_ident())
+
+        # Prefer the LangGraph logical thread_id from metadata; fall back
+        # to the OS thread identifier for non-LangGraph chains.
+        thread_key = (
+            str(metadata["thread_id"])
+            if metadata and metadata.get("thread_id")
+            else str(threading.get_ident())
+        )
+
+        # For agent nodes, check for a goto-parent override produced by a
+        # preceding LangGraph Command(goto=...) transition.
+        effective_parent = parent_run_id
+        if operation == OperationName.INVOKE_AGENT:
+            goto_parent = self._span_manager.pop_goto_parent(thread_key)
+            if goto_parent:
+                effective_parent = goto_parent
 
         with propagated_context(headers):
             self._span_manager.start_span(
                 run_id=run_id,
                 name=span_name,
                 operation=operation,
-                parent_run_id=parent_run_id,
+                parent_run_id=effective_parent,
                 attributes=attributes,
                 thread_key=thread_key,
             )
@@ -654,6 +755,17 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                 if formatted:
                     record.span.set_attribute(
                         GenAI.GEN_AI_OUTPUT_MESSAGES, formatted
+                    )
+
+        # Detect LangGraph Command(goto=...) — the goto target should
+        # become a child of this node's nearest agent ancestor.
+        if _has_goto(outputs):
+            thread_key = record.stash.get("thread_key")
+            if thread_key:
+                agent_parent = self._span_manager.nearest_agent_parent(record)
+                if agent_parent:
+                    self._span_manager.push_goto_parent(
+                        thread_key, agent_parent
                     )
 
         self._span_manager.end_span(run_id, status=StatusCode.OK)
@@ -836,6 +948,16 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             record.span.set_attribute(
                 GenAI.GEN_AI_TOOL_CALL_RESULT, result_str
             )
+
+        # Detect LangGraph Command(goto=...) from tool output.
+        if _has_goto(output):
+            thread_key = record.stash.get("thread_key")
+            if thread_key:
+                agent_parent = self._span_manager.nearest_agent_parent(record)
+                if agent_parent:
+                    self._span_manager.push_goto_parent(
+                        thread_key, agent_parent
+                    )
 
         self._span_manager.end_span(run_id=str(run_id), status=StatusCode.OK)
 
