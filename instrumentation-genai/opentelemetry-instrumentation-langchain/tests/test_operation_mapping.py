@@ -296,7 +296,7 @@ class TestResolveAgentName:
         """metadata agent_name has higher priority than kwargs name."""
         assert (
             resolve_agent_name(
-                serialized={"name": "ser"},
+                serialized={"name": "serialized"},
                 metadata={"agent_name": "meta"},
                 kwargs={"name": "kw"},
             )
@@ -306,7 +306,7 @@ class TestResolveAgentName:
     def test_priority_kwargs_over_serialized(self):
         assert (
             resolve_agent_name(
-                serialized={"name": "ser"},
+                serialized={"name": "serialized"},
                 metadata={},
                 kwargs={"name": "kw"},
             )

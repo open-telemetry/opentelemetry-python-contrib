@@ -44,6 +44,10 @@ __all__ = ["_SpanManager"]
 _MODEL_OPERATIONS: frozenset[str] = frozenset({OP_CHAT, OP_TEXT_COMPLETION})
 
 
+def _empty_attributes() -> Dict[str, Any]:
+    return {}
+
+
 @dataclass
 class SpanRecord:
     """Rich record stored for every active span."""
@@ -52,9 +56,9 @@ class SpanRecord:
     span: Span
     operation: str
     parent_run_id: Optional[str] = None
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: Dict[str, Any] = field(default_factory=_empty_attributes)
     # Mutable scratch space for streaming timing, thread keys, etc.
-    stash: Dict[str, Any] = field(default_factory=dict)
+    stash: Dict[str, Any] = field(default_factory=_empty_attributes)
 
 
 class _SpanManager:

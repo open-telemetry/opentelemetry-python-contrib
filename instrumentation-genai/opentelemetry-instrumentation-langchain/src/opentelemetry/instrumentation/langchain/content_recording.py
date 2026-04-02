@@ -18,6 +18,8 @@ Provides clear APIs for the LangChain callback handler to decide what
 content should be recorded on spans and events.
 """
 
+from typing import Optional
+
 from opentelemetry.util.genai.types import ContentCapturingMode
 from opentelemetry.util.genai.utils import (
     get_content_capturing_mode,
@@ -91,7 +93,7 @@ def should_record_system_instructions(policy: ContentPolicy) -> bool:
 
 # -- Default singleton --------------------------------------------------------
 
-_default_policy: ContentPolicy | None = None
+_default_policy: Optional[ContentPolicy] = None
 
 
 def get_content_policy() -> ContentPolicy:

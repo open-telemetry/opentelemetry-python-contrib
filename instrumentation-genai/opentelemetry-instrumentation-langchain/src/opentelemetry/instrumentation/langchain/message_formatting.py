@@ -33,13 +33,26 @@ When *record_content* is ``False``:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, cast
 
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 logger = logging.getLogger(__name__)
 
 _REDACTED = "[redacted]"
+
+
+def _as_dict(value: Any) -> Optional[Dict[str, Any]]:
+    if isinstance(value, dict):
+        return cast(Dict[str, Any], value)
+    return None
+
+
+def _as_sequence(value: Any) -> Optional[Sequence[Any]]:
+    if isinstance(value, (list, tuple)):
+        return cast(Sequence[Any], value)
+    return None
+
 
 # ---------------------------------------------------------------------------
 # Role mapping
@@ -77,9 +90,10 @@ def message_role(message: Any) -> str:
             return mapped
 
     # Dict-like message
-    if isinstance(message, dict):
+    message_dict = _as_dict(message)
+    if message_dict is not None:
         for key in ("role", "type"):
-            value = message.get(key)
+            value = message_dict.get(key)
             if isinstance(value, str):
                 mapped = _ROLE_MAP.get(value)
                 if mapped is not None:
@@ -109,8 +123,9 @@ def message_content(message: Any) -> Optional[str]:
     lists are concatenated with newlines.
     """
     raw: Any = getattr(message, "content", None)
-    if raw is None and isinstance(message, dict):
-        raw = message.get("content")
+    message_dict = _as_dict(message)
+    if raw is None and message_dict is not None:
+        raw = message_dict.get("content")
 
     if raw is None:
         return None
@@ -119,13 +134,17 @@ def message_content(message: Any) -> Optional[str]:
         return raw if raw else None
 
     # Multi-part content (list of strings / dicts with "text" key)
-    if isinstance(raw, list):
+    raw_parts = _as_sequence(raw)
+    if raw_parts is not None:
         parts: list[str] = []
-        for item in raw:
+        for item in raw_parts:
             if isinstance(item, str):
                 parts.append(item)
-            elif isinstance(item, dict):
-                text_value = item.get("text")
+            else:
+                item_dict = _as_dict(item)
+                if item_dict is None:
+                    continue
+                text_value = item_dict.get("text")
                 if isinstance(text_value, str) and text_value:
                     parts.append(text_value)
         return "\n".join(parts) if parts else None
@@ -145,20 +164,25 @@ def extract_tool_calls(message: Any) -> List[Dict[str, Any]]:
     ``"id"``, ``"name"``, and ``"arguments"``.
     """
     tool_calls: Any = getattr(message, "tool_calls", None)
-    if tool_calls is None and isinstance(message, dict):
-        tool_calls = message.get("tool_calls")
+    message_dict = _as_dict(message)
+    if tool_calls is None and message_dict is not None:
+        tool_calls = message_dict.get("tool_calls")
 
-    if not tool_calls:
+    tool_call_items = _as_sequence(tool_calls)
+    if not tool_call_items:
         return []
 
     result: List[Dict[str, Any]] = []
-    for tc in tool_calls:
+    for tc in tool_call_items:
         entry: Dict[str, Any] = {}
 
-        if isinstance(tc, dict):
-            entry["id"] = tc.get("id") or ""
-            entry["name"] = tc.get("name") or ""
-            entry["arguments"] = tc.get("args") or tc.get("arguments")
+        tc_dict = _as_dict(tc)
+        if tc_dict is not None:
+            entry["id"] = tc_dict.get("id") or ""
+            entry["name"] = tc_dict.get("name") or ""
+            entry["arguments"] = tc_dict.get("args") or tc_dict.get(
+                "arguments"
+            )
         else:
             entry["id"] = getattr(tc, "id", "") or ""
             entry["name"] = getattr(tc, "name", "") or ""
@@ -202,8 +226,9 @@ def _format_tool_response_part(
     part: Dict[str, Any] = {"type": "tool_call_response"}
 
     tool_call_id = getattr(message, "tool_call_id", None)
-    if tool_call_id is None and isinstance(message, dict):
-        tool_call_id = message.get("tool_call_id")
+    message_dict = _as_dict(message)
+    if tool_call_id is None and message_dict is not None:
+        tool_call_id = message_dict.get("tool_call_id")
     if tool_call_id:
         part["id"] = tool_call_id
 
@@ -268,14 +293,16 @@ def _flatten_messages(raw_messages: Any) -> List[Any]:
     if not raw_messages:
         return []
 
-    if not isinstance(raw_messages, (list, tuple)):
+    raw_sequence = _as_sequence(raw_messages)
+    if raw_sequence is None:
         return [raw_messages]
 
     # Check for nested lists (list[list[BaseMessage]])
     flat: list[Any] = []
-    for item in raw_messages:
-        if isinstance(item, (list, tuple)):
-            flat.extend(item)
+    for item in raw_sequence:
+        nested_items = _as_sequence(item)
+        if nested_items is not None:
+            flat.extend(nested_items)
         else:
             flat.append(item)
     return flat
@@ -369,19 +396,20 @@ def format_documents(
     result: List[Dict[str, Any]] = []
     for doc in documents:
         entry: Dict[str, Any] = {}
+        doc_dict = _as_dict(doc)
 
         # page_content
         page_content = getattr(doc, "page_content", None)
-        if page_content is None and isinstance(doc, dict):
-            page_content = doc.get("page_content")
+        if page_content is None and doc_dict is not None:
+            page_content = doc_dict.get("page_content")
 
         if record_content and page_content is not None:
             entry["page_content"] = str(page_content)
 
         # metadata
         metadata = getattr(doc, "metadata", None)
-        if metadata is None and isinstance(doc, dict):
-            metadata = doc.get("metadata")
+        if metadata is None and doc_dict is not None:
+            metadata = doc_dict.get("metadata")
         if metadata:
             entry["metadata"] = metadata
 
@@ -413,8 +441,9 @@ def serialize_tool_result(output: Any, record_content: bool) -> str:
     if content is not None:
         return str(content)
 
-    if isinstance(output, dict):
-        content = output.get("content") or output.get("output")
+    output_dict = _as_dict(output)
+    if output_dict is not None:
+        content = output_dict.get("content") or output_dict.get("output")
         if content is not None:
             return str(content)
 
@@ -440,29 +469,37 @@ def format_tool_definitions(definitions: Optional[Any]) -> Optional[str]:
     if not definitions:
         return None
 
-    if not isinstance(definitions, (list, tuple)):
-        definitions = [definitions]
+    definition_items = _as_sequence(definitions)
+    if definition_items is None:
+        definition_items = [definitions]
 
     result: List[Dict[str, Any]] = []
-    for defn in definitions:
+    for defn in definition_items:
         entry: Dict[str, Any] = {}
+        defn_dict = _as_dict(defn)
 
-        if isinstance(defn, dict):
+        if defn_dict is not None:
             # Already a dict – keep recognised keys
-            if "name" in defn:
-                entry["name"] = defn["name"]
-            if "description" in defn:
-                entry["description"] = defn["description"]
-            if "parameters" in defn:
-                entry["parameters"] = defn["parameters"]
+            if "name" in defn_dict:
+                entry["name"] = defn_dict["name"]
+            if "description" in defn_dict:
+                entry["description"] = defn_dict["description"]
+            if "parameters" in defn_dict:
+                entry["parameters"] = defn_dict["parameters"]
 
-            func = defn.get("function")
-            if isinstance(func, dict):
-                entry.setdefault("name", func.get("name"))
-                entry.setdefault("description", func.get("description"))
-                entry.setdefault("parameters", func.get("parameters"))
+            func_dict = _as_dict(defn_dict.get("function"))
+            if func_dict is not None:
+                func_name = func_dict.get("name")
+                if "name" not in entry and func_name is not None:
+                    entry["name"] = func_name
+                func_description = func_dict.get("description")
+                if "description" not in entry and func_description is not None:
+                    entry["description"] = func_description
+                func_parameters = func_dict.get("parameters")
+                if "parameters" not in entry and func_parameters is not None:
+                    entry["parameters"] = func_parameters
 
-            entry.setdefault("type", defn.get("type", "function"))
+            entry.setdefault("type", defn_dict.get("type", "function"))
         else:
             # Object with attributes (e.g. a LangChain BaseTool)
             name = getattr(defn, "name", None)

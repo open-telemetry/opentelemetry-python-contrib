@@ -81,6 +81,12 @@ from opentelemetry.util.genai.types import (
 logger = logging.getLogger(__name__)
 
 
+def _as_dict(value: Any) -> Optional[dict[str, Any]]:
+    if isinstance(value, dict):
+        return cast(dict[str, Any], value)
+    return None
+
+
 def _has_goto(output: Any) -> bool:
     """Detect LangGraph ``Command(goto=...)`` patterns in chain/tool output.
 
@@ -96,17 +102,18 @@ def _has_goto(output: Any) -> bool:
         return bool(getattr(output, "goto", None))
 
     # Dict — check for "goto" key or Command-like values
-    if isinstance(output, dict):
-        if output.get("goto"):
+    output_dict = _as_dict(output)
+    if output_dict is not None:
+        if output_dict.get("goto"):
             return True
-        for val in output.values():
+        for val in output_dict.values():
             if hasattr(val, "goto") and hasattr(val, "update"):
                 if getattr(val, "goto", None):
                     return True
 
     # List/tuple — check elements
     if isinstance(output, (list, tuple)):
-        for item in output:
+        for item in cast(Any, output):
             if hasattr(item, "goto") and hasattr(item, "update"):
                 if getattr(item, "goto", None):
                     return True
@@ -120,7 +127,8 @@ def _extract_chain_messages(data: Any) -> Any:
     LangChain stores messages under various keys depending on the
     chain type.  Returns the first non-None value found, or ``None``.
     """
-    if not isinstance(data, dict):
+    data_dict = _as_dict(data)
+    if data_dict is None:
         return data
 
     for key in (
@@ -133,7 +141,7 @@ def _extract_chain_messages(data: Any) -> Any:
         "answer",
         "response",
     ):
-        value = data.get(key)
+        value = data_dict.get(key)
         if value is not None:
             return value
 
@@ -188,10 +196,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Shared logic for on_chat_model_start and on_llm_start."""
-        if "invocation_params" in kwargs:
+        invocation_params = _as_dict(kwargs.get("invocation_params"))
+        if invocation_params is not None:
             params = (
-                kwargs["invocation_params"].get("params")
-                or kwargs["invocation_params"]
+                _as_dict(invocation_params.get("params")) or invocation_params
             )
         else:
             params = kwargs
@@ -204,10 +212,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             "engine",
             "deployment_name",
         ):
-            if (model := (params or {}).get(model_tag)) is not None:
+            if (model := params.get(model_tag)) is not None:
                 request_model = model
                 break
-            elif (model := (metadata or {}).get(model_tag)) is not None:
+            if (
+                metadata is not None
+                and (model := metadata.get(model_tag)) is not None
+            ):
                 request_model = model
                 break
 
@@ -220,16 +231,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         temperature = None
         max_tokens = None
 
-        if params is not None:
-            top_p = params.get("top_p")
-            frequency_penalty = params.get("frequency_penalty")
-            presence_penalty = params.get("presence_penalty")
-            stop_sequences = params.get("stop")
-            seed = params.get("seed")
-            temperature = params.get("temperature")
-            max_tokens = params.get("max_completion_tokens")
+        top_p = params.get("top_p")
+        frequency_penalty = params.get("frequency_penalty")
+        presence_penalty = params.get("presence_penalty")
+        stop_sequences = params.get("stop")
+        seed = params.get("seed")
+        temperature = params.get("temperature")
+        max_tokens = params.get("max_completion_tokens")
 
-        invocation_params = kwargs.get("invocation_params") or {}
         provider = infer_provider_name(serialized, metadata, invocation_params)
         if provider is None:
             provider = "unknown"
@@ -247,27 +256,27 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         # Additional semconv request attributes
         extra_attrs: dict[str, Any] = {}
 
-        top_k = params.get("top_k") if params else None
+        top_k = params.get("top_k")
         if top_k is not None:
             extra_attrs[GenAI.GEN_AI_REQUEST_TOP_K] = top_k
 
         # Choice count (n) — only set if != 1
-        choice_count = params.get("n") if params else None
+        choice_count = params.get("n")
         if isinstance(choice_count, int) and choice_count != 1:
             extra_attrs[GenAI.GEN_AI_REQUEST_CHOICE_COUNT] = choice_count
 
         # Output type from response_format
-        if params:
-            response_format = params.get("response_format")
-            if isinstance(response_format, dict):
-                output_type = response_format.get("type")
-                if output_type is not None:
-                    extra_attrs[GenAI.GEN_AI_OUTPUT_TYPE] = output_type
-            elif isinstance(response_format, str):
-                extra_attrs[GenAI.GEN_AI_OUTPUT_TYPE] = response_format
+        response_format = params.get("response_format")
+        response_format_dict = _as_dict(response_format)
+        if response_format_dict is not None:
+            output_type = response_format_dict.get("type")
+            if output_type is not None:
+                extra_attrs[GenAI.GEN_AI_OUTPUT_TYPE] = output_type
+        elif isinstance(response_format, str):
+            extra_attrs[GenAI.GEN_AI_OUTPUT_TYPE] = response_format
 
         # Encoding formats
-        encoding_format = params.get("encoding_format") if params else None
+        encoding_format = params.get("encoding_format")
         if encoding_format is not None:
             extra_attrs[GenAI.GEN_AI_REQUEST_ENCODING_FORMATS] = [
                 encoding_format
@@ -457,22 +466,25 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                 generation_info = getattr(
                     chat_generation, "generation_info", None
                 )
-                if generation_info is not None:
-                    finish_reason = generation_info.get(
+                generation_info_dict = _as_dict(generation_info)
+                if generation_info_dict is not None:
+                    finish_reason = generation_info_dict.get(
                         "finish_reason", "unknown"
                     )
 
                 if chat_generation.message:
                     # Get finish reason if generation_info is None above
                     if (
-                        generation_info is None
+                        generation_info_dict is None
                         and chat_generation.message.response_metadata
                     ):
-                        finish_reason = (
-                            chat_generation.message.response_metadata.get(
+                        response_metadata = _as_dict(
+                            chat_generation.message.response_metadata
+                        )
+                        if response_metadata is not None:
+                            finish_reason = response_metadata.get(
                                 "stopReason", "unknown"
                             )
-                        )
 
                     # Get message content
                     parts = [
@@ -490,35 +502,26 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     output_messages.append(output_message)
 
                     # Get token usage if available
-                    if chat_generation.message.usage_metadata:
-                        input_tokens = (
-                            chat_generation.message.usage_metadata.get(
-                                "input_tokens", 0
-                            )
-                        )
+                    usage_metadata = _as_dict(
+                        chat_generation.message.usage_metadata
+                    )
+                    if usage_metadata is not None:
+                        input_tokens = usage_metadata.get("input_tokens", 0)
                         llm_invocation.input_tokens = input_tokens
 
-                        output_tokens = (
-                            chat_generation.message.usage_metadata.get(
-                                "output_tokens", 0
-                            )
-                        )
+                        output_tokens = usage_metadata.get("output_tokens", 0)
                         llm_invocation.output_tokens = output_tokens
 
                         # Cache token attributes (when provider exposes them)
                         # Check direct keys (Anthropic-style) and input_token_details (LangChain-style)
-                        cache_read = (
-                            chat_generation.message.usage_metadata.get(
-                                "cache_read_input_tokens"
-                            )
+                        cache_read = usage_metadata.get(
+                            "cache_read_input_tokens"
                         )
                         if cache_read is None:
-                            input_token_details = (
-                                chat_generation.message.usage_metadata.get(
-                                    "input_token_details"
-                                )
+                            input_token_details = _as_dict(
+                                usage_metadata.get("input_token_details")
                             )
-                            if isinstance(input_token_details, dict):
+                            if input_token_details is not None:
                                 cache_read = input_token_details.get(
                                     "cache_read"
                                 )
@@ -528,18 +531,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                                 int(cache_read),
                             )
 
-                        cache_creation = (
-                            chat_generation.message.usage_metadata.get(
-                                "cache_creation_input_tokens"
-                            )
+                        cache_creation = usage_metadata.get(
+                            "cache_creation_input_tokens"
                         )
                         if cache_creation is None:
-                            input_token_details = (
-                                chat_generation.message.usage_metadata.get(
-                                    "input_token_details"
-                                )
+                            input_token_details = _as_dict(
+                                usage_metadata.get("input_token_details")
                             )
-                            if isinstance(input_token_details, dict):
+                            if input_token_details is not None:
                                 cache_creation = input_token_details.get(
                                     "cache_creation"
                                 )
@@ -551,7 +550,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         llm_invocation.output_messages = output_messages
 
-        llm_output = getattr(response, "llm_output", None)
+        llm_output = _as_dict(getattr(response, "llm_output", None))
         if llm_output is not None:
             response_model = llm_output.get("model_name") or llm_output.get(
                 "model"
@@ -846,9 +845,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                 else None
             )
             if record:
+                tool_input: Any = getattr(action, "tool_input", None)
                 record.stash.setdefault("pending_actions", {})[str(run_id)] = {
                     "tool": action.tool,
-                    "tool_input": action.tool_input,
+                    "tool_input": tool_input,
                     "log": action.log,
                 }
 
@@ -865,10 +865,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         record = self._span_manager.get_record(str(run_id))
         if not record:
             return
-        if finish.return_values:
+        return_values: Any = getattr(finish, "return_values", None)
+        if return_values:
             record.span.set_attribute(
                 GenAI.GEN_AI_OUTPUT_MESSAGES,
-                json.dumps(finish.return_values, default=str),
+                json.dumps(return_values, default=str),
             )
         record.span.set_status(Status(StatusCode.OK))
         self._span_manager.end_span(run_id)

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, List, Mapping, Optional
+from typing import Any, Dict, Iterator, List, Mapping, Optional, cast
 from urllib.parse import urlparse
 
 from opentelemetry.context import attach, detach
@@ -68,11 +68,9 @@ _CLASS_PROVIDER_RULES: List[tuple[str, str]] = [
 ]
 
 
-def _first_non_empty(*values: Optional[str]) -> Optional[str]:
-    """Return the first non-None, non-empty string value, or None."""
-    for value in values:
-        if value is not None and value != "":
-            return value
+def _as_dict(value: Any) -> Optional[Dict[str, Any]]:
+    if isinstance(value, dict):
+        return cast(Dict[str, Any], value)
     return None
 
 
@@ -84,7 +82,7 @@ def _get_class_identifier(serialized: Dict[str, Any]) -> Optional[str]:
     """
     id_parts = serialized.get("id")
     if isinstance(id_parts, list) and id_parts:
-        return str(id_parts[-1])
+        return str(cast(List[Any], id_parts)[-1])
     name = serialized.get("name")
     if name:
         return str(name)
@@ -156,8 +154,8 @@ def _infer_from_kwargs(
     """Infer provider from serialized kwargs (endpoint fields)."""
     if serialized is None:
         return None
-    ser_kwargs = serialized.get("kwargs")
-    if not isinstance(ser_kwargs, dict):
+    ser_kwargs = _as_dict(serialized.get("kwargs"))
+    if ser_kwargs is None:
         return None
 
     if ser_kwargs.get("azure_endpoint"):
@@ -208,8 +206,8 @@ def _extract_url(
             return str(url)
 
     if serialized:
-        ser_kwargs = serialized.get("kwargs")
-        if isinstance(ser_kwargs, dict):
+        ser_kwargs = _as_dict(serialized.get("kwargs"))
+        if ser_kwargs is not None:
             url = ser_kwargs.get("openai_api_base") or ser_kwargs.get(
                 "azure_endpoint"
             )
@@ -277,13 +275,14 @@ def extract_trace_headers(container: Any) -> Optional[Dict[str, str]]:
     Looks for traceparent/tracestate at the top level and in common
     nested locations (headers, metadata, request, etc.).
     """
-    if not isinstance(container, dict):
+    container_dict = _as_dict(container)
+    if container_dict is None:
         return None
 
     # 1. Check top-level keys
     found: Dict[str, str] = {}
     for key in _TRACE_HEADER_KEYS:
-        value = container.get(key)
+        value = container_dict.get(key)
         if isinstance(value, str) and value:
             found[key] = value
 
@@ -292,8 +291,8 @@ def extract_trace_headers(container: Any) -> Optional[Dict[str, str]]:
 
     # 2. Check nested containers
     for nested_key in _NESTED_HEADER_KEYS:
-        nested = container.get(nested_key)
-        if isinstance(nested, dict):
+        nested = _as_dict(container_dict.get(nested_key))
+        if nested is not None:
             for key in _TRACE_HEADER_KEYS:
                 value = nested.get(key)
                 if isinstance(value, str) and value:
