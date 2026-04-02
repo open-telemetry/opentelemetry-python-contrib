@@ -13,7 +13,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import INVALID_SPAN, SpanKind
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
@@ -21,8 +21,8 @@ from opentelemetry.util.genai.types import (
     InputMessage,
     OutputMessage,
     Text,
-    WorkflowInvocation,
 )
+from opentelemetry.util.genai.workflow_invocation import WorkflowInvocation
 
 
 class _WorkflowTestBase(TestCase):
@@ -47,71 +47,62 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
     # start_workflow
     # ------------------------------------------------------------------
 
-    def test_operation_name_is_immutable(self) -> None:
-        invocation = WorkflowInvocation(name="wf", operation_name="custom_op")
+    def test_operation_name_is_readonly(self) -> None:
+        invocation = self.handler.start_workflow(name="wf")
+        with self.assertRaises(AttributeError):
+            setattr(invocation, "operation_name", "foo_Bar")
         self.assertEqual(invocation.operation_name, "invoke_workflow")
+        invocation.stop()
 
     def test_start_workflow_creates_span(self) -> None:
-        invocation = WorkflowInvocation(name="my_workflow")
-        self.handler.start(invocation)
-
-        self.assertIsNotNone(invocation.span)
-        self.assertIsNotNone(invocation.context_token)
-        self.assertIsNotNone(invocation.monotonic_start_s)
-
-        # Clean up
-        self.handler.stop(invocation)
+        invocation = self.handler.start_workflow("my_workflow")
+        self.assertIsNot(invocation.span, INVALID_SPAN)
+        invocation.stop()
 
     def test_start_workflow_span_name(self) -> None:
-        invocation = WorkflowInvocation(name="my_pipeline")
-        self.handler.start(invocation)
-        self.handler.stop(invocation)
+        invocation = self.handler.start_workflow("my_pipeline")
+        invocation.stop()
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].name, "invoke_workflow my_pipeline")
 
     def test_start_workflow_span_name_without_name(self) -> None:
-        invocation = WorkflowInvocation()
-        self.handler.start(invocation)
-        self.handler.stop(invocation)
+        invocation = self.handler.start_workflow(None)
+        invocation.stop()
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].name, "invoke_workflow")
 
     def test_start_workflow_span_kind_is_internal(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
-        self.handler.stop(invocation)
+        invocation = self.handler.start_workflow("wf")
+        invocation.stop()
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].kind, SpanKind.INTERNAL)
 
     def test_start_workflow_records_monotonic_start(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
         with patch("timeit.default_timer", return_value=500.0):
-            self.handler.start(invocation)
-        self.assertEqual(invocation.monotonic_start_s, 500.0)
-        self.handler.stop(invocation)
+            invocation = self.handler.start_workflow("wf")
+        self.assertEqual(invocation._monotonic_start_s, 500.0)
+        invocation.stop()
 
     # ------------------------------------------------------------------
     # stop_workflow
     # ------------------------------------------------------------------
 
     def test_stop_workflow_ends_span(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
-        self.handler.stop(invocation)
+        invocation = self.handler.start_workflow("wf")
+        invocation.stop()
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
 
     def test_stop_workflow_sets_operation_name_attribute(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
-        self.handler.stop(invocation)
+        invocation = self.handler.start_workflow("wf")
+        invocation.stop()
 
         spans = self._get_finished_spans()
         self.assertEqual(
@@ -120,36 +111,27 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
         )
 
     def test_stop_workflow_sets_custom_attributes(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
+        invocation = self.handler.start_workflow("wf")
         invocation.attributes["custom.key"] = "custom_value"
-        self.handler.start(invocation)
-        self.handler.stop(invocation)
+        invocation.stop()
 
         spans = self._get_finished_spans()
         self.assertEqual(spans[0].attributes["custom.key"], "custom_value")
 
-    def test_stop_workflow_noop_when_not_started(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        # Not started — span and context_token are None
-        result = self.handler.stop(invocation)
-        self.assertIs(result, invocation)
-        self.assertEqual(len(self._get_finished_spans()), 0)
-
     def test_stop_workflow_returns_invocation(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
-        result = self.handler.stop(invocation)
-        self.assertIs(result, invocation)
+        invocation = self.handler.start_workflow("wf")
+        invocation.stop()
+        spans = self._get_finished_spans()
+        self.assertEqual(len(spans), 1)
 
     # ------------------------------------------------------------------
     # fail_workflow
     # ------------------------------------------------------------------
 
     def test_fail_workflow_sets_error_status(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
+        invocation = self.handler.start_workflow("wf")
         error = Error(message="something broke", type=RuntimeError)
-        self.handler.fail(invocation, error)
+        invocation.fail(error)
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -157,19 +139,17 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
         self.assertEqual(spans[0].status.description, "something broke")
 
     def test_fail_workflow_sets_error_type_attribute(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
+        invocation = self.handler.start_workflow("wf")
         error = Error(message="bad", type=ValueError)
-        self.handler.fail(invocation, error)
+        invocation.fail(error)
 
         spans = self._get_finished_spans()
         self.assertEqual(spans[0].attributes["error.type"], "ValueError")
 
     def test_fail_workflow_sets_operation_name_attribute(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
+        invocation = self.handler.start_workflow("wf")
         error = Error(message="fail", type=TypeError)
-        self.handler.fail(invocation, error)
+        invocation.fail(error)
 
         spans = self._get_finished_spans()
         self.assertEqual(
@@ -177,19 +157,12 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
             "invoke_workflow",
         )
 
-    def test_fail_workflow_noop_when_not_started(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        error = Error(message="fail", type=RuntimeError)
-        result = self.handler.fail(invocation, error)
-        self.assertIs(result, invocation)
-        self.assertEqual(len(self._get_finished_spans()), 0)
-
-    def test_fail_workflow_returns_invocation(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        self.handler.start(invocation)
-        error = Error(message="err", type=RuntimeError)
-        result = self.handler.fail(invocation, error)
-        self.assertIs(result, invocation)
+    def test_fail_workflow_ends_span(self) -> None:
+        invocation = self.handler.start_workflow("wf")
+        invocation.fail(Error(message="err", type=RuntimeError))
+        spans = self._get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
 
 
 class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
@@ -198,10 +171,8 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
     # ------------------------------------------------------------------
 
     def test_workflow_context_manager_creates_and_ends_span(self) -> None:
-        invocation = WorkflowInvocation(name="ctx_wf")
-        with self.handler.workflow(invocation) as inv:
-            self.assertIsNotNone(inv.span)
-            self.assertIsNotNone(inv.context_token)
+        with self.handler.workflow(name="ctx_wf") as inv:
+            self.assertIsNot(inv.span, INVALID_SPAN)
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -210,30 +181,27 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
     def test_workflow_context_manager_default_invocation(self) -> None:
         with self.handler.workflow() as inv:
             self.assertIsInstance(inv, WorkflowInvocation)
-            self.assertEqual(inv.name, "")
+            self.assertIsNone(inv.name)
             self.assertEqual(inv.operation_name, "invoke_workflow")
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
 
     def test_workflow_context_manager_sets_attributes_on_span(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        with self.handler.workflow(invocation) as inv:
+        with self.handler.workflow("wf") as inv:
             inv.attributes["my.attr"] = "hello"
 
         spans = self._get_finished_spans()
         self.assertEqual(spans[0].attributes["my.attr"], "hello")
 
     def test_workflow_context_manager_reraises_exception(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
         with pytest.raises(ValueError, match="test error"):
-            with self.handler.workflow(invocation):
+            with self.handler.workflow("wf"):
                 raise ValueError("test error")
 
     def test_workflow_context_manager_marks_error_on_exception(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
         with pytest.raises(ValueError):
-            with self.handler.workflow(invocation):
+            with self.handler.workflow("wf"):
                 raise ValueError("boom")
 
         spans = self._get_finished_spans()
@@ -243,8 +211,7 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
         self.assertEqual(spans[0].attributes["error.type"], "ValueError")
 
     def test_workflow_context_manager_success_has_unset_status(self) -> None:
-        invocation = WorkflowInvocation(name="wf")
-        with self.handler.workflow(invocation):
+        with self.handler.workflow("wf"):
             pass
 
         spans = self._get_finished_spans()
@@ -255,13 +222,9 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
         out = OutputMessage(
             role="assistant", parts=[Text(content="hi")], finish_reason="stop"
         )
-        invocation = WorkflowInvocation(
-            name="msg_wf",
-            input_messages=[inp],
-            output_messages=[out],
-        )
-        with self.handler.workflow(invocation):
-            pass
+        with self.handler.workflow("msg_wf") as inv:
+            inv.input_messages = [inp]
+            inv.output_messages = [out]
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -269,42 +232,3 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
             spans[0].attributes[GenAI.GEN_AI_OPERATION_NAME],
             "invoke_workflow",
         )
-
-    def test_workflow_context_manager_swallows_start_failure(self) -> None:
-        """workflow() should yield even if start_workflow raises."""
-        invocation = WorkflowInvocation(name="wf")
-        with patch.object(
-            self.handler,
-            "start",
-            side_effect=RuntimeError("start failed"),
-        ):
-            # Should not raise — the exception is swallowed with a warning
-            with self.handler.workflow(invocation) as inv:
-                self.assertIs(inv, invocation)
-
-    def test_workflow_context_manager_swallows_stop_failure(self) -> None:
-        """workflow() should not raise if stop_workflow fails."""
-        invocation = WorkflowInvocation(name="wf")
-        with patch.object(
-            self.handler,
-            "stop",
-            side_effect=RuntimeError("stop failed"),
-        ):
-            # Should not raise
-            with self.handler.workflow(invocation):
-                pass
-
-    def test_workflow_context_manager_swallows_fail_workflow_failure(
-        self,
-    ) -> None:
-        """workflow() should still re-raise the original exception even if
-        fail_workflow itself raises."""
-        invocation = WorkflowInvocation(name="wf")
-        with patch.object(
-            self.handler,
-            "fail",
-            side_effect=RuntimeError("fail broke"),
-        ):
-            with pytest.raises(ValueError, match="original"):
-                with self.handler.workflow(invocation):
-                    raise ValueError("original")

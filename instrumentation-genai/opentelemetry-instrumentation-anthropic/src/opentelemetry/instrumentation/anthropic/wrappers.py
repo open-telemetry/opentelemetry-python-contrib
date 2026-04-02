@@ -19,9 +19,11 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Iterator, Optional
 
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.inference_invocation import (
+    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
+)
 from opentelemetry.util.genai.types import (
     Error,
-    LLMInvocation,
     MessagePart,
     OutputMessage,
 )
@@ -60,7 +62,7 @@ class MessageWrapper:
         self._message = message
         self._capture_content = capture_content
 
-    def extract_into(self, invocation: LLMInvocation) -> None:
+    def extract_into(self, invocation: LLMInvocation) -> None:  # pyright: ignore[reportDeprecated]
         """Extract response data into the invocation."""
         if self._message.model:
             invocation.response_model_name = self._message.model
@@ -103,7 +105,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         self,
         stream: Stream[RawMessageStreamEvent],
         handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
         capture_content: bool,
     ):
         self._stream = stream
@@ -213,7 +215,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
             "response attribute extraction",
         )
         self._safe_instrumentation(
-            lambda: self._handler.stop_llm(self._invocation),
+            lambda: self._handler.stop_llm(self._invocation),  # pyright: ignore[reportDeprecated]
             "stop_llm",
         )
         self._finalized = True
@@ -222,7 +224,7 @@ class MessagesStreamWrapper(Iterator["RawMessageStreamEvent"]):
         if self._finalized:
             return
         self._safe_instrumentation(
-            lambda: self._handler.fail_llm(
+            lambda: self._handler.fail_llm(  # pyright: ignore[reportDeprecated]
                 self._invocation, Error(message=message, type=error_type)
             ),
             "fail_llm",

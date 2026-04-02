@@ -36,9 +36,11 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.inference_invocation import (
+    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
+)
 from opentelemetry.util.genai.types import (
     InputMessage,
-    LLMInvocation,
     OutputMessage,
     Text,
     ToolCallRequest,

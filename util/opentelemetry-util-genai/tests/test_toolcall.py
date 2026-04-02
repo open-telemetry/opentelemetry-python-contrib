@@ -12,18 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for ToolCallRequest and ToolCall inheritance structure"""
+"""Tests for ToolCallRequest and ToolInvocation inheritance structure"""
 
 import pytest
 
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     GenAIInvocation,
     InputMessage,
     ServerToolCall,
     ServerToolCallResponse,
-    ToolCall,
     ToolCallRequest,
 )
+
+
+def _make_handler() -> TelemetryHandler:
+    return TelemetryHandler(tracer_provider=TracerProvider())
 
 
 def test_toolcallrequest_is_message_part():
@@ -36,25 +41,40 @@ def test_toolcallrequest_is_message_part():
 
 
 def test_toolcall_inherits_from_genaiinvocation():
-    """ToolCall inherits from GenAIInvocation for lifecycle management"""
-    tc = ToolCall(name="get_weather", arguments={"city": "Paris"})
+    """ToolInvocation inherits from GenAIInvocation for lifecycle management"""
+    handler = _make_handler()
+    tc = handler.start_tool("get_weather", arguments={"city": "Paris"})
     assert isinstance(tc, GenAIInvocation)
     assert not isinstance(tc, ToolCallRequest)
+    tc.stop()
 
 
 def test_toolcall_has_attributes_dict():
-    """ToolCall inherits attributes dict from GenAIInvocation"""
-    tc = ToolCall(name="test")
+    """ToolInvocation inherits attributes dict from GenAIInvocation"""
+    handler = _make_handler()
+    tc = handler.start_tool("test")
     tc.attributes["custom.key"] = "value"
     assert tc.attributes["custom.key"] == "value"
+    tc.stop()
 
 
-def test_toolcall_in_message_part_union():
-    """ToolCall can be used in messages despite not inheriting from ToolCallRequest"""
-    tc = ToolCall(name="get_weather", arguments={"city": "Paris"})
+def test_toolcallrequest_in_message_part_union():
+    """ToolCallRequest (not ToolInvocation) is the correct type for message parts"""
+    tc = ToolCallRequest(
+        name="get_weather", arguments={"city": "Paris"}, id="call_123"
+    )
     msg = InputMessage(role="assistant", parts=[tc])
     assert len(msg.parts) == 1
-    assert isinstance(msg.parts[0], GenAIInvocation)
+    assert isinstance(msg.parts[0], ToolCallRequest)
+    assert not isinstance(msg.parts[0], GenAIInvocation)
+
+
+def test_toolcall_operation_name():
+    """ToolInvocation operation_name is fixed to execute_tool"""
+    handler = _make_handler()
+    tc = handler.start_tool("my_tool")
+    assert tc._operation_name == "execute_tool"
+    tc.stop()
 
 
 def test_server_tool_call_basic():

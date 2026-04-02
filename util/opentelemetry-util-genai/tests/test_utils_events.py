@@ -30,7 +30,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.util.genai.handler import get_telemetry_handler
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import Error
 
 from .test_utils import (
     _create_input_message,
@@ -72,22 +72,19 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
         emit_event="true",
     )
     def test_emits_llm_event(self):
-        invocation = LLMInvocation(
-            request_model="event-model",
-            input_messages=[_create_input_message("test query")],
-            system_instruction=_create_system_instruction(),
-            provider="test-provider",
-            temperature=0.7,
-            max_tokens=100,
-            response_model_name="response-model",
-            response_id="event-response-id",
-            input_tokens=10,
-            output_tokens=20,
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "event-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [_create_input_message("test query")]
+        invocation.system_instruction = _create_system_instruction()
+        invocation.temperature = 0.7
+        invocation.max_tokens = 100
+        invocation.response_model_name = "response-model"
+        invocation.response_id = "event-response-id"
+        invocation.input_tokens = 10
+        invocation.output_tokens = 20
         invocation.output_messages = [_create_output_message("test response")]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         # Check that event was emitted
         logs = self.log_exporter.get_finished_logs()
@@ -157,16 +154,13 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
         chat_generation = _create_output_message("combined response")
         system_instruction = _create_system_instruction("System prompt here")
 
-        invocation = LLMInvocation(
-            request_model="combined-model",
-            input_messages=[message],
-            system_instruction=system_instruction,
-            provider="test-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "combined-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [message]
+        invocation.system_instruction = system_instruction
         invocation.output_messages = [chat_generation]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         # Check span was created
         span = _get_single_span(self.span_exporter)
@@ -217,15 +211,12 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
             pass
 
         message = _create_input_message("error test")
-        invocation = LLMInvocation(
-            request_model="error-model",
-            input_messages=[message],
-            provider="test-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "error-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [message]
         error = Error(message="Test error occurred", type=TestError)
-        self.telemetry_handler.fail_llm(invocation, error)
+        invocation.fail(error)
 
         # Check event was emitted
         logs = self.log_exporter.get_finished_logs()
@@ -256,15 +247,12 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
         message = _create_input_message("emit false test")
         chat_generation = _create_output_message("emit false response")
 
-        invocation = LLMInvocation(
-            request_model="emit-false-model",
-            input_messages=[message],
-            provider="test-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "emit-false-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [message]
         invocation.output_messages = [chat_generation]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         # Check no event was emitted
         logs = self.log_exporter.get_finished_logs()
@@ -277,17 +265,14 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
     )
     def test_does_not_emit_llm_event_by_default_for_no_content(self):
         """Test that event is not emitted by default when content_capturing is NO_CONTENT and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
-        invocation = LLMInvocation(
-            request_model="default-model",
-            input_messages=[_create_input_message("default test")],
-            provider="test-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "default-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [_create_input_message("default test")]
         invocation.output_messages = [
             _create_output_message("default response")
         ]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         # Check that no event was emitted (NO_CONTENT defaults to False)
         logs = self.log_exporter.get_finished_logs()
@@ -300,17 +285,14 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
     )
     def test_does_not_emit_llm_event_by_default_for_span_only(self):
         """Test that event is not emitted by default when content_capturing is SPAN_ONLY and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
-        invocation = LLMInvocation(
-            request_model="default-model",
-            input_messages=[_create_input_message("default test")],
-            provider="test-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "default-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [_create_input_message("default test")]
         invocation.output_messages = [
             _create_output_message("default response")
         ]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         # Check that no event was emitted (SPAN_ONLY defaults to False)
         logs = self.log_exporter.get_finished_logs()
@@ -323,17 +305,14 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
     )
     def test_emits_llm_event_by_default_for_event_only(self):
         """Test that event is emitted by default when content_capturing is EVENT_ONLY and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
-        invocation = LLMInvocation(
-            request_model="default-model",
-            input_messages=[_create_input_message("default test")],
-            provider="test-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "default-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [_create_input_message("default test")]
         invocation.output_messages = [
             _create_output_message("default response")
         ]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         # Check that event was emitted (EVENT_ONLY defaults to True)
         logs = self.log_exporter.get_finished_logs()
@@ -354,16 +333,13 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
         chat_generation = _create_output_message("span and event response")
         system_instruction = _create_system_instruction("System prompt")
 
-        invocation = LLMInvocation(
-            request_model="span-and-event-model",
-            input_messages=[message],
-            system_instruction=system_instruction,
-            provider="test-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", "span-and-event-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [message]
+        invocation.system_instruction = system_instruction
         invocation.output_messages = [chat_generation]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         # Check span was created
         span = _get_single_span(self.span_exporter)

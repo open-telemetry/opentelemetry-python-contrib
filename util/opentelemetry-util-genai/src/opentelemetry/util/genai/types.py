@@ -14,31 +14,26 @@
 
 from __future__ import annotations
 
+import timeit
+from abc import ABC, abstractmethod
 from contextvars import Token
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal, Type, Union
+from typing import TYPE_CHECKING, Any, Literal, Type, Union
 
 from typing_extensions import TypeAlias
 
-from opentelemetry.context import Context
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAI,
-)
-from opentelemetry.trace import Span
+from opentelemetry._logs import Logger
+from opentelemetry.context import Context, attach, detach
+from opentelemetry.semconv.attributes import error_attributes
+from opentelemetry.trace import INVALID_SPAN as _INVALID_SPAN
+from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
+from opentelemetry.trace.status import Status, StatusCode
+
+if TYPE_CHECKING:
+    from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 
 ContextToken: TypeAlias = Token[Context]
-
-
-@dataclass()
-class GenericPart:
-    """Used for provider-specific message part types that don't match
-    the standard MessagePart types defined in semantic conventions. Wrap custom
-    types with GenericPart(value=...) to explicitly opt-in to non-standard types.
-    This will be removed in a future version when all instrumentations use core types."""
-
-    value: Any
-    type: Literal["generic"] = "generic"
 
 
 class ContentCapturingMode(Enum):
@@ -53,11 +48,22 @@ class ContentCapturingMode(Enum):
 
 
 @dataclass()
+class GenericPart:
+    """Used for provider-specific message part types that don't match
+    the standard MessagePart types defined in semantic conventions. Wrap custom
+    types with GenericPart(value=...) to explicitly opt-in to non-standard types.
+    This will be removed in a future version when all instrumentations use core types."""
+
+    value: Any
+    type: Literal["generic"] = "generic"
+
+
+@dataclass()
 class ToolCallRequest:
     """Represents a tool call requested by the model (message part only).
 
     Use this for tool calls in message history. For execution tracking with spans
-    and metrics, use ToolCall instead.
+    and metrics, use ToolInvocation instead.
 
     This model is specified as part of semconv in `GenAI messages Python models - ToolCallRequestPart
     <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/non-normative/models.ipynb>`__.
@@ -84,7 +90,7 @@ class ToolCallResponse:
 
 @dataclass()
 class ServerToolCall:
-    """Represents a server-side tool call invocation.
+    """Represents a server-side tool call.
 
     Server tool calls are executed by the model provider on the server side rather
     than by the client application. Provider-specific tools (e.g., code_interpreter,
@@ -238,187 +244,116 @@ class OutputMessage:
     finish_reason: str | FinishReason
 
 
-def _new_input_messages() -> list[InputMessage]:
-    return []
-
-
-def _new_output_messages() -> list[OutputMessage]:
-    return []
-
-
-def _new_system_instruction() -> list[MessagePart]:
-    return []
-
-
-def _new_str_any_dict() -> dict[str, Any]:
-    return {}
-
-
-@dataclass
-class GenAIInvocation:
-    context_token: ContextToken | None = None
-    span: Span | None = None
-    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
-    error_type: str | None = None
-
-    monotonic_start_s: float | None = None
-    """
-    Monotonic start time in seconds (from timeit.default_timer) used for
-    duration calculations to avoid mixing clock sources. This is populated
-    by the TelemetryHandler when starting an invocation.
-    """
-
-
-@dataclass
-class WorkflowInvocation(GenAIInvocation):
-    """
-    Represents predetermined static sequence of operations eg: Agent, LLM, tool, and retrieval invocations.
-    A workflow groups multiple operations together, accepting input(s) and producing final output(s).
-    """
-
-    name: str = ""
-    operation_name: str = "invoke_workflow"
-    input_messages: list[InputMessage] = field(
-        default_factory=_new_input_messages
-    )
-    output_messages: list[OutputMessage] = field(
-        default_factory=_new_output_messages
-    )
-
-    def __post_init__(self) -> None:
-        self.operation_name = "invoke_workflow"
-
-
-@dataclass
-class LLMInvocation(GenAIInvocation):
-    """
-    Represents a single LLM call invocation. When creating an LLMInvocation object,
-    only update the data attributes. The span and context_token attributes are
-    set by the TelemetryHandler.
-    """
-
-    operation_name: str = GenAI.GenAiOperationNameValues.CHAT.value
-    request_model: str | None = None
-    input_messages: list[InputMessage] = field(
-        default_factory=_new_input_messages
-    )
-    output_messages: list[OutputMessage] = field(
-        default_factory=_new_output_messages
-    )
-    system_instruction: list[MessagePart] = field(
-        default_factory=_new_system_instruction
-    )
-    provider: str | None = None
-    response_model_name: str | None = None
-    response_id: str | None = None
-    finish_reasons: list[str] | None = None
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
-    """
-    Additional attributes to set on spans and/or events. These attributes
-    will not be set on metrics.
-    """
-    metric_attributes: dict[str, Any] = field(
-        default_factory=_new_str_any_dict
-    )
-    """
-    Additional attributes to set on metrics. Must be of a low cardinality.
-    These attributes will not be set on spans or events.
-    """
-    temperature: float | None = None
-    top_p: float | None = None
-    frequency_penalty: float | None = None
-    presence_penalty: float | None = None
-    max_tokens: int | None = None
-    stop_sequences: list[str] | None = None
-    seed: int | None = None
-    server_address: str | None = None
-    server_port: int | None = None
-
-
-@dataclass
-class EmbeddingInvocation(GenAIInvocation):
-    """
-    Represents a single embedding model invocation. When creating an
-    EmbeddingInvocation object, only update the data attributes. The span
-    and context_token attributes are set by the TelemetryHandler.
-    """
-
-    operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
-    request_model: str | None = None
-    provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
-    server_address: str | None = None
-    server_port: int | None = None
-
-    # encoding_formats can be multi-value -> combinational cardinality risk.
-    # Keep on spans/events only.
-    encoding_formats: list[str] | None = None
-    input_tokens: int | None = None
-    dimension_count: int | None = None
-    response_model_name: str | None = None
-
-    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
-    """
-    Additional attributes to set on spans and/or events. These attributes
-    will not be set on metrics.
-    """
-
-    metric_attributes: dict[str, Any] = field(
-        default_factory=_new_str_any_dict
-    )
-    """
-    Additional attributes to set on metrics. Must be of a low cardinality.
-    These attributes will not be set on spans or events.
-    """
-
-
-@dataclass()
-class ToolCall(GenAIInvocation):
-    """Represents a tool call for execution tracking with spans and metrics.
-
-    This type extends GenAIInvocation (like LLMInvocation) for consistent lifecycle
-    management across all invocation types. It is NOT used as a MessagePart directly -
-    use ToolCallRequest for that purpose.
-
-    Inherits from GenAIInvocation:
-    - context_token: Context tracking for span lifecycle
-    - span: Active span reference
-    - attributes: Custom attributes dict for extensibility
-
-    Reference: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md#execute-tool-span
-
-    Semantic convention attributes for execute_tool spans:
-    - gen_ai.operation.name: "execute_tool" (Required)
-    - gen_ai.tool.name: Name of the tool (Recommended)
-    - gen_ai.tool.call.id: Tool call identifier (Recommended if available)
-    - gen_ai.tool.type: Type classification - "function", "extension", or "datastore" (Recommended if available)
-    - gen_ai.tool.description: Tool description (Recommended if available)
-    - gen_ai.tool.call.arguments: Parameters passed to tool (Opt-In, may contain sensitive data)
-    - gen_ai.tool.call.result: Result returned by tool (Opt-In, may contain sensitive data)
-    - error.type: Error type if operation failed (Conditionally Required)
-    """
-
-    # Message identification fields (same as ToolCallRequest)
-    # Note: These are required fields but must have defaults due to dataclass inheritance
-    name: str = ""
-    arguments: Any = None
-    id: str | None = None
-    type: Literal["tool_call"] = "tool_call"
-
-    # Execution tracking fields (used for execute_tool spans):
-    # gen_ai.tool.type - Tool type: "function", "extension", or "datastore"
-    tool_type: str | None = None
-    # gen_ai.tool.description - Description of what the tool does
-    tool_description: str | None = None
-    # gen_ai.tool.call.result - Result returned by the tool (Opt-In, may contain sensitive data)
-    tool_result: Any = None
-
-    # Timing field (not inherited from GenAIInvocation, matches LLMInvocation pattern)
-    monotonic_start_s: float | None = None
-
-
 @dataclass
 class Error:
     message: str
     type: Type[BaseException]
+
+
+class GenAIInvocation(ABC):
+    """
+    Base class for all GenAI invocation types. Manages the lifecycle of a single
+    GenAI operation (LLM call, embedding, tool execution, workflow, etc.).
+
+    Use the factory methods on TelemetryHandler (start_inference, start_embedding,
+    start_workflow, start_tool) rather than constructing invocations directly.
+    """
+
+    @property
+    def operation_name(self) -> str:
+        return self._operation_name
+
+    def __init__(
+        self,
+        # Individual components instead of TelemetryHandler to avoid a circular
+        # import between handler.py and the invocation modules.
+        tracer: Tracer,
+        metrics_recorder: InvocationMetricsRecorder | None = None,
+        logger: Logger | None = None,
+        *,
+        operation_name: str,
+        span_name: str,
+        span_kind: SpanKind = SpanKind.CLIENT,
+        attributes: dict[str, Any] | None = None,
+        metric_attributes: dict[str, Any] | None = None,
+    ) -> None:
+        self._tracer = tracer
+        self._metrics_recorder = metrics_recorder
+        self._logger = logger
+        self._operation_name: str = operation_name
+        self.attributes: dict[str, Any] = (
+            {} if attributes is None else attributes
+        )
+        """Additional attributes to set on spans and/or events. Not set on metrics."""
+        self.metric_attributes: dict[str, Any] = (
+            {} if metric_attributes is None else metric_attributes
+        )
+        """Additional attributes to set on metrics. Must be low cardinality. Not set on spans or events."""
+        self.span: Span = _INVALID_SPAN
+        self._span_context: Context
+        self._span_name: str = span_name
+        self._span_kind: SpanKind = span_kind
+        self._context_token: ContextToken | None = None
+        self._monotonic_start_s: float | None = None
+
+    def _start(self) -> None:
+        """Start the invocation span and attach it to the current context."""
+        self.span = self._tracer.start_span(
+            name=self._span_name,
+            kind=self._span_kind,
+        )
+        self._span_context = set_span_in_context(self.span)
+        self._monotonic_start_s = timeit.default_timer()
+        self._context_token = attach(self._span_context)
+
+    def _get_metric_attributes(self) -> dict[str, Any]:
+        """Return low-cardinality attributes for metric recording."""
+        return dict(self.metric_attributes)
+
+    def _get_metric_token_counts(self) -> dict[str, int]:  # pylint: disable=no-self-use
+        """Return {token_type: count} for token histogram recording."""
+        return {}
+
+    def _apply_error_attributes(self, error: Error) -> None:
+        """Apply error status and error.type attribute to the span, events, and metrics."""
+        error_type = error.type.__qualname__
+        self.span.set_status(Status(StatusCode.ERROR, error.message))
+        self.attributes[error_attributes.ERROR_TYPE] = error_type
+        self.metric_attributes[error_attributes.ERROR_TYPE] = error_type
+
+    @abstractmethod
+    def _apply_finish(self, error: Error | None = None) -> None:
+        """Apply finish telemetry (attributes, metrics, events)."""
+
+    def _finish(self, error: Error | None = None) -> None:
+        """Apply finish telemetry and end the span."""
+        if self._context_token is None:
+            return
+        try:
+            self._apply_finish(error)
+        finally:
+            try:
+                detach(self._context_token)
+            except Exception:  # pylint: disable=broad-except
+                pass
+            self.span.end()
+
+    def stop(self) -> None:
+        """Finalize the invocation successfully and end its span."""
+        self._finish()
+
+    def fail(self, error: Error | BaseException) -> None:
+        """Fail the invocation and end its span with error status."""
+        if isinstance(error, BaseException):
+            error = Error(type=type(error), message=str(error))
+        self._finish(error)
+
+
+def __getattr__(name: str) -> object:
+    if name == "LLMInvocation":
+        from opentelemetry.util.genai.inference_invocation import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+            LLMInvocation,  # pyright: ignore[reportDeprecated]
+        )
+
+        return LLMInvocation  # pyright: ignore[reportDeprecated]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

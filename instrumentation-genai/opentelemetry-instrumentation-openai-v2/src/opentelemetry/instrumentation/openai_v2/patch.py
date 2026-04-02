@@ -33,10 +33,12 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.inference_invocation import (
+    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
+)
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     Error,
-    LLMInvocation,
     OutputMessage,
     Text,
     ToolCallRequest,
