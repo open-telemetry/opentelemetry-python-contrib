@@ -402,9 +402,9 @@ def _get_embedding_response_attributes(
 def _get_tool_call_span_name(tool_call: ToolCall) -> str:
     """Get span name for tool call execution per semantic convention.
 
-    Format: "execute_tool {gen_ai.tool.name}"
+    Format: "{operation_name} {gen_ai.tool.name}"
     """
-    return f"{tool_call.operation_name} {tool_call.name}"
+    return f"{tool_call.operation_name} {tool_call.name}".strip()
 
 
 def _apply_tool_call_attributes(

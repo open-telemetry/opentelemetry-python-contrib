@@ -82,7 +82,6 @@ from opentelemetry.trace import (
     get_tracer,
     set_span_in_context,
 )
-from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
@@ -261,7 +260,7 @@ class TelemetryHandler:
                 invocation.error_type = error_type
                 _finish_tool_call_span(span, invocation, capture_content=True)
                 self._record_metrics(invocation, span, error_type=error_type)
-                span.set_status(Status(StatusCode.ERROR, error.message))
+                _apply_error_attributes(span, error, error_type)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)

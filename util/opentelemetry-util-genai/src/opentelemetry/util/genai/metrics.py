@@ -48,10 +48,9 @@ class InvocationMetricsRecorder:
         # Build attributes based on invocation type
         attributes: Dict[str, AttributeValue] = {}
 
+        attributes[GenAI.GEN_AI_OPERATION_NAME] = invocation.operation_name
+
         if isinstance(invocation, LLMInvocation):
-            attributes[GenAI.GEN_AI_OPERATION_NAME] = (
-                GenAI.GenAiOperationNameValues.CHAT.value
-            )
             if invocation.request_model:
                 attributes[GenAI.GEN_AI_REQUEST_MODEL] = (
                     invocation.request_model
@@ -60,11 +59,6 @@ class InvocationMetricsRecorder:
                 attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
                     invocation.response_model_name
                 )
-        else:
-            # ToolCall
-            attributes[GenAI.GEN_AI_OPERATION_NAME] = (
-                GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
-            )
 
         # Common attributes across invocation types
         if invocation.provider:
