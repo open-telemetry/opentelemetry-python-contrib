@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add metrics and events support for EmbeddingInvocation
   ([#4377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4377))
+- Add support for workflow in genAI utils handler.
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4366](#4366))
 - Enrich ToolCall type, breaking change: usage of ToolCall class renamed to ToolCallRequest 
   ([#4218](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4218))
 - Add EmbeddingInvocation span lifecycle support
