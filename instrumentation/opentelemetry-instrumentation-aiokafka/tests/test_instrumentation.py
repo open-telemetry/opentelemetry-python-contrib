@@ -502,7 +502,10 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             add_message_mock: mock.AsyncMock = (
                 producer._message_accumulator.add_message
             )
-            add_message_mock.side_effect = [mock.AsyncMock()(), mock.AsyncMock()()]
+            add_message_mock.side_effect = [
+                mock.AsyncMock()(),
+                mock.AsyncMock()(),
+            ]
 
             tracer = self.tracer_provider.get_tracer(__name__)
             with tracer.start_as_current_span("test_span") as span:
