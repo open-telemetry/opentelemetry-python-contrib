@@ -170,15 +170,15 @@ class UploadCompletionHook(CompletionHook):
                 test_path, "w", content_type=self._content_type
             ) as file:
                 file.write("\n")
-        except Exception as e:
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             raise ValueError(
-                f"Failed to write file to the following path, upload is not working: {test_path}.\n Got error: {e}"
+                f"Failed to write file to the following path, upload is not working: {test_path}.\n Got error: {exception}"
             )
         # Try to delete the file.. But we don't explicitly ask people to grant the GCS delete IAM permission in our
         # docs, so if delete fails just leave the file..
         try:
             self._fs.rm_file(test_path)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
