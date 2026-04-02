@@ -177,7 +177,7 @@ class UploadCompletionHook(CompletionHook):
         # Try to delete the file.. But we don't explicitly ask people to grant the GCS delete IAM permission in our
         # docs, so if delete fails just leave the file..
         try:
-            self._fs.rm_file(test_path)
+            self._fs.rm_file(test_path)  # pyright: ignore[reportUnknownMemberType]
         except Exception:  # pylint: disable=broad-exception-caught
             pass
 
