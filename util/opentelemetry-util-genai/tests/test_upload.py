@@ -151,7 +151,7 @@ class TestUploadCompletionHook(TestCase):
         self.mock_fs.open.side_effect = ValueError("Failed for some reason!")
         with self.assertRaisesRegex(
             ValueError,
-            "Failed to write file to the following path to test if upload working",
+            "Failed to write file to the following path, upload is not working:",
         ):
             UploadCompletionHook(
                 base_path=BASE_PATH,
