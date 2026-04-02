@@ -52,14 +52,11 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.completion_hook import load_completion_hook
 from opentelemetry.util.genai.handler import (
     TelemetryHandler,
 )
-from opentelemetry.util.genai.types import ContentCapturingMode
-from opentelemetry.util.genai.utils import (
-    get_content_capturing_mode,
-    is_experimental_mode,
-)
+from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .instruments import Instruments
 from .patch import (
@@ -107,22 +104,19 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         instruments = Instruments(self._meter)
 
-        content_mode = (
-            get_content_capturing_mode()
-            if latest_experimental_enabled
-            else ContentCapturingMode.NO_CONTENT
-        )
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             logger_provider=logger_provider,
+            completion_hook=kwargs.get("completion_hook")
+            or load_completion_hook(),
         )
 
         wrap_function_wrapper(
             module="openai.resources.chat.completions",
             name="Completions.create",
             wrapper=(
-                chat_completions_create_v_new(handler, content_mode)
+                chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
                 else chat_completions_create_v_old(
                     tracer, logger, instruments, is_content_enabled()
@@ -134,7 +128,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             module="openai.resources.chat.completions",
             name="AsyncCompletions.create",
             wrapper=(
-                async_chat_completions_create_v_new(handler, content_mode)
+                async_chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
                 else async_chat_completions_create_v_old(
                     tracer, logger, instruments, is_content_enabled()

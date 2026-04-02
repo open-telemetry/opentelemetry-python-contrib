@@ -61,6 +61,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import timeit
 from contextlib import contextmanager
 from typing import Iterator, TypeVar
@@ -68,6 +69,7 @@ from typing import Iterator, TypeVar
 from opentelemetry import context as otel_context
 from opentelemetry._logs import (
     LoggerProvider,
+    LogRecord,
     get_logger,
 )
 from opentelemetry.metrics import MeterProvider, get_meter
@@ -79,6 +81,13 @@ from opentelemetry.trace import (
     get_tracer,
     set_span_in_context,
 )
+from opentelemetry.util.genai.completion_hook import (
+    CompletionHook,
+    _NoOpCompletionHook,
+)
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
@@ -88,14 +97,19 @@ from opentelemetry.util.genai.span_utils import (
     _get_embedding_span_name,
     _get_llm_span_name,
     _get_workflow_span_name,
-    _maybe_emit_llm_event,
+    _maybe_build_llm_event_record,
 )
 from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
     EmbeddingInvocation,
     Error,
     GenAIInvocation,
     LLMInvocation,
     WorkflowInvocation,
+)
+from opentelemetry.util.genai.utils import (
+    get_content_capturing_mode,
+    is_experimental_mode,
 )
 from opentelemetry.util.genai.version import __version__
 
@@ -130,6 +144,7 @@ class TelemetryHandler:
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         logger_provider: LoggerProvider | None = None,
+        completion_hook: CompletionHook | None = None,
     ):
         schema_url = Schemas.V1_37_0.value
         self._tracer = get_tracer(
@@ -149,6 +164,30 @@ class TelemetryHandler:
             logger_provider,
             schema_url=schema_url,
         )
+        self._completion_hook = completion_hook
+        if is_experimental_mode():
+            content_enabled = (
+                get_content_capturing_mode() != ContentCapturingMode.NO_CONTENT
+            )
+        else:
+            content_enabled = (
+                os.environ.get(
+                    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
+                ).lower()
+                == "true"
+            )
+        self._capture_content = content_enabled or (
+            completion_hook is not None
+            and not isinstance(completion_hook, _NoOpCompletionHook)
+        )
+
+    def should_capture_content(self) -> bool:
+        """Returns True if content should be captured.
+
+        Content is captured when the content capturing mode requires it, or
+        when a real completion hook is configured (not a no-op).
+        """
+        return self._capture_content
 
     def _record_llm_metrics(
         self,
@@ -176,6 +215,21 @@ class TelemetryHandler:
         # Keep embedding metrics as a no-op until dedicated embedding
         # metric support is added.
         return
+
+    def _call_completion_hook(
+        self,
+        invocation: LLMInvocation,
+        span: Span,
+        log_record: LogRecord | None,
+    ) -> None:
+        if self._completion_hook is not None:
+            self._completion_hook.on_completion(
+                inputs=invocation.input_messages,
+                outputs=invocation.output_messages,
+                system_instruction=invocation.system_instruction,
+                span=span,
+                log_record=log_record,
+            )
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
@@ -215,7 +269,10 @@ class TelemetryHandler:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
                 self._record_llm_metrics(invocation, span)
-                _maybe_emit_llm_event(self._logger, span, invocation)
+                log_record = _maybe_build_llm_event_record(span, invocation)
+                self._call_completion_hook(invocation, span, log_record)
+                if log_record is not None:
+                    self._logger.emit(log_record)
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_embedding_metrics(invocation, span)
@@ -243,9 +300,20 @@ class TelemetryHandler:
                 self._record_llm_metrics(
                     invocation, span, error_type=error_type
                 )
-                _maybe_emit_llm_event(
-                    self._logger, span, invocation, error_type
+                log_record = _maybe_build_llm_event_record(
+                    span, invocation, error_type
                 )
+                if self._completion_hook is not None:
+                    self._completion_hook.on_completion(
+                        inputs=invocation.input_messages,
+                        outputs=invocation.output_messages,
+                        system_instruction=invocation.system_instruction,
+                        span=span,
+                        log_record=log_record,
+                    )
+                if log_record is not None:
+                    self._logger.emit(log_record)
+
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
@@ -383,6 +451,7 @@ def get_telemetry_handler(
     tracer_provider: TracerProvider | None = None,
     meter_provider: MeterProvider | None = None,
     logger_provider: LoggerProvider | None = None,
+    completion_hook: CompletionHook | None = None,
 ) -> TelemetryHandler:
     """
     Returns a singleton TelemetryHandler instance.
@@ -395,6 +464,7 @@ def get_telemetry_handler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             logger_provider=logger_provider,
+            completion_hook=completion_hook,
         )
         setattr(get_telemetry_handler, "_default_handler", handler)
     return handler
