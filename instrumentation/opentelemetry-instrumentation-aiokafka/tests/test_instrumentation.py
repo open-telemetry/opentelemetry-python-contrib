@@ -14,9 +14,10 @@
 
 from __future__ import annotations
 
+import sys
 import uuid
 from typing import Any, Sequence, cast
-from unittest import IsolatedAsyncioTestCase, TestCase, mock
+from unittest import IsolatedAsyncioTestCase, TestCase, mock, skipIf
 
 import aiokafka
 from aiokafka import (
@@ -63,6 +64,10 @@ class TestAIOKafkaInstrumentor(TestCase):
         )
 
 
+@skipIf(
+    sys.version_info < (3, 10),
+    "aiokafka >= 0.13 requires Python 3.10+",
+)
 class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
     @staticmethod
     def consumer_record_factory(

@@ -1,4 +1,5 @@
-aiokafka==0.13.0
+aiokafka==0.13.0; python_version >= "3.10"
+aiokafka==0.12.0; python_version < "3.10"
 pytest==7.4.4
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-aiokafka
