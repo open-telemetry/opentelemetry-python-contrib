@@ -161,15 +161,17 @@ class TelemetryHandler:
         self,
         invocation: GenAIInvocation,
         span: Span | None = None,
-        *,
         error_type: str | None = None,
     ) -> None:
         """Record metrics for an invocation."""
-        if self._metrics_recorder is None or span is None:
-            return
         # Only LLMInvocation and ToolCall metrics are currently supported
-        if not isinstance(invocation, (LLMInvocation, ToolCall)):
+        if (
+            self._metrics_recorder is None
+            or span is None
+            or not isinstance(invocation, (LLMInvocation, ToolCall))
+        ):
             return
+
         self._metrics_recorder.record(
             span,
             invocation,
@@ -248,14 +250,14 @@ class TelemetryHandler:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
-                self._record_metrics(invocation, span, error_type=error_type)
+                self._record_metrics(invocation, span, error_type)
                 _maybe_emit_llm_event(
                     self._logger, span, invocation, error_type
                 )
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
-                self._record_metrics(invocation, span, error_type=error_type)
+                self._record_metrics(invocation, span, error_type)
             elif isinstance(invocation, ToolCall):
                 invocation.error_type = error_type
                 _finish_tool_call_span(span, invocation, capture_content=True)

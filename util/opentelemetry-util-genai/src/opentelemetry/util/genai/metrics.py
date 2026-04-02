@@ -33,7 +33,6 @@ class InvocationMetricsRecorder:
         self,
         span: Optional[Span],
         invocation: Union[LLMInvocation, ToolCall],
-        *,
         error_type: Optional[str] = None,
     ) -> None:
         """Record duration and token metrics for an invocation.
