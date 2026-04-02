@@ -45,6 +45,7 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
+from opentelemetry.instrumentation.langchain.event_emitter import EventEmitter
 from opentelemetry.instrumentation.langchain.package import _instruments
 from opentelemetry.instrumentation.langchain.span_manager import _SpanManager
 from opentelemetry.instrumentation.langchain.version import __version__
@@ -95,6 +96,7 @@ class LangChainInstrumentor(BaseInstrumentor):
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
             telemetry_handler=telemetry_handler,
             span_manager=span_manager,
+            event_emitter=EventEmitter(logger_provider=logger_provider),
         )
 
         wrap_function_wrapper(

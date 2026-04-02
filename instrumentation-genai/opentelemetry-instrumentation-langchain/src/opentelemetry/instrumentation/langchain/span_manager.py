@@ -249,6 +249,13 @@ class _SpanManager:
         with self._lock:
             return rid in self._ignored_runs
 
+    def clear_ignored_run(self, run_id: str | object) -> None:
+        """Remove ignored-run bookkeeping for *run_id*."""
+        rid = str(run_id)
+        with self._lock:
+            self._ignored_runs.discard(rid)
+            self._run_parent_override.pop(rid, None)
+
     def resolve_parent_id(
         self, parent_run_id: Optional[str | object]
     ) -> Optional[str]:

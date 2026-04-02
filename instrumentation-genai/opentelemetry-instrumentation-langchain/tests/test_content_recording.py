@@ -85,13 +85,11 @@ class TestContentPolicySpanOnly:
 
 
 class TestContentPolicyEventOnly:
-    """EVENT_ONLY: events enabled; content processing also enabled."""
+    """EVENT_ONLY: events enabled without duplicating content on spans."""
 
     def test_should_record_content_on_spans(self, monkeypatch):
         _enter_experimental(monkeypatch, "EVENT_ONLY")
-        # The underlying util returns True because content conversion is
-        # still needed to populate events.
-        assert ContentPolicy().should_record_content_on_spans is True
+        assert ContentPolicy().should_record_content_on_spans is False
 
     def test_should_emit_events(self, monkeypatch):
         _enter_experimental(monkeypatch, "EVENT_ONLY")

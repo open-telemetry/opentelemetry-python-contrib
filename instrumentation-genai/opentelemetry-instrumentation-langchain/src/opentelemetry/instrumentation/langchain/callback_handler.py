@@ -31,12 +31,14 @@ from opentelemetry.instrumentation.langchain.content_recording import (
     should_record_retriever_content,
     should_record_tool_content,
 )
+from opentelemetry.instrumentation.langchain.event_emitter import EventEmitter
 from opentelemetry.instrumentation.langchain.invocation_manager import (
     _InvocationManager,
 )
 from opentelemetry.instrumentation.langchain.message_formatting import (
     format_documents,
     prepare_messages,
+    serialize_tool_result,
 )
 from opentelemetry.instrumentation.langchain.operation_mapping import (
     OperationName,
@@ -147,14 +149,17 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         self,
         telemetry_handler: TelemetryHandler,
         span_manager: Optional[_SpanManager] = None,
+        event_emitter: Optional[EventEmitter] = None,
     ) -> None:
         super().__init__()
         self._telemetry_handler = telemetry_handler
         self._span_manager = span_manager
+        self._event_emitter = event_emitter
         self._invocation_manager = _InvocationManager()
 
         # Streaming state: str(run_id) → monotonic timestamp of the last chunk
         self._streaming_state: dict[str, float] = {}
+        self._streaming_lock = threading.Lock()
 
         # The TelemetryHandler handles duration and token usage metrics.
         # Streaming metrics are not yet in the shared handler, so we create
@@ -414,7 +419,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             )
 
         run_key = str(run_id)
-        last_chunk_at = self._streaming_state.get(run_key)
+        with self._streaming_lock:
+            last_chunk_at = self._streaming_state.get(run_key)
+            self._streaming_state[run_key] = now
 
         if last_chunk_at is None:
             # First token — record time to first chunk
@@ -426,8 +433,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             self._tpoc_histogram.record(
                 max(now - last_chunk_at, 0.0), attributes=metric_attrs
             )
-
-        self._streaming_state[run_key] = now
 
     def on_llm_end(
         self,
@@ -576,7 +581,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                         str(service_tier),
                     )
 
-        self._streaming_state.pop(str(run_id), None)
+        with self._streaming_lock:
+            self._streaming_state.pop(str(run_id), None)
 
         llm_invocation = self._telemetry_handler.stop_llm(
             invocation=llm_invocation
@@ -609,7 +615,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             return
 
         error_otel = Error(message=str(error), type=type(error))
-        self._streaming_state.pop(str(run_id), None)
+        with self._streaming_lock:
+            self._streaming_state.pop(str(run_id), None)
 
         llm_invocation = self._telemetry_handler.fail_llm(
             invocation=llm_invocation, error=error_otel
@@ -686,18 +693,26 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         # Content recording (opt-in)
         policy = get_content_policy()
-        if policy.should_record_content_on_spans:
+        formatted_input_messages = None
+        system_instructions = None
+        if policy.record_content:
             raw_messages = _extract_chain_messages(inputs)
             if raw_messages:
-                formatted, system_instructions = prepare_messages(
-                    raw_messages, record_content=True
-                )
-                if formatted:
-                    attributes[GenAI.GEN_AI_INPUT_MESSAGES] = formatted
-                if system_instructions:
-                    attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = (
-                        system_instructions
+                formatted_input_messages, system_instructions = (
+                    prepare_messages(
+                        raw_messages,
+                        record_content=True,
                     )
+                )
+        if policy.should_record_content_on_spans:
+            if formatted_input_messages:
+                attributes[GenAI.GEN_AI_INPUT_MESSAGES] = (
+                    formatted_input_messages
+                )
+            if system_instructions:
+                attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = (
+                    system_instructions
+                )
 
         headers = extract_propagation_context(metadata, inputs, kwargs)
 
@@ -718,13 +733,23 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                 effective_parent = goto_parent
 
         with propagated_context(headers):
-            self._span_manager.start_span(
+            record = self._span_manager.start_span(
                 run_id=run_id,
                 name=span_name,
                 operation=operation,
                 parent_run_id=effective_parent,
                 attributes=attributes,
                 thread_key=thread_key,
+            )
+
+        if (
+            self._event_emitter is not None
+            and operation == OperationName.INVOKE_AGENT
+        ):
+            self._event_emitter.emit_agent_start_event(
+                record.span,
+                attributes.get(GenAI.GEN_AI_AGENT_NAME, span_name),
+                formatted_input_messages,
             )
 
     def on_chain_end(
@@ -739,6 +764,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             return
 
         if self._span_manager.is_ignored(run_id):
+            self._span_manager.clear_ignored_run(run_id)
             return
 
         record = self._span_manager.get_record(run_id)
@@ -746,16 +772,33 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             return
 
         policy = get_content_policy()
-        if policy.should_record_content_on_spans:
+        formatted_output_messages = None
+        if policy.record_content:
             raw_messages = _extract_chain_messages(outputs)
             if raw_messages:
-                formatted, _ = prepare_messages(
-                    raw_messages, record_content=True
+                formatted_output_messages, _ = prepare_messages(
+                    raw_messages,
+                    record_content=True,
                 )
-                if formatted:
-                    record.span.set_attribute(
-                        GenAI.GEN_AI_OUTPUT_MESSAGES, formatted
-                    )
+        if policy.should_record_content_on_spans and formatted_output_messages:
+            record.span.set_attribute(
+                GenAI.GEN_AI_OUTPUT_MESSAGES, formatted_output_messages
+            )
+            record.attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = (
+                formatted_output_messages
+            )
+
+        if (
+            self._event_emitter is not None
+            and record.operation == OperationName.INVOKE_AGENT
+        ):
+            self._event_emitter.emit_agent_end_event(
+                record.span,
+                record.attributes.get(
+                    GenAI.GEN_AI_AGENT_NAME, record.operation
+                ),
+                formatted_output_messages,
+            )
 
         # Detect LangGraph Command(goto=...) — the goto target should
         # become a child of this node's nearest agent ancestor.
@@ -782,6 +825,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             return
 
         if self._span_manager.is_ignored(run_id):
+            self._span_manager.clear_ignored_run(run_id)
             return
 
         self._span_manager.end_span(run_id, error=error)
@@ -885,9 +929,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             attributes[GenAI.GEN_AI_TOOL_CALL_ID] = str(tool_call_id)
 
         # Inherit provider from parent span if available
-        prid = str(parent_run_id) if parent_run_id is not None else None
-        if prid is not None:
-            parent_record = self._span_manager.get_record(prid)
+        resolved_parent_id = self._span_manager.resolve_parent_id(
+            parent_run_id
+        )
+        if resolved_parent_id is not None:
+            parent_record = self._span_manager.get_record(resolved_parent_id)
             if parent_record is not None:
                 provider = parent_record.attributes.get(
                     GenAI.GEN_AI_PROVIDER_NAME
@@ -897,10 +943,9 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         # Tool call arguments (opt-in content)
         policy = get_content_policy()
-        if should_record_tool_content(policy):
-            arguments = None
+        arguments = None
+        if policy.record_content:
             if inputs:
-                # Exclude internal keys, serialize the actual input
                 arg_data = {
                     k: v for k, v in inputs.items() if k != "tool_call_id"
                 }
@@ -908,13 +953,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     arguments = json.dumps(arg_data, default=str)
             if not arguments and input_str:
                 arguments = input_str
-            if arguments:
-                attributes[GenAI.GEN_AI_TOOL_CALL_ARGUMENTS] = arguments
+        if should_record_tool_content(policy) and arguments:
+            attributes[GenAI.GEN_AI_TOOL_CALL_ARGUMENTS] = arguments
 
         # Thread key for agent stack tracking
         thread_key = metadata.get("thread_id")
 
-        self._span_manager.start_span(
+        record = self._span_manager.start_span(
             run_id=str(run_id),
             name=span_name,
             operation=OP_EXECUTE_TOOL,
@@ -922,6 +967,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             attributes=attributes,
             thread_key=str(thread_key) if thread_key else None,
         )
+
+        if self._event_emitter is not None:
+            self._event_emitter.emit_tool_call_event(
+                record.span,
+                tool_name,
+                arguments,
+                str(tool_call_id) if tool_call_id else None,
+            )
 
     def on_tool_end(
         self,
@@ -940,13 +993,21 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         # Record tool result (opt-in content)
         policy = get_content_policy()
-        if should_record_tool_content(policy) and output is not None:
-            try:
-                result_str = json.dumps(output, default=str)
-            except (TypeError, ValueError):
-                result_str = str(output)
+        result_str = None
+        if policy.record_content and output is not None:
+            result_str = serialize_tool_result(output, record_content=True)
+        if should_record_tool_content(policy) and result_str is not None:
             record.span.set_attribute(
                 GenAI.GEN_AI_TOOL_CALL_RESULT, result_str
+            )
+            record.attributes[GenAI.GEN_AI_TOOL_CALL_RESULT] = result_str
+
+        if self._event_emitter is not None:
+            self._event_emitter.emit_tool_result_event(
+                record.span,
+                record.attributes.get(GenAI.GEN_AI_TOOL_NAME, "tool"),
+                result_str,
+                record.attributes.get(GenAI.GEN_AI_TOOL_CALL_ID),
             )
 
         # Detect LangGraph Command(goto=...) from tool output.
@@ -1007,9 +1068,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         }
 
         # Inherit provider from parent span if available
-        prid = str(parent_run_id) if parent_run_id is not None else None
-        if prid is not None:
-            parent_record = self._span_manager.get_record(prid)
+        resolved_parent_id = self._span_manager.resolve_parent_id(
+            parent_run_id
+        )
+        if resolved_parent_id is not None:
+            parent_record = self._span_manager.get_record(resolved_parent_id)
             if parent_record is not None:
                 provider = parent_record.attributes.get(
                     GenAI.GEN_AI_PROVIDER_NAME
@@ -1024,7 +1087,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         thread_key = metadata.get("thread_id")
 
-        self._span_manager.start_span(
+        record = self._span_manager.start_span(
             run_id=str(run_id),
             name=span_name,
             operation=OP_EXECUTE_TOOL,
@@ -1033,6 +1096,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             attributes=attributes,
             thread_key=str(thread_key) if thread_key else None,
         )
+
+        if self._event_emitter is not None:
+            self._event_emitter.emit_retriever_query_event(
+                record.span,
+                tool_name,
+                query if policy.record_content else None,
+            )
 
     def on_retriever_end(
         self,
@@ -1054,6 +1124,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         formatted = format_documents(documents, record_content=record_content)
         if formatted is not None:
             record.span.set_attribute("gen_ai.retrieval.documents", formatted)
+            record.attributes["gen_ai.retrieval.documents"] = formatted
+
+        if self._event_emitter is not None:
+            self._event_emitter.emit_retriever_result_event(
+                record.span,
+                record.attributes.get(GenAI.GEN_AI_TOOL_NAME, "retriever"),
+                formatted,
+            )
 
         self._span_manager.end_span(run_id=str(run_id), status=StatusCode.OK)
 

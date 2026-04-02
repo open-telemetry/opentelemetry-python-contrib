@@ -22,7 +22,6 @@ from opentelemetry.util.genai.types import ContentCapturingMode
 from opentelemetry.util.genai.utils import (
     get_content_capturing_mode,
     is_experimental_mode,
-    should_capture_content_on_spans_in_experimental_mode,
     should_emit_event,
 )
 
@@ -38,7 +37,10 @@ class ContentPolicy:
     @property
     def should_record_content_on_spans(self) -> bool:
         """Whether message/tool content should be recorded as span attributes."""
-        return should_capture_content_on_spans_in_experimental_mode()
+        return self.mode in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
 
     @property
     def should_emit_events(self) -> bool:

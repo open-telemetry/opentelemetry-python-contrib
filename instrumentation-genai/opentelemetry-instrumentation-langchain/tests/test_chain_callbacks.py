@@ -63,6 +63,9 @@ def mock_span_manager():
     mgr = mock.MagicMock(spec=_SpanManager)
     # By default runs are not ignored.
     mgr.is_ignored.return_value = False
+    mgr.resolve_parent_id.side_effect = lambda parent_run_id: (
+        str(parent_run_id) if parent_run_id is not None else None
+    )
     # start_span returns a SpanRecord by default.
     mgr.start_span.return_value = _make_span_record(uuid4())
     return mgr
@@ -269,6 +272,7 @@ class TestOnChainStartContentRecording:
             "opentelemetry.instrumentation.langchain.callback_handler.get_content_policy"
         ) as mock_policy:
             policy = mock.MagicMock()
+            policy.record_content = True
             policy.should_record_content_on_spans = True
             mock_policy.return_value = policy
 
@@ -291,6 +295,7 @@ class TestOnChainStartContentRecording:
             "opentelemetry.instrumentation.langchain.callback_handler.get_content_policy"
         ) as mock_policy:
             policy = mock.MagicMock()
+            policy.record_content = False
             policy.should_record_content_on_spans = False
             mock_policy.return_value = policy
 
@@ -358,6 +363,7 @@ class TestOnChainEnd:
             "opentelemetry.instrumentation.langchain.callback_handler.get_content_policy"
         ) as mock_policy:
             policy = mock.MagicMock()
+            policy.record_content = True
             policy.should_record_content_on_spans = True
             mock_policy.return_value = policy
 
@@ -380,6 +386,7 @@ class TestOnChainEnd:
         )
 
         mock_span_manager.end_span.assert_not_called()
+        mock_span_manager.clear_ignored_run.assert_called_once_with(run_id)
 
     def test_returns_early_when_no_record(self, handler, mock_span_manager):
         run_id = uuid4()
@@ -434,6 +441,7 @@ class TestOnChainError:
         )
 
         mock_span_manager.end_span.assert_not_called()
+        mock_span_manager.clear_ignored_run.assert_called_once_with(run_id)
 
     def test_returns_early_when_no_span_manager(self):
         telemetry_handler = mock.MagicMock()

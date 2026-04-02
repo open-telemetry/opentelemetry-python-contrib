@@ -18,7 +18,6 @@ from opentelemetry.instrumentation.langchain.utils import (
     infer_provider_name,
     infer_server_address,
     infer_server_port,
-    resolve_agent_name,
 )
 
 # ---------------------------------------------------------------------------
@@ -322,91 +321,3 @@ class TestInferServerPort:
             }
         }
         assert infer_server_port(serialized, {}) == 9090
-
-
-# ---------------------------------------------------------------------------
-# resolve_agent_name
-# ---------------------------------------------------------------------------
-
-
-class TestResolveAgentName:
-    """Resolve a human-readable agent name from various sources."""
-
-    def test_from_kwargs_name(self):
-        kwargs = {"name": "my-agent"}
-        assert resolve_agent_name({}, {}, kwargs, "default") == "my-agent"
-
-    def test_from_metadata_langgraph_node(self):
-        metadata = {"langgraph_node": "research_node"}
-        assert (
-            resolve_agent_name({}, metadata, {}, "default") == "research_node"
-        )
-
-    def test_from_metadata_agent_name(self):
-        metadata = {"agent_name": "planner"}
-        assert resolve_agent_name({}, metadata, {}, "default") == "planner"
-
-    def test_from_metadata_langgraph_path(self):
-        # resolve_agent_name only accepts list, not tuple
-        metadata = {"langgraph_path": ["root", "child_agent"]}
-        assert resolve_agent_name({}, metadata, {}, "default") == "child_agent"
-
-    def test_from_serialized_id(self):
-        serialized = {"id": ["langchain", "agents", "MyCustomAgent"]}
-        assert (
-            resolve_agent_name(serialized, {}, {}, "default")
-            == "MyCustomAgent"
-        )
-
-    def test_falls_back_to_default(self):
-        assert (
-            resolve_agent_name({}, {}, {}, "default_agent") == "default_agent"
-        )
-
-    def test_skips_generic_langgraph_marker(self):
-        metadata = {"langgraph_node": "LangGraph"}
-        assert (
-            resolve_agent_name({}, metadata, {}, "default_agent")
-            != "LangGraph"
-        )
-
-    def test_skips_empty_string_in_metadata(self):
-        metadata = {"langgraph_node": ""}
-        assert resolve_agent_name({}, metadata, {}, "default") == "default"
-
-    def test_kwargs_name_takes_priority(self):
-        kwargs = {"name": "kwargs-agent"}
-        metadata = {"langgraph_node": "meta-agent", "agent_name": "named"}
-        serialized = {"id": ["langchain", "agents", "SerializedAgent"]}
-        assert (
-            resolve_agent_name(serialized, metadata, kwargs, "default")
-            == "kwargs-agent"
-        )
-
-    def test_metadata_over_serialized(self):
-        metadata = {"langgraph_node": "meta-agent"}
-        serialized = {"id": ["langchain", "agents", "SerializedAgent"]}
-        assert (
-            resolve_agent_name(serialized, metadata, {}, "default")
-            == "meta-agent"
-        )
-
-    def test_none_metadata(self):
-        assert resolve_agent_name({}, None, {}, "fallback") == "fallback"
-
-    def test_none_kwargs(self):
-        metadata = {"langgraph_node": "node"}
-        assert resolve_agent_name({}, metadata, None, "default") == "node"
-
-    def test_langgraph_path_list(self):
-        metadata = {"langgraph_path": ["root", "inner", "leaf_agent"]}
-        assert resolve_agent_name({}, metadata, {}, "default") == "leaf_agent"
-
-    def test_empty_langgraph_path(self):
-        metadata = {"langgraph_path": []}
-        assert resolve_agent_name({}, metadata, {}, "default") == "default"
-
-    def test_serialized_id_string_falls_back(self):
-        # _get_class_identifier only handles list ids and "name" key, not bare string ids
-        serialized = {"id": "simple-agent-id"}
-        assert resolve_agent_name(serialized, {}, {}, "default") == "default"

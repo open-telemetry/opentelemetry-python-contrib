@@ -67,9 +67,6 @@ _CLASS_PROVIDER_RULES: List[tuple[str, str]] = [
     ("Ollama", _PROVIDER_OLLAMA),
 ]
 
-# Generic markers to skip when resolving agent names
-_GENERIC_MARKERS = {"", "LangGraph"}
-
 
 def _first_non_empty(*values: Optional[str]) -> Optional[str]:
     """Return the first non-None, non-empty string value, or None."""
@@ -256,63 +253,6 @@ def infer_server_port(
 
     parsed = urlparse(url)
     return parsed.port  # None when port is not explicitly set
-
-
-def resolve_agent_name(
-    serialized: Optional[Dict[str, Any]],
-    metadata: Optional[Dict[str, Any]],
-    kwargs: Optional[Dict[str, Any]],
-    default: str,
-) -> str:
-    """Resolve the most specific agent name from available sources.
-
-    Sources are checked in order:
-    1. ``kwargs["name"]`` — explicit callback name
-    2. ``metadata["langgraph_node"]`` — per-node name
-    3. ``metadata["agent_name"]`` — explicit agent name metadata
-    4. ``metadata["agent_type"]`` — agent type fallback
-    5. ``metadata["langgraph_path"][-1]`` — path-based fallback
-    6. ``serialized["id"]`` / ``serialized["name"]`` — serialized ID
-    7. ``default`` — final fallback
-    """
-    skip = _GENERIC_MARKERS | {default}
-
-    # 1. Explicit callback name
-    if kwargs:
-        name = kwargs.get("name")
-        if isinstance(name, str) and name not in skip:
-            return name
-
-    if metadata:
-        # 2. LangGraph node name
-        node = metadata.get("langgraph_node")
-        if isinstance(node, str) and node not in skip:
-            return node
-
-        # 3. Explicit agent name metadata
-        agent_name = metadata.get("agent_name")
-        if isinstance(agent_name, str) and agent_name not in skip:
-            return agent_name
-
-        # 4. Agent type fallback
-        agent_type = metadata.get("agent_type")
-        if isinstance(agent_type, str) and agent_type not in skip:
-            return agent_type
-
-        # 5. Path-based fallback
-        path = metadata.get("langgraph_path")
-        if isinstance(path, list) and path:
-            last = path[-1]
-            if isinstance(last, str) and last not in skip:
-                return last
-
-    # 6. Serialized class identifier
-    if serialized:
-        class_id = _get_class_identifier(serialized)
-        if class_id is not None and class_id not in skip:
-            return class_id
-
-    return default
 
 
 _logger = logging.getLogger(__name__)

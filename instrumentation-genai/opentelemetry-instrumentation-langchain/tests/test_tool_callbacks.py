@@ -50,6 +50,9 @@ def _make_handler(span_manager=None):
 def _make_span_manager():
     """Create a mock _SpanManager."""
     sm = mock.MagicMock(spec=_SpanManager)
+    sm.resolve_parent_id.side_effect = lambda parent_run_id: (
+        str(parent_run_id) if parent_run_id is not None else None
+    )
     return sm
 
 
@@ -66,6 +69,13 @@ def _make_span_record(run_id, attributes=None):
 
 def _enable_content_recording(monkeypatch):
     """Patch content_recording to enable tool content capture."""
+    policy = mock.MagicMock()
+    policy.record_content = True
+    policy.should_emit_events = False
+    monkeypatch.setattr(
+        "opentelemetry.instrumentation.langchain.callback_handler.get_content_policy",
+        lambda: policy,
+    )
     monkeypatch.setattr(
         "opentelemetry.instrumentation.langchain.callback_handler.should_record_tool_content",
         lambda policy: True,
@@ -74,6 +84,13 @@ def _enable_content_recording(monkeypatch):
 
 def _disable_content_recording(monkeypatch):
     """Patch content_recording to disable tool content capture."""
+    policy = mock.MagicMock()
+    policy.record_content = False
+    policy.should_emit_events = False
+    monkeypatch.setattr(
+        "opentelemetry.instrumentation.langchain.callback_handler.get_content_policy",
+        lambda: policy,
+    )
     monkeypatch.setattr(
         "opentelemetry.instrumentation.langchain.callback_handler.should_record_tool_content",
         lambda policy: False,
@@ -340,10 +357,10 @@ class TestOnToolEnd:
         handler = _make_handler(span_manager=sm)
         handler.on_tool_end(output={"answer": 42}, run_id=run_id)
 
-        record.span.set_attribute.assert_called_once_with(
-            GenAI.GEN_AI_TOOL_CALL_RESULT,
-            json.dumps({"answer": 42}),
-        )
+        record.span.set_attribute.assert_called_once()
+        key, value = record.span.set_attribute.call_args.args
+        assert key == GenAI.GEN_AI_TOOL_CALL_RESULT
+        assert json.loads(value) == {"answer": 42}
 
     def test_redacts_tool_result_when_content_recording_disabled(
         self, monkeypatch

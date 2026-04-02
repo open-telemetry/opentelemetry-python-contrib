@@ -67,6 +67,9 @@ def _make_span_record(
 def mock_span_manager():
     mgr = mock.MagicMock(spec=_SpanManager)
     mgr.is_ignored.return_value = False
+    mgr.resolve_parent_id.side_effect = lambda parent_run_id: (
+        str(parent_run_id) if parent_run_id is not None else None
+    )
     mgr.start_span.return_value = _make_span_record(uuid4())
     return mgr
 
