@@ -15,6 +15,7 @@ SPAN_TYPE_AGENT = "agent"
 SPAN_TYPE_FUNCTION = "function"
 SPAN_TYPE_GENERATION = "generation"
 SPAN_TYPE_RESPONSE = "response"
+SPAN_TYPE_MCP_TOOLS = "mcp_tools"
 
 __all__ = [
     "TraceProvider",
@@ -25,10 +26,12 @@ __all__ = [
     "generation_span",
     "function_span",
     "response_span",
+    "mcp_list_tools_span",
     "AgentSpanData",
     "GenerationSpanData",
     "FunctionSpanData",
     "ResponseSpanData",
+    "MCPListToolsSpanData",
 ]
 
 
@@ -75,6 +78,16 @@ class ResponseSpanData:
     @property
     def type(self) -> str:
         return SPAN_TYPE_RESPONSE
+
+
+@dataclass
+class MCPListToolsSpanData:
+    server: str | None = None
+    result: list[str] | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_MCP_TOOLS
 
 
 class _ProcessorFanout(TracingProcessor):
@@ -229,6 +242,17 @@ def function_span(**kwargs: Any):
 @contextmanager
 def response_span(**kwargs: Any):
     data = ResponseSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def mcp_list_tools_span(**kwargs: Any):
+    data = MCPListToolsSpanData(**kwargs)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:
