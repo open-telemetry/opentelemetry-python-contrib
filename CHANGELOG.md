@@ -40,7 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
   ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
-- `opentelemetry-instrumentation-aiokafka`: Fix `Unclosed AIOKafkaProducer` warning in tests by properly stopping the producer, and fix `RuntimeWarning: coroutine was never awaited` by using `AsyncMock` for async mock targets
+- `opentelemetry-instrumentation-aiokafka`: fix `Unclosed AIOKafkaProducer` warning and `RuntimeWarning: coroutine was never awaited` in tests
+  ([#4384](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4384)) 
 
 ### Breaking changes
 
