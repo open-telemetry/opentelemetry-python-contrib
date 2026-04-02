@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiokafka`: Fix compatibility with aiokafka 0.13 by calling
   `_key_serializer`/`_value_serializer` directly instead of the internal `_serialize` method
   whose signature changed in 0.13 from `(topic, key, value)` to `(key, value, headers)`
+  ([#4379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4379))
 
 ### Breaking changes
 
