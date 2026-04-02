@@ -484,8 +484,8 @@ class TestLoggingHandler(unittest.TestCase):
             ("['a non-string with a percent-s', 'and arg']"),
             ("['a non-string with a percent-s', '%s']"),
         ]
-        for i, msg in enumerate(expected):
-            record = processor.get_log_record(i)
+        for index, msg in enumerate(expected):
+            record = processor.get_log_record(index)
             self.assertEqual(record.log_record.body, msg)
 
     @patch.dict(os.environ, {"OTEL_SDK_DISABLED": "true"})
