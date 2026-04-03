@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from typing import Optional
 
 import pytest
@@ -157,42 +159,58 @@ def test_chat_openai_gpt_3_5_turbo_model_llm_call_with_error(
 # span_exporter, start_instrumentation, us_amazon_nova_lite_v1_0 are coming from fixtures defined in conftest.py
 @pytest.mark.vcr()
 def test_us_amazon_nova_lite_v1_0_bedrock_llm_call(
-    span_exporter, start_instrumentation, us_amazon_nova_lite_v1_0
+    span_exporter, start_instrumentation, us_amazon_nova_lite_v1_0, vcr
 ):
     messages = [
         SystemMessage(content="You are a helpful assistant!"),
         HumanMessage(content="What is the capital of France?"),
     ]
 
-    result = us_amazon_nova_lite_v1_0.invoke(messages)
+    with vcr.use_cassette(
+        "test_us_amazon_nova_lite_v1_0_bedrock_llm_call.yaml",
+        match_on=["method", "scheme", "host", "port", "query"],
+    ):
+        result = us_amazon_nova_lite_v1_0.invoke(messages)
 
     assert result.content.find("The capital of France is Paris") != -1
 
     # verify spans
     spans = span_exporter.get_finished_spans()
-    print(f"spans: {spans}")
-    for span in spans:
-        print(f"span: {span}")
-        print(f"span attributes: {span.attributes}")
-    # TODO: fix the code and ensure the assertions are correct
     assert_bedrock_completion_attributes(spans[0], result)
 
 
 # span_exporter, start_instrumentation, gemini are coming from fixtures defined in conftest.py
 @pytest.mark.vcr()
-def test_gemini(span_exporter, start_instrumentation, gemini):
+def test_gemini(span_exporter, start_instrumentation, gemini, request, vcr):
+    _skip_if_cassette_missing_and_no_real_key(request)
     messages = [
         SystemMessage(content="You are a helpful assistant!"),
         HumanMessage(content="What is the capital of France?"),
     ]
 
-    result = gemini.invoke(messages)
+    with vcr.use_cassette(f"{request.node.name}.yaml"):
+        result = gemini.invoke(messages)
 
     assert result.content.find("The capital of France is **Paris**") != -1
 
     # verify spans
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 0  # No spans should be created for gemini as of now
+
+
+def _skip_if_cassette_missing_and_no_real_key(request):
+    cassette_path = (
+        Path(__file__).parent / "cassettes" / f"{request.node.name}.yaml"
+    )
+    if not cassette_path.exists() and gemini_api_key_is_placeholder():
+        pytest.skip(
+            f"Cassette {cassette_path.name} is missing. "
+            "Set a real GOOGLE_API_KEY-compatible credential to record it."
+        )
+
+
+def gemini_api_key_is_placeholder():
+    return os.getenv("GOOGLE_API_KEY", "test_key") == "test_key"
 
 
 def assert_openai_completion_attributes(
@@ -321,7 +339,7 @@ def assert_bedrock_completion_attributes(
         == "us.amazon.nova-lite-v1:0"
     )
 
-    assert span.attributes["gen_ai.provider.name"] == "amazon_bedrock"
+    assert span.attributes["gen_ai.provider.name"] == "aws.bedrock"
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
 
