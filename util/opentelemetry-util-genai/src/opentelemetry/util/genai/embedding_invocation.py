@@ -22,8 +22,8 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
-from opentelemetry.util.genai.types import Error, GenAIInvocation
 from opentelemetry.util.types import AttributeValue
 
 

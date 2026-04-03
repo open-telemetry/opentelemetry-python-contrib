@@ -16,15 +16,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from typing_extensions import deprecated
-
 from opentelemetry._logs import Logger
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import Tracer
+from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
-from opentelemetry.util.genai.types import Error, GenAIInvocation
 
 
 class ToolInvocation(GenAIInvocation):
@@ -96,8 +94,3 @@ class ToolInvocation(GenAIInvocation):
         }
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
-
-
-@deprecated("ToolCall is deprecated. Use ToolInvocation instead.")
-class ToolCall(ToolInvocation):
-    pass

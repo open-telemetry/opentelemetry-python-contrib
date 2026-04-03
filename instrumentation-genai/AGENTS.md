@@ -35,9 +35,8 @@ except Exception as exc:
 
 ## 3. Exception Handling
 
-- Do not add `raise` statements in instrumentation/telemetry code — validation belongs in
+- Do not add `raise {Error}` statements in instrumentation/telemetry code — validation belongs in
   tests and callers, not in the instrumentation layer.
 - When catching exceptions from the underlying library to record telemetry, always re-raise
   the original exception unmodified.
 - Do not wrap, replace, or suppress exceptions — telemetry must be transparent to callers.
-

@@ -28,7 +28,7 @@ Usage:
     handler = get_telemetry_handler()
 
     # Factory method: construct and start in one call, then stop or fail.
-    invocation = handler.start_inference("my-provider", "my-model")
+    invocation = handler.start_inference("my-provider", request_model="my-model")
     invocation.input_messages = [...]
     invocation.temperature = 0.7
     try:
@@ -40,7 +40,7 @@ Usage:
         raise
 
     # Or use the context manager form — exception handling is automatic.
-    with handler.inference("my-provider", "my-model") as invocation:
+    with handler.inference("my-provider", request_model="my-model") as invocation:
         invocation.input_messages = [...]
         # ... call the underlying library ...
         invocation.output_messages = [...]
@@ -63,6 +63,7 @@ from opentelemetry.trace import (
     TracerProvider,
     get_tracer,
 )
+from opentelemetry.util.genai._invocation import Error
 from opentelemetry.util.genai.embedding_invocation import EmbeddingInvocation
 from opentelemetry.util.genai.inference_invocation import (
     InferenceInvocation,
@@ -70,7 +71,6 @@ from opentelemetry.util.genai.inference_invocation import (
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.tool_invocation import ToolInvocation
-from opentelemetry.util.genai.types import Error
 from opentelemetry.util.genai.version import __version__
 from opentelemetry.util.genai.workflow_invocation import WorkflowInvocation
 
@@ -110,8 +110,8 @@ class TelemetryHandler:
     def start_inference(
         self,
         provider: str,
-        request_model: str | None = None,
         *,
+        request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
     ) -> InferenceInvocation:
@@ -150,8 +150,8 @@ class TelemetryHandler:
     def start_embedding(
         self,
         provider: str,
-        request_model: str | None = None,
         *,
+        request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
     ) -> EmbeddingInvocation:
@@ -197,6 +197,7 @@ class TelemetryHandler:
 
     def start_workflow(
         self,
+        *,
         name: str | None = None,
     ) -> WorkflowInvocation:
         """Create and start a workflow invocation.
@@ -240,8 +241,8 @@ class TelemetryHandler:
     def inference(
         self,
         provider: str,
-        request_model: str | None = None,
         *,
+        request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
     ) -> Iterator[InferenceInvocation]:
@@ -270,8 +271,8 @@ class TelemetryHandler:
     def embedding(
         self,
         provider: str,
-        request_model: str | None = None,
         *,
+        request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
     ) -> Iterator[EmbeddingInvocation]:

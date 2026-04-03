@@ -73,7 +73,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
     )
     def test_emits_llm_event(self):
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "event-model"
+            "test-provider", request_model="event-model"
         )
         invocation.input_messages = [_create_input_message("test query")]
         invocation.system_instruction = _create_system_instruction()
@@ -155,7 +155,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
         system_instruction = _create_system_instruction("System prompt here")
 
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "combined-model"
+            "test-provider", request_model="combined-model"
         )
         invocation.input_messages = [message]
         invocation.system_instruction = system_instruction
@@ -212,7 +212,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
 
         message = _create_input_message("error test")
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "error-model"
+            "test-provider", request_model="error-model"
         )
         invocation.input_messages = [message]
         error = Error(message="Test error occurred", type=TestError)
@@ -248,7 +248,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
         chat_generation = _create_output_message("emit false response")
 
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "emit-false-model"
+            "test-provider", request_model="emit-false-model"
         )
         invocation.input_messages = [message]
         invocation.output_messages = [chat_generation]
@@ -266,7 +266,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
     def test_does_not_emit_llm_event_by_default_for_no_content(self):
         """Test that event is not emitted by default when content_capturing is NO_CONTENT and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "default-model"
+            "test-provider", request_model="default-model"
         )
         invocation.input_messages = [_create_input_message("default test")]
         invocation.output_messages = [
@@ -286,7 +286,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
     def test_does_not_emit_llm_event_by_default_for_span_only(self):
         """Test that event is not emitted by default when content_capturing is SPAN_ONLY and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "default-model"
+            "test-provider", request_model="default-model"
         )
         invocation.input_messages = [_create_input_message("default test")]
         invocation.output_messages = [
@@ -306,7 +306,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
     def test_emits_llm_event_by_default_for_event_only(self):
         """Test that event is emitted by default when content_capturing is EVENT_ONLY and OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT is not set."""
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "default-model"
+            "test-provider", request_model="default-model"
         )
         invocation.input_messages = [_create_input_message("default test")]
         invocation.output_messages = [
@@ -334,7 +334,7 @@ class TestTelemetryHandlerEvents(unittest.TestCase):
         system_instruction = _create_system_instruction("System prompt")
 
         invocation = self.telemetry_handler.start_inference(
-            "test-provider", "span-and-event-model"
+            "test-provider", request_model="span-and-event-model"
         )
         invocation.input_messages = [message]
         invocation.system_instruction = system_instruction

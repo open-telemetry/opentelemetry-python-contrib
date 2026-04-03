@@ -30,10 +30,9 @@ from opentelemetry.trace import (
     Tracer,
     set_span_in_context,
 )
+from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
-    Error,
-    GenAIInvocation,
     InputMessage,
     MessagePart,
     OutputMessage,

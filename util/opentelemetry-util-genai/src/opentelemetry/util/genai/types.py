@@ -14,26 +14,9 @@
 
 from __future__ import annotations
 
-import timeit
-from abc import ABC, abstractmethod
-from contextvars import Token
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Type, Union
-
-from typing_extensions import TypeAlias
-
-from opentelemetry._logs import Logger
-from opentelemetry.context import Context, attach, detach
-from opentelemetry.semconv.attributes import error_attributes
-from opentelemetry.trace import INVALID_SPAN as _INVALID_SPAN
-from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
-from opentelemetry.trace.status import Status, StatusCode
-
-if TYPE_CHECKING:
-    from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
-
-ContextToken: TypeAlias = Token[Context]
+from typing import Any, Literal, Union
 
 
 class ContentCapturingMode(Enum):
@@ -244,108 +227,11 @@ class OutputMessage:
     finish_reason: str | FinishReason
 
 
-@dataclass
-class Error:
-    message: str
-    type: Type[BaseException]
-
-
-class GenAIInvocation(ABC):
-    """
-    Base class for all GenAI invocation types. Manages the lifecycle of a single
-    GenAI operation (LLM call, embedding, tool execution, workflow, etc.).
-
-    Use the factory methods on TelemetryHandler (start_inference, start_embedding,
-    start_workflow, start_tool) rather than constructing invocations directly.
-    """
-
-    def __init__(
-        self,
-        # Individual components instead of TelemetryHandler to avoid a circular
-        # import between handler.py and the invocation modules.
-        tracer: Tracer,
-        metrics_recorder: InvocationMetricsRecorder | None = None,
-        logger: Logger | None = None,
-        *,
-        operation_name: str,
-        span_name: str,
-        span_kind: SpanKind = SpanKind.CLIENT,
-        attributes: dict[str, Any] | None = None,
-        metric_attributes: dict[str, Any] | None = None,
-    ) -> None:
-        self._tracer = tracer
-        self._metrics_recorder = metrics_recorder
-        self._logger = logger
-        self._operation_name: str = operation_name
-        self.attributes: dict[str, Any] = (
-            {} if attributes is None else attributes
-        )
-        """Additional attributes to set on spans and/or events. Not set on metrics."""
-        self.metric_attributes: dict[str, Any] = (
-            {} if metric_attributes is None else metric_attributes
-        )
-        """Additional attributes to set on metrics. Must be low cardinality. Not set on spans or events."""
-        self.span: Span = _INVALID_SPAN
-        self._span_context: Context
-        self._span_name: str = span_name
-        self._span_kind: SpanKind = span_kind
-        self._context_token: ContextToken | None = None
-        self._monotonic_start_s: float | None = None
-
-    def _start(self) -> None:
-        """Start the invocation span and attach it to the current context."""
-        self.span = self._tracer.start_span(
-            name=self._span_name,
-            kind=self._span_kind,
-        )
-        self._span_context = set_span_in_context(self.span)
-        self._monotonic_start_s = timeit.default_timer()
-        self._context_token = attach(self._span_context)
-
-    def _get_metric_attributes(self) -> dict[str, Any]:
-        """Return low-cardinality attributes for metric recording."""
-        return dict(self.metric_attributes)
-
-    def _get_metric_token_counts(self) -> dict[str, int]:  # pylint: disable=no-self-use
-        """Return {token_type: count} for token histogram recording."""
-        return {}
-
-    def _apply_error_attributes(self, error: Error) -> None:
-        """Apply error status and error.type attribute to the span, events, and metrics."""
-        error_type = error.type.__qualname__
-        self.span.set_status(Status(StatusCode.ERROR, error.message))
-        self.attributes[error_attributes.ERROR_TYPE] = error_type
-        self.metric_attributes[error_attributes.ERROR_TYPE] = error_type
-
-    @abstractmethod
-    def _apply_finish(self, error: Error | None = None) -> None:
-        """Apply finish telemetry (attributes, metrics, events)."""
-
-    def _finish(self, error: Error | None = None) -> None:
-        """Apply finish telemetry and end the span."""
-        if self._context_token is None:
-            return
-        try:
-            self._apply_finish(error)
-        finally:
-            try:
-                detach(self._context_token)
-            except Exception:  # pylint: disable=broad-except
-                pass
-            self.span.end()
-
-    def stop(self) -> None:
-        """Finalize the invocation successfully and end its span."""
-        self._finish()
-
-    def fail(self, error: Error | BaseException) -> None:
-        """Fail the invocation and end its span with error status."""
-        if isinstance(error, BaseException):
-            error = Error(type=type(error), message=str(error))
-        self._finish(error)
-
-
 def __getattr__(name: str) -> object:
+    if name in ("Error", "GenAIInvocation"):
+        import opentelemetry.util.genai.invocation as _inv  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+
+        return getattr(_inv, name)
     if name == "LLMInvocation":
         from opentelemetry.util.genai.inference_invocation import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
             LLMInvocation,  # pyright: ignore[reportDeprecated]

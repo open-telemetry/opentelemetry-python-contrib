@@ -22,10 +22,9 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
-    Error,
-    GenAIInvocation,
     InputMessage,
     OutputMessage,
 )

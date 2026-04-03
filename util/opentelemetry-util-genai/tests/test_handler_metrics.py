@@ -24,7 +24,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            invocation = handler.start_inference("prov", "model")
+            invocation = handler.start_inference("prov", request_model="model")
         invocation.input_tokens = 5
         invocation.output_tokens = 7
 
@@ -81,7 +81,7 @@ class TelemetryHandlerMetricsTest(TestBase):
 
         invocation = handler.start_inference(
             "prov",
-            "model",
+            request_model="model",
             server_address="custom.server.com",
             server_port=42,
         )
@@ -118,7 +118,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=2000.0):
-            invocation = handler.start_inference("", "err-model")
+            invocation = handler.start_inference("", request_model="err-model")
         invocation.input_tokens = 11
 
         error = Error(message="boom", type=ValueError)

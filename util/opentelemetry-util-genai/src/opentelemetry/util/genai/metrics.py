@@ -14,7 +14,7 @@ from opentelemetry.util.genai.instruments import (
     create_token_histogram,
 )
 
-from .types import GenAIInvocation
+from ._invocation import GenAIInvocation
 
 
 class InvocationMetricsRecorder:
