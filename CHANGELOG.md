@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 ### Added
 
-- `opentelemetry-instrumentation-structlog`: Add new package providing `StructlogHandler` and `StructlogInstrumentor` to bridge structlog into the OpenTelemetry Logs SDK pipeline with trace context correlation and exception capture.
+- `opentelemetry-instrumentation-structlog`: Add new package providing `StructlogHandler` and `StructlogInstrumentor` to bridge structlog into the OpenTelemetry Logs SDK pipeline with trace context correlation and exception capture. `opentelemetry-instrumentation`: adds shared `log_utils`
   ([#4286](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4286))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
   ([#4289](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4289))
