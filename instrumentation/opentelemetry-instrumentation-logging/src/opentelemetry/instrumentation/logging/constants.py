@@ -102,9 +102,11 @@ The default value is:
 
 .. envvar:: OTEL_PYTHON_LOG_HANDLER_LEVEL
 
-Set this env var to configure the log level of the ``LoggingHandler`` installed by this instrumentation.
+Set this env var to filter which log records are exported by OpenTelemetry``LoggingHandler`` instrumentation.
 Accepts case-insensitive level names: ``notset``, ``debug``, ``info``, ``warning``, ``error``.
-Unrecognized values fall back to ``notset``.
+Only records at or above this level will be exported.
+For example, setting this to warning means DEBUG and INFO logs are still handled by your normal logging setup,
+but they are not exported as OTel logs. Unrecognized values fall back to ``notset``.
 
 Alternatively, the level can be set via the ``log_handler_level`` argument:
 
