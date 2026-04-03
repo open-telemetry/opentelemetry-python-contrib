@@ -51,7 +51,6 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.app = flask.Flask(__name__)
 
         self.app.route("/hello/<int:helloid>")(self._hello_endpoint)
-        # pylint: disable=attribute-defined-outside-init
         self.client = Client(self.app, Response)
 
         resp = self.client.get("/hello/123")
@@ -88,7 +87,6 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
 
         self.app = flask.Flask(__name__)
         self.app.route("/hello/<int:helloid>")(self._hello_endpoint)
-        # pylint: disable=attribute-defined-outside-init
         self.client = Client(self.app, Response)
         self.client.get("/hello/123")
 

@@ -53,7 +53,6 @@ def _consumer_callback_attribute_name() -> str:
 class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     CONSUMER_CALLBACK_ATTR = _consumer_callback_attribute_name()
 
-    # pylint: disable=attribute-defined-outside-init
     @staticmethod
     def _instrument_channel_consumers(
         channel: Union[BlockingChannel, Channel],
