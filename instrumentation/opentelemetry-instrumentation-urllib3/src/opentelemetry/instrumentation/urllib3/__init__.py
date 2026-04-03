@@ -293,7 +293,7 @@ _ResponseHookT = typing.Optional[
 class URLLib3Instrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
-
+    _instrumented = False
     def _instrument(self, **kwargs):
         """Instruments the urllib3 module
 
@@ -311,6 +311,9 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 ``sensitive_headers``: An optional sequence of captured header names to redact
         """
         # initialize semantic conventions opt-in if needed
+        if self._instrumented:
+            return
+        self._instrumented = True
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.HTTP,
