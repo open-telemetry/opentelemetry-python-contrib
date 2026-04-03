@@ -9,7 +9,11 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import (
+    EmbeddingInvocation,
+    Error,
+    LLMInvocation,
+)
 
 _DEFAULT_SCHEMA_URL = Schemas.V1_37_0.value
 
@@ -181,3 +185,120 @@ class TelemetryHandlerMetricsTest(TestBase):
                 self.assertEqual(
                     scope_metric.scope.schema_url, expected_schema_url
                 )
+
+    def test_stop_embedding_records_duration_only(self) -> None:
+        """Verify embedding invocations record duration but not token metrics."""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        invocation = EmbeddingInvocation(
+            request_model="embed-model", provider="embed-prov"
+        )
+        invocation.input_tokens = 100  # Should NOT be recorded as token metric
+        # Patch default_timer during start to ensure monotonic_start_s
+        with patch("timeit.default_timer", return_value=1000.0):
+            handler.start(invocation)
+
+        # Simulate 1.5 seconds of elapsed monotonic time
+        with patch("timeit.default_timer", return_value=1001.5):
+            handler.stop(invocation)
+
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
+        metrics = self._harvest_metrics()
+
+        # Duration should be recorded
+        self.assertIn("gen_ai.client.operation.duration", metrics)
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        self.assertEqual(len(duration_points), 1)
+        duration_point = duration_points[0]
+        self.assertEqual(
+            duration_point.attributes[GenAI.GEN_AI_OPERATION_NAME],
+            GenAI.GenAiOperationNameValues.EMBEDDINGS.value,
+        )
+        self.assertEqual(
+            duration_point.attributes[GenAI.GEN_AI_REQUEST_MODEL],
+            "embed-model",
+        )
+        self.assertEqual(
+            duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME], "embed-prov"
+        )
+        self.assertAlmostEqual(duration_point.sum, 1.5, places=3)
+
+        # Token metrics should NOT be recorded for embedding
+        self.assertNotIn("gen_ai.client.token.usage", metrics)
+
+    def test_stop_embedding_records_duration_with_additional_attributes(
+        self,
+    ) -> None:
+        """Verify embedding metrics include server and custom attributes."""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        invocation = EmbeddingInvocation(
+            request_model="embed-model",
+            provider="embed-prov",
+            server_address="embed.server.com",
+            server_port=8080,
+        )
+        handler.start(invocation)
+        invocation.metric_attributes = {"custom.embed.attr": "embed_value"}
+        invocation.response_model_name = "embed-response-model"
+        handler.stop(invocation)
+
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
+        metrics = self._harvest_metrics()
+
+        self.assertIn("gen_ai.client.operation.duration", metrics)
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        self.assertEqual(len(duration_points), 1)
+        duration_point = duration_points[0]
+
+        self.assertEqual(
+            duration_point.attributes["server.address"], "embed.server.com"
+        )
+        self.assertEqual(duration_point.attributes["server.port"], 8080)
+        self.assertEqual(
+            duration_point.attributes["custom.embed.attr"], "embed_value"
+        )
+        self.assertEqual(
+            duration_point.attributes[GenAI.GEN_AI_RESPONSE_MODEL],
+            "embed-response-model",
+        )
+
+    def test_fail_embedding_records_error_and_duration(self) -> None:
+        """Verify embedding failure records error type and duration."""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        invocation = EmbeddingInvocation(
+            request_model="embed-err-model", provider="embed-prov"
+        )
+        with patch("timeit.default_timer", return_value=3000.0):
+            handler.start(invocation)
+
+        error = Error(message="embedding failed", type=RuntimeError)
+        with patch("timeit.default_timer", return_value=3002.5):
+            handler.fail(invocation, error)
+
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
+        metrics = self._harvest_metrics()
+
+        self.assertIn("gen_ai.client.operation.duration", metrics)
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        self.assertEqual(len(duration_points), 1)
+        duration_point = duration_points[0]
+
+        self.assertEqual(
+            duration_point.attributes.get("error.type"), "RuntimeError"
+        )
+        self.assertEqual(
+            duration_point.attributes.get(GenAI.GEN_AI_REQUEST_MODEL),
+            "embed-err-model",
+        )
+        self.assertAlmostEqual(duration_point.sum, 2.5, places=3)
+
+        # Token metrics should NOT be recorded for embedding even on failure
+        self.assertNotIn("gen_ai.client.token.usage", metrics)
