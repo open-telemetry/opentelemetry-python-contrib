@@ -48,5 +48,12 @@ path = "src/opentelemetry/instrumentation/vertexai/version.py"
 [tool.hatch.build.targets.sdist]
 include = ["/src", "/tests"]
 
+[tool.opentelemetry.instrumentation]
+independent_release = true
+include_in_bootstrap = false
+readme_library = "Vertex AI"
+readme_metrics = false
+readme_status = "Beta"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]

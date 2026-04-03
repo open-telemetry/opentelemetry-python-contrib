@@ -2,6 +2,9 @@ from collections import defaultdict
 from pathlib import Path
 from re import compile as re_compile
 
+from discover_genai_packages import (
+    get_independent_release_packages,
+)
 from jinja2 import Environment, FileSystemLoader
 from tox.config.cli.parse import get_options
 from tox.config.sets import CoreConfigSet
@@ -235,3 +238,36 @@ def generate_misc_workflow(
         "misc",
         workflow_directory_path,
     )
+
+
+def generate_release_workflows(
+    workflow_directory_path: Path,
+) -> None:
+    genai_packages = get_independent_release_packages()
+
+    release_options = [
+        "opentelemetry-opamp-client",
+        "opentelemetry-propagator-aws-xray",
+        "opentelemetry-resource-detector-azure",
+        "opentelemetry-sdk-extension-aws",
+        "opentelemetry-util-genai",
+    ] + genai_packages
+
+    env = Environment(
+        loader=FileSystemLoader(Path(__file__).parent),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+    for template_name in [
+        "package-prepare-release",
+        "package-prepare-patch-release",
+        "package-release",
+    ]:
+        with open(
+            workflow_directory_path.joinpath(f"{template_name}.yml"), "w"
+        ) as workflow_file:
+            text = env.get_template(f"{template_name}.yml.j2").render(
+                release_options=release_options
+            )
+            workflow_file.write(text)
