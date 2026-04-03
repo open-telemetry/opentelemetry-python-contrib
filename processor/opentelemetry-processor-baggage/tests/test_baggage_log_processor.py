@@ -104,13 +104,6 @@ class BaggageLogProcessorTest(unittest.TestCase):
         attributes = logs[-1].log_record.attributes
         self.assertNotIn("queen", attributes)
 
-    @staticmethod
-    def has_prefix(baggage_key: str) -> bool:
-        return baggage_key.startswith("que")
-
-    @staticmethod
-    def matches_regex(baggage_key: str) -> bool:
-        return re.match(r"que.*", baggage_key) is not None
     def test_multiple_predicates(self):
         token1 = attach(set_baggage("queen", "bee"))
         token2 = attach(set_baggage("king", "cobra"))
@@ -135,7 +128,36 @@ class BaggageLogProcessorTest(unittest.TestCase):
         detach(token2)
         detach(token1)
 
+    def test_max_baggage_attributes_limit(self):
+        token1 = attach(set_baggage("key1", "val1"))
+        token2 = attach(set_baggage("key2", "val2"))
+        token3 = attach(set_baggage("key3", "val3"))
+        logger_provider = LoggerProvider()
+        logger_provider.add_log_record_processor(
+            BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS, max_baggage_attributes=2)
+        )
+        exporter = InMemoryLogRecordExporter()
+        logger_provider.add_log_record_processor(
+            BatchLogRecordProcessor(exporter)
+        )
+        logger = logger_provider.get_logger("test-logger")
+        logger.emit(None)
+        logger_provider.force_flush()
+        logs = exporter.get_finished_logs()
+        attributes = logs[-1].log_record.attributes
+        self.assertEqual(len(attributes), 2)
+        detach(token3)
+        detach(token2)
+        detach(token1)
+
+    @staticmethod
+    def has_prefix(baggage_key: str) -> bool:
+        return baggage_key.startswith("que")
+
+    @staticmethod
+    def matches_regex(baggage_key: str) -> bool:
+        return re.match(r"que.*", baggage_key) is not None
+
 
 if __name__ == "__main__":
     unittest.main()
-    
