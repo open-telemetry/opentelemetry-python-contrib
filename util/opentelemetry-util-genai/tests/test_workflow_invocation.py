@@ -24,7 +24,7 @@ class TestWorkflowInvocation(unittest.TestCase):
         self.handler = TelemetryHandler(tracer_provider=tracer_provider)
 
     def test_default_values(self):
-        invocation = self.handler.start_workflow(None)
+        invocation = self.handler.start_workflow(name=None)
         invocation.stop()
         assert invocation.name is None
         assert invocation._operation_name == "invoke_workflow"
@@ -42,7 +42,7 @@ class TestWorkflowInvocation(unittest.TestCase):
 
     def test_with_input_messages(self):
         msg = InputMessage(role="user", parts=[Text(content="hello")])
-        invocation = self.handler.start_workflow("test")
+        invocation = self.handler.start_workflow(name="test")
         invocation.input_messages = [msg]
         invocation.stop()
         assert len(invocation.input_messages) == 1
@@ -52,14 +52,14 @@ class TestWorkflowInvocation(unittest.TestCase):
         msg = OutputMessage(
             role="assistant", parts=[Text(content="hi")], finish_reason="stop"
         )
-        invocation = self.handler.start_workflow("test")
+        invocation = self.handler.start_workflow(name="test")
         invocation.output_messages = [msg]
         invocation.stop()
         assert len(invocation.output_messages) == 1
         assert invocation.output_messages[0].finish_reason == "stop"
 
     def test_inherits_genai_invocation(self):
-        invocation = self.handler.start_workflow("test")
+        invocation = self.handler.start_workflow(name="test")
         invocation.attributes["key"] = "value"
         invocation.stop()
         spans = self.span_exporter.get_finished_spans()
@@ -68,16 +68,16 @@ class TestWorkflowInvocation(unittest.TestCase):
 
     def test_default_lists_are_independent(self):
         """Ensure separate invocations get separate list instances."""
-        inv1 = self.handler.start_workflow(None)
-        inv2 = self.handler.start_workflow(None)
+        inv1 = self.handler.start_workflow(name=None)
+        inv2 = self.handler.start_workflow(name=None)
         inv1.input_messages.append(InputMessage(role="user", parts=[]))
         assert len(inv2.input_messages) == 0
         inv1.stop()
         inv2.stop()
 
     def test_default_attributes_are_independent(self):
-        inv1 = self.handler.start_workflow(None)
-        inv2 = self.handler.start_workflow(None)
+        inv1 = self.handler.start_workflow(name=None)
+        inv2 = self.handler.start_workflow(name=None)
         inv1.attributes["foo"] = "bar"
         assert "foo" not in inv2.attributes
         inv1.stop()
@@ -90,7 +90,7 @@ class TestWorkflowInvocation(unittest.TestCase):
             parts=[Text(content="answer")],
             finish_reason="stop",
         )
-        invocation = self.handler.start_workflow("my_workflow")
+        invocation = self.handler.start_workflow(name="my_workflow")
         invocation.input_messages = [inp]
         invocation.output_messages = [out]
         invocation.stop()
