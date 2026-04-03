@@ -371,7 +371,8 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     async def test_kafka_properties_extractor(self):
         aiokafka_instance_mock = mock.Mock()
-        aiokafka_instance_mock._serialize.return_value = None, None
+        aiokafka_instance_mock._key_serializer = None
+        aiokafka_instance_mock._value_serializer = None
         aiokafka_instance_mock._partition.return_value = "partition"
         aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
         assert (
