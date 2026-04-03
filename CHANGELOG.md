@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_key_serializer`/`_value_serializer` directly instead of the internal `_serialize` method
   whose signature changed in 0.13 from `(topic, key, value)` to `(key, value, headers)`
   ([#4379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4379))
+- `opentelemetry-instrumentation-celery`: Fix warnings when using kombu.Exchange and kombu.Queue
+  ([#1195](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1196))
 
 ### Breaking changes
 
