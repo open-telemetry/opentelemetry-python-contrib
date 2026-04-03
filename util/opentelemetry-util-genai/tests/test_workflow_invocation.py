@@ -1,7 +1,5 @@
 import unittest
 
-import pytest
-
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -29,7 +27,7 @@ class TestWorkflowInvocation(unittest.TestCase):
         invocation = self.handler.start_workflow(None)
         invocation.stop()
         assert invocation.name is None
-        assert invocation.operation_name == "invoke_workflow"
+        assert invocation._operation_name == "invoke_workflow"
         assert not invocation.input_messages
         assert not invocation.output_messages
         assert invocation.span is not INVALID_SPAN
@@ -84,12 +82,6 @@ class TestWorkflowInvocation(unittest.TestCase):
         assert "foo" not in inv2.attributes
         inv1.stop()
         inv2.stop()
-
-    def test_operation_name_is_readonly(self):
-        invocation = self.handler.start_workflow("wf")
-        with pytest.raises(AttributeError):
-            setattr(invocation, "operation_name", "foo")
-        invocation.stop()
 
     def test_full_construction(self):
         inp = InputMessage(role="user", parts=[Text(content="query")])

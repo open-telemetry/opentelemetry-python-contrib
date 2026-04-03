@@ -259,10 +259,6 @@ class GenAIInvocation(ABC):
     start_workflow, start_tool) rather than constructing invocations directly.
     """
 
-    @property
-    def operation_name(self) -> str:
-        return self._operation_name
-
     def __init__(
         self,
         # Individual components instead of TelemetryHandler to avoid a circular

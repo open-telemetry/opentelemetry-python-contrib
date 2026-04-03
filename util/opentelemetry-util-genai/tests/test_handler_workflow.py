@@ -47,13 +47,6 @@ class TelemetryHandlerWorkflowTest(_WorkflowTestBase):
     # start_workflow
     # ------------------------------------------------------------------
 
-    def test_operation_name_is_readonly(self) -> None:
-        invocation = self.handler.start_workflow(name="wf")
-        with self.assertRaises(AttributeError):
-            setattr(invocation, "operation_name", "foo_Bar")
-        self.assertEqual(invocation.operation_name, "invoke_workflow")
-        invocation.stop()
-
     def test_start_workflow_creates_span(self) -> None:
         invocation = self.handler.start_workflow("my_workflow")
         self.assertIsNot(invocation.span, INVALID_SPAN)
@@ -182,7 +175,7 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
         with self.handler.workflow() as inv:
             self.assertIsInstance(inv, WorkflowInvocation)
             self.assertIsNone(inv.name)
-            self.assertEqual(inv.operation_name, "invoke_workflow")
+            self.assertEqual(inv._operation_name, "invoke_workflow")
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
