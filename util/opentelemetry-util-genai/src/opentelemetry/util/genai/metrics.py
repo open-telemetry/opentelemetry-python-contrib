@@ -1,9 +1,9 @@
-"""Helpers for emitting GenAI metrics from LLM invocations."""
+"""Helpers for emitting GenAI metrics from invocations."""
 
 from __future__ import annotations
 
 import timeit
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.attributes import (
@@ -18,7 +18,7 @@ from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
     create_token_histogram,
 )
-from opentelemetry.util.genai.types import LLMInvocation
+from opentelemetry.util.genai.types import LLMInvocation, ToolCall
 from opentelemetry.util.types import AttributeValue
 
 
@@ -32,44 +32,36 @@ class InvocationMetricsRecorder:
     def record(
         self,
         span: Optional[Span],
-        invocation: LLMInvocation,
-        *,
+        invocation: Union[LLMInvocation, ToolCall],
         error_type: Optional[str] = None,
     ) -> None:
-        """Record duration and token metrics for an invocation if possible."""
+        """Record duration and token metrics for an invocation.
 
+        Supports LLMInvocation (with token metrics) and ToolCall (duration only).
+        """
         # pylint: disable=too-many-branches
 
         if span is None:
             return
 
-        token_counts: list[tuple[int, str]] = []
-        if invocation.input_tokens is not None:
-            token_counts.append(
-                (
-                    invocation.input_tokens,
-                    GenAI.GenAiTokenTypeValues.INPUT.value,
-                )
-            )
-        if invocation.output_tokens is not None:
-            token_counts.append(
-                (
-                    invocation.output_tokens,
-                    GenAI.GenAiTokenTypeValues.OUTPUT.value,
-                )
-            )
+        # Build attributes based on invocation type
+        attributes: Dict[str, AttributeValue] = {}
 
-        attributes: Dict[str, AttributeValue] = {
-            GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.CHAT.value
-        }
-        if invocation.request_model:
-            attributes[GenAI.GEN_AI_REQUEST_MODEL] = invocation.request_model
+        attributes[GenAI.GEN_AI_OPERATION_NAME] = invocation.operation_name
+
+        if isinstance(invocation, LLMInvocation):
+            if invocation.request_model:
+                attributes[GenAI.GEN_AI_REQUEST_MODEL] = (
+                    invocation.request_model
+                )
+            if invocation.response_model_name:
+                attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
+                    invocation.response_model_name
+                )
+
+        # Common attributes across invocation types
         if invocation.provider:
             attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
-        if invocation.response_model_name:
-            attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
-                invocation.response_model_name
-            )
         if invocation.server_address:
             attributes[server_attributes.SERVER_ADDRESS] = (
                 invocation.server_address
@@ -79,7 +71,7 @@ class InvocationMetricsRecorder:
         if invocation.metric_attributes:
             attributes.update(invocation.metric_attributes)
 
-        # Calculate duration from span timing or invocation monotonic start
+        # Calculate duration from monotonic start time
         duration_seconds: Optional[float] = None
         if invocation.monotonic_start_s is not None:
             duration_seconds = max(
@@ -98,12 +90,31 @@ class InvocationMetricsRecorder:
                 context=span_context,
             )
 
-        for token_count, token_type in token_counts:
-            self._token_histogram.record(
-                token_count,
-                attributes=attributes | {GenAI.GEN_AI_TOKEN_TYPE: token_type},
-                context=span_context,
-            )
+        # Token metrics for LLMInvocations.
+        if isinstance(invocation, LLMInvocation):
+            token_counts: list[tuple[int, str]] = []
+            if invocation.input_tokens is not None:
+                token_counts.append(
+                    (
+                        invocation.input_tokens,
+                        GenAI.GenAiTokenTypeValues.INPUT.value,
+                    )
+                )
+            if invocation.output_tokens is not None:
+                token_counts.append(
+                    (
+                        invocation.output_tokens,
+                        GenAI.GenAiTokenTypeValues.OUTPUT.value,
+                    )
+                )
+
+            for token_count, token_type in token_counts:
+                self._token_histogram.record(
+                    token_count,
+                    attributes=attributes
+                    | {GenAI.GEN_AI_TOKEN_TYPE: token_type},
+                    context=span_context,
+                )
 
 
 __all__ = ["InvocationMetricsRecorder"]

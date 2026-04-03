@@ -114,5 +114,21 @@ def test_server_tool_call_in_message():
     assert isinstance(msg.parts[1], ServerToolCallResponse)
 
 
+def test_toolcall_has_lifecycle_fields():
+    """Test ToolCall has lifecycle tracking fields"""
+    tc = ToolCall(arguments=None, name="get_weather", id=None)
+    assert hasattr(tc, "context_token")
+    assert hasattr(tc, "span")
+    assert hasattr(tc, "monotonic_start_s")
+
+
+def test_toolcall_lifecycle_fields_default_none():
+    """Test ToolCall lifecycle fields default to None"""
+    tc = ToolCall(arguments=None, name="get_weather", id=None)
+    assert tc.context_token is None
+    assert tc.span is None
+    assert tc.monotonic_start_s is None
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
