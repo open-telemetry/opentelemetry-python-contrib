@@ -28,7 +28,7 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
-    LLMInvocation,
+    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
     MessagePart,
     OutputMessage,
     Text,
@@ -140,7 +140,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     )
                 )
 
-        llm_invocation = LLMInvocation(
+        llm_invocation = LLMInvocation(  # pyright: ignore[reportDeprecated]
             request_model=request_model,
             input_messages=input_messages,
             provider=provider,
@@ -152,13 +152,13 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        llm_invocation = self._telemetry_handler.start_llm(
+        llm_invocation = self._telemetry_handler.start_llm(  # pyright: ignore[reportDeprecated]
             invocation=llm_invocation
         )
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,
+            invocation=llm_invocation,  # pyright: ignore[reportArgumentType]
         )
 
     def on_llm_end(
@@ -171,7 +171,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,  # pyright: ignore[reportDeprecated]
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
@@ -246,7 +247,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             if response_id is not None:
                 llm_invocation.response_id = str(response_id)
 
-        llm_invocation = self._telemetry_handler.stop_llm(
+        llm_invocation = self._telemetry_handler.stop_llm(  # pyright: ignore[reportDeprecated]
             invocation=llm_invocation
         )
         if llm_invocation.span and not llm_invocation.span.is_recording():
@@ -262,13 +263,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,  # pyright: ignore[reportDeprecated]
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
 
         error_otel = Error(message=str(error), type=type(error))
-        llm_invocation = self._telemetry_handler.fail_llm(
+        llm_invocation = self._telemetry_handler.fail_llm(  # pyright: ignore[reportDeprecated]
             invocation=llm_invocation, error=error_otel
         )
         if llm_invocation.span and not llm_invocation.span.is_recording():
