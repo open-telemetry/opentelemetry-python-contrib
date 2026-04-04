@@ -16,13 +16,13 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.trace import INVALID_SPAN, SpanKind
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.invocation import WorkflowInvocation
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
     OutputMessage,
     Text,
 )
-from opentelemetry.util.genai.invocation import WorkflowInvocation
 
 
 class _WorkflowTestBase(TestCase):

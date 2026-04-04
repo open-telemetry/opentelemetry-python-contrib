@@ -19,7 +19,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Type, Union
 
 if TYPE_CHECKING:
-    from opentelemetry.util.genai._inference_invocation import (
+    from opentelemetry.util.genai._inference_invocation import (  # pylint: disable=useless-import-alias
         LLMInvocation as LLMInvocation,  # noqa: PLC0414  # pyright: ignore[reportDeprecated]
     )
 
