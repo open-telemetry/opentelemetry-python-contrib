@@ -144,3 +144,82 @@ class TestAsyncPGInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_capture_connection_cleanup_false(self):
+        """Test that cleanup queries are not traced when capture_connection_cleanup=False."""
+        AsyncPGInstrumentor().uninstrument()
+        apg = AsyncPGInstrumentor(capture_connection_cleanup=False)
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        async def mock_execute(*args, **kwargs):
+            return None
+
+        conn = mock.Mock()
+        conn._params = mock.Mock()
+        conn._params.database = "testdb"
+        conn._params.user = "testuser"
+        conn._addr = ("localhost", 5432)
+
+        for cleanup_query in [
+            "SELECT pg_advisory_unlock_all()",
+            "CLOSE ALL",
+            "UNLISTEN *",
+            "RESET ALL",
+        ]:
+            asyncio.run(
+                apg._do_execute(mock_execute, conn, (cleanup_query,), {})
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+        AsyncPGInstrumentor().uninstrument()
+
+    def test_capture_connection_cleanup_true_by_default(self):
+        """Test that cleanup queries are traced by default."""
+        AsyncPGInstrumentor().uninstrument()
+        apg = AsyncPGInstrumentor()
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        async def mock_execute(*args, **kwargs):
+            return None
+
+        conn = mock.Mock()
+        conn._params = mock.Mock()
+        conn._params.database = "testdb"
+        conn._params.user = "testuser"
+        conn._addr = ("localhost", 5432)
+
+        asyncio.run(
+            apg._do_execute(
+                mock_execute, conn, ("SELECT pg_advisory_unlock_all()",), {}
+            )
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        AsyncPGInstrumentor().uninstrument()
+
+    def test_capture_connection_cleanup_explicitly_true(self):
+        """Test that cleanup queries are traced when capture_connection_cleanup=True."""
+        AsyncPGInstrumentor().uninstrument()
+        apg = AsyncPGInstrumentor(capture_connection_cleanup=True)
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        async def mock_execute(*args, **kwargs):
+            return None
+
+        conn = mock.Mock()
+        conn._params = mock.Mock()
+        conn._params.database = "testdb"
+        conn._params.user = "testuser"
+        conn._addr = ("localhost", 5432)
+
+        asyncio.run(
+            apg._do_execute(
+                mock_execute, conn, ("SELECT pg_advisory_unlock_all()",), {}
+            )
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        AsyncPGInstrumentor().uninstrument()
