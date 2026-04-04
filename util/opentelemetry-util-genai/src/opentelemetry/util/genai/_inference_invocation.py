@@ -264,18 +264,18 @@ class LLMInvocation:
     """
 
     request_model: str | None = None
-    input_messages: list[InputMessage] = field(default_factory=list)
-    output_messages: list[OutputMessage] = field(default_factory=list)
-    system_instruction: list[MessagePart] = field(default_factory=list)
+    input_messages: list[InputMessage] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
+    output_messages: list[OutputMessage] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
+    system_instruction: list[MessagePart] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
     provider: str | None = None
     response_model_name: str | None = None
     response_id: str | None = None
     finish_reasons: list[str] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
-    attributes: dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
     """Additional attributes to set on spans and/or events. Not set on metrics."""
-    metric_attributes: dict[str, Any] = field(default_factory=dict)
+    metric_attributes: dict[str, Any] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
     """Additional attributes to set on metrics. Must be low cardinality. Not set on spans or events."""
     temperature: float | None = None
     top_p: float | None = None

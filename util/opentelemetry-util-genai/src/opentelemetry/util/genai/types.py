@@ -22,6 +22,9 @@ if TYPE_CHECKING:
     from opentelemetry.util.genai._inference_invocation import (  # pylint: disable=useless-import-alias
         LLMInvocation as LLMInvocation,  # noqa: PLC0414  # pyright: ignore[reportDeprecated]
     )
+    from opentelemetry.util.genai._invocation import (  # pylint: disable=useless-import-alias
+        GenAIInvocation as GenAIInvocation,  # noqa: PLC0414
+    )
 
 
 class ContentCapturingMode(Enum):
