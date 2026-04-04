@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
 - Add workflow invocation type to genAI utils
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310](#4310))
+- Check if upload works at startup in initializer of the `UploadCompletionHook`, instead
+of repeatedly failing on every upload ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4390](#4390)).
 
 ## Version 0.3b0 (2026-02-20)
 
