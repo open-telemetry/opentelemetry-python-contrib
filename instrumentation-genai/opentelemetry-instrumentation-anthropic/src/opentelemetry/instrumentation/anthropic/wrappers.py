@@ -19,11 +19,9 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Iterator, Optional
 
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.inference_invocation import (
-    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
-)
 from opentelemetry.util.genai.types import (
     Error,
+    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
     MessagePart,
     OutputMessage,
 )

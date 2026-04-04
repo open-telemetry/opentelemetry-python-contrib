@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from typing_extensions import deprecated
@@ -24,12 +24,7 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import server_attributes
-from opentelemetry.trace import (
-    INVALID_SPAN,
-    SpanKind,
-    Tracer,
-    set_span_in_context,
-)
+from opentelemetry.trace import INVALID_SPAN, Span, SpanKind, Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
@@ -260,113 +255,41 @@ class InferenceInvocation(GenAIInvocation):
 
 
 @deprecated("LLMInvocation is deprecated. Use InferenceInvocation instead.")
-class LLMInvocation(InferenceInvocation):
-    """Deprecated. Use InferenceInvocation instead."""
+@dataclass
+class LLMInvocation:
+    """Deprecated. Use InferenceInvocation instead.
 
-    def __init__(  # pylint: disable=too-many-locals
-        self,
-        tracer: Tracer | None = None,
-        metrics_recorder: InvocationMetricsRecorder | None = None,
-        logger: Logger | None = None,
-        provider: str = "",
-        *,
-        request_model: str | None = None,
-        input_messages: list[InputMessage] | None = None,
-        output_messages: list[OutputMessage] | None = None,
-        system_instruction: list[MessagePart] | None = None,
-        response_model_name: str | None = None,
-        response_id: str | None = None,
-        finish_reasons: list[str] | None = None,
-        input_tokens: int | None = None,
-        output_tokens: int | None = None,
-        temperature: float | None = None,
-        top_p: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
-        max_tokens: int | None = None,
-        stop_sequences: list[str] | None = None,
-        seed: int | None = None,
-        server_address: str | None = None,
-        server_port: int | None = None,
-        attributes: dict[str, Any] | None = None,
-        metric_attributes: dict[str, Any] | None = None,
-    ) -> None:
-        if tracer is not None:
-            super().__init__(
-                tracer,
-                metrics_recorder,
-                logger,
-                provider,
-                request_model=request_model,
-                input_messages=input_messages,
-                output_messages=output_messages,
-                system_instruction=system_instruction,
-                response_model_name=response_model_name,
-                response_id=response_id,
-                finish_reasons=finish_reasons,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                frequency_penalty=frequency_penalty,
-                presence_penalty=presence_penalty,
-                max_tokens=max_tokens,
-                stop_sequences=stop_sequences,
-                seed=seed,
-                server_address=server_address,
-                server_port=server_port,
-                attributes=attributes,
-                metric_attributes=metric_attributes,
-            )
-            return
-        # Old-style: data container, started later via handler.start_llm()
-        # _tracer/_metrics_recorder/_logger are set by _start_with_handler() in that case
-        self._operation_name = GenAI.GenAiOperationNameValues.CHAT.value
-        self._tracer = None
-        self._metrics_recorder = None
-        self._logger = None
-        self.attributes = {} if attributes is None else attributes
-        self.metric_attributes = (
-            {} if metric_attributes is None else metric_attributes
-        )
-        self.span = INVALID_SPAN
-        self._span_context = set_span_in_context(INVALID_SPAN)
-        self._span_kind = SpanKind.CLIENT
-        self._context_token = None
-        self._monotonic_start_s = None
-        self.provider = provider
-        self.request_model = request_model
-        self.input_messages = [] if input_messages is None else input_messages
-        self.output_messages = (
-            [] if output_messages is None else output_messages
-        )
-        self.system_instruction = (
-            [] if system_instruction is None else system_instruction
-        )
-        self.response_model_name = response_model_name
-        self.response_id = response_id
-        self.finish_reasons = finish_reasons
-        self.input_tokens = input_tokens
-        self.output_tokens = output_tokens
-        self.temperature = temperature
-        self.top_p = top_p
-        self.frequency_penalty = frequency_penalty
-        self.presence_penalty = presence_penalty
-        self.max_tokens = max_tokens
-        self.stop_sequences = stop_sequences
-        self.seed = seed
-        self.server_address = server_address
-        self.server_port = server_port
-        self._span_name = (
-            f"{self._operation_name} {request_model}"
-            if request_model
-            else self._operation_name
-        )
+    Data container for an LLM invocation. Pass to handler.start_llm() to start
+    the span, then update fields and call handler.stop_llm() or handler.fail_llm().
+    """
 
-    @property
-    def invocation(self) -> LLMInvocation | None:  # pyright: ignore[reportDeprecated]
-        """Returns self once started, None before handler.start_llm() is called."""
-        return self if self._context_token is not None else None
+    request_model: str | None = None
+    input_messages: list[InputMessage] = field(default_factory=list)
+    output_messages: list[OutputMessage] = field(default_factory=list)
+    system_instruction: list[MessagePart] = field(default_factory=list)
+    provider: str | None = None
+    response_model_name: str | None = None
+    response_id: str | None = None
+    finish_reasons: list[str] | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    attributes: dict[str, Any] = field(default_factory=dict)
+    """Additional attributes to set on spans and/or events. Not set on metrics."""
+    metric_attributes: dict[str, Any] = field(default_factory=dict)
+    """Additional attributes to set on metrics. Must be low cardinality. Not set on spans or events."""
+    temperature: float | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    max_tokens: int | None = None
+    stop_sequences: list[str] | None = None
+    seed: int | None = None
+    server_address: str | None = None
+    server_port: int | None = None
+
+    _inference_invocation: InferenceInvocation | None = field(
+        default=None, init=False, repr=False
+    )
 
     def _start_with_handler(
         self,
@@ -374,8 +297,65 @@ class LLMInvocation(InferenceInvocation):
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
     ) -> None:
-        """Attach telemetry components and start the span. Called by handler.start_llm()."""
-        self._tracer = tracer
-        self._metrics_recorder = metrics_recorder
-        self._logger = logger
-        self._start()
+        """Create and start an InferenceInvocation from this data container. Called by handler.start_llm()."""
+        self._inference_invocation = InferenceInvocation(
+            tracer,
+            metrics_recorder,
+            logger,
+            self.provider or "",
+            request_model=self.request_model,
+            input_messages=self.input_messages,
+            output_messages=self.output_messages,
+            system_instruction=self.system_instruction,
+            response_model_name=self.response_model_name,
+            response_id=self.response_id,
+            finish_reasons=self.finish_reasons,
+            input_tokens=self.input_tokens,
+            output_tokens=self.output_tokens,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            frequency_penalty=self.frequency_penalty,
+            presence_penalty=self.presence_penalty,
+            max_tokens=self.max_tokens,
+            stop_sequences=self.stop_sequences,
+            seed=self.seed,
+            server_address=self.server_address,
+            server_port=self.server_port,
+            attributes=self.attributes,
+            metric_attributes=self.metric_attributes,
+        )
+
+    def _sync_to_invocation(self) -> None:
+        inv = self._inference_invocation
+        if inv is None:
+            return
+        inv.provider = self.provider or ""
+        inv.request_model = self.request_model
+        inv.input_messages = self.input_messages
+        inv.output_messages = self.output_messages
+        inv.system_instruction = self.system_instruction
+        inv.response_model_name = self.response_model_name
+        inv.response_id = self.response_id
+        inv.finish_reasons = self.finish_reasons
+        inv.input_tokens = self.input_tokens
+        inv.output_tokens = self.output_tokens
+        inv.temperature = self.temperature
+        inv.top_p = self.top_p
+        inv.frequency_penalty = self.frequency_penalty
+        inv.presence_penalty = self.presence_penalty
+        inv.max_tokens = self.max_tokens
+        inv.stop_sequences = self.stop_sequences
+        inv.seed = self.seed
+        inv.server_address = self.server_address
+        inv.server_port = self.server_port
+        inv.attributes = self.attributes
+        inv.metric_attributes = self.metric_attributes
+
+    @property
+    def span(self) -> Span:
+        """The underlying span, for back-compat with code that checks span.is_recording()."""
+        return (
+            self._inference_invocation.span
+            if self._inference_invocation is not None
+            else INVALID_SPAN
+        )

@@ -63,16 +63,18 @@ from opentelemetry.trace import (
     TracerProvider,
     get_tracer,
 )
-from opentelemetry.util.genai._invocation import Error
-from opentelemetry.util.genai.embedding_invocation import EmbeddingInvocation
-from opentelemetry.util.genai.inference_invocation import (
-    InferenceInvocation,
+from opentelemetry.util.genai._inference_invocation import (
     LLMInvocation,  # pyright: ignore[reportDeprecated]
 )
+from opentelemetry.util.genai._invocation import Error
+from opentelemetry.util.genai.invocation import (
+    EmbeddingInvocation,
+    InferenceInvocation,
+    ToolInvocation,
+    WorkflowInvocation,
+)
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
-from opentelemetry.util.genai.tool_invocation import ToolInvocation
 from opentelemetry.util.genai.version import __version__
-from opentelemetry.util.genai.workflow_invocation import WorkflowInvocation
 
 
 class TelemetryHandler:
@@ -139,9 +141,6 @@ class TelemetryHandler:
         .. deprecated::
             Use ``handler.start_inference()`` instead.
         """
-        if invocation._context_token is not None:
-            # Already started (e.g. tracer passed to LLMInvocation.__init__)
-            return invocation
         invocation._start_with_handler(
             self._tracer, self._metrics_recorder, self._logger
         )
@@ -210,19 +209,21 @@ class TelemetryHandler:
         )
 
     @deprecated(
-        "handler.stop_llm() is deprecated. Use invocation.stop() instead."
+        "handler.stop_llm() is deprecated. Use handler.start_inference()  and then ``inference.stop()`` instead."
     )
     def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pylint: disable=no-self-use  # pyright: ignore[reportDeprecated]
         """Finalize an LLM invocation successfully and end its span.
 
         .. deprecated::
-            Use ``invocation.stop()`` instead.
+            Use ``handler.start_inference()``  and then ``inference.stop()`` instead.
         """
-        invocation.stop()
+        invocation._sync_to_invocation()
+        if invocation._inference_invocation is not None:
+            invocation._inference_invocation.stop()
         return invocation
 
     @deprecated(
-        "handler.fail_llm() is deprecated. Use invocation.fail(error) instead."
+        "handler.fail_llm() is deprecated. Use handler.start_inference()  and then ``inference.fail()`` instead."
     )
     def fail_llm(  # pylint: disable=no-self-use
         self,
@@ -232,9 +233,11 @@ class TelemetryHandler:
         """Fail an LLM invocation and end its span with error status.
 
         .. deprecated::
-            Use ``invocation.fail(error)`` instead.
+            Use ``handler.start_inference()``  and then ``inference.fail()`` instead.
         """
-        invocation.fail(error)
+        invocation._sync_to_invocation()
+        if invocation._inference_invocation is not None:
+            invocation._inference_invocation.fail(error)
         return invocation
 
     @contextmanager

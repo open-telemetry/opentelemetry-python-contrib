@@ -26,15 +26,15 @@ Users can import everything from this single module:
     )
 """
 
+from opentelemetry.util.genai._embedding_invocation import EmbeddingInvocation
+from opentelemetry.util.genai._inference_invocation import InferenceInvocation
 from opentelemetry.util.genai._invocation import (
     ContextToken,
     Error,
     GenAIInvocation,
 )
-from opentelemetry.util.genai.embedding_invocation import EmbeddingInvocation
-from opentelemetry.util.genai.inference_invocation import InferenceInvocation
-from opentelemetry.util.genai.tool_invocation import ToolInvocation
-from opentelemetry.util.genai.workflow_invocation import WorkflowInvocation
+from opentelemetry.util.genai._tool_invocation import ToolInvocation
+from opentelemetry.util.genai._workflow_invocation import WorkflowInvocation
 
 __all__ = [
     "ContextToken",

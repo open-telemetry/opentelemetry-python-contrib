@@ -54,7 +54,6 @@ propagation, so all telemetry calls become no-ops. Always use `handler.start_*()
   tests and callers, not telemetry internals.
 - When catching exceptions from the underlying library to record telemetry, always re-raise
   the original exception unmodified.
-- Do not wrap, replace, or suppress exceptions — telemetry must be transparent to callers.
 
 ## 4. Documentation
 

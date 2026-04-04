@@ -16,7 +16,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal, Type, Union
+from typing import TYPE_CHECKING, Any, Literal, Type, Union
+
+if TYPE_CHECKING:
+    from opentelemetry.util.genai._inference_invocation import (
+        LLMInvocation as LLMInvocation,  # noqa: PLC0414  # pyright: ignore[reportDeprecated]
+    )
+
 
 class ContentCapturingMode(Enum):
     # Do not capture content (default).
@@ -238,7 +244,7 @@ def __getattr__(name: str) -> object:
 
         return _inv.GenAIInvocation
     if name == "LLMInvocation":
-        from opentelemetry.util.genai.inference_invocation import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+        from opentelemetry.util.genai._inference_invocation import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
             LLMInvocation,  # pyright: ignore[reportDeprecated]
         )
 

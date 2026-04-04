@@ -25,12 +25,10 @@ from opentelemetry.instrumentation.langchain.invocation_manager import (
     _InvocationManager,
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.inference_invocation import (
-    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
-)
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
+    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
     MessagePart,
     OutputMessage,
     Text,
@@ -160,7 +158,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,
+            invocation=llm_invocation,  # pyright: ignore[reportArgumentType]
         )
 
     def on_llm_end(

@@ -39,4 +39,3 @@ except Exception as exc:
   tests and callers, not in the instrumentation layer.
 - When catching exceptions from the underlying library to record telemetry, always re-raise
   the original exception unmodified.
-- Do not wrap, replace, or suppress exceptions — telemetry must be transparent to callers.

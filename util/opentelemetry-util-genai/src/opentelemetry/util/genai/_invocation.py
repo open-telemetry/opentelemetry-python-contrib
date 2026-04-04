@@ -90,7 +90,7 @@ class GenAIInvocation(ABC):
         """Return low-cardinality attributes for metric recording."""
         return self.metric_attributes
 
-    def _get_metric_token_counts(self) -> dict[str, int]:
+    def _get_metric_token_counts(self) -> dict[str, int]:  # pylint: disable=no-self-use
         """Return {token_type: count} for token histogram recording."""
         return {}
 

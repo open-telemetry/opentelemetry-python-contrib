@@ -18,8 +18,8 @@ import pytest
 
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.invocation import GenAIInvocation
 from opentelemetry.util.genai.types import (
-    GenAIInvocation,
     InputMessage,
     ServerToolCall,
     ServerToolCallResponse,

@@ -22,7 +22,7 @@ from opentelemetry.util.genai.types import (
     OutputMessage,
     Text,
 )
-from opentelemetry.util.genai.workflow_invocation import WorkflowInvocation
+from opentelemetry.util.genai.invocation import WorkflowInvocation
 
 
 class _WorkflowTestBase(TestCase):
