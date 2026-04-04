@@ -16,6 +16,12 @@ components:
     - lukeina2z
     - yiyuan-he
 
+  instrumentation/opentelemetry-instrumentation-redis-valkey-base:
+    - sightseeker
+
+  instrumentation/opentelemetry-instrumentation-valkey:
+    - sightseeker
+
   instrumentation/opentelemetry-instrumentation-pymssql:
     - guillaumep
 
