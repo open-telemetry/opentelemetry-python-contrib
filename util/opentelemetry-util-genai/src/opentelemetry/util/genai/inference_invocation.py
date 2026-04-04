@@ -235,7 +235,7 @@ class InferenceInvocation(GenAIInvocation):
         attributes.update(self._get_message_attributes(for_span=True))
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
-        self._metrics_recorder.record(self)  # pyright: ignore[reportOptionalMemberAccess]
+        self._metrics_recorder.record(self)
         self._emit_event()
 
     def _emit_event(self) -> None:
@@ -250,7 +250,7 @@ class InferenceInvocation(GenAIInvocation):
         attributes = self._get_attributes()
         attributes.update(self._get_message_attributes(for_span=False))
         attributes.update(self.attributes)
-        self._logger.emit(  # pyright: ignore[reportOptionalMemberAccess]
+        self._logger.emit(
             LogRecord(
                 event_name="gen_ai.client.inference.operation.details",
                 attributes=attributes,
@@ -294,8 +294,8 @@ class LLMInvocation(InferenceInvocation):
         if tracer is not None:
             super().__init__(
                 tracer,
-                metrics_recorder,  # pyright: ignore[reportArgumentType]
-                logger,  # pyright: ignore[reportArgumentType]
+                metrics_recorder,
+                logger,
                 provider,
                 request_model=request_model,
                 input_messages=input_messages,
@@ -364,7 +364,7 @@ class LLMInvocation(InferenceInvocation):
         )
 
     @property
-    def invocation(self) -> "LLMInvocation | None":  # pyright: ignore[reportDeprecated]
+    def invocation(self) -> LLMInvocation | None:  # pyright: ignore[reportDeprecated]
         """Returns self once started, None before handler.start_llm() is called."""
         return self if self._context_token is not None else None
 

@@ -74,7 +74,8 @@ propagation, so all telemetry calls become no-ops. Always use `handler.start_*()
 
 ## 6. Python API Conventions
 
-- Mark internal class methods, instance fields, and module-level helpers with a `_` prefix;
-  anything without it is considered public API.
-- Before removing or renaming a public symbol, deprecate it first with
+- Mark private modules with an underscore.
+- Objects inside of a private module should be prefixed with underscopre if they
+  are not used outside the that module.
+- Before removing or renaming an object exposed publicly, deprecate it first with
   `@deprecated("... Use X instead.")` pointing to the replacement;

@@ -16,8 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal, Union
-
+from typing import Any, Literal, Type, Union
 
 class ContentCapturingMode(Enum):
     # Do not capture content (default).
@@ -227,11 +226,17 @@ class OutputMessage:
     finish_reason: str | FinishReason
 
 
+@dataclass
+class Error:
+    message: str
+    type: Type[BaseException]
+
+
 def __getattr__(name: str) -> object:
-    if name in ("Error", "GenAIInvocation"):
+    if name == "GenAIInvocation":
         import opentelemetry.util.genai.invocation as _inv  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
 
-        return getattr(_inv, name)
+        return _inv.GenAIInvocation
     if name == "LLMInvocation":
         from opentelemetry.util.genai.inference_invocation import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
             LLMInvocation,  # pyright: ignore[reportDeprecated]

@@ -17,8 +17,7 @@ from __future__ import annotations
 import timeit
 from abc import ABC, abstractmethod
 from contextvars import Token
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Type
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import TypeAlias
 
@@ -28,17 +27,12 @@ from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace import INVALID_SPAN as _INVALID_SPAN
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.types import Error
 
 if TYPE_CHECKING:
     from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 
 ContextToken: TypeAlias = Token[Context]
-
-
-@dataclass
-class Error:
-    message: str
-    type: Type[BaseException]
 
 
 class GenAIInvocation(ABC):
@@ -96,7 +90,7 @@ class GenAIInvocation(ABC):
         """Return low-cardinality attributes for metric recording."""
         return self.metric_attributes
 
-    def _get_metric_token_counts(self) -> dict[str, int]:  # pylint: disable=no-self-use
+    def _get_metric_token_counts(self) -> dict[str, int]:
         """Return {token_type: count} for token histogram recording."""
         return {}
 

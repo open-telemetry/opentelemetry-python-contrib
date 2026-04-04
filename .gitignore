@@ -65,4 +65,4 @@ target
 # opentelemetry-admin jobs
 opentelemetry-admin-jobs.txt
 
-.claude*/
+.claude/settings.local.json
