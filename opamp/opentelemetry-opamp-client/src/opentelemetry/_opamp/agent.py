@@ -19,11 +19,13 @@ import logging
 import queue
 import random
 import threading
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
-from opentelemetry._opamp.client import OpAMPClient
 from opentelemetry._opamp.proto import opamp_pb2
+
+if TYPE_CHECKING:
+    from opentelemetry._opamp.client import OpAMPClient
 
 logger = logging.getLogger(__name__)
 

@@ -176,18 +176,13 @@ API
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Collection, cast
+from typing import TYPE_CHECKING, Any, Collection, TypedDict, Unpack, cast
 from weakref import WeakSet
 
 from starlette import applications
 from starlette.routing import Match
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
-from opentelemetry.instrumentation.asgi.types import (
-    ClientRequestHook,
-    ClientResponseHook,
-    ServerRequestHook,
-)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.starlette.package import _instruments
 from opentelemetry.instrumentation.starlette.version import __version__
@@ -199,14 +194,19 @@ from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls
 
 if TYPE_CHECKING:
-    from typing import TypedDict, Unpack
+    from opentelemetry.instrumentation.asgi.types import (
+        ClientRequestHook,
+        ClientResponseHook,
+        ServerRequestHook,
+    )
 
-    class InstrumentKwargs(TypedDict, total=False):
-        tracer_provider: TracerProvider
-        meter_provider: MeterProvider
-        server_request_hook: ServerRequestHook
-        client_request_hook: ClientRequestHook
-        client_response_hook: ClientResponseHook
+
+class InstrumentKwargs(TypedDict, total=False):
+    tracer_provider: TracerProvider
+    meter_provider: MeterProvider
+    server_request_hook: ServerRequestHook
+    client_request_hook: ClientRequestHook
+    client_response_hook: ClientResponseHook
 
 
 _excluded_urls = get_excluded_urls("STARLETTE")
@@ -362,7 +362,7 @@ def _get_route_details(scope: dict[str, Any]) -> str | None:
     Returns:
         The path to the route if found, otherwise None.
     """
-    app = cast(applications.Starlette, scope["app"])
+    app = cast("applications.Starlette", scope["app"])
     route: str | None = None
 
     for starlette_route in app.routes:

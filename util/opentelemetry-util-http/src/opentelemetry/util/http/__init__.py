@@ -14,12 +14,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from os import environ
 from re import IGNORECASE as RE_IGNORECASE
 from re import compile as re_compile
 from re import search
-from typing import Callable, Iterable, overload
+from typing import TYPE_CHECKING, Callable, Iterable, overload
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
@@ -30,6 +29,10 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_SERVER_NAME,
     HTTP_STATUS_CODE,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
     NET_HOST_PORT,

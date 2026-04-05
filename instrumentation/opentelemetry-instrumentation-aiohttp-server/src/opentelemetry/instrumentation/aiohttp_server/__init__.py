@@ -157,9 +157,9 @@ API
 from __future__ import annotations
 
 from timeit import default_timer
+from typing import TYPE_CHECKING
 
 from aiohttp import web
-from multidict import CIMultiDictProxy
 
 from opentelemetry import metrics, trace
 from opentelemetry.instrumentation._semconv import (
@@ -217,6 +217,9 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+
+if TYPE_CHECKING:
+    from multidict import CIMultiDictProxy
 
 tracer = None
 meter_old = None

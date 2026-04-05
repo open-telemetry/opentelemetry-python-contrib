@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import json
 from logging import getLogger
@@ -21,58 +20,66 @@ from typing import (
 import aiokafka
 
 from opentelemetry import context, propagate, trace
-from opentelemetry.context import Context
 from opentelemetry.propagators import textmap
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.attributes import server_attributes
-from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
 
 if TYPE_CHECKING:
+    import asyncio
+
     from aiokafka.structs import RecordMetadata
 
-    class AIOKafkaGetOneProto(Protocol):
-        async def __call__(
-            self, *partitions: aiokafka.TopicPartition
-        ) -> aiokafka.ConsumerRecord[object, object]: ...
+    from opentelemetry.context import Context
+    from opentelemetry.trace import Tracer
 
-    class AIOKafkaGetManyProto(Protocol):
-        async def __call__(
-            self,
-            *partitions: aiokafka.TopicPartition,
-            timeout_ms: int = 0,
-            max_records: int | None = None,
-        ) -> dict[
-            aiokafka.TopicPartition,
-            list[aiokafka.ConsumerRecord[object, object]],
-        ]: ...
 
-    class AIOKafkaSendProto(Protocol):
-        async def __call__(
-            self,
-            topic: str,
-            value: object | None = None,
-            key: object | None = None,
-            partition: int | None = None,
-            timestamp_ms: int | None = None,
-            headers: HeadersT | None = None,
-        ) -> asyncio.Future[RecordMetadata]: ...
+class AIOKafkaGetOneProto(Protocol):
+    async def __call__(
+        self, *partitions: aiokafka.TopicPartition
+    ) -> aiokafka.ConsumerRecord[object, object]: ...
 
-    ProduceHookT = Callable[
-        [Span, Tuple[Any, ...], Dict[str, Any]], Awaitable[None]
-    ]
 
-    ConsumeHookT = Callable[
-        [
-            Span,
-            aiokafka.ConsumerRecord[object, object],
-            Tuple[aiokafka.TopicPartition, ...],
-            Dict[str, Any],
-        ],
-        Awaitable[None],
-    ]
+class AIOKafkaGetManyProto(Protocol):
+    async def __call__(
+        self,
+        *partitions: aiokafka.TopicPartition,
+        timeout_ms: int = 0,
+        max_records: int | None = None,
+    ) -> dict[
+        aiokafka.TopicPartition,
+        list[aiokafka.ConsumerRecord[object, object]],
+    ]: ...
 
-    HeadersT = Sequence[Tuple[str, Optional[bytes]]]
+
+class AIOKafkaSendProto(Protocol):
+    async def __call__(
+        self,
+        topic: str,
+        value: object | None = None,
+        key: object | None = None,
+        partition: int | None = None,
+        timestamp_ms: int | None = None,
+        headers: HeadersT | None = None,
+    ) -> asyncio.Future[RecordMetadata]: ...
+
+
+ProduceHookT = Callable[
+    [Span, Tuple[Any, ...], Dict[str, Any]], Awaitable[None]
+]
+
+ConsumeHookT = Callable[
+    [
+        Span,
+        aiokafka.ConsumerRecord[object, object],
+        Tuple[aiokafka.TopicPartition, ...],
+        Dict[str, Any],
+    ],
+    Awaitable[None],
+]
+
+HeadersT = Sequence[Tuple[str, Optional[bytes]]]
+
 
 _LOG = getLogger(__name__)
 

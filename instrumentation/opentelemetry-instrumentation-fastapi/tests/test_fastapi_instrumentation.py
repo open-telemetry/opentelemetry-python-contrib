@@ -20,7 +20,7 @@ import unittest
 import weakref as _weakref
 from contextlib import ExitStack
 from timeit import default_timer
-from typing import Any, Final, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 from unittest.mock import Mock, call, patch
 
 import fastapi
@@ -53,7 +53,6 @@ from opentelemetry.sdk.metrics.export import (
     NumberDataPoint,
 )
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -89,6 +88,10 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     get_excluded_urls,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.sdk.trace import ReadableSpan
+
 
 _expected_metric_names_old = [
     "http.server.active_requests",
@@ -1091,7 +1094,7 @@ class TestFastAPIManualInstrumentationHooks(TestBaseFastAPI):
         self._client.get("/foobar")
 
         spans = cast(
-            list[ReadableSpan],
+            "list[ReadableSpan]",
             self.sorted_spans(self.memory_exporter.get_finished_spans()),
         )
         self.assertEqual(len(spans), 3)

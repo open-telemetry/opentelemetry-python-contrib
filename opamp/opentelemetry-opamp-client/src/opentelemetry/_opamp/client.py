@@ -15,13 +15,12 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Generator, Mapping
+from typing import TYPE_CHECKING, Generator, Mapping
 
 from uuid_utils import uuid7
 
 from opentelemetry._opamp import messages
 from opentelemetry._opamp.proto import opamp_pb2
-from opentelemetry._opamp.transport.base import HttpTransport
 from opentelemetry._opamp.transport.requests import RequestsTransport
 from opentelemetry._opamp.version import __version__
 from opentelemetry.context import (
@@ -30,7 +29,11 @@ from opentelemetry.context import (
     detach,
     set_value,
 )
-from opentelemetry.util.types import AnyValue
+
+if TYPE_CHECKING:
+    from opentelemetry._opamp.transport.base import HttpTransport
+    from opentelemetry.util.types import AnyValue
+
 
 _logger = getLogger(__name__)
 

@@ -17,7 +17,7 @@ from __future__ import annotations
 from contextvars import Token
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal, Type, Union
+from typing import TYPE_CHECKING, Any, Literal, Type, Union
 
 from typing_extensions import TypeAlias
 
@@ -25,7 +25,9 @@ from opentelemetry.context import Context
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-from opentelemetry.trace import Span
+
+if TYPE_CHECKING:
+    from opentelemetry.trace import Span
 
 ContextToken: TypeAlias = Token[Context]
 

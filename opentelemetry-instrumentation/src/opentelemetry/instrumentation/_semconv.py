@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 import threading
 from enum import Enum
-from typing import Container, Mapping, MutableMapping
+from typing import TYPE_CHECKING, Container, Mapping, MutableMapping
 from urllib.parse import urlparse
 
 from packaging import version as package_version
@@ -30,6 +30,11 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_SYSTEM,
     DB_USER,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.trace import Span
+    from opentelemetry.util.types import AttributeValue
+
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
@@ -82,9 +87,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
 from opentelemetry.semconv.schemas import Schemas
-from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.types import AttributeValue
 
 # Values defined in milliseconds
 HTTP_DURATION_HISTOGRAM_BUCKETS_OLD = (

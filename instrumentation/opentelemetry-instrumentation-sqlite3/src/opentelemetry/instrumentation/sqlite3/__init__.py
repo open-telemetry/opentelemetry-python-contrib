@@ -60,13 +60,15 @@ from __future__ import annotations
 
 import sqlite3
 from sqlite3 import dbapi2
-from typing import Any, Collection, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Collection, TypeVar, Union
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlite3.package import _instruments
 from opentelemetry.instrumentation.sqlite3.version import __version__
-from opentelemetry.trace import TracerProvider
+
+if TYPE_CHECKING:
+    from opentelemetry.trace import TracerProvider
 
 # No useful attributes of sqlite3 connection object
 _CONNECTION_ATTRIBUTES = {}

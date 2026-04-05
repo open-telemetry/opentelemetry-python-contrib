@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import logging
 from contextlib import AsyncExitStack, ExitStack, contextmanager
-from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Generator, Generic, TypeVar
 
-from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import Error, LLMInvocation
 
 # OpenAI Responses internals are version-gated (added in openai>=1.66.0), so
@@ -49,6 +47,8 @@ except ImportError:
     _set_invocation_response_attributes = None
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
         ResponseStreamEvent,
     )
@@ -63,6 +63,7 @@ if TYPE_CHECKING:
         Response,
     )
 
+    from opentelemetry.util.genai.handler import TelemetryHandler
 _logger = logging.getLogger(__name__)
 TextFormatT = TypeVar("TextFormatT")
 ResponseT = TypeVar("ResponseT")

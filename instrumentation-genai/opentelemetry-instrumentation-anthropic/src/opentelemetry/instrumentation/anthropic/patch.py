@@ -18,7 +18,6 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Union, cast
 
 from anthropic._streaming import Stream as AnthropicStream
-from anthropic.types import Message as AnthropicMessage
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
@@ -42,9 +41,8 @@ from .wrappers import (
 
 if TYPE_CHECKING:
     from anthropic.resources.messages import Messages
+    from anthropic.types import Message as AnthropicMessage
     from anthropic.types import RawMessageStreamEvent
-
-
 _logger = logging.getLogger(__name__)
 ANTHROPIC = "anthropic"
 
@@ -121,13 +119,6 @@ def messages_create(
             raise
 
     return cast(
-        Callable[
-            ...,
-            Union[
-                "AnthropicMessage",
-                "AnthropicStream[RawMessageStreamEvent]",
-                MessagesStreamWrapper,
-            ],
-        ],
+        "Callable[..., Union[AnthropicMessage, AnthropicStream[RawMessageStreamEvent], MessagesStreamWrapper]]",
         traced_method,
     )

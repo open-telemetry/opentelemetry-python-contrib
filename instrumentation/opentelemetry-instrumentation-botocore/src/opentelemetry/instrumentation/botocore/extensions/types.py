@@ -15,13 +15,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
-from opentelemetry._logs import Logger
-from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.trace import SpanKind
-from opentelemetry.trace.span import Span
 from opentelemetry.util.types import AttributeValue
+
+if TYPE_CHECKING:
+    from opentelemetry._logs import Logger
+    from opentelemetry.metrics import Instrument, Meter
+    from opentelemetry.trace.span import Span
 
 _logger = logging.getLogger(__name__)
 

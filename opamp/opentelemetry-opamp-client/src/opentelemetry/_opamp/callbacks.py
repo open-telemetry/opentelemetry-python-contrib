@@ -18,11 +18,10 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from opentelemetry._opamp.proto import opamp_pb2
-
 if TYPE_CHECKING:
     from opentelemetry._opamp.agent import OpAMPAgent
     from opentelemetry._opamp.client import OpAMPClient
+    from opentelemetry._opamp.proto import opamp_pb2
 
 
 @dataclass
