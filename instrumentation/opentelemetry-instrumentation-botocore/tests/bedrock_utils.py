@@ -16,16 +16,19 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any
-
-from botocore.response import StreamingBody
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry.instrumentation.botocore.extensions.bedrock import (
     _GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS,
     _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS,
 )
-from opentelemetry.sdk.metrics._internal.point import ResourceMetrics
-from opentelemetry.sdk.trace import ReadableSpan
+
+if TYPE_CHECKING:
+    from botocore.response import StreamingBody
+
+    from opentelemetry.sdk.metrics._internal.point import ResourceMetrics
+    from opentelemetry.sdk.trace import ReadableSpan
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )

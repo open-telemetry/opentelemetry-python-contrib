@@ -15,10 +15,8 @@
 from __future__ import annotations
 
 import logging
-from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Iterator, Optional
 
-from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     LLMInvocation,
@@ -41,6 +39,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from anthropic._streaming import Stream
     from anthropic.types import (
         Message,
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
         Usage,
     )
 
-
+    from opentelemetry.util.genai.handler import TelemetryHandler
 _logger = logging.getLogger(__name__)
 
 

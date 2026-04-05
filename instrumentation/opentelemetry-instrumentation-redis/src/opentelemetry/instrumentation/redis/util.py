@@ -33,7 +33,6 @@ from opentelemetry.semconv.trace import (
     DbSystemValues,
     NetTransportValues,
 )
-from opentelemetry.trace import Span
 
 if TYPE_CHECKING:
     from opentelemetry.instrumentation.redis.custom_types import (
@@ -42,7 +41,7 @@ if TYPE_CHECKING:
         PipelineInstance,
         RedisInstance,
     )
-
+    from opentelemetry.trace import Span
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
 

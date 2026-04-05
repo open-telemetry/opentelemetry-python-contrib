@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import get_current
@@ -26,21 +26,8 @@ from opentelemetry.semconv.attributes import (
     error_attributes,
     server_attributes,
 )
-from opentelemetry.trace import (
-    Span,
-)
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.genai.types import (
-    EmbeddingInvocation,
-    Error,
-    GenAIInvocation,
-    InputMessage,
-    LLMInvocation,
-    MessagePart,
-    OutputMessage,
-    WorkflowInvocation,
-)
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
     gen_ai_json_dumps,
@@ -48,6 +35,21 @@ from opentelemetry.util.genai.utils import (
     is_experimental_mode,
     should_emit_event,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.trace import (
+        Span,
+    )
+    from opentelemetry.util.genai.types import (
+        EmbeddingInvocation,
+        Error,
+        GenAIInvocation,
+        InputMessage,
+        LLMInvocation,
+        MessagePart,
+        OutputMessage,
+        WorkflowInvocation,
+    )
 
 
 def _get_llm_common_attributes(

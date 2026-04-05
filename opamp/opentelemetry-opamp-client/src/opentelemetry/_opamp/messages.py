@@ -17,12 +17,16 @@
 from __future__ import annotations
 
 import json
-from typing import Generator, Mapping
+from typing import TYPE_CHECKING, Generator, Mapping
 
 from opentelemetry._opamp.exceptions import (
     OpAMPRemoteConfigDecodeException,
     OpAMPRemoteConfigParseException,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.util.types import AnyValue
+
 from opentelemetry._opamp.proto import opamp_pb2
 from opentelemetry._opamp.proto.anyvalue_pb2 import (
     AnyValue as PB2AnyValue,
@@ -30,7 +34,6 @@ from opentelemetry._opamp.proto.anyvalue_pb2 import (
 from opentelemetry._opamp.proto.anyvalue_pb2 import (
     KeyValue as PB2KeyValue,
 )
-from opentelemetry.util.types import AnyValue
 
 
 def decode_message(data: bytes) -> opamp_pb2.ServerToAgent:

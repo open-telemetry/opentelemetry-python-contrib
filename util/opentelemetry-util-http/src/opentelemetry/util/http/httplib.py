@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 """
 This library provides functionality to enrich HTTP client spans with IPs. It does
 not create spans on its own.
@@ -22,9 +23,17 @@ from __future__ import annotations
 import contextlib
 import http.client
 import logging
-import socket  # pylint:disable=unused-import # Used for typing
-import typing
-from typing import Any, Callable, Collection, TypedDict, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Collection,
+    List,
+    Optional,
+    TypedDict,
+    TypeVar,
+    cast,
+)
 
 import wrapt
 
@@ -34,13 +43,17 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
 )
-from opentelemetry.trace.span import Span
+
+if TYPE_CHECKING:
+    import socket  # pylint:disable=unused-import # Used for typing
+
+    from opentelemetry.trace.span import Span
 
 _STATE_KEY = "httpbase_instrumentation_state"
 
 logger = logging.getLogger(__name__)
 
-R = typing.TypeVar("R")
+R = TypeVar("R")
 
 
 class HttpClientInstrumentor(BaseInstrumentor):
@@ -86,7 +99,7 @@ def trysetip(
     state = _getstate()
     if not state:
         return True
-    spanlist: typing.List[Span] = state.get("need_ip")
+    spanlist: List[Span] = state.get("need_ip")
     if not spanlist:
         return True
 
@@ -97,7 +110,7 @@ def trysetip(
     sock = "<property not accessed>"
     ip = None
     try:
-        sock: typing.Optional[socket.socket] = conn.sock
+        sock: Optional[socket.socket] = conn.sock
         logger.debug("Got socket: %s", sock)
         if sock is None:
             return False
@@ -168,7 +181,7 @@ class _ConnectionState(TypedDict):
 
 
 def _getstate() -> _ConnectionState | None:
-    return cast(_ConnectionState, context.get_value(_STATE_KEY))
+    return cast("_ConnectionState", context.get_value(_STATE_KEY))
 
 
 @contextlib.contextmanager

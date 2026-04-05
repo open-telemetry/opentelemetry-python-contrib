@@ -34,7 +34,6 @@ from urllib.parse import urlparse
 
 from google.protobuf import json_format
 
-from opentelemetry._logs import LogRecord
 from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
@@ -62,7 +61,6 @@ from opentelemetry.util.genai.types import (
     Uri,
 )
 from opentelemetry.util.genai.utils import get_content_capturing_mode
-from opentelemetry.util.types import AnyValue, AttributeValue
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1.types import (
@@ -80,7 +78,8 @@ if TYPE_CHECKING:
         tool as tool_v1beta1,
     )
 
-
+    from opentelemetry._logs import LogRecord
+    from opentelemetry.util.types import AnyValue, AttributeValue
 _MODEL = "model"
 
 

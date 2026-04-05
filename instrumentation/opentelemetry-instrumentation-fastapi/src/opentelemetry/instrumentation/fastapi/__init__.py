@@ -185,14 +185,12 @@ from __future__ import annotations
 import functools
 import logging
 import types
-from typing import Any, Collection, Literal
+from typing import TYPE_CHECKING, Any, Collection, Literal
 from weakref import WeakSet as _WeakSet
 
 import fastapi
-from starlette.applications import Starlette
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match, Route
-from starlette.types import ASGIApp, Receive, Scope, Send
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
@@ -201,11 +199,6 @@ from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
-from opentelemetry.instrumentation.asgi.types import (
-    ClientRequestHook,
-    ClientResponseHook,
-    ServerRequestHook,
-)
 from opentelemetry.instrumentation.fastapi.package import _instruments
 from opentelemetry.instrumentation.fastapi.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -218,6 +211,16 @@ from opentelemetry.util.http import (
     parse_excluded_urls,
     sanitize_method,
 )
+
+if TYPE_CHECKING:
+    from starlette.applications import Starlette
+    from starlette.types import ASGIApp, Receive, Scope, Send
+
+    from opentelemetry.instrumentation.asgi.types import (
+        ClientRequestHook,
+        ClientResponseHook,
+        ServerRequestHook,
+    )
 
 _excluded_urls_from_env = get_excluded_urls("FASTAPI")
 _logger = logging.getLogger(__name__)

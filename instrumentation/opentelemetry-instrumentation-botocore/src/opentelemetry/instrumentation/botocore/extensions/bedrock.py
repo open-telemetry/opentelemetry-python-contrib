@@ -23,7 +23,7 @@ import io
 import json
 import logging
 from timeit import default_timer
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from botocore.eventstream import EventStream
 from botocore.response import StreamingBody
@@ -37,6 +37,11 @@ from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
     genai_capture_message_content,
     message_to_event,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.metrics import Instrument, Meter
+    from opentelemetry.trace.span import Span
+
 from opentelemetry.instrumentation.botocore.extensions.types import (
     _AttributeMapT,
     _AwsSdkExtension,
@@ -44,7 +49,6 @@ from opentelemetry.instrumentation.botocore.extensions.types import (
     _BotocoreInstrumentorContext,
 )
 from opentelemetry.instrumentation.botocore.utils import get_server_attributes
-from opentelemetry.metrics import Instrument, Meter
 from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
@@ -69,7 +73,6 @@ from opentelemetry.semconv._incubating.metrics.gen_ai_metrics import (
     GEN_AI_CLIENT_TOKEN_USAGE,
 )
 from opentelemetry.trace.propagation import set_span_in_context
-from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
 
 _logger = logging.getLogger(__name__)

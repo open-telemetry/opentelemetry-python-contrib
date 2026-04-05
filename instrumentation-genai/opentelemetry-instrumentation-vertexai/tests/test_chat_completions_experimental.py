@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from google.api_core.exceptions import BadRequest, NotFound
 from vertexai.generative_models import (
@@ -13,8 +15,6 @@ from vertexai.preview.generative_models import (
     GenerativeModel as PreviewGenerativeModel,
 )
 
-from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
-
 # Backward compatibility for InMemoryLogExporter -> InMemoryLogRecordExporter rename
 try:
     from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (  # pylint: disable=no-name-in-module
@@ -22,14 +22,18 @@ try:
     )
 except ImportError:
     # Fallback to old name for compatibility with older SDK versions
-    from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
-        InMemoryLogExporter as InMemoryLogRecordExporter,
-    )
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
+    if TYPE_CHECKING:
+        from opentelemetry.sdk._logs._internal.export.in_memory_log_exporter import (
+            InMemoryLogExporter as InMemoryLogRecordExporter,
+        )
 from opentelemetry.trace import StatusCode
+
+if TYPE_CHECKING:
+    from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+    from opentelemetry.sdk.trace import ReadableSpan
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+        InMemorySpanExporter,
+    )
 
 
 @pytest.mark.vcr()

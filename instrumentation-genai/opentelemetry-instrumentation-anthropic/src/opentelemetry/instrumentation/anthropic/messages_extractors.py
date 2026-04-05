@@ -19,8 +19,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Sequence
 
-from anthropic.types import MessageDeltaUsage
-
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -32,7 +30,6 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
 )
-from opentelemetry.util.types import AttributeValue
 
 from .utils import (
     convert_content_to_parts,
@@ -46,6 +43,7 @@ if TYPE_CHECKING:
     from anthropic.resources.messages import Messages
     from anthropic.types import (
         Message,
+        MessageDeltaUsage,
         MessageParam,
         MetadataParam,
         TextBlockParam,
@@ -54,6 +52,8 @@ if TYPE_CHECKING:
         ToolUnionParam,
         Usage,
     )
+
+    from opentelemetry.util.types import AttributeValue
 
 
 @dataclass

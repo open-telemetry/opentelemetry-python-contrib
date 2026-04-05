@@ -70,7 +70,6 @@ from opentelemetry.trace import (
     Tracer,
     set_span_in_context,
 )
-from opentelemetry.util.types import AttributeValue
 
 # Import all semantic convention constants
 # ---- GenAI semantic convention helpers (embedded from constants.py) ----
@@ -297,6 +296,7 @@ def normalize_output_type(output_type: Optional[str]) -> str:
 if TYPE_CHECKING:
     pass
 
+    from opentelemetry.util.types import AttributeValue
 # Legacy attributes removed
 
 logger = logging.getLogger(__name__)

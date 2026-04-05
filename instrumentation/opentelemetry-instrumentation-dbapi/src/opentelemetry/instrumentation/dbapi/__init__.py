@@ -181,7 +181,8 @@ try:
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
 
-from opentelemetry import trace as trace_api
+from typing import TYPE_CHECKING
+
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import (
@@ -201,6 +202,9 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 )
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
+
+if TYPE_CHECKING:
+    from opentelemetry import trace as trace_api
 
 _DB_DRIVER_ALIASES = {
     "MySQLdb": "mysqlclient",

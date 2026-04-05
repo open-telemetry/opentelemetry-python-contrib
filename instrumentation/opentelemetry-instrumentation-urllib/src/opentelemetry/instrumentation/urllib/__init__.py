@@ -182,7 +182,7 @@ import types
 import typing
 from http import client
 from timeit import default_timer
-from typing import Any, Collection
+from typing import TYPE_CHECKING, Any, Collection
 from urllib.request import (  # pylint: disable=no-name-in-module,import-error
     OpenerDirector,
     Request,
@@ -242,7 +242,9 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
-from opentelemetry.util.types import Attributes
+
+if TYPE_CHECKING:
+    from opentelemetry.util.types import Attributes
 
 _excluded_urls_from_env = get_excluded_urls("URLLIB")
 

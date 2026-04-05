@@ -47,7 +47,6 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import SpanKind, Tracer
-from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     InputMessage,
@@ -70,6 +69,8 @@ if TYPE_CHECKING:
     from google.cloud.aiplatform_v1beta1.types import (
         prediction_service as prediction_service_v1beta1,
     )
+
+    from opentelemetry.util.genai.completion_hook import CompletionHook
 
 
 # Use parameter signature from
@@ -314,7 +315,7 @@ class MethodWrappers:
         | prediction_service_v1beta1.GenerateContentResponse
     ):
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-            capture_content_bool = cast(bool, self.capture_content)
+            capture_content_bool = cast("bool", self.capture_content)
             with self._with_default_instrumentation(
                 capture_content_bool, instance, args, kwargs
             ) as handle_response:
@@ -322,7 +323,9 @@ class MethodWrappers:
                 handle_response(response)
                 return response
         else:
-            capture_content = cast(ContentCapturingMode, self.capture_content)
+            capture_content = cast(
+                "ContentCapturingMode", self.capture_content
+            )
             with self._with_new_instrumentation(
                 capture_content, instance, args, kwargs
             ) as handle_response:
@@ -351,7 +354,7 @@ class MethodWrappers:
         | prediction_service_v1beta1.GenerateContentResponse
     ):
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
-            capture_content_bool = cast(bool, self.capture_content)
+            capture_content_bool = cast("bool", self.capture_content)
             with self._with_default_instrumentation(
                 capture_content_bool, instance, args, kwargs
             ) as handle_response:
@@ -359,7 +362,9 @@ class MethodWrappers:
                 handle_response(response)
                 return response
         else:
-            capture_content = cast(ContentCapturingMode, self.capture_content)
+            capture_content = cast(
+                "ContentCapturingMode", self.capture_content
+            )
             with self._with_new_instrumentation(
                 capture_content, instance, args, kwargs
             ) as handle_response:

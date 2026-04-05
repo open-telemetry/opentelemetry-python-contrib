@@ -14,13 +14,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 from urllib.parse import urlparse
 
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-from opentelemetry.util.types import AttributeValue
+
+if TYPE_CHECKING:
+    from opentelemetry.util.types import AttributeValue
+
 
 _logger = logging.getLogger(__name__)
 

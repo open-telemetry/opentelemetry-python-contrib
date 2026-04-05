@@ -266,7 +266,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.trace import TracerProvider
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -286,7 +285,7 @@ from opentelemetry.util.http import (
 if TYPE_CHECKING:
     from wsgiref.types import StartResponse, WSGIApplication, WSGIEnvironment
 
-
+    from opentelemetry.trace import TracerProvider
 T = TypeVar("T")
 RequestHook = Callable[[trace.Span, "WSGIEnvironment"], None]
 ResponseHook = Callable[
@@ -339,7 +338,7 @@ def collect_request_attributes(
     _set_http_method(
         result,
         environ.get("REQUEST_METHOD", ""),
-        sanitize_method(cast(str, environ.get("REQUEST_METHOD", ""))),
+        sanitize_method(cast("str", environ.get("REQUEST_METHOD", ""))),
         sem_conv_opt_in_mode,
     )
     # old semconv v1.12.0
@@ -551,11 +550,11 @@ def get_default_span_name(environ: WSGIEnvironment) -> str:
         The span name.
     """
     method = sanitize_method(
-        cast(str, environ.get("REQUEST_METHOD", "")).strip()
+        cast("str", environ.get("REQUEST_METHOD", "")).strip()
     )
     if method == "_OTHER":
         return "HTTP"
-    path = cast(str, environ.get("PATH_INFO", "")).strip()
+    path = cast("str", environ.get("PATH_INFO", "")).strip()
     if method and path:
         return f"{method} {path}"
     return method

@@ -19,9 +19,12 @@ OpenTelemetry Base Distribution (Distro)
 
 from abc import ABC, abstractmethod
 from logging import getLogger
+from typing import TYPE_CHECKING
 
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.util._importlib_metadata import EntryPoint
+
+if TYPE_CHECKING:
+    from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 
 _LOG = getLogger(__name__)
 

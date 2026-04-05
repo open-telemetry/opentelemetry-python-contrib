@@ -14,17 +14,19 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import google.genai
 
 from opentelemetry._logs import Logger, LoggerProvider, LogRecord
-from opentelemetry.metrics import Meter, MeterProvider
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.semconv.schemas import Schemas
-from opentelemetry.trace import Tracer, TracerProvider
 
 from .version import __version__ as _LIBRARY_VERSION
+
+if TYPE_CHECKING:
+    from opentelemetry.metrics import Meter, MeterProvider
+    from opentelemetry.trace import Tracer, TracerProvider
 
 _logger = logging.getLogger(__name__)
 

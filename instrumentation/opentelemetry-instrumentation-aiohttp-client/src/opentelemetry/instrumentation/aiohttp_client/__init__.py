@@ -268,36 +268,40 @@ from opentelemetry.util.http import (
 if TYPE_CHECKING:
     from typing_extensions import Unpack
 
-    UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
-    RequestHookT = typing.Optional[
-        typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
-    ]
-    ResponseHookT = typing.Optional[
-        typing.Callable[
-            [
-                Span,
-                typing.Union[
-                    aiohttp.TraceRequestEndParams,
-                    aiohttp.TraceRequestExceptionParams,
-                ],
+
+UrlFilterT = typing.Optional[typing.Callable[[yarl.URL], str]]
+RequestHookT = typing.Optional[
+    typing.Callable[[Span, aiohttp.TraceRequestStartParams], None]
+]
+ResponseHookT = typing.Optional[
+    typing.Callable[
+        [
+            Span,
+            typing.Union[
+                aiohttp.TraceRequestEndParams,
+                aiohttp.TraceRequestExceptionParams,
             ],
-            None,
-        ]
+        ],
+        None,
     ]
+]
 
-    class ClientSessionInitKwargs(TypedDict, total=False):
-        trace_configs: typing.Sequence[aiohttp.TraceConfig]
 
-    class InstrumentKwargs(TypedDict, total=False):
-        tracer_provider: trace.TracerProvider
-        meter_provider: MeterProvider
-        url_filter: UrlFilterT
-        request_hook: RequestHookT
-        response_hook: ResponseHookT
-        trace_configs: typing.Sequence[aiohttp.TraceConfig]
+class ClientSessionInitKwargs(TypedDict, total=False):
+    trace_configs: typing.Sequence[aiohttp.TraceConfig]
 
-    class UninstrumentKwargs(TypedDict, total=False):
-        pass
+
+class InstrumentKwargs(TypedDict, total=False):
+    tracer_provider: trace.TracerProvider
+    meter_provider: MeterProvider
+    url_filter: UrlFilterT
+    request_hook: RequestHookT
+    response_hook: ResponseHookT
+    trace_configs: typing.Sequence[aiohttp.TraceConfig]
+
+
+class UninstrumentKwargs(TypedDict, total=False):
+    pass
 
 
 def _get_span_name(method: str) -> str:
@@ -435,7 +439,7 @@ def create_trace_config(
 
         if trace_config_ctx.duration_histogram_old is not None:
             duration_attrs_old = cast(
-                dict[str, Any],
+                "dict[str, Any]",
                 _filter_semconv_duration_attrs(
                     trace_config_ctx.metric_attributes,
                     _client_duration_attrs_old,
@@ -449,7 +453,7 @@ def create_trace_config(
             )
         if trace_config_ctx.duration_histogram_new is not None:
             duration_attrs_new = cast(
-                dict[str, Any],
+                "dict[str, Any]",
                 _filter_semconv_duration_attrs(
                     trace_config_ctx.metric_attributes,
                     _client_duration_attrs_old,
@@ -477,7 +481,7 @@ def create_trace_config(
         request_span_name = _get_span_name(method)
         request_url = (
             redact_url(
-                cast(Callable[[yarl.URL], str], trace_config_ctx.url_filter)(
+                cast("Callable[[yarl.URL], str]", trace_config_ctx.url_filter)(
                     params.url
                 )
             )
@@ -629,7 +633,7 @@ def create_trace_config(
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=cast(
-            type[types.SimpleNamespace], _trace_config_ctx_factory
+            "type[types.SimpleNamespace]", _trace_config_ctx_factory
         )
     )
 
