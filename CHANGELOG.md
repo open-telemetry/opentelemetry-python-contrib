@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 ### Added
 
+- `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
+  ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
   ([#4289](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4289))
 - `opentelemetry-instrumentation`: Add support for wrapt 2.x
@@ -21,19 +23,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4212))
 - `opentelemetry-instrumentation-botocore`: Add support for instrumenting `aiobotocore`
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
+- `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
+  ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
 
 ### Fixed
 
 - `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
  ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
+- `opentelemetry-instrumentation-confluent-kafka`: Skip `recv` span creation when `poll()` returns no message or `consume()` returns an empty list, avoiding empty spans on idle polls
+  ([#4349](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4349))
 - Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
   ([#4305](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4305))
 - Don't import module in unwrap if not already imported
   ([#4321](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4321))
+- `opentelemetry-instrumentation-logging`: Map Python `CRITICAL` log level to OTel `FATAL` severity text and `WARNING` to `WARN`
+  ([#4365](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4365))
 - `opentelemetry-instrumentation-logging`: Add recursion guard in LoggingHandler.emit to prevent deadlock
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
   ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
+- `opentelemetry-instrumentation-aiokafka`: fix `Unclosed AIOKafkaProducer` warning and `RuntimeWarning: coroutine was never awaited` in tests
+  ([#4384](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4384)) 
+- `opentelemetry-instrumentation-aiokafka`: Fix compatibility with aiokafka 0.13 by calling
+  `_key_serializer`/`_value_serializer` directly instead of the internal `_serialize` method
+  whose signature changed in 0.13 from `(topic, key, value)` to `(key, value, headers)`
+  ([#4379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4379))
 
 ### Breaking changes
 
