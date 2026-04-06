@@ -145,7 +145,7 @@ def _load_instrumentors(distro):
             # environment regarding python version, libc, etc... In this case it's better
             # to skip the single instrumentation rather than failing to load everything
             # so treat differently ImportError than the rest of exceptions
-            _logger.exception(
+            _logger.warning(
                 "Importing of %s failed, skipping it", entry_point.name
             )
             continue
