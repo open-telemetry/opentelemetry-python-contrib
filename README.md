@@ -134,22 +134,17 @@ For more information about the maintainer role, see the [community repository](h
 
 For more information about the approver role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#approver).
 
-### Emeritus Maintainers
+### Emeritus
 
-- [Alex Boten](https://github.com/codeboten)
-- [Diego Hurtado](https://github.com/ocelotl)
-- [Owais Lone](https://github.com/owais)
-- [Shalev Roda](https://github.com/shalevr)
-- [Yusuke Tsutsumi](https://github.com/toumorokoshi)
-
-For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
-
-### Emeritus Approvers
-
-- [Ashutosh Goel](https://github.com/ashu658)
-- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN)
-- [Nikolay Sokolik](https://github.com/nikosokolik)
-- [Nikolay Sokolik](https://github.com/oxeye-nikolay)
+- [Alex Boten](https://github.com/codeboten), Maintainer
+- [Ashutosh Goel](https://github.com/ashu658), Approver
+- [Diego Hurtado](https://github.com/ocelotl), Maintainer
+- [Nathaniel Ruiz Nowell](https://github.com/NathanielRN), Approver
+- [Nikolay Sokolik](https://github.com/nikosokolik), Approver
+- [Nikolay Sokolik](https://github.com/oxeye-nikolay), Approver
+- [Owais Lone](https://github.com/owais), Maintainer
+- [Shalev Roda](https://github.com/shalevr), Maintainer
+- [Yusuke Tsutsumi](https://github.com/toumorokoshi), Maintainer
 
 For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
 
