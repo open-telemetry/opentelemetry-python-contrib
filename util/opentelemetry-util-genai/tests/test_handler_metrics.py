@@ -186,8 +186,8 @@ class TelemetryHandlerMetricsTest(TestBase):
                     scope_metric.scope.schema_url, expected_schema_url
                 )
 
-    def test_stop_embedding_records_duration_only(self) -> None:
-        """Verify embedding invocations record duration but not token metrics."""
+    def test_stop_embedding_records_duration_and_tokens(self) -> None:
+        """Verify embedding invocations record duration and input token metrics."""
         handler = TelemetryHandler(
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
@@ -195,7 +195,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         invocation = EmbeddingInvocation(
             request_model="embed-model", provider="embed-prov"
         )
-        invocation.input_tokens = 100  # Should NOT be recorded as token metric
+        invocation.input_tokens = 100
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
             handler.start(invocation)
@@ -225,8 +225,16 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         self.assertAlmostEqual(duration_point.sum, 1.5, places=3)
 
-        # Token metrics should NOT be recorded for embedding
-        self.assertNotIn("gen_ai.client.token.usage", metrics)
+        # Token metrics should be recorded for embedding (input only)
+        self.assertIn("gen_ai.client.token.usage", metrics)
+        token_points = metrics["gen_ai.client.token.usage"]
+        self.assertEqual(len(token_points), 1)  # Only input tokens
+        token_point = token_points[0]
+        self.assertEqual(
+            token_point.attributes[GenAI.GEN_AI_TOKEN_TYPE],
+            GenAI.GenAiTokenTypeValues.INPUT.value,
+        )
+        self.assertAlmostEqual(token_point.sum, 100.0, places=3)
 
     def test_stop_embedding_records_duration_with_additional_attributes(
         self,
@@ -300,5 +308,26 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         self.assertAlmostEqual(duration_point.sum, 2.5, places=3)
 
-        # Token metrics should NOT be recorded for embedding even on failure
+        # Token metrics should NOT be recorded when input_tokens is not set
+        self.assertNotIn("gen_ai.client.token.usage", metrics)
+
+    def test_stop_embedding_without_tokens(self) -> None:
+        """Verify embedding without input_tokens does not record token metrics."""
+        handler = TelemetryHandler(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+        invocation = EmbeddingInvocation(
+            request_model="embed-model", provider="embed-prov"
+        )
+        # input_tokens is not set
+        handler.start(invocation)
+        handler.stop(invocation)
+
+        metrics = self._harvest_metrics()
+
+        # Duration should be recorded
+        self.assertIn("gen_ai.client.operation.duration", metrics)
+
+        # Token metrics should NOT be recorded when input_tokens is not set
         self.assertNotIn("gen_ai.client.token.usage", metrics)

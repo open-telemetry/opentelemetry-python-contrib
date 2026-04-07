@@ -18,7 +18,11 @@ from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
     create_token_histogram,
 )
-from opentelemetry.util.genai.types import GenAIInvocation, LLMInvocation
+from opentelemetry.util.genai.types import (
+    EmbeddingInvocation,
+    GenAIInvocation,
+    LLMInvocation,
+)
 from opentelemetry.util.types import AttributeValue
 
 
@@ -37,18 +41,15 @@ class InvocationMetricsRecorder:
         """Build metric attributes from an invocation."""
         attributes: Dict[str, AttributeValue] = {}
 
-        # Set attributes using getattr for fields that may not exist on base class
-        operation_name = getattr(invocation, "operation_name", None)
-        if operation_name:
-            attributes[GenAI.GEN_AI_OPERATION_NAME] = operation_name
+        if invocation.operation_name:
+            attributes[GenAI.GEN_AI_OPERATION_NAME] = invocation.operation_name
 
         request_model = getattr(invocation, "request_model", None)
         if request_model:
             attributes[GenAI.GEN_AI_REQUEST_MODEL] = request_model
 
-        provider = getattr(invocation, "provider", None)
-        if provider:
-            attributes[GenAI.GEN_AI_PROVIDER_NAME] = provider
+        if invocation.provider:
+            attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
 
         response_model_name = getattr(invocation, "response_model_name", None)
         if response_model_name:
@@ -62,9 +63,8 @@ class InvocationMetricsRecorder:
         if server_port is not None:
             attributes[server_attributes.SERVER_PORT] = server_port
 
-        metric_attributes = getattr(invocation, "metric_attributes", None)
-        if metric_attributes:
-            attributes.update(metric_attributes)
+        if invocation.metric_attributes:
+            attributes.update(invocation.metric_attributes)
 
         if error_type:
             attributes[error_attributes.ERROR_TYPE] = error_type
@@ -108,29 +108,27 @@ class InvocationMetricsRecorder:
                 context=span_context,
             )
 
-        # Only record token metrics for LLMInvocation
-        if isinstance(invocation, LLMInvocation):
-            token_counts: list[tuple[int, str]] = []
+        # Record token metrics for LLMInvocation and EmbeddingInvocation
+        if isinstance(invocation, (LLMInvocation, EmbeddingInvocation)):
             if invocation.input_tokens is not None:
-                token_counts.append(
-                    (
-                        invocation.input_tokens,
-                        GenAI.GenAiTokenTypeValues.INPUT.value,
-                    )
-                )
-            if invocation.output_tokens is not None:
-                token_counts.append(
-                    (
-                        invocation.output_tokens,
-                        GenAI.GenAiTokenTypeValues.OUTPUT.value,
-                    )
+                self._token_histogram.record(
+                    invocation.input_tokens,
+                    attributes=attributes
+                    | {
+                        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value
+                    },
+                    context=span_context,
                 )
 
-            for token_count, token_type in token_counts:
+        # Only LLMInvocation has output tokens
+        if isinstance(invocation, LLMInvocation):
+            if invocation.output_tokens is not None:
                 self._token_histogram.record(
-                    token_count,
+                    invocation.output_tokens,
                     attributes=attributes
-                    | {GenAI.GEN_AI_TOKEN_TYPE: token_type},
+                    | {
+                        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.OUTPUT.value
+                    },
                     context=span_context,
                 )
 
