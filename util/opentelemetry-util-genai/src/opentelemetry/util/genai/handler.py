@@ -304,9 +304,7 @@ class TelemetryHandler:
         return self._fail(invocation, error)
 
     @contextmanager
-    def tool_call(
-        self, tool_call: ToolCall | None = None
-    ) -> Iterator[ToolCall]:
+    def tool_call(self, tool_call: ToolCall) -> Iterator[ToolCall]:
         """Context manager for tool call invocations.
 
         Only set data attributes on the tool_call object, do not modify the span or context.
@@ -320,12 +318,6 @@ class TelemetryHandler:
                 # Execute tool logic
                 tc.tool_result = {"temp": 20, "condition": "sunny"}
         """
-        if tool_call is None:
-            tool_call = ToolCall(
-                name="",
-                arguments={},
-                id=None,
-            )
         self.start(tool_call)
         try:
             yield tool_call
