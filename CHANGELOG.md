@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 ### Added
 
-- - Enabled the flake8-debugger rules for ruff linter. These rules do not allow for the use of debugger calls and imports in production code.
+- Enabled the flake8-debugger rules for ruff linter. These rules do not allow for the use of debugger calls and imports in production code.
   ([#4400](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4400))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
