@@ -419,9 +419,9 @@ def _apply_tool_call_attributes(
 
     Required attributes:
     - gen_ai.operation.name = "execute_tool"
+    - gen_ai.tool.name
 
     Recommended attributes (if available):
-    - gen_ai.tool.name
     - gen_ai.tool.call.id
     - gen_ai.tool.type
     - gen_ai.tool.description
@@ -439,10 +439,9 @@ def _apply_tool_call_attributes(
         GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value,
     )
 
-    # Set RECOMMENDED attributes (if present)
-    if tool_call.name:
-        span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_call.name)
+    span.set_attribute(GenAI.GEN_AI_TOOL_NAME, tool_call.name)
 
+    # Set RECOMMENDED attributes (if present)
     if tool_call.id:
         span.set_attribute(GenAI.GEN_AI_TOOL_CALL_ID, tool_call.id)
 
