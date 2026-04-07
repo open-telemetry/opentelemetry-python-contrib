@@ -24,6 +24,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.types import LLMInvocation
 
+
 def _validate_compat_model(loaded_module, model_type, value):
     return loaded_module._validate_model(model_type, value, "test")
 
@@ -176,12 +177,15 @@ def test_extract_output_type_handles_text_format_mapping(loaded_module):
 
 
 def test_extractors_handle_missing_genai_types_import(loaded_module):
-    with mock.patch.object(loaded_module, "Text", None), mock.patch.object(
-        loaded_module, "InputMessage", None
-    ), mock.patch.object(loaded_module, "OutputMessage", None):
-        assert loaded_module._extract_system_instruction(
-            {"instructions": "hi"}
-        ) == []
+    with (
+        mock.patch.object(loaded_module, "Text", None),
+        mock.patch.object(loaded_module, "InputMessage", None),
+        mock.patch.object(loaded_module, "OutputMessage", None),
+    ):
+        assert (
+            loaded_module._extract_system_instruction({"instructions": "hi"})
+            == []
+        )
         assert loaded_module._extract_input_messages({"input": "hi"}) == []
         assert (
             loaded_module._extract_output_messages(
