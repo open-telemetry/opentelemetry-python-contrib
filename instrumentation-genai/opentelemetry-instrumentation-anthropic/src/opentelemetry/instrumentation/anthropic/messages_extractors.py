@@ -162,28 +162,24 @@ def set_invocation_response_attributes(
     if message is None:
         return
 
-    if message.model:
-        invocation.response_model_name = message.model
-
-    if message.id:
-        invocation.response_id = message.id
+    invocation.response_model_name = message.model
+    invocation.response_id = message.id
 
     finish_reason = normalize_finish_reason(message.stop_reason)
     if finish_reason:
         invocation.finish_reasons = [finish_reason]
 
-    if message.usage:
-        tokens = extract_usage_tokens(message.usage)
-        invocation.input_tokens = tokens.input_tokens
-        invocation.output_tokens = tokens.output_tokens
-        if tokens.cache_creation_input_tokens is not None:
-            invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = (
-                tokens.cache_creation_input_tokens
-            )
-        if tokens.cache_read_input_tokens is not None:
-            invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
-                tokens.cache_read_input_tokens
-            )
+    tokens = extract_usage_tokens(message.usage)
+    invocation.input_tokens = tokens.input_tokens
+    invocation.output_tokens = tokens.output_tokens
+    if tokens.cache_creation_input_tokens is not None:
+        invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = (
+            tokens.cache_creation_input_tokens
+        )
+    if tokens.cache_read_input_tokens is not None:
+        invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
+            tokens.cache_read_input_tokens
+        )
 
     if capture_content:
         invocation.output_messages = get_output_messages_from_message(message)
