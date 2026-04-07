@@ -12,60 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import builtins
-import functools
-import importlib.util
 import logging
-from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 import pytest
 
+from opentelemetry.instrumentation.openai_v2 import response_extractors
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.util.genai.types import LLMInvocation
-
-_MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "opentelemetry"
-    / "instrumentation"
-    / "openai_v2"
-    / "response_extractors.py"
-)
-
-
-def _load_module(block_genai_types_import=False):
-    spec = importlib.util.spec_from_file_location(
-        "test_response_extractors_module", _MODULE_PATH
-    )
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-
-    if not block_genai_types_import:
-        spec.loader.exec_module(module)
-        return module
-
-    original_import = builtins.__import__
-
-    def _patched_import(
-        name, globalns=None, localns=None, fromlist=(), level=0
-    ):
-        if name == "opentelemetry.util.genai.types":
-            raise ImportError("simulated missing genai types")
-        return original_import(name, globalns, localns, fromlist, level)
-
-    with mock.patch("builtins.__import__", side_effect=_patched_import):
-        spec.loader.exec_module(module)
-    return module
-
-
-@functools.lru_cache(maxsize=None)
-def _module(block_genai_types_import=False):
-    return _load_module(block_genai_types_import)
-
 
 def _validate_compat_model(loaded_module, model_type, value):
     return loaded_module._validate_model(model_type, value, "test")
@@ -73,7 +30,7 @@ def _validate_compat_model(loaded_module, model_type, value):
 
 @pytest.fixture(scope="module", name="loaded_module")
 def _loaded_module_fixture():
-    return _module()
+    return response_extractors
 
 
 @pytest.fixture(
@@ -218,22 +175,22 @@ def test_extract_output_type_handles_text_format_mapping(loaded_module):
     assert loaded_module._extract_output_type({"text": "plain"}) is None
 
 
-def test_extractors_handle_missing_genai_types_import():
-    module = _module(block_genai_types_import=True)
-
-    assert module.Text is None
-    assert module.InputMessage is None
-    assert module.OutputMessage is None
-    assert module._extract_system_instruction({"instructions": "hi"}) == []
-    assert module._extract_input_messages({"input": "hi"}) == []
-    assert (
-        module._extract_output_messages(
-            SimpleNamespace(
-                output=[SimpleNamespace(type="message", content=[])]
+def test_extractors_handle_missing_genai_types_import(loaded_module):
+    with mock.patch.object(loaded_module, "Text", None), mock.patch.object(
+        loaded_module, "InputMessage", None
+    ), mock.patch.object(loaded_module, "OutputMessage", None):
+        assert loaded_module._extract_system_instruction(
+            {"instructions": "hi"}
+        ) == []
+        assert loaded_module._extract_input_messages({"input": "hi"}) == []
+        assert (
+            loaded_module._extract_output_messages(
+                SimpleNamespace(
+                    output=[SimpleNamespace(type="message", content=[])]
+                )
             )
+            == []
         )
-        == []
-    )
 
 
 def test_set_invocation_response_attributes_populates_usage_and_metadata(

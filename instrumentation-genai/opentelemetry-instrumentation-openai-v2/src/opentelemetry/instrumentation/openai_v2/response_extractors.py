@@ -257,9 +257,9 @@ def _extract_output_parts(
 
     parts: list[Text] = []
     for block in content_blocks:
-        if block.type == "output_text" and block.text:
+        if block.type == "output_text" and block.text is not None:
             parts.append(Text(content=block.text))
-        elif block.type == "refusal" and block.refusal:
+        elif block.type == "refusal" and block.refusal is not None:
             parts.append(Text(content=block.refusal))
     return parts
 
@@ -292,7 +292,7 @@ def _extract_output_messages_from_model(
 
         messages.append(
             OutputMessage(
-                role=item.role or "assistant",
+                role=item.role if item.role is not None else "assistant",
                 parts=_extract_output_parts(item.content),
                 finish_reason=finish_reason,
             )
@@ -360,7 +360,11 @@ def _set_invocation_usage_attributes(
     else:
         invocation.output_tokens = usage.completion_tokens
 
-    details = usage.input_tokens_details or usage.prompt_tokens_details
+    details = (
+        usage.input_tokens_details
+        if usage.input_tokens_details is not None
+        else usage.prompt_tokens_details
+    )
     if details is None:
         return
 
@@ -391,10 +395,10 @@ def _set_invocation_response_attributes(
     if validated_result is None:
         return
 
-    if validated_result.model:
+    if validated_result.model is not None:
         invocation.response_model_name = validated_result.model
 
-    if validated_result.id:
+    if validated_result.id is not None:
         invocation.response_id = validated_result.id
 
     if validated_result.service_tier is not None:
