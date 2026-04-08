@@ -16,9 +16,7 @@ import json
 import typing
 from unittest import mock
 
-import httpretty
-import httpretty.core
-import httpretty.http
+import pook
 import urllib3
 import urllib3.exceptions
 
@@ -77,20 +75,33 @@ class TestURLLib3Instrumentor(TestBase):
         )
         self.exclude_patch.start()
 
+        pook.on()
         URLLib3Instrumentor().instrument()
-
-        httpretty.enable(allow_net_connect=False)
-        httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
-        httpretty.register_uri(httpretty.GET, self.HTTPS_URL, body="Hello!")
-        httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
+        self.http_get_mock = pook.get(
+            self.HTTP_URL,
+            response_body="Hello!",
+            response_headers={"Content-Length": "6"},
+            persist=True,
+        )
+        pook.get(
+            self.HTTPS_URL,
+            response_body="Hello!",
+            response_headers={"Content-Length": "6"},
+            persist=True,
+        )
+        pook.post(
+            self.HTTP_URL,
+            response_body="Hello!",
+            response_headers={"Content-Length": "6"},
+            persist=True,
+        )
 
     def tearDown(self):
         super().tearDown()
         self.env_patch.stop()
         URLLib3Instrumentor().uninstrument()
 
-        httpretty.disable()
-        httpretty.reset()
+        pook.off()
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
@@ -263,7 +274,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_not_found(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(httpretty.GET, url_404, status=404)
+        pook.get(url_404, reply=404)
 
         response = self.perform_request(url_404)
         self.assertEqual(404, response.status)
@@ -274,7 +285,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_not_found_new_semconv(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(httpretty.GET, url_404, status=404)
+        pook.get(url_404, reply=404)
 
         response = self.perform_request(url_404)
         self.assertEqual(404, response.status)
@@ -285,7 +296,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_not_found_both_semconv(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(httpretty.GET, url_404, status=404)
+        pook.get(url_404, reply=404)
 
         response = self.perform_request(url_404)
         self.assertEqual(404, response.status)
@@ -295,10 +306,12 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(404, span.attributes.get("http.status_code"))
         self.assertIs(trace.status.StatusCode.ERROR, span.status.status_code)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
     def test_nonstandard_http_method(self):
-        httpretty.register_uri(
-            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
+        pook.mock(
+            self.HTTP_URL,
+            method="NONSTANDARD",
+            response_body="Hello!",
+            reply=405,
         )
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
         span = self.assert_span()
@@ -306,10 +319,12 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(span.attributes.get("http.method"), "_OTHER")
         self.assertEqual(span.attributes.get("http.status_code"), 405)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
     def test_nonstandard_http_method_new_semconv(self):
-        httpretty.register_uri(
-            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
+        pook.mock(
+            self.HTTP_URL,
+            method="NONSTANDARD",
+            response_body="Hello!",
+            reply=405,
         )
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
         span = self.assert_span()
@@ -320,10 +335,12 @@ class TestURLLib3Instrumentor(TestBase):
         )
         self.assertEqual(span.attributes.get("http.response.status_code"), 405)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
     def test_nonstandard_http_method_both_semconv(self):
-        httpretty.register_uri(
-            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
+        pook.mock(
+            self.HTTP_URL,
+            method="NONSTANDARD",
+            response_body="Hello!",
+            reply=405,
         )
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
         span = self.assert_span()
@@ -338,22 +355,22 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_http_non_default_port(self):
         url = "http://mock:666/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pook.get(url, response_body="Hello!")
 
         response = self.perform_request(url)
         self.assert_success_span(response, url)
 
     def test_basic_http_absolute_url(self):
         url = "http://mock:666/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pook.get(url, response_body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock", port=666)
-        response = pool.request("GET", url)
+        response = pool.request("GET", "/status/200")
 
         self.assert_success_span(response, url)
 
     def test_url_open_explicit_arg_parameters(self):
         url = "http://mock:666/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pook.get(url, response_body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock", port=666)
         response = pool.urlopen(method="GET", url="/status/200")
 
@@ -361,11 +378,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_excluded_urls_explicit(self):
         url_201 = "http://mock/status/201"
-        httpretty.register_uri(
-            httpretty.GET,
-            url_201,
-            status=201,
-        )
+        pook.get(url_201, reply=201)
 
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(excluded_urls=".*/201")
@@ -376,11 +389,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_excluded_urls_from_env(self):
         url = "http://localhost/env_excluded_arg/123"
-        httpretty.register_uri(
-            httpretty.GET,
-            url,
-            status=200,
-        )
+        pook.get(url, reply=200)
 
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument()
@@ -417,11 +426,16 @@ class TestURLLib3Instrumentor(TestBase):
         previous_propagator = get_global_textmap()
         try:
             set_global_textmap(MockTextMapPropagator())
+            headers = {}
+
+            def capture_headers(request, _mock):
+                headers.update(dict(request.headers))
+
+            self.http_get_mock.callback(capture_headers)
             response = self.perform_request(self.HTTP_URL)
             self.assertEqual(b"Hello!", response.data)
 
             span = self.assert_span()
-            headers = dict(httpretty.last_request().headers)
 
             self.assertIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
             self.assertEqual(
@@ -449,11 +463,12 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_span(exporter=exporter)
         self.assertEqual(1, tracer_provider.get_tracer.call_count)
 
-    @mock.patch(
-        "urllib3.connectionpool.HTTPConnectionPool._make_request",
-        side_effect=urllib3.exceptions.ConnectTimeoutError,
-    )
-    def test_request_exception(self, _):
+    def test_request_exception(self):
+        self.http_get_mock.times(0)
+        pook.get(
+            self.HTTP_URL,
+            error=urllib3.exceptions.ConnectTimeoutError(),
+        )
         with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
             self.perform_request(
                 self.HTTP_URL, retries=urllib3.Retry(connect=False)
@@ -461,11 +476,12 @@ class TestURLLib3Instrumentor(TestBase):
 
         self.assert_exception_span(self.HTTP_URL)
 
-    @mock.patch(
-        "urllib3.connectionpool.HTTPConnectionPool._make_request",
-        side_effect=urllib3.exceptions.ConnectTimeoutError,
-    )
-    def test_request_exception_new_semconv(self, _):
+    def test_request_exception_new_semconv(self):
+        self.http_get_mock.times(0)
+        pook.get(
+            self.HTTP_URL,
+            error=urllib3.exceptions.ConnectTimeoutError(),
+        )
         with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
             self.perform_request(
                 self.HTTP_URL, retries=urllib3.Retry(connect=False)
@@ -475,11 +491,12 @@ class TestURLLib3Instrumentor(TestBase):
             self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP
         )
 
-    @mock.patch(
-        "urllib3.connectionpool.HTTPConnectionPool._make_request",
-        side_effect=urllib3.exceptions.ConnectTimeoutError,
-    )
-    def test_request_exception_both_semconv(self, _):
+    def test_request_exception_both_semconv(self):
+        self.http_get_mock.times(0)
+        pook.get(
+            self.HTTP_URL,
+            error=urllib3.exceptions.ConnectTimeoutError(),
+        )
         with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
             self.perform_request(
                 self.HTTP_URL, retries=urllib3.Retry(connect=False)
@@ -489,11 +506,16 @@ class TestURLLib3Instrumentor(TestBase):
             self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
         )
 
-    @mock.patch(
-        "urllib3.connectionpool.HTTPConnectionPool._make_request",
-        side_effect=urllib3.exceptions.ProtocolError,
-    )
-    def test_retries_do_not_create_spans(self, _):
+    def test_retries_do_not_create_spans(self):
+        self.http_get_mock.times(0)
+        pook.get(
+            self.HTTP_URL,
+            error=urllib3.exceptions.MaxRetryError(
+                None,
+                self.HTTP_URL,
+                urllib3.exceptions.ProtocolError("simulated"),
+            ),
+        )
         with self.assertRaises(urllib3.exceptions.MaxRetryError):
             self.perform_request(self.HTTP_URL, retries=urllib3.Retry(1))
 
@@ -622,8 +644,8 @@ class TestURLLib3Instrumentor(TestBase):
             "X-Another-Header": "another-value",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url, response_body="Hello!", response_headers=response_headers
         )
         self.perform_request(url)
 
@@ -677,8 +699,8 @@ class TestURLLib3Instrumentor(TestBase):
             "X-Secret": "secret",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url, response_body="Hello!", response_headers=response_headers
         )
         self.perform_request(
             url,
@@ -720,8 +742,8 @@ class TestURLLib3Instrumentor(TestBase):
             "X-Other-Response-Header": "other-value",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url, response_body="Hello!", response_headers=response_headers
         )
         self.perform_request(
             url,
@@ -766,8 +788,8 @@ class TestURLLib3Instrumentor(TestBase):
 
         response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url, response_body="Hello!", response_headers=response_headers
         )
         self.perform_request(
             url,
@@ -797,8 +819,8 @@ class TestURLLib3Instrumentor(TestBase):
             "Server": "TestServer/1.0",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url, response_body="Hello!", response_headers=response_headers
         )
         self.perform_request(
             url,
@@ -865,8 +887,8 @@ class TestURLLib3Instrumentor(TestBase):
             "X-Response-Three": "value3",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url, response_body="Hello!", response_headers=response_headers
         )
         self.perform_request(url)
 
@@ -927,8 +949,8 @@ class TestURLLib3Instrumentor(TestBase):
             "X-Response-Two": "value2",
         }
         url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        pook.get(
+            url, response_body="Hello!", response_headers=response_headers
         )
         self.perform_request(
             url, headers={"x-request-one": "one", "x-request-two": "two"}
@@ -956,7 +978,7 @@ class TestURLLib3Instrumentor(TestBase):
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
         url = "http://mock/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pook.get(url, response_body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock")
         headers = {"X-Test": "Value"}
         response = pool.urlopen("GET", "/status/200", None, headers)
@@ -970,17 +992,17 @@ class TestURLLib3Instrumentor(TestBase):
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
         url = "http://mock/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pook.get(url, response_body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock")
         response = pool.urlopen(
             "GET",
             "/status/200",
             None,  # body
             {"X-Test": "Value"},  # headers
-            None,  # retries
-            True,  # redirect
-            True,  # assert_same_host
-            urllib3.util.Timeout(5),  # timeout
+            retries=None,
+            redirect=True,
+            assert_same_host=True,
+            timeout=urllib3.util.Timeout(5),
         )
         self.assertEqual(b"Hello!", response.data)
         span = self.assert_span()
@@ -992,7 +1014,7 @@ class TestURLLib3Instrumentor(TestBase):
         URLLib3Instrumentor().uninstrument()
         URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
         url = "http://mock/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        pook.get(url, response_body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock")
         response = pool.urlopen(
             "GET", "/status/200", headers={"X-Test": "Value"}, body=None
