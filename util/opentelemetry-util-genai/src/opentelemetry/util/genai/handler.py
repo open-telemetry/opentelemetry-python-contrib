@@ -88,7 +88,6 @@ from opentelemetry.util.genai.span_utils import (
     _get_embedding_span_name,
     _get_llm_span_name,
     _get_workflow_span_name,
-    _maybe_emit_embedding_event,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
