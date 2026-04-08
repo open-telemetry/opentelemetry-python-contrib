@@ -15,11 +15,12 @@
 from typing import Sequence, Union
 
 from opentelemetry.baggage import get_all as get_all_baggage
+from opentelemetry.processor.baggage.processor import BaggageKeyPredicateT
 from opentelemetry.sdk._logs import LogRecordProcessor, ReadWriteLogRecord
 
-from opentelemetry.processor.baggage.processor import BaggageKeyPredicateT
-
-_BaggageKeyPredicatesT = Union[BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]]
+BaggageKeyPredicate = Union[
+    BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]
+]
 
 
 class BaggageLogProcessor(LogRecordProcessor):
@@ -40,7 +41,7 @@ class BaggageLogProcessor(LogRecordProcessor):
 
     def __init__(
         self,
-        baggage_key_predicate: _BaggageKeyPredicatesT,
+        baggage_key_predicate: BaggageKeyPredicate,
         max_baggage_attributes: int = 128,
     ) -> None:
         if callable(baggage_key_predicate):
@@ -75,6 +76,6 @@ class BaggageLogProcessor(LogRecordProcessor):
     def shutdown(self) -> None:
         pass
 
-    def force_flush(self, timeout_millis: int = 30000) -> bool:
+    @staticmethod
+    def force_flush(timeout_millis: int = 30000) -> bool:
         return True
-    
