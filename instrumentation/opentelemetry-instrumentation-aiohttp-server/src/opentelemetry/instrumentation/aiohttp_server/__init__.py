@@ -260,9 +260,8 @@ def get_default_span_name(request: web.Request) -> str:
     """
     try:
         resource = request.match_info.route.resource
-        assert resource
         path = resource.canonical
-    except (AttributeError, AssertionError):
+    except AttributeError:
         path = ""
 
     if path:
