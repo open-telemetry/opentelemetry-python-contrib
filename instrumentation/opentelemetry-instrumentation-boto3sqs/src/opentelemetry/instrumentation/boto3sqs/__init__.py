@@ -93,7 +93,6 @@ boto3sqs_getter = Boto3SQSGetter()
 boto3sqs_setter = Boto3SQSSetter()
 
 
-# pylint: disable=attribute-defined-outside-init
 class Boto3SQSInstrumentor(BaseInstrumentor):
     received_messages_spans: Dict[str, Span] = {}
     current_span_related_to_token: Span = None
@@ -188,7 +187,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     @staticmethod
     def _extract_queue_name_from_url(queue_url: str) -> str:
         # A Queue name cannot have the `/` char, therefore we can return the part after the last /
-        return queue_url.split("/")[-1]
+        return queue_url.rsplit("/", maxsplit=1)[-1]
 
     def _create_processing_span(
         self,
