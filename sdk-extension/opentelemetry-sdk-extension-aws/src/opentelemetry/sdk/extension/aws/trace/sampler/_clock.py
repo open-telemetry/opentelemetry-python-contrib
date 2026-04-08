@@ -19,7 +19,7 @@
 import datetime
 
 
-class _Clock:
+class _Clock:  # pyright: ignore[reportUnusedClass]
     def __init__(self):
         self.__datetime = datetime.datetime
 
