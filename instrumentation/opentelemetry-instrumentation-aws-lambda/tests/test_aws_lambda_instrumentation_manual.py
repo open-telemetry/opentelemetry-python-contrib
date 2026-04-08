@@ -15,7 +15,7 @@
 import logging
 import os
 from dataclasses import dataclass
-from importlib import import_module, reload
+from importlib import reload
 from typing import Any, Callable, Dict
 from unittest import mock
 
@@ -29,140 +29,32 @@ from opentelemetry.instrumentation.aws_lambda import (
     AwsLambdaInstrumentor,
 )
 from opentelemetry.propagate import get_global_textmap
-from opentelemetry.propagators.aws.aws_xray_propagator import (
-    TRACE_ID_FIRST_PART_LENGTH,
-    TRACE_ID_VERSION,
-)
-from opentelemetry.semconv._incubating.attributes.cloud_attributes import (
-    CLOUD_ACCOUNT_ID,
-    CLOUD_RESOURCE_ID,
-)
-from opentelemetry.semconv._incubating.attributes.faas_attributes import (
-    FAAS_INVOCATION_ID,
-    FAAS_TRIGGER,
-)
-from opentelemetry.semconv._incubating.attributes.http_attributes import (
-    HTTP_METHOD,
-    HTTP_ROUTE,
-    HTTP_SCHEME,
-    HTTP_STATUS_CODE,
-    HTTP_TARGET,
-    HTTP_USER_AGENT,
-)
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_HOST_NAME,
-)
-from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import NoOpTracerProvider, SpanKind, StatusCode
 from opentelemetry.trace.propagation.tracecontext import (
     TraceContextTextMapPropagator,
 )
 from opentelemetry.util._importlib_metadata import entry_points
 
-from .mocks.alb_conventional_headers_event import MOCK_LAMBDA_ALB_EVENT
-from .mocks.alb_multi_value_headers_event import (
-    MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT,
-)
 from .mocks.api_gateway_http_api_event import (
     MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT,
 )
-from .mocks.api_gateway_proxy_event import MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT
-from .mocks.dynamo_db_event import MOCK_LAMBDA_DYNAMO_DB_EVENT
-from .mocks.s3_event import MOCK_LAMBDA_S3_EVENT
-from .mocks.sns_event import MOCK_LAMBDA_SNS_EVENT
-from .mocks.sqs_event import MOCK_LAMBDA_SQS_EVENT
-
-
-class MockLambdaContext:
-    def __init__(self, function_name, aws_request_id, invoked_function_arn):
-        self.function_name = function_name
-        self.invoked_function_arn = invoked_function_arn
-        self.aws_request_id = aws_request_id
-
-
-MOCK_LAMBDA_CONTEXT = MockLambdaContext(
-    function_name="myfunction",
-    aws_request_id="mock_aws_request_id",
-    invoked_function_arn="arn:aws:lambda:us-east-1:123456:function:myfunction:myalias",
+from .test_aws_lambda_instrumentation_base import (
+    MOCK_LAMBDA_CONTEXT,
+    MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
+    MOCK_W3C_BAGGAGE_KEY,
+    MOCK_W3C_BAGGAGE_VALUE,
+    MOCK_W3C_PARENT_SPAN_ID,
+    MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+    MOCK_W3C_TRACE_ID,
+    MOCK_W3C_TRACE_STATE_KEY,
+    MOCK_W3C_TRACE_STATE_VALUE,
+    MOCK_XRAY_PARENT_SPAN_ID,
+    MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+    MOCK_XRAY_TRACE_CONTEXT_SAMPLED,
+    MOCK_XRAY_TRACE_ID,
+    TestAwsLambdaInstrumentorBase,
+    mock_execute_lambda,
 )
-
-MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
-    CLOUD_RESOURCE_ID: ":".join(
-        MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[:7]
-    ),
-    FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
-    CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[4],
-}
-
-MOCK_XRAY_TRACE_ID = 0x5FB7331105E8BB83207FA31D4D9CDB4C
-MOCK_XRAY_TRACE_ID_STR = f"{MOCK_XRAY_TRACE_ID:x}"
-MOCK_XRAY_PARENT_SPAN_ID = 0x3328B8445A6DBAD2
-MOCK_XRAY_TRACE_CONTEXT_COMMON = f"Root={TRACE_ID_VERSION}-{MOCK_XRAY_TRACE_ID_STR[:TRACE_ID_FIRST_PART_LENGTH]}-{MOCK_XRAY_TRACE_ID_STR[TRACE_ID_FIRST_PART_LENGTH:]};Parent={MOCK_XRAY_PARENT_SPAN_ID:x}"
-MOCK_XRAY_TRACE_CONTEXT_SAMPLED = f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=1"
-MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED = (
-    f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=0"
-)
-
-# See more:
-# https://www.w3.org/TR/trace-context/#examples-of-http-traceparent-headers
-
-MOCK_W3C_TRACE_ID = 0x5CE0E9A56015FEC5AADFA328AE398115
-MOCK_W3C_PARENT_SPAN_ID = 0xAB54A98CEB1F0AD2
-MOCK_W3C_TRACE_CONTEXT_SAMPLED = (
-    f"00-{MOCK_W3C_TRACE_ID:x}-{MOCK_W3C_PARENT_SPAN_ID:x}-01"
-)
-
-MOCK_W3C_TRACE_STATE_KEY = "vendor_specific_key"
-MOCK_W3C_TRACE_STATE_VALUE = "test_value"
-
-MOCK_W3C_BAGGAGE_KEY = "baggage_key"
-MOCK_W3C_BAGGAGE_VALUE = "baggage_value"
-
-
-def mock_execute_lambda(event=None, context=None):
-    """Mocks the AWS Lambda execution.
-
-    NOTE: We don't use `moto`'s `mock_lambda` because we are not instrumenting
-    calls to AWS Lambda using the AWS SDK. Instead, we are instrumenting AWS
-    Lambda itself.
-
-    See more:
-    https://docs.aws.amazon.com/lambda/latest/dg/runtimes-modify.html#runtime-wrapper
-
-    Args:
-        event: The Lambda event which may or may not be used by instrumentation.
-        context: The AWS Lambda context to call the handler with
-    """
-
-    module_name, handler_name = os.environ[_HANDLER].rsplit(".", 1)
-    handler_module = import_module(module_name.replace("/", "."))
-    return getattr(handler_module, handler_name)(
-        event, context or MOCK_LAMBDA_CONTEXT
-    )
-
-
-class TestAwsLambdaInstrumentorBase(TestBase):
-    """AWS Lambda Instrumentation Testsuite"""
-
-    def setUp(self):
-        super().setUp()
-        self.common_env_patch = mock.patch.dict(
-            "os.environ",
-            {
-                _HANDLER: "tests.mocks.lambda_function.handler",
-                "AWS_LAMBDA_FUNCTION_NAME": "mylambda",
-            },
-        )
-        self.common_env_patch.start()
-
-        # NOTE: Whether AwsLambdaInstrumentor().instrument() is run is decided
-        # by each test case. It depends on if the test is for auto or manual
-        # instrumentation.
-
-    def tearDown(self):
-        super().tearDown()
-        self.common_env_patch.stop()
-        AwsLambdaInstrumentor().uninstrument()
 
 
 class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
@@ -567,244 +459,3 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
             ).load(),
             AwsLambdaInstrumentor,
         )
-
-
-class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
-    def test_api_gateway_proxy_event_sets_attributes(self):
-        handler_patch = mock.patch.dict(
-            "os.environ",
-            {_HANDLER: "tests.mocks.lambda_function.rest_api_handler"},
-        )
-        handler_patch.start()
-
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_PROXY_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-        self.assertSpanHasAttributes(
-            span,
-            {
-                FAAS_TRIGGER: "http",
-                HTTP_METHOD: "POST",
-                HTTP_ROUTE: "/{proxy+}",
-                HTTP_TARGET: "/{proxy+}?foo=bar",
-                NET_HOST_NAME: "1234567890.execute-api.us-east-1.amazonaws.com",
-                HTTP_USER_AGENT: "Custom User Agent String",
-                HTTP_SCHEME: "https",
-                HTTP_STATUS_CODE: 200,
-            },
-        )
-
-    def test_api_gateway_http_api_proxy_event_sets_attributes(self):
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_API_GATEWAY_HTTP_API_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-        self.assertSpanHasAttributes(
-            span,
-            {
-                FAAS_TRIGGER: "http",
-                HTTP_METHOD: "POST",
-                HTTP_ROUTE: "/path/to/resource",
-                HTTP_TARGET: "/path/to/resource?parameter1=value1&parameter1=value2&parameter2=value",
-                NET_HOST_NAME: "id.execute-api.us-east-1.amazonaws.com",
-                HTTP_USER_AGENT: "agent",
-            },
-        )
-
-    def test_alb_conventional_event_sets_attributes(self):
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_ALB_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-        self.assertSpanHasAttributes(
-            span,
-            {
-                FAAS_TRIGGER: "http",
-                HTTP_METHOD: "GET",
-            },
-        )
-
-    def test_alb_multi_value_header_event_sets_attributes(self):
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-        self.assertSpanHasAttributes(
-            span,
-            {
-                FAAS_TRIGGER: "http",
-                HTTP_METHOD: "GET",
-            },
-        )
-
-    def test_dynamo_db_event_sets_attributes(self):
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_DYNAMO_DB_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-
-    def test_s3_event_sets_attributes(self):
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_S3_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-
-    def test_sns_event_sets_attributes(self):
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_SNS_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-
-    def test_sqs_event_sets_attributes(self):
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda(MOCK_LAMBDA_SQS_EVENT)
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.SERVER)
-        self.assertSpanHasAttributes(
-            span,
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-
-    def test_slash_delimited_handler_path(self):
-        """Test that slash-delimited handler paths work correctly.
-
-        AWS Lambda accepts both slash-delimited (python/functions/api.handler)
-        and dot-delimited (python.functions.api.handler) handler paths.
-        This test ensures the instrumentation handles both formats.
-        """
-        # Test slash-delimited format
-        slash_env_patch = mock.patch.dict(
-            "os.environ",
-            {_HANDLER: "tests/mocks/lambda_function.handler"},
-        )
-        slash_env_patch.start()
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda()
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertSpanHasAttributes(
-            spans[0],
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-
-        slash_env_patch.stop()
-        AwsLambdaInstrumentor().uninstrument()
-        self.memory_exporter.clear()
-
-        # Test dot-delimited format (should still work)
-        dot_env_patch = mock.patch.dict(
-            "os.environ",
-            {_HANDLER: "tests.mocks.lambda_function.handler"},
-        )
-        dot_env_patch.start()
-        AwsLambdaInstrumentor().instrument()
-
-        mock_execute_lambda()
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertSpanHasAttributes(
-            spans[0],
-            MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
-        )
-
-        dot_env_patch.stop()
-
-    def test_lambda_handles_handler_exception_with_api_gateway_proxy_event(
-        self,
-    ):
-        exc_env_patch = mock.patch.dict(
-            "os.environ",
-            {_HANDLER: "tests.mocks.lambda_function.handler_exc"},
-        )
-        exc_env_patch.start()
-        AwsLambdaInstrumentor().instrument()
-
-        # instrumentor re-raises the exception
-        with self.assertRaises(Exception):
-            mock_execute_lambda(
-                {"requestContext": {"http": {"method": "GET"}}}
-            )
-
-        spans = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-        span, *_ = spans
-        self.assertEqual(span.status.status_code, StatusCode.ERROR)
-        self.assertEqual(len(span.events), 1)
-
-        event, *_ = span.events
-        self.assertEqual(event.name, "exception")
-
-        exc_env_patch.stop()
