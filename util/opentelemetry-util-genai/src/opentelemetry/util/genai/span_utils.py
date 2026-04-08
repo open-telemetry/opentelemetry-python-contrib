@@ -32,6 +32,8 @@ from opentelemetry.trace import (
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
+    AgentCreation,
+    AgentInvocation,
     EmbeddingInvocation,
     Error,
     GenAIInvocation,
@@ -40,6 +42,7 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
     WorkflowInvocation,
+    _BaseAgent,
 )
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
@@ -47,6 +50,31 @@ from opentelemetry.util.genai.utils import (
     get_content_capturing_mode,
     is_experimental_mode,
     should_emit_event,
+)
+
+
+def _agent_attr(name: str, fallback: str) -> str:
+    """Get a semconv attribute, falling back to a string literal if not yet in the package."""
+    return getattr(GenAI, name, fallback)
+
+
+_GEN_AI_AGENT_NAME = _agent_attr("GEN_AI_AGENT_NAME", "gen_ai.agent.name")
+_GEN_AI_AGENT_ID = _agent_attr("GEN_AI_AGENT_ID", "gen_ai.agent.id")
+_GEN_AI_AGENT_DESCRIPTION = _agent_attr(
+    "GEN_AI_AGENT_DESCRIPTION", "gen_ai.agent.description"
+)
+_GEN_AI_AGENT_VERSION = _agent_attr(
+    "GEN_AI_AGENT_VERSION", "gen_ai.agent.version"
+)
+_GEN_AI_CONVERSATION_ID = _agent_attr(
+    "GEN_AI_CONVERSATION_ID", "gen_ai.conversation.id"
+)
+_GEN_AI_DATA_SOURCE_ID = _agent_attr(
+    "GEN_AI_DATA_SOURCE_ID", "gen_ai.data_source.id"
+)
+_GEN_AI_OUTPUT_TYPE = _agent_attr("GEN_AI_OUTPUT_TYPE", "gen_ai.output.type")
+_GEN_AI_TOOL_DEFINITIONS = _agent_attr(
+    "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
 )
 
 
@@ -120,6 +148,7 @@ def _get_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instruction: list[MessagePart] | None = None,
+    tool_definitions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Get message attributes formatted for span (JSON string format).
 
@@ -149,6 +178,10 @@ def _get_messages_attributes_for_span(
             gen_ai_json_dumps([asdict(p) for p in system_instruction])
             if system_instruction
             else None,
+        ),
+        (
+            _GEN_AI_TOOL_DEFINITIONS,
+            gen_ai_json_dumps(tool_definitions) if tool_definitions else None,
         ),
     )
 
@@ -353,6 +386,227 @@ def _get_llm_response_attributes(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
+def _get_base_agent_common_attributes(
+    agent: _BaseAgent,
+) -> dict[str, Any]:
+    """Get common attributes shared by all agent operations (invoke_agent, create_agent)."""
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_MODEL, agent.request_model),
+        (GenAI.GEN_AI_PROVIDER_NAME, agent.provider),
+        (_GEN_AI_AGENT_NAME, agent.agent_name),
+        (_GEN_AI_AGENT_ID, agent.agent_id),
+        (_GEN_AI_AGENT_DESCRIPTION, agent.agent_description),
+        (_GEN_AI_AGENT_VERSION, agent.agent_version),
+        (server_attributes.SERVER_ADDRESS, agent.server_address),
+        (server_attributes.SERVER_PORT, agent.server_port),
+    )
+
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: agent.operation_name,
+        **{key: value for key, value in optional_attrs if value is not None},
+    }
+
+
+def _get_base_agent_span_name(agent: _BaseAgent) -> str:
+    """Get the span name for any agent operation."""
+    if agent.agent_name:
+        return f"{agent.operation_name} {agent.agent_name}"
+    return agent.operation_name
+
+
+def _get_agent_common_attributes(
+    invocation: AgentInvocation,
+) -> dict[str, Any]:
+    """Get common agent invocation attributes shared by finish() and error() paths."""
+    attrs = _get_base_agent_common_attributes(invocation)
+
+    # Invoke-specific conditionally required attributes
+    invoke_attrs = (
+        (_GEN_AI_CONVERSATION_ID, invocation.conversation_id),
+        (_GEN_AI_DATA_SOURCE_ID, invocation.data_source_id),
+        (_GEN_AI_OUTPUT_TYPE, invocation.output_type),
+    )
+    attrs.update(
+        {key: value for key, value in invoke_attrs if value is not None}
+    )
+
+    return attrs
+
+
+def _get_agent_request_attributes(
+    invocation: AgentInvocation,
+) -> dict[str, Any]:
+    """Get GenAI request semantic convention attributes for agent invocation."""
+    optional_attrs = (
+        (GenAI.GEN_AI_REQUEST_TEMPERATURE, invocation.temperature),
+        (GenAI.GEN_AI_REQUEST_TOP_P, invocation.top_p),
+        (GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY, invocation.frequency_penalty),
+        (GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY, invocation.presence_penalty),
+        (GenAI.GEN_AI_REQUEST_MAX_TOKENS, invocation.max_tokens),
+        (GenAI.GEN_AI_REQUEST_STOP_SEQUENCES, invocation.stop_sequences),
+        (GenAI.GEN_AI_REQUEST_SEED, invocation.seed),
+        (GenAI.GEN_AI_REQUEST_CHOICE_COUNT, invocation.choice_count),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
+def _get_agent_response_attributes(
+    invocation: AgentInvocation,
+) -> dict[str, Any]:
+    """Get GenAI response semantic convention attributes for agent invocation."""
+    finish_reasons: list[str] | None
+    if invocation.finish_reasons is not None:
+        finish_reasons = invocation.finish_reasons
+    elif invocation.output_messages:
+        finish_reasons = [
+            message.finish_reason
+            for message in invocation.output_messages
+            if message.finish_reason
+        ]
+    else:
+        finish_reasons = None
+
+    unique_finish_reasons = (
+        sorted(set(finish_reasons)) if finish_reasons else None
+    )
+
+    optional_attrs = (
+        (
+            GenAI.GEN_AI_RESPONSE_FINISH_REASONS,
+            unique_finish_reasons if unique_finish_reasons else None,
+        ),
+        (GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name),
+        (GenAI.GEN_AI_RESPONSE_ID, invocation.response_id),
+        (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
+        (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens),
+        (
+            GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+            invocation.cache_creation_input_tokens,
+        ),
+        (
+            GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+            invocation.cache_read_input_tokens,
+        ),
+    )
+
+    return {key: value for key, value in optional_attrs if value is not None}
+
+
+def _apply_agent_finish_attributes(span: Span, agent: _BaseAgent) -> None:
+    """Apply attributes common to any agent finish() path.
+
+    Dispatches to invocation-specific or creation-specific logic
+    based on the concrete type.
+    """
+    span.update_name(_get_base_agent_span_name(agent))
+
+    if isinstance(agent, AgentInvocation):
+        _apply_invocation_finish_attributes(span, agent)
+    elif isinstance(agent, AgentCreation):
+        _apply_creation_finish_attributes(span, agent)
+
+
+def _apply_invocation_finish_attributes(
+    span: Span, invocation: AgentInvocation
+) -> None:
+    """Apply attributes specific to agent invocation finish() paths."""
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_agent_common_attributes(invocation))
+    attributes.update(_get_agent_request_attributes(invocation))
+    attributes.update(_get_agent_response_attributes(invocation))
+    attributes.update(
+        _get_messages_attributes_for_span(
+            invocation.input_messages,
+            invocation.output_messages,
+            invocation.system_instruction,
+            invocation.tool_definitions,
+        )
+    )
+    attributes.update(invocation.attributes)
+
+    if attributes:
+        span.set_attributes(attributes)
+
+
+def _apply_creation_finish_attributes(
+    span: Span, creation: AgentCreation
+) -> None:
+    """Apply attributes common to agent creation finish() paths."""
+
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_base_agent_common_attributes(creation))
+
+    # System instructions (Opt-In)
+    if (
+        is_experimental_mode()
+        and get_content_capturing_mode()
+        in (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+        and creation.system_instruction
+    ):
+        attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = gen_ai_json_dumps(
+            [asdict(p) for p in creation.system_instruction]
+        )
+
+    attributes.update(creation.attributes)
+
+    if attributes:
+        span.set_attributes(attributes)
+
+
+def _maybe_emit_agent_event(
+    logger: Logger | None,
+    span: Span,
+    agent: _BaseAgent,
+    error_type: str | None = None,
+) -> None:
+    """Emit a gen_ai.client.inference.operation.details event for any agent operation."""
+    if not is_experimental_mode() or not should_emit_event() or logger is None:
+        return
+
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_base_agent_common_attributes(agent))
+
+    if isinstance(agent, AgentInvocation):
+        attributes.update(_get_agent_common_attributes(agent))
+        attributes.update(_get_agent_request_attributes(agent))
+        attributes.update(_get_agent_response_attributes(agent))
+
+        # Event uses structured format for messages
+        if get_content_capturing_mode() in (
+            ContentCapturingMode.EVENT_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        ):
+            if agent.input_messages:
+                attributes[GenAI.GEN_AI_INPUT_MESSAGES] = [
+                    asdict(m) for m in agent.input_messages
+                ]
+            if agent.output_messages:
+                attributes[GenAI.GEN_AI_OUTPUT_MESSAGES] = [
+                    asdict(m) for m in agent.output_messages
+                ]
+            if agent.system_instruction:
+                attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS] = [
+                    asdict(p) for p in agent.system_instruction
+                ]
+            if agent.tool_definitions:
+                attributes[_GEN_AI_TOOL_DEFINITIONS] = agent.tool_definitions
+
+    if error_type is not None:
+        attributes[error_attributes.ERROR_TYPE] = error_type
+
+    context = set_span_in_context(span, get_current())
+    event = LogRecord(
+        event_name="gen_ai.client.inference.operation.details",
+        attributes=attributes,
+        context=context,
+    )
+    logger.emit(event)
+
+
 def _apply_workflow_finish_attributes(
     span: Span, invocation: WorkflowInvocation
 ) -> None:
@@ -406,6 +660,15 @@ __all__ = [
     "_get_llm_response_attributes",
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
+    "_get_base_agent_common_attributes",
+    "_get_base_agent_span_name",
+    "_apply_agent_finish_attributes",
+    "_apply_invocation_finish_attributes",
+    "_apply_creation_finish_attributes",
+    "_get_agent_common_attributes",
+    "_get_agent_request_attributes",
+    "_get_agent_response_attributes",
+    "_maybe_emit_agent_event",
     "_get_workflow_common_attributes",
     "_apply_workflow_finish_attributes",
     "_apply_embedding_finish_attributes",

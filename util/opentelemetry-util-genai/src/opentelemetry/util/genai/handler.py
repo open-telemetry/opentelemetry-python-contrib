@@ -81,21 +81,27 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
+    _apply_agent_finish_attributes,
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
     _apply_workflow_finish_attributes,
+    _get_base_agent_span_name,
     _get_embedding_span_name,
     _get_llm_span_name,
     _get_workflow_span_name,
+    _maybe_emit_agent_event,
     _maybe_emit_llm_event,
 )
 from opentelemetry.util.genai.types import (
+    AgentCreation,
+    AgentInvocation,
     EmbeddingInvocation,
     Error,
     GenAIInvocation,
     LLMInvocation,
     WorkflowInvocation,
+    _BaseAgent,
 )
 from opentelemetry.util.genai.version import __version__
 
@@ -185,6 +191,9 @@ class TelemetryHandler:
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
             kind = SpanKind.CLIENT
+        elif isinstance(invocation, _BaseAgent):
+            span_name = _get_base_agent_span_name(invocation)
+            kind = SpanKind.INTERNAL
         elif isinstance(invocation, WorkflowInvocation):
             span_name = _get_workflow_span_name(invocation)
             kind = SpanKind.INTERNAL
@@ -219,6 +228,10 @@ class TelemetryHandler:
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 self._record_embedding_metrics(invocation, span)
+            elif isinstance(invocation, _BaseAgent):
+                _apply_agent_finish_attributes(span, invocation)
+                self._record_agent_metrics(invocation, span)
+                _maybe_emit_agent_event(self._logger, span, invocation)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 # TODO: Add workflow metrics when supported
@@ -251,6 +264,15 @@ class TelemetryHandler:
                 _apply_error_attributes(span, error, error_type)
                 self._record_embedding_metrics(
                     invocation, span, error_type=error_type
+                )
+            elif isinstance(invocation, _BaseAgent):
+                _apply_agent_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+                self._record_agent_metrics(
+                    invocation, span, error_type=error_type
+                )
+                _maybe_emit_agent_event(
+                    self._logger, span, invocation, error_type
                 )
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
@@ -315,6 +337,65 @@ class TelemetryHandler:
             self.fail_llm(invocation, Error(message=str(exc), type=type(exc)))
             raise
         self.stop_llm(invocation)
+
+    def _record_agent_metrics(
+        self,
+        agent: _BaseAgent,
+        span: Span | None = None,
+        *,
+        error_type: str | None = None,
+    ) -> None:
+        if self._metrics_recorder is None or span is None:
+            return
+        self._metrics_recorder.record_agent(
+            span,
+            agent,
+            error_type=error_type,
+        )
+
+    @contextmanager
+    def agent(
+        self, invocation: AgentInvocation | None = None
+    ) -> Iterator[AgentInvocation]:
+        """Context manager for agent invocations.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = AgentInvocation()
+        self.start(invocation)
+        try:
+            yield invocation
+        except Exception as exc:
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            raise
+        self.stop(invocation)
+
+    @contextmanager
+    def create_agent(
+        self, creation: AgentCreation | None = None
+    ) -> Iterator[AgentCreation]:
+        """Context manager for agent creation.
+
+        Only set data attributes on the creation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the creation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if creation is None:
+            creation = AgentCreation()
+        self.start(creation)
+        try:
+            yield creation
+        except Exception as exc:
+            self.fail(creation, Error(message=str(exc), type=type(exc)))
+            raise
+        self.stop(creation)
 
     @contextmanager
     def embedding(
