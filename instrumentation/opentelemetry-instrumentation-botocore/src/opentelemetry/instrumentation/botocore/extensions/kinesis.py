@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import abc
-import inspect
 import json
 import logging
 from typing import Any, Dict, MutableMapping
@@ -138,11 +137,8 @@ class _OpPutRecords(_OpPutRecord):
 ################################################################################
 
 _OPERATION_MAPPING: Dict[str, _KinesisOperation] = {
-    op.operation_name(): op
-    for op in globals().values()
-    if inspect.isclass(op)
-    and issubclass(op, _KinesisOperation)
-    and not inspect.isabstract(op)
+    "PutRecord": _OpPutRecord,
+    "PutRecords": _OpPutRecords,
 }
 
 
