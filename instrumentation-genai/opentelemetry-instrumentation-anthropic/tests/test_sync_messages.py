@@ -826,7 +826,7 @@ def test_sync_messages_create_stream_propagation_error(
             return getattr(self._inner, name)
 
     monkeypatch.setattr(
-        stream, "_stream", ErrorInjectingStreamDelegate(stream._stream)
+        stream, "stream", ErrorInjectingStreamDelegate(stream.stream)
     )
 
     with pytest.raises(
