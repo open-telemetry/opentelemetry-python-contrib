@@ -17,8 +17,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from typing_extensions import deprecated
-
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -254,7 +252,6 @@ class InferenceInvocation(GenAIInvocation):
         )
 
 
-@deprecated("LLMInvocation is deprecated. Use InferenceInvocation instead.")
 @dataclass
 class LLMInvocation:
     """Deprecated. Use InferenceInvocation instead.

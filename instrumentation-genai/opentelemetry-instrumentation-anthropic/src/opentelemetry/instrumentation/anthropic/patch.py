@@ -28,7 +28,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
-    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
 )
 from opentelemetry.util.genai.utils import (
     should_capture_content_on_spans_in_experimental_mode,
@@ -94,7 +94,7 @@ def messages_create(
             else params.model
         )
 
-        invocation = LLMInvocation(  # pyright: ignore[reportDeprecated]
+        invocation = LLMInvocation(
             request_model=request_model,
             provider=ANTHROPIC,
             input_messages=get_input_messages(params.messages)
@@ -107,7 +107,7 @@ def messages_create(
         )
 
         # Use manual lifecycle management for both streaming and non-streaming
-        handler.start_llm(invocation)  # pyright: ignore[reportDeprecated]
+        handler.start_llm(invocation)
         try:
             result = wrapped(*args, **kwargs)
             if isinstance(result, AnthropicStream):
@@ -117,10 +117,10 @@ def messages_create(
 
             wrapper = MessageWrapper(result, capture_content)
             wrapper.extract_into(invocation)
-            handler.stop_llm(invocation)  # pyright: ignore[reportDeprecated]
+            handler.stop_llm(invocation)
             return wrapper.message
         except Exception as exc:
-            handler.fail_llm(  # pyright: ignore[reportDeprecated]
+            handler.fail_llm(
                 invocation, Error(message=str(exc), type=type(exc))
             )
             raise

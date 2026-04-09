@@ -31,7 +31,7 @@ from typing import (
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
-    LLMInvocation,  # pyright: ignore[reportDeprecated]  # TODO: migrate to InferenceInvocation
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
 )
 
 from .messages_extractors import set_invocation_response_attributes
@@ -68,7 +68,7 @@ accumulate_event = cast("Callable[..., Message] | None", _sdk_accumulate_event)
 
 
 def _set_response_attributes(
-    invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
+    invocation: LLMInvocation,
     result: "Message | None",
     capture_content: bool,
 ) -> None:
@@ -112,7 +112,7 @@ class MessageWrapper:
         self._message = message
         self._capture_content = capture_content
 
-    def extract_into(self, invocation: LLMInvocation) -> None:  # pyright: ignore[reportDeprecated]
+    def extract_into(self, invocation: LLMInvocation) -> None:
         """Extract response data into the invocation."""
         set_invocation_response_attributes(
             invocation, self._message, self._capture_content
@@ -136,7 +136,7 @@ class MessagesStreamWrapper(
         self,
         stream: "Stream[RawMessageStreamEvent] | MessageStream[ResponseFormatT]",
         handler: TelemetryHandler,
-        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
+        invocation: LLMInvocation,
         capture_content: bool,
     ):
         self.stream = stream
@@ -203,14 +203,14 @@ class MessagesStreamWrapper(
                 self.invocation, self._message, self._capture_content
             )
         with self._safe_instrumentation("stop_llm"):
-            self.handler.stop_llm(self.invocation)  # pyright: ignore[reportDeprecated]
+            self.handler.stop_llm(self.invocation)
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]) -> None:
         if self._finalized:
             return
         with self._safe_instrumentation("fail_llm"):
-            self.handler.fail_llm(  # pyright: ignore[reportDeprecated]
+            self.handler.fail_llm(
                 self.invocation, Error(message=message, type=error_type)
             )
         self._finalized = True
@@ -258,7 +258,7 @@ class AsyncMessagesStreamWrapper(MessagesStreamWrapper[ResponseFormatT]):
         self,
         stream: "AsyncStream[RawMessageStreamEvent] | AsyncMessageStream[ResponseFormatT]",
         handler: TelemetryHandler,
-        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
+        invocation: LLMInvocation,
         capture_content: bool,
     ):
         self.stream = stream
@@ -324,7 +324,7 @@ class MessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         self,
         manager: "MessageStreamManager[ResponseFormatT]",
         handler: TelemetryHandler,
-        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
+        invocation: LLMInvocation,
         capture_content: bool,
     ):
         self._manager = manager
@@ -382,7 +382,7 @@ class AsyncMessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         self,
         manager: "AsyncMessageStreamManager[ResponseFormatT]",
         handler: TelemetryHandler,
-        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
+        invocation: LLMInvocation,
         capture_content: bool,
     ):
         self._manager = manager

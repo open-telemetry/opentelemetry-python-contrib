@@ -51,8 +51,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
-from typing_extensions import deprecated
-
 from opentelemetry._logs import (
     LoggerProvider,
     get_logger,
@@ -132,9 +130,6 @@ class TelemetryHandler:
             server_port=server_port,
         )
 
-    @deprecated(
-        "handler.start_llm() is deprecated. Use handler.start_inference() instead."
-    )
     def start_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pyright: ignore[reportDeprecated]
         """Start an LLM invocation.
 
@@ -208,10 +203,7 @@ class TelemetryHandler:
             self._tracer, self._metrics_recorder, self._logger, name
         )
 
-    @deprecated(
-        "handler.stop_llm() is deprecated. Use handler.start_inference()  and then ``inference.stop()`` instead."
-    )
-    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pylint: disable=no-self-use  # pyright: ignore[reportDeprecated]
+    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pylint: disable=no-self-use
         """Finalize an LLM invocation successfully and end its span.
 
         .. deprecated::
@@ -222,14 +214,11 @@ class TelemetryHandler:
             invocation._inference_invocation.stop()
         return invocation
 
-    @deprecated(
-        "handler.fail_llm() is deprecated. Use handler.start_inference()  and then ``inference.fail()`` instead."
-    )
     def fail_llm(  # pylint: disable=no-self-use
         self,
-        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
+        invocation: LLMInvocation,
         error: Error,
-    ) -> LLMInvocation:  # pyright: ignore[reportDeprecated]
+    ) -> LLMInvocation:
         """Fail an LLM invocation and end its span with error status.
 
         .. deprecated::

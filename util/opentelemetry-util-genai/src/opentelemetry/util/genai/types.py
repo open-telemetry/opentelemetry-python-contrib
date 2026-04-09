@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Literal, Type, Union
 
 if TYPE_CHECKING:
     from opentelemetry.util.genai._inference_invocation import (  # pylint: disable=useless-import-alias
-        LLMInvocation as LLMInvocation,  # noqa: PLC0414  # pyright: ignore[reportDeprecated]
+        LLMInvocation as LLMInvocation,  # noqa: PLC0414
     )
     from opentelemetry.util.genai._invocation import (  # pylint: disable=useless-import-alias
         GenAIInvocation as GenAIInvocation,  # noqa: PLC0414
@@ -248,8 +248,8 @@ def __getattr__(name: str) -> object:
         return _inv.GenAIInvocation
     if name == "LLMInvocation":
         from opentelemetry.util.genai._inference_invocation import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
-            LLMInvocation,  # pyright: ignore[reportDeprecated]
+            LLMInvocation,
         )
 
-        return LLMInvocation  # pyright: ignore[reportDeprecated]
+        return LLMInvocation
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
