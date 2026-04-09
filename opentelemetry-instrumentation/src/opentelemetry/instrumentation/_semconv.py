@@ -657,11 +657,18 @@ def _set_status(
                     StatusCode.OK: 1,
                     StatusCode.ERROR: 2,
                 }
-                current_priority = _STATUS_PRIORITY.get(current_status.status_code, 0)
+                current_priority = _STATUS_PRIORITY.get(
+                    current_status.status_code, 0
+                )
                 incoming_priority = _STATUS_PRIORITY.get(status, 0)
                 if incoming_priority < current_priority:
                     return
-                description = current_status.description if current_status.description and status == current_status.status_code else None
+                description = (
+                    current_status.description
+                    if current_status.description
+                    and status == current_status.status_code
+                    else None
+                )
                 span.set_status(Status(status, description))
             else:
                 span.set_status(Status(status))
