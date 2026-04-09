@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 ### Added
 
+- `opentelemetry-instrumentation-logging`: Add `OTEL_PYTHON_LOG_HANDLER_LEVEL` environment variable to configure the log level of the auto-instrumented `LoggingHandler`
+  ([#4298](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4298))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0

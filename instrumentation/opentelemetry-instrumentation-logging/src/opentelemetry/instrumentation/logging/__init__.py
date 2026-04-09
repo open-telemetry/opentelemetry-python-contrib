@@ -61,7 +61,7 @@ initializing the `LoggingInstrumentor` class to achieve the same effect:
 
 import logging  # pylint: disable=import-self
 from os import environ
-from typing import Collection
+from typing import Collection, Optional
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -74,6 +74,7 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_CODE_ATTRIBUTES,
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
+    OTEL_PYTHON_LOG_HANDLER_LEVEL,
     OTEL_PYTHON_LOG_LEVEL,
 )
 from opentelemetry.instrumentation.logging.handler import (
@@ -97,6 +98,20 @@ LEVELS = {
 }
 
 _logger = logging.getLogger(__name__)
+
+
+def _get_log_level(level_name: Optional[str]) -> Optional[int]:
+    if level_name is None:
+        return None
+    result = logging.getLevelName(level_name.upper().strip())
+    if not isinstance(result, int):
+        _logger.warning(
+            "Invalid log level %r for %s; defaulting to NOTSET",
+            level_name,
+            OTEL_PYTHON_LOG_HANDLER_LEVEL,
+        )
+        return logging.NOTSET
+    return result
 
 
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
@@ -245,10 +260,15 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 .lower()
                 == "true",
             )
+            handler_level = kwargs.get(
+                "log_handler_level",
+                _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
+            )
             logger_provider = get_logger_provider()
             handler = _setup_logging_handler(
                 logger_provider=logger_provider,
                 log_code_attributes=log_code_attributes,
+                level=handler_level,
             )
             LoggingInstrumentor._logging_handler = handler
 
