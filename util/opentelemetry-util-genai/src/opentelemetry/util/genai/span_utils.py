@@ -399,7 +399,6 @@ def _get_embedding_response_attributes(
 __all__ = [
     "_apply_llm_finish_attributes",
     "_apply_error_attributes",
-    "_maybe_build_llm_event_record",
     "_get_llm_common_attributes",
     "_get_llm_request_attributes",
     "_get_llm_response_attributes",

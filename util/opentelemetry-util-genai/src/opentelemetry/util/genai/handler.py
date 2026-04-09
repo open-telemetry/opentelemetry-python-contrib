@@ -303,14 +303,7 @@ class TelemetryHandler:
                 log_record = _maybe_build_llm_event_record(
                     span, invocation, error_type
                 )
-                if self._completion_hook is not None:
-                    self._completion_hook.on_completion(
-                        inputs=invocation.input_messages,
-                        outputs=invocation.output_messages,
-                        system_instruction=invocation.system_instruction,
-                        span=span,
-                        log_record=log_record,
-                    )
+                self._call_completion_hook(invocation, span, log_record)
                 if log_record is not None:
                     self._logger.emit(log_record)
 

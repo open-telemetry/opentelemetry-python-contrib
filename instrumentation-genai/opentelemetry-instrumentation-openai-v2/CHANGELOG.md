@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4280](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4280))
 - Add async wrappers for OpenAI Responses API streams and response stream managers
   ([#4325](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4325))
+- Add strongly typed Responses API extractors with validation and content
+  extraction improvements
+  ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
 - Add completion hook support.
   ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
 - Fix `response_format` handling: map `json_object`/`json_schema` to `json` output type.
