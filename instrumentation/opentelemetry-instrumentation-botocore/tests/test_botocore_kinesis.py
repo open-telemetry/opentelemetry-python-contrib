@@ -30,6 +30,11 @@ from opentelemetry.trace.span import Span
 class TestKinesisExtension(TestBase):
     def setUp(self):
         super().setUp()
+        self._enabled_patcher = mock.patch(
+            "opentelemetry.instrumentation.botocore.extensions.kinesis._ENABLED",
+            True,
+        )
+        self._enabled_patcher.start()
         BotocoreInstrumentor().instrument()
 
         session = botocore.session.get_session()
@@ -44,6 +49,7 @@ class TestKinesisExtension(TestBase):
     def tearDown(self):
         super().tearDown()
         BotocoreInstrumentor().uninstrument()
+        self._enabled_patcher.stop()
 
     @contextlib.contextmanager
     def _mocked_aws_endpoint(self, response):
@@ -222,3 +228,39 @@ class TestKinesisExtension(TestBase):
         # Should still create a span without crashing
         span = self.assert_span(f"{self.stream_name} send")
         self.assertIsNotNone(span)
+
+    @mock.patch(
+        "opentelemetry.instrumentation.botocore.extensions.kinesis._ENABLED",
+        False,
+    )
+    def test_disabled_when_env_var_not_set(self):
+        mock_response = {
+            "ShardId": "shardId-000000000000",
+            "SequenceNumber": "12345",
+        }
+
+        data = json.dumps({"key": "value"}).encode("utf-8")
+
+        with self._mocked_aws_endpoint(mock_response):
+            self.client.put_record(
+                StreamName=self.stream_name,
+                Data=data,
+                PartitionKey="pk",
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+
+        # Should be a plain CLIENT span with no messaging attributes
+        self.assertEqual(SpanKind.CLIENT, span.kind)
+        self.assertNotIn(
+            SpanAttributes.MESSAGING_SYSTEM, span.attributes
+        )
+        self.assertNotIn(
+            SpanAttributes.MESSAGING_DESTINATION_NAME, span.attributes
+        )
+
+        # Data should not have traceparent injected
+        data_dict = json.loads(data.decode("utf-8"))
+        self.assertNotIn("traceparent", data_dict)

@@ -15,6 +15,7 @@
 import abc
 import json
 import logging
+import os
 from typing import Any, Dict, MutableMapping
 
 from opentelemetry.propagate import inject
@@ -142,14 +143,23 @@ _OPERATION_MAPPING: Dict[str, _KinesisOperation] = {
 }
 
 
+_ENABLED = os.environ.get("ENABLE_KINESIS_INSTRUMENTATION", "").lower() == "true"
+
+
 class _KinesisExtension(_AwsSdkExtension):
     def __init__(self, call_context: _AwsSdkCallContext):
         super().__init__(call_context)
+        if not _ENABLED:
+            self._op = None
+            return
         self._op = _OPERATION_MAPPING.get(call_context.operation)
         if self._op:
             call_context.span_kind = self._op.span_kind()
 
     def extract_attributes(self, attributes: _AttributeMapT):
+        if not _ENABLED:
+            return
+
         attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.kinesis"
 
         if self._op:
