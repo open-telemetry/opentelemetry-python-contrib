@@ -60,9 +60,10 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import timeit
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Iterator, TypeVar
 
 from opentelemetry import context as otel_context
 from opentelemetry._logs import (
@@ -80,12 +81,42 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.span_utils import (
+    _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _apply_workflow_finish_attributes,
+    _get_embedding_span_name,
+    _get_llm_span_name,
+    _get_workflow_span_name,
     _maybe_emit_llm_event,
 )
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import (
+    EmbeddingInvocation,
+    Error,
+    GenAIInvocation,
+    LLMInvocation,
+    WorkflowInvocation,
+)
 from opentelemetry.util.genai.version import __version__
+
+_logger = logging.getLogger(__name__)
+
+
+def _safe_detach(invocation: GenAIInvocation) -> None:
+    """Detach the context token if still present, as a safety net."""
+    if invocation.context_token is not None:
+        try:
+            otel_context.detach(invocation.context_token)
+        except Exception:  # pylint: disable=broad-except
+            pass
+    if invocation.span is not None:
+        try:
+            invocation.span.end()
+        except Exception:  # pylint: disable=broad-except
+            pass
+
+
+_T = TypeVar("_T", bound=GenAIInvocation)
 
 
 class TelemetryHandler:
@@ -100,20 +131,23 @@ class TelemetryHandler:
         meter_provider: MeterProvider | None = None,
         logger_provider: LoggerProvider | None = None,
     ):
+        schema_url = Schemas.V1_37_0.value
         self._tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url=Schemas.V1_37_0.value,
+            schema_url=schema_url,
         )
         self._metrics_recorder: InvocationMetricsRecorder | None = None
-        meter = get_meter(__name__, meter_provider=meter_provider)
+        meter = get_meter(
+            __name__, meter_provider=meter_provider, schema_url=schema_url
+        )
         self._metrics_recorder = InvocationMetricsRecorder(meter)
         self._logger = get_logger(
             __name__,
             __version__,
             logger_provider,
-            schema_url=Schemas.V1_37_0.value,
+            schema_url=schema_url,
         )
 
     def _record_llm_metrics(
@@ -131,15 +165,35 @@ class TelemetryHandler:
             error_type=error_type,
         )
 
-    def start_llm(
-        self,
-        invocation: LLMInvocation,
-    ) -> LLMInvocation:
-        """Start an LLM invocation and create a pending span entry."""
-        # Create a span and attach it as current; keep the token to detach later
+    @staticmethod
+    def _record_embedding_metrics(
+        invocation: EmbeddingInvocation,
+        span: Span | None = None,
+        *,
+        error_type: str | None = None,
+    ) -> None:
+        # Metrics recorder currently supports LLMInvocation fields only.
+        # Keep embedding metrics as a no-op until dedicated embedding
+        # metric support is added.
+        return
+
+    def _start(self, invocation: _T) -> _T:
+        """Start a GenAI invocation and create a pending span entry."""
+        if isinstance(invocation, LLMInvocation):
+            span_name = _get_llm_span_name(invocation)
+            kind = SpanKind.CLIENT
+        elif isinstance(invocation, EmbeddingInvocation):
+            span_name = _get_embedding_span_name(invocation)
+            kind = SpanKind.CLIENT
+        elif isinstance(invocation, WorkflowInvocation):
+            span_name = _get_workflow_span_name(invocation)
+            kind = SpanKind.INTERNAL
+        else:
+            span_name = ""
+            kind = SpanKind.CLIENT
         span = self._tracer.start_span(
-            name=f"{invocation.operation_name} {invocation.request_model}",
-            kind=SpanKind.CLIENT,
+            name=span_name,
+            kind=kind,
         )
         # Record a monotonic start timestamp (seconds) for duration
         # calculation using timeit.default_timer.
@@ -150,39 +204,93 @@ class TelemetryHandler:
         )
         return invocation
 
-    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pylint: disable=no-self-use
-        """Finalize an LLM invocation successfully and end its span."""
+    def _stop(self, invocation: _T) -> _T:
+        """Finalize a GenAI invocation successfully and end its span."""
         if invocation.context_token is None or invocation.span is None:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
         span = invocation.span
-        _apply_llm_finish_attributes(span, invocation)
-        self._record_llm_metrics(invocation, span)
-        _maybe_emit_llm_event(self._logger, span, invocation)
-        # Detach context and end span
-        otel_context.detach(invocation.context_token)
-        span.end()
+        try:
+            if isinstance(invocation, LLMInvocation):
+                _apply_llm_finish_attributes(span, invocation)
+                self._record_llm_metrics(invocation, span)
+                _maybe_emit_llm_event(self._logger, span, invocation)
+            elif isinstance(invocation, EmbeddingInvocation):
+                _apply_embedding_finish_attributes(span, invocation)
+                self._record_embedding_metrics(invocation, span)
+            elif isinstance(invocation, WorkflowInvocation):
+                _apply_workflow_finish_attributes(span, invocation)
+                # TODO: Add workflow metrics when supported
+        finally:
+            # Detach context and end span even if finishing fails
+            otel_context.detach(invocation.context_token)
+            span.end()
         return invocation
 
-    def fail_llm(  # pylint: disable=no-self-use
+    def _fail(self, invocation: _T, error: Error) -> _T:
+        """Fail a GenAI invocation and end its span with error status."""
+        if invocation.context_token is None or invocation.span is None:
+            # TODO: Provide feedback that this invocation was not started
+            return invocation
+
+        span = invocation.span
+        error_type = error.type.__qualname__
+        try:
+            if isinstance(invocation, LLMInvocation):
+                _apply_llm_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+                self._record_llm_metrics(
+                    invocation, span, error_type=error_type
+                )
+                _maybe_emit_llm_event(
+                    self._logger, span, invocation, error_type
+                )
+            elif isinstance(invocation, EmbeddingInvocation):
+                _apply_embedding_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+                self._record_embedding_metrics(
+                    invocation, span, error_type=error_type
+                )
+            elif isinstance(invocation, WorkflowInvocation):
+                _apply_workflow_finish_attributes(span, invocation)
+                _apply_error_attributes(span, error, error_type)
+                # TODO: Add workflow metrics when supported
+        finally:
+            # Detach context and end span even if finishing fails
+            otel_context.detach(invocation.context_token)
+            span.end()
+        return invocation
+
+    def start(
+        self,
+        invocation: _T,
+    ) -> _T:
+        """Start a GenAI invocation and create a pending span entry."""
+        return self._start(invocation)
+
+    def stop(self, invocation: _T) -> _T:
+        """Finalize a GenAI invocation successfully and end its span."""
+        return self._stop(invocation)
+
+    def fail(self, invocation: _T, error: Error) -> _T:
+        """Fail a GenAI invocation and end its span with error status."""
+        return self._fail(invocation, error)
+
+    # LLM-specific convenience methods
+    def start_llm(self, invocation: LLMInvocation) -> LLMInvocation:
+        """Start an LLM invocation and create a pending span entry."""
+        return self._start(invocation)
+
+    def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:
+        """Finalize an LLM invocation successfully and end its span."""
+        return self._stop(invocation)
+
+    def fail_llm(
         self, invocation: LLMInvocation, error: Error
     ) -> LLMInvocation:
         """Fail an LLM invocation and end its span with error status."""
-        if invocation.context_token is None or invocation.span is None:
-            # TODO: Provide feedback that this invocation was not started
-            return invocation
-
-        span = invocation.span
-        _apply_llm_finish_attributes(invocation.span, invocation)
-        _apply_error_attributes(invocation.span, error)
-        error_type = getattr(error.type, "__qualname__", None)
-        self._record_llm_metrics(invocation, span, error_type=error_type)
-        _maybe_emit_llm_event(self._logger, span, invocation, error)
-        # Detach context and end span
-        otel_context.detach(invocation.context_token)
-        span.end()
-        return invocation
+        return self._fail(invocation, error)
 
     @contextmanager
     def llm(
@@ -207,6 +315,68 @@ class TelemetryHandler:
             self.fail_llm(invocation, Error(message=str(exc), type=type(exc)))
             raise
         self.stop_llm(invocation)
+
+    @contextmanager
+    def embedding(
+        self, invocation: EmbeddingInvocation | None = None
+    ) -> Iterator[EmbeddingInvocation]:
+        """Context manager for Embedding invocations.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = EmbeddingInvocation()
+        self.start(invocation)
+        try:
+            yield invocation
+        except Exception as exc:
+            self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            raise
+        self.stop(invocation)
+
+    @contextmanager
+    def workflow(
+        self, invocation: WorkflowInvocation | None = None
+    ) -> Iterator[WorkflowInvocation]:
+        """Context manager for Workflow invocations.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        if invocation is None:
+            invocation = WorkflowInvocation()
+
+        try:
+            self.start(invocation)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning(
+                "Failed to start workflow telemetry", exc_info=True
+            )
+
+        try:
+            yield invocation
+        except Exception as exc:
+            try:
+                self.fail(invocation, Error(message=str(exc), type=type(exc)))
+            except Exception:  # pylint: disable=broad-except
+                _logger.warning(
+                    "Failed to record workflow failure", exc_info=True
+                )
+                _safe_detach(invocation)
+            raise
+
+        try:
+            self.stop(invocation)
+        except Exception:  # pylint: disable=broad-except
+            _logger.warning("Failed to stop workflow telemetry", exc_info=True)
+            _safe_detach(invocation)
 
 
 def get_telemetry_handler(

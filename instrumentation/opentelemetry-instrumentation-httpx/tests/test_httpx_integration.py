@@ -22,7 +22,12 @@ from unittest import mock
 
 import httpx
 import respx
-from wrapt import ObjectProxy
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
@@ -98,8 +103,7 @@ def _is_url_tuple(request: "RequestInfo"):
 
 
 def _async_call(coro: typing.Coroutine) -> asyncio.Task:
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
@@ -1483,7 +1487,7 @@ class BaseTestCases:
                     else:
                         handler = self.get_transport_handler(transport)
                         self.assertTrue(
-                            isinstance(handler, ObjectProxy)
+                            isinstance(handler, BaseObjectProxy)
                             and getattr(handler, "__wrapped__")
                         )
 
@@ -2083,13 +2087,13 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
         client = CustomClient()
         self.assertFalse(
-            isinstance(client._transport.handle_request, ObjectProxy)
+            isinstance(client._transport.handle_request, BaseObjectProxy)
         )
 
         HTTPXClientInstrumentor().instrument()
 
         self.assertTrue(
-            isinstance(client._transport.handle_request, ObjectProxy)
+            isinstance(client._transport.handle_request, BaseObjectProxy)
         )
 
 
@@ -2178,11 +2182,11 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
         client = CustomAsyncClient()
         self.assertFalse(
-            isinstance(client._transport.handle_async_request, ObjectProxy)
+            isinstance(client._transport.handle_async_request, BaseObjectProxy)
         )
 
         HTTPXClientInstrumentor().instrument()
 
         self.assertTrue(
-            isinstance(client._transport.handle_async_request, ObjectProxy)
+            isinstance(client._transport.handle_async_request, BaseObjectProxy)
         )
