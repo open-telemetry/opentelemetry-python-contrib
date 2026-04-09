@@ -108,6 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4210](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4210))
 - Add stale PR GitHub Action
   ([#4220](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4220))
+- `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-psycopg`: Add sqlcommenter support for `instrument_connection`
+  ([#4267](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4267/))
 
 ### Fixed
 
