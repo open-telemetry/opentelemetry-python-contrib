@@ -158,7 +158,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,
+            invocation=llm_invocation,  # pyright: ignore[reportArgumentType]
         )
 
     def on_llm_end(

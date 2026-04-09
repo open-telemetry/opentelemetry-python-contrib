@@ -62,7 +62,7 @@ from opentelemetry.trace import (
     get_tracer,
 )
 from opentelemetry.util.genai._inference_invocation import (
-    LLMInvocation,  # pyright: ignore[reportDeprecated]
+    LLMInvocation,
 )
 from opentelemetry.util.genai._invocation import Error
 from opentelemetry.util.genai.invocation import (
@@ -130,7 +130,7 @@ class TelemetryHandler:
             server_port=server_port,
         )
 
-    def start_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pyright: ignore[reportDeprecated]
+    def start_llm(self, invocation: LLMInvocation) -> LLMInvocation:
         """Start an LLM invocation.
 
         .. deprecated::
