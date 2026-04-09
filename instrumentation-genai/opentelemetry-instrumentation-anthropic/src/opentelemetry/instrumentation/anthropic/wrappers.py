@@ -68,7 +68,7 @@ accumulate_event = cast("Callable[..., Message] | None", _sdk_accumulate_event)
 
 
 def _set_response_attributes(
-    invocation: LLMInvocation,
+    invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
     result: "Message | None",
     capture_content: bool,
 ) -> None:
@@ -203,14 +203,14 @@ class MessagesStreamWrapper(
                 self.invocation, self._message, self._capture_content
             )
         with self._safe_instrumentation("stop_llm"):
-            self.handler.stop_llm(self.invocation)
+            self.handler.stop_llm(self.invocation)  # pyright: ignore[reportDeprecated]
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]) -> None:
         if self._finalized:
             return
         with self._safe_instrumentation("fail_llm"):
-            self.handler.fail_llm(
+            self.handler.fail_llm(  # pyright: ignore[reportDeprecated]
                 self.invocation, Error(message=message, type=error_type)
             )
         self._finalized = True
@@ -258,7 +258,7 @@ class AsyncMessagesStreamWrapper(MessagesStreamWrapper[ResponseFormatT]):
         self,
         stream: "AsyncStream[RawMessageStreamEvent] | AsyncMessageStream[ResponseFormatT]",
         handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
         capture_content: bool,
     ):
         self.stream = stream
@@ -324,7 +324,7 @@ class MessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         self,
         manager: "MessageStreamManager[ResponseFormatT]",
         handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
         capture_content: bool,
     ):
         self._manager = manager
@@ -382,7 +382,7 @@ class AsyncMessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         self,
         manager: "AsyncMessageStreamManager[ResponseFormatT]",
         handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
         capture_content: bool,
     ):
         self._manager = manager

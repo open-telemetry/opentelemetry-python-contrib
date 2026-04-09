@@ -29,7 +29,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.types import (
     InputMessage,
-    LLMInvocation,
+    LLMInvocation,  # pyright: ignore[reportDeprecated]
     MessagePart,
     OutputMessage,
 )
@@ -155,7 +155,7 @@ def get_output_messages_from_message(
 
 
 def set_invocation_response_attributes(
-    invocation: LLMInvocation,
+    invocation: LLMInvocation,  # pyright: ignore[reportDeprecated]
     message: Message | None,
     capture_content: bool,
 ) -> None:
