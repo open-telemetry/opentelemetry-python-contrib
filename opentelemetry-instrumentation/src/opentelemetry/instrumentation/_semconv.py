@@ -334,8 +334,8 @@ def set_int_attribute(
     if value:
         try:
             result[key] = int(value)
-        except ValueError:
-            pass
+        except (ValueError, TypeError):
+            return
 
 
 def _set_http_method(
