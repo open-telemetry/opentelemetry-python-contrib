@@ -41,7 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
   ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
-- `opentelemetry-instrumentation-logging`: Use `LogRecord.getMessage()` to format and extract each log record's body text to more closely match the expected usage of the logging system. Previously, in some cases the `LogRecord.msg` attribute was accessed directly.
+- `opentelemetry-instrumentation-logging`: Use `LogRecord.getMessage()` to format and extract each log record's body text to more closely match the expected usage of the logging system. As a result, all OTel log record bodies are now always strings.
+  Previously, if `LogRecord.msg` (which contains the format string) was set to a non-string object (e.g. `logger.warning(some_dict)`), the object was exported as-is to the OTLP body field. Now, `LogRecord.getMessage()` will convert it to to a string.
+  If you are passing in non-strings as the format string argument and your backend is expecting them as-is, you will need to update accordingly.
   ([#4372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4372))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
