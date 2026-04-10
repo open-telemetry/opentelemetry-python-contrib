@@ -36,8 +36,8 @@ Run instrumented code:
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
 
-    # OR opt into not tracing connection pool cleanup
-    AsyncPGInstrumentor(capture_connection_cleanup=False).instrument()
+    # OR opt into not tracing connection pool cleanup queries
+    AsyncPGInstrumentor(exclude_queries=AsyncPGInstrumentor._CLEANUP_QUERIES).instrument()
 
     async def main():
         conn = await asyncpg.connect(user='user', password='password')
@@ -127,17 +127,15 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     )
     _tracer = None
 
-    def _is_cleanup_query(self, query: str) -> bool:
+    def _is_excluded_query(self, query: str) -> bool:
         if query is None:
             return False
-        return any(q in query for q in self._CLEANUP_QUERIES)
+            return any(q in query for q in self.exclude_queries)
 
-    def __init__(
-        self, capture_parameters=False, capture_connection_cleanup=True
-    ):
+    def __init__(self, capture_parameters=False, exclude_queries=None):
         super().__init__()
         self.capture_parameters = capture_parameters
-        self.capture_connection_cleanup = capture_connection_cleanup
+        self.exclude_queries = exclude_queries or set()
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -203,9 +201,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             args[0],
             args[1:] if self.capture_parameters else None,
         )
-        if not self.capture_connection_cleanup and self._is_cleanup_query(
-            args[0]
-        ):
+        if self._is_excluded_query(args[0]):
             return await func(*args, **kwargs)
 
         with self._tracer.start_as_current_span(

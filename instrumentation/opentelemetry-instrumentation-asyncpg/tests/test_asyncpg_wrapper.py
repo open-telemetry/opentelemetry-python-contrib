@@ -146,9 +146,11 @@ class TestAsyncPGInstrumentation(TestBase):
         self.assertEqual(len(spans), 0)
 
     def test_capture_connection_cleanup_false(self):
-        """Test that cleanup queries are not traced when capture_connection_cleanup=False."""
+        """Test that cleanup queries are not traced when exclude_queries=AsyncPGInstrumentor._CLEANUP_QUERIES."""
         AsyncPGInstrumentor().uninstrument()
-        apg = AsyncPGInstrumentor(capture_connection_cleanup=False)
+        apg = AsyncPGInstrumentor(
+            exclude_queries=AsyncPGInstrumentor._CLEANUP_QUERIES
+        )
         apg.instrument(tracer_provider=self.tracer_provider)
 
         async def mock_execute(*args, **kwargs):
@@ -200,9 +202,9 @@ class TestAsyncPGInstrumentation(TestBase):
         AsyncPGInstrumentor().uninstrument()
 
     def test_capture_connection_cleanup_explicitly_true(self):
-        """Test that cleanup queries are traced when capture_connection_cleanup=True."""
+        """Test that cleanup queries are traced when exclude_queries=set()."""
         AsyncPGInstrumentor().uninstrument()
-        apg = AsyncPGInstrumentor(capture_connection_cleanup=True)
+        apg = AsyncPGInstrumentor(exclude_queries=set())
         apg.instrument(tracer_provider=self.tracer_provider)
 
         async def mock_execute(*args, **kwargs):
