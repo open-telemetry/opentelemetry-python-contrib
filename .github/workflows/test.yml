@@ -24,44 +24,6 @@ env:
 
 jobs:
 
-  py39-test-instrumentation-openai-v2-oldest_ubuntu-latest:
-    name: instrumentation-openai-v2-oldest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-openai-v2-oldest -- -ra
-
-  py39-test-instrumentation-openai-v2-latest_ubuntu-latest:
-    name: instrumentation-openai-v2-latest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-openai-v2-latest -- -ra
-
   py310-test-instrumentation-openai-v2-oldest_ubuntu-latest:
     name: instrumentation-openai-v2-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -272,17 +234,17 @@ jobs:
         run: tox -e py313-test-instrumentation-openai-v2-pydantic1 -- -ra
 
   pypy3-test-instrumentation-openai-v2-oldest_ubuntu-latest:
-    name: instrumentation-openai-v2-oldest pypy-3.9 Ubuntu
+    name: instrumentation-openai-v2-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -291,17 +253,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-openai-v2-oldest -- -ra
 
   pypy3-test-instrumentation-openai-v2-latest_ubuntu-latest:
-    name: instrumentation-openai-v2-latest pypy-3.9 Ubuntu
+    name: instrumentation-openai-v2-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -499,44 +461,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-openai_agents-v2-latest -- -ra
 
-  py39-test-instrumentation-vertexai-oldest_ubuntu-latest:
-    name: instrumentation-vertexai-oldest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-vertexai-oldest -- -ra
-
-  py39-test-instrumentation-vertexai-latest_ubuntu-latest:
-    name: instrumentation-vertexai-latest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-vertexai-latest -- -ra
-
   py310-test-instrumentation-vertexai-oldest_ubuntu-latest:
     name: instrumentation-vertexai-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -727,44 +651,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-vertexai-latest -- -ra
 
-  py39-test-instrumentation-google-genai-oldest_ubuntu-latest:
-    name: instrumentation-google-genai-oldest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-google-genai-oldest -- -ra
-
-  py39-test-instrumentation-google-genai-latest_ubuntu-latest:
-    name: instrumentation-google-genai-latest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-google-genai-latest -- -ra
-
   py310-test-instrumentation-google-genai-oldest_ubuntu-latest:
     name: instrumentation-google-genai-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -954,44 +840,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-google-genai-latest -- -ra
-
-  py39-test-instrumentation-anthropic-oldest_ubuntu-latest:
-    name: instrumentation-anthropic-oldest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-anthropic-oldest -- -ra
-
-  py39-test-instrumentation-anthropic-latest_ubuntu-latest:
-    name: instrumentation-anthropic-latest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-anthropic-latest -- -ra
 
   py310-test-instrumentation-anthropic-oldest_ubuntu-latest:
     name: instrumentation-anthropic-oldest 3.10 Ubuntu
@@ -1335,25 +1183,6 @@ jobs:
       - name: Run tests
         run: tox -e py313-test-instrumentation-claude-agent-sdk-latest -- -ra
 
-  py39-test-resource-detector-containerid_ubuntu-latest:
-    name: resource-detector-containerid 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-resource-detector-containerid -- -ra
-
   py310-test-resource-detector-containerid_ubuntu-latest:
     name: resource-detector-containerid 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -1450,61 +1279,23 @@ jobs:
         run: tox -e py314-test-resource-detector-containerid -- -ra
 
   pypy3-test-resource-detector-containerid_ubuntu-latest:
-    name: resource-detector-containerid pypy-3.9 Ubuntu
+    name: resource-detector-containerid pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-resource-detector-containerid -- -ra
-
-  py39-test-resource-detector-azure-0_ubuntu-latest:
-    name: resource-detector-azure-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-resource-detector-azure-0 -- -ra
-
-  py39-test-resource-detector-azure-1_ubuntu-latest:
-    name: resource-detector-azure-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-resource-detector-azure-1 -- -ra
 
   py310-test-resource-detector-azure-0_ubuntu-latest:
     name: resource-detector-azure-0 3.10 Ubuntu
@@ -1697,17 +1488,17 @@ jobs:
         run: tox -e py314-test-resource-detector-azure-1 -- -ra
 
   pypy3-test-resource-detector-azure-0_ubuntu-latest:
-    name: resource-detector-azure-0 pypy-3.9 Ubuntu
+    name: resource-detector-azure-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -1716,61 +1507,23 @@ jobs:
         run: tox -e pypy3-test-resource-detector-azure-0 -- -ra
 
   pypy3-test-resource-detector-azure-1_ubuntu-latest:
-    name: resource-detector-azure-1 pypy-3.9 Ubuntu
+    name: resource-detector-azure-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-resource-detector-azure-1 -- -ra
-
-  py39-test-sdk-extension-aws-0_ubuntu-latest:
-    name: sdk-extension-aws-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-sdk-extension-aws-0 -- -ra
-
-  py39-test-sdk-extension-aws-1_ubuntu-latest:
-    name: sdk-extension-aws-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-sdk-extension-aws-1 -- -ra
 
   py310-test-sdk-extension-aws-0_ubuntu-latest:
     name: sdk-extension-aws-0 3.10 Ubuntu
@@ -1963,17 +1716,17 @@ jobs:
         run: tox -e py314-test-sdk-extension-aws-1 -- -ra
 
   pypy3-test-sdk-extension-aws-0_ubuntu-latest:
-    name: sdk-extension-aws-0 pypy-3.9 Ubuntu
+    name: sdk-extension-aws-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -1982,42 +1735,23 @@ jobs:
         run: tox -e pypy3-test-sdk-extension-aws-0 -- -ra
 
   pypy3-test-sdk-extension-aws-1_ubuntu-latest:
-    name: sdk-extension-aws-1 pypy-3.9 Ubuntu
+    name: sdk-extension-aws-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-sdk-extension-aws-1 -- -ra
-
-  py39-test-distro_ubuntu-latest:
-    name: distro 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-distro -- -ra
 
   py310-test-distro_ubuntu-latest:
     name: distro 3.10 Ubuntu
@@ -2115,61 +1849,23 @@ jobs:
         run: tox -e py314-test-distro -- -ra
 
   pypy3-test-distro_ubuntu-latest:
-    name: distro pypy-3.9 Ubuntu
+    name: distro pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-distro -- -ra
-
-  py39-test-opentelemetry-instrumentation-wrapt1_ubuntu-latest:
-    name: opentelemetry-instrumentation-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-opentelemetry-instrumentation-wrapt1 -- -ra
-
-  py39-test-opentelemetry-instrumentation-wrapt2_ubuntu-latest:
-    name: opentelemetry-instrumentation-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-opentelemetry-instrumentation-wrapt2 -- -ra
 
   py310-test-opentelemetry-instrumentation-wrapt1_ubuntu-latest:
     name: opentelemetry-instrumentation-wrapt1 3.10 Ubuntu
@@ -2362,42 +2058,23 @@ jobs:
         run: tox -e py314-test-opentelemetry-instrumentation-wrapt2 -- -ra
 
   pypy3-test-opentelemetry-instrumentation-wrapt2_ubuntu-latest:
-    name: opentelemetry-instrumentation-wrapt2 pypy-3.9 Ubuntu
+    name: opentelemetry-instrumentation-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-opentelemetry-instrumentation-wrapt2 -- -ra
-
-  py39-test-instrumentation-aiohttp-client_ubuntu-latest:
-    name: instrumentation-aiohttp-client 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aiohttp-client -- -ra
 
   py310-test-instrumentation-aiohttp-client_ubuntu-latest:
     name: instrumentation-aiohttp-client 3.10 Ubuntu
@@ -2495,42 +2172,23 @@ jobs:
         run: tox -e py314-test-instrumentation-aiohttp-client -- -ra
 
   pypy3-test-instrumentation-aiohttp-client_ubuntu-latest:
-    name: instrumentation-aiohttp-client pypy-3.9 Ubuntu
+    name: instrumentation-aiohttp-client pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aiohttp-client -- -ra
-
-  py39-test-instrumentation-aiohttp-server_ubuntu-latest:
-    name: instrumentation-aiohttp-server 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aiohttp-server -- -ra
 
   py310-test-instrumentation-aiohttp-server_ubuntu-latest:
     name: instrumentation-aiohttp-server 3.10 Ubuntu
@@ -2628,61 +2286,23 @@ jobs:
         run: tox -e py314-test-instrumentation-aiohttp-server -- -ra
 
   pypy3-test-instrumentation-aiohttp-server_ubuntu-latest:
-    name: instrumentation-aiohttp-server pypy-3.9 Ubuntu
+    name: instrumentation-aiohttp-server pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aiohttp-server -- -ra
-
-  py39-test-instrumentation-aiopg-wrapt1_ubuntu-latest:
-    name: instrumentation-aiopg-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aiopg-wrapt1 -- -ra
-
-  py39-test-instrumentation-aiopg-wrapt2_ubuntu-latest:
-    name: instrumentation-aiopg-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aiopg-wrapt2 -- -ra
 
   py310-test-instrumentation-aiopg-wrapt1_ubuntu-latest:
     name: instrumentation-aiopg-wrapt1 3.10 Ubuntu
@@ -2874,25 +2494,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-aiopg-wrapt2 -- -ra
 
-  py39-test-instrumentation-aws-lambda_ubuntu-latest:
-    name: instrumentation-aws-lambda 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aws-lambda -- -ra
-
   py310-test-instrumentation-aws-lambda_ubuntu-latest:
     name: instrumentation-aws-lambda 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -2989,99 +2590,23 @@ jobs:
         run: tox -e py314-test-instrumentation-aws-lambda -- -ra
 
   pypy3-test-instrumentation-aws-lambda_ubuntu-latest:
-    name: instrumentation-aws-lambda pypy-3.9 Ubuntu
+    name: instrumentation-aws-lambda pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aws-lambda -- -ra
-
-  py39-test-instrumentation-botocore-0-wrapt1_ubuntu-latest:
-    name: instrumentation-botocore-0-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-0-wrapt1 -- -ra
-
-  py39-test-instrumentation-botocore-0-wrapt2_ubuntu-latest:
-    name: instrumentation-botocore-0-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-0-wrapt2 -- -ra
-
-  py39-test-instrumentation-botocore-1-wrapt1_ubuntu-latest:
-    name: instrumentation-botocore-1-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-1-wrapt1 -- -ra
-
-  py39-test-instrumentation-botocore-1-wrapt2_ubuntu-latest:
-    name: instrumentation-botocore-1-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-1-wrapt2 -- -ra
 
   py310-test-instrumentation-botocore-0-wrapt1_ubuntu-latest:
     name: instrumentation-botocore-0-wrapt1 3.10 Ubuntu
@@ -3463,44 +2988,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-botocore-1-wrapt2 -- -ra
 
-  py39-test-instrumentation-botocore-2_ubuntu-latest:
-    name: instrumentation-botocore-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-2 -- -ra
-
-  py39-test-instrumentation-botocore-3_ubuntu-latest:
-    name: instrumentation-botocore-3 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-botocore-3 -- -ra
-
   py310-test-instrumentation-botocore-2_ubuntu-latest:
     name: instrumentation-botocore-2 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -3691,25 +3178,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-botocore-3 -- -ra
 
-  py39-test-instrumentation-boto3sqs_ubuntu-latest:
-    name: instrumentation-boto3sqs 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-boto3sqs -- -ra
-
   py310-test-instrumentation-boto3sqs_ubuntu-latest:
     name: instrumentation-boto3sqs 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -3806,80 +3274,23 @@ jobs:
         run: tox -e py314-test-instrumentation-boto3sqs -- -ra
 
   pypy3-test-instrumentation-boto3sqs_ubuntu-latest:
-    name: instrumentation-boto3sqs pypy-3.9 Ubuntu
+    name: instrumentation-boto3sqs pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-boto3sqs -- -ra
-
-  py39-test-instrumentation-django-0_ubuntu-latest:
-    name: instrumentation-django-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-django-0 -- -ra
-
-  py39-test-instrumentation-django-1_ubuntu-latest:
-    name: instrumentation-django-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-django-1 -- -ra
-
-  py39-test-instrumentation-django-2_ubuntu-latest:
-    name: instrumentation-django-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-django-2 -- -ra
 
   py310-test-instrumentation-django-1_ubuntu-latest:
     name: instrumentation-django-1 3.10 Ubuntu
@@ -4034,17 +3445,17 @@ jobs:
         run: tox -e py314-test-instrumentation-django-3 -- -ra
 
   pypy3-test-instrumentation-django-0_ubuntu-latest:
-    name: instrumentation-django-0 pypy-3.9 Ubuntu
+    name: instrumentation-django-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -4053,61 +3464,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-django-0 -- -ra
 
   pypy3-test-instrumentation-django-1_ubuntu-latest:
-    name: instrumentation-django-1 pypy-3.9 Ubuntu
+    name: instrumentation-django-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-django-1 -- -ra
-
-  py39-test-instrumentation-dbapi-wrapt1_ubuntu-latest:
-    name: instrumentation-dbapi-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-dbapi-wrapt1 -- -ra
-
-  py39-test-instrumentation-dbapi-wrapt2_ubuntu-latest:
-    name: instrumentation-dbapi-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-dbapi-wrapt2 -- -ra
 
   py310-test-instrumentation-dbapi-wrapt1_ubuntu-latest:
     name: instrumentation-dbapi-wrapt1 3.10 Ubuntu
@@ -4300,42 +3673,23 @@ jobs:
         run: tox -e py314-test-instrumentation-dbapi-wrapt2 -- -ra
 
   pypy3-test-instrumentation-dbapi-wrapt2_ubuntu-latest:
-    name: instrumentation-dbapi-wrapt2 pypy-3.9 Ubuntu
+    name: instrumentation-dbapi-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-dbapi-wrapt2 -- -ra
-
-  py39-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-asyncclick -- -ra
 
   py310-test-instrumentation-asyncclick_ubuntu-latest:
     name: instrumentation-asyncclick 3.10 Ubuntu
@@ -4433,42 +3787,23 @@ jobs:
         run: tox -e py314-test-instrumentation-asyncclick -- -ra
 
   pypy3-test-instrumentation-asyncclick_ubuntu-latest:
-    name: instrumentation-asyncclick pypy-3.9 Ubuntu
+    name: instrumentation-asyncclick pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-asyncclick -- -ra
-
-  py39-test-instrumentation-click_ubuntu-latest:
-    name: instrumentation-click 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-click -- -ra
 
   py310-test-instrumentation-click_ubuntu-latest:
     name: instrumentation-click 3.10 Ubuntu
@@ -4566,80 +3901,23 @@ jobs:
         run: tox -e py314-test-instrumentation-click -- -ra
 
   pypy3-test-instrumentation-click_ubuntu-latest:
-    name: instrumentation-click pypy-3.9 Ubuntu
+    name: instrumentation-click pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-click -- -ra
-
-  py39-test-instrumentation-elasticsearch-0_ubuntu-latest:
-    name: instrumentation-elasticsearch-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-elasticsearch-0 -- -ra
-
-  py39-test-instrumentation-elasticsearch-1_ubuntu-latest:
-    name: instrumentation-elasticsearch-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-elasticsearch-1 -- -ra
-
-  py39-test-instrumentation-elasticsearch-2_ubuntu-latest:
-    name: instrumentation-elasticsearch-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-elasticsearch-2 -- -ra
 
   py310-test-instrumentation-elasticsearch-0_ubuntu-latest:
     name: instrumentation-elasticsearch-0 3.10 Ubuntu
@@ -4927,17 +4205,17 @@ jobs:
         run: tox -e py314-test-instrumentation-elasticsearch-2 -- -ra
 
   pypy3-test-instrumentation-elasticsearch-0_ubuntu-latest:
-    name: instrumentation-elasticsearch-0 pypy-3.9 Ubuntu
+    name: instrumentation-elasticsearch-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -4946,17 +4224,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-elasticsearch-0 -- -ra
 
   pypy3-test-instrumentation-elasticsearch-1_ubuntu-latest:
-    name: instrumentation-elasticsearch-1 pypy-3.9 Ubuntu
+    name: instrumentation-elasticsearch-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -4965,99 +4243,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-elasticsearch-1 -- -ra
 
   pypy3-test-instrumentation-elasticsearch-2_ubuntu-latest:
-    name: instrumentation-elasticsearch-2 pypy-3.9 Ubuntu
+    name: instrumentation-elasticsearch-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-elasticsearch-2 -- -ra
-
-  py39-test-instrumentation-falcon-0_ubuntu-latest:
-    name: instrumentation-falcon-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-falcon-0 -- -ra
-
-  py39-test-instrumentation-falcon-1_ubuntu-latest:
-    name: instrumentation-falcon-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-falcon-1 -- -ra
-
-  py39-test-instrumentation-falcon-2_ubuntu-latest:
-    name: instrumentation-falcon-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-falcon-2 -- -ra
-
-  py39-test-instrumentation-falcon-3_ubuntu-latest:
-    name: instrumentation-falcon-3 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-falcon-3 -- -ra
 
   py310-test-instrumentation-falcon-1_ubuntu-latest:
     name: instrumentation-falcon-1 3.10 Ubuntu
@@ -5326,17 +4528,17 @@ jobs:
         run: tox -e py314-test-instrumentation-falcon-4 -- -ra
 
   pypy3-test-instrumentation-falcon-0_ubuntu-latest:
-    name: instrumentation-falcon-0 pypy-3.9 Ubuntu
+    name: instrumentation-falcon-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -5345,17 +4547,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-falcon-0 -- -ra
 
   pypy3-test-instrumentation-falcon-1_ubuntu-latest:
-    name: instrumentation-falcon-1 pypy-3.9 Ubuntu
+    name: instrumentation-falcon-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -5364,17 +4566,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-falcon-1 -- -ra
 
   pypy3-test-instrumentation-falcon-2_ubuntu-latest:
-    name: instrumentation-falcon-2 pypy-3.9 Ubuntu
+    name: instrumentation-falcon-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -5383,17 +4585,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-falcon-2 -- -ra
 
   pypy3-test-instrumentation-falcon-3_ubuntu-latest:
-    name: instrumentation-falcon-3 pypy-3.9 Ubuntu
+    name: instrumentation-falcon-3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -5402,42 +4604,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-falcon-3 -- -ra
 
   pypy3-test-instrumentation-falcon-4_ubuntu-latest:
-    name: instrumentation-falcon-4 pypy-3.9 Ubuntu
+    name: instrumentation-falcon-4 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-falcon-4 -- -ra
-
-  py39-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-fastapi -- -ra
 
   py310-test-instrumentation-fastapi_ubuntu-latest:
     name: instrumentation-fastapi 3.10 Ubuntu
@@ -5535,99 +4718,23 @@ jobs:
         run: tox -e py314-test-instrumentation-fastapi -- -ra
 
   pypy3-test-instrumentation-fastapi_ubuntu-latest:
-    name: instrumentation-fastapi pypy-3.9 Ubuntu
+    name: instrumentation-fastapi pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-fastapi -- -ra
-
-  py39-test-instrumentation-flask-0_ubuntu-latest:
-    name: instrumentation-flask-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-flask-0 -- -ra
-
-  py39-test-instrumentation-flask-1_ubuntu-latest:
-    name: instrumentation-flask-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-flask-1 -- -ra
-
-  py39-test-instrumentation-flask-2_ubuntu-latest:
-    name: instrumentation-flask-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-flask-2 -- -ra
-
-  py39-test-instrumentation-flask-3_ubuntu-latest:
-    name: instrumentation-flask-3 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-flask-3 -- -ra
 
   py310-test-instrumentation-flask-0_ubuntu-latest:
     name: instrumentation-flask-0 3.10 Ubuntu
@@ -6010,17 +5117,17 @@ jobs:
         run: tox -e py314-test-instrumentation-flask-3 -- -ra
 
   pypy3-test-instrumentation-flask-0_ubuntu-latest:
-    name: instrumentation-flask-0 pypy-3.9 Ubuntu
+    name: instrumentation-flask-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -6029,42 +5136,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-flask-0 -- -ra
 
   pypy3-test-instrumentation-flask-1_ubuntu-latest:
-    name: instrumentation-flask-1 pypy-3.9 Ubuntu
+    name: instrumentation-flask-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-flask-1 -- -ra
-
-  py39-test-instrumentation-urllib_ubuntu-latest:
-    name: instrumentation-urllib 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-urllib -- -ra
 
   py310-test-instrumentation-urllib_ubuntu-latest:
     name: instrumentation-urllib 3.10 Ubuntu
@@ -6162,61 +5250,23 @@ jobs:
         run: tox -e py314-test-instrumentation-urllib -- -ra
 
   pypy3-test-instrumentation-urllib_ubuntu-latest:
-    name: instrumentation-urllib pypy-3.9 Ubuntu
+    name: instrumentation-urllib pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-urllib -- -ra
-
-  py39-test-instrumentation-urllib3-0_ubuntu-latest:
-    name: instrumentation-urllib3-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-urllib3-0 -- -ra
-
-  py39-test-instrumentation-urllib3-1_ubuntu-latest:
-    name: instrumentation-urllib3-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-urllib3-1 -- -ra
 
   py310-test-instrumentation-urllib3-0_ubuntu-latest:
     name: instrumentation-urllib3-0 3.10 Ubuntu
@@ -6371,17 +5421,17 @@ jobs:
         run: tox -e py313-test-instrumentation-urllib3-1 -- -ra
 
   pypy3-test-instrumentation-urllib3-0_ubuntu-latest:
-    name: instrumentation-urllib3-0 pypy-3.9 Ubuntu
+    name: instrumentation-urllib3-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -6390,42 +5440,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-urllib3-0 -- -ra
 
   pypy3-test-instrumentation-urllib3-1_ubuntu-latest:
-    name: instrumentation-urllib3-1 pypy-3.9 Ubuntu
+    name: instrumentation-urllib3-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-urllib3-1 -- -ra
-
-  py39-test-instrumentation-requests_ubuntu-latest:
-    name: instrumentation-requests 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-requests -- -ra
 
   py310-test-instrumentation-requests_ubuntu-latest:
     name: instrumentation-requests 3.10 Ubuntu
@@ -6521,44 +5552,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-requests -- -ra
-
-  py39-test-instrumentation-starlette-oldest_ubuntu-latest:
-    name: instrumentation-starlette-oldest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-starlette-oldest -- -ra
-
-  py39-test-instrumentation-starlette-latest_ubuntu-latest:
-    name: instrumentation-starlette-latest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-starlette-latest -- -ra
 
   py310-test-instrumentation-starlette-oldest_ubuntu-latest:
     name: instrumentation-starlette-oldest 3.10 Ubuntu
@@ -6751,17 +5744,17 @@ jobs:
         run: tox -e py314-test-instrumentation-starlette-latest -- -ra
 
   pypy3-test-instrumentation-starlette-oldest_ubuntu-latest:
-    name: instrumentation-starlette-oldest pypy-3.9 Ubuntu
+    name: instrumentation-starlette-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -6770,42 +5763,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-starlette-oldest -- -ra
 
   pypy3-test-instrumentation-starlette-latest_ubuntu-latest:
-    name: instrumentation-starlette-latest pypy-3.9 Ubuntu
+    name: instrumentation-starlette-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-starlette-latest -- -ra
-
-  py39-test-instrumentation-jinja2_ubuntu-latest:
-    name: instrumentation-jinja2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-jinja2 -- -ra
 
   py310-test-instrumentation-jinja2_ubuntu-latest:
     name: instrumentation-jinja2 3.10 Ubuntu
@@ -6903,42 +5877,23 @@ jobs:
         run: tox -e py314-test-instrumentation-jinja2 -- -ra
 
   pypy3-test-instrumentation-jinja2_ubuntu-latest:
-    name: instrumentation-jinja2 pypy-3.9 Ubuntu
+    name: instrumentation-jinja2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-jinja2 -- -ra
-
-  py39-test-instrumentation-logging_ubuntu-latest:
-    name: instrumentation-logging 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-logging -- -ra
 
   py310-test-instrumentation-logging_ubuntu-latest:
     name: instrumentation-logging 3.10 Ubuntu
@@ -7036,42 +5991,23 @@ jobs:
         run: tox -e py314-test-instrumentation-logging -- -ra
 
   pypy3-test-instrumentation-logging_ubuntu-latest:
-    name: instrumentation-logging pypy-3.9 Ubuntu
+    name: instrumentation-logging pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-logging -- -ra
-
-  py39-test-exporter-richconsole_ubuntu-latest:
-    name: exporter-richconsole 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-exporter-richconsole -- -ra
 
   py310-test-exporter-richconsole_ubuntu-latest:
     name: exporter-richconsole 3.10 Ubuntu
@@ -7169,42 +6105,23 @@ jobs:
         run: tox -e py314-test-exporter-richconsole -- -ra
 
   pypy3-test-exporter-richconsole_ubuntu-latest:
-    name: exporter-richconsole pypy-3.9 Ubuntu
+    name: exporter-richconsole pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-exporter-richconsole -- -ra
-
-  py39-test-exporter-prometheus-remote-write_ubuntu-latest:
-    name: exporter-prometheus-remote-write 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-exporter-prometheus-remote-write -- -ra
 
   py310-test-exporter-prometheus-remote-write_ubuntu-latest:
     name: exporter-prometheus-remote-write 3.10 Ubuntu
@@ -7319,44 +6236,6 @@ jobs:
 
       - name: Run tests
         run: tox -e pypy310-test-exporter-prometheus-remote-write -- -ra
-
-  py39-test-instrumentation-mysql-0_ubuntu-latest:
-    name: instrumentation-mysql-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-mysql-0 -- -ra
-
-  py39-test-instrumentation-mysql-1_ubuntu-latest:
-    name: instrumentation-mysql-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-mysql-1 -- -ra
 
   py310-test-instrumentation-mysql-0_ubuntu-latest:
     name: instrumentation-mysql-0 3.10 Ubuntu
@@ -7549,17 +6428,17 @@ jobs:
         run: tox -e py314-test-instrumentation-mysql-1 -- -ra
 
   pypy3-test-instrumentation-mysql-0_ubuntu-latest:
-    name: instrumentation-mysql-0 pypy-3.9 Ubuntu
+    name: instrumentation-mysql-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -7568,42 +6447,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-mysql-0 -- -ra
 
   pypy3-test-instrumentation-mysql-1_ubuntu-latest:
-    name: instrumentation-mysql-1 pypy-3.9 Ubuntu
+    name: instrumentation-mysql-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-mysql-1 -- -ra
-
-  py39-test-instrumentation-mysqlclient_ubuntu-latest:
-    name: instrumentation-mysqlclient 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-mysqlclient -- -ra
 
   py310-test-instrumentation-mysqlclient_ubuntu-latest:
     name: instrumentation-mysqlclient 3.10 Ubuntu
@@ -7701,42 +6561,23 @@ jobs:
         run: tox -e py314-test-instrumentation-mysqlclient -- -ra
 
   pypy3-test-instrumentation-mysqlclient_ubuntu-latest:
-    name: instrumentation-mysqlclient pypy-3.9 Ubuntu
+    name: instrumentation-mysqlclient pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-mysqlclient -- -ra
-
-  py39-test-instrumentation-psycopg2_ubuntu-latest:
-    name: instrumentation-psycopg2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-psycopg2 -- -ra
 
   py310-test-instrumentation-psycopg2_ubuntu-latest:
     name: instrumentation-psycopg2 3.10 Ubuntu
@@ -7833,25 +6674,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-psycopg2 -- -ra
 
-  py39-test-instrumentation-psycopg2-binary_ubuntu-latest:
-    name: instrumentation-psycopg2-binary 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-psycopg2-binary -- -ra
-
   py310-test-instrumentation-psycopg2-binary_ubuntu-latest:
     name: instrumentation-psycopg2-binary 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -7946,25 +6768,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-psycopg2-binary -- -ra
-
-  py39-test-instrumentation-psycopg_ubuntu-latest:
-    name: instrumentation-psycopg 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-psycopg -- -ra
 
   py310-test-instrumentation-psycopg_ubuntu-latest:
     name: instrumentation-psycopg 3.10 Ubuntu
@@ -8062,118 +6865,23 @@ jobs:
         run: tox -e py314-test-instrumentation-psycopg -- -ra
 
   pypy3-test-instrumentation-psycopg_ubuntu-latest:
-    name: instrumentation-psycopg pypy-3.9 Ubuntu
+    name: instrumentation-psycopg pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-psycopg -- -ra
-
-  py39-test-instrumentation-pymemcache-0_ubuntu-latest:
-    name: instrumentation-pymemcache-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymemcache-0 -- -ra
-
-  py39-test-instrumentation-pymemcache-1_ubuntu-latest:
-    name: instrumentation-pymemcache-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymemcache-1 -- -ra
-
-  py39-test-instrumentation-pymemcache-2_ubuntu-latest:
-    name: instrumentation-pymemcache-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymemcache-2 -- -ra
-
-  py39-test-instrumentation-pymemcache-3_ubuntu-latest:
-    name: instrumentation-pymemcache-3 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymemcache-3 -- -ra
-
-  py39-test-instrumentation-pymemcache-4_ubuntu-latest:
-    name: instrumentation-pymemcache-4 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymemcache-4 -- -ra
 
   py310-test-instrumentation-pymemcache-0_ubuntu-latest:
     name: instrumentation-pymemcache-0 3.10 Ubuntu
@@ -8651,17 +7359,17 @@ jobs:
         run: tox -e py314-test-instrumentation-pymemcache-4 -- -ra
 
   pypy3-test-instrumentation-pymemcache-0_ubuntu-latest:
-    name: instrumentation-pymemcache-0 pypy-3.9 Ubuntu
+    name: instrumentation-pymemcache-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -8670,17 +7378,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-pymemcache-0 -- -ra
 
   pypy3-test-instrumentation-pymemcache-1_ubuntu-latest:
-    name: instrumentation-pymemcache-1 pypy-3.9 Ubuntu
+    name: instrumentation-pymemcache-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -8689,17 +7397,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-pymemcache-1 -- -ra
 
   pypy3-test-instrumentation-pymemcache-2_ubuntu-latest:
-    name: instrumentation-pymemcache-2 pypy-3.9 Ubuntu
+    name: instrumentation-pymemcache-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -8708,17 +7416,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-pymemcache-2 -- -ra
 
   pypy3-test-instrumentation-pymemcache-3_ubuntu-latest:
-    name: instrumentation-pymemcache-3 pypy-3.9 Ubuntu
+    name: instrumentation-pymemcache-3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -8727,42 +7435,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-pymemcache-3 -- -ra
 
   pypy3-test-instrumentation-pymemcache-4_ubuntu-latest:
-    name: instrumentation-pymemcache-4 pypy-3.9 Ubuntu
+    name: instrumentation-pymemcache-4 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-pymemcache-4 -- -ra
-
-  py39-test-instrumentation-pymongo_ubuntu-latest:
-    name: instrumentation-pymongo 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymongo -- -ra
 
   py310-test-instrumentation-pymongo_ubuntu-latest:
     name: instrumentation-pymongo 3.10 Ubuntu
@@ -8860,42 +7549,23 @@ jobs:
         run: tox -e py314-test-instrumentation-pymongo -- -ra
 
   pypy3-test-instrumentation-pymongo_ubuntu-latest:
-    name: instrumentation-pymongo pypy-3.9 Ubuntu
+    name: instrumentation-pymongo pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-pymongo -- -ra
-
-  py39-test-instrumentation-pymysql_ubuntu-latest:
-    name: instrumentation-pymysql 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymysql -- -ra
 
   py310-test-instrumentation-pymysql_ubuntu-latest:
     name: instrumentation-pymysql 3.10 Ubuntu
@@ -8993,42 +7663,23 @@ jobs:
         run: tox -e py314-test-instrumentation-pymysql -- -ra
 
   pypy3-test-instrumentation-pymysql_ubuntu-latest:
-    name: instrumentation-pymysql pypy-3.9 Ubuntu
+    name: instrumentation-pymysql pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-pymysql -- -ra
-
-  py39-test-instrumentation-pymssql_ubuntu-latest:
-    name: instrumentation-pymssql 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pymssql -- -ra
 
   py310-test-instrumentation-pymssql_ubuntu-latest:
     name: instrumentation-pymssql 3.10 Ubuntu
@@ -9124,25 +7775,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-pymssql -- -ra
-
-  py39-test-instrumentation-pyramid_ubuntu-latest:
-    name: instrumentation-pyramid 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-pyramid -- -ra
 
   py310-test-instrumentation-pyramid_ubuntu-latest:
     name: instrumentation-pyramid 3.10 Ubuntu
@@ -9240,42 +7872,23 @@ jobs:
         run: tox -e py314-test-instrumentation-pyramid -- -ra
 
   pypy3-test-instrumentation-pyramid_ubuntu-latest:
-    name: instrumentation-pyramid pypy-3.9 Ubuntu
+    name: instrumentation-pyramid pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-pyramid -- -ra
-
-  py39-test-instrumentation-asgi_ubuntu-latest:
-    name: instrumentation-asgi 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-asgi -- -ra
 
   py310-test-instrumentation-asgi_ubuntu-latest:
     name: instrumentation-asgi 3.10 Ubuntu
@@ -9373,61 +7986,23 @@ jobs:
         run: tox -e py314-test-instrumentation-asgi -- -ra
 
   pypy3-test-instrumentation-asgi_ubuntu-latest:
-    name: instrumentation-asgi pypy-3.9 Ubuntu
+    name: instrumentation-asgi pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-asgi -- -ra
-
-  py39-test-instrumentation-asyncpg-wrapt1_ubuntu-latest:
-    name: instrumentation-asyncpg-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-asyncpg-wrapt1 -- -ra
-
-  py39-test-instrumentation-asyncpg-wrapt2_ubuntu-latest:
-    name: instrumentation-asyncpg-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-asyncpg-wrapt2 -- -ra
 
   py310-test-instrumentation-asyncpg-wrapt1_ubuntu-latest:
     name: instrumentation-asyncpg-wrapt1 3.10 Ubuntu
@@ -9619,25 +8194,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-asyncpg-wrapt2 -- -ra
 
-  py39-test-instrumentation-sqlite3_ubuntu-latest:
-    name: instrumentation-sqlite3 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-sqlite3 -- -ra
-
   py310-test-instrumentation-sqlite3_ubuntu-latest:
     name: instrumentation-sqlite3 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -9734,42 +8290,23 @@ jobs:
         run: tox -e py314-test-instrumentation-sqlite3 -- -ra
 
   pypy3-test-instrumentation-sqlite3_ubuntu-latest:
-    name: instrumentation-sqlite3 pypy-3.9 Ubuntu
+    name: instrumentation-sqlite3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-sqlite3 -- -ra
-
-  py39-test-instrumentation-wsgi_ubuntu-latest:
-    name: instrumentation-wsgi 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-wsgi -- -ra
 
   py310-test-instrumentation-wsgi_ubuntu-latest:
     name: instrumentation-wsgi 3.10 Ubuntu
@@ -9867,99 +8404,23 @@ jobs:
         run: tox -e py314-test-instrumentation-wsgi -- -ra
 
   pypy3-test-instrumentation-wsgi_ubuntu-latest:
-    name: instrumentation-wsgi pypy-3.9 Ubuntu
+    name: instrumentation-wsgi pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-wsgi -- -ra
-
-  py39-test-instrumentation-grpc-0-wrapt1_ubuntu-latest:
-    name: instrumentation-grpc-0-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-grpc-0-wrapt1 -- -ra
-
-  py39-test-instrumentation-grpc-0-wrapt2_ubuntu-latest:
-    name: instrumentation-grpc-0-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-grpc-0-wrapt2 -- -ra
-
-  py39-test-instrumentation-grpc-1-wrapt1_ubuntu-latest:
-    name: instrumentation-grpc-1-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-grpc-1-wrapt1 -- -ra
-
-  py39-test-instrumentation-grpc-1-wrapt2_ubuntu-latest:
-    name: instrumentation-grpc-1-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-grpc-1-wrapt2 -- -ra
 
   py310-test-instrumentation-grpc-0-wrapt1_ubuntu-latest:
     name: instrumentation-grpc-0-wrapt1 3.10 Ubuntu
@@ -10265,44 +8726,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-grpc-1-wrapt2 -- -ra
 
-  py39-test-instrumentation-sqlalchemy-1_ubuntu-latest:
-    name: instrumentation-sqlalchemy-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-sqlalchemy-1 -- -ra
-
-  py39-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-sqlalchemy-2 -- -ra
-
   py310-test-instrumentation-sqlalchemy-1_ubuntu-latest:
     name: instrumentation-sqlalchemy-1 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -10475,17 +8898,17 @@ jobs:
         run: tox -e py314-test-instrumentation-sqlalchemy-2 -- -ra
 
   pypy3-test-instrumentation-sqlalchemy-0_ubuntu-latest:
-    name: instrumentation-sqlalchemy-0 pypy-3.9 Ubuntu
+    name: instrumentation-sqlalchemy-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -10494,17 +8917,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-sqlalchemy-0 -- -ra
 
   pypy3-test-instrumentation-sqlalchemy-1_ubuntu-latest:
-    name: instrumentation-sqlalchemy-1 pypy-3.9 Ubuntu
+    name: instrumentation-sqlalchemy-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -10513,42 +8936,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-sqlalchemy-1 -- -ra
 
   pypy3-test-instrumentation-sqlalchemy-2_ubuntu-latest:
-    name: instrumentation-sqlalchemy-2 pypy-3.9 Ubuntu
+    name: instrumentation-sqlalchemy-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-sqlalchemy-2 -- -ra
-
-  py39-test-instrumentation-redis_ubuntu-latest:
-    name: instrumentation-redis 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-redis -- -ra
 
   py310-test-instrumentation-redis_ubuntu-latest:
     name: instrumentation-redis 3.10 Ubuntu
@@ -10646,42 +9050,23 @@ jobs:
         run: tox -e py314-test-instrumentation-redis -- -ra
 
   pypy3-test-instrumentation-redis_ubuntu-latest:
-    name: instrumentation-redis pypy-3.9 Ubuntu
+    name: instrumentation-redis pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-redis -- -ra
-
-  py39-test-instrumentation-remoulade_ubuntu-latest:
-    name: instrumentation-remoulade 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-remoulade -- -ra
 
   py310-test-instrumentation-remoulade_ubuntu-latest:
     name: instrumentation-remoulade 3.10 Ubuntu
@@ -10777,25 +9162,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-remoulade -- -ra
-
-  py39-test-instrumentation-celery_ubuntu-latest:
-    name: instrumentation-celery 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-celery -- -ra
 
   py310-test-instrumentation-celery_ubuntu-latest:
     name: instrumentation-celery 3.10 Ubuntu
@@ -10893,42 +9259,23 @@ jobs:
         run: tox -e py314-test-instrumentation-celery -- -ra
 
   pypy3-test-instrumentation-celery_ubuntu-latest:
-    name: instrumentation-celery pypy-3.9 Ubuntu
+    name: instrumentation-celery pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-celery -- -ra
-
-  py39-test-instrumentation-system-metrics_ubuntu-latest:
-    name: instrumentation-system-metrics 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-system-metrics -- -ra
 
   py310-test-instrumentation-system-metrics_ubuntu-latest:
     name: instrumentation-system-metrics 3.10 Ubuntu
@@ -11026,42 +9373,23 @@ jobs:
         run: tox -e py314-test-instrumentation-system-metrics -- -ra
 
   pypy3-test-instrumentation-system-metrics_ubuntu-latest:
-    name: instrumentation-system-metrics pypy-3.9 Ubuntu
+    name: instrumentation-system-metrics pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-system-metrics -- -ra
-
-  py39-test-instrumentation-threading_ubuntu-latest:
-    name: instrumentation-threading 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-threading -- -ra
 
   py310-test-instrumentation-threading_ubuntu-latest:
     name: instrumentation-threading 3.10 Ubuntu
@@ -11159,42 +9487,23 @@ jobs:
         run: tox -e py314-test-instrumentation-threading -- -ra
 
   pypy3-test-instrumentation-threading_ubuntu-latest:
-    name: instrumentation-threading pypy-3.9 Ubuntu
+    name: instrumentation-threading pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-threading -- -ra
-
-  py39-test-instrumentation-tornado_ubuntu-latest:
-    name: instrumentation-tornado 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-tornado -- -ra
 
   py310-test-instrumentation-tornado_ubuntu-latest:
     name: instrumentation-tornado 3.10 Ubuntu
@@ -11292,42 +9601,23 @@ jobs:
         run: tox -e py314-test-instrumentation-tornado -- -ra
 
   pypy3-test-instrumentation-tornado_ubuntu-latest:
-    name: instrumentation-tornado pypy-3.9 Ubuntu
+    name: instrumentation-tornado pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-tornado -- -ra
-
-  py39-test-instrumentation-tortoiseorm_ubuntu-latest:
-    name: instrumentation-tortoiseorm 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-tortoiseorm -- -ra
 
   py310-test-instrumentation-tortoiseorm_ubuntu-latest:
     name: instrumentation-tortoiseorm 3.10 Ubuntu
@@ -11425,99 +9715,23 @@ jobs:
         run: tox -e py314-test-instrumentation-tortoiseorm -- -ra
 
   pypy3-test-instrumentation-tortoiseorm_ubuntu-latest:
-    name: instrumentation-tortoiseorm pypy-3.9 Ubuntu
+    name: instrumentation-tortoiseorm pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-tortoiseorm -- -ra
-
-  py39-test-instrumentation-httpx-0-wrapt1_ubuntu-latest:
-    name: instrumentation-httpx-0-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-httpx-0-wrapt1 -- -ra
-
-  py39-test-instrumentation-httpx-0-wrapt2_ubuntu-latest:
-    name: instrumentation-httpx-0-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-httpx-0-wrapt2 -- -ra
-
-  py39-test-instrumentation-httpx-1-wrapt1_ubuntu-latest:
-    name: instrumentation-httpx-1-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-httpx-1-wrapt1 -- -ra
-
-  py39-test-instrumentation-httpx-1-wrapt2_ubuntu-latest:
-    name: instrumentation-httpx-1-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-httpx-1-wrapt2 -- -ra
 
   py310-test-instrumentation-httpx-0-wrapt1_ubuntu-latest:
     name: instrumentation-httpx-0-wrapt1 3.10 Ubuntu
@@ -11824,17 +10038,17 @@ jobs:
         run: tox -e py314-test-instrumentation-httpx-1-wrapt2 -- -ra
 
   pypy3-test-instrumentation-httpx-0-wrapt2_ubuntu-latest:
-    name: instrumentation-httpx-0-wrapt2 pypy-3.9 Ubuntu
+    name: instrumentation-httpx-0-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -11843,42 +10057,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-httpx-0-wrapt2 -- -ra
 
   pypy3-test-instrumentation-httpx-1-wrapt2_ubuntu-latest:
-    name: instrumentation-httpx-1-wrapt2 pypy-3.9 Ubuntu
+    name: instrumentation-httpx-1-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-httpx-1-wrapt2 -- -ra
-
-  py39-test-util-http_ubuntu-latest:
-    name: util-http 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-util-http -- -ra
 
   py310-test-util-http_ubuntu-latest:
     name: util-http 3.10 Ubuntu
@@ -11976,42 +10171,23 @@ jobs:
         run: tox -e py314-test-util-http -- -ra
 
   pypy3-test-util-http_ubuntu-latest:
-    name: util-http pypy-3.9 Ubuntu
+    name: util-http pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-util-http -- -ra
-
-  py39-test-exporter-credential-provider-gcp_ubuntu-latest:
-    name: exporter-credential-provider-gcp 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-exporter-credential-provider-gcp -- -ra
 
   py310-test-exporter-credential-provider-gcp_ubuntu-latest:
     name: exporter-credential-provider-gcp 3.10 Ubuntu
@@ -12107,25 +10283,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-exporter-credential-provider-gcp -- -ra
-
-  py39-test-util-genai_ubuntu-latest:
-    name: util-genai 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-util-genai -- -ra
 
   py310-test-util-genai_ubuntu-latest:
     name: util-genai 3.10 Ubuntu
@@ -12223,61 +10380,23 @@ jobs:
         run: tox -e py314-test-util-genai -- -ra
 
   pypy3-test-util-genai_ubuntu-latest:
-    name: util-genai pypy-3.9 Ubuntu
+    name: util-genai pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-util-genai -- -ra
-
-  py39-test-propagator-aws-xray-0_ubuntu-latest:
-    name: propagator-aws-xray-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-propagator-aws-xray-0 -- -ra
-
-  py39-test-propagator-aws-xray-1_ubuntu-latest:
-    name: propagator-aws-xray-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-propagator-aws-xray-1 -- -ra
 
   py310-test-propagator-aws-xray-0_ubuntu-latest:
     name: propagator-aws-xray-0 3.10 Ubuntu
@@ -12470,17 +10589,17 @@ jobs:
         run: tox -e py314-test-propagator-aws-xray-1 -- -ra
 
   pypy3-test-propagator-aws-xray-0_ubuntu-latest:
-    name: propagator-aws-xray-0 pypy-3.9 Ubuntu
+    name: propagator-aws-xray-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -12489,42 +10608,23 @@ jobs:
         run: tox -e pypy3-test-propagator-aws-xray-0 -- -ra
 
   pypy3-test-propagator-aws-xray-1_ubuntu-latest:
-    name: propagator-aws-xray-1 pypy-3.9 Ubuntu
+    name: propagator-aws-xray-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-propagator-aws-xray-1 -- -ra
-
-  py39-test-propagator-ot-trace_ubuntu-latest:
-    name: propagator-ot-trace 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-propagator-ot-trace -- -ra
 
   py310-test-propagator-ot-trace_ubuntu-latest:
     name: propagator-ot-trace 3.10 Ubuntu
@@ -12622,99 +10722,23 @@ jobs:
         run: tox -e py314-test-propagator-ot-trace -- -ra
 
   pypy3-test-propagator-ot-trace_ubuntu-latest:
-    name: propagator-ot-trace pypy-3.9 Ubuntu
+    name: propagator-ot-trace pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-propagator-ot-trace -- -ra
-
-  py39-test-instrumentation-sio-pika-0-wrapt1_ubuntu-latest:
-    name: instrumentation-sio-pika-0-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-sio-pika-0-wrapt1 -- -ra
-
-  py39-test-instrumentation-sio-pika-0-wrapt2_ubuntu-latest:
-    name: instrumentation-sio-pika-0-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-sio-pika-0-wrapt2 -- -ra
-
-  py39-test-instrumentation-sio-pika-1-wrapt1_ubuntu-latest:
-    name: instrumentation-sio-pika-1-wrapt1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-sio-pika-1-wrapt1 -- -ra
-
-  py39-test-instrumentation-sio-pika-1-wrapt2_ubuntu-latest:
-    name: instrumentation-sio-pika-1-wrapt2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-sio-pika-1-wrapt2 -- -ra
 
   py310-test-instrumentation-sio-pika-0-wrapt1_ubuntu-latest:
     name: instrumentation-sio-pika-0-wrapt1 3.10 Ubuntu
@@ -13097,17 +11121,17 @@ jobs:
         run: tox -e py314-test-instrumentation-sio-pika-1-wrapt2 -- -ra
 
   pypy3-test-instrumentation-sio-pika-0-wrapt2_ubuntu-latest:
-    name: instrumentation-sio-pika-0-wrapt2 pypy-3.9 Ubuntu
+    name: instrumentation-sio-pika-0-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -13116,99 +11140,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-sio-pika-0-wrapt2 -- -ra
 
   pypy3-test-instrumentation-sio-pika-1-wrapt2_ubuntu-latest:
-    name: instrumentation-sio-pika-1-wrapt2 pypy-3.9 Ubuntu
+    name: instrumentation-sio-pika-1-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-sio-pika-1-wrapt2 -- -ra
-
-  py39-test-instrumentation-aio-pika-0_ubuntu-latest:
-    name: instrumentation-aio-pika-0 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aio-pika-0 -- -ra
-
-  py39-test-instrumentation-aio-pika-1_ubuntu-latest:
-    name: instrumentation-aio-pika-1 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aio-pika-1 -- -ra
-
-  py39-test-instrumentation-aio-pika-2_ubuntu-latest:
-    name: instrumentation-aio-pika-2 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aio-pika-2 -- -ra
-
-  py39-test-instrumentation-aio-pika-3_ubuntu-latest:
-    name: instrumentation-aio-pika-3 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aio-pika-3 -- -ra
 
   py310-test-instrumentation-aio-pika-0_ubuntu-latest:
     name: instrumentation-aio-pika-0 3.10 Ubuntu
@@ -13591,17 +11539,17 @@ jobs:
         run: tox -e py314-test-instrumentation-aio-pika-3 -- -ra
 
   pypy3-test-instrumentation-aio-pika-0_ubuntu-latest:
-    name: instrumentation-aio-pika-0 pypy-3.9 Ubuntu
+    name: instrumentation-aio-pika-0 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -13610,17 +11558,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-aio-pika-0 -- -ra
 
   pypy3-test-instrumentation-aio-pika-1_ubuntu-latest:
-    name: instrumentation-aio-pika-1 pypy-3.9 Ubuntu
+    name: instrumentation-aio-pika-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -13629,17 +11577,17 @@ jobs:
         run: tox -e pypy3-test-instrumentation-aio-pika-1 -- -ra
 
   pypy3-test-instrumentation-aio-pika-2_ubuntu-latest:
-    name: instrumentation-aio-pika-2 pypy-3.9 Ubuntu
+    name: instrumentation-aio-pika-2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -13648,42 +11596,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-aio-pika-2 -- -ra
 
   pypy3-test-instrumentation-aio-pika-3_ubuntu-latest:
-    name: instrumentation-aio-pika-3 pypy-3.9 Ubuntu
+    name: instrumentation-aio-pika-3 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aio-pika-3 -- -ra
-
-  py39-test-instrumentation-aiokafka_ubuntu-latest:
-    name: instrumentation-aiokafka 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-aiokafka -- -ra
 
   py310-test-instrumentation-aiokafka_ubuntu-latest:
     name: instrumentation-aiokafka 3.10 Ubuntu
@@ -13781,42 +11710,23 @@ jobs:
         run: tox -e py314-test-instrumentation-aiokafka -- -ra
 
   pypy3-test-instrumentation-aiokafka_ubuntu-latest:
-    name: instrumentation-aiokafka pypy-3.9 Ubuntu
+    name: instrumentation-aiokafka pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aiokafka -- -ra
-
-  py39-test-instrumentation-kafka-python_ubuntu-latest:
-    name: instrumentation-kafka-python 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-kafka-python -- -ra
 
   py310-test-instrumentation-kafka-python_ubuntu-latest:
     name: instrumentation-kafka-python 3.10 Ubuntu
@@ -13855,25 +11765,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py311-test-instrumentation-kafka-python -- -ra
-
-  py39-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-kafka-pythonng -- -ra
 
   py310-test-instrumentation-kafka-pythonng_ubuntu-latest:
     name: instrumentation-kafka-pythonng 3.10 Ubuntu
@@ -13971,17 +11862,17 @@ jobs:
         run: tox -e py314-test-instrumentation-kafka-pythonng -- -ra
 
   pypy3-test-instrumentation-kafka-python_ubuntu-latest:
-    name: instrumentation-kafka-python pypy-3.9 Ubuntu
+    name: instrumentation-kafka-python pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
@@ -13990,42 +11881,23 @@ jobs:
         run: tox -e pypy3-test-instrumentation-kafka-python -- -ra
 
   pypy3-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng pypy-3.9 Ubuntu
+    name: instrumentation-kafka-pythonng pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-kafka-pythonng -- -ra
-
-  py39-test-instrumentation-confluent-kafka_ubuntu-latest:
-    name: instrumentation-confluent-kafka 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-confluent-kafka -- -ra
 
   py310-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.10 Ubuntu
@@ -14122,25 +11994,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-confluent-kafka -- -ra
 
-  py39-test-instrumentation-asyncio_ubuntu-latest:
-    name: instrumentation-asyncio 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-asyncio -- -ra
-
   py310-test-instrumentation-asyncio_ubuntu-latest:
     name: instrumentation-asyncio 3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -14235,44 +12088,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-asyncio -- -ra
-
-  py39-test-instrumentation-cassandra-driver_ubuntu-latest:
-    name: instrumentation-cassandra-driver 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-cassandra-driver -- -ra
-
-  py39-test-instrumentation-cassandra-scylla_ubuntu-latest:
-    name: instrumentation-cassandra-scylla 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-cassandra-scylla -- -ra
 
   py310-test-instrumentation-cassandra-driver_ubuntu-latest:
     name: instrumentation-cassandra-driver 3.10 Ubuntu
@@ -14465,42 +12280,23 @@ jobs:
         run: tox -e py314-test-instrumentation-cassandra-scylla -- -ra
 
   pypy3-test-instrumentation-cassandra-scylla_ubuntu-latest:
-    name: instrumentation-cassandra-scylla pypy-3.9 Ubuntu
+    name: instrumentation-cassandra-scylla pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-cassandra-scylla -- -ra
-
-  py39-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-processor-baggage -- -ra
 
   py310-test-processor-baggage_ubuntu-latest:
     name: processor-baggage 3.10 Ubuntu
@@ -14598,61 +12394,23 @@ jobs:
         run: tox -e py314-test-processor-baggage -- -ra
 
   pypy3-test-processor-baggage_ubuntu-latest:
-    name: processor-baggage pypy-3.9 Ubuntu
+    name: processor-baggage pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout repo @ SHA - ${{ github.sha }}
         uses: actions/checkout@v4
 
-      - name: Set up Python pypy-3.9
+      - name: Set up Python pypy-3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "pypy-3.9"
+          python-version: "pypy-3.10"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
         run: tox -e pypy3-test-processor-baggage -- -ra
-
-  py39-test-opamp-client-latest_ubuntu-latest:
-    name: opamp-client-latest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-opamp-client-latest -- -ra
-
-  py39-test-opamp-client-lowest_ubuntu-latest:
-    name: opamp-client-lowest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-opamp-client-lowest -- -ra
 
   py310-test-opamp-client-latest_ubuntu-latest:
     name: opamp-client-latest 3.10 Ubuntu
