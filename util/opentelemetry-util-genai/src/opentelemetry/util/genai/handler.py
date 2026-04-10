@@ -17,7 +17,7 @@ Telemetry handler for GenAI invocations.
 
 This module exposes the `TelemetryHandler` class, which manages the lifecycle of
 GenAI (Generative AI) invocations and emits telemetry data (spans and related attributes).
-It supports starting, stopping, and failing LLM invocations.
+It supports starting, stopping, and failing LLM invocations and tool call executions.
 
 Classes:
     - TelemetryHandler: Manages GenAI invocation lifecycles and emits telemetry.
@@ -25,12 +25,8 @@ Classes:
 Functions:
     - get_telemetry_handler: Returns a singleton `TelemetryHandler` instance.
 
-Usage:
+Usage - LLM Invocations:
     handler = get_telemetry_handler()
-
-    # Create an invocation object with your request data
-    # The span and context_token attributes are set by the TelemetryHandler, and
-    # managed by the TelemetryHandler during the lifecycle of the span.
 
     # Use the context manager to manage the lifecycle of an LLM invocation.
     with handler.llm(invocation) as invocation:
@@ -45,17 +41,24 @@ Usage:
         provider="my-provider",
         attributes={"custom": "attr"},
     )
-
-    # Start the invocation (opens a span)
     handler.start_llm(invocation)
-
-    # Populate outputs and any additional attributes, then stop (closes the span)
     invocation.output_messages = [...]
-    invocation.attributes.update({"more": "attrs"})
     handler.stop_llm(invocation)
 
-    # Or, in case of error
-    handler.fail_llm(invocation, Error(type="...", message="..."))
+Usage - Tool Call Executions:
+    handler = get_telemetry_handler()
+
+    # Use the context manager to manage the lifecycle of a tool call.
+    tool = ToolCall(name="get_weather", arguments={"location": "Paris"}, id="call_123")
+    with handler.tool_call(tool) as tc:
+        # Execute tool logic
+        tc.tool_result = {"temp": 20, "condition": "sunny"}
+
+    # Or, manage the lifecycle manually
+    tool = ToolCall(name="get_weather", arguments={"location": "Paris"})
+    handler.start(tool)
+    tool.tool_result = {"temp": 20}
+    handler.stop(tool)
 """
 
 from __future__ import annotations
@@ -84,9 +87,12 @@ from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
     _apply_llm_finish_attributes,
+    _apply_tool_call_attributes,
     _apply_workflow_finish_attributes,
+    _finish_tool_call_span,
     _get_embedding_span_name,
     _get_llm_span_name,
+    _get_tool_call_span_name,
     _get_workflow_span_name,
     _maybe_emit_llm_event,
 )
@@ -95,6 +101,7 @@ from opentelemetry.util.genai.types import (
     Error,
     GenAIInvocation,
     LLMInvocation,
+    ToolCall,
     WorkflowInvocation,
 )
 from opentelemetry.util.genai.version import __version__
@@ -150,32 +157,26 @@ class TelemetryHandler:
             schema_url=schema_url,
         )
 
-    def _record_llm_metrics(
+    def _record_metrics(
         self,
-        invocation: LLMInvocation,
+        invocation: GenAIInvocation,
         span: Span | None = None,
-        *,
         error_type: str | None = None,
     ) -> None:
-        if self._metrics_recorder is None or span is None:
+        """Record metrics for an invocation."""
+        # Only LLMInvocation and ToolCall metrics are currently supported
+        if (
+            self._metrics_recorder is None
+            or span is None
+            or not isinstance(invocation, (LLMInvocation, ToolCall))
+        ):
             return
+
         self._metrics_recorder.record(
             span,
             invocation,
             error_type=error_type,
         )
-
-    @staticmethod
-    def _record_embedding_metrics(
-        invocation: EmbeddingInvocation,
-        span: Span | None = None,
-        *,
-        error_type: str | None = None,
-    ) -> None:
-        # Metrics recorder currently supports LLMInvocation fields only.
-        # Keep embedding metrics as a no-op until dedicated embedding
-        # metric support is added.
-        return
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
@@ -185,6 +186,9 @@ class TelemetryHandler:
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
             kind = SpanKind.CLIENT
+        elif isinstance(invocation, ToolCall):
+            span_name = _get_tool_call_span_name(invocation)
+            kind = SpanKind.INTERNAL
         elif isinstance(invocation, WorkflowInvocation):
             span_name = _get_workflow_span_name(invocation)
             kind = SpanKind.INTERNAL
@@ -195,7 +199,10 @@ class TelemetryHandler:
             name=span_name,
             kind=kind,
         )
-        # Record a monotonic start timestamp (seconds) for duration
+        if isinstance(invocation, ToolCall):
+            _apply_tool_call_attributes(
+                span, invocation, capture_content=False
+            )
         # calculation using timeit.default_timer.
         invocation.monotonic_start_s = timeit.default_timer()
         invocation.span = span
@@ -214,11 +221,14 @@ class TelemetryHandler:
         try:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
-                self._record_llm_metrics(invocation, span)
+                self._record_metrics(invocation, span)
                 _maybe_emit_llm_event(self._logger, span, invocation)
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
-                self._record_embedding_metrics(invocation, span)
+                self._record_metrics(invocation, span)
+            elif isinstance(invocation, ToolCall):
+                _finish_tool_call_span(span, invocation, capture_content=True)
+                self._record_metrics(invocation, span)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 # TODO: Add workflow metrics when supported
@@ -240,18 +250,19 @@ class TelemetryHandler:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
-                self._record_llm_metrics(
-                    invocation, span, error_type=error_type
-                )
+                self._record_metrics(invocation, span, error_type)
                 _maybe_emit_llm_event(
                     self._logger, span, invocation, error_type
                 )
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
-                self._record_embedding_metrics(
-                    invocation, span, error_type=error_type
-                )
+                self._record_metrics(invocation, span, error_type)
+            elif isinstance(invocation, ToolCall):
+                invocation.error_type = error_type
+                _finish_tool_call_span(span, invocation, capture_content=True)
+                self._record_metrics(invocation, span, error_type)
+                _apply_error_attributes(span, error, error_type)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
@@ -291,6 +302,29 @@ class TelemetryHandler:
     ) -> LLMInvocation:
         """Fail an LLM invocation and end its span with error status."""
         return self._fail(invocation, error)
+
+    @contextmanager
+    def tool_call(self, tool_call: ToolCall) -> Iterator[ToolCall]:
+        """Context manager for tool call invocations.
+
+        Only set data attributes on the tool_call object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the tool call and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+
+        Example:
+            with handler.tool_call(ToolCall(name="get_weather", arguments={"location": "Paris"})) as tc:
+                # Execute tool logic
+                tc.tool_result = {"temp": 20, "condition": "sunny"}
+        """
+        self.start(tool_call)
+        try:
+            yield tool_call
+        except Exception as exc:
+            self.fail(tool_call, Error(message=str(exc), type=type(exc)))
+            raise
+        self.stop(tool_call)
 
     @contextmanager
     def llm(

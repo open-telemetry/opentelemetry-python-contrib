@@ -260,6 +260,7 @@ class GenAIInvocation:
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
     error_type: str | None = None
+    operation_name: str = ""
 
     monotonic_start_s: float | None = None
     """
@@ -277,7 +278,6 @@ class WorkflowInvocation(GenAIInvocation):
     """
 
     name: str = ""
-    operation_name: str = "invoke_workflow"
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
     )
@@ -297,7 +297,6 @@ class LLMInvocation(GenAIInvocation):
     set by the TelemetryHandler.
     """
 
-    operation_name: str = GenAI.GenAiOperationNameValues.CHAT.value
     request_model: str | None = None
     input_messages: list[InputMessage] = field(
         default_factory=_new_input_messages
@@ -336,6 +335,9 @@ class LLMInvocation(GenAIInvocation):
     server_address: str | None = None
     server_port: int | None = None
 
+    def __post_init__(self) -> None:
+        self.operation_name = GenAI.GenAiOperationNameValues.CHAT.value
+
 
 @dataclass
 class EmbeddingInvocation(GenAIInvocation):
@@ -345,7 +347,6 @@ class EmbeddingInvocation(GenAIInvocation):
     and context_token attributes are set by the TelemetryHandler.
     """
 
-    operation_name: str = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
     request_model: str | None = None
     provider: str | None = None  # e.g., azure.ai.openai, openai, aws.bedrock
     server_address: str | None = None
@@ -371,6 +372,9 @@ class EmbeddingInvocation(GenAIInvocation):
     Additional attributes to set on metrics. Must be of a low cardinality.
     These attributes will not be set on spans or events.
     """
+
+    def __post_init__(self) -> None:
+        self.operation_name = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
 
 
 @dataclass()
@@ -414,8 +418,22 @@ class ToolCall(GenAIInvocation):
     # gen_ai.tool.call.result - Result returned by the tool (Opt-In, may contain sensitive data)
     tool_result: Any = None
 
+    # Metric-related fields (for gen_ai.client.operation.duration)
+    provider: str | None = None  # gen_ai.provider.name (Required for metrics)
+    server_address: str | None = None  # server.address (Recommended)
+    server_port: int | None = None  # server.port (Conditionally Required)
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of low cardinality.
+    """
+
     # Timing field (not inherited from GenAIInvocation, matches LLMInvocation pattern)
     monotonic_start_s: float | None = None
+
+    def __post_init__(self) -> None:
+        self.operation_name = GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
 
 
 @dataclass
