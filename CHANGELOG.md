@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+<<<<<<< fix/asyncpg-silence-cleanup
+=======
+## Version 1.41.0/0.62b0 (2026-04-09)
+  
+>>>>>>> main
 ### Added
 
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
