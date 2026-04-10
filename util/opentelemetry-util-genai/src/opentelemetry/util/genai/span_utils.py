@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from opentelemetry._logs import Logger, LogRecord
+from opentelemetry._logs import LogRecord
 from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -190,13 +190,12 @@ def _get_llm_messages_attributes_for_event(
     return {key: value for key, value in optional_attrs if value is not None}
 
 
-def _maybe_emit_llm_event(
-    logger: Logger | None,
+def _maybe_build_llm_event_record(
     span: Span,
     invocation: LLMInvocation,
     error_type: str | None = None,
-) -> None:
-    """Emit a gen_ai.client.inference.operation.details event to the logger.
+) -> LogRecord | None:
+    """Build a LogRecord for a GenAI invocation event, or return None if events are disabled.
 
     This function creates a LogRecord event following the semantic convention
     for gen_ai.client.inference.operation.details as specified in the GenAI
@@ -205,8 +204,8 @@ def _maybe_emit_llm_event(
     For more details, see the semantic convention documentation:
     https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md#event-eventgen_aiclientinferenceoperationdetails
     """
-    if not is_experimental_mode() or not should_emit_event() or logger is None:
-        return
+    if not is_experimental_mode() or not should_emit_event():
+        return None
 
     # Build event attributes by reusing the attribute getter functions
     attributes: dict[str, Any] = {}
@@ -225,14 +224,13 @@ def _maybe_emit_llm_event(
     if error_type is not None:
         attributes[error_attributes.ERROR_TYPE] = error_type
 
-    # Create and emit the event
+    # Create the event record
     context = set_span_in_context(span, get_current())
-    event = LogRecord(
+    return LogRecord(
         event_name="gen_ai.client.inference.operation.details",
         attributes=attributes,
         context=context,
     )
-    logger.emit(event)
 
 
 def _apply_llm_finish_attributes(
@@ -405,7 +403,7 @@ __all__ = [
     "_get_llm_request_attributes",
     "_get_llm_response_attributes",
     "_get_llm_span_name",
-    "_maybe_emit_llm_event",
+    "_maybe_build_llm_event_record",
     "_get_workflow_common_attributes",
     "_apply_workflow_finish_attributes",
     "_apply_embedding_finish_attributes",
