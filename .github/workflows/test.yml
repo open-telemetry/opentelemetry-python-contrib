@@ -6351,7 +6351,7 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-exporter-prometheus-remote-write -- -ra
 
-  pypy310-test-exporter-prometheus-remote-write_ubuntu-latest:
+  pypy3-test-exporter-prometheus-remote-write_ubuntu-latest:
     name: exporter-prometheus-remote-write pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -6368,7 +6368,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy310-test-exporter-prometheus-remote-write -- -ra
+        run: tox -e pypy3-test-exporter-prometheus-remote-write -- -ra
 
   py310-test-instrumentation-mysql-0_ubuntu-latest:
     name: instrumentation-mysql-0 3.10 Ubuntu

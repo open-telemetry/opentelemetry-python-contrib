@@ -48,7 +48,6 @@ def get_test_job_datas(tox_envs: list, operating_systems: list) -> list:
 
     python_version_alias = {
         "pypy3": "pypy-3.10",
-        "pypy310": "pypy-3.10",
         "py310": "3.10",
         "py311": "3.11",
         "py312": "3.12",
