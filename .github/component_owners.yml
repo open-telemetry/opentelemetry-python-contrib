@@ -25,15 +25,6 @@ components:
   instrumentation/opentelemetry-instrumentation-urllib3:
     - shalevr
 
-  instrumentation-genai/:
-    - karthikscale3
-    - lmolkova
-    - lzchen
-    - gyliu513
-    - nirga
-    - alizenhom
-    - codefromthecrypt
-
   processor/opentelemetry-processor-baggage:
     - codeboten
 
@@ -45,8 +36,10 @@ components:
     - jj22ee
 
   util/opentelemetry-util-genai:
+    - Cirilla-zmh
     - DylanRussell
     - keith-decker
+    - lmolkova
 
   instrumentation-genai/opentelemetry-instrumentation-langchain:
     - zhirafovod
@@ -54,6 +47,9 @@ components:
 
   instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2:
     - nagkumar91
+
+  instrumentation-genai/opentelemetry-instrumentation-openai-v2:
+    - lmolkova
 
   instrumentation-genai/opentelemetry-instrumentation-anthropic:
     - vasantteja

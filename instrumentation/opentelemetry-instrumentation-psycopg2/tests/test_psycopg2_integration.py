@@ -216,6 +216,96 @@ class TestPostgresqlIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
 
     # pylint: disable=unused-argument
+    def test_instrument_connection_is_idempotent(self):
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+        instrumentor = Psycopg2Instrumentor()
+        cnx = instrumentor.instrument_connection(cnx)
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_with_custom_cursor_factory_instrument_then_uninstrument(
+        self,
+    ):
+        instrumentor = Psycopg2Instrumentor()
+        cnx = psycopg2.connect(database="test", cursor_factory=MockCursor)
+        query = "SELECT * FROM test"
+
+        self.assertIs(cnx.cursor_factory, MockCursor)
+
+        cnx = instrumentor.instrument_connection(cnx)
+        self.assertIsNot(cnx.cursor_factory, MockCursor)
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        self.assertIs(cnx.cursor_factory, MockCursor)
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_uninstrument_connection_is_idempotent(self):
+        instrumentor = Psycopg2Instrumentor()
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_reinstrument_after_uninstrument(self):
+        instrumentor = Psycopg2Instrumentor()
+        cnx = psycopg2.connect(database="test")
+        query = "SELECT * FROM test"
+
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        cnx = instrumentor.instrument_connection(cnx)
+        cursor = cnx.cursor()
+        cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 2)
+
+    # pylint: disable=unused-argument
     def test_uninstrument_connection_with_instrument(self):
         Psycopg2Instrumentor().instrument()
         cnx = psycopg2.connect(database="test")
@@ -281,3 +371,24 @@ class TestPostgresqlIntegration(TestBase):
         cursor.execute(query)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    def test_span_capture_params_deactivated_by_default(self):
+        Psycopg2Instrumentor().instrument()
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test WHERE id = %s AND name = %s"
+        cursor.execute(query, (42, "John Doe"))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertNotIn("db.statement.parameters", spans_list[0].attributes)
+
+    def test_span_capture_params_activated(self):
+        Psycopg2Instrumentor().instrument(capture_parameters=True)
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test WHERE id = %s AND name = %s"
+        cursor.execute(query, (42, "John Doe"))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"],
+            "(42, 'John Doe')",
+        )

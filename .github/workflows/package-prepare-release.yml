@@ -5,6 +5,7 @@ on:
       package:
         type: choice
         options:
+        - opentelemetry-opamp-client
         - opentelemetry-propagator-aws-xray
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
@@ -33,6 +34,8 @@ jobs:
       next_version: ${{ steps.verify.outputs.next_version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - id: verify
         name: Verify prerequisites

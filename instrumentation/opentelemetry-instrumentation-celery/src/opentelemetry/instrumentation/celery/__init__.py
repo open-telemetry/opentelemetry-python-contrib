@@ -182,7 +182,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         )
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         utils.attach_context(task, task_id, span, activation, token)
 
     def _trace_postrun(self, *args, **kwargs):
@@ -247,7 +247,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             utils.set_attributes_from_context(span, kwargs)
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
         utils.attach_context(
             task, task_id, span, activation, None, is_publish=True
@@ -274,7 +274,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         _, activation, _ = ctx
 
-        activation.__exit__(None, None, None)  # pylint: disable=E1101
+        activation.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
         utils.detach_context(task, task_id, is_publish=True)
 
     @staticmethod
