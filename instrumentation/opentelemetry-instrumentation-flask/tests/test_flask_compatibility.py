@@ -31,12 +31,13 @@ from opentelemetry.instrumentation.flask import (
     _request_ctx_ref,
 )
 from opentelemetry.test.wsgitestutil import WsgiTestBase
+from opentelemetry.util._importlib_metadata import version
 
 
 class TestFlaskCompatibility(WsgiTestBase):
     def setUp(self):
         super().setUp()
-        self.flask_version = flask.__version__
+        self.flask_version = version("flask")
 
     def test_streaming_response_context_cleanup(self):
         """Test that streaming responses properly clean up context"""
