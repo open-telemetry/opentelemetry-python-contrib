@@ -4679,25 +4679,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-falcon-4 -- -ra
 
-  pypy3-test-instrumentation-falcon-0_ubuntu-latest:
-    name: instrumentation-falcon-0 pypy-3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-falcon-0 -- -ra
-
   pypy3-test-instrumentation-falcon-1_ubuntu-latest:
     name: instrumentation-falcon-1 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -9048,25 +9029,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-sqlalchemy-2 -- -ra
-
-  pypy3-test-instrumentation-sqlalchemy-0_ubuntu-latest:
-    name: instrumentation-sqlalchemy-0 pypy-3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-sqlalchemy-0 -- -ra
 
   pypy3-test-instrumentation-sqlalchemy-1_ubuntu-latest:
     name: instrumentation-sqlalchemy-1 pypy-3.10 Ubuntu
