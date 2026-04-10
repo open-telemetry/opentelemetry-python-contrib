@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.41.0/0.62b0 (2026-04-09)
   
 ### Added
+- Add `BaggageLogProcessor` to `opentelemetry-processor-baggage`
+  ([#4371](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4371))
 
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
