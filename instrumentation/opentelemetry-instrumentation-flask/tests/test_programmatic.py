@@ -18,7 +18,9 @@ from unittest.mock import Mock, patch
 
 from flask import Flask, request
 
+import opentelemetry.instrumentation.flask as otel_flask
 from opentelemetry import trace
+from opentelemetry.instrumentation._labeler import clear_labeler, get_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -153,6 +155,7 @@ SCOPE = "opentelemetry.instrumentation.flask"
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
+        clear_labeler()
 
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -180,6 +183,18 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.exclude_patch.start()
 
         self.app = Flask(__name__)
+
+        @self.app.route("/test_labeler")
+        def test_labeler_route():
+            labeler = get_labeler()
+            labeler.add("custom_attr", "test_value")
+            labeler.add("http.method", "POST")
+            return "OK"
+
+        @self.app.route("/no_labeler")
+        def test_no_labeler_route():
+            return "No labeler"
+
         FlaskInstrumentor().instrument_app(self.app)
 
         self._common_initialization()
@@ -520,6 +535,122 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                         _recommended_metrics_attrs_old[metric.name],
                     )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_flask_metrics_custom_attributes_skip_override(self):
+        self.client.get("/test_labeler")
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+        histogram_point_seen = False
+
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                data_points = list(metric.data.data_points)
+                for point in data_points:
+                    self.assertIsInstance(point, NumberDataPoint)
+                    if point.attributes.get("custom_attr") != "test_value":
+                        continue
+                    self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+                    active_requests_point_seen = True
+                continue
+
+            if metric.name != "http.server.duration":
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            histogram_point_seen = True
+
+        self.assertTrue(active_requests_point_seen)
+        self.assertTrue(histogram_point_seen)
+
+    def test_flask_metrics_active_requests_custom_attributes_new_semconv(self):
+        self.client.get("/test_labeler")
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+
+        for metric in metrics:
+            if metric.name != "http.server.active_requests":
+                continue
+
+            data_points = list(metric.data.data_points)
+            for point in data_points:
+                self.assertIsInstance(point, NumberDataPoint)
+                if point.attributes.get("custom_attr") != "test_value":
+                    continue
+                self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+                active_requests_point_seen = True
+
+        self.assertTrue(active_requests_point_seen)
+
+    def test_flask_active_requests_attrs_use_enrich_old_semconv(self):
+        with patch(
+            "opentelemetry.instrumentation.flask.enrich_metric_attributes",
+            wraps=otel_flask.enrich_metric_attributes,
+        ) as mock_enrich:
+            self.client.get("/hello/123")
+
+        enriched_active_attrs_seen = False
+        for call in mock_enrich.call_args_list:
+            if not call.args:
+                continue
+            attrs = call.args[0]
+            if HTTP_METHOD in attrs and HTTP_STATUS_CODE not in attrs:
+                enriched_active_attrs_seen = True
+                break
+
+        self.assertTrue(enriched_active_attrs_seen)
+
+    def test_flask_active_requests_attrs_use_enrich_new_semconv(self):
+        with patch(
+            "opentelemetry.instrumentation.flask.enrich_metric_attributes",
+            wraps=otel_flask.enrich_metric_attributes,
+        ) as mock_enrich:
+            self.client.get("/hello/123")
+
+        enriched_active_attrs_seen = False
+        for call in mock_enrich.call_args_list:
+            if not call.args:
+                continue
+            attrs = call.args[0]
+            if (
+                HTTP_REQUEST_METHOD in attrs
+                and HTTP_RESPONSE_STATUS_CODE not in attrs
+            ):
+                enriched_active_attrs_seen = True
+                break
+
+        self.assertTrue(enriched_active_attrs_seen)
+
+    def test_flask_metrics_no_labeler(self):
+        self.client.get("/test_labeler")
+        self.client.get("/no_labeler")
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        labeler_attrs = None
+        no_labeler_attrs = None
+
+        for metric in metrics:
+            if metric.name != "http.server.duration":
+                continue
+
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 2)
+
+            for point in data_points:
+                self.assertIsInstance(point, HistogramDataPoint)
+                attrs = point.attributes
+                if attrs.get(HTTP_TARGET) == "/test_labeler":
+                    labeler_attrs = attrs
+                elif attrs.get(HTTP_TARGET) == "/no_labeler":
+                    no_labeler_attrs = attrs
+
+        self.assertIsNotNone(labeler_attrs)
+        self.assertIsNotNone(no_labeler_attrs)
+        self.assertEqual(labeler_attrs["custom_attr"], "test_value")
+        self.assertNotIn("custom_attr", no_labeler_attrs)
 
     def test_flask_metrics_new_semconv(self):
         start = default_timer()

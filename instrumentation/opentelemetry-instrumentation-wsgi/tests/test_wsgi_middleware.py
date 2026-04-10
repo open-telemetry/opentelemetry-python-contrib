@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._labeler import clear_labeler, get_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -142,6 +143,30 @@ def error_wsgi_unhandled(environ, start_response):
     raise ValueError
 
 
+def error_wsgi_unhandled_custom_attrs(environ, start_response):
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add_attributes({"endpoint_type": "test", "feature_flag": True})
+    assert isinstance(environ, dict)
+    raise ValueError
+
+
+def error_wsgi_unhandled_override_attrs(environ, start_response):
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add("http.method", "POST")
+    assert isinstance(environ, dict)
+    raise ValueError
+
+
+def error_wsgi_unhandled_override_attrs_new_semconv(environ, start_response):
+    labeler = get_labeler()
+    labeler.add("custom_attr", "test_value")
+    labeler.add("http.request.method", "POST")
+    assert isinstance(environ, dict)
+    raise ValueError
+
+
 def wsgi_with_custom_response_headers(environ, start_response):
     assert isinstance(environ, dict)
     start_response(
@@ -207,9 +232,11 @@ _recommended_metrics_attrs_both = {
 SCOPE = "opentelemetry.instrumentation.wsgi"
 
 
+# pylint: disable=too-many-public-methods
 class TestWsgiApplication(WsgiTestBase):
     def setUp(self):
         super().setUp()
+        clear_labeler()
 
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -450,6 +477,130 @@ class TestWsgiApplication(WsgiTestBase):
                         _recommended_metrics_attrs_old[metric.name],
                     )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_wsgi_metrics_custom_attributes_skip_override_old_semconv(self):
+        labeler = get_labeler()
+        labeler.add("custom_attr", "test_value")
+        labeler.add("http.method", "POST")
+
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+        histogram_point_seen = False
+
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                data_points = list(metric.data.data_points)
+                self.assertEqual(len(data_points), 1)
+                point = data_points[0]
+                self.assertIsInstance(point, NumberDataPoint)
+                self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+                self.assertEqual(point.attributes["custom_attr"], "test_value")
+                active_requests_point_seen = True
+                continue
+
+            if metric.name != "http.server.duration":
+                continue
+
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+            self.assertNotIn("custom_attr", point.attributes)
+            histogram_point_seen = True
+
+        self.assertTrue(active_requests_point_seen)
+        self.assertTrue(histogram_point_seen)
+
+    def test_wsgi_metrics_custom_attributes_skip_override_new_semconv(self):
+        labeler = get_labeler()
+        labeler.add("custom_attr", "test_value")
+        labeler.add("http.request.method", "POST")
+
+        app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+        histogram_point_seen = False
+
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                data_points = list(metric.data.data_points)
+                self.assertEqual(len(data_points), 1)
+                point = data_points[0]
+                self.assertIsInstance(point, NumberDataPoint)
+                self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+                self.assertEqual(point.attributes["custom_attr"], "test_value")
+                active_requests_point_seen = True
+                continue
+
+            if metric.name != "http.server.request.duration":
+                continue
+
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+            self.assertNotIn("custom_attr", point.attributes)
+            histogram_point_seen = True
+
+        self.assertTrue(active_requests_point_seen)
+        self.assertTrue(histogram_point_seen)
+
+    def test_wsgi_duration_metrics_custom_attributes_skip_override_old_semconv(
+        self,
+    ):
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            error_wsgi_unhandled_override_attrs
+        )
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        histogram_point_seen = False
+
+        for metric in metrics:
+            if metric.name != "http.server.duration":
+                continue
+
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            histogram_point_seen = True
+
+        self.assertTrue(histogram_point_seen)
+
+    def test_wsgi_duration_metrics_custom_attributes_skip_override_new_semconv(
+        self,
+    ):
+        app = otel_wsgi.OpenTelemetryMiddleware(
+            error_wsgi_unhandled_override_attrs_new_semconv
+        )
+        self.assertRaises(ValueError, app, self.environ, self.start_response)
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        histogram_point_seen = False
+
+        for metric in metrics:
+            if metric.name != "http.server.request.duration":
+                continue
+
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            histogram_point_seen = True
+
+        self.assertTrue(histogram_point_seen)
 
     def test_wsgi_metrics_exemplars_expected_old_semconv(self):  # type: ignore[func-returns-value]
         """Failing test asserting exemplars should be present for duration histogram (old semconv)."""
