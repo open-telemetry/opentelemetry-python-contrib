@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
 ## Unreleased
+### Fixed
 
+- `opentelemetry-instrumentation`: fix `_set_status` overriding existing span status and description ([#4410](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4410))
 ## Version 1.41.0/0.62b0 (2026-04-09)
 
 ### Added
@@ -28,9 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
 
-### Fixed
 
-- `opentelemetry-instrumentation`: fix `_set_status` overriding existing span status and description ([#4410](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4410))
 - `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
  ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
 - `opentelemetry-instrumentation-confluent-kafka`: Skip `recv` span creation when `poll()` returns no message or `consume()` returns an empty list, avoiding empty spans on idle polls
