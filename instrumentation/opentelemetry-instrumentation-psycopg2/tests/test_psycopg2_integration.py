@@ -371,3 +371,24 @@ class TestPostgresqlIntegration(TestBase):
         cursor.execute(query)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    def test_span_capture_params_deactivated_by_default(self):
+        Psycopg2Instrumentor().instrument()
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test WHERE id = %s AND name = %s"
+        cursor.execute(query, (42, "John Doe"))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertNotIn("db.statement.parameters", spans_list[0].attributes)
+
+    def test_span_capture_params_activated(self):
+        Psycopg2Instrumentor().instrument(capture_parameters=True)
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test WHERE id = %s AND name = %s"
+        cursor.execute(query, (42, "John Doe"))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"],
+            "(42, 'John Doe')",
+        )
