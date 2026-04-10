@@ -65,6 +65,7 @@ import timeit
 from contextlib import contextmanager
 from typing import Iterator, TypeVar
 
+from opentelemetry import baggage
 from opentelemetry import context as otel_context
 from opentelemetry._logs import (
     LoggerProvider,
@@ -179,13 +180,18 @@ class TelemetryHandler:
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
+        ctx = otel_context.get_current()
+        workflow_name = ""
         if isinstance(invocation, LLMInvocation):
             span_name = _get_llm_span_name(invocation)
             kind = SpanKind.CLIENT
+            if ctx:
+                invocation.workflow_name = baggage.get_baggage("gen_ai.workflow.name", ctx)  # Ensure workflow name is in baggage for LLM spans
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
             kind = SpanKind.CLIENT
         elif isinstance(invocation, WorkflowInvocation):
+            workflow_name = invocation.name
             span_name = _get_workflow_span_name(invocation)
             kind = SpanKind.INTERNAL
         else:
@@ -199,9 +205,11 @@ class TelemetryHandler:
         # calculation using timeit.default_timer.
         invocation.monotonic_start_s = timeit.default_timer()
         invocation.span = span
-        invocation.context_token = otel_context.attach(
-            set_span_in_context(span)
-        )
+        ctx = set_span_in_context(span)
+        if isinstance(invocation, WorkflowInvocation):
+            ctx = baggage.set_baggage("gen_ai.workflow.name", workflow_name, ctx)
+        invocation.context_token = otel_context.attach(ctx)
+
         return invocation
 
     def _stop(self, invocation: _T) -> _T:

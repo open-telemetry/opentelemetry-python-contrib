@@ -268,6 +268,9 @@ class GenAIInvocation:
     by the TelemetryHandler when starting an invocation.
     """
 
+    workflow_name: str | None = None
+    agent_name: str | None = None
+
 
 @dataclass
 class WorkflowInvocation(GenAIInvocation):
