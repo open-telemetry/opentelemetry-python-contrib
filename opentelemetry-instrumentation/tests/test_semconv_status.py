@@ -8,15 +8,15 @@
 
 import unittest
 from unittest.mock import MagicMock
-from opentelemetry.trace.status import Status, StatusCode
+
 from opentelemetry.instrumentation._semconv import (
     _set_status,
     _StabilityMode,
 )
+from opentelemetry.trace.status import Status, StatusCode
 
 
 class TestSetStatus(unittest.TestCase):
-
     def _make_span(self, status_code, description=None):
         span = MagicMock()
         span.is_recording.return_value = True
@@ -26,9 +26,14 @@ class TestSetStatus(unittest.TestCase):
     def test_does_not_downgrade_error_to_ok(self):
         """ERROR status should not be overridden by a lower priority OK"""
         span = self._make_span(StatusCode.ERROR, "original error")
-        _set_status(span, {}, 200, "200", server_span=True,
-                    sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
-        # set_status should NOT have been called (no downgrade)
+        _set_status(
+            span,
+            {},
+            200,
+            "200",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
         for call in span.set_status.call_args_list:
             args = call[0]
             if args:
@@ -37,8 +42,14 @@ class TestSetStatus(unittest.TestCase):
     def test_does_not_wipe_description_with_none(self):
         """Same ERROR status should preserve existing description"""
         span = self._make_span(StatusCode.ERROR, "keep this message")
-        _set_status(span, {}, 500, "500", server_span=True,
-                    sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
+        _set_status(
+            span,
+            {},
+            500,
+            "500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
         last_call = span.set_status.call_args
         if last_call:
             status_arg = last_call[0][0]
@@ -47,8 +58,14 @@ class TestSetStatus(unittest.TestCase):
     def test_upgrades_unset_to_error(self):
         """UNSET status should be upgraded to ERROR"""
         span = self._make_span(StatusCode.UNSET)
-        _set_status(span, {}, 500, "500", server_span=True,
-                    sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
+        _set_status(
+            span,
+            {},
+            500,
+            "500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
         span.set_status.assert_called()
         last_call = span.set_status.call_args[0][0]
         self.assertEqual(last_call.status_code, StatusCode.ERROR)
@@ -56,10 +73,12 @@ class TestSetStatus(unittest.TestCase):
     def test_unset_to_ok(self):
         """UNSET status should be upgraded to OK for 2xx"""
         span = self._make_span(StatusCode.UNSET)
-        _set_status(span, {}, 200, "200", server_span=False,
-                    sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
+        _set_status(
+            span,
+            {},
+            200,
+            "200",
+            server_span=False,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
         span.set_status.assert_called()
-
-
-if __name__ == "__main__":
-    unittest.main()
