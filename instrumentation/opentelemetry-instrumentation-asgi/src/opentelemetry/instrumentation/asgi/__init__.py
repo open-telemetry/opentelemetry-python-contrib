@@ -255,7 +255,10 @@ from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
-from opentelemetry.instrumentation.utils import _start_internal_or_server_span
+from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,
+    is_http_instrumentation_enabled,
+)
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
@@ -745,7 +748,10 @@ class OpenTelemetryMiddleware:
             send: An awaitable callable taking a single dictionary as argument.
         """
         start = default_timer()
-        if scope["type"] not in ("http", "websocket"):
+        if not is_http_instrumentation_enabled() or scope["type"] not in (
+            "http",
+            "websocket",
+        ):
             return await self.app(scope, receive, send)
 
         _, _, url = get_host_port_url_tuple(scope)
