@@ -256,9 +256,18 @@ def _new_str_any_dict() -> dict[str, Any]:
 
 @dataclass
 class GenAIInvocation:
+    operation_name: str = ""
+    provider: str | None = None
     context_token: ContextToken | None = None
     span: Span | None = None
     attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
+    metric_attributes: dict[str, Any] = field(
+        default_factory=_new_str_any_dict
+    )
+    """
+    Additional attributes to set on metrics. Must be of a low cardinality.
+    These attributes will not be set on spans or events.
+    """
     error_type: str | None = None
 
     monotonic_start_s: float | None = None
@@ -319,13 +328,6 @@ class LLMInvocation(GenAIInvocation):
     Additional attributes to set on spans and/or events. These attributes
     will not be set on metrics.
     """
-    metric_attributes: dict[str, Any] = field(
-        default_factory=_new_str_any_dict
-    )
-    """
-    Additional attributes to set on metrics. Must be of a low cardinality.
-    These attributes will not be set on spans or events.
-    """
     temperature: float | None = None
     top_p: float | None = None
     frequency_penalty: float | None = None
@@ -364,14 +366,6 @@ class EmbeddingInvocation(GenAIInvocation):
     will not be set on metrics.
     """
 
-    metric_attributes: dict[str, Any] = field(
-        default_factory=_new_str_any_dict
-    )
-    """
-    Additional attributes to set on metrics. Must be of a low cardinality.
-    These attributes will not be set on spans or events.
-    """
-
 
 @dataclass()
 class ToolCall(GenAIInvocation):
@@ -398,6 +392,8 @@ class ToolCall(GenAIInvocation):
     - gen_ai.tool.call.result: Result returned by tool (Opt-In, may contain sensitive data)
     - error.type: Error type if operation failed (Conditionally Required)
     """
+
+    operation_name: str = GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
 
     # Message identification fields (same as ToolCallRequest)
     # Note: These are required fields but must have defaults due to dataclass inheritance

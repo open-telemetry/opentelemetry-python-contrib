@@ -1,4 +1,4 @@
-"""Helpers for emitting GenAI metrics from LLM invocations."""
+"""Helpers for emitting GenAI metrics from invocations."""
 
 from __future__ import annotations
 
@@ -18,7 +18,11 @@ from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
     create_token_histogram,
 )
-from opentelemetry.util.genai.types import LLMInvocation
+from opentelemetry.util.genai.types import (
+    EmbeddingInvocation,
+    GenAIInvocation,
+    LLMInvocation,
+)
 from opentelemetry.util.types import AttributeValue
 
 
@@ -29,57 +33,65 @@ class InvocationMetricsRecorder:
         self._duration_histogram: Histogram = create_duration_histogram(meter)
         self._token_histogram: Histogram = create_token_histogram(meter)
 
+    @staticmethod
+    def _build_attributes(
+        invocation: GenAIInvocation,
+        error_type: Optional[str] = None,
+    ) -> Dict[str, AttributeValue]:
+        """Build metric attributes from an invocation."""
+        attributes: Dict[str, AttributeValue] = {}
+
+        if invocation.operation_name:
+            attributes[GenAI.GEN_AI_OPERATION_NAME] = invocation.operation_name
+
+        request_model = getattr(invocation, "request_model", None)
+        if request_model:
+            attributes[GenAI.GEN_AI_REQUEST_MODEL] = request_model
+
+        if invocation.provider:
+            attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
+
+        response_model_name = getattr(invocation, "response_model_name", None)
+        if response_model_name:
+            attributes[GenAI.GEN_AI_RESPONSE_MODEL] = response_model_name
+
+        server_address = getattr(invocation, "server_address", None)
+        if server_address:
+            attributes[server_attributes.SERVER_ADDRESS] = server_address
+
+        server_port = getattr(invocation, "server_port", None)
+        if server_port is not None:
+            attributes[server_attributes.SERVER_PORT] = server_port
+
+        if invocation.metric_attributes:
+            attributes.update(invocation.metric_attributes)
+
+        if error_type:
+            attributes[error_attributes.ERROR_TYPE] = error_type
+
+        return attributes
+
     def record(
         self,
         span: Optional[Span],
-        invocation: LLMInvocation,
+        invocation: GenAIInvocation,
         *,
         error_type: Optional[str] = None,
     ) -> None:
-        """Record duration and token metrics for an invocation if possible."""
+        """Record duration and token metrics for an invocation if possible.
+
+        For LLMInvocation: records duration and token (input/output) metrics.
+        For EmbeddingInvocation: records duration only.
+        """
 
         # pylint: disable=too-many-branches
 
         if span is None:
             return
 
-        token_counts: list[tuple[int, str]] = []
-        if invocation.input_tokens is not None:
-            token_counts.append(
-                (
-                    invocation.input_tokens,
-                    GenAI.GenAiTokenTypeValues.INPUT.value,
-                )
-            )
-        if invocation.output_tokens is not None:
-            token_counts.append(
-                (
-                    invocation.output_tokens,
-                    GenAI.GenAiTokenTypeValues.OUTPUT.value,
-                )
-            )
+        attributes = self._build_attributes(invocation, error_type)
 
-        attributes: Dict[str, AttributeValue] = {
-            GenAI.GEN_AI_OPERATION_NAME: GenAI.GenAiOperationNameValues.CHAT.value
-        }
-        if invocation.request_model:
-            attributes[GenAI.GEN_AI_REQUEST_MODEL] = invocation.request_model
-        if invocation.provider:
-            attributes[GenAI.GEN_AI_PROVIDER_NAME] = invocation.provider
-        if invocation.response_model_name:
-            attributes[GenAI.GEN_AI_RESPONSE_MODEL] = (
-                invocation.response_model_name
-            )
-        if invocation.server_address:
-            attributes[server_attributes.SERVER_ADDRESS] = (
-                invocation.server_address
-            )
-        if invocation.server_port is not None:
-            attributes[server_attributes.SERVER_PORT] = invocation.server_port
-        if invocation.metric_attributes:
-            attributes.update(invocation.metric_attributes)
-
-        # Calculate duration from span timing or invocation monotonic start
+        # Calculate duration from invocation monotonic start
         duration_seconds: Optional[float] = None
         if invocation.monotonic_start_s is not None:
             duration_seconds = max(
@@ -88,8 +100,6 @@ class InvocationMetricsRecorder:
             )
 
         span_context = set_span_in_context(span)
-        if error_type:
-            attributes[error_attributes.ERROR_TYPE] = error_type
 
         if duration_seconds is not None:
             self._duration_histogram.record(
@@ -98,12 +108,29 @@ class InvocationMetricsRecorder:
                 context=span_context,
             )
 
-        for token_count, token_type in token_counts:
-            self._token_histogram.record(
-                token_count,
-                attributes=attributes | {GenAI.GEN_AI_TOKEN_TYPE: token_type},
-                context=span_context,
-            )
+        # Record token metrics for LLMInvocation and EmbeddingInvocation
+        if isinstance(invocation, (LLMInvocation, EmbeddingInvocation)):
+            if invocation.input_tokens is not None:
+                self._token_histogram.record(
+                    invocation.input_tokens,
+                    attributes=attributes
+                    | {
+                        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.INPUT.value
+                    },
+                    context=span_context,
+                )
+
+        # Only LLMInvocation has output tokens
+        if isinstance(invocation, LLMInvocation):
+            if invocation.output_tokens is not None:
+                self._token_histogram.record(
+                    invocation.output_tokens,
+                    attributes=attributes
+                    | {
+                        GenAI.GEN_AI_TOKEN_TYPE: GenAI.GenAiTokenTypeValues.OUTPUT.value
+                    },
+                    context=span_context,
+                )
 
 
 __all__ = ["InvocationMetricsRecorder"]

@@ -150,9 +150,9 @@ class TelemetryHandler:
             schema_url=schema_url,
         )
 
-    def _record_llm_metrics(
+    def _record_metrics(
         self,
-        invocation: LLMInvocation,
+        invocation: GenAIInvocation,
         span: Span | None = None,
         *,
         error_type: str | None = None,
@@ -164,18 +164,6 @@ class TelemetryHandler:
             invocation,
             error_type=error_type,
         )
-
-    @staticmethod
-    def _record_embedding_metrics(
-        invocation: EmbeddingInvocation,
-        span: Span | None = None,
-        *,
-        error_type: str | None = None,
-    ) -> None:
-        # Metrics recorder currently supports LLMInvocation fields only.
-        # Keep embedding metrics as a no-op until dedicated embedding
-        # metric support is added.
-        return
 
     def _start(self, invocation: _T) -> _T:
         """Start a GenAI invocation and create a pending span entry."""
@@ -214,11 +202,11 @@ class TelemetryHandler:
         try:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
-                self._record_llm_metrics(invocation, span)
+                self._record_metrics(invocation, span)
                 _maybe_emit_llm_event(self._logger, span, invocation)
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
-                self._record_embedding_metrics(invocation, span)
+                self._record_metrics(invocation, span)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 # TODO: Add workflow metrics when supported
@@ -240,18 +228,14 @@ class TelemetryHandler:
             if isinstance(invocation, LLMInvocation):
                 _apply_llm_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
-                self._record_llm_metrics(
-                    invocation, span, error_type=error_type
-                )
+                self._record_metrics(invocation, span, error_type=error_type)
                 _maybe_emit_llm_event(
                     self._logger, span, invocation, error_type
                 )
             elif isinstance(invocation, EmbeddingInvocation):
                 _apply_embedding_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
-                self._record_embedding_metrics(
-                    invocation, span, error_type=error_type
-                )
+                self._record_metrics(invocation, span, error_type=error_type)
             elif isinstance(invocation, WorkflowInvocation):
                 _apply_workflow_finish_attributes(span, invocation)
                 _apply_error_attributes(span, error, error_type)
