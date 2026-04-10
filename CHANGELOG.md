@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
+- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
+  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
 
 ### Fixed
 
