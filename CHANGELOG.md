@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Bump `pylint` to `4.0.5` to fix false-positive `no-name-in-module` errors for `concurrent.futures` imports on Python 3.14, and remove deprecated `suggestion-mode` option from `.pylintrc`.
+  ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
+
 ## Version 1.41.0/0.62b0 (2026-04-09)
   
 ### Added
