@@ -82,4 +82,5 @@ class TestSetStatus(unittest.TestCase):
             server_span=False,
             sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
         )
-        span.set_status.assert_called()
+        last_call = span.set_status.call_args[0][0]
+        self.assertEqual(last_call.status_code, StatusCode.UNSET)
