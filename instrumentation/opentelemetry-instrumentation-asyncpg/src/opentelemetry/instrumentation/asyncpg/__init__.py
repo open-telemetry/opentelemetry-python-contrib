@@ -128,9 +128,9 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     _tracer = None
 
     def _is_excluded_query(self, query: str) -> bool:
-        if query is None:
+        if not query:
             return False
-            return any(q in query for q in self.exclude_queries)
+        return any(q in query for q in self.exclude_queries)
 
     def __init__(self, capture_parameters=False, exclude_queries=None):
         super().__init__()
