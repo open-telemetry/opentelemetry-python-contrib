@@ -16,16 +16,17 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.trace.status import Status, StatusCode
 
 
-class TestSetStatus(unittest.TestCase):
-    def _make_span(self, status_code, description=None):
-        span = MagicMock()
-        span.is_recording.return_value = True
-        span.status = Status(status_code, description)
-        return span
+def _make_span(status_code, description=None):
+    span = MagicMock()
+    span.is_recording.return_value = True
+    span.status = Status(status_code, description)
+    return span
 
+
+class TestSetStatus(unittest.TestCase):
     def test_does_not_downgrade_error_to_ok(self):
         """ERROR status should not be overridden by a lower priority OK"""
-        span = self._make_span(StatusCode.ERROR, "original error")
+        span = _make_span(StatusCode.ERROR, "original error")
         _set_status(
             span,
             {},
@@ -41,7 +42,7 @@ class TestSetStatus(unittest.TestCase):
 
     def test_does_not_wipe_description_with_none(self):
         """Same ERROR status should preserve existing description"""
-        span = self._make_span(StatusCode.ERROR, "keep this message")
+        span = _make_span(StatusCode.ERROR, "keep this message")
         _set_status(
             span,
             {},
@@ -57,7 +58,7 @@ class TestSetStatus(unittest.TestCase):
 
     def test_upgrades_unset_to_error(self):
         """UNSET status should be upgraded to ERROR"""
-        span = self._make_span(StatusCode.UNSET)
+        span = _make_span(StatusCode.UNSET)
         _set_status(
             span,
             {},
@@ -72,7 +73,7 @@ class TestSetStatus(unittest.TestCase):
 
     def test_unset_to_ok(self):
         """UNSET status should be upgraded to OK for 2xx"""
-        span = self._make_span(StatusCode.UNSET)
+        span = _make_span(StatusCode.UNSET)
         _set_status(
             span,
             {},
