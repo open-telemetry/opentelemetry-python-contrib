@@ -610,6 +610,26 @@ def _set_db_operation(
 
 
 # General
+def _set_span_status(span: Span, status: StatusCode) -> None:
+    status_priority = {
+        StatusCode.UNSET: 0,
+        StatusCode.OK: 1,
+        StatusCode.ERROR: 2,
+    }
+    current = getattr(span, "status", None)
+    if current is not None:
+        if status_priority.get(status, 0) < status_priority.get(
+            current.status_code, 0
+        ):
+            return
+        description = (
+            current.description
+            if current.description and status == current.status_code
+            else None
+        )
+        span.set_status(Status(status, description))
+    else:
+        span.set_status(Status(status))
 
 
 def _set_status(
@@ -650,7 +670,7 @@ def _set_status(
                     span.set_attribute(ERROR_TYPE, status_code_str)
                 metrics_attributes[ERROR_TYPE] = status_code_str
         if span.is_recording():
-            span.set_status(Status(status))
+            _set_span_status(span, status)
 
 
 def _get_schema_url(mode: _StabilityMode) -> str:
