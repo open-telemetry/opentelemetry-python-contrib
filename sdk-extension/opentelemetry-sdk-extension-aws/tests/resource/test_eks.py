@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
+import json
 import unittest
 from collections import OrderedDict
 from unittest.mock import mock_open, patch
@@ -24,6 +26,17 @@ from opentelemetry.semconv.resource import (
     CloudProviderValues,
     ResourceAttributes,
 )
+
+
+def _bearer_jwt(payload: dict) -> str:
+    header = base64.urlsafe_b64encode(b'{"alg":"RS256"}').rstrip(b"=").decode()
+    body = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode())
+        .rstrip(b"=")
+        .decode()
+    )
+    return f"Bearer {header}.{body}.fakesig"
+
 
 MockEksResourceAttributes = {
     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
@@ -138,3 +151,52 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
             AwsEksResourceDetector(raise_on_error=True).detect()
         except RuntimeError:
             self.fail("Should not raise")
+
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
+        return_value=_bearer_jwt(
+            {"iss": "https://oidc.eks.eu-west-2.amazonaws.com/id/EXAMPLE123"}
+        ),
+    )
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
+        return_value=True,
+    )
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._get_cluster_info",
+        return_value=f"""{{
+  "data": {{
+    "cluster.name": "{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}"
+  }}
+}}
+""",
+    )
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=f"14:name=systemd:/docker/{MockEksResourceAttributes[ResourceAttributes.CONTAINER_ID]}\n",
+    )
+    def test_eks_oidc_jwt_detected(
+        self,
+        mock_open_function,
+        mock_get_cluster_info,
+        mock_is_k8s,
+        mock_get_k8s_cred_value,
+    ):
+        actual = AwsEksResourceDetector().detect()
+        self.assertEqual(
+            actual.attributes.get(ResourceAttributes.CLOUD_PLATFORM),
+            CloudPlatformValues.AWS_EKS.value,
+        )
+
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
+        return_value=_bearer_jwt({"iss": "https://accounts.google.com"}),
+    )
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
+        return_value=True,
+    )
+    def test_non_eks_jwt_returns_empty(self, mock_is_k8s, mock_get_k8s_cred_value):
+        actual = AwsEksResourceDetector().detect()
+        self.assertEqual(actual.attributes, {})
