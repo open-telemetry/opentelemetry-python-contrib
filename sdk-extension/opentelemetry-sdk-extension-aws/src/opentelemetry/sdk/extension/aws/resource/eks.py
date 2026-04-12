@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
 import logging
 import os
@@ -32,6 +33,7 @@ _GET_METHOD = "GET"
 
 _TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 _CERT_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+_EKS_OIDC_ISSUER = "oidc.eks."
 
 
 def _aws_http_request(method, path, cred_value):
@@ -60,11 +62,17 @@ def _get_k8s_cred_value():
 
 
 def _is_eks(cred_value):
-    return _aws_http_request(
-        _GET_METHOD,
-        "/api/v1/namespaces/kube-system/configmaps/aws-auth",
-        cred_value,
-    )
+    parts = cred_value.removeprefix("Bearer ").split(".")
+    if len(parts) != 3:
+        return False
+    try:
+        seg = parts[1]
+        payload = json.loads(
+            base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4))
+        )
+    except Exception:
+        return False
+    return _EKS_OIDC_ISSUER in payload.get("iss", "")
 
 
 def _get_cluster_info(cred_value):
