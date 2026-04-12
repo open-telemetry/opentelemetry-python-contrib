@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-sdk-extension-aws`: Fix `AwsEksResourceDetector` on clusters using the EKS Access Entries API mode where the `aws-auth` ConfigMap is absent; `_is_eks` now decodes the pod service-account JWT `iss` claim instead of querying the Kubernetes API.
+  ([#4414](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4414))
 - `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
  ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
 - `opentelemetry-instrumentation-confluent-kafka`: Skip `recv` span creation when `poll()` returns no message or `consume()` returns an empty list, avoiding empty spans on idle polls
