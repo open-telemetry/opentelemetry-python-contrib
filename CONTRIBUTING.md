@@ -4,11 +4,11 @@ The Python special interest group (SIG) meets regularly. See the OpenTelemetry
 [community](https://github.com/open-telemetry/community#python-sdk) repo for
 information on this and other language SIGs.
 
-See the [public meeting notes](https://docs.google.com/document/d/1CIMGoIOZ-c3-igzbd6_Pnxx1SjAkjwqoYSUWxPY8XIs/edit)
+See the [public meeting notes](https://docs.google.com/document/d/18w8zOBm_mbety0OqlPwxc7dvnfu641EgmrO4AdJef0U/edit?tab=t.0)
 for a summary description of past meetings. To request edit access, join the
 meeting or get in touch on [Slack](https://cloud-native.slack.com/archives/C01PD4HUVBL).
 
-See to the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
+See the [community membership document](https://github.com/open-telemetry/community/blob/main/community-membership.md)
 on how to become a [**Member**](https://github.com/open-telemetry/community/blob/main/community-membership.md#member),
 [**Approver**](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver)
 and [**Maintainer**](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).
@@ -31,6 +31,7 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
     - [How to Receive Comments](#how-to-receive-comments)
     - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
     - [How to Get PRs Merged](#how-to-get-prs-merged)
+    - [Stale PRs](#stale-prs)
   - [Design Choices](#design-choices)
     - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
   - [Running Tests Locally](#running-tests-locally)
@@ -78,7 +79,7 @@ You can run `tox` with the following arguments:
 * `tox` to run all existing tox commands, including unit tests for all packages
   under multiple Python versions
 * `tox -e docs` to regenerate all docs
-* `tox -e py312-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
+* `tox -e py314-test-instrumentation-aiopg` to e.g. run the aiopg instrumentation unit tests under a specific
   Python version
 * `tox -e spellcheck` to run a spellcheck on all the code
 * `tox -e lint-some-package` to run lint checks on `some-package`
@@ -121,6 +122,12 @@ This will create a virtual environment in the `.venv` directory and install all 
 Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
 
 For `docs` building, you may need to install `mysql-client` and other required dependencies as necessary. Ensure the Python version used in your local setup matches the version used in the [CI](./.github/workflows/) to maintain compatibility when building the documentation.
+
+If you are using `tox-uv` for tests and have issues with resolving OpenTelemetry dependencies try:
+
+```sh
+uv sync --refresh
+```
 
 ### Benchmarks
 
@@ -235,6 +242,12 @@ A PR is considered to be **ready to merge** when:
 
 Any Approver / Maintainer can merge the PR once it is **ready to merge**.
 
+### Stale PRs
+
+PRs with no activity for 14 days will be automatically marked as stale and closed after a further 14 days of inactivity. To prevent a PR from being marked stale, ensure there is regular activity (commits, comments, reviews, etc).
+
+Project managers can also exempt a PR from this by applying one of the following labels: `hold`, `WIP`, `blocked-by-spec`, `do not merge`.
+
 ## Design Choices
 
 As with other OpenTelemetry clients, opentelemetry-python follows the
@@ -265,11 +278,11 @@ Some tests can be slow due to pre-steps that do dependencies installs. To help w
 
 1. First time run (e.g., opentelemetry-instrumentation-aiopg)
 ```console
-tox -e py312-test-instrumentation-aiopg
+tox -e py314-test-instrumentation-aiopg
 ```
 2. Run tests again without pre-steps:
 ```console
-.tox/py312-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
+.tox/py314-test-instrumentation-aiopg/bin/pytest instrumentation/opentelemetry-instrumentation-aiopg
 ```
 
 ### Testing against a different Core repo branch/commit

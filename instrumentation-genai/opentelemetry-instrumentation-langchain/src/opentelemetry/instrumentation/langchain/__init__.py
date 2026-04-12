@@ -38,7 +38,7 @@ API
 
 from typing import Any, Callable, Collection
 
-from langchain_core.callbacks import BaseCallbackHandler  # type: ignore
+from langchain_core.callbacks import BaseCallbackHandler
 from wrapt import wrap_function_wrapper  # type: ignore
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -46,10 +46,8 @@ from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
 from opentelemetry.instrumentation.langchain.package import _instruments
-from opentelemetry.instrumentation.langchain.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.schemas import Schemas
-from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.handler import get_telemetry_handler
 
 
 class LangChainInstrumentor(BaseInstrumentor):
@@ -72,15 +70,16 @@ class LangChainInstrumentor(BaseInstrumentor):
         Enable Langchain instrumentation.
         """
         tracer_provider = kwargs.get("tracer_provider")
-        tracer = get_tracer(
-            __name__,
-            __version__,
-            tracer_provider,
-            schema_url=Schemas.V1_37_0.value,
-        )
+        meter_provider = kwargs.get("meter_provider")
+        logger_provider = kwargs.get("logger_provider")
 
+        telemetry_handler = get_telemetry_handler(
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+            logger_provider=logger_provider,
+        )
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
-            tracer=tracer,
+            telemetry_handler=telemetry_handler,
         )
 
         wrap_function_wrapper(
@@ -94,6 +93,14 @@ class LangChainInstrumentor(BaseInstrumentor):
         Cleanup instrumentation (unwrap).
         """
         unwrap("langchain_core.callbacks.base.BaseCallbackManager", "__init__")
+        # Clear the TelemetryHandler singleton so the next instrument() uses
+        # the provided tracer_provider/meter_provider/logger_provider instead
+        # of reusing the previous handler.
+        if (
+            getattr(get_telemetry_handler, "_default_handler", None)
+            is not None
+        ):
+            delattr(get_telemetry_handler, "_default_handler")
 
 
 class _BaseCallbackManagerInitWrapper:
@@ -109,7 +116,7 @@ class _BaseCallbackManagerInitWrapper:
     def __call__(
         self,
         wrapped: Callable[..., None],
-        instance: BaseCallbackHandler,  # type: ignore
+        instance: BaseCallbackHandler,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ):

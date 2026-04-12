@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import (  # pylint: disable=E0611
+    ThreadPoolExecutor,
+    as_completed,
+)
 from random import randint
 
 import flask

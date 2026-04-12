@@ -18,12 +18,15 @@
 
 > [!NOTE]
 > Per-package release is supported for the following packages only:
+> - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-anthropic
+> - opentelemetry-instrumentation-claude-agent-sdk
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate
@@ -85,12 +88,15 @@ The workflow will create a pull request that should be merged in order to procee
 
 > [!NOTE]
 > Per-package patch release is supported for the following packages only:
+> - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
+> - opentelemetry-instrumentation-anthropic
+> - opentelemetry-instrumentation-claude-agent-sdk
 > - opentelemetry-instrumentation-google-genai
 > - opentelemetry-instrumentation-langchain
 > - opentelemetry-instrumentation-weaviate

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=no-name-in-module
-
-from confluent_kafka import Consumer, Producer
+# pylint: disable=no-name-in-module,import-outside-toplevel
 
 from opentelemetry.instrumentation.confluent_kafka import (
+    AutoInstrumentedConsumer,
+    AutoInstrumentedProducer,
     ConfluentKafkaInstrumentor,
     ProxiedConsumer,
     ProxiedProducer,
@@ -24,6 +24,11 @@ from opentelemetry.instrumentation.confluent_kafka import (
 from opentelemetry.instrumentation.confluent_kafka.utils import (
     KafkaContextGetter,
     KafkaContextSetter,
+)
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION,
+    MESSAGING_SYSTEM,
 )
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
@@ -36,15 +41,9 @@ from .utils import MockConsumer, MockedMessage, MockedProducer
 
 class TestConfluentKafka(TestBase):
     def test_instrument_api(self) -> None:
+        from confluent_kafka import Consumer, Producer  # noqa: PLC0415
+
         instrumentation = ConfluentKafkaInstrumentor()
-
-        producer = Producer({"bootstrap.servers": "localhost:29092"})
-        producer = instrumentation.instrument_producer(producer)
-
-        self.assertEqual(producer.__class__, ProxiedProducer)
-
-        producer = instrumentation.uninstrument_producer(producer)
-        self.assertEqual(producer.__class__, Producer)
 
         producer = Producer({"bootstrap.servers": "localhost:29092"})
         producer = instrumentation.instrument_producer(producer)
@@ -68,7 +67,51 @@ class TestConfluentKafka(TestBase):
         consumer = instrumentation.uninstrument_consumer(consumer)
         self.assertEqual(consumer.__class__, Consumer)
 
+        consumer = Consumer(
+            **{
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            }
+        )
+
+        consumer = instrumentation.instrument_consumer(consumer)
+        self.assertEqual(consumer.__class__, ProxiedConsumer)
+
+        consumer = instrumentation.uninstrument_consumer(consumer)
+        self.assertEqual(consumer.__class__, Consumer)
+
+    def test_instrument_api_with_instrument(self) -> None:
+        ConfluentKafkaInstrumentor().instrument()
+
+        from confluent_kafka import Consumer, Producer  # noqa: PLC0415
+
+        producer = Producer({"bootstrap.servers": "localhost:29092"})
+        self.assertEqual(producer.__class__, AutoInstrumentedProducer)
+
+        consumer = Consumer(
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            }
+        )
+        self.assertEqual(consumer.__class__, AutoInstrumentedConsumer)
+
+        consumer = Consumer(
+            **{
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            }
+        )
+        self.assertEqual(consumer.__class__, AutoInstrumentedConsumer)
+
+        ConfluentKafkaInstrumentor().uninstrument()
+
     def test_consumer_commit_method_exists(self) -> None:
+        from confluent_kafka import Consumer  # noqa: PLC0415
+
         instrumentation = ConfluentKafkaInstrumentor()
 
         consumer = Consumer(
@@ -122,39 +165,38 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-10 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-10",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-10.0.0",
+                    MESSAGING_MESSAGE_ID: "topic-10.0.0",
                 },
             },
             {"name": "recv", "attributes": {}},
             {
                 "name": "topic-20 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 2,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-20",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-20.2.4",
+                    MESSAGING_MESSAGE_ID: "topic-20.2.4",
                 },
             },
             {"name": "recv", "attributes": {}},
             {
                 "name": "topic-30 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 1,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-30",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-30.1.3",
+                    MESSAGING_MESSAGE_ID: "topic-30.1.3",
                 },
             },
-            {"name": "recv", "attributes": {}},
         ]
 
         consumer = MockConsumer(
@@ -170,7 +212,7 @@ class TestConfluentKafka(TestBase):
         consumer.poll()
         consumer.poll()
         consumer.poll()
-        consumer.poll()
+        consumer.poll()  # empty poll — must not produce a span
 
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
@@ -190,8 +232,8 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-1 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_OPERATION: "process",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-1",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
@@ -200,8 +242,8 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-2 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_OPERATION: "process",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-2",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
@@ -210,13 +252,12 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-3 process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_OPERATION: "process",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-3",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
             },
-            {"name": "recv", "attributes": {}},
         ]
 
         consumer = MockConsumer(
@@ -233,9 +274,85 @@ class TestConfluentKafka(TestBase):
         consumer.consume(3)
         consumer.consume(1)
         consumer.consume(2)
-        consumer.consume(1)
+        consumer.consume(1)  # empty consume — must not produce a span
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
+
+    def test_poll_empty_does_not_create_span(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+    def test_consume_empty_does_not_create_span(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.consume(5)
+        consumer.consume(5)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+    def test_poll_empty_cleans_up_previous_span_and_token(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()  # non-empty: sets _current_consume_span and _current_context_token
+        self.assertIsNotNone(consumer._current_consume_span)
+        self.assertIsNotNone(consumer._current_context_token)
+
+        consumer.poll()  # empty: should clean up both
+        self.assertIsNone(consumer._current_consume_span)
+        self.assertIsNone(consumer._current_context_token)
+
+    def test_consume_empty_cleans_up_previous_span_and_token(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.consume(
+            1
+        )  # non-empty: sets _current_consume_span and _current_context_token
+        self.assertIsNotNone(consumer._current_consume_span)
+        self.assertIsNotNone(consumer._current_context_token)
+
+        consumer.consume(1)  # empty: should clean up both
+        self.assertIsNone(consumer._current_consume_span)
+        self.assertIsNone(consumer._current_context_token)
 
     def test_close(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
@@ -247,12 +364,12 @@ class TestConfluentKafka(TestBase):
             {
                 "name": "topic-a process",
                 "attributes": {
-                    SpanAttributes.MESSAGING_OPERATION: "process",
+                    MESSAGING_OPERATION: "process",
                     SpanAttributes.MESSAGING_KAFKA_PARTITION: 0,
-                    SpanAttributes.MESSAGING_SYSTEM: "kafka",
+                    MESSAGING_SYSTEM: "kafka",
                     SpanAttributes.MESSAGING_DESTINATION: "topic-a",
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: "topic-a.0.0",
+                    MESSAGING_MESSAGE_ID: "topic-a.0.0",
                 },
             },
         ]

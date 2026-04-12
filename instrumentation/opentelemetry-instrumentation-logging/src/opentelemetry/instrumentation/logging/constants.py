@@ -16,7 +16,22 @@ DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(l
 
 
 _MODULE_DOC = """
-The OpenTelemetry ``logging`` integration automatically injects tracing context into log statements.
+The OpenTelemetry ``logging`` instrumentation automatically instruments Python logging
+with a handler to convert Python log messages into OpenTelemetry logs and export them.
+You can disable this by setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``false``.
+
+.. warning::
+
+    This package provides a logging handler to replace the deprecated one in ``opentelemetry-sdk``.
+    Therefore if you have ``opentelemetry-instrumentation-logging`` installed, you don't need to set the
+    ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`` environment variable to ``true``.
+    By default, this instrumentation does not add ``code`` namespace attributes as the SDK's logger does, but adding them can be enabled by using the
+    ``OTEL_PYTHON_LOG_CODE_ATTRIBUTES`` environment variable.
+
+Enable trace context injection
+------------------------------
+
+The OpenTelemetry ``logging`` integration can also be configured to inject tracing context into log statements.
 
 The integration registers a custom log record factory with the the standard library logging module that automatically inject
 tracing context into log record objects. Optionally, the integration can also call ``logging.basicConfig()`` to set a logging
@@ -35,18 +50,24 @@ The integration uses the following logging format by default:
 
     {default_logging_format}
 
-Enable trace context injection
-------------------------------
-
 The integration is opt-in and must be enabled explicitly by setting the environment variable ``OTEL_PYTHON_LOG_CORRELATION`` to ``true``.
-
-The integration always registers the custom factory that injects the tracing context into the log record objects. Setting
-``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` calls ``logging.basicConfig()`` to set a logging format that actually makes
+Setting ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` calls ``logging.basicConfig()`` to set a logging format that actually makes
 use of the injected variables.
-
 
 Environment variables
 ---------------------
+
+.. envvar:: OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION
+
+Set this env var to ``false`` to skip installing the logging handler provided by this package.
+
+The default value is ``true``.
+
+.. envvar:: OTEL_PYTHON_CODE_ATTRIBUTES
+
+Set this env var to ``true`` to add ``code`` attributes (``code.file.path``, ``code.function.name``, ``code.line.number``) to OpenTelemetry logs, referencing the Python source location that emitted each log message.
+
+The default value is ``false``.
 
 .. envvar:: OTEL_PYTHON_LOG_CORRELATION
 

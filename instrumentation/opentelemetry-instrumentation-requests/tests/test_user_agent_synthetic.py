@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 import httpretty
 import requests
 
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
+    USER_AGENT_ORIGINAL,
     USER_AGENT_SYNTHETIC_TYPE,
     UserAgentSyntheticTypeValues,
 )
@@ -164,4 +167,35 @@ class TestUserAgentSynthetic(TestBase):
         self.assertEqual(
             span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
             UserAgentSyntheticTypeValues.TEST.value,
+        )
+
+    def test_user_agent_bytes_like_header(self):
+        """Test that bytes-like user agent headers are handled."""
+
+        original_prepare_headers = (
+            requests.models.PreparedRequest.prepare_headers
+        )
+
+        def prepare_headers_bytes(self, headers):
+            original_prepare_headers(self, headers)
+            if "User-Agent" in self.headers:
+                value = self.headers["User-Agent"]
+                if isinstance(value, str):
+                    self.headers["User-Agent"] = value.encode("utf-8")
+
+        headers = {"User-Agent": "AlwaysOn-Monitor/1.0"}
+        with mock.patch(
+            "requests.models.PreparedRequest.prepare_headers",
+            new=prepare_headers_bytes,
+        ):
+            requests.get(self.URL, headers=headers, timeout=5)
+
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes.get(USER_AGENT_SYNTHETIC_TYPE),
+            UserAgentSyntheticTypeValues.TEST.value,
+        )
+        self.assertEqual(
+            span.attributes.get(USER_AGENT_ORIGINAL),
+            "AlwaysOn-Monitor/1.0",
         )
