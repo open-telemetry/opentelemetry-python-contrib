@@ -14,14 +14,28 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, List, Optional, TypeVar, Union
 
-from pydantic import BaseModel, Field, StrictInt, StrictStr, ValidationError
+from pydantic import (
+    BaseModel,
+    Field,
+    StrictFloat,
+    StrictInt,
+    StrictStr,
+    ValidationError,
+)
 
 from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    server_attributes as ServerAttributes,
 )
 
 _PYDANTIC_V2 = hasattr(BaseModel, "model_validate")
@@ -42,13 +56,21 @@ if TYPE_CHECKING:
 try:
     from opentelemetry.util.genai.types import (
         InputMessage,
+        LLMInvocation,
         OutputMessage,
+        Reasoning,
         Text,
+        ToolCall,
     )
 except ImportError:
     InputMessage = None
+    LLMInvocation = None
     OutputMessage = None
+    Reasoning = None
     Text = None
+    ToolCall = None
+
+from .utils import get_server_address_and_port, value_is_set
 
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
@@ -91,7 +113,12 @@ class _ResponseInputItemModel(_ExtractorModel):
 class _ResponsesRequestModel(_ExtractorModel):
     instructions: Optional[StrictStr] = None
     input: Optional[Union[StrictStr, List[_ResponseInputItemModel]]] = None
+    max_output_tokens: Optional[StrictInt] = None
+    model: Optional[StrictStr] = None
+    service_tier: Optional[StrictStr] = None
+    temperature: Optional[StrictFloat] = None
     text: Optional[_ResponseTextConfigModel] = None
+    top_p: Optional[StrictFloat] = None
 
 
 class _ResponseOutputContentModel(_ExtractorModel):
@@ -104,7 +131,12 @@ class _ResponseOutputItemModel(_ExtractorModel):
     type: Optional[StrictStr] = None
     role: Optional[StrictStr] = None
     status: Optional[StrictStr] = None
+    id: Optional[StrictStr] = None
+    call_id: Optional[StrictStr] = None
+    name: Optional[StrictStr] = None
+    arguments: Optional[StrictStr] = None
     content: List[_ResponseOutputContentModel] = Field(default_factory=list)
+    summary: List[_ResponseOutputContentModel] = Field(default_factory=list)
 
 
 class _UsageDetailsModel(_ExtractorModel):
@@ -264,6 +296,32 @@ def _extract_output_parts(
     return parts
 
 
+def _parse_tool_call_arguments(arguments: str | None) -> object:
+    if arguments is None:
+        return None
+
+    try:
+        return json.loads(arguments)
+    except (TypeError, ValueError):
+        return arguments
+
+
+def _extract_reasoning_parts(
+    item: _ResponseOutputItemModel,
+) -> list["Reasoning"]:
+    if Reasoning is None:
+        return []
+
+    parts: list[Reasoning] = []
+    for block in item.summary:
+        if block.text is not None:
+            parts.append(Reasoning(content=block.text))
+    for block in item.content:
+        if block.type == "reasoning_text" and block.text is not None:
+            parts.append(Reasoning(content=block.text))
+    return parts
+
+
 def _finish_reason_from_status(status: str | None) -> str | None:
     # Responses API output items expose lifecycle statuses rather than finish
     # reasons. We map the normal terminal state to the GenAI "stop" reason,
@@ -284,19 +342,57 @@ def _extract_output_messages_from_model(
 
     messages: list[OutputMessage] = []
     for item in result.output:
-        if item.type != "message":
-            continue
-        finish_reason = _finish_reason_from_status(item.status)
-        if finish_reason is None:
+        if item.type == "message":
+            finish_reason = _finish_reason_from_status(item.status)
+            if finish_reason is None:
+                continue
+
+            messages.append(
+                OutputMessage(
+                    role=item.role if item.role is not None else "assistant",
+                    parts=_extract_output_parts(item.content),
+                    finish_reason=finish_reason,
+                )
+            )
             continue
 
-        messages.append(
-            OutputMessage(
-                role=item.role if item.role is not None else "assistant",
-                parts=_extract_output_parts(item.content),
-                finish_reason=finish_reason,
+        if item.type == "function_call":
+            if ToolCall is None or item.name is None:
+                continue
+            if item.status not in {"completed", "incomplete"}:
+                continue
+
+            messages.append(
+                OutputMessage(
+                    role="assistant",
+                    parts=[
+                        ToolCall(
+                            id=item.call_id if item.call_id else item.id,
+                            name=item.name,
+                            arguments=_parse_tool_call_arguments(
+                                item.arguments
+                            ),
+                        )
+                    ],
+                    finish_reason="tool_calls",
+                )
             )
-        )
+            continue
+
+        if item.type == "reasoning":
+            finish_reason = _finish_reason_from_status(item.status)
+            if finish_reason is None:
+                continue
+
+            parts = _extract_reasoning_parts(item)
+            if parts:
+                messages.append(
+                    OutputMessage(
+                        role="assistant",
+                        parts=parts,
+                        finish_reason=finish_reason,
+                    )
+                )
 
     return messages
 
@@ -317,12 +413,19 @@ def _extract_finish_reasons_from_model(
 ) -> list[str]:
     finish_reasons: list[str] = []
     for item in result.output:
+        if item.type == "function_call" and item.status in {
+            "completed",
+            "incomplete",
+        }:
+            finish_reasons.append("tool_calls")
+            continue
+
         if item.type != "message":
             continue
         finish_reason = _finish_reason_from_status(item.status)
         if finish_reason is not None:
             finish_reasons.append(finish_reason)
-    return finish_reasons
+    return list(dict.fromkeys(finish_reasons))
 
 
 def _extract_finish_reasons(
@@ -345,6 +448,114 @@ def _extract_output_type(kwargs: Mapping[str, object]) -> str | None:
     if request.text.format.type == "json_schema":
         return "json"
     return request.text.format.type
+
+
+def _extract_request_service_tier(
+    kwargs: Mapping[str, object],
+) -> str | None:
+    request = _validate_request_kwargs(kwargs)
+    if request is None:
+        return None
+
+    service_tier = request.service_tier
+    if service_tier in (None, "auto"):
+        return None
+
+    return service_tier
+
+
+def _get_request_attributes(
+    kwargs: Mapping[str, object],
+    client_instance: object,
+    latest_experimental_enabled: bool,
+) -> dict[str, object]:
+    request = _validate_request_kwargs(kwargs)
+    request_model = request.model if request is not None else None
+    attributes: dict[str, object] = {
+        GenAIAttributes.GEN_AI_OPERATION_NAME: (
+            GenAIAttributes.GenAiOperationNameValues.CHAT.value
+        ),
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_model,
+    }
+
+    if latest_experimental_enabled:
+        attributes[GenAIAttributes.GEN_AI_PROVIDER_NAME] = (
+            GenAIAttributes.GenAiProviderNameValues.OPENAI.value
+        )
+    else:
+        attributes[GenAIAttributes.GEN_AI_SYSTEM] = (
+            GenAIAttributes.GenAiSystemValues.OPENAI.value
+        )
+
+    output_type = _extract_output_type(kwargs)
+    if output_type is not None:
+        output_type_key = (
+            GenAIAttributes.GEN_AI_OUTPUT_TYPE
+            if latest_experimental_enabled
+            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
+        )
+        attributes[output_type_key] = output_type
+
+    service_tier = _extract_request_service_tier(kwargs)
+    if service_tier is not None:
+        service_tier_key = (
+            OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER
+            if latest_experimental_enabled
+            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
+        )
+        attributes[service_tier_key] = service_tier
+
+    address, port = get_server_address_and_port(client_instance)
+    if address is not None:
+        attributes[ServerAttributes.SERVER_ADDRESS] = address
+    if port is not None:
+        attributes[ServerAttributes.SERVER_PORT] = port
+
+    return {key: value for key, value in attributes.items() if value_is_set(value)}
+
+
+def _create_invocation(
+    kwargs: Mapping[str, object],
+    client_instance: object,
+    capture_content: bool,
+) -> "LLMInvocation":
+    if LLMInvocation is None:
+        raise RuntimeError("GenAI LLMInvocation type is unavailable")
+
+    request = _validate_request_kwargs(kwargs)
+    request_model = request.model if request is not None else None
+
+    invocation = LLMInvocation(
+        request_model=request_model,
+        provider=GenAIAttributes.GenAiProviderNameValues.OPENAI.value,
+    )
+
+    if request is not None:
+        invocation.temperature = request.temperature
+        invocation.top_p = request.top_p
+        invocation.max_tokens = request.max_output_tokens
+
+    request_service_tier = _extract_request_service_tier(kwargs)
+    if request_service_tier is not None:
+        invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = (
+            request_service_tier
+        )
+
+    output_type = _extract_output_type(kwargs)
+    if output_type is not None:
+        invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+            output_type
+        )
+
+    address, port = get_server_address_and_port(client_instance)
+    invocation.server_address = address
+    invocation.server_port = port
+
+    if capture_content:
+        invocation.system_instruction = _extract_system_instruction(kwargs)
+        invocation.input_messages = _extract_input_messages(kwargs)
+
+    return invocation
 
 
 def _set_invocation_usage_attributes(

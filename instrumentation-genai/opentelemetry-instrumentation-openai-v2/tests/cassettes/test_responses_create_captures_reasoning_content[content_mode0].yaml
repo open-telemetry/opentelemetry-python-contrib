@@ -1,0 +1,179 @@
+interactions:
+- request:
+    body: |-
+      {
+        "input": "What is 17*19? Think first.",
+        "model": "gpt-5-mini",
+        "reasoning": {
+          "summary": "concise"
+        }
+      }
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '100'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 1.109.1
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 1.109.1
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.12.12
+      authorization:
+      - Bearer test_openai_api_key
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: |-
+        {
+          "id": "resp_00ffaee8970a201e0069d85ff21eec8191b6400bb158fb42bf",
+          "object": "response",
+          "created_at": 1775788019,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "completed_at": 1775788028,
+          "error": null,
+          "frequency_penalty": 0.0,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-5-mini-2025-08-07",
+          "output": [
+            {
+              "id": "rs_00ffaee8970a201e0069d85ff850688191b0eacdc13b1f4752",
+              "type": "reasoning",
+              "summary": []
+            },
+            {
+              "id": "msg_00ffaee8970a201e0069d85ffc9fec819199bbeefde8316d62",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "17 \u00d7 19 = 323.\n\n(short method: 17\u00d719 = 17\u00d7(20\u22121) = 340 \u2212 17 = 323)"
+                }
+              ],
+              "role": "assistant"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "presence_penalty": 0.0,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": null,
+          "reasoning": {
+            "effort": "medium",
+            "summary": "concise"
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": "auto",
+          "tools": [],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 16,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 202,
+            "output_tokens_details": {
+              "reasoning_tokens": 128
+            },
+            "total_tokens": 218
+          },
+          "user": null,
+          "metadata": {}
+        }
+    headers:
+      CF-RAY:
+      - 9e9e4f3e2b12f5f7-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 10 Apr 2026 02:27:09 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '1762'
+      openai-organization: test_openai_org_id
+      openai-processing-ms:
+      - '12496'
+      openai-project:
+      - proj_s74VWObPgWXRchv2sHdrOTPY
+      openai-version:
+      - '2020-10-01'
+      set-cookie:
+      - __cf_bm=VF0yBu1fFpOJzFTLDniavq9V3LVRsxdEm2CuC2oou5Q-1775788016.3419962-1.0.1.1-88h4uvoyPeRYvQfG.rhNuzzxbhnusBvt2rhdn67fmhLtcc15U8MnzW0ICpyElmisnBs_WFgYn_kdL39z59JRgleQ18.J6DoshssrHnwmYIhdOmbsMTew4Ggx3JwqD9pH;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 10 Apr 2026
+        02:57:09 GMT
+      x-ratelimit-limit-requests:
+      - '500'
+      x-ratelimit-limit-tokens:
+      - '500000'
+      x-ratelimit-remaining-requests:
+      - '499'
+      x-ratelimit-remaining-tokens:
+      - '500000'
+      x-ratelimit-reset-requests:
+      - 120ms
+      x-ratelimit-reset-tokens:
+      - 0s
+      x-request-id:
+      - req_4313bb2494264db6b5bd8bd3a9fe8462
+    status:
+      code: 200
+      message: OK
+version: 1

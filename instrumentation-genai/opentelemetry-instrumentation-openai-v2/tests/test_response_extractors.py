@@ -109,7 +109,22 @@ def test_extract_output_messages_maps_parts_and_finish_reasons(loaded_module):
                 status="queued",
                 content=[SimpleNamespace(type="output_text", text="Pending")],
             ),
-            SimpleNamespace(type="tool_call", status="completed", content=[]),
+            SimpleNamespace(
+                type="function_call",
+                status="completed",
+                name="get_weather",
+                call_id="call_123",
+                arguments='{"city":"SF"}',
+                content=[],
+            ),
+            SimpleNamespace(
+                type="reasoning",
+                status="completed",
+                summary=[
+                    SimpleNamespace(type="summary_text", text="Thought step")
+                ],
+                content=[],
+            ),
         ]
     )
 
@@ -118,24 +133,37 @@ def test_extract_output_messages_maps_parts_and_finish_reasons(loaded_module):
     assert [(msg.role, msg.finish_reason) for msg in messages] == [
         ("assistant", "stop"),
         ("assistant", "incomplete"),
+        ("assistant", "tool_calls"),
+        ("assistant", "stop"),
     ]
-    assert [[part.content for part in msg.parts] for msg in messages] == [
-        ["Done", "Cannot comply"],
-        ["Partial"],
+    assert [part.content for part in messages[0].parts] == [
+        "Done",
+        "Cannot comply",
     ]
+    assert [part.content for part in messages[1].parts] == ["Partial"]
+    assert messages[2].parts[0].type == "tool_call"
+    assert messages[2].parts[0].name == "get_weather"
+    assert messages[2].parts[0].arguments == {"city": "SF"}
+    assert messages[3].parts[0].type == "reasoning"
+    assert messages[3].parts[0].content == "Thought step"
 
 
-def test_extract_finish_reasons_only_reads_message_items(loaded_module):
+def test_extract_finish_reasons_maps_terminal_message_and_tool_items(
+    loaded_module,
+):
     result = SimpleNamespace(
         output=[
             SimpleNamespace(type="message", status="completed"),
             SimpleNamespace(type="message", status=None),
             SimpleNamespace(type="message", status="in_progress"),
-            SimpleNamespace(type="tool_call", status="incomplete"),
+            SimpleNamespace(type="function_call", status="incomplete"),
         ]
     )
 
-    assert loaded_module._extract_finish_reasons(result) == ["stop"]
+    assert loaded_module._extract_finish_reasons(result) == [
+        "stop",
+        "tool_calls",
+    ]
 
 
 def test_extract_output_type_handles_text_format_mapping(loaded_module):

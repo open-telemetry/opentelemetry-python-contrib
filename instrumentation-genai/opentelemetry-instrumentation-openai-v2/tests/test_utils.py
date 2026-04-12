@@ -15,7 +15,11 @@
 """Shared test utilities for OpenAI instrumentation tests."""
 
 import json
+import os
+from pathlib import Path
 from typing import Any, Optional
+
+import pytest
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
@@ -184,6 +188,26 @@ def get_current_weather_tool_definition():
     }
 
 
+def get_responses_weather_tool_definition():
+    return {
+        "type": "function",
+        "name": "get_current_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. Boston, MA",
+                },
+            },
+            "required": ["location"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    }
+
+
 def remove_none_values(body):
     """Remove None values from a dictionary recursively"""
     result = {}
@@ -259,6 +283,18 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
             expected_content
         )
     assert_log_parent(log, parent_span)
+
+
+def skip_if_cassette_missing_and_no_real_key(request):
+    cassette_path = (
+        Path(__file__).parent / "cassettes" / f"{request.node.name}.yaml"
+    )
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not cassette_path.exists() and api_key == "test_openai_api_key":
+        pytest.skip(
+            f"Cassette {cassette_path.name} is missing. "
+            "Set a real OPENAI_API_KEY to record it."
+        )
 
 
 def assert_embedding_attributes(

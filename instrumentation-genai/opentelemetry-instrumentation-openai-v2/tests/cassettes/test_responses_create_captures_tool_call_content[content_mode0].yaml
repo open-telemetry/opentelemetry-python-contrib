@@ -1,0 +1,213 @@
+interactions:
+- request:
+    body: |-
+      {
+        "input": "What's the weather in Seattle right now?",
+        "model": "gpt-4o-mini",
+        "tool_choice": {
+          "type": "function",
+          "name": "get_current_weather"
+        },
+        "tools": [
+          {
+            "type": "function",
+            "name": "get_current_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The city and state, e.g. Boston, MA"
+                }
+              },
+              "required": [
+                "location"
+              ],
+              "additionalProperties": false
+            },
+            "strict": true
+          }
+        ]
+      }
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '480'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 1.109.1
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 1.109.1
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.12.12
+      authorization:
+      - Bearer test_openai_api_key
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: |-
+        {
+          "id": "resp_0cb296f9e5607fd60069d85fef5a9c8190b9a1023b905723b8",
+          "object": "response",
+          "created_at": 1775788015,
+          "status": "completed",
+          "background": false,
+          "billing": {
+            "payer": "developer"
+          },
+          "completed_at": 1775788015,
+          "error": null,
+          "frequency_penalty": 0.0,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4o-mini-2024-07-18",
+          "output": [
+            {
+              "id": "fc_0cb296f9e5607fd60069d85fefc01c8190b80847c9f8782620",
+              "type": "function_call",
+              "status": "completed",
+              "arguments": "{\"location\":\"Seattle, WA\"}",
+              "call_id": "call_9JGnHg3Qns7ZqDfSVNhAEArE",
+              "name": "get_current_weather"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "presence_penalty": 0.0,
+          "previous_response_id": null,
+          "prompt_cache_key": null,
+          "prompt_cache_retention": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "safety_identifier": null,
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1.0,
+          "text": {
+            "format": {
+              "type": "text"
+            },
+            "verbosity": "medium"
+          },
+          "tool_choice": {
+            "type": "function",
+            "name": "get_current_weather"
+          },
+          "tools": [
+            {
+              "type": "function",
+              "description": "Get the current weather in a given location",
+              "name": "get_current_weather",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. Boston, MA"
+                  }
+                },
+                "required": [
+                  "location"
+                ],
+                "additionalProperties": false
+              },
+              "strict": true
+            }
+          ],
+          "top_logprobs": 0,
+          "top_p": 1.0,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 72,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 8,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 80
+          },
+          "user": null,
+          "metadata": {}
+        }
+    headers:
+      CF-RAY:
+      - 9e9e4f379c69ccb6-EWR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 10 Apr 2026 02:26:56 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Transfer-Encoding:
+      - chunked
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '2027'
+      openai-organization: test_openai_org_id
+      openai-processing-ms:
+      - '674'
+      openai-project:
+      - proj_s74VWObPgWXRchv2sHdrOTPY
+      openai-version:
+      - '2020-10-01'
+      set-cookie:
+      - __cf_bm=br01RxGo5SXW00_woYY5L7MyEcOiE8dmdgiNFie.oTo-1775788015.2997324-1.0.1.1-RbN016RUGisBdZ1wBbRYnN_LIzdDghSFytfdtUSHT7hKp09BZqJYvJKB_EN.HojlHyCtS25A2c9KRzLF2X1nk7yQHndMvs2VjtElBF_G5TaBgehj6B4Hu.uWXleelGGa;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 10 Apr 2026
+        02:56:56 GMT
+      x-ratelimit-limit-requests:
+      - '10000'
+      x-ratelimit-limit-tokens:
+      - '200000'
+      x-ratelimit-remaining-requests:
+      - '9987'
+      x-ratelimit-remaining-tokens:
+      - '199711'
+      x-ratelimit-reset-requests:
+      - 1m50.441s
+      x-ratelimit-reset-tokens:
+      - 86ms
+      x-request-id:
+      - req_c096da9861fc4615bae077d9124c49ac
+    status:
+      code: 200
+      message: OK
+version: 1

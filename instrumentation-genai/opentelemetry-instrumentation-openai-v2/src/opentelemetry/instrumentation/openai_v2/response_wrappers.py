@@ -188,9 +188,8 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
         return self
 
     def parse(self) -> "ResponseStreamWrapper":
-        raise NotImplementedError(
-            "ResponseStreamWrapper.parse() is not implemented"
-        )
+        """Called when using with_raw_response with stream=True."""
+        return self
 
     # TODO: Replace __getattr__ passthrough with wrapt.ObjectProxy in a future
     # cleanup once wrapt 2 typing support is available (wrapt PR #3903).
@@ -387,9 +386,8 @@ class AsyncResponseStreamWrapper(ResponseStreamWrapper[TextFormatT]):
         return self
 
     def parse(self) -> "AsyncResponseStreamWrapper[TextFormatT]":
-        raise NotImplementedError(
-            "AsyncResponseStreamWrapper.parse() is not implemented"
-        )
+        """Called when using with_raw_response with stream=True."""
+        return self
 
     @property
     def response(self):
