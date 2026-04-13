@@ -28,7 +28,6 @@ import gzip
 import json
 import os
 import subprocess
-import sys
 import time
 
 import fsspec
@@ -298,11 +297,6 @@ def _ensure_casette_gzip(loaded_casette):
         )
 
 
-def _maybe_ensure_casette_gzip(result):
-    if sys.version_info[0] == 3 and sys.version_info[1] == 9:
-        _ensure_casette_gzip(result)
-
-
 class _PrettyPrintJSONBody:
     """This makes request and response body recordings more readable."""
 
@@ -316,7 +310,7 @@ class _PrettyPrintJSONBody:
     @staticmethod
     def deserialize(cassette_string):
         result = yaml.load(cassette_string, Loader=yaml.Loader)
-        _maybe_ensure_casette_gzip(result)
+        _ensure_casette_gzip(result)
         return result
 
 
