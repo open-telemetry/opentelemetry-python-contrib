@@ -1,5 +1,4 @@
 asgiref==3.8.1
-backports.zoneinfo==0.2.1
 Deprecated==1.2.14
 Django==4.2.17
 iniconfig==2.0.0
