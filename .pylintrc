@@ -46,7 +46,7 @@ suggestion-mode=yes
 unsafe-load-any-extension=no
 
 # Run python dependant checks considering the baseline version
-py-version=3.9
+py-version=3.10
 
 
 [MESSAGES CONTROL]
@@ -76,11 +76,11 @@ disable=missing-docstring,
       exec-used,
       super-with-arguments, # temp-pylint-upgrade
       isinstance-second-argument-not-valid-type, # temp-pylint-upgrade
-      raise-missing-from, # temp-pylint-upgrade 
-      unused-argument, # temp-pylint-upgrade  
-      protected-access, # temp-pylint-upgrade 
+      raise-missing-from, # temp-pylint-upgrade
+      unused-argument, # temp-pylint-upgrade
+      protected-access, # temp-pylint-upgrade
       super-init-not-called, # temp-pylint-upgrade
-      invalid-overridden-method, # temp-pylint-upgrade 
+      invalid-overridden-method, # temp-pylint-upgrade
       missing-module-docstring, # temp-pylint-upgrade
       import-error, # needed as a workaround as reported here: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/290
       cyclic-import,

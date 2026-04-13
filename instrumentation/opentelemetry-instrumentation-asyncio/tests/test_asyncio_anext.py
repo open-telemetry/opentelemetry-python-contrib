@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import sys
-from unittest import skipIf
 from unittest.mock import patch
 
 # pylint: disable=no-name-in-module
@@ -44,9 +42,6 @@ class TestAsyncioAnext(TestBase):
     # Asyncio anext() does not have __name__ attribute, which is used to determine if the coroutine should be traced.
     # This test is to ensure that the instrumentation does not break when the coroutine does not have __name__ attribute.
     # Additionally, ensure the coroutine is actually awaited.
-    @skipIf(
-        sys.version_info < (3, 10), "anext is only available in Python 3.10+"
-    )
     def test_asyncio_anext(self):
         async def main():
             async def async_gen():
