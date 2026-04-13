@@ -104,6 +104,21 @@ from .patch import (
 )
 
 
+def _is_parse_supported():
+    """Check if the parse() method is available on the Completions class.
+
+    The parse() method for structured outputs was added in openai >= 1.40.0.
+    """
+    try:
+        from openai.resources.chat.completions import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            Completions,
+        )
+
+        return hasattr(Completions, "parse")
+    except ImportError:
+        return False
+
+
 class OpenAIInstrumentor(BaseInstrumentor):
     def __init__(self):
         self._meter = None
@@ -188,6 +203,36 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
+        # parse() wraps create() internally in the OpenAI SDK and returns a
+        # ParsedChatCompletion. The telemetry-relevant fields (model, usage,
+        # choices, finish_reason) are identical to ChatCompletion, so the
+        # existing create() wrappers handle it correctly.
+        self._parse_supported = _is_parse_supported()
+        if self._parse_supported:
+            wrap_function_wrapper(
+                module="openai.resources.chat.completions",
+                name="Completions.parse",
+                wrapper=(
+                    chat_completions_create_v_new(handler, content_mode)
+                    if latest_experimental_enabled
+                    else chat_completions_create_v_old(
+                        tracer, logger, instruments, is_content_enabled()
+                    )
+                ),
+            )
+
+            wrap_function_wrapper(
+                module="openai.resources.chat.completions",
+                name="AsyncCompletions.parse",
+                wrapper=(
+                    async_chat_completions_create_v_new(handler, content_mode)
+                    if latest_experimental_enabled
+                    else async_chat_completions_create_v_old(
+                        tracer, logger, instruments, is_content_enabled()
+                    )
+                ),
+            )
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
@@ -195,3 +240,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
+
+        if self._parse_supported:
+            unwrap(openai.resources.chat.completions.Completions, "parse")
+            unwrap(openai.resources.chat.completions.AsyncCompletions, "parse")
