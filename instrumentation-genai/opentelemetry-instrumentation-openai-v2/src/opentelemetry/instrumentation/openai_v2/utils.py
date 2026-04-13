@@ -37,6 +37,7 @@ from opentelemetry.semconv.attributes import (
 )
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
     InputMessage,
     LLMInvocation,
     OutputMessage,
@@ -55,7 +56,16 @@ def is_content_enabled() -> bool:
         OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
     )
 
-    return capture_content.lower() == "true"
+    lower = capture_content.lower()
+    if lower == "true":
+        return True
+
+    # Support newer ContentCapturingMode enum values (e.g. span_and_event)
+    try:
+        mode = ContentCapturingMode[lower.upper()]
+        return mode != ContentCapturingMode.NO_CONTENT
+    except KeyError:
+        return False
 
 
 def extract_tool_calls(item, capture_content):
