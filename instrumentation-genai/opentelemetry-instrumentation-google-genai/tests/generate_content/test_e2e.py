@@ -268,35 +268,6 @@ def _ensure_gzip_single_response(data: bytes):
         return gzip.compress(data)
 
 
-# VCRPy automatically decompresses responses before saving them, but it may forget to
-# re-encode them when the data is loaded. This can create issues with decompression.
-# This is why we re-encode on load; to accurately replay what was originally sent.
-#
-# https://vcrpy.readthedocs.io/en/latest/advanced.html#decode-compressed-response
-def _ensure_casette_gzip(loaded_casette):
-    for interaction in loaded_casette["interactions"]:
-        response = interaction["response"]
-        headers = response["headers"]
-        if (
-            "content-encoding" not in headers
-            and "Content-Encoding" not in headers
-        ):
-            continue
-        if (
-            "content-encoding" in headers
-            and "gzip" not in headers["content-encoding"]
-        ):
-            continue
-        if (
-            "Content-Encoding" in headers
-            and "gzip" not in headers["Content-Encoding"]
-        ):
-            continue
-        response["body"]["string"] = _ensure_gzip_single_response(
-            response["body"]["string"].encode()
-        )
-
-
 class _PrettyPrintJSONBody:
     """This makes request and response body recordings more readable."""
 
@@ -310,7 +281,6 @@ class _PrettyPrintJSONBody:
     @staticmethod
     def deserialize(cassette_string):
         result = yaml.load(cassette_string, Loader=yaml.Loader)
-        _ensure_casette_gzip(result)
         return result
 
 
