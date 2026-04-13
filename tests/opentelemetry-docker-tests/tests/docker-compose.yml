@@ -58,3 +58,7 @@ services:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "yourStrong(!)Password"
     command: /opt/mssql/bin/sqlservr
+  otaerospike:
+    image: aerospike/aerospike-server:latest
+    ports:
+      - "3000:3000"
