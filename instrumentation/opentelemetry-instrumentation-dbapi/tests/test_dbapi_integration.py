@@ -306,6 +306,19 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
 
+    def test_executemany_iterable_cursor(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Test query")
+
+        for _row in cursor:
+            pass
+
     def test_executemany_comment(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
