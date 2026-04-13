@@ -837,6 +837,9 @@ class TracedCursorProxy(BaseObjectProxy, Generic[CursorT]):
     def __exit__(self, *args, **kwargs):
         self.__wrapped__.__exit__(*args, **kwargs)
 
+    def __iter__(self):
+        return iter(self.__wrapped__)
+
 
 def get_traced_cursor_proxy(
     cursor: CursorT,
