@@ -24,7 +24,6 @@ secondary goal of this test. Detailed testing of the instrumentation
 output is the purview of the other tests in this directory."""
 
 import asyncio
-import gzip
 import json
 import os
 import subprocess
@@ -255,17 +254,6 @@ def _convert_body_to_literal(data):
             data[idx] = _convert_body_to_literal(choice)
 
     return data
-
-
-# Helper for enforcing GZIP compression where it was originally.
-def _ensure_gzip_single_response(data: bytes):
-    try:
-        # Attempt to decompress, first, to avoid double compression.
-        gzip.decompress(data)
-        return data
-    except gzip.BadGzipFile:
-        # It must not have been compressed in the first place.
-        return gzip.compress(data)
 
 
 class _PrettyPrintJSONBody:
