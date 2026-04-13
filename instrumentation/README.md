@@ -1,6 +1,7 @@
 
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |
+| [opentelemetry-instrumentation-aerospike](./opentelemetry-instrumentation-aerospike) | aerospike >= 17.0.0 | No | development
 | [opentelemetry-instrumentation-aio-pika](./opentelemetry-instrumentation-aio-pika) | aio_pika >= 7.2.0, < 10.0.0 | No | development
 | [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-aiohttp-server](./opentelemetry-instrumentation-aiohttp-server) | aiohttp ~= 3.0 | Yes | migration
