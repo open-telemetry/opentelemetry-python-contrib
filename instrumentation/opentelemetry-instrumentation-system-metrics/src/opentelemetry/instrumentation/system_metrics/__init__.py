@@ -481,7 +481,6 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 unit="By",
             )
 
-
         # FIXME: process.runtime keys are deprecated and will be removed in subsequent releases.
         # When removing them, remember to clean also the callbacks and labels
 
@@ -941,21 +940,13 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         except (AttributeError, NotImplementedError, PermissionError):
             # io_counters() is not available on all platforms (e.g. macOS)
             return
-        for metric in self._config["process.disk.io"]:
+       for metric in self._config["process.disk.io"]:
             if metric == "read":
-                if hasattr(proc_disk, "read_bytes"):
-                    self._process_disk_io_labels["direction"] = "read"
-                    yield Observation(
-                        proc_disk.read_bytes,
-                        self._process_disk_io_labels.copy(),
-                    )
+                self._process_disk_io_labels["direction"] = "read"
+                yield Observation(proc_disk.read_bytes, self._process_disk_io_labels.copy())
             elif metric == "write":
-                if hasattr(proc_disk, "write_bytes"):
-                    self._process_disk_io_labels["direction"] = "write"
-                    yield Observation(
-                        proc_disk.write_bytes,
-                        self._process_disk_io_labels.copy(),
-                    )
+                self._process_disk_io_labels["direction"] = "write"
+                yield Observation(proc_disk.write_bytes, self._process_disk_io_labels.copy())
 
     # runtime callbacks
 
