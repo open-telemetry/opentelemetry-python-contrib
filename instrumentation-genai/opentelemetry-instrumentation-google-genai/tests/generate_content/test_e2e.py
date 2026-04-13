@@ -280,8 +280,7 @@ class _PrettyPrintJSONBody:
 
     @staticmethod
     def deserialize(cassette_string):
-        result = yaml.load(cassette_string, Loader=yaml.Loader)
-        return result
+        return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
 @pytest.fixture(name="fully_initialized_vcr", scope="module", autouse=True)
