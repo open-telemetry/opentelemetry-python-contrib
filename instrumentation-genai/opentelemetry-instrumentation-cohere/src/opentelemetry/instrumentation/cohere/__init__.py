@@ -56,7 +56,9 @@ from opentelemetry.util.genai.utils import (
 
 from .patch import (
     async_chat_create,
+    async_chat_stream_create,
     chat_create,
+    chat_stream_create,
 )
 
 
@@ -90,6 +92,13 @@ class CohereInstrumentor(BaseInstrumentor):
             wrapper=chat_create(handler, content_mode),
         )
 
+        # Instrument sync V2Client.chat_stream
+        wrap_function_wrapper(
+            module="cohere.v2.client",
+            name="V2Client.chat_stream",
+            wrapper=chat_stream_create(handler, content_mode),
+        )
+
         # Instrument async AsyncV2Client.chat
         wrap_function_wrapper(
             module="cohere.v2.client",
@@ -97,9 +106,18 @@ class CohereInstrumentor(BaseInstrumentor):
             wrapper=async_chat_create(handler, content_mode),
         )
 
+        # Instrument async AsyncV2Client.chat_stream
+        wrap_function_wrapper(
+            module="cohere.v2.client",
+            name="AsyncV2Client.chat_stream",
+            wrapper=async_chat_stream_create(handler, content_mode),
+        )
+
 
     def _uninstrument(self, **kwargs):
         import cohere.v2.client  # pylint: disable=import-outside-toplevel
 
         unwrap(cohere.v2.client.V2Client, "chat")
+        unwrap(cohere.v2.client.V2Client, "chat_stream")
         unwrap(cohere.v2.client.AsyncV2Client, "chat")
+        unwrap(cohere.v2.client.AsyncV2Client, "chat_stream")

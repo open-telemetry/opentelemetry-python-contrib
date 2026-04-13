@@ -14,6 +14,8 @@
 
 """Tests for Cohere chat completions instrumentation."""
 
+import json
+
 import httpx
 import pytest
 
@@ -65,6 +67,68 @@ def _make_client(response_json=None, handler=None):
     return ClientV2(api_key="test-key", httpx_client=httpx_client)
 
 
+
+
+def _make_stream_handler(events):
+    """Create an httpx handler that returns SSE-formatted stream events."""
+
+    def handler(request):
+        lines = []
+        for event in events:
+            lines.append(f"data: {json.dumps(event)}")
+            lines.append("")  # blank line = SSE event separator
+        body = "\n".join(lines) + "\n"
+        return httpx.Response(
+            200,
+            content=body.encode(),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    return handler
+
+
+def _stream_events(
+    content_parts=None,
+    finish_reason="COMPLETE",
+    input_tokens=5,
+    output_tokens=15,
+    stream_id="stream-id-123",
+):
+    """Generate a list of SSE events for a streaming chat response."""
+    if content_parts is None:
+        content_parts = ["Hello ", "world!"]
+
+    events = [
+        {
+            "type": "message-start",
+            "id": stream_id,
+            "delta": {"message": {"role": "assistant"}},
+        },
+    ]
+    for text in content_parts:
+        events.append(
+            {
+                "type": "content-delta",
+                "index": 0,
+                "delta": {"message": {"content": {"text": text}}},
+            }
+        )
+    events.append(
+        {
+            "type": "message-end",
+            "id": stream_id,
+            "delta": {
+                "finish_reason": finish_reason,
+                "usage": {
+                    "tokens": {
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                    },
+                },
+            },
+        }
+    )
+    return events
 
 class TestChatCompletionsNoContent:
     """Test sync chat completions without content capture."""
@@ -207,6 +271,71 @@ class TestChatCompletionsWithContent:
         assert "capital of France" in input_msgs
 
 
+
+
+class TestChatStreamNoContent:
+    """Test streaming chat completions without content capture."""
+
+    @pytest.mark.usefixtures("instrument_no_content")
+    def test_chat_stream_basic(self, span_exporter):
+        events = _stream_events()
+        client = _make_client(handler=_make_stream_handler(events))
+
+        chunks = list(
+            client.chat_stream(
+                model="command-r-plus",
+                messages=[{"role": "user", "content": "Hello"}],
+            )
+        )
+
+        # message-start + 2 content-delta + message-end
+        assert len(chunks) >= 3
+
+        spans = span_exporter.get_finished_spans()
+        assert len(spans) == 1
+
+        span = spans[0]
+        assert span.name == "chat command-r-plus"
+        attrs = dict(span.attributes)
+        assert attrs[GenAIAttributes.GEN_AI_OPERATION_NAME] == "chat"
+        assert attrs[GenAIAttributes.GEN_AI_REQUEST_MODEL] == "command-r-plus"
+        assert attrs[GenAIAttributes.GEN_AI_PROVIDER_NAME] == "cohere"
+        assert attrs[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS] == 5
+        assert attrs[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS] == 15
+        assert attrs[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == ("stop",)
+        assert attrs[GenAIAttributes.GEN_AI_RESPONSE_ID] == "stream-id-123"
+
+        # No content captured
+        assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES not in attrs
+
+
+class TestChatStreamWithContent:
+    """Test streaming chat completions with content capture enabled."""
+
+    @pytest.mark.usefixtures("instrument_with_content")
+    def test_chat_stream_captures_content(self, span_exporter):
+        events = _stream_events(
+            content_parts=["Streamed ", "response"],
+            stream_id="stream-id-456",
+            input_tokens=8,
+            output_tokens=12,
+        )
+        client = _make_client(handler=_make_stream_handler(events))
+
+        list(
+            client.chat_stream(
+                model="command-r-plus",
+                messages=[{"role": "user", "content": "Stream test"}],
+            )
+        )
+
+        spans = span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        attrs = dict(spans[0].attributes)
+
+        assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES in attrs
+        output_msgs = attrs[GenAIAttributes.GEN_AI_OUTPUT_MESSAGES]
+        assert "Streamed response" in output_msgs
 
 class TestUninstrument:
     """Test that uninstrumenting properly restores original methods."""
