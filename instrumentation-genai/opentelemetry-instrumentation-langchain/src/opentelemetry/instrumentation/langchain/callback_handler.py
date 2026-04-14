@@ -32,6 +32,7 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     OutputMessage,
     Text,
+    WorkflowInvocation,
 )
 
 
@@ -44,6 +45,79 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         super().__init__()
         self._telemetry_handler = telemetry_handler
         self._invocation_manager = _InvocationManager()
+
+    def on_chain_start(
+        self,
+        serialized: dict[str, Any],
+        inputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        payload = serialized or {}
+        name_source = (
+                payload.get("name")
+                or payload.get("id")
+                or kwargs.get("name")
+                or (metadata.get("langgraph_node") if metadata else None)
+        )
+        name = _safe_str(name_source or "chain")
+
+        if parent_run_id is None:
+            workflow_name_override = metadata.get("workflow_name") if metadata else None
+            wf = WorkflowInvocation(name=workflow_name_override or name)
+            self._telemetry_handler.start(wf)
+            self._invocation_manager.add_invocation_state(run_id, None, wf)
+            return
+        else:
+            self._invocation_manager.add_invocation_state(run_id, parent_run_id)
+
+
+    def on_chain_end(
+        self,
+        outputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if invocation is None or not isinstance(
+            invocation, WorkflowInvocation
+        ):
+            # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        self._telemetry_handler.stop(invocation)
+
+        if invocation.span and not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id)
+
+
+    def on_chain_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if invocation is None or not isinstance(
+            invocation, WorkflowInvocation
+        ):
+            # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        error_otel = Error(message=str(error), type=type(error))
+        invocation = self._telemetry_handler.fail(
+            invocation=invocation, error=error_otel
+        )
+        if invocation.span and not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id=run_id)
 
     def on_chat_model_start(
         self,
@@ -152,7 +226,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        llm_invocation = self._telemetry_handler.start_llm(
+        llm_invocation = self._telemetry_handler.start(
             invocation=llm_invocation
         )
         self._invocation_manager.add_invocation_state(
@@ -246,7 +320,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             if response_id is not None:
                 llm_invocation.response_id = str(response_id)
 
-        llm_invocation = self._telemetry_handler.stop_llm(
+        llm_invocation = self._telemetry_handler.stop(
             invocation=llm_invocation
         )
         if llm_invocation.span and not llm_invocation.span.is_recording():
@@ -268,8 +342,14 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             return
 
         error_otel = Error(message=str(error), type=type(error))
-        llm_invocation = self._telemetry_handler.fail_llm(
+        llm_invocation = self._telemetry_handler.fail(
             invocation=llm_invocation, error=error_otel
         )
         if llm_invocation.span and not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
+
+def _safe_str(value: Any) -> str:
+    try:
+        return str(value)
+    except (TypeError, ValueError):
+        return "<unrepr>"

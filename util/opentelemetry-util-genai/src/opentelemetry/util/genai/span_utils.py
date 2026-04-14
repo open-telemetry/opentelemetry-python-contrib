@@ -63,6 +63,7 @@ def _get_llm_common_attributes(
         (GenAI.GEN_AI_PROVIDER_NAME, invocation.provider),
         (server_attributes.SERVER_ADDRESS, invocation.server_address),
         (server_attributes.SERVER_PORT, invocation.server_port),
+        ("gen_ai.workflow.name", invocation.workflow_name),
     )
 
     return {
