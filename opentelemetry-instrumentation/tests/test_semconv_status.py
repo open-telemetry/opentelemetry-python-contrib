@@ -72,7 +72,7 @@ class TestSetStatus(unittest.TestCase):
         self.assertEqual(last_call.status_code, StatusCode.ERROR)
 
     def test_unset_to_ok(self):
-        """UNSET status should be upgraded to OK for 2xx"""
+        """2xx client spans should not change existing UNSET status"""
         span = _make_span(StatusCode.UNSET)
         _set_status(
             span,
