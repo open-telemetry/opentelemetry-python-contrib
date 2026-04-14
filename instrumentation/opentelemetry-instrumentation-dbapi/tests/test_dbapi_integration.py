@@ -306,6 +306,7 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
 
+    # pylint: disable=no-self-use
     def test_executemany_iterable_cursor(self):
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name", "testcomponent"
