@@ -454,6 +454,45 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(span_list[0].kind, trace.SpanKind.SERVER)
         self.assertEqual(span_list[0].attributes, expected_attrs)
 
+    def test_active_requests_counter_decremented_on_error(self):
+        """Verify http.server.active_requests is decremented even when the
+        view raises an exception.  Before the try/finally fix, the counter
+        would leak (permanently increment) on errors."""
+
+        # Successful request – counter should return to 0
+        resp = self.client.get("/hello/123")
+        self.assertEqual(200, resp.status_code)
+        resp.close()
+
+        # Request that triggers a 500 via ValueError in the view
+        resp = self.client.get("/hello/500")
+        self.assertEqual(500, resp.status_code)
+        resp.close()
+
+        # Collect metrics and find the active_requests counter
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        active_requests_value = None
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.name == "http.server.active_requests":
+                        for point in metric.data.data_points:
+                            if isinstance(point, NumberDataPoint):
+                                active_requests_value = point.value
+
+        # The counter must be back to 0 — both the successful and the
+        # error request should have been properly decremented.
+        self.assertIsNotNone(
+            active_requests_value,
+            "http.server.active_requests metric not found",
+        )
+        self.assertEqual(
+            0,
+            active_requests_value,
+            "active_requests counter leaked: expected 0 after all "
+            "requests completed, but got %d" % active_requests_value,
+        )
+
     def test_exclude_lists_from_env(self):
         self.client.get("/env_excluded_arg/123")
         span_list = self.memory_exporter.get_finished_spans()
