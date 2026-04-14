@@ -48,8 +48,7 @@ Usage:
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Iterator
+from contextlib import AbstractContextManager
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -229,7 +228,6 @@ class TelemetryHandler:
             invocation._inference_invocation.fail(error)
         return invocation
 
-    @contextmanager
     def inference(
         self,
         provider: str,
@@ -237,7 +235,7 @@ class TelemetryHandler:
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
-    ) -> Iterator[InferenceInvocation]:
+    ) -> AbstractContextManager[InferenceInvocation]:
         """Context manager for LLM inference invocations.
 
         Only set data attributes on the invocation object, do not modify the span or context.
@@ -246,20 +244,13 @@ class TelemetryHandler:
         If an exception occurs inside the context, marks the span as error, ends it, and
         re-raises the original exception.
         """
-        invocation = self.start_inference(
+        return self.start_inference(
             provider=provider,
             request_model=request_model,
             server_address=server_address,
             server_port=server_port,
-        )
-        try:
-            yield invocation
-        except Exception as exc:
-            invocation.fail(exc)
-            raise
-        invocation.stop()
+        )._managed()
 
-    @contextmanager
     def embedding(
         self,
         provider: str,
@@ -267,7 +258,7 @@ class TelemetryHandler:
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
-    ) -> Iterator[EmbeddingInvocation]:
+    ) -> AbstractContextManager[EmbeddingInvocation]:
         """Context manager for Embedding invocations.
 
         Only set data attributes on the invocation object, do not modify the span or context.
@@ -276,20 +267,13 @@ class TelemetryHandler:
         If an exception occurs inside the context, marks the span as error, ends it, and
         re-raises the original exception.
         """
-        invocation = self.start_embedding(
+        return self.start_embedding(
             provider=provider,
             request_model=request_model,
             server_address=server_address,
             server_port=server_port,
-        )
-        try:
-            yield invocation
-        except Exception as exc:
-            invocation.fail(exc)
-            raise
-        invocation.stop()
+        )._managed()
 
-    @contextmanager
     def tool(
         self,
         name: str,
@@ -298,7 +282,7 @@ class TelemetryHandler:
         tool_call_id: str | None = None,
         tool_type: str | None = None,
         tool_description: str | None = None,
-    ) -> Iterator[ToolInvocation]:
+    ) -> AbstractContextManager[ToolInvocation]:
         """Context manager for Tool invocations.
 
         Only set data attributes on the invocation object, do not modify the span or context.
@@ -307,25 +291,18 @@ class TelemetryHandler:
         If an exception occurs inside the context, marks the span as error, ends it, and
         re-raises the original exception.
         """
-        invocation = self.start_tool(
+        return self.start_tool(
             name,
             arguments=arguments,
             tool_call_id=tool_call_id,
             tool_type=tool_type,
             tool_description=tool_description,
-        )
-        try:
-            yield invocation
-        except Exception as exc:
-            invocation.fail(exc)
-            raise
-        invocation.stop()
+        )._managed()
 
-    @contextmanager
     def workflow(
         self,
         name: str | None = None,
-    ) -> Iterator[WorkflowInvocation]:
+    ) -> AbstractContextManager[WorkflowInvocation]:
         """Context manager for Workflow invocations.
 
         Only set data attributes on the invocation object, do not modify the span or context.
@@ -334,14 +311,7 @@ class TelemetryHandler:
         If an exception occurs inside the context, marks the span as error, ends it, and
         re-raises the original exception.
         """
-        invocation = self.start_workflow(name=name)
-
-        try:
-            yield invocation
-        except Exception as exc:
-            invocation.fail(exc)
-            raise
-        invocation.stop()
+        return self.start_workflow(name=name)._managed()
 
 
 def get_telemetry_handler(
