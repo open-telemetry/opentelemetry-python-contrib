@@ -11,6 +11,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "opentelemetry-distro",
     "opentelemetry-exporter-credential-provider-gcp",
     "opentelemetry-exporter-prometheus-remote-write",
     "opentelemetry-exporter-richconsole",
@@ -26,7 +27,6 @@ members = [
     "opentelemetry-instrumentation-asyncio",
     "opentelemetry-instrumentation-asyncpg",
     "opentelemetry-instrumentation-aws-lambda",
-    "opentelemetry-instrumentation-boto",
     "opentelemetry-instrumentation-boto3sqs",
     "opentelemetry-instrumentation-botocore",
     "opentelemetry-instrumentation-cassandra",
@@ -93,6 +93,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/73/8d1020683970de5532b3b01732d75c8bf922a6505fcdad1a9c7c6405242a/aio_pika-9.5.8.tar.gz", hash = "sha256:7c36874115f522bbe7486c46d8dd711a4dbedd67c4e8a8c47efe593d01862c62", size = 47408, upload-time = "2025-11-12T10:37:10.215Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7c/91/513971861d845d28160ecb205ae2cfaf618b16918a9cd4e0b832b5360ce7/aio_pika-9.5.8-py3-none-any.whl", hash = "sha256:f4c6cb8a6c5176d00f39fd7431e9702e638449bc6e86d1769ad7548b2a506a8d", size = 54397, upload-time = "2025-11-12T10:37:08.374Z" },
+]
+
+[[package]]
+name = "aiobotocore"
+version = "2.26.0"
+source = { registry = "https://pypi.org/simple/" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "aioitertools" },
+    { name = "botocore" },
+    { name = "jmespath" },
+    { name = "multidict" },
+    { name = "python-dateutil" },
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4d/f8/99fa90d9c25b78292899fd4946fce97b6353838b5ecc139ad8ba1436e70c/aiobotocore-2.26.0.tar.gz", hash = "sha256:50567feaf8dfe2b653570b4491f5bc8c6e7fb9622479d66442462c021db4fadc", size = 122026, upload-time = "2025-11-28T07:54:59.956Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b7/58/3bf0b7d474607dc7fd67dd1365c4e0f392c8177eaf4054e5ddee3ebd53b5/aiobotocore-2.26.0-py3-none-any.whl", hash = "sha256:a793db51c07930513b74ea7a95bd79aaa42f545bdb0f011779646eafa216abec", size = 87333, upload-time = "2025-11-28T07:54:58.457Z" },
 ]
 
 [[package]]
@@ -222,6 +240,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/3c/5f/24155e30ba7f8c96918af1350eb0663e2430aad9e001c0489d89cd708ab1/aiohttp-3.13.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:fc353029f176fd2b3ec6cfc71be166aba1936fe5d73dd1992ce289ca6647a9aa", size = 1769801, upload-time = "2026-01-03T17:32:20.25Z" },
     { url = "https://files.pythonhosted.org/packages/eb/f8/7314031ff5c10e6ece114da79b338ec17eeff3a079e53151f7e9f43c4723/aiohttp-3.13.3-cp314-cp314t-win32.whl", hash = "sha256:2e41b18a58da1e474a057b3d35248d8320029f61d70a37629535b16a0c8f3767", size = 466523, upload-time = "2026-01-03T17:32:22.215Z" },
     { url = "https://files.pythonhosted.org/packages/b4/63/278a98c715ae467624eafe375542d8ba9b4383a016df8fdefe0ae28382a7/aiohttp-3.13.3-cp314-cp314t-win_amd64.whl", hash = "sha256:44531a36aa2264a1860089ffd4dce7baf875ee5a6079d5fb42e261c704ef7344", size = 499694, upload-time = "2026-01-03T17:32:24.546Z" },
+]
+
+[[package]]
+name = "aioitertools"
+version = "0.13.0"
+source = { registry = "https://pypi.org/simple/" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/3c/53c4a17a05fb9ea2313ee1777ff53f5e001aefd5cc85aa2f4c2d982e1e38/aioitertools-0.13.0.tar.gz", hash = "sha256:620bd241acc0bbb9ec819f1ab215866871b4bbd1f73836a55f799200ee86950c", size = 19322, upload-time = "2025-11-06T22:17:07.609Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/a1/510b0a7fadc6f43a6ce50152e69dbd86415240835868bb0bd9b5b88b1e06/aioitertools-0.13.0-py3-none-any.whl", hash = "sha256:0be0292b856f08dfac90e31f4739432f4cb6d7520ab9eb73e143f4f2fa5259be", size = 24182, upload-time = "2025-11-06T22:17:06.502Z" },
 ]
 
 [[package]]
@@ -531,40 +558,31 @@ wheels = [
 ]
 
 [[package]]
-name = "boto"
-version = "2.49.0"
-source = { registry = "https://pypi.org/simple/" }
-sdist = { url = "https://files.pythonhosted.org/packages/c8/af/54a920ff4255664f5d238b5aebd8eedf7a07c7a5e71e27afcfe840b82f51/boto-2.49.0.tar.gz", hash = "sha256:ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a", size = 1478498, upload-time = "2018-07-11T20:58:58.057Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/10/c0b78c27298029e4454a472a1919bde20cb182dab1662cec7f2ca1dcc523/boto-2.49.0-py2.py3-none-any.whl", hash = "sha256:147758d41ae7240dc989f0039f27da8ca0d53734be0eb869ef16e3adcfa462e8", size = 1359202, upload-time = "2018-07-11T20:58:55.711Z" },
-]
-
-[[package]]
 name = "boto3"
-version = "1.42.53"
+version = "1.41.5"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/62/ef/03460914019db52301a6084460f0dd738f3f9e89d2ddf5bd33cef8168e63/boto3-1.42.53.tar.gz", hash = "sha256:56bc79388763995852b6d3fe48023e661e63fc2e60a921273c422d0171b9fbfb", size = 112812, upload-time = "2026-02-19T20:33:58.422Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/81/450cd4143864959264a3d80f9246175a20de8c1e50ec889c710eaa28cdd9/boto3-1.41.5.tar.gz", hash = "sha256:bc7806bee681dfdff2fe2b74967b107a56274f1e66ebe4d20dc8eee1ea408d17", size = 111594, upload-time = "2025-11-26T20:27:47.021Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/ea/08dfba25a5822a7254b20aa905a9937177ca1532dd7f47c926875dd87299/boto3-1.42.53-py3-none-any.whl", hash = "sha256:3bd32f3508a6e9851671d0ef3b1f9e8ee7e8c095aa0488bcd9e86074aef5b7eb", size = 140555, upload-time = "2026-02-19T20:33:55.691Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/56/f47a80254ed4991cce9a2f6d8ae8aafbc8df1c3270e966b2927289e5a12f/boto3-1.41.5-py3-none-any.whl", hash = "sha256:bb278111bfb4c33dca8342bda49c9db7685e43debbfa00cc2a5eb854dd54b745", size = 139344, upload-time = "2025-11-26T20:27:45.571Z" },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.42.53"
+version = "1.41.5"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/b6/0b2ab38e422e93f28b7a394a29881a9d767b79831fa1957a3ccab996a70e/botocore-1.42.53.tar.gz", hash = "sha256:0bc1a2e1b6ae4c8397c9bede3bb9007b4f16e159ef2ca7f24837e31d5860caac", size = 14918644, upload-time = "2026-02-19T20:33:44.814Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/22/7fe08c726a2e3b11a0aef8bf177e83891c9cb2dc1809d35c9ed91a9e60e6/botocore-1.41.5.tar.gz", hash = "sha256:0367622b811597d183bfcaab4a350f0d3ede712031ce792ef183cabdee80d3bf", size = 14668152, upload-time = "2025-11-26T20:27:38.026Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/dc/cf3b2ec4a419b20d2cd6ba8e1961bc59b7ec9801339628e31551dac23801/botocore-1.42.53-py3-none-any.whl", hash = "sha256:1255db56bc0a284a8caa182c20966277e6c8871b6881cf816d40e993fa5da503", size = 14589472, upload-time = "2026-02-19T20:33:40.377Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/4e/21cd0b8f365449f1576f93de1ec8718ed18a7a3bc086dfbdeb79437bba7a/botocore-1.41.5-py3-none-any.whl", hash = "sha256:3fef7fcda30c82c27202d232cfdbd6782cb27f20f8e7e21b20606483e66ee73a", size = 14337008, upload-time = "2025-11-26T20:27:35.208Z" },
 ]
 
 [[package]]
@@ -907,39 +925,35 @@ wheels = [
 
 [[package]]
 name = "confluent-kafka"
-version = "2.13.0"
+version = "2.13.2"
 source = { registry = "https://pypi.org/simple/" }
-sdist = { url = "https://files.pythonhosted.org/packages/b4/d0/1f5055331fa660225de6829b143e6f083913f0a96481134a91390bad62c1/confluent_kafka-2.13.0.tar.gz", hash = "sha256:eff7a4391a9e6d4a33f0c05d0935b200a7463834f1f5d6e6253be318f910babd", size = 273621, upload-time = "2026-01-05T10:25:08.078Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/38/f5855cae6d328fa66e689d068709f91cbbd4d72e7e03959998bd43ac6b26/confluent_kafka-2.13.2.tar.gz", hash = "sha256:619d10d1d77c9821ba913b3e42a33ade7f889f3573c7f3c17b57c3056e3310f5", size = 276068, upload-time = "2026-03-02T12:53:31.457Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/75/b3ac0e7fc74a577eb58872f07faef3d1d50a1e1ac7d105b167d330105bc5/confluent_kafka-2.13.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:264f86956d3bbd26bc14fd2d4060908a0c53d26b14ff33d21fa83369f55d8d3b", size = 3626152, upload-time = "2026-01-05T10:23:21.034Z" },
-    { url = "https://files.pythonhosted.org/packages/17/7c/897913554793d43fcf69e0bfa1ba2b647e007f45fa43b190645e5b5f6518/confluent_kafka-2.13.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:4af5f129acce30110c7a1c9c05c54821c1283850e38c67715bed7c3c8df322c6", size = 3186880, upload-time = "2026-01-05T10:23:24.382Z" },
-    { url = "https://files.pythonhosted.org/packages/27/7c/c956373d15a57290b9d00c5e2c1a5fb65b8d4f77fa64535ad7370d9ed750/confluent_kafka-2.13.0-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:9b975664e821d975c85ec9bba806b7c62eb9b23cf2ad3b41813862ee24caf00e", size = 3715940, upload-time = "2026-01-05T10:23:29.266Z" },
-    { url = "https://files.pythonhosted.org/packages/10/92/66179579a1bbc91f2e700841ea698a99c8108580e46c2cd5b1812c707c38/confluent_kafka-2.13.0-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:fc633deedd3eba5c266bf12959d8c4173806d252db45d2c78d3bd9a874dc7ccf", size = 3973310, upload-time = "2026-01-05T10:23:31.775Z" },
-    { url = "https://files.pythonhosted.org/packages/9c/e6/66d3bd816d996058f9f46b46953e79b3ea2662f3538d0682a3f52f651393/confluent_kafka-2.13.0-cp310-cp310-win_amd64.whl", hash = "sha256:2c0b19a83f519de8f2cb170bc7879b1d92ac342a75798722fbfe29965f21d5ad", size = 4093322, upload-time = "2026-01-05T10:23:34.235Z" },
-    { url = "https://files.pythonhosted.org/packages/94/57/a90b9042a06bfbb8cc1e50142b8bcea29fde57a528dc10b188835e7c5c53/confluent_kafka-2.13.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:af19d6a2ab49f02cf699bc1dfb6f4bdcc3588e077c7b5319d73335b81fef93fd", size = 3625719, upload-time = "2026-01-05T10:23:36.469Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/ee/d0839c64de344de247d80b6f69a2d7f5d781bb55bdd1e98793549780a34d/confluent_kafka-2.13.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a406800c29e568e61ab687540391ac8eab210b79d24d7eb41b75b6117882e269", size = 3186456, upload-time = "2026-01-05T10:23:38.742Z" },
-    { url = "https://files.pythonhosted.org/packages/2b/e7/6224ab1c5dad5d70717f3e018f1d676be1d54ce3ea08b04b1d19e94484dc/confluent_kafka-2.13.0-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:9bc38055f5a26bec15ca81b0465f90cb2663a31c19948d6421dc02090b4cbd4a", size = 3715598, upload-time = "2026-01-05T10:23:41.018Z" },
-    { url = "https://files.pythonhosted.org/packages/64/88/a7a7ee4fdcca5340809482e6565cd3270fe82afd029a14cf921b51eef152/confluent_kafka-2.13.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:7080a20f64293b1f81747748e6bda0d1e9a9d5d5f94cd1b0c625cfdf819f491f", size = 3972822, upload-time = "2026-01-05T10:23:44.029Z" },
-    { url = "https://files.pythonhosted.org/packages/5f/46/2879be2a40b9b44a527a16c117c6a5f380fdd10d6735b43bce6fab6102d7/confluent_kafka-2.13.0-cp311-cp311-win_amd64.whl", hash = "sha256:39fdfd4fa6371ebabf9e7be858ae68d4fa9a9fd72fd5fc3d739fdaa99997fd9a", size = 4093320, upload-time = "2026-01-05T10:23:46.347Z" },
-    { url = "https://files.pythonhosted.org/packages/e9/cc/6bf9e5b3ee4bfdb39d3fcc7efabc9f577aa51e9e20139adc8d10e61593a5/confluent_kafka-2.13.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:a69263f22a8c53c7d55067e7795ed49d22c374b9473df91982816a0448e6d242", size = 3631367, upload-time = "2026-01-05T10:23:48.076Z" },
-    { url = "https://files.pythonhosted.org/packages/10/3d/c299df69885be6fdfc8b105b8106b2b4c73c745fa608cf579eb7e14a3da9/confluent_kafka-2.13.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0945c7f529e66a18aa19135aa18bfdc239ca6c0f6df6ca9b05a793d9b76c1c4b", size = 3191073, upload-time = "2026-01-05T10:23:49.967Z" },
-    { url = "https://files.pythonhosted.org/packages/82/2e/854aedcd9c9042491c1fcafaadc03a3b0e357ddc23044781d02920b46ea2/confluent_kafka-2.13.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:321037a64c02acb13b5bde193b461c0514dca236a9f5236c847a3240313c297f", size = 3720530, upload-time = "2026-01-05T10:23:51.957Z" },
-    { url = "https://files.pythonhosted.org/packages/1d/4a/210f0e1f8e77956ed1296c8b9bac2093413c1669ea0e923f590f2827aa1a/confluent_kafka-2.13.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:d7a71ca8fd42d3eefa22eb202e7fc8a419e0fd4e3b59862918c21f4d1074f0c5", size = 3977296, upload-time = "2026-01-05T10:23:56.743Z" },
-    { url = "https://files.pythonhosted.org/packages/b0/bc/d51f48200bb7bec521289c0b70691ea73f91aa76529b1bff807bcbf89b12/confluent_kafka-2.13.0-cp312-cp312-win_amd64.whl", hash = "sha256:37dddb1b92829b8862bc4fbce07789a79b73aa31eca413f3db187721a09975ff", size = 4093802, upload-time = "2026-01-05T10:23:58.703Z" },
-    { url = "https://files.pythonhosted.org/packages/77/bd/c2ab440b4c4847a37b21e9623bbeaf17982ca45595ad62b8435a26d680f7/confluent_kafka-2.13.0-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:0af90b3c566786017a01693da0ec4a876ca14cf37bc6164872652a6cf2702453", size = 3195849, upload-time = "2026-01-05T10:24:00.854Z" },
-    { url = "https://files.pythonhosted.org/packages/6a/40/a25a5895cf522bada81fc7ba6c0ad29219843206ede4e8d2138b7b095652/confluent_kafka-2.13.0-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:f25d05604dd92e9de72707582dded53aeb4737ef2e2c097a3ca08650200fc446", size = 3634806, upload-time = "2026-01-05T10:24:05.496Z" },
-    { url = "https://files.pythonhosted.org/packages/fd/46/db30d27184ac8fb673ca469d576ef582def0b613a69456631734f7a5e267/confluent_kafka-2.13.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:74ddf5ec7fa6058221a619c850f44bdbe8d969d7ed6efe8abdc857d2e233df20", size = 3720848, upload-time = "2026-01-05T10:24:07.831Z" },
-    { url = "https://files.pythonhosted.org/packages/fc/f8/5b940a080ab71fc3c585839eae0c26341a749a7ebc001fca0276aff9df40/confluent_kafka-2.13.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:f8d1d00397f3f32a1bcf4604d4164bf75838bd009e1e28282a7ae25e16814ea4", size = 3977677, upload-time = "2026-01-05T10:24:09.988Z" },
-    { url = "https://files.pythonhosted.org/packages/e1/cf/f9f979c08cfe1b8fd9203b329fc5c8c410e948f01272434bc1ce0c6334a5/confluent_kafka-2.13.0-cp313-cp313-win_amd64.whl", hash = "sha256:9d1fd035e2c47c4db5fe9b0f59a28fe2f2f1012887290dd0ea7d46741f686e99", size = 4153481, upload-time = "2026-01-05T10:24:12.167Z" },
-    { url = "https://files.pythonhosted.org/packages/06/3f/c2120c002f85c5401d8ea29558acf041ad968b33cfca83916a7c0a740d53/confluent_kafka-2.13.0-cp314-cp314-macosx_13_0_arm64.whl", hash = "sha256:d448537147a33dd8c17656732989ddfe1d4a25a40bcb5f59bc63dc0a5041dd83", size = 3195696, upload-time = "2026-01-05T10:24:14.422Z" },
-    { url = "https://files.pythonhosted.org/packages/35/b9/da4ef8fca4cbc76b6040a97a92085c09c0f23c42424989a2d68cec42c8d6/confluent_kafka-2.13.0-cp314-cp314-macosx_13_0_x86_64.whl", hash = "sha256:1325585f9fc283c32c30df4226178dc89cf43d00f5c240e1f77ddedc94573690", size = 3634632, upload-time = "2026-01-05T10:24:16.575Z" },
-    { url = "https://files.pythonhosted.org/packages/09/ed/c7d5cc3c57aec126ffb12ffa5f4584acd264446a4117db3ad2dd69e47afe/confluent_kafka-2.13.0-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:266bbea18ce99f6e77ce0e9a118f353447c8705792ef5745eabcc5c6db08794a", size = 3720650, upload-time = "2026-01-05T10:24:18.657Z" },
-    { url = "https://files.pythonhosted.org/packages/c3/2b/0a93b63a46b2ceaac3de92d494e32aab21bec398b40ac89108bbaa6894c3/confluent_kafka-2.13.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:7a373a1a3dd8e02dd218946583e951791480921fd777faeaf601c2834e2a6c0d", size = 3977364, upload-time = "2026-01-05T10:24:23.677Z" },
-    { url = "https://files.pythonhosted.org/packages/46/00/80ea6872421c4e30e033e035e5bdcf44c054993d5721623841c59b5f04c1/confluent_kafka-2.13.0-cp314-cp314-win_amd64.whl", hash = "sha256:da956b2141d9f425dbfc3cf1c244ef6d0633b83fc5ceada6f496099258e63a68", size = 4271874, upload-time = "2026-01-05T10:24:26.265Z" },
-    { url = "https://files.pythonhosted.org/packages/fc/1a/e6fe016bea63343010f485a1ecebfdc00d9b6e95ef6fe52a1d7793c0339c/confluent_kafka-2.13.0-cp314-cp314t-macosx_13_0_arm64.whl", hash = "sha256:fa354e9fb95e26545decd429477072ea3a98a2e7acac11d09156772e06f14680", size = 3194480, upload-time = "2026-01-05T10:24:28.515Z" },
-    { url = "https://files.pythonhosted.org/packages/fb/54/c9668f214f2e736e51e2874053fe1ebcb8784425fefcfd6fd0d384dc5dcf/confluent_kafka-2.13.0-cp314-cp314t-macosx_13_0_x86_64.whl", hash = "sha256:e256dc3a993bf5fde0fa4a1b6a5b72e3521cedbc9dc4d7a65f159afa4b72e5b4", size = 3632866, upload-time = "2026-01-05T10:24:30.689Z" },
-    { url = "https://files.pythonhosted.org/packages/13/f5/83e989962077003d91ba249158c7a1e21696604c301b3680fcbb427005d0/confluent_kafka-2.13.0-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:eb7988038b7f13ea490af93b9165ed40a3f385fb91e99ce8dacee8890e36e48a", size = 3718956, upload-time = "2026-01-05T10:24:33.035Z" },
-    { url = "https://files.pythonhosted.org/packages/b8/84/1aaa5cfe1695f02d11e02ef39f180567780348b1f3e1161575f002a207fe/confluent_kafka-2.13.0-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:cfd8f011b0b0a109f8747312dba6cee45b39fb53fc7d53f28813bce84a91228d", size = 3976235, upload-time = "2026-01-05T10:24:35.122Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/7c/bd4c2f49ecba57d3338b2f8b466530696eb65565480c18347539cc3104da/confluent_kafka-2.13.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:b4ee145e9b05fa56b3da104c3fda0cd63c22dd609ee6d8efea6e87a96ef4ad74", size = 3630069, upload-time = "2026-03-02T12:52:33.637Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/f4/b6178a474f725c0aa389ad048c7eba91ea12eb0d392dab26f39d2cf95d60/confluent_kafka-2.13.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:478f11030a8ee7fafc816b4067f586222adbdc47d710f7e54eceb22a56320359", size = 3190436, upload-time = "2026-03-02T12:52:36.852Z" },
+    { url = "https://files.pythonhosted.org/packages/48/6b/08c1efee551e513aa2e61d5583fe7d7bdf870372dfaf6ecf75ec96bdd7ff/confluent_kafka-2.13.2-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:92bf91c718911d7542aa6e1f60822fe9325b1a5173c5dd64b87c717246788ba2", size = 3719853, upload-time = "2026-03-02T12:52:38.549Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/67/98dfe8e699bfa6da0dbf9e03bd23c179ff0c9f27b88448a1d613de9a0d71/confluent_kafka-2.13.2-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:8b4dd67cb7a973382e02e8ba26e33caf0c70910cf74ef077ca2ad99387fc154a", size = 3976926, upload-time = "2026-03-02T12:52:39.915Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/16/534803e8e1fd8246f66c651131c2c02b30c0c8018b3d6c04e9dd80abd792/confluent_kafka-2.13.2-cp310-cp310-win_amd64.whl", hash = "sha256:e36f978d425deda2e57e832b3b9ac733c3668f2dae955b8953df8ae986e3cf5b", size = 4097308, upload-time = "2026-03-02T12:52:41.225Z" },
+    { url = "https://files.pythonhosted.org/packages/71/a7/7dfee75b246f5e5f0832a27e365cd9e8050591c5f4301714672bea2375ce/confluent_kafka-2.13.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:e85dc2aaf08dcac610d20b24d252a24891440cf33c09396c957781b8a1f24015", size = 3629660, upload-time = "2026-03-02T12:52:42.595Z" },
+    { url = "https://files.pythonhosted.org/packages/93/77/bc6bca93f455e91b41b196bb208b9cbfc517442a65abae2391f1af64cd2f/confluent_kafka-2.13.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:eb1b218beeaae36b3fc94927e30df5f6d662858e766eada2369b290df0b1bff0", size = 3190013, upload-time = "2026-03-02T12:52:44.193Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/ce/2ee04c1b2707b6dd7177eab40fced00b474671d2303e5096d96f3bf7e231/confluent_kafka-2.13.2-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:69b4286296504b89c0c3cd1e531d12053c633e56d2c5b477ff9000524fe24eb5", size = 3719524, upload-time = "2026-03-02T12:52:45.488Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/93/5c40e2f7eae52774db6b14060254d001ae8c4ef8d4385bf2f13294dd929f/confluent_kafka-2.13.2-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:e47be4267d3feda5bf1c066f140f61e61ea28bd6ecdb60c2a52ec1a91b8903e7", size = 3976453, upload-time = "2026-03-02T12:52:47.787Z" },
+    { url = "https://files.pythonhosted.org/packages/46/85/a3d25b67470abbd4835fca714a419465323ba79dceefcdda65dfa4415c80/confluent_kafka-2.13.2-cp311-cp311-win_amd64.whl", hash = "sha256:84dd6e7f456910aa4d4763d86efa0dded7167fdf1251b51d808dec0f124f5e13", size = 4097308, upload-time = "2026-03-02T12:52:49.083Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/d3/a845c6993a728b8b6bdce9b500d15c3ec3663cd95d2bbf9c1b8cfd519b17/confluent_kafka-2.13.2-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:e259c0d2b9a7e16211b45404f62869502246ac3d03e35a1f80720fd09d262457", size = 3635348, upload-time = "2026-03-02T12:52:50.927Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/22/1cb998f7b3ee613d5b29f4b98e4a7539776eb0819b89d7c3cdd19a685692/confluent_kafka-2.13.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:77ea4ceccdbb67498787b7c02cc329c32417bb730e9383f46c74eb9c5851763c", size = 3194667, upload-time = "2026-03-02T12:52:53.468Z" },
+    { url = "https://files.pythonhosted.org/packages/11/38/8a1b12321068e8ae126e62600a55d7a1872f969e1de5ec7f602e0dba8394/confluent_kafka-2.13.2-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:a64a8967734f865f54b766553d63a40f17081cd3d2c6cfe6d3217aa7494d88fb", size = 3724453, upload-time = "2026-03-02T12:52:55.187Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/06/3effa66c59a69e17cc48c69ae2533699f4321fac1b46741f2e4b1aefb1e7/confluent_kafka-2.13.2-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:e4cb7d112463ec15a01a3f0e0d20392cda6e46156a6439fcaaad2267696f5cde", size = 3980919, upload-time = "2026-03-02T12:52:56.852Z" },
+    { url = "https://files.pythonhosted.org/packages/98/22/f76a8b85fad652b4d5c0a0259c8f7bb66393d2d9f277631c754c9ebe5092/confluent_kafka-2.13.2-cp312-cp312-win_amd64.whl", hash = "sha256:44496777ff0104421b8f4bb269728e8a5e772c09f34ae813bc47110e0172ebe0", size = 4097817, upload-time = "2026-03-02T12:52:58.831Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/bc/ae9a7f21ba49e55b1be18362cefd7648e4aceb588e254f9ee5edb97fcf44/confluent_kafka-2.13.2-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:02702808dd3cfd91f117fbf17181da2a95392967e9f946b1cbdc5589b36e39d1", size = 3199459, upload-time = "2026-03-02T12:53:00.614Z" },
+    { url = "https://files.pythonhosted.org/packages/12/94/ccd92f9a3bb685b265bc83ede699651aa526502e4988e906e710d3f24cd3/confluent_kafka-2.13.2-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:7dc3a2da92638c077bbabb07058f1938078b42a89f0bbfdcb852d4289c2de27e", size = 3638743, upload-time = "2026-03-02T12:53:01.951Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/66/048925a546a0f8e9134a89441aa4ae663892839004668d1039d5f9dd8d45/confluent_kafka-2.13.2-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:f3e6d010ad38447a48e0f9fab81edd4d2fd0b5f5a79ab475c30347689e35c6e6", size = 3724788, upload-time = "2026-03-02T12:53:03.775Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/a6/53faa22d52d8fc6f58424d4b6c2c32855198fcb776ea8b4404ee50b58c72/confluent_kafka-2.13.2-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:9161865d8246eb77d1c30233a315bdad96145af783981877664532fa212f56be", size = 3981324, upload-time = "2026-03-02T12:53:05.339Z" },
+    { url = "https://files.pythonhosted.org/packages/02/a8/1578956d3721645b24c22b0e9ceeab794fffc197a32074a7572bfbc07ca7/confluent_kafka-2.13.2-cp313-cp313-win_amd64.whl", hash = "sha256:931233798306b859f4870ec58e3951a2bd32d14ef29f944f56892851b0aafab0", size = 4157492, upload-time = "2026-03-02T12:53:06.977Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/4c/46f09fcc1dedebb0a0884b072ddde74be8a8bcfb5e3fbc912bd2c8255e6f/confluent_kafka-2.13.2-cp314-cp314-macosx_13_0_arm64.whl", hash = "sha256:9cb0d6820107deca1823d68b96831bd982d0a11c4e6bcf0a12e8040192c48a8f", size = 3199305, upload-time = "2026-03-02T12:53:08.351Z" },
+    { url = "https://files.pythonhosted.org/packages/37/3c/56d052bdedb7d4bb56bf993dc017df4434e2eb5e73745f22d0beb3c32999/confluent_kafka-2.13.2-cp314-cp314-macosx_13_0_x86_64.whl", hash = "sha256:b31d94bca493d84927927d1bdd59e1b6d3d921019a657f99f0c8cc5da8c85311", size = 3638586, upload-time = "2026-03-02T12:53:10.01Z" },
+    { url = "https://files.pythonhosted.org/packages/33/7a/2bfc9e9341d50813674d3db6425ac4cb963764bffdf589774f94c0cbf852/confluent_kafka-2.13.2-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:f09adb42fb898a0b3a88b02e77bee472e93f758258945386c77864016b4e4efc", size = 3724554, upload-time = "2026-03-02T12:53:11.682Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/bb/0d0cdad1763044f3e06bea52c3332256b17f3e64c04a8214ee217fc68ab0/confluent_kafka-2.13.2-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:fa3be1fe231e06b2c7501fa3641b30ea90ea17be79ca89806eef22ff34ed106c", size = 3981002, upload-time = "2026-03-02T12:53:13.399Z" },
+    { url = "https://files.pythonhosted.org/packages/69/65/361ace93de20ab5d83dc0d108389b29f4549f478e0b8aa0f19baf597c0f0/confluent_kafka-2.13.2-cp314-cp314-win_amd64.whl", hash = "sha256:a8d1e0721de378034ecc928b47238272b56bf20af5dd504233bcb93ce07a38a6", size = 4275836, upload-time = "2026-03-02T12:53:14.703Z" },
 ]
 
 [[package]]
@@ -2643,6 +2657,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry-distro"
+source = { editable = "opentelemetry-distro" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-sdk" },
+]
+
+[package.optional-dependencies]
+otlp = [
+    { name = "opentelemetry-exporter-otlp" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-exporter-otlp", marker = "extra == 'otlp'", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
+]
+provides-extras = ["otlp"]
+
+[[package]]
 name = "opentelemetry-exporter-credential-provider-gcp"
 source = { editable = "exporter/opentelemetry-exporter-credential-provider-gcp" }
 dependencies = [
@@ -2656,6 +2693,51 @@ requires-dist = [
     { name = "google-auth", specifier = ">=2.25" },
     { name = "grpcio", specifier = ">=1.67.0" },
     { name = "requests", specifier = ">=2.7" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-common"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp-proto-common&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "opentelemetry-proto" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-grpc"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp-proto-grpc&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "grpcio" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-common" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "typing-extensions" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp-proto-http"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=exporter%2Fopentelemetry-exporter-otlp-proto-http&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-common" },
+    { name = "opentelemetry-proto" },
+    { name = "opentelemetry-sdk" },
+    { name = "requests" },
+    { name = "typing-extensions" },
 ]
 
 [[package]]
@@ -2711,7 +2793,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "packaging", specifier = ">=18.0" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 
 [[package]]
@@ -2733,7 +2815,7 @@ requires-dist = [
     { name = "aio-pika", marker = "extra == 'instruments'", specifier = ">=7.2.0,<10.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -2760,7 +2842,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -2787,7 +2869,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -2837,7 +2919,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-instrumentation-dbapi", editable = "instrumentation/opentelemetry-instrumentation-dbapi" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -2858,7 +2940,7 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", marker = "extra == 'instruments'", specifier = ">=0.16.0" },
+    { name = "anthropic", marker = "extra == 'instruments'", specifier = ">=0.51.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
@@ -2936,7 +3018,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -2981,29 +3063,6 @@ requires-dist = [
 provides-extras = ["instruments"]
 
 [[package]]
-name = "opentelemetry-instrumentation-boto"
-source = { editable = "instrumentation/opentelemetry-instrumentation-boto" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-]
-
-[package.optional-dependencies]
-instruments = [
-    { name = "boto" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto", marker = "extra == 'instruments'", specifier = "~=2.0" },
-    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
-    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-]
-provides-extras = ["instruments"]
-
-[[package]]
 name = "opentelemetry-instrumentation-boto3sqs"
 source = { editable = "instrumentation/opentelemetry-instrumentation-boto3sqs" }
 dependencies = [
@@ -3024,7 +3083,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3036,22 +3095,26 @@ dependencies = [
     { name = "opentelemetry-instrumentation" },
     { name = "opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-semantic-conventions" },
+    { name = "wrapt" },
 ]
 
 [package.optional-dependencies]
-instruments = [
+instruments-any = [
+    { name = "aiobotocore" },
     { name = "botocore" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "botocore", marker = "extra == 'instruments'", specifier = "~=1.0" },
+    { name = "aiobotocore", marker = "extra == 'instruments-any'", specifier = "~=2.0" },
+    { name = "botocore", marker = "extra == 'instruments-any'", specifier = "~=1.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
-provides-extras = ["instruments"]
+provides-extras = ["instruments", "instruments-any"]
 
 [[package]]
 name = "opentelemetry-instrumentation-cassandra"
@@ -3076,7 +3139,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "scylla-driver", marker = "extra == 'instruments-any'", specifier = "~=3.25" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments", "instruments-any"]
 
@@ -3149,7 +3212,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3169,10 +3232,10 @@ instruments = [
 
 [package.metadata]
 requires-dist = [
-    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<=2.13.0" },
+    { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<3.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3191,7 +3254,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3248,7 +3311,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3383,7 +3446,7 @@ requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3410,7 +3473,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3433,7 +3496,7 @@ requires-dist = [
     { name = "jinja2", marker = "extra == 'instruments'", specifier = ">=2.7,<4.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3613,7 +3676,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "packaging", specifier = ">=20.0" },
     { name = "pika", marker = "extra == 'instruments'", specifier = ">=0.12.0" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3686,7 +3749,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "pymemcache", marker = "extra == 'instruments'", specifier = ">=1.3.5,<5" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3784,7 +3847,7 @@ requires-dist = [
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
     { name = "pyramid", marker = "extra == 'instruments'", specifier = ">=1.7" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -3969,7 +4032,7 @@ dependencies = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -4065,7 +4128,7 @@ requires-dist = [
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-util-http", editable = "util/opentelemetry-util-http" },
     { name = "urllib3", marker = "extra == 'instruments'", specifier = ">=1.0.0,<3.0.0" },
-    { name = "wrapt", specifier = ">=1.0.0,<2.0.0" },
+    { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
 
@@ -4161,11 +4224,20 @@ requires-dist = [
 ]
 
 [[package]]
+name = "opentelemetry-proto"
+version = "1.40.0.dev0"
+source = { git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-proto&branch=main#f32b684a1ccd6d5eb658ec0b45bf18928ea430e4" }
+dependencies = [
+    { name = "protobuf" },
+]
+
+[[package]]
 name = "opentelemetry-python-contrib"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "opentelemetry-api" },
+    { name = "opentelemetry-distro" },
     { name = "opentelemetry-exporter-prometheus-remote-write" },
     { name = "opentelemetry-exporter-richconsole" },
     { name = "opentelemetry-instrumentation" },
@@ -4178,9 +4250,8 @@ dependencies = [
     { name = "opentelemetry-instrumentation-asyncio" },
     { name = "opentelemetry-instrumentation-asyncpg", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-aws-lambda" },
-    { name = "opentelemetry-instrumentation-boto", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-boto3sqs", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-botocore", extra = ["instruments"] },
+    { name = "opentelemetry-instrumentation-botocore", extra = ["instruments-any"] },
     { name = "opentelemetry-instrumentation-cassandra" },
     { name = "opentelemetry-instrumentation-celery", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-click", extra = ["instruments"] },
@@ -4238,6 +4309,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-distro", editable = "opentelemetry-distro" },
     { name = "opentelemetry-exporter-prometheus-remote-write", editable = "exporter/opentelemetry-exporter-prometheus-remote-write" },
     { name = "opentelemetry-exporter-richconsole", editable = "exporter/opentelemetry-exporter-richconsole" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
@@ -4250,9 +4322,8 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-asyncio", editable = "instrumentation/opentelemetry-instrumentation-asyncio" },
     { name = "opentelemetry-instrumentation-asyncpg", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-asyncpg" },
     { name = "opentelemetry-instrumentation-aws-lambda", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-aws-lambda" },
-    { name = "opentelemetry-instrumentation-boto", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-boto" },
     { name = "opentelemetry-instrumentation-boto3sqs", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-boto3sqs" },
-    { name = "opentelemetry-instrumentation-botocore", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-botocore" },
+    { name = "opentelemetry-instrumentation-botocore", extras = ["instruments-any"], editable = "instrumentation/opentelemetry-instrumentation-botocore" },
     { name = "opentelemetry-instrumentation-cassandra", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-cassandra" },
     { name = "opentelemetry-instrumentation-celery", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-celery" },
     { name = "opentelemetry-instrumentation-click", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-click" },
@@ -5647,14 +5718,14 @@ wheels = [
 
 [[package]]
 name = "s3transfer"
-version = "0.16.0"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple/" }
 dependencies = [
     { name = "botocore" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/05/04/74127fc843314818edfa81b5540e26dd537353b123a4edc563109d8f17dd/s3transfer-0.16.0.tar.gz", hash = "sha256:8e990f13268025792229cd52fa10cb7163744bf56e719e0b9cb925ab79abf920", size = 153827, upload-time = "2025-12-01T02:30:59.114Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ca/bb/940d6af975948c1cc18f44545ffb219d3c35d78ec972b42ae229e8e37e08/s3transfer-0.15.0.tar.gz", hash = "sha256:d36fac8d0e3603eff9b5bfa4282c7ce6feb0301a633566153cbd0b93d11d8379", size = 152185, upload-time = "2025-11-20T20:28:56.327Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/51/727abb13f44c1fcf6d145979e1535a35794db0f6e450a0cb46aa24732fe2/s3transfer-0.16.0-py3-none-any.whl", hash = "sha256:18e25d66fed509e3868dc1572b3f427ff947dd2c56f844a5bf09481ad3f3b2fe", size = 86830, upload-time = "2025-12-01T02:30:57.729Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/e1/5ef25f52973aa12a19cf4e1375d00932d7fb354ffd310487ba7d44225c1a/s3transfer-0.15.0-py3-none-any.whl", hash = "sha256:6f8bf5caa31a0865c4081186689db1b2534cef721d104eb26101de4b9d6a5852", size = 85984, upload-time = "2025-11-20T20:28:55.046Z" },
 ]
 
 [[package]]
