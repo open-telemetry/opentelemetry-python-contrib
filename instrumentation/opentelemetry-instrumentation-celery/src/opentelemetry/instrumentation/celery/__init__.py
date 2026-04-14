@@ -104,8 +104,14 @@ class CeleryGetter(Getter):
         value = getattr(carrier, key, None)
         if value is None:
             return None
-        if isinstance(value, str) or not isinstance(value, Iterable):
-            value = (value,)
+        if isinstance(value, str):
+            return (value,)
+        if not isinstance(value, Iterable):
+            # Coerce non-string, non-iterable values (e.g. int from Celery
+            # task attributes like timelimit) to str so that propagators
+            # such as TraceContext don't crash with a TypeError when calling
+            # re.split() on the value.
+            return (str(value),)
         return value
 
     def keys(self, carrier):
