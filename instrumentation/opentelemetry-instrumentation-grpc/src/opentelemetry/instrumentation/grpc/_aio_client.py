@@ -114,11 +114,15 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             code = await call.code()
             details = await call.details()
 
-            call.add_done_callback(
-                _unary_done_callback(
-                    span, code, details, self._call_response_hook
-                )
-            )
+            callback = _unary_done_callback(span, code, details, self._call_response_hook)
+            try:
+                call.add_done_callback(callback)
+            except NotImplementedError:
+                # Some grpc.aio interceptors (e.g. interceptors that await the
+                # call object) wrap the call in a type that does not implement
+                # add_done_callback.  In that case call the callback immediately
+                # since code and details are already known.
+                callback(call)
 
             return call
         except grpc.aio.AioRpcError as exc:
