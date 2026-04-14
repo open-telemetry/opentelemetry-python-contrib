@@ -415,7 +415,11 @@ def _rewrapped_app(
                     response_hook(span, status, response_headers)
             return start_response(status, response_headers, *args, **kwargs)
 
-        result = wsgi_app(wrapped_app_environ, _start_response)
+        try:
+            result = wsgi_app(wrapped_app_environ, _start_response)
+        except Exception:
+            active_requests_counter.add(-1, active_requests_count_attrs)
+            raise
 
         # Note: Streaming response context cleanup is now handled in the Flask teardown function
         # (_wrapped_teardown_request) to ensure proper cleanup following Logfire's recommendations
