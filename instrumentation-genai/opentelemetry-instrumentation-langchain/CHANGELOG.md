@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Enhanced the LangChain instrumentor with semconv-aligned model, agent,
+  workflow, tool, and retriever tracing plus richer event and W3C propagation
+  handling. ([#4389](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4389))
 - Added span support for genAI langchain llm invocation.
   ([#3665](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3665))
 - Added support to call genai utils handler for langchain LLM invocations.
