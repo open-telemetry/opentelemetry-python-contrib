@@ -184,11 +184,17 @@ def _build_span_meta_data_for_pipeline(
     instance: PipelineInstance | AsyncPipelineInstance,
 ) -> tuple[list[Any], str, str]:
     try:
-        command_stack = (
-            instance.command_stack
-            if hasattr(instance, "command_stack")
-            else instance._command_stack
-        )
+        # redis-py 6+ ClusterPipeline stores commands on _execution_strategy.
+        # Fall back to command_stack / _command_stack for older versions and
+        # non-cluster pipelines.
+        if hasattr(instance, "_execution_strategy") and hasattr(
+            instance._execution_strategy, "command_queue"
+        ):
+            command_stack = instance._execution_strategy.command_queue
+        elif hasattr(instance, "command_stack"):
+            command_stack = instance.command_stack
+        else:
+            command_stack = instance._command_stack
 
         cmds = [
             _format_command_args(c.args if hasattr(c, "args") else c[0])
