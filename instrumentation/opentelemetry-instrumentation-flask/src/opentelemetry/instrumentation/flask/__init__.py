@@ -316,9 +316,9 @@ _excluded_urls_from_env = get_excluded_urls("FLASK")
 flask_version = version("flask")
 
 # Global constant for Flask 3.1+ streaming context cleanup.
-_IS_FLASK_31_PLUS = package_version.parse(flask_version) >= package_version.parse(
-    "3.1.0"
-)
+_IS_FLASK_31_PLUS = package_version.parse(
+    flask_version
+) >= package_version.parse("3.1.0")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
