@@ -130,12 +130,10 @@ def _get_links_from_records(records):
 
 
 def _set_bootstrap_servers_attributes(span, bootstrap_servers):
-    """Populate messaging.url, server.address, server.port from a
-    bootstrap.servers string (e.g. ``host1:9092,host2:9092``)."""
+    """Populate server.address and server.port from a bootstrap.servers
+    string (e.g. ``host1:9092,host2:9092``)."""
     if not bootstrap_servers:
         return
-
-    span.set_attribute(SpanAttributes.MESSAGING_URL, bootstrap_servers)
 
     first_broker = bootstrap_servers.split(",")[0].strip()
     if not first_broker:

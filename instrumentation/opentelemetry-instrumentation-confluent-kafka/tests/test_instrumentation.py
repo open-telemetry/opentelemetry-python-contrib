@@ -465,10 +465,6 @@ class TestConfluentKafka(TestBase):
         producer.produce(topic="topic-1", key="k", value="v")
 
         span = self.memory_exporter.get_finished_spans()[0]
-        self.assertEqual(
-            span.attributes[SpanAttributes.MESSAGING_URL],
-            "broker-a:9092,broker-b:9093",
-        )
         self.assertEqual(span.attributes[SERVER_ADDRESS], "broker-a")
         self.assertEqual(span.attributes[SERVER_PORT], 9092)
 
@@ -494,10 +490,6 @@ class TestConfluentKafka(TestBase):
             s
             for s in self.memory_exporter.get_finished_spans()
             if s.name == "topic-1 process"
-        )
-        self.assertEqual(
-            process_span.attributes[SpanAttributes.MESSAGING_URL],
-            "broker-1:9092",
         )
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
