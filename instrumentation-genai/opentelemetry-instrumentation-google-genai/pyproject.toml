@@ -22,7 +22,7 @@ dynamic = ["version"]
 description = "OpenTelemetry"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -70,4 +70,4 @@ exclude = ["**/__pycache__"]
 stubPath = "types"
 reportMissingImports = "error"
 reportMissingTypeStubs = false
-pythonVersion = "3.9"
+pythonVersion = "3.10"
