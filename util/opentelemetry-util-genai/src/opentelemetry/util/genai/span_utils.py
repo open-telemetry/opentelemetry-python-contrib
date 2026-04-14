@@ -40,6 +40,7 @@ from opentelemetry.util.genai.types import (
     LLMInvocation,
     MessagePart,
     OutputMessage,
+    WorkflowInvocation,
 )
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
@@ -116,7 +117,14 @@ def _get_embedding_span_name(invocation: EmbeddingInvocation) -> str:
     return _get_span_name(invocation)
 
 
-def _get_llm_messages_attributes_for_span(
+def _get_workflow_span_name(invocation: WorkflowInvocation) -> str:
+    """Get the span name for an Workflow invocation."""
+    operation_name = invocation.operation_name
+    name = invocation.name
+    return f"{operation_name} {name}" if name else operation_name
+
+
+def _get_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instruction: list[MessagePart] | None = None,
@@ -253,7 +261,7 @@ def _apply_llm_finish_attributes(
     attributes.update(_get_llm_request_attributes(invocation))
     attributes.update(_get_llm_response_attributes(invocation))
     attributes.update(
-        _get_llm_messages_attributes_for_span(
+        _get_messages_attributes_for_span(
             invocation.input_messages,
             invocation.output_messages,
             invocation.system_instruction,
@@ -356,6 +364,39 @@ def _get_llm_response_attributes(
     )
 
     return {key: value for key, value in optional_attrs if value is not None}
+
+
+def _apply_workflow_finish_attributes(
+    span: Span, invocation: WorkflowInvocation
+) -> None:
+    """Apply attributes/messages common to finish() paths."""
+
+    # Build all attributes by reusing the attribute getter functions
+    attributes: dict[str, Any] = {}
+    attributes.update(_get_workflow_common_attributes(invocation))
+    attributes.update(
+        _get_messages_attributes_for_span(
+            invocation.input_messages,
+            invocation.output_messages,
+        )
+    )
+    attributes.update(invocation.attributes)
+
+    # Set all attributes on the span
+    if attributes:
+        span.set_attributes(attributes)
+
+
+def _get_workflow_common_attributes(
+    invocation: WorkflowInvocation,
+) -> dict[str, Any]:
+    """Get common Workflow attributes shared by finish() and error() paths.
+
+    Returns a dictionary of attributes.
+    """
+    return {
+        GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+    }
 
 
 def _get_embedding_response_attributes(
@@ -472,7 +513,7 @@ def _apply_agent_finish_attributes(
     attributes.update(_get_agent_request_attributes(invocation))
     attributes.update(_get_agent_response_attributes(invocation))
     attributes.update(
-        _get_llm_messages_attributes_for_span(
+        _get_messages_attributes_for_span(
             invocation.input_messages,
             invocation.output_messages,
             invocation.system_instruction,
@@ -493,6 +534,8 @@ __all__ = [
     "_get_llm_response_attributes",
     "_get_llm_span_name",
     "_maybe_emit_llm_event",
+    "_get_workflow_common_attributes",
+    "_apply_workflow_finish_attributes",
     "_apply_embedding_finish_attributes",
     "_get_embedding_common_attributes",
     "_get_embedding_request_attributes",
@@ -503,4 +546,5 @@ __all__ = [
     "_get_agent_common_attributes",
     "_get_agent_request_attributes",
     "_get_agent_response_attributes",
+    "_get_workflow_span_name",
 ]
