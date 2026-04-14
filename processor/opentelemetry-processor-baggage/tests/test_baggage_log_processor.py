@@ -23,8 +23,8 @@ from opentelemetry.processor.baggage import (
 )
 from opentelemetry.sdk._logs import LoggerProvider, LogRecordProcessor
 from opentelemetry.sdk._logs.export import (
-    InMemoryLogRecordExporter,
     BatchLogRecordProcessor,
+    InMemoryLogRecordExporter,
 )
 
 
@@ -109,10 +109,12 @@ class BaggageLogProcessorTest(unittest.TestCase):
         token2 = attach(set_baggage("king", "cobra"))
         logger_provider = LoggerProvider()
         logger_provider.add_log_record_processor(
-            BaggageLogProcessor([
-                lambda key: key.startswith("que"),
-                lambda key: key.startswith("kin"),
-            ])
+            BaggageLogProcessor(
+                [
+                    lambda key: key.startswith("que"),
+                    lambda key: key.startswith("kin"),
+                ]
+            )
         )
         exporter = InMemoryLogRecordExporter()
         logger_provider.add_log_record_processor(
@@ -134,7 +136,9 @@ class BaggageLogProcessorTest(unittest.TestCase):
         token3 = attach(set_baggage("key3", "val3"))
         logger_provider = LoggerProvider()
         logger_provider.add_log_record_processor(
-            BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS, max_baggage_attributes=2)
+            BaggageLogProcessor(
+                ALLOW_ALL_BAGGAGE_KEYS, max_baggage_attributes=2
+            )
         )
         exporter = InMemoryLogRecordExporter()
         logger_provider.add_log_record_processor(
