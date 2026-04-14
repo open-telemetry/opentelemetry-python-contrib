@@ -29,8 +29,11 @@ Usage:
     handler = get_telemetry_handler()
 
     # Create an invocation object with your request data
-    # The span and context_token attributes are set by the TelemetryHandler, and
-    # managed by the TelemetryHandler during the lifecycle of the span.
+    # The span and context_token attributes are set by the TelemetryHandler,
+    # unless recording Span is provided in invocation object.
+    # By default, if not Span provided, span and context_token are
+    # managed by the TelemetryHandler during the lifecycle of the Span.
+    # Otherwise it's caller responsibility to manage the Span lifecycle.
 
     # Use the context manager to manage the lifecycle of an LLM invocation.
     with handler.llm(invocation) as invocation:
@@ -76,6 +79,7 @@ from opentelemetry.trace import (
     Span,
     SpanKind,
     TracerProvider,
+    get_current_span,
     get_tracer,
     set_span_in_context,
 )
@@ -178,7 +182,12 @@ class TelemetryHandler:
         return
 
     def _start(self, invocation: _T) -> _T:
-        """Start a GenAI invocation and create a pending span entry."""
+        """
+        Start a GenAI invocation and create a pending span entry.
+
+        Creates a span and attach it as current; keep the token to detach later.
+        if the span is already set on the LLMInvocation and is active - use it instead of creating a new one.
+        """
         if isinstance(invocation, LLMInvocation):
             span_name = _get_llm_span_name(invocation)
             kind = SpanKind.CLIENT
@@ -191,22 +200,26 @@ class TelemetryHandler:
         else:
             span_name = ""
             kind = SpanKind.CLIENT
-        span = self._tracer.start_span(
-            name=span_name,
-            kind=kind,
-        )
+        if invocation.span is None or not invocation.span.is_recording():
+            span = self._tracer.start_span(
+                name=span_name,
+                kind=kind,
+            )
+            invocation.span = span
+            invocation.end_span_on_exit = True
         # Record a monotonic start timestamp (seconds) for duration
         # calculation using timeit.default_timer.
         invocation.monotonic_start_s = timeit.default_timer()
-        invocation.span = span
-        invocation.context_token = otel_context.attach(
-            set_span_in_context(span)
-        )
+        # Attach span to current context only if it's not already attached
+        if invocation.span != get_current_span():
+            invocation.context_token = otel_context.attach(
+                set_span_in_context(invocation.span)
+            )
         return invocation
 
     def _stop(self, invocation: _T) -> _T:
         """Finalize a GenAI invocation successfully and end its span."""
-        if invocation.context_token is None or invocation.span is None:
+        if invocation.span is None:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
@@ -224,13 +237,16 @@ class TelemetryHandler:
                 # TODO: Add workflow metrics when supported
         finally:
             # Detach context and end span even if finishing fails
-            otel_context.detach(invocation.context_token)
+            if invocation.context_token is not None:
+                otel_context.detach(invocation.context_token)
+        # End the span only if it was created by the handler
+        if invocation.end_span_on_exit:
             span.end()
         return invocation
 
     def _fail(self, invocation: _T, error: Error) -> _T:
         """Fail a GenAI invocation and end its span with error status."""
-        if invocation.context_token is None or invocation.span is None:
+        if invocation.span is None:
             # TODO: Provide feedback that this invocation was not started
             return invocation
 
@@ -258,8 +274,11 @@ class TelemetryHandler:
                 # TODO: Add workflow metrics when supported
         finally:
             # Detach context and end span even if finishing fails
-            otel_context.detach(invocation.context_token)
-            span.end()
+            if invocation.context_token is not None:
+                otel_context.detach(invocation.context_token)
+            # End the span only if it was created by the handler
+            if invocation.end_span_on_exit:
+                span.end()
         return invocation
 
     def start(
