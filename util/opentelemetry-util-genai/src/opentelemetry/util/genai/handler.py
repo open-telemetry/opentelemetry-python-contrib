@@ -351,7 +351,7 @@ class TelemetryHandler:
         self.stop(invocation)
 
     @contextmanager
-    def agent(
+    def invoke_agent(
         self, invocation: AgentInvocation | None = None
     ) -> Iterator[AgentInvocation]:
         """Context manager for agent invocations.

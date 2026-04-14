@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add `_BaseAgent` and `AgentInvocation` types with agent lifecycle support
+- Add `AgentInvocation` type with `invoke_agent` span lifecycle support
   ([#4274](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4274))
 - Add support for workflow in genAI utils handler.
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4366](#4366))

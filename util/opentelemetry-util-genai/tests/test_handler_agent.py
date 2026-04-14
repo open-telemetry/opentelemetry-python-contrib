@@ -15,6 +15,7 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     AgentInvocation,
     Error,
+    FunctionToolDefinition,
     InputMessage,
     OutputMessage,
     Text,
@@ -90,8 +91,6 @@ class TestAgentInvocationHandler(_AgentTestBase):
             server_port=443,
         )
         handler.start(invocation)
-        invocation.response_model_name = "gpt-4-0613"
-        invocation.response_id = "resp-abc"
         invocation.input_tokens = 100
         invocation.output_tokens = 200
         invocation.finish_reasons = ["stop"]
@@ -101,14 +100,12 @@ class TestAgentInvocationHandler(_AgentTestBase):
         self.assertEqual(attrs[GenAI.GEN_AI_AGENT_NAME], "Full Agent")
         self.assertEqual(attrs[GenAI.GEN_AI_AGENT_ID], "agent-123")
         self.assertEqual(attrs[GenAI.GEN_AI_AGENT_DESCRIPTION], "A test agent")
-        self.assertEqual(attrs[GenAI.GEN_AI_RESPONSE_MODEL], "gpt-4-0613")
-        self.assertEqual(attrs[GenAI.GEN_AI_RESPONSE_ID], "resp-abc")
         self.assertEqual(attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS], 100)
         self.assertEqual(attrs[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS], 200)
         self.assertEqual(
             tuple(attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS]), ("stop",)
         )
-        self.assertEqual(attrs["gen_ai.agent.version"], "1.0.0")
+        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_VERSION], "1.0.0")
 
     def test_cache_token_attributes(self) -> None:
         handler = self._make_handler()
@@ -123,8 +120,10 @@ class TestAgentInvocationHandler(_AgentTestBase):
 
         attrs = self.span_exporter.get_finished_spans()[0].attributes
         self.assertEqual(attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS], 100)
-        self.assertEqual(attrs["gen_ai.usage.cache_creation.input_tokens"], 25)
-        self.assertEqual(attrs["gen_ai.usage.cache_read.input_tokens"], 50)
+        self.assertEqual(
+            attrs[GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS], 25
+        )
+        self.assertEqual(attrs[GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS], 50)
 
     def test_fail_sets_error_status(self) -> None:
         handler = self._make_handler()
@@ -143,7 +142,7 @@ class TestAgentInvocationHandler(_AgentTestBase):
         invocation = AgentInvocation(
             agent_name="CM Agent", provider="openai", request_model="gpt-4"
         )
-        with handler.agent(invocation) as inv:
+        with handler.invoke_agent(invocation) as inv:
             inv.input_tokens = 10
             inv.output_tokens = 20
 
@@ -155,7 +154,7 @@ class TestAgentInvocationHandler(_AgentTestBase):
     def test_context_manager_error(self) -> None:
         handler = self._make_handler()
         with self.assertRaises(ValueError):
-            with handler.agent(
+            with handler.invoke_agent(
                 AgentInvocation(agent_name="Agent", provider="openai")
             ):
                 raise ValueError("test error")
@@ -169,7 +168,7 @@ class TestAgentInvocationHandler(_AgentTestBase):
 
     def test_context_manager_default_invocation(self) -> None:
         handler = self._make_handler()
-        with handler.agent() as inv:
+        with handler.invoke_agent() as inv:
             inv.agent_name = "Dynamic Agent"
             inv.provider = "openai"
         self.assertEqual(len(self.span_exporter.get_finished_spans()), 1)
@@ -227,3 +226,17 @@ class TestAgentInvocationType(TestCase):
             attributes={"custom.key": "custom_value"},
         )
         self.assertEqual(inv.attributes["custom.key"], "custom_value")
+
+    def test_tool_definitions_type(self) -> None:
+        tool = FunctionToolDefinition(
+            name="get_weather",
+            description="Get the weather",
+            parameters={"type": "object", "properties": {}},
+        )
+        inv = AgentInvocation(
+            agent_name="Tool Agent",
+            tool_definitions=[tool],
+        )
+        self.assertEqual(len(inv.tool_definitions), 1)
+        self.assertEqual(inv.tool_definitions[0].name, "get_weather")
+        self.assertEqual(inv.tool_definitions[0].type, "function")

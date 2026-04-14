@@ -464,8 +464,6 @@ class AgentInvocation(_BaseAgent):
     seed: int | None = None
     choice_count: int | None = None
 
-    response_model_name: str | None = None
-    response_id: str | None = None
     finish_reasons: list[str] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
@@ -478,13 +476,8 @@ class AgentInvocation(_BaseAgent):
     output_messages: list[OutputMessage] = field(
         default_factory=_new_output_messages
     )
-    tool_definitions: list[dict[str, Any]] | None = None
+    tool_definitions: list[ToolDefinition] | None = None
 
-    attributes: dict[str, Any] = field(default_factory=_new_str_any_dict)
-    """
-    Additional attributes to set on spans and/or events. These attributes
-    will not be set on metrics.
-    """
     metric_attributes: dict[str, Any] = field(
         default_factory=_new_str_any_dict
     )

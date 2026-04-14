@@ -50,13 +50,6 @@ from opentelemetry.util.genai.utils import (
     should_emit_event,
 )
 
-# Constants for semconv attributes not yet available in opentelemetry-semantic-conventions 0.60b0
-GEN_AI_AGENT_VERSION = "gen_ai.agent.version"
-GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    "gen_ai.usage.cache_creation.input_tokens"
-)
-GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
-
 
 def _get_llm_common_attributes(
     invocation: LLMInvocation,
@@ -128,7 +121,7 @@ def _get_messages_attributes_for_span(
     input_messages: list[InputMessage],
     output_messages: list[OutputMessage],
     system_instruction: list[MessagePart] | None = None,
-    tool_definitions: list[dict[str, Any]] | None = None,
+    tool_definitions: list[Any] | None = None,
 ) -> dict[str, Any]:
     """Get message attributes formatted for span (JSON string format).
 
@@ -161,7 +154,9 @@ def _get_messages_attributes_for_span(
         ),
         (
             GenAI.GEN_AI_TOOL_DEFINITIONS,
-            gen_ai_json_dumps(tool_definitions) if tool_definitions else None,
+            gen_ai_json_dumps([asdict(t) for t in tool_definitions])
+            if tool_definitions
+            else None,
         ),
     )
 
@@ -427,7 +422,7 @@ def _get_agent_common_attributes(
         (GenAI.GEN_AI_AGENT_NAME, invocation.agent_name),
         (GenAI.GEN_AI_AGENT_ID, invocation.agent_id),
         (GenAI.GEN_AI_AGENT_DESCRIPTION, invocation.agent_description),
-        (GEN_AI_AGENT_VERSION, invocation.agent_version),
+        (GenAI.GEN_AI_AGENT_VERSION, invocation.agent_version),
         (GenAI.GEN_AI_CONVERSATION_ID, invocation.conversation_id),
         (GenAI.GEN_AI_DATA_SOURCE_ID, invocation.data_source_id),
         (GenAI.GEN_AI_OUTPUT_TYPE, invocation.output_type),
@@ -485,16 +480,14 @@ def _get_agent_response_attributes(
             GenAI.GEN_AI_RESPONSE_FINISH_REASONS,
             unique_finish_reasons if unique_finish_reasons else None,
         ),
-        (GenAI.GEN_AI_RESPONSE_MODEL, invocation.response_model_name),
-        (GenAI.GEN_AI_RESPONSE_ID, invocation.response_id),
         (GenAI.GEN_AI_USAGE_INPUT_TOKENS, invocation.input_tokens),
         (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, invocation.output_tokens),
         (
-            GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+            GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
             invocation.cache_creation_input_tokens,
         ),
         (
-            GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+            GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
             invocation.cache_read_input_tokens,
         ),
     )
@@ -521,9 +514,7 @@ def _apply_agent_finish_attributes(
         )
     )
     attributes.update(invocation.attributes)
-
-    if attributes:
-        span.set_attributes(attributes)
+    span.set_attributes(attributes)
 
 
 __all__ = [
