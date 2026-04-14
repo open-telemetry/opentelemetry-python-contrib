@@ -2,14 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-<!--
-Do *NOT* add changelog entries here!
-
-This changelog is managed by towncrier and is compiled at release time.
-
-See https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md#changelog for details.
--->
-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -17,166 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > The following components are released independently and maintain individual CHANGELOG files.
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
-<!-- changelog start -->
-
-## Version 1.42.1/0.63b1 (2026-05-21)
-
-No significant changes.
-
-## Version 1.42.0/0.63b0 (2026-05-19)
+## Unreleased
 
 ### Added
 
-- `opentelemetry-exporter-richconsole`: Add support for suppressing resource
-  information
-  ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
-- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler
-  utility
-  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
-- `opentelemetry-instrumentation-logging`: Add `OTEL_PYTHON_LOG_HANDLER_LEVEL`
-  and `OTEL_PYTHON_LOG_FORMAT` environment variables to configure the log level
-  and formatter of the auto-instrumented `LoggingHandler`.
-  ([#4298](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4298))
-- `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status,
-  suppress, and no-op tests
-  ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
-- Add `BaggageLogProcessor` to `opentelemetry-processor-baggage`
-  ([#4371](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4371))
-- `opentelemetry-instrumentation-system-metrics`: Add support for
-  `process.disk.io` metric in system-metrics instrumentation
-  ([#4397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4397))
-- `opentelemetry-instrumentation`: Register `OTEL_SEMCONV_STABILITY_OPT_IN` in
-  `environment_variables.py` so `opentelemetry-instrument` exposes a
-  `--semconv_stability_opt_in` CLI argument
-  ([#4438](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4438))
-- Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review
-  instructions.
-  ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
-- `opentelemetry-instrumentation`: update auto-instrumentation to re-inject
-  instrumentation path after init
-  ([#4469](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4469))
-- `opentelemetry-instrumentation-dbapi`: Add Database client operation duration
-  and returned rows metrics
-  ([#4481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4481))
-
-### Changed
-
-- Remove redundant `pylint: disable=attribute-defined-outside-init` comments
-  and add rule to global `.pylintrc` disable list
-  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
-- `opentelemetry-instrumentation-logging`: Use `LogRecord.getMessage()` to
-  format and extract each log record's body text to more closely match the
-  expected usage of the logging system. As a result, all OTel log record bodies
-  are now always strings. Previously, if `LogRecord.msg` (which contains the
-  format string) was set to a non-string object (e.g.
-  `logger.warning(some_dict)`), the object was exported as-is to the OTLP body
-  field. Now, `LogRecord.getMessage()` will convert it to to a string. If you
-  are passing in non-strings as the format string argument and your backend is
-  expecting them as-is, you will need to update accordingly.
-  ([#4372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4372))
-- Switch to SPDX license headers and add CI enforcement
-  ([#4533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4533))
-- `opentelemetry-instrumentation-{urllib,urllib3,requests}`: switch http mock
-  library from abandoned httpretty to mocket
-  ([#4583](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4583))
-
-### Removed
-
-- Drop Python 3.9 support
-  ([#4412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4412))
 
 ### Fixed
 
-- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of
-  the `Resource` as a span name
-  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
-- Refactor unit tests to allow for population of the random trace id flag in
-  the `traceparent` header
-  ([#4030](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4030))
-- `opentelemetry-instrumentation-aws-lambda`: fix improper handling of header
-  casing
-  ([#4216](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4216))
-- `opentelemetry-instrumentation-flask`: Clean up environ keys in
-  `_teardown_request` to prevent duplicate execution
-  ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
-- `opentelemetry-instrumentation-celery`: Coerce non-string values to strings
-  in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()`
-  when Celery request attributes contain ints
-  ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
-- `opentelemetry-instrumentation-celery`: Coerce timelimit values to strings in
-  `set_attributes_from_context()` to prevent mixed-type span attribute warning
-  ([#4361](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4361))
-- `opentelemetry-instrumentation-fastapi`: Fix `FastAPI` instrumentation to
-  correctly trace `BackgroundTasks` by wrapping their execution in a dedicated
-  span, ensuring proper parent-child relationships and accurate trace timing
-  ([#4368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4368))
-- `opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1)
-  `flask.__version__` attribute; resolve the Flask version via
-  `importlib.metadata`
-  ([#4422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4422))
-- `opentelemetry-instrumentation-confluent-kafka`: Populate `server.address`
-  and `server.port` span attributes from the producer/consumer
-  `bootstrap.servers` config; previously
-  `KafkaPropertiesExtractor.extract_bootstrap_servers` was defined but never
-  called
-  ([#4423](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4423))
-- `opentelemetry-instrumentation-dbapi` Use `ObjectProxy` instead of
-  `BaseObjectProxy` for `TracedCursorProxy` to restore iterability with wrapt
-  2.x
-  ([#4427](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4427))
-- `opentelemetry-instrumentation-pyramid`: add missing
-  `http.response.status_code` in duration metrics for stable http semantic
-  conventions
-  ([#4448](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4448))
-- `opentelemetry-instrumentation-pika` Use `ObjectProxy` instead of
-  `BaseObjectProxy` for `ReadyMessagesDequeProxy` to restore iterability with
-  wrapt 2.x
-  ([#4461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4461))
-- `docker-tests`: Don't require sudo, debian based distro and MS SQL ODBC
-  driver to run locally. Instead require docker and unixodbc
-  ([#4478](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4478))
-- `opentelemetry-instrumentation-celery`: clear completed task ids from
-  `task_id_to_start_time`
-  ([#4504](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4504))
-- `opentelemetry-instrumentation-celery`: add null guards and type-safe helper
-  handling around Celery context propagation internals
-  ([#4505](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4505))
-- `opentelemetry-instrumentation-wsgi`: use `PATH_INFO` and `QUERY_STRING` for
-  URL attributes instead of parsing `RAW_URI` or `REQUEST_URI`
-  ([#4551](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4551))
-- `opentelemetry-instrumentation-mysqlclient`: Update unit tests to properly
-  validate trace context trace flag values.
-  ([#4560](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4560))
-- `opentelemetry-instrumentation-pika`: pass destination to `_enrich_span`
-  instead of `task_name`
-  ([#4563](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4563))
-- `opentelemetry-instrumentation-tornado`: reduce cardinality of span names and
-  metrics attributes. This introduces a breaking change in the metrics
-  attributes for the stable semantic convention by dropping the out of spec
-  `url.query` and `url.path` attributes in favor of in-spec `http.route`.
-  ([#4577](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4577))
-- `opentelemetry-instrumentation-confluent-kafka`: Declare
-  `opentelemetry-semantic-conventions` as a direct dependency
-  ([#4590](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4590))
-- `opentelemetry-instrumentation-pymssql`: Fix semconv stability migration for
-  connection attributes (host, port, user) set in `wrapped_connection()` to
-  respect `OTEL_SEMCONV_STABILITY_OPT_IN`. Note: `net.peer.port` is now emitted
-  as `int` instead of `string` in default mode, aligning with other DB
-  instrumentations.
-  ([#4592](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4592))
-- Declare `opentelemetry-semantic-conventions` as a direct dependency for the
-  aio-pika, logging, pika and system-metrics instrumentations, since each
-  imports `opentelemetry.semconv` directly.
-  ([#4594](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4594))
+- `opentelemetry-instrumentation-grpc`: Fix `NotImplementedError` when `grpc.aio` call object does not implement `add_done_callback` (e.g. when a user interceptor awaits the call)
+  ([#4429](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4429))
+
+### Breaking changes
+
+- Drop Python 3.9 support
+  ([#4412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4412))
 
 ## Version 1.41.0/0.62b0 (2026-04-09)
 
 ### Added
 
-- Enabled the flake8-tidy-import plugins rules for the ruff linter. These rules throw warnings for relative imports in the modules.
-([#4395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4395))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
@@ -189,10 +42,6 @@ No significant changes.
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
-- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
-  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
-- `opentelemetry-instrumentation-redis`: implement new semantic convention opt-in migration
-  ([#4370](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4370))
 
 ### Fixed
 
@@ -221,11 +70,6 @@ No significant changes.
 
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
   ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
-
-### Added
-
-- `opentelemetry-instrumentation-dbapi`: implement new semantic convention opt-in migration
-  ([#4109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4109))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
@@ -1323,7 +1167,7 @@ No significant changes.
 
 ### Added
 
-- Support `aio_pika` 9.x ([#1670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1670))
+- Support `aio_pika` 9.x (([#1670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1670])
 - `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization. ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
 - `opentelemetry-instrumentation-elasticsearch` Add optional db.statement query sanitization.
   ([#1598](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1598))
@@ -1331,7 +1175,7 @@ No significant changes.
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
 - Add metric instrumentation for urllib
   ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
-- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/ecs/) and [`aws.logs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
+- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/cloud_provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 - `opentelemetry-instrumentation-aio-pika` Support `aio_pika` 8.x
   ([#1481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1481))
@@ -1527,7 +1371,7 @@ No significant changes.
 - Add a test for asgi using NoOpTracerProvider
   ([#1367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1367))
 
-## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2) - 2022-07-01
+## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2-0.32b0) - 2022-07-01
 
 - Pyramid: Only categorize 500s server exceptions as errors
   ([#1037](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1037))
@@ -2161,7 +2005,7 @@ No significant changes.
 - `opentelemetry-instrumentation-grpc` Add tests for grpc span attributes, grpc `abort()` conditions
   ([#236](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/236))
 - Add README and example app for Prometheus Remote Write Exporter
-  ([#227](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/227))
+  ([#227](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/227]))
 - `opentelemetry-instrumentation-botocore` Adds a field to report the number of retries it take to complete an API call
   ([#275](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/275))
 - `opentelemetry-instrumentation-requests` Use instanceof to check if responses are valid Response objects
@@ -2548,7 +2392,8 @@ No significant changes.
 - `opentelemetry-ext-http-requests` Updates for core library changes
 
 - `Added support for PyPy3` Initial release
-  ([#1033](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1033))
+
+## [#1033](https://github.com/open-telemetryopentelemetry-python-contrib/issues/1033)
 
 ## Version 0.1a0 (2019-09-30)
 
