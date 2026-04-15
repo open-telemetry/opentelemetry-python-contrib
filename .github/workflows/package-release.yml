@@ -13,6 +13,7 @@ on:
         - opentelemetry-instrumentation-openai-agents-v2
         - opentelemetry-instrumentation-vertexai
         - opentelemetry-instrumentation-anthropic
+        - opentelemetry-instrumentation-cohere
         - opentelemetry-instrumentation-claude-agent-sdk
         - opentelemetry-instrumentation-google-genai
         - opentelemetry-util-genai

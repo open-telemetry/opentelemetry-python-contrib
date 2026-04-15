@@ -15,8 +15,16 @@ Installation
 
     pip install opentelemetry-instrumentation-cohere
 
+If you don't have a Cohere application yet, try our `examples <examples>`_
+which only need a valid Cohere API key.
+
+Check out the `zero-code example <examples/zero-code>`_ for a quick start.
+
 Usage
 -----
+
+This section describes how to set up Cohere instrumentation if you're setting OpenTelemetry up manually.
+Check out the `manual example <examples/manual>`_ for more details.
 
 .. code-block:: python
 
@@ -32,6 +40,21 @@ Usage
             {"role": "user", "content": "Hello, how are you?"},
         ],
     )
+
+
+Configuration
+-------------
+
+Capture Message Content
+***********************
+
+By default, prompts and completions are not captured. To enable message content capture,
+set the environment variable:
+
+::
+
+    export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
+
 
 References
 ----------
