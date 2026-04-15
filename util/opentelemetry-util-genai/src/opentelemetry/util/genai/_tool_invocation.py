@@ -20,6 +20,7 @@ from opentelemetry._logs import Logger
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
@@ -57,6 +58,9 @@ class ToolInvocation(GenAIInvocation):
         tool_type: str | None = None,
         tool_description: str | None = None,
         tool_result: Any = None,
+        provider: str | None = None,
+        server_address: str | None = None,
+        server_port: int | None = None,
         attributes: dict[str, Any] | None = None,
         metric_attributes: dict[str, Any] | None = None,
     ) -> None:
@@ -77,7 +81,23 @@ class ToolInvocation(GenAIInvocation):
         self.tool_type = tool_type
         self.tool_description = tool_description
         self.tool_result = tool_result
+        self.provider = provider
+        self.server_address = server_address
+        self.server_port = server_port
         self._start()
+
+    def _get_metric_attributes(self) -> dict[str, Any]:
+        optional_attrs = (
+            (GenAI.GEN_AI_PROVIDER_NAME, self.provider),
+            (server_attributes.SERVER_ADDRESS, self.server_address),
+            (server_attributes.SERVER_PORT, self.server_port),
+        )
+        attrs: dict[str, Any] = {
+            GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
+            **{k: v for k, v in optional_attrs if v is not None},
+        }
+        attrs.update(self.metric_attributes)
+        return attrs
 
     def _apply_finish(self, error: Error | None = None) -> None:
         if error is not None:
@@ -94,3 +114,4 @@ class ToolInvocation(GenAIInvocation):
         }
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
+        self._metrics_recorder.record(self)
