@@ -302,8 +302,8 @@ class TelemetryHandler:
 
     def start_agent(
         self,
+        provider: str,
         *,
-        provider: str | None = None,
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
@@ -318,7 +318,7 @@ class TelemetryHandler:
             self._tracer,
             self._metrics_recorder,
             self._logger,
-            provider=provider,
+            provider,
             request_model=request_model,
             server_address=server_address,
             server_port=server_port,
@@ -327,8 +327,8 @@ class TelemetryHandler:
 
     def invoke_agent(
         self,
+        provider: str,
         *,
-        provider: str | None = None,
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
@@ -343,7 +343,7 @@ class TelemetryHandler:
         re-raises the original exception.
         """
         return self.start_agent(
-            provider=provider,
+            provider,
             request_model=request_model,
             server_address=server_address,
             server_port=server_port,

@@ -32,7 +32,7 @@ class TestAgentInvocation(unittest.TestCase):
 
     def test_start_stop_creates_span(self):
         invocation = self.handler.start_agent(
-            provider="openai",
+            "openai",
             request_model="gpt-4",
         )
         invocation.agent_name = "Math Tutor"
@@ -48,7 +48,7 @@ class TestAgentInvocation(unittest.TestCase):
         assert span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4"
 
     def test_span_kind_client(self):
-        invocation = self.handler.start_agent(provider="openai")
+        invocation = self.handler.start_agent("openai")
         invocation.stop()
         assert (
             self.span_exporter.get_finished_spans()[0].kind == SpanKind.CLIENT
@@ -56,7 +56,7 @@ class TestAgentInvocation(unittest.TestCase):
 
     def test_all_attributes(self):
         invocation = self.handler.start_agent(
-            provider="openai",
+            "openai",
             request_model="gpt-4",
             server_address="api.openai.com",
             server_port=443,
@@ -96,7 +96,7 @@ class TestAgentInvocation(unittest.TestCase):
         assert attrs[GenAI.GEN_AI_REQUEST_SEED] == 42
 
     def test_cache_token_attributes(self):
-        invocation = self.handler.start_agent(provider="openai")
+        invocation = self.handler.start_agent("openai")
         invocation.input_tokens = 100
         invocation.cache_creation_input_tokens = 25
         invocation.cache_read_input_tokens = 50
@@ -108,7 +108,7 @@ class TestAgentInvocation(unittest.TestCase):
         assert attrs[GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == 50
 
     def test_fail_sets_error_status(self):
-        invocation = self.handler.start_agent(provider="openai")
+        invocation = self.handler.start_agent("openai")
         invocation.fail(RuntimeError("agent crashed"))
 
         span = self.span_exporter.get_finished_spans()[0]
@@ -116,9 +116,7 @@ class TestAgentInvocation(unittest.TestCase):
         assert span.attributes.get("error.type") == "RuntimeError"
 
     def test_context_manager_success(self):
-        with self.handler.invoke_agent(
-            provider="openai", request_model="gpt-4"
-        ) as inv:
+        with self.handler.invoke_agent("openai", request_model="gpt-4") as inv:
             inv.agent_name = "CM Agent"
             inv.input_tokens = 10
             inv.output_tokens = 20
@@ -130,7 +128,7 @@ class TestAgentInvocation(unittest.TestCase):
 
     def test_context_manager_error(self):
         with self.assertRaises(ValueError):
-            with self.handler.invoke_agent(provider="openai"):
+            with self.handler.invoke_agent("openai"):
                 raise ValueError("test error")
 
         assert (
@@ -141,17 +139,16 @@ class TestAgentInvocation(unittest.TestCase):
         )
 
     def test_context_manager_default_invocation(self):
-        with self.handler.invoke_agent() as inv:
+        with self.handler.invoke_agent("openai") as inv:
             inv.agent_name = "Dynamic Agent"
-            inv.provider = "openai"
         assert len(self.span_exporter.get_finished_spans()) == 1
 
     def test_default_values(self):
-        invocation = self.handler.start_agent()
+        invocation = self.handler.start_agent("openai")
         invocation.stop()
         assert invocation._operation_name == "invoke_agent"
         assert invocation.agent_name is None
-        assert invocation.provider is None
+        assert invocation.provider == "openai"
         assert invocation.request_model is None
         assert invocation.input_messages == []
         assert invocation.output_messages == []
@@ -162,7 +159,7 @@ class TestAgentInvocation(unittest.TestCase):
         assert not invocation.attributes
 
     def test_with_messages(self):
-        invocation = self.handler.start_agent(provider="openai")
+        invocation = self.handler.start_agent("openai")
         invocation.input_messages = [
             InputMessage(role="user", parts=[Text(content="Hello")])
         ]
@@ -178,7 +175,7 @@ class TestAgentInvocation(unittest.TestCase):
         assert invocation.input_messages[0].role == "user"
 
     def test_custom_attributes(self):
-        invocation = self.handler.start_agent(provider="openai")
+        invocation = self.handler.start_agent("openai")
         invocation.attributes["custom.key"] = "custom_value"
         invocation.stop()
         spans = self.span_exporter.get_finished_spans()
@@ -190,7 +187,7 @@ class TestAgentInvocation(unittest.TestCase):
             description="Get the weather",
             parameters={"type": "object", "properties": {}},
         )
-        invocation = self.handler.start_agent(provider="openai")
+        invocation = self.handler.start_agent("openai")
         invocation.tool_definitions = [tool]
         invocation.stop()
         assert len(invocation.tool_definitions) == 1
@@ -198,24 +195,67 @@ class TestAgentInvocation(unittest.TestCase):
         assert invocation.tool_definitions[0].type == "function"
 
     def test_default_lists_are_independent(self):
-        inv1 = self.handler.start_agent()
-        inv2 = self.handler.start_agent()
+        inv1 = self.handler.start_agent("openai")
+        inv2 = self.handler.start_agent("openai")
         inv1.input_messages.append(InputMessage(role="user", parts=[]))
         assert len(inv2.input_messages) == 0
         inv2.stop()
         inv1.stop()
 
     def test_default_attributes_are_independent(self):
-        inv1 = self.handler.start_agent()
-        inv2 = self.handler.start_agent()
+        inv1 = self.handler.start_agent("openai")
+        inv2 = self.handler.start_agent("openai")
         inv1.attributes["foo"] = "bar"
         assert "foo" not in inv2.attributes
         inv2.stop()
         inv1.stop()
 
     def test_agent_name_in_constructor(self):
-        invocation = self.handler.start_agent(agent_name="Named Agent")
+        invocation = self.handler.start_agent(
+            "openai", agent_name="Named Agent"
+        )
         invocation.stop()
         span = self.span_exporter.get_finished_spans()[0]
         assert span.name == "invoke_agent Named Agent"
         assert span.attributes[GenAI.GEN_AI_AGENT_NAME] == "Named Agent"
+
+    def test_provider_always_set(self):
+        invocation = self.handler.start_agent("gcp_vertex_ai")
+        invocation.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert attrs[GenAI.GEN_AI_PROVIDER_NAME] == "gcp_vertex_ai"
+
+    def test_finish_reasons_from_output_messages(self):
+        invocation = self.handler.start_agent("openai")
+        invocation.output_messages = [
+            OutputMessage(
+                role="assistant",
+                parts=[Text(content="response 1")],
+                finish_reason="stop",
+            ),
+            OutputMessage(
+                role="assistant",
+                parts=[Text(content="response 2")],
+                finish_reason="length",
+            ),
+        ]
+        invocation.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert tuple(attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS]) == (
+            "stop",
+            "length",
+        )
+
+    def test_explicit_finish_reasons_override_output_messages(self):
+        invocation = self.handler.start_agent("openai")
+        invocation.output_messages = [
+            OutputMessage(
+                role="assistant",
+                parts=[Text(content="response")],
+                finish_reason="length",
+            ),
+        ]
+        invocation.finish_reasons = ["stop"]
+        invocation.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert tuple(attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS]) == ("stop",)

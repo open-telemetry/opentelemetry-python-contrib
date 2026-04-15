@@ -56,8 +56,8 @@ class AgentInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        provider: str,
         *,
-        provider: str | None = None,
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
@@ -104,7 +104,6 @@ class AgentInvocation(GenAIInvocation):
 
         self.finish_reasons: list[str] | None = None
         self.response_model_name: str | None = None
-        self.response_id: str | None = None
         self.input_tokens: int | None = None
         self.output_tokens: int | None = None
         self.cache_creation_input_tokens: int | None = None
@@ -117,9 +116,20 @@ class AgentInvocation(GenAIInvocation):
 
         self._start()
 
+    def _get_finish_reasons(self) -> list[str] | None:
+        if self.finish_reasons is not None:
+            return self.finish_reasons or None
+        if self.output_messages:
+            reasons = [
+                msg.finish_reason
+                for msg in self.output_messages
+                if msg.finish_reason
+            ]
+            return reasons or None
+        return None
+
     def _get_common_attributes(self) -> dict[str, Any]:
         optional_attrs = (
-            (GenAI.GEN_AI_PROVIDER_NAME, self.provider),
             (GenAI.GEN_AI_REQUEST_MODEL, self.request_model),
             (server_attributes.SERVER_ADDRESS, self.server_address),
             (server_attributes.SERVER_PORT, self.server_port),
@@ -130,6 +140,7 @@ class AgentInvocation(GenAIInvocation):
         )
         return {
             GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
+            GenAI.GEN_AI_PROVIDER_NAME: self.provider,
             **{k: v for k, v in optional_attrs if v is not None},
         }
 
@@ -151,9 +162,8 @@ class AgentInvocation(GenAIInvocation):
 
     def _get_response_attributes(self) -> dict[str, Any]:
         optional_attrs = (
-            (GenAI.GEN_AI_RESPONSE_FINISH_REASONS, self.finish_reasons),
+            (GenAI.GEN_AI_RESPONSE_FINISH_REASONS, self._get_finish_reasons()),
             (GenAI.GEN_AI_RESPONSE_MODEL, self.response_model_name),
-            (GenAI.GEN_AI_RESPONSE_ID, self.response_id),
             (GenAI.GEN_AI_USAGE_INPUT_TOKENS, self.input_tokens),
             (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, self.output_tokens),
             (

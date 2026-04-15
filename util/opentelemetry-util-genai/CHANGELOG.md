@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add `AgentInvocation` type with `invoke_agent` span lifecycle support
+- Add `AgentInvocation` type with `invoke_agent` span lifecycle via `start_agent(provider, ...)` / `invoke_agent(provider, ...)` factory methods; `provider` is required per semconv, `response_id` removed (not in invoke_agent spec), `finish_reasons` deduced from `output_messages` when not explicitly set
   ([#4274](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4274))
 - Add support for workflow in genAI utils handler.
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4366](#4366))
