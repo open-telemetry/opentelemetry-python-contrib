@@ -36,10 +36,10 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     Error,
-    LLMInvocation,
+    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
     OutputMessage,
     Text,
-    ToolCall,
+    ToolCallRequest,
 )
 
 from .instruments import Instruments
@@ -914,7 +914,7 @@ class ChatStreamWrapper(BaseStreamWrapper):
                             arguments = json.loads(arguments_str)
                         except json.JSONDecodeError:
                             arguments = arguments_str
-                    tool_call_part = ToolCall(
+                    tool_call_part = ToolCallRequest(
                         name=tool_call.function_name,
                         id=tool_call.tool_call_id,
                         arguments=arguments,

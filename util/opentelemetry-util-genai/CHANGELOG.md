@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add support for workflow in genAI utils handler.
+  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4366](#4366))
+- Enrich ToolCall type, breaking change: usage of ToolCall class renamed to ToolCallRequest
+  ([#4218](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4218))
 - Add EmbeddingInvocation span lifecycle support
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4219](#4219))
 - Populate schema_url on metrics
   ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
 - Add workflow invocation type to genAI utils
   ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310](#4310))
+- Check if upload works at startup in initializer of the `UploadCompletionHook`, instead
+of repeatedly failing on every upload ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4390](#4390)).
+- Refactor public API: add factory methods (`start_inference`, `start_embedding`, `start_tool`, `start_workflow`) and invocation-owned lifecycle (`invocation.stop()` / `invocation.fail(exc)`); rename `LLMInvocation` → `InferenceInvocation` and `ToolCall` → `ToolInvocation`. Existing usages remain fully functional via deprecated aliases.
+  ([#4391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4391))
+
 
 ## Version 0.3b0 (2026-02-20)
 
