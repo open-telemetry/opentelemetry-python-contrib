@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 
+### Fixed
+
+- `opentelemetry-instrumentation-celery`: Coerce non-string header values to `str` in `CeleryGetter.get()` so context propagation does not fail when downstream libraries set non-string headers
+  ([#4434](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4434))
+
 ### Breaking changes
 
 - Drop Python 3.9 support
