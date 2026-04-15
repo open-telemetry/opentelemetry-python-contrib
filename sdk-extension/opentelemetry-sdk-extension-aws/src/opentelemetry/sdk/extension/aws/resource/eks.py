@@ -38,6 +38,7 @@ _EKS_OIDC_RE = re.compile(
     r"^https://oidc\.eks\.[^.]+\.amazonaws\.com(?:\.cn)?/id/[A-F0-9]{32}$",
     re.ASCII,
 )
+
 def _aws_http_request(method, path, cred_value):
     with urlopen(
         Request(

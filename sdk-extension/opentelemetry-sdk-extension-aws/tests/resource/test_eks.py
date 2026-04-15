@@ -155,7 +155,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
     @patch(
         "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
         return_value=_bearer_jwt(
-            {"iss": "https://oidc.eks.eu-west-2.amazonaws.com/id/EXAMPLE123"}
+            {"iss": "https://oidc.eks.eu-west-2.amazonaws.com/id/A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4"}
         ),
     )
     @patch(
@@ -197,6 +197,50 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
         return_value=True,
     )
-    def test_non_eks_jwt_returns_empty(self, mock_is_k8s, mock_get_k8s_cred_value):
+    def test_non_eks_jwt_returns_empty(
+        self, mock_is_k8s, mock_get_k8s_cred_value
+    ):
         actual = AwsEksResourceDetector().detect()
         self.assertEqual(actual.attributes, {})
+
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
+        return_value=_bearer_jwt({"iss": "https://wrong.jwt.com"}),
+    )
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
+        return_value=True,
+    )
+    def test_non_eks_jwt_should_raise(
+        self, mock_is_k8s, mock_get_k8s_cred_value
+    ):
+        with self.assertRaises(RuntimeError):
+            AwsEksResourceDetector(raise_on_error=True).detect()
+
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
+        return_value="Bearer notajwt.otel",
+    )
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
+        return_value=True,
+    )
+    def test_is_eks_wrong_parts_count_should_raise(
+        self, mock_is_k8s, mock_get_k8s_cred_value
+    ):
+        with self.assertRaises(RuntimeError):
+            AwsEksResourceDetector(raise_on_error=True).detect()
+
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
+        return_value="Bearer header.eyJpc3MiOg.fakesig",
+    )
+    @patch(
+        "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
+        return_value=True,
+    )
+    def test_is_eks_invalid_json_payload_should_raise(
+        self, mock_is_k8s, mock_get_k8s_cred_value
+    ):
+        with self.assertRaises(RuntimeError):
+            AwsEksResourceDetector(raise_on_error=True).detect()
