@@ -34,8 +34,6 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
-    NET_TRANSPORT,
-    NetTransportValues,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -271,10 +269,6 @@ class TestRedis(TestBase):
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
         self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
         self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
-        self.assertEqual(
-            span.attributes[NET_TRANSPORT],
-            NetTransportValues.IP_TCP.value,
-        )
 
     def test_attributes_tcp(self):
         redis_client = redis.Redis.from_url("redis://foo:bar@1.1.1.1:6380/1")
@@ -293,10 +287,6 @@ class TestRedis(TestBase):
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 1)
         self.assertEqual(span.attributes[NET_PEER_NAME], "1.1.1.1")
         self.assertEqual(span.attributes[NET_PEER_PORT], 6380)
-        self.assertEqual(
-            span.attributes[NET_TRANSPORT],
-            NetTransportValues.IP_TCP.value,
-        )
 
     def test_attributes_unix_socket(self):
         redis_client = redis.Redis.from_url(
@@ -318,10 +308,6 @@ class TestRedis(TestBase):
         self.assertEqual(
             span.attributes[NET_PEER_NAME],
             "/path/to/socket.sock",
-        )
-        self.assertEqual(
-            span.attributes[NET_TRANSPORT],
-            NetTransportValues.OTHER.value,
         )
 
     def test_connection_error(self):

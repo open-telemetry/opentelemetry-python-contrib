@@ -20,10 +20,7 @@ import valkey.asyncio
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
-from opentelemetry.semconv.trace import (
-    NetTransportValues,
-    SpanAttributes,
-)
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
 
@@ -250,10 +247,6 @@ class TestValkey(TestBase):
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
         self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_TRANSPORT],
-            NetTransportValues.IP_TCP.value,
-        )
 
     def test_attributes_tcp(self):
         valkey_client = valkey.Valkey.from_url(
@@ -276,10 +269,6 @@ class TestValkey(TestBase):
             span.attributes[SpanAttributes.NET_PEER_NAME], "1.1.1.1"
         )
         self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6380)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_TRANSPORT],
-            NetTransportValues.IP_TCP.value,
-        )
 
     def test_attributes_unix_socket(self):
         valkey_client = valkey.Valkey.from_url(
@@ -301,8 +290,4 @@ class TestValkey(TestBase):
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME],
             "/path/to/socket.sock",
-        )
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_TRANSPORT],
-            NetTransportValues.OTHER.value,
         )

@@ -23,9 +23,7 @@ from typing import Any
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
-    NET_TRANSPORT,
 )
-from opentelemetry.semconv.trace import NetTransportValues
 from opentelemetry.trace import Span
 
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
@@ -52,11 +50,9 @@ def _extract_conn_attributes(
     attributes[db_index_attr] = db
     if "path" in conn_kwargs:
         attributes[NET_PEER_NAME] = conn_kwargs.get("path", "")
-        attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
     else:
         attributes[NET_PEER_NAME] = conn_kwargs.get("host", "localhost")
         attributes[NET_PEER_PORT] = conn_kwargs.get("port", 6379)
-        attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
 
     return attributes
 
@@ -83,9 +79,7 @@ def _format_command_args(args: list[str]) -> str:
     return out_str
 
 
-def _set_span_attribute_if_value(
-    span: Span, name: str, value: Any
-) -> None:
+def _set_span_attribute_if_value(span: Span, name: str, value: Any) -> None:
     if value is not None and value != "":
         span.set_attribute(name, value)
 
