@@ -20,6 +20,10 @@ import valkey.asyncio
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
@@ -244,9 +248,9 @@ class TestValkey(TestBase):
         )
         self.assertEqual(span.attributes["db.redis.database_index"], 0)
         self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
+            span.attributes[SERVER_ADDRESS], "localhost"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6379)
+        self.assertEqual(span.attributes[SERVER_PORT], 6379)
 
     def test_attributes_tcp(self):
         valkey_client = valkey.Valkey.from_url(
@@ -266,9 +270,9 @@ class TestValkey(TestBase):
         )
         self.assertEqual(span.attributes["db.redis.database_index"], 1)
         self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "1.1.1.1"
+            span.attributes[SERVER_ADDRESS], "1.1.1.1"
         )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 6380)
+        self.assertEqual(span.attributes[SERVER_PORT], 6380)
 
     def test_attributes_unix_socket(self):
         valkey_client = valkey.Valkey.from_url(
@@ -288,6 +292,6 @@ class TestValkey(TestBase):
         )
         self.assertEqual(span.attributes["db.redis.database_index"], 3)
         self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME],
+            span.attributes[SERVER_ADDRESS],
             "/path/to/socket.sock",
         )

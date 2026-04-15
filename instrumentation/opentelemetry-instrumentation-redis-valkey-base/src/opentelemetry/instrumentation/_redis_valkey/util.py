@@ -20,9 +20,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.trace import Span
 
@@ -49,10 +49,10 @@ def _extract_conn_attributes(
     db = conn_kwargs.get("db", 0)
     attributes[db_index_attr] = db
     if "path" in conn_kwargs:
-        attributes[NET_PEER_NAME] = conn_kwargs.get("path", "")
+        attributes[SERVER_ADDRESS] = conn_kwargs.get("path", "")
     else:
-        attributes[NET_PEER_NAME] = conn_kwargs.get("host", "localhost")
-        attributes[NET_PEER_PORT] = conn_kwargs.get("port", 6379)
+        attributes[SERVER_ADDRESS] = conn_kwargs.get("host", "localhost")
+        attributes[SERVER_PORT] = conn_kwargs.get("port", 6379)
 
     return attributes
 
