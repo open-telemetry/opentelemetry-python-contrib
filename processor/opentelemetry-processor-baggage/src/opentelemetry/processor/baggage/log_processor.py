@@ -76,6 +76,5 @@ class BaggageLogProcessor(LogRecordProcessor):
     def shutdown(self) -> None:
         pass
 
-    @staticmethod
-    def force_flush(timeout_millis: int = 30000) -> bool:
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
         return True
