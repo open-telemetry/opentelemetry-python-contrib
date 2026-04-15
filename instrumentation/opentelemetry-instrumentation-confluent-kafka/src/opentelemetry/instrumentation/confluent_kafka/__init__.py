@@ -400,9 +400,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationTypeValues.RECEIVE,
+                operation=MessagingOperationTypeValues.PUBLISH,
                 bootstrap_servers=bootstrap_servers,
-            )  # Replace
+            )  # Publish
             propagate.inject(
                 headers,
                 setter=_kafka_setter,
