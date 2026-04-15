@@ -163,7 +163,10 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.valkey.package import _instruments
 from opentelemetry.instrumentation.valkey.version import __version__
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_REDIS_DATABASE_INDEX,
+    DB_SYSTEM,
+)
 from opentelemetry.trace import TracerProvider, get_tracer
 
 if TYPE_CHECKING:
@@ -181,10 +184,10 @@ _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 _VALKEY_CONFIG = KVStoreConfig(
     backend_name="valkey",
     db_system="valkey",
-    db_system_attr=SpanAttributes.DB_SYSTEM,
-    db_index_attr="db.valkey.database_index",
-    args_length_attr="db.valkey.args_length",
-    pipeline_length_attr="db.valkey.pipeline_length",
+    db_system_attr=DB_SYSTEM,
+    db_index_attr=DB_REDIS_DATABASE_INDEX,
+    args_length_attr="db.redis.args_length",
+    pipeline_length_attr="db.redis.pipeline_length",
     watch_error_class=valkey.WatchError,
 )
 

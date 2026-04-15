@@ -245,7 +245,7 @@ class TestValkey(TestBase):
             span.attributes[SpanAttributes.DB_SYSTEM],
             "valkey",
         )
-        self.assertEqual(span.attributes["db.valkey.database_index"], 0)
+        self.assertEqual(span.attributes["db.redis.database_index"], 0)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
         )
@@ -271,7 +271,7 @@ class TestValkey(TestBase):
             span.attributes[SpanAttributes.DB_SYSTEM],
             "valkey",
         )
-        self.assertEqual(span.attributes["db.valkey.database_index"], 1)
+        self.assertEqual(span.attributes["db.redis.database_index"], 1)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME], "1.1.1.1"
         )
@@ -297,7 +297,7 @@ class TestValkey(TestBase):
             span.attributes[SpanAttributes.DB_SYSTEM],
             "valkey",
         )
-        self.assertEqual(span.attributes["db.valkey.database_index"], 3)
+        self.assertEqual(span.attributes["db.redis.database_index"], 3)
         self.assertEqual(
             span.attributes[SpanAttributes.NET_PEER_NAME],
             "/path/to/socket.sock",

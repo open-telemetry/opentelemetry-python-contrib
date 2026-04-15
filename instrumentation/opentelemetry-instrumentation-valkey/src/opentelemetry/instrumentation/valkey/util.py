@@ -32,12 +32,15 @@ from opentelemetry.instrumentation._redis_valkey.util import (
     _set_span_attribute_if_value,
     _value_or_none,
 )
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_REDIS_DATABASE_INDEX,
+    DB_SYSTEM,
+)
 
 _BACKEND_NAME = "valkey"
 _DB_SYSTEM = "valkey"
-_DB_SYSTEM_ATTR = SpanAttributes.DB_SYSTEM
-_DB_INDEX_ATTR = "db.valkey.database_index"
+_DB_SYSTEM_ATTR = DB_SYSTEM
+_DB_INDEX_ATTR = DB_REDIS_DATABASE_INDEX
 
 __all__ = [
     "_extract_conn_attributes",
