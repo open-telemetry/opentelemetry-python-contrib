@@ -60,3 +60,6 @@ components:
     - vasantteja
     - anirudha
     - MikeGoldsmith
+
+  instrumentation-genai/opentelemetry-instrumentation-cohere:
+    - Nik-Reddy

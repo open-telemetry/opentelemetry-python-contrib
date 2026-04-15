@@ -1,0 +1,4 @@
+cohere>=5.0.0
+opentelemetry-sdk~=1.39.0
+opentelemetry-instrumentation-cohere
+opentelemetry-exporter-otlp-proto-grpc~=1.39.0
