@@ -9,11 +9,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import (
-    EmbeddingInvocation,
-    Error,
-    LLMInvocation,
-)
+from opentelemetry.util.genai.types import Error
 
 _DEFAULT_SCHEMA_URL = Schemas.V1_37_0.value
 
@@ -26,19 +22,18 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = LLMInvocation(request_model="model", provider="prov")
-        invocation.input_tokens = 5
-        invocation.output_tokens = 7
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            handler.start_llm(invocation)
+            invocation = handler.start_inference("prov", request_model="model")
+        invocation.input_tokens = 5
+        invocation.output_tokens = 7
 
         # Simulate 2 seconds of elapsed monotonic time (seconds)
         with patch(
             "timeit.default_timer",
             return_value=1002.0,
         ):
-            handler.stop_llm(invocation)
+            invocation.stop()
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -84,17 +79,19 @@ class TelemetryHandlerMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
 
-        invocation = LLMInvocation(request_model="model", provider="prov")
+        invocation = handler.start_inference(
+            "prov",
+            request_model="model",
+            server_address="custom.server.com",
+            server_port=42,
+        )
         invocation.input_tokens = 5
         invocation.output_tokens = 7
-        invocation.server_address = "custom.server.com"
-        invocation.server_port = 42
-        handler.start_llm(invocation)
         invocation.metric_attributes = {
             "custom.attribute": "custom_value",
         }
         invocation.attributes = {"should not be on metrics": "value"}
-        handler.stop_llm(invocation)
+        invocation.stop()
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -119,18 +116,17 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = LLMInvocation(request_model="err-model", provider=None)
-        invocation.input_tokens = 11
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=2000.0):
-            handler.start_llm(invocation)
+            invocation = handler.start_inference("", request_model="err-model")
+        invocation.input_tokens = 11
 
         error = Error(message="boom", type=ValueError)
         with patch(
             "timeit.default_timer",
             return_value=2001.0,
         ):
-            handler.fail_llm(invocation, error)
+            invocation.fail(error)
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -166,7 +162,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         resource_metrics is the raw ResourceMetrics list for scope-level
         assertions (e.g. schema_url).
         """
-        metrics = self.get_sorted_metrics(SCOPE)
+        metrics = self.get_sorted_metrics()
         metrics_by_name: Dict[str, List[Any]] = {}
         for metric in metrics or []:
             points = metric.data.data_points or []
