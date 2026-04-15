@@ -46,7 +46,7 @@ class ToolInvocation(GenAIInvocation):
     - error.type: Error type if operation failed (Conditionally Required)
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-locals
         self,
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
