@@ -55,7 +55,7 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     )  # type: ignore[assignment]
 
 from opentelemetry.context import attach, detach
-from opentelemetry.metrics import Histogram, get_meter
+from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -69,6 +69,10 @@ from opentelemetry.trace import (
     StatusCode,
     Tracer,
     set_span_in_context,
+)
+from opentelemetry.util.genai.instruments import (
+    create_duration_histogram,
+    create_token_histogram,
 )
 from opentelemetry.util.types import AttributeValue
 
@@ -438,6 +442,7 @@ class GenAISemanticProcessor(TracingProcessor):
         agent_description: Optional[str] = None,
         server_address: Optional[str] = None,
         server_port: Optional[int] = None,
+        meter_provider: Optional[MeterProvider] = None,
         metrics_enabled: bool = True,
         agent_name_default: Optional[str] = None,
         agent_id_default: Optional[str] = None,
@@ -458,6 +463,7 @@ class GenAISemanticProcessor(TracingProcessor):
             agent_description: Description of the agent (can be overridden by env var)
             server_address: Server address (can be overridden by env var or base_url)
             server_port: Server port (can be overridden by env var or base_url)
+            meter_provider: Optional MeterProvider for metrics
         """
         self._tracer = tracer
         self.system_name = normalize_provider(system_name) or system_name
@@ -514,10 +520,10 @@ class GenAISemanticProcessor(TracingProcessor):
         # Metrics configuration
         self._metrics_enabled = metrics_enabled
         self._meter = None
-        self._duration_histogram: Optional[Histogram] = None
-        self._token_usage_histogram: Optional[Histogram] = None
+        self._duration_histogram: Optional[object] = None
+        self._token_usage_histogram: Optional[object] = None
         if self._metrics_enabled:
-            self._init_metrics()
+            self._init_metrics(meter_provider)
 
     def _get_server_attributes(self) -> dict[str, Any]:
         """Get server attributes from configured values."""
@@ -528,25 +534,19 @@ class GenAISemanticProcessor(TracingProcessor):
             attrs[ServerAttributes.SERVER_PORT] = self.server_port
         return attrs
 
-    def _init_metrics(self):
+    def _init_metrics(self, meter_provider: Optional[MeterProvider] = None):
         """Initialize metric instruments."""
+        from opentelemetry.instrumentation.openai_agents.version import (  # noqa: PLC0415
+            __version__,
+        )
+
         self._meter = get_meter(
-            "opentelemetry.instrumentation.openai_agents", "0.1.0"
+            "opentelemetry.instrumentation.openai_agents",
+            __version__,
+            meter_provider,
         )
-
-        # Operation duration histogram
-        self._duration_histogram = self._meter.create_histogram(
-            name="gen_ai.client.operation.duration",
-            description="GenAI operation duration",
-            unit="s",
-        )
-
-        # Token usage histogram
-        self._token_usage_histogram = self._meter.create_histogram(
-            name="gen_ai.client.token.usage",
-            description="Number of input and output tokens used",
-            unit="{token}",
-        )
+        self._duration_histogram = create_duration_histogram(self._meter)
+        self._token_usage_histogram = create_token_histogram(self._meter)
 
     def _record_metrics(
         self, span: Span[Any], attributes: dict[str, AttributeValue]

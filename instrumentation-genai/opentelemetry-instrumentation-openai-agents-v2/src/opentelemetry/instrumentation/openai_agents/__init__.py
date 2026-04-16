@@ -15,6 +15,9 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 
 from .package import _instruments
 from .span_processor import (
@@ -38,7 +41,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-_CONTENT_CAPTURE_ENV = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 _SYSTEM_OVERRIDE_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SYSTEM"
 _CAPTURE_CONTENT_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT"
 _CAPTURE_METRICS_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_METRICS"
@@ -147,9 +149,9 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
 
         content_override = kwargs.get("capture_message_content")
         if content_override is None:
-            content_override = os.getenv(_CONTENT_CAPTURE_ENV) or os.getenv(
-                _CAPTURE_CONTENT_ENV
-            )
+            content_override = os.getenv(
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+            ) or os.getenv(_CAPTURE_CONTENT_ENV)
         content_mode = _resolve_content_mode(content_override)
 
         metrics_override = kwargs.get("capture_metrics")
@@ -157,6 +159,7 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             metrics_override = os.getenv(_CAPTURE_METRICS_ENV)
         metrics_enabled = _resolve_bool(metrics_override, default=True)
 
+        meter_provider = kwargs.get("meter_provider")
         agent_name = kwargs.get("agent_name")
         agent_id = kwargs.get("agent_id")
         agent_description = kwargs.get("agent_description")
@@ -170,6 +173,7 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             include_sensitive_data=content_mode
             != ContentCaptureMode.NO_CONTENT,
             content_mode=content_mode,
+            meter_provider=meter_provider,
             metrics_enabled=metrics_enabled,
             agent_name=agent_name,
             agent_id=agent_id,
