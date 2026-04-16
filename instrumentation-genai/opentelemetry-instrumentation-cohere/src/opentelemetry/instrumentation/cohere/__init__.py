@@ -42,22 +42,8 @@ API
 
 from typing import Collection
 
-from wrapt import wrap_function_wrapper
-
 from opentelemetry.instrumentation.cohere.package import _instruments
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import ContentCapturingMode
-from opentelemetry.util.genai.utils import (
-    get_content_capturing_mode,
-    is_experimental_mode,
-)
-
-from .patch import (
-    async_chat_create,
-    chat_create,
-)
 
 
 class CohereInstrumentor(BaseInstrumentor):
@@ -65,41 +51,13 @@ class CohereInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        """Enable Cohere instrumentation."""
-        tracer_provider = kwargs.get("tracer_provider")
-        meter_provider = kwargs.get("meter_provider")
-        logger_provider = kwargs.get("logger_provider")
+        """Enable Cohere instrumentation.
 
-        latest_experimental_enabled = is_experimental_mode()
-        content_mode = (
-            get_content_capturing_mode()
-            if latest_experimental_enabled
-            else ContentCapturingMode.NO_CONTENT
-        )
-
-        handler = TelemetryHandler(
-            tracer_provider=tracer_provider,
-            meter_provider=meter_provider,
-            logger_provider=logger_provider,
-        )
-
-        # Instrument sync V2Client.chat
-        wrap_function_wrapper(
-            module="cohere.v2.client",
-            name="V2Client.chat",
-            wrapper=chat_create(handler, content_mode),
-        )
-
-        # Instrument async AsyncV2Client.chat
-        wrap_function_wrapper(
-            module="cohere.v2.client",
-            name="AsyncV2Client.chat",
-            wrapper=async_chat_create(handler, content_mode),
-        )
-
+        TODO: Chat completions patching will be added in a follow-up PR.
+        """
 
     def _uninstrument(self, **kwargs):
-        import cohere.v2.client  # pylint: disable=import-outside-toplevel
+        """Disable Cohere instrumentation.
 
-        unwrap(cohere.v2.client.V2Client, "chat")
-        unwrap(cohere.v2.client.AsyncV2Client, "chat")
+        TODO: Chat completions unpatching will be added in a follow-up PR.
+        """
