@@ -33,9 +33,21 @@ except Exception as exc:
     raise
 ```
 
-## 3. Exception Handling
+## 3. Semantic conventions
 
-- Do not add `raise {Error}` statements in instrumentation/telemetry code — validation belongs in
-  tests and callers, not in the instrumentation layer.
-- When catching exceptions from the underlying library to record telemetry, always re-raise
-  the original exception unmodified.
+Attributes, spans, events, and metrics follow the
+[GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions/tree/main/docs/gen-ai).
+Do not emit signals that are not covered by semconv.
+
+## 4. Tests
+
+- Use VCR cassettes for provider calls. Do not skip tests when an API key is missing.
+- For every public API touched, cover sync/async and streaming/non-streaming variants when
+  both exist.
+- Cover happy path and error scenarios, at minimum: provider error / endpoint unavailable,
+  stream interrupted by network, stream closed early by the caller.
+
+## 5. Examples
+
+New instrumentations ship a minimal example under the package's `examples/` directory, with
+both a `manual/` setup and a `zero-code/` (auto-instrumentation) variant.

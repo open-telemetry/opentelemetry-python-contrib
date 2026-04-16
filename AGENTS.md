@@ -19,6 +19,14 @@ implementation direction is agreed on with the maintainers first in the issue co
 unknowns, discuss these on the issue before starting implementation. Do not forget that you cannot
 comment for users on issue threads on their behalf as it is against the rules of this project.
 
+## PR description
+
+Follow the repo's [PR template](.github/pull_request_template.md) and fill applicable sections.
+Keep description short and focus on what is being changed and any gaps or concerns.
+
+AI-generated analyses, long reports, or design dumps go in a relevant issue or a separate PR
+comment - not in the PR description.
+
 ## Structure
 
 - `instrumentation/` - instrumentation packages (Flask, Django, FastAPI, gRPC, databases, etc.)
