@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.semconv._incubating.attributes import (
@@ -24,12 +24,6 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import INVALID_SPAN, Span, SpanKind, Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
-from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
-from opentelemetry.util.genai.types import (
-    InputMessage,
-    MessagePart,
-    OutputMessage,
-)
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
     gen_ai_json_dumps,
@@ -37,6 +31,14 @@ from opentelemetry.util.genai.utils import (
     is_experimental_mode,
     should_emit_event,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.util.genai.metrics import InvocationMetricsRecorder  #
+    from opentelemetry.util.genai.types import (
+        InputMessage,
+        MessagePart,
+        OutputMessage,
+    )  #
 
 
 class InferenceInvocation(GenAIInvocation):

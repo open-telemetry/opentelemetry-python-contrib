@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING, Any, Iterator
 
 from typing_extensions import Self, TypeAlias
 
-from opentelemetry._logs import Logger
 from opentelemetry.context import Context, attach, detach
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace import INVALID_SPAN as _INVALID_SPAN
@@ -31,6 +30,7 @@ from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry.util.genai.types import Error
 
 if TYPE_CHECKING:
+    from opentelemetry._logs import Logger  #
     from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 
 ContextToken: TypeAlias = Token[Context]

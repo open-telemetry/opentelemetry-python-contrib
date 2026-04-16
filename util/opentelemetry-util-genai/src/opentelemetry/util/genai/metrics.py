@@ -3,28 +3,20 @@
 from __future__ import annotations
 
 import timeit
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
-
-if TYPE_CHECKING:
-    from opentelemetry.metrics import Histogram, Meter
-    from opentelemetry.util.genai.types import LLMInvocation
-    from opentelemetry.util.types import AttributeValue
-
-from opentelemetry.semconv.attributes import (
-    error_attributes,
-    server_attributes,
-)
-from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
     create_token_histogram,
 )
 
-from ._invocation import GenAIInvocation
+if TYPE_CHECKING:
+    from opentelemetry.metrics import Histogram, Meter
+
+    from ._invocation import GenAIInvocation
 
 
 class InvocationMetricsRecorder:

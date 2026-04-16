@@ -24,7 +24,6 @@ from anthropic._streaming import Stream as AnthropicStream
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
-from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     LLMInvocation,  # TODO: migrate to InferenceInvocation
@@ -48,6 +47,9 @@ if TYPE_CHECKING:
     from anthropic.resources.messages import Messages
     from anthropic.types import Message as AnthropicMessage
     from anthropic.types import RawMessageStreamEvent
+
+    from opentelemetry.util.genai.handler import TelemetryHandler  #
+
 _logger = logging.getLogger(__name__)
 ANTHROPIC = "anthropic"
 

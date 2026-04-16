@@ -17,7 +17,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Type, Union
-from typing import TYPE_CHECKING, Any, Literal, Type, Union
 
 if TYPE_CHECKING:
     from opentelemetry.util.genai._inference_invocation import (  # pylint: disable=useless-import-alias
@@ -26,7 +25,6 @@ if TYPE_CHECKING:
     from opentelemetry.util.genai._invocation import (  # pylint: disable=useless-import-alias
         GenAIInvocation as GenAIInvocation,  # noqa: PLC0414
     )
-    from opentelemetry.trace import Span
 
 
 class ContentCapturingMode(Enum):
