@@ -57,6 +57,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.genai.context_attributes import (
     get_context_scoped_attributes,
 )
@@ -305,3 +306,254 @@ class TestCSAScopeEndsAfterChain(_CallbackHandlerTestBase):
             attrs.get("gen_ai.workflow.name"),
             "gen_ai.workflow.name should not be visible after workflow scope ends",
         )
+
+
+class TestWorkflowErrorPath(_CallbackHandlerTestBase):
+    """Verify on_chain_error records error status and cleans up state."""
+
+    def test_workflow_span_has_error_status_on_chain_error(self) -> None:
+        chain_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized=_make_serialized("FailingChain"),
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chain_error(
+            error=ValueError("something went wrong"),
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+
+        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
+        self.assertEqual(len(internal_spans), 1)
+        span = internal_spans[0]
+        self.assertEqual(span.name, "invoke_workflow FailingChain")
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertIn("something went wrong", span.status.description)
+
+    def test_workflow_span_error_type_attribute(self) -> None:
+        chain_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized=_make_serialized("FailingChain"),
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chain_error(
+            error=RuntimeError("boom"),
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+
+        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
+        self.assertEqual(len(internal_spans), 1)
+        self.assertEqual(
+            internal_spans[0].attributes.get("error.type"), "RuntimeError"
+        )
+
+    def test_chain_error_cleans_up_invocation_state(self) -> None:
+        chain_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized=_make_serialized("FailingChain"),
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chain_error(
+            error=ValueError("oops"),
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+
+        # Invocation should have been removed — a second error call is a no-op
+        self.handler.on_chain_error(
+            error=ValueError("duplicate"),
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        # Only one span — the second call was silently ignored
+        self.assertEqual(len(self._finished_spans()), 1)
+
+    def test_chain_error_csa_scope_ends(self) -> None:
+        """CSA should be gone after on_chain_error, same as on_chain_end."""
+        chain_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized=_make_serialized("FailingChain"),
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chain_error(
+            error=ValueError("oops"),
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+
+        attrs = get_context_scoped_attributes()
+        self.assertIsNone(
+            attrs.get("gen_ai.workflow.name"),
+            "gen_ai.workflow.name should not be visible after workflow error",
+        )
+
+    def test_chain_error_unknown_run_id_is_noop(self) -> None:
+        """on_chain_error with an unknown run_id must not raise."""
+        self.handler.on_chain_error(
+            error=ValueError("no matching invocation"),
+            run_id=uuid.uuid4(),
+            parent_run_id=None,
+        )
+        self.assertEqual(len(self._finished_spans()), 0)
+
+    def test_chain_end_unknown_run_id_is_noop(self) -> None:
+        """on_chain_end with an unknown run_id must not raise."""
+        self.handler.on_chain_end(
+            outputs={},
+            run_id=uuid.uuid4(),
+            parent_run_id=None,
+        )
+        self.assertEqual(len(self._finished_spans()), 0)
+
+
+class TestLLMErrorInsideWorkflow(_CallbackHandlerTestBase):
+    """Verify on_llm_error inside a workflow doesn't break the parent workflow span."""
+
+    def test_llm_error_inside_workflow_records_error_on_llm_span(self) -> None:
+        chain_run_id = uuid.uuid4()
+        llm_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized=_make_serialized("MyPipeline"),
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chat_model_start(
+            serialized=_make_serialized("ChatOpenAI"),
+            messages=[[AIMessage(content="hi")]],
+            run_id=llm_run_id,
+            parent_run_id=chain_run_id,
+            metadata={"ls_provider": "openai"},
+            **_make_chat_invocation_params("gpt-3.5-turbo"),
+        )
+        self.handler.on_llm_error(
+            error=RuntimeError("model timeout"),
+            run_id=llm_run_id,
+            parent_run_id=chain_run_id,
+        )
+        self.handler.on_chain_end(
+            outputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+
+        client_spans = self._spans_by_kind(SpanKind.CLIENT)
+        self.assertEqual(len(client_spans), 1)
+        self.assertEqual(client_spans[0].status.status_code, StatusCode.ERROR)
+
+        # Workflow span still finishes (not in error state)
+        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
+        self.assertEqual(len(internal_spans), 1)
+        self.assertNotEqual(internal_spans[0].status.status_code, StatusCode.ERROR)
+
+    def test_llm_error_inside_workflow_llm_span_is_child_of_workflow(self) -> None:
+        chain_run_id = uuid.uuid4()
+        llm_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized=_make_serialized("MyPipeline"),
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chat_model_start(
+            serialized=_make_serialized("ChatOpenAI"),
+            messages=[[AIMessage(content="hi")]],
+            run_id=llm_run_id,
+            parent_run_id=chain_run_id,
+            metadata={"ls_provider": "openai"},
+            **_make_chat_invocation_params("gpt-3.5-turbo"),
+        )
+        self.handler.on_llm_end(
+            response=_make_llm_result(),
+            run_id=llm_run_id,
+            parent_run_id=chain_run_id,
+        )
+        self.handler.on_chain_end(
+            outputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+
+        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
+        client_spans = self._spans_by_kind(SpanKind.CLIENT)
+        self.assertEqual(len(internal_spans), 1)
+        self.assertEqual(len(client_spans), 1)
+
+        workflow_span = internal_spans[0]
+        llm_span = client_spans[0]
+        self.assertEqual(
+            llm_span.context.trace_id,
+            workflow_span.context.trace_id,
+            "LLM span and workflow span must share the same trace",
+        )
+        self.assertEqual(
+            llm_span.parent.span_id,
+            workflow_span.context.span_id,
+            "LLM span must be a child of the workflow span",
+        )
+
+
+class TestWorkflowNameFallback(_CallbackHandlerTestBase):
+    """Verify the name resolution fallback chain in on_chain_start."""
+
+    def test_name_falls_back_to_id_list(self) -> None:
+        chain_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized={"id": ["pkg", "mod", "MyRunnableClass"]},
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chain_end(outputs={}, run_id=chain_run_id, parent_run_id=None)
+
+        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
+        self.assertEqual(len(internal_spans), 1)
+        # id is a list — _safe_str(list) produces a string; just verify a span was created
+        self.assertTrue(internal_spans[0].name.startswith("invoke_workflow "))
+
+    def test_name_falls_back_to_langgraph_node(self) -> None:
+        chain_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized={},
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+            metadata={"langgraph_node": "my_node"},
+        )
+        self.handler.on_chain_end(outputs={}, run_id=chain_run_id, parent_run_id=None)
+
+        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
+        self.assertEqual(len(internal_spans), 1)
+        self.assertEqual(internal_spans[0].name, "invoke_workflow my_node")
+
+    def test_name_defaults_to_chain_when_nothing_provided(self) -> None:
+        chain_run_id = uuid.uuid4()
+
+        self.handler.on_chain_start(
+            serialized={},
+            inputs={},
+            run_id=chain_run_id,
+            parent_run_id=None,
+        )
+        self.handler.on_chain_end(outputs={}, run_id=chain_run_id, parent_run_id=None)
+
+        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
+        self.assertEqual(len(internal_spans), 1)
+        self.assertEqual(internal_spans[0].name, "invoke_workflow chain")

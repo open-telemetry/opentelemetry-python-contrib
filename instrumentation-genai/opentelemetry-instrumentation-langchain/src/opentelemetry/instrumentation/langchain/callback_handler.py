@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.langchain.invocation_manager import (
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.invocation import InferenceInvocation
+from opentelemetry.util.genai.invocation import WorkflowInvocation
 from opentelemetry.util.genai.types import (
     InputMessage,
     MessagePart,
@@ -43,6 +44,75 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         super().__init__()
         self._telemetry_handler = telemetry_handler
         self._invocation_manager = _InvocationManager()
+
+    def on_chain_start(
+        self,
+        serialized: dict[str, Any],
+        inputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        payload = serialized or {}
+        name_source = (
+                payload.get("name")
+                or payload.get("id")
+                or kwargs.get("name")
+                or (metadata.get("langgraph_node") if metadata else None)
+        )
+        name = str(name_source or "chain")
+
+        if parent_run_id is None:
+            workflow_name_override = metadata.get("workflow_name") if metadata else None
+            wf = self._telemetry_handler.start_workflow(name=workflow_name_override or name)
+            self._invocation_manager.add_invocation_state(run_id, None, wf)
+            return
+        else:
+            self._invocation_manager.add_invocation_state(run_id, parent_run_id)
+
+
+    def on_chain_end(
+        self,
+        outputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if invocation is None or not isinstance(
+            invocation, WorkflowInvocation
+        ):
+            # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        invocation.stop()
+
+        if not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id)
+
+
+    def on_chain_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if invocation is None or not isinstance(
+            invocation, WorkflowInvocation
+        ):
+            # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        invocation.fail(error)
+        if not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id=run_id)
 
     def on_chat_model_start(
         self,
@@ -266,3 +336,4 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         llm_invocation.fail(error)
         if not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
+
