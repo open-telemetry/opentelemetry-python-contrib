@@ -1,5 +1,4 @@
 # pylint: skip-file
-import cohere
 
 # NOTE: OpenTelemetry Python Logs and Events APIs are in beta
 from opentelemetry import _logs, trace
@@ -32,14 +31,8 @@ CohereInstrumentor().instrument()
 
 
 def main():
-    client = cohere.ClientV2()
-    response = client.chat(
-        model="command-r-plus",
-        messages=[
-            {"role": "user", "content": "Write a short poem on OpenTelemetry."}
-        ],
-    )
-    print(response.message.content[0].text)
+    # TODO: Chat completions example will be added in a follow-up PR.
+    print("Cohere instrumentation is active.")
 
 
 if __name__ == "__main__":

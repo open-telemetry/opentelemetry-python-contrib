@@ -1,16 +1,9 @@
 # pylint: skip-file
-import cohere
 
 
 def main():
-    client = cohere.ClientV2()
-    response = client.chat(
-        model="command-r-plus",
-        messages=[
-            {"role": "user", "content": "Write a short poem on OpenTelemetry."}
-        ],
-    )
-    print(response.message.content[0].text)
+    # TODO: Chat completions example will be added in a follow-up PR.
+    print("Cohere instrumentation is active (zero-code).")
 
 
 if __name__ == "__main__":
