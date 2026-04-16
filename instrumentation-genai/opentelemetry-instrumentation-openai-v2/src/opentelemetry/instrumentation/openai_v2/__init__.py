@@ -122,6 +122,7 @@ def _is_parse_supported():
 class OpenAIInstrumentor(BaseInstrumentor):
     def __init__(self):
         self._meter = None
+        self._parse_supported = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
