@@ -11,8 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Bump `pylint` to `4.0.5`
+  ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
+
+### Breaking changes
+
+- Drop Python 3.9 support
+  ([#4412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4412))
+
 ## Version 1.41.0/0.62b0 (2026-04-09)
-  
+
 ### Added
 
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
@@ -47,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
   ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
 - `opentelemetry-instrumentation-aiokafka`: fix `Unclosed AIOKafkaProducer` warning and `RuntimeWarning: coroutine was never awaited` in tests
-  ([#4384](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4384)) 
+  ([#4384](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4384))
 - `opentelemetry-instrumentation-aiokafka`: Fix compatibility with aiokafka 0.13 by calling
   `_key_serializer`/`_value_serializer` directly instead of the internal `_serialize` method
   whose signature changed in 0.13 from `(topic, key, value)` to `(key, value, headers)`
