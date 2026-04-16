@@ -9,6 +9,7 @@ import yaml
 from langchain_aws import ChatBedrock
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
+from vcr import VCR
 
 from opentelemetry.instrumentation.langchain import LangChainInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider
@@ -112,12 +113,24 @@ def fixture_meter_provider(metric_reader):
 
 @pytest.fixture(scope="function")
 def start_instrumentation(
+    request,
+    monkeypatch,
     tracer_provider,
     meter_provider,
     logger_provider,
 ):
+    if "capture_content" in request.fixturenames:
+        monkeypatch.setenv(
+            "OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental"
+        )
+        monkeypatch.setenv(
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
+            request.getfixturevalue("capture_content"),
+        )
+
     instrumentor = LangChainInstrumentor()
     instrumentor.instrument(
+        skip_dep_check=True,
         tracer_provider=tracer_provider,
         meter_provider=meter_provider,
         logger_provider=logger_provider,
@@ -208,10 +221,26 @@ class PrettyPrintJSONBody:
         return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
-@pytest.fixture(scope="module", autouse=True)
-def fixture_vcr(vcr):
-    vcr.register_serializer("yaml", PrettyPrintJSONBody)
-    return vcr
+@pytest.fixture(scope="function", name="vcr")
+def fixture_vcr(vcr_config, record_mode):
+    """Provide a configurable VCR object for tests that call use_cassette().
+
+    pytest-recording's built-in ``vcr`` fixture now yields an active cassette
+    instead of the older ``VCR`` object. LangChain's tests still use the
+    explicit ``with vcr.use_cassette(...)`` style, so this local fixture
+    restores that interface while keeping the same cassette directory and
+    record mode behavior.
+    """
+    vcr_instance = VCR(
+        path_transformer=VCR.ensure_suffix(".yaml"),
+        cassette_library_dir=os.path.join(
+            os.path.dirname(__file__), "cassettes"
+        ),
+        record_mode=record_mode,
+        **vcr_config,
+    )
+    vcr_instance.register_serializer("yaml", PrettyPrintJSONBody)
+    return vcr_instance
 
 
 def scrub_response_headers(response):
