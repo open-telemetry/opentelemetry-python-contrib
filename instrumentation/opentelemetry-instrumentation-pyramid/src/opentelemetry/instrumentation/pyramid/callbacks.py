@@ -42,6 +42,7 @@ from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_RESPONSE_STATUS_CODE,
     HTTP_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
@@ -265,9 +266,8 @@ def trace_tween_factory(handler, registry):
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
-                duration_attrs[HTTP_STATUS_CODE] = (
-                    otel_wsgi._parse_status_code(status)
-                )
+                duration_attrs[HTTP_STATUS_CODE] = status_code
+                duration_attrs[HTTP_RESPONSE_STATUS_CODE] = status_code
 
             # Record metrics for old semconv (milliseconds)
             if duration_histogram_old:
