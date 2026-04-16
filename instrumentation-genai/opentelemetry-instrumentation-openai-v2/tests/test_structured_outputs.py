@@ -14,20 +14,12 @@
 
 """Tests for OpenAI structured outputs (chat.completions.parse) instrumentation."""
 
-import json
-
-import pytest
-
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
 )
 from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .structured_outputs_utils import (
-    EXPECTED_RESPONSE_CONTENT,
     STRUCTURED_OUTPUT_EXPECTED_INPUT_MESSAGES,
     STRUCTURED_OUTPUT_PROMPT,
     CalendarEvent,
