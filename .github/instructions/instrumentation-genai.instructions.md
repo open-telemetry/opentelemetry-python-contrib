@@ -68,8 +68,8 @@ in `instrumentation/`, not here.
   exist.
 - Cover happy path and error scenarios, at minimum: provider error / endpoint unavailable, stream
   interrupted by network, stream closed early by the caller.
-- Add latest and oldest supported versions of the instrumented library as test matrix dimensions.
-  (todo polish)
+- Test against oldest and latest supported library versions via `tests/requirements.{oldest,latest}.txt`
+  and `{oldest,latest}` `tox.ini` factors (see existing GenAI packages).
 
 ## 7. Examples
 
