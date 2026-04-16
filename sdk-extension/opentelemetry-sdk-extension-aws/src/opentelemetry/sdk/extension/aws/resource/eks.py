@@ -39,6 +39,7 @@ _EKS_OIDC_RE = re.compile(
     re.ASCII,
 )
 
+
 def _aws_http_request(method, path, cred_value):
     with urlopen(
         Request(
