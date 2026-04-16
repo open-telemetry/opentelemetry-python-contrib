@@ -188,17 +188,16 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = EmbeddingInvocation(
-            request_model="embed-model", provider="embed-prov"
-        )
-        invocation.input_tokens = 100
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            handler.start(invocation)
+            invocation = handler.start_embedding(
+                "embed-prov", request_model="embed-model"
+            )
+        invocation.input_tokens = 100
 
         # Simulate 1.5 seconds of elapsed monotonic time
         with patch("timeit.default_timer", return_value=1001.5):
-            handler.stop(invocation)
+            invocation.stop()
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -240,16 +239,15 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = EmbeddingInvocation(
+        invocation = handler.start_embedding(
+            "embed-prov",
             request_model="embed-model",
-            provider="embed-prov",
             server_address="embed.server.com",
             server_port=8080,
         )
-        handler.start(invocation)
         invocation.metric_attributes = {"custom.embed.attr": "embed_value"}
         invocation.response_model_name = "embed-response-model"
-        handler.stop(invocation)
+        invocation.stop()
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -277,15 +275,14 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = EmbeddingInvocation(
-            request_model="embed-err-model", provider="embed-prov"
-        )
         with patch("timeit.default_timer", return_value=3000.0):
-            handler.start(invocation)
+            invocation = handler.start_embedding(
+                "embed-prov", request_model="embed-err-model"
+            )
 
         error = Error(message="embedding failed", type=RuntimeError)
         with patch("timeit.default_timer", return_value=3002.5):
-            handler.fail(invocation, error)
+            invocation.fail(error)
 
         self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
@@ -313,12 +310,11 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = EmbeddingInvocation(
-            request_model="embed-model", provider="embed-prov"
+        invocation = handler.start_embedding(
+            "embed-prov", request_model="embed-model"
         )
         # input_tokens is not set
-        handler.start(invocation)
-        handler.stop(invocation)
+        invocation.stop()
 
         metrics = self._harvest_metrics()
 
