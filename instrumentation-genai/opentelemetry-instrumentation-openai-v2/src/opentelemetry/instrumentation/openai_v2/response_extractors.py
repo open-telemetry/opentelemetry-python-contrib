@@ -60,7 +60,7 @@ try:
         OutputMessage,
         Reasoning,
         Text,
-        ToolCall,
+        ToolCallRequest as ToolCall,
     )
 except ImportError:
     InputMessage = None
@@ -514,21 +514,32 @@ def _get_request_attributes(
     return {key: value for key, value in attributes.items() if value_is_set(value)}
 
 
-def _create_invocation(
+def _get_inference_creation_kwargs(
     kwargs: Mapping[str, object],
     client_instance: object,
-    capture_content: bool,
-) -> "LLMInvocation":
-    if LLMInvocation is None:
-        raise RuntimeError("GenAI LLMInvocation type is unavailable")
-
+) -> dict[str, object]:
     request = _validate_request_kwargs(kwargs)
     request_model = request.model if request is not None else None
+    address, port = get_server_address_and_port(client_instance)
 
-    invocation = LLMInvocation(
-        request_model=request_model,
-        provider=GenAIAttributes.GenAiProviderNameValues.OPENAI.value,
-    )
+    creation_kwargs: dict[str, object] = {
+        "provider": GenAIAttributes.GenAiProviderNameValues.OPENAI.value,
+    }
+    if request_model is not None:
+        creation_kwargs["request_model"] = request_model
+    if address is not None:
+        creation_kwargs["server_address"] = address
+    if port is not None:
+        creation_kwargs["server_port"] = port
+    return creation_kwargs
+
+
+def _apply_request_attributes(
+    invocation,
+    kwargs: Mapping[str, object],
+    capture_content: bool,
+) -> None:
+    request = _validate_request_kwargs(kwargs)
 
     if request is not None:
         invocation.temperature = request.temperature
@@ -547,20 +558,12 @@ def _create_invocation(
             output_type
         )
 
-    address, port = get_server_address_and_port(client_instance)
-    invocation.server_address = address
-    invocation.server_port = port
-
     if capture_content:
         invocation.system_instruction = _extract_system_instruction(kwargs)
         invocation.input_messages = _extract_input_messages(kwargs)
 
-    return invocation
 
-
-def _set_invocation_usage_attributes(
-    invocation: "LLMInvocation", usage: _UsageModel
-) -> None:
+def _set_invocation_usage_attributes(invocation, usage: _UsageModel) -> None:
     if usage.input_tokens is not None:
         invocation.input_tokens = usage.input_tokens
     else:
@@ -591,7 +594,7 @@ def _set_invocation_usage_attributes(
 
 
 def _set_invocation_response_attributes(
-    invocation: "LLMInvocation",
+    invocation,
     result: object | None,
     capture_content: bool,
 ) -> None:

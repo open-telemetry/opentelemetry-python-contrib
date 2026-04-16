@@ -7,11 +7,7 @@ from contextlib import AsyncExitStack, ExitStack, contextmanager
 from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Generator, Generic, TypeVar
 
-from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import (
-    Error,
-    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
-)
+from opentelemetry.util.genai.types import Error
 
 # OpenAI Responses internals are version-gated (added in openai>=1.66.0), so
 # pylint may not resolve them in all lint environments even though we guard
@@ -72,7 +68,7 @@ ResponseT = TypeVar("ResponseT")
 
 
 def _set_response_attributes(
-    invocation: "LLMInvocation",
+    invocation,
     result: "ParsedResponse[TextFormatT] | Response | None",
     capture_content: bool,
 ) -> None:
@@ -131,12 +127,10 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         stream: "ResponseStream[TextFormatT]",
-        handler: TelemetryHandler,
-        invocation: "LLMInvocation",
+        invocation,
         capture_content: bool,
     ):
         self.stream = stream
-        self.handler = handler
         self.invocation = invocation
         self._capture_content = capture_content
         self._finalized = False
@@ -215,17 +209,15 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             _set_response_attributes(
                 self.invocation, result, self._capture_content
             )
-        with self._safe_instrumentation("stop_llm"):
-            self.handler.stop_llm(self.invocation)
+        with self._safe_instrumentation("inference.stop"):
+            self.invocation.stop()
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]) -> None:
         if self._finalized:
             return
-        with self._safe_instrumentation("fail_llm"):
-            self.handler.fail_llm(
-                self.invocation, Error(message=message, type=error_type)
-            )
+        with self._safe_instrumentation("inference.fail"):
+            self.invocation.fail(Error(message=message, type=error_type))
         self._finalized = True
 
     @staticmethod
@@ -281,12 +273,10 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         manager: "ResponseStreamManager[TextFormatT]",
-        handler: TelemetryHandler,
-        invocation: "LLMInvocation",
+        invocation,
         capture_content: bool,
     ):
         self._manager = manager
-        self._handler = handler
         self._invocation = invocation
         self._capture_content = capture_content
         self._stream_wrapper: ResponseStreamWrapper[TextFormatT] | None = None
@@ -295,7 +285,6 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
         stream = self._manager.__enter__()
         self._stream_wrapper = ResponseStreamWrapper(
             stream,
-            self._handler,
             self._invocation,
             self._capture_content,
         )
@@ -406,12 +395,10 @@ class AsyncResponseStreamManagerWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         manager: "AsyncResponseStreamManager[TextFormatT]",
-        handler: TelemetryHandler,
-        invocation: "LLMInvocation",
+        invocation,
         capture_content: bool,
     ):
         self._manager = manager
-        self._handler = handler
         self._invocation = invocation
         self._capture_content = capture_content
         self._stream_wrapper: (
@@ -422,7 +409,6 @@ class AsyncResponseStreamManagerWrapper(Generic[TextFormatT]):
         stream = await self._manager.__aenter__()
         self._stream_wrapper = AsyncResponseStreamWrapper(
             stream,
-            self._handler,
             self._invocation,
             self._capture_content,
         )
