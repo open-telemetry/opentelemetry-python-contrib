@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `opentelemetry-instrumentation`: fix `_set_status` overriding existing span status and description ([#4410](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4410))
+### Added
+
+- Bump `pylint` to `4.0.5`
+  ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
+
+### Breaking changes
+
+- Drop Python 3.9 support
+  ([#4412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4412))
+
 ## Version 1.41.0/0.62b0 (2026-04-09)
 
 ### Added
