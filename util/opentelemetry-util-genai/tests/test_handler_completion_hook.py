@@ -46,7 +46,7 @@ _EXPERIMENTAL_ENV = {
 }
 
 
-class TestHandlerCompletionHook(TestCase):
+class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self) -> None:
         self.span_exporter = InMemorySpanExporter()
         self.tracer_provider = TracerProvider()
@@ -209,6 +209,26 @@ class TestHandlerCompletionHook(TestCase):
         handler = self._make_handler()
         self.assertFalse(handler.should_capture_content())
 
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "span_only"},
+    )
+    def test_should_capture_content_true_in_legacy_mode_when_content_env_span_only(
+        self,
+    ):
+        handler = self._make_handler()
+        self.assertTrue(handler.should_capture_content())
+
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "event_only"},
+    )
+    def test_should_capture_content_true_in_legacy_mode_when_content_env_event_only(
+        self,
+    ):
+        handler = self._make_handler()
+        self.assertTrue(handler.should_capture_content())
+
     @patch_env_vars("gen_ai_latest_experimental", "span_only", "false")
     def test_should_capture_content_true_in_experimental_mode_with_content(
         self,
@@ -231,6 +251,18 @@ class TestHandlerCompletionHook(TestCase):
         hook = MagicMock()
         handler = self._make_handler(hook)
         self.assertTrue(handler.should_capture_content())
+
+    @patch_env_vars("gen_ai_latest_experimental", "no_content", "false")
+    @patch.dict(
+        os.environ,
+        {OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "true"},
+    )
+    def test_should_capture_content_false_in_experimental_mode_ignores_legacy_env(
+        self,
+    ):
+        # Legacy CAPTURE_MESSAGE_CONTENT=true should NOT override NO_CONTENT in experimental mode
+        handler = self._make_handler()
+        self.assertFalse(handler.should_capture_content())
 
     def test_workflow_hook_called_on_stop_with_messages(self):
         hook = MagicMock()

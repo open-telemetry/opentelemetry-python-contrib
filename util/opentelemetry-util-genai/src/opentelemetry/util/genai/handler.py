@@ -124,11 +124,13 @@ class TelemetryHandler:
                 get_content_capturing_mode() != ContentCapturingMode.NO_CONTENT
             )
         else:
-            content_enabled = (
-                os.environ.get(
-                    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
-                ).lower()
-                == "true"
+            content_enabled = os.environ.get(
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
+            ).lower() in (
+                "true",
+                "span_only",
+                "event_only",
+                "span_and_event",
             )
         self._capture_content = content_enabled or not isinstance(
             self._completion_hook, _NoOpCompletionHook
