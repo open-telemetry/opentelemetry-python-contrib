@@ -90,7 +90,10 @@ def chat_completions_create_v_old(
                     parsed_result = result
                 if is_streaming(kwargs):
                     return LegacyChatStreamWrapper(
-                        parsed_result, span, logger, capture_content
+                        parsed_result, span, logger, capture_content,
+                        instruments=instruments,
+                        start_time=start,
+                        request_attributes=span_attributes,
                     )
 
                 if span.is_recording():
@@ -195,7 +198,10 @@ def async_chat_completions_create_v_old(
                     parsed_result = result
                 if is_streaming(kwargs):
                     return LegacyChatStreamWrapper(
-                        parsed_result, span, logger, capture_content
+                        parsed_result, span, logger, capture_content,
+                        instruments=instruments,
+                        start_time=start,
+                        request_attributes=span_attributes,
                     )
 
                 if span.is_recording():
@@ -631,6 +637,8 @@ class BaseStreamWrapper:
         self.choice_buffers = []
         self._started = False
         self.capture_content = capture_content
+        self._first_token_received = False
+        self._first_token_time: Optional[float] = None
         self._setup()
 
     def _setup(self):
@@ -752,7 +760,24 @@ class BaseStreamWrapper:
         self.set_response_model(chunk)
         self.set_response_service_tier(chunk)
         self.build_streaming_response(chunk)
+        self._detect_first_token(chunk)
         self.set_usage(chunk)
+
+    def _detect_first_token(self, chunk):
+        if self._first_token_received:
+            return
+        if getattr(chunk, "choices", None) is None:
+            return
+        for choice in chunk.choices:
+            if not choice.delta:
+                continue
+            if (
+                choice.delta.content is not None
+                or choice.delta.tool_calls is not None
+            ):
+                self._first_token_received = True
+                self._first_token_time = default_timer()
+                return
 
     def __getattr__(self, name):
         return getattr(self.stream, name)
@@ -777,10 +802,16 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
         span: Span,
         logger: Logger,
         capture_content: bool,
+        instruments: Optional[Instruments] = None,
+        start_time: Optional[float] = None,
+        request_attributes: Optional[dict] = None,
     ):
         super().__init__(stream, capture_content=capture_content)
         self.span = span
         self.logger = logger
+        self._instruments = instruments
+        self._start_time = start_time
+        self._request_attributes = request_attributes or {}
 
     def cleanup(self, error: Optional[BaseException] = None):
         if not self._started:
@@ -863,8 +894,42 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
         if error:
             handle_span_exception(self.span, error)
         else:
+            self._record_ttft()
             self.span.end()
         self._started = False
+
+    def _record_ttft(self):
+        if (
+            self._instruments is None
+            or self._start_time is None
+            or self._first_token_time is None
+        ):
+            return
+        ttft = max(self._first_token_time - self._start_time, 0.0)
+        common_attributes = {
+            GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+            GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
+        }
+        if GenAIAttributes.GEN_AI_REQUEST_MODEL in self._request_attributes:
+            common_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = (
+                self._request_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+            )
+        if self.response_model:
+            common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = (
+                self.response_model
+            )
+        if ServerAttributes.SERVER_ADDRESS in self._request_attributes:
+            common_attributes[ServerAttributes.SERVER_ADDRESS] = (
+                self._request_attributes[ServerAttributes.SERVER_ADDRESS]
+            )
+        if ServerAttributes.SERVER_PORT in self._request_attributes:
+            common_attributes[ServerAttributes.SERVER_PORT] = (
+                self._request_attributes[ServerAttributes.SERVER_PORT]
+            )
+        self._instruments.ttfc_histogram.record(
+            ttft,
+            attributes=common_attributes,
+        )
 
 
 class ChatStreamWrapper(BaseStreamWrapper):
@@ -939,6 +1004,15 @@ class ChatStreamWrapper(BaseStreamWrapper):
                 {
                     OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self.service_tier
                 },
+            )
+
+        if (
+            self._first_token_time is not None
+            and self.invocation.monotonic_start_s is not None
+        ):
+            self.invocation.time_to_first_token_s = max(
+                self._first_token_time - self.invocation.monotonic_start_s,
+                0.0,
             )
 
         self._set_output_messages()
