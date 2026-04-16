@@ -18,13 +18,13 @@ from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 
 class TestUtils(unittest.TestCase):
-    def test_duplicate_instrumentaion(self):
+    def test_duplicate_instrumentation(self):
         first = CeleryInstrumentor()
         first.instrument()
         second = CeleryInstrumentor()
         second.instrument()
         CeleryInstrumentor().uninstrument()
-        self.assertIsNotNone(first.metrics)
-        self.assertIsNotNone(second.metrics)
+        self.assertIsNone(first.metrics)
+        self.assertIsNone(second.metrics)
         self.assertEqual(first.task_id_to_start_time, {})
         self.assertEqual(second.task_id_to_start_time, {})

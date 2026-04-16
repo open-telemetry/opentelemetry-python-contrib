@@ -37,6 +37,7 @@ instruments = [
 
 [project.entry-points.opentelemetry_instrumentor]
 celery = "opentelemetry.instrumentation.celery:CeleryInstrumentor"
+celery_worker = "opentelemetry.instrumentation.celery:CeleryWorkerInstrumentor"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-celery"
