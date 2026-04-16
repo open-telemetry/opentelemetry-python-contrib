@@ -171,9 +171,6 @@ class TelemetryHandler:
         tool_call_id: str | None = None,
         tool_type: str | None = None,
         tool_description: str | None = None,
-        provider: str | None = None,
-        server_address: str | None = None,
-        server_port: int | None = None,
     ) -> ToolInvocation:
         """Create and start a tool invocation.
 
@@ -189,9 +186,6 @@ class TelemetryHandler:
             tool_call_id=tool_call_id,
             tool_type=tool_type,
             tool_description=tool_description,
-            provider=provider,
-            server_address=server_address,
-            server_port=server_port,
         )
 
     def start_workflow(
@@ -288,9 +282,6 @@ class TelemetryHandler:
         tool_call_id: str | None = None,
         tool_type: str | None = None,
         tool_description: str | None = None,
-        provider: str | None = None,
-        server_address: str | None = None,
-        server_port: int | None = None,
     ) -> AbstractContextManager[ToolInvocation]:
         """Context manager for Tool invocations.
 
@@ -306,9 +297,6 @@ class TelemetryHandler:
             tool_call_id=tool_call_id,
             tool_type=tool_type,
             tool_description=tool_description,
-            provider=provider,
-            server_address=server_address,
-            server_port=server_port,
         )._managed()
 
     def workflow(

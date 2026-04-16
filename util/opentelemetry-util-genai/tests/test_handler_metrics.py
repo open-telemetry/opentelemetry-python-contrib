@@ -198,12 +198,7 @@ class TelemetryHandlerToolMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=1000.0):
-            invocation = handler.start_tool(
-                "get_weather",
-                provider="test-provider",
-                server_address="api.example.com",
-                server_port=443,
-            )
+            invocation = handler.start_tool("get_weather")
         invocation.metric_attributes = {"custom.key": "custom_value"}
 
         with patch("timeit.default_timer", return_value=1002.5):
@@ -220,14 +215,6 @@ class TelemetryHandlerToolMetricsTest(TestBase):
             "execute_tool",
         )
         self.assertEqual(
-            duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME],
-            "test-provider",
-        )
-        self.assertEqual(
-            duration_point.attributes["server.address"], "api.example.com"
-        )
-        self.assertEqual(duration_point.attributes["server.port"], 443)
-        self.assertEqual(
             duration_point.attributes["custom.key"], "custom_value"
         )
         self.assertAlmostEqual(duration_point.sum, 2.5, places=3)
@@ -239,9 +226,7 @@ class TelemetryHandlerToolMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=500.0):
-            invocation = handler.start_tool(
-                "failing_tool", provider="err-provider"
-            )
+            invocation = handler.start_tool("failing_tool")
 
         error = Error(message="Tool execution failed", type=RuntimeError)
         with patch("timeit.default_timer", return_value=501.5):
