@@ -26,7 +26,10 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import (
+    Error,
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
+)
 from opentelemetry.util.genai.utils import (
     should_capture_content_on_spans_in_experimental_mode,
 )
