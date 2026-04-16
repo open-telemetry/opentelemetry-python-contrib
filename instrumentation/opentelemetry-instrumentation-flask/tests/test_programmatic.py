@@ -851,10 +851,14 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         for resource_metric in metrics_list.resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 for metric in scope_metric.metrics:
-                    if metric.name == "http.server.active_requests":
-                        for point in metric.data.data_points:
-                            if isinstance(point, NumberDataPoint):
-                                active_requests_value = point.value
+                    if metric.name != "http.server.active_requests":
+                        continue
+                    points = [
+                        p.value for p in metric.data.data_points
+                        if isinstance(p, NumberDataPoint)
+                    ]
+                    if points:
+                        active_requests_value = points[-1]
 
         self.assertIsNotNone(
             active_requests_value,
