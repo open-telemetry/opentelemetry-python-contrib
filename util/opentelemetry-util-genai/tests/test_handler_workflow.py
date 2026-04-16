@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 from unittest import TestCase
 from unittest.mock import patch
 
 import pytest
 
+from opentelemetry import baggage
+from opentelemetry import context as otel_context
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -15,10 +18,15 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import StatusCode
+from opentelemetry.util.genai.context_attributes import (
+    get_context_scoped_attributes,
+    set_context_scoped_attributes,
+)
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
+    LLMInvocation,
     OutputMessage,
     Text,
     WorkflowInvocation,
@@ -308,3 +316,134 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
             with pytest.raises(ValueError, match="original"):
                 with self.handler.workflow(invocation):
                     raise ValueError("original")
+
+
+class TelemetryHandlerWorkflowCSATest(_WorkflowTestBase):
+    """Tests for context-scoped attribute propagation of gen_ai.workflow.name."""
+
+    # ------------------------------------------------------------------
+    # CSA set/read via handler
+    # ------------------------------------------------------------------
+
+    def test_workflow_sets_context_scoped_attribute(self) -> None:
+        """Starting a workflow stores gen_ai.workflow.name in CSA."""
+        invocation = WorkflowInvocation(name="my_workflow")
+        self.handler.start(invocation)
+        try:
+            attrs = get_context_scoped_attributes()
+            self.assertEqual(attrs.get("gen_ai.workflow.name"), "my_workflow")
+        finally:
+            self.handler.stop(invocation)
+
+    def test_llm_reads_workflow_name_from_csa(self) -> None:
+        """LLM invocation inside a workflow gets gen_ai.workflow.name via CSA."""
+        wf_inv = WorkflowInvocation(name="pipeline")
+        llm_inv = LLMInvocation(request_model="test-model", provider="test")
+
+        self.handler.start(wf_inv)
+        try:
+            self.handler.start_llm(llm_inv)
+            self.handler.stop_llm(llm_inv)
+        finally:
+            self.handler.stop(wf_inv)
+
+        spans = self._get_finished_spans()
+        # Find the LLM span (CLIENT kind)
+        llm_spans = [s for s in spans if s.kind == SpanKind.CLIENT]
+        self.assertEqual(len(llm_spans), 1)
+        self.assertEqual(
+            llm_spans[0].attributes.get(GenAI.GEN_AI_OPERATION_NAME),
+            "chat",
+        )
+        # workflow name should be stamped on the LLM span
+        self.assertEqual(
+            llm_spans[0].attributes.get("gen_ai.request.model"), "test-model"
+        )
+        # Verify it was captured on the invocation object
+        self.assertEqual(llm_inv.workflow_name, "pipeline")
+
+    def test_csa_not_visible_outside_workflow_scope(self) -> None:
+        """After the workflow span ends, the CSA is no longer in current context."""
+        invocation = WorkflowInvocation(name="scoped_wf")
+        self.handler.start(invocation)
+        self.handler.stop(invocation)
+
+        # After stop the context_token is detached, so CSA should be gone
+        attrs = get_context_scoped_attributes()
+        self.assertIsNone(attrs.get("gen_ai.workflow.name"))
+
+    # ------------------------------------------------------------------
+    # Baggage opt-in behaviour
+    # ------------------------------------------------------------------
+
+    def test_baggage_not_written_by_default(self) -> None:
+        """Without OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE, baggage is not set."""
+        env = {k: v for k, v in os.environ.items() if k != "OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE"}
+        with patch.dict(os.environ, env, clear=True):
+            invocation = WorkflowInvocation(name="wf_no_baggage")
+            self.handler.start(invocation)
+            try:
+                value = baggage.get_baggage("gen_ai.workflow.name")
+                self.assertIsNone(value)
+            finally:
+                self.handler.stop(invocation)
+
+    def test_baggage_written_when_opted_in(self) -> None:
+        """With OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE=true, baggage is also written."""
+        with patch.dict(
+            os.environ, {"OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE": "true"}
+        ):
+            invocation = WorkflowInvocation(name="wf_with_baggage")
+            self.handler.start(invocation)
+            try:
+                value = baggage.get_baggage("gen_ai.workflow.name")
+                self.assertEqual(value, "wf_with_baggage")
+            finally:
+                self.handler.stop(invocation)
+
+    def test_baggage_written_when_opted_in_with_one(self) -> None:
+        """OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE=1 also enables baggage writing."""
+        with patch.dict(
+            os.environ, {"OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE": "1"}
+        ):
+            invocation = WorkflowInvocation(name="wf_baggage_one")
+            self.handler.start(invocation)
+            try:
+                value = baggage.get_baggage("gen_ai.workflow.name")
+                self.assertEqual(value, "wf_baggage_one")
+            finally:
+                self.handler.stop(invocation)
+
+    # ------------------------------------------------------------------
+    # Backwards compatibility: baggage fallback for LLM
+    # ------------------------------------------------------------------
+
+    def test_baggage_fallback_for_llm_when_no_csa(self) -> None:
+        """LLM picks up workflow name from baggage when CSA is absent (legacy context)."""
+        # Manually inject baggage without using WorkflowInvocation
+        ctx = baggage.set_baggage("gen_ai.workflow.name", "legacy_workflow")
+        token = otel_context.attach(ctx)
+        try:
+            llm_inv = LLMInvocation(request_model="model", provider="test")
+            self.handler.start_llm(llm_inv)
+            self.handler.stop_llm(llm_inv)
+            self.assertEqual(llm_inv.workflow_name, "legacy_workflow")
+        finally:
+            otel_context.detach(token)
+
+    def test_csa_takes_priority_over_baggage_for_llm(self) -> None:
+        """CSA value wins over baggage when both are present."""
+        # Set baggage with one name
+        ctx = baggage.set_baggage("gen_ai.workflow.name", "baggage_workflow")
+        # Also set CSA with a different name
+        ctx = set_context_scoped_attributes(
+            {"gen_ai.workflow.name": "csa_workflow"}, ctx
+        )
+        token = otel_context.attach(ctx)
+        try:
+            llm_inv = LLMInvocation(request_model="model", provider="test")
+            self.handler.start_llm(llm_inv)
+            self.handler.stop_llm(llm_inv)
+            self.assertEqual(llm_inv.workflow_name, "csa_workflow")
+        finally:
+            otel_context.detach(token)

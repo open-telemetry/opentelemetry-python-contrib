@@ -27,10 +27,25 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
     OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
+    OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE,
 )
 from opentelemetry.util.genai.types import ContentCapturingMode
 
 logger = logging.getLogger(__name__)
+
+
+def is_baggage_propagation_enabled() -> bool:
+    """Return True if baggage writing for gen_ai context is opted in.
+
+    Controlled by the ``OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE`` environment
+    variable.  Set to ``true`` or ``1`` to enable writing
+    ``gen_ai.workflow.name`` to W3C Baggage (cross-process propagation).
+    Defaults to ``False``.
+    """
+    return os.environ.get(OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE, "").lower() in (
+        "true",
+        "1",
+    )
 
 
 def is_experimental_mode() -> bool:

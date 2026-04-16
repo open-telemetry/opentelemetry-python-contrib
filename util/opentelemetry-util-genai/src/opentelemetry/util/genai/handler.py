@@ -67,6 +67,10 @@ from typing import Iterator, TypeVar
 
 from opentelemetry import baggage
 from opentelemetry import context as otel_context
+from opentelemetry.util.genai.context_attributes import (
+    get_context_scoped_attributes,
+    set_context_scoped_attributes,
+)
 from opentelemetry._logs import (
     LoggerProvider,
     get_logger,
@@ -81,6 +85,7 @@ from opentelemetry.trace import (
     set_span_in_context,
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
+from opentelemetry.util.genai.utils import is_baggage_propagation_enabled
 from opentelemetry.util.genai.span_utils import (
     _apply_embedding_finish_attributes,
     _apply_error_attributes,
@@ -185,8 +190,13 @@ class TelemetryHandler:
         if isinstance(invocation, LLMInvocation):
             span_name = _get_llm_span_name(invocation)
             kind = SpanKind.CLIENT
-            if ctx:
-                invocation.workflow_name = baggage.get_baggage("gen_ai.workflow.name", ctx)  # Ensure workflow name is in baggage for LLM spans
+            # Read workflow name from context-scoped attributes (primary mechanism).
+            # Fall back to baggage for backwards compatibility with older code that
+            # only wrote the workflow name to baggage.
+            csa = get_context_scoped_attributes(ctx)
+            invocation.workflow_name = csa.get(
+                "gen_ai.workflow.name"
+            ) or baggage.get_baggage("gen_ai.workflow.name", ctx)
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
             kind = SpanKind.CLIENT
@@ -207,7 +217,16 @@ class TelemetryHandler:
         invocation.span = span
         ctx = set_span_in_context(span)
         if isinstance(invocation, WorkflowInvocation):
-            ctx = baggage.set_baggage("gen_ai.workflow.name", workflow_name, ctx)
+            # Primary mechanism: store workflow name as a process-local
+            # context-scoped attribute (never leaked to W3C Baggage headers).
+            ctx = set_context_scoped_attributes(
+                {"gen_ai.workflow.name": workflow_name}, ctx
+            )
+            # Opt-in: also write to baggage for cross-process propagation.
+            if is_baggage_propagation_enabled():
+                ctx = baggage.set_baggage(
+                    "gen_ai.workflow.name", workflow_name, ctx
+                )
         invocation.context_token = otel_context.attach(ctx)
 
         return invocation

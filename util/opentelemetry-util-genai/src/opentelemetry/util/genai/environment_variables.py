@@ -69,3 +69,13 @@ OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE = (
 The maximum number of concurrent uploads to queue. New uploads will be dropped if the queue is
 full. Defaults to 20.
 """
+
+OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE = "OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE"
+"""
+.. envvar:: OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE
+
+Opt-in flag that enables writing ``gen_ai.workflow.name`` to W3C Baggage in
+addition to the process-local context-scoped attributes.  Set to ``true`` or
+``1`` to enable cross-process propagation of the workflow name via Baggage
+headers.  Defaults to ``false``.
+"""

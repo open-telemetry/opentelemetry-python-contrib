@@ -11,3 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from opentelemetry.util.genai.context_attributes import (  # noqa: F401
+    get_context_scoped_attributes,
+    set_context_scoped_attributes,
+)
+
+__all__ = [
+    "get_context_scoped_attributes",
+    "set_context_scoped_attributes",
+]
