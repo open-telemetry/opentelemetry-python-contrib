@@ -254,7 +254,6 @@ API
 ---
 """
 
-import sys
 import weakref
 from logging import getLogger
 from time import time_ns
@@ -518,7 +517,7 @@ def _wrapped_before_request(
                     span.set_attributes(custom_attributes)
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         flask_request_environ[_ENVIRON_ACTIVATION_KEY] = activation
         flask_request_environ[_ENVIRON_REQCTX_REF_KEY] = _request_ctx_ref()
         flask_request_environ[_ENVIRON_SPAN_KEY] = span
@@ -555,7 +554,7 @@ def _wrapped_teardown_request(
     excluded_urls=None,
 ):
     def _teardown_request(exc):
-        # pylint: disable=E1101
+        # pylint: disable=unnecessary-dunder-call
         if excluded_urls and excluded_urls.url_disabled(flask.request.url):
             return
 
@@ -582,14 +581,8 @@ def _wrapped_teardown_request(
         try:
             # For Flask 3.1+, check if this is a streaming response that might
             # have already been cleaned up to prevent double cleanup
-            # Only check for streaming in Flask 3.1+ and Python 3.10+ to avoid interference with older versions
-            is_flask_31_plus = _IS_FLASK_31_PLUS and sys.version_info >= (
-                3,
-                10,
-            )
-
             is_streaming = False
-            if is_flask_31_plus:
+            if _IS_FLASK_31_PLUS:
                 try:
                     # Additional safety check: verify we're in a Flask request context
                     if hasattr(flask, "request") and hasattr(
@@ -605,7 +598,7 @@ def _wrapped_teardown_request(
                     # Not in a proper Flask request context, don't check for streaming
                     is_streaming = False
 
-            if is_flask_31_plus and is_streaming:
+            if _IS_FLASK_31_PLUS and is_streaming:
                 # For Flask 3.1+ streaming responses, ensure OpenTelemetry contexts are cleaned up
                 # This addresses the generator context leak issues documented by Logfire
                 # (open-telemetry/opentelemetry-python#2606)

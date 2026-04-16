@@ -1,54 +1,41 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
-from unittest import TestCase
 from unittest.mock import patch
 
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-    InMemorySpanExporter,
-)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.test.test_base import TestBase
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import Error
+
+_DEFAULT_SCHEMA_URL = Schemas.V1_37_0.value
+
+SCOPE = "opentelemetry.util.genai.handler"
 
 
-class TelemetryHandlerMetricsTest(TestCase):
-    def setUp(self) -> None:
-        self.metric_reader = InMemoryMetricReader()
-        self.meter_provider = MeterProvider(
-            metric_readers=[self.metric_reader]
-        )
-        self.span_exporter = InMemorySpanExporter()
-        self.tracer_provider = TracerProvider()
-        self.tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
-
+class TelemetryHandlerMetricsTest(TestBase):
     def test_stop_llm_records_duration_and_tokens(self) -> None:
         handler = TelemetryHandler(
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = LLMInvocation(request_model="model", provider="prov")
-        invocation.input_tokens = 5
-        invocation.output_tokens = 7
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            handler.start_llm(invocation)
+            invocation = handler.start_inference("prov", request_model="model")
+        invocation.input_tokens = 5
+        invocation.output_tokens = 7
 
         # Simulate 2 seconds of elapsed monotonic time (seconds)
         with patch(
             "timeit.default_timer",
             return_value=1002.0,
         ):
-            handler.stop_llm(invocation)
+            invocation.stop()
 
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
         duration_points = metrics["gen_ai.client.operation.duration"]
@@ -92,18 +79,21 @@ class TelemetryHandlerMetricsTest(TestCase):
             meter_provider=self.meter_provider,
         )
 
-        invocation = LLMInvocation(request_model="model", provider="prov")
+        invocation = handler.start_inference(
+            "prov",
+            request_model="model",
+            server_address="custom.server.com",
+            server_port=42,
+        )
         invocation.input_tokens = 5
         invocation.output_tokens = 7
-        invocation.server_address = "custom.server.com"
-        invocation.server_port = 42
-        handler.start_llm(invocation)
         invocation.metric_attributes = {
             "custom.attribute": "custom_value",
         }
         invocation.attributes = {"should not be on metrics": "value"}
-        handler.stop_llm(invocation)
+        invocation.stop()
 
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
         duration_points = metrics["gen_ai.client.operation.duration"]
@@ -126,19 +116,19 @@ class TelemetryHandlerMetricsTest(TestCase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = LLMInvocation(request_model="err-model", provider=None)
-        invocation.input_tokens = 11
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=2000.0):
-            handler.start_llm(invocation)
+            invocation = handler.start_inference("", request_model="err-model")
+        invocation.input_tokens = 11
 
         error = Error(message="boom", type=ValueError)
         with patch(
             "timeit.default_timer",
             return_value=2001.0,
         ):
-            handler.fail_llm(invocation, error)
+            invocation.fail(error)
 
+        self._assert_metric_scope_schema_urls(_DEFAULT_SCHEMA_URL)
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
         duration_points = metrics["gen_ai.client.operation.duration"]
@@ -163,17 +153,31 @@ class TelemetryHandlerMetricsTest(TestCase):
         )
         self.assertAlmostEqual(token_point.sum, 11.0, places=3)
 
-    def _harvest_metrics(self) -> Dict[str, List[Any]]:
-        try:
-            self.meter_provider.force_flush()
-        except Exception:  # pylint: disable=broad-except
-            pass
-        self.metric_reader.collect()
+    def _harvest_metrics(
+        self,
+    ) -> Dict[str, List[Any]]:
+        """Returns (metrics_by_name, resource_metrics).
+
+        metrics_by_name maps metric name to list of data points.
+        resource_metrics is the raw ResourceMetrics list for scope-level
+        assertions (e.g. schema_url).
+        """
+        metrics = self.get_sorted_metrics()
         metrics_by_name: Dict[str, List[Any]] = {}
-        data = self.metric_reader.get_metrics_data()
-        for resource_metric in (data and data.resource_metrics) or []:
-            for scope_metric in resource_metric.scope_metrics or []:
-                for metric in scope_metric.metrics or []:
-                    points = metric.data.data_points or []
-                    metrics_by_name.setdefault(metric.name, []).extend(points)
+        for metric in metrics or []:
+            points = metric.data.data_points or []
+            metrics_by_name.setdefault(metric.name, []).extend(points)
         return metrics_by_name
+
+    def _assert_metric_scope_schema_urls(
+        self, expected_schema_url: str
+    ) -> None:
+        for (
+            resource_metric
+        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                if scope_metric.scope.name != SCOPE:
+                    continue
+                self.assertEqual(
+                    scope_metric.scope.schema_url, expected_schema_url
+                )
