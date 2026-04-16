@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 BaggageKeyPredicateT = Callable[[str], bool]
 
 # A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
-ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # noqa: E731
+ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # noqa: E731 # pylint:disable=invalid-name
 
 
 class BaggageSpanProcessor(SpanProcessor):

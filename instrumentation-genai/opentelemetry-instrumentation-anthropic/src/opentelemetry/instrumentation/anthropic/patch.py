@@ -14,6 +14,8 @@
 
 """Patching functions for Anthropic instrumentation."""
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Union, cast
 
@@ -23,7 +25,10 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import (
+    Error,
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
+)
 from opentelemetry.util.genai.utils import (
     should_capture_content_on_spans_in_experimental_mode,
 )
@@ -54,7 +59,7 @@ def messages_create(
     Union[
         "AnthropicMessage",
         "AnthropicStream[RawMessageStreamEvent]",
-        MessagesStreamWrapper,
+        MessagesStreamWrapper[None],
     ],
 ]:
     """Wrap the `create` method of the `Messages` class to trace it."""
@@ -74,7 +79,7 @@ def messages_create(
     ) -> Union[
         "AnthropicMessage",
         "AnthropicStream[RawMessageStreamEvent]",
-        MessagesStreamWrapper,
+        MessagesStreamWrapper[None],
     ]:
         params = extract_params(*args, **kwargs)
         attributes = get_llm_request_attributes(params, instance)
@@ -119,6 +124,6 @@ def messages_create(
             raise
 
     return cast(
-        "Callable[..., Union[AnthropicMessage, AnthropicStream[RawMessageStreamEvent], MessagesStreamWrapper]]",
+        'Callable[..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]", MessagesStreamWrapper[None]]]',
         traced_method,
     )
