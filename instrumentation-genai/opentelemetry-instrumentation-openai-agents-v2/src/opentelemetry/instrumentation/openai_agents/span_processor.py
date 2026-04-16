@@ -24,8 +24,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Sequence
 from urllib.parse import urlparse
 
-from opentelemetry.util.genai.utils import gen_ai_json_dumps
-
 try:
     from agents.tracing import Span, Trace, TracingProcessor
     from agents.tracing.span_data import (
@@ -74,7 +72,10 @@ from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
     create_token_histogram,
 )
+from opentelemetry.util.genai.utils import gen_ai_json_dumps
 from opentelemetry.util.types import AttributeValue
+
+from .version import __version__
 
 # Import all semantic convention constants
 # ---- GenAI semantic convention helpers (embedded from constants.py) ----
@@ -536,10 +537,6 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _init_metrics(self, meter_provider: Optional[MeterProvider] = None):
         """Initialize metric instruments."""
-        from opentelemetry.instrumentation.openai_agents.version import (  # noqa: PLC0415
-            __version__,
-        )
-
         self._meter = get_meter(
             "opentelemetry.instrumentation.openai_agents",
             __version__,
