@@ -39,6 +39,16 @@ Attributes, spans, events, and metrics follow the
 [GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions/tree/main/docs/gen-ai).
 Do not emit signals that are not covered by semconv.
 
+Use the semconv attribute modules — do not hardcode attribute name strings:
+
+- `gen_ai.*` attributes: `opentelemetry.semconv._incubating.attributes.gen_ai_attributes`
+- `server.*` attributes: `opentelemetry.semconv.attributes.server_attributes`
+- `error.*` attributes: `opentelemetry.semconv.attributes.error_attributes`
+- Other namespaces: use the corresponding module from `opentelemetry.semconv`
+
+For attributes with a well-known value set, use the generated enum from the same modules
+(e.g. `GenAiOutputTypeValues` for `gen_ai.output.type`) instead of string literals.
+
 ## 4. Tests
 
 - Use VCR cassettes for provider calls. Do not skip tests when an API key is missing.
