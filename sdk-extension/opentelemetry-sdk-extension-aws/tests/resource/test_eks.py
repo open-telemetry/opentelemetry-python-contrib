@@ -155,7 +155,9 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
     @patch(
         "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
         return_value=_bearer_jwt(
-            {"iss": "https://oidc.eks.eu-west-2.amazonaws.com/id/A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4"}
+            {
+                "iss": "https://oidc.eks.eu-west-2.amazonaws.com/id/A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4"
+            }
         ),
     )
     @patch(
