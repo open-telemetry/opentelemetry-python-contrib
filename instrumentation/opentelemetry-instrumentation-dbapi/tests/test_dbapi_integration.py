@@ -1310,12 +1310,16 @@ class MockCursor:
         self._cnx._cmysql.get_client_info = mock.MagicMock(
             return_value="1.2.3"
         )
+        self._items = []
 
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
             # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
+
+    def __iter__(self):
+        yield from self._items
 
     # pylint: disable=unused-argument, no-self-use
     def executemany(self, query, params=None, throw_exception=False):
