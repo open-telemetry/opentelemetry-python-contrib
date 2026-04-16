@@ -148,9 +148,7 @@ async def test_async_structured_output_no_content(
     else:
         assert len(logs) == 2
 
-        assert_message_in_logs(
-            logs[0], "gen_ai.user.message", None, spans[0]
-        )
+        assert_message_in_logs(logs[0], "gen_ai.user.message", None, spans[0])
 
         choice_event = {
             "index": 0,
