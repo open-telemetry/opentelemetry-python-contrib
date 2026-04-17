@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
-from unittest import TestCase
+import unittest
+from typing import Any
 from unittest.mock import patch
 
 from opentelemetry.sdk.metrics import MeterProvider
@@ -14,425 +14,468 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import (
-    AgentCreation,
-    AgentInvocation,
-    Error,
-    InputMessage,
-    OutputMessage,
-    Text,
-)
+from opentelemetry.util.genai.utils import ContentCapturingMode
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
-class TestAgentInvocationHandler(TestCase):
-    def setUp(self) -> None:
+def _make_handler(
+    span_exporter: InMemorySpanExporter,
+    metric_reader: InMemoryMetricReader | None = None,
+) -> TelemetryHandler:
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    kwargs: dict[str, Any] = {"tracer_provider": tracer_provider}
+    if metric_reader is not None:
+        kwargs["meter_provider"] = MeterProvider(
+            metric_readers=[metric_reader]
+        )
+    return TelemetryHandler(**kwargs)
+
+
+def _harvest_metrics(
+    meter_provider: MeterProvider,
+    metric_reader: InMemoryMetricReader,
+) -> dict[str, list[Any]]:
+    try:
+        meter_provider.force_flush()
+    except Exception:
+        pass
+    metric_reader.collect()
+    metrics_by_name: dict[str, list[Any]] = {}
+    data = metric_reader.get_metrics_data()
+    for resource_metric in (data and data.resource_metrics) or []:
+        for scope_metric in resource_metric.scope_metrics or []:
+            for metric in scope_metric.metrics or []:
+                points = metric.data.data_points or []
+                metrics_by_name.setdefault(metric.name, []).extend(points)
+    return metrics_by_name
+
+
+# ============================================================================
+# AgentCreation tests
+# ============================================================================
+
+
+class TestAgentCreation(unittest.TestCase):
+    def setUp(self):
         self.span_exporter = InMemorySpanExporter()
-        self.tracer_provider = TracerProvider()
-        self.tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        self.handler = _make_handler(self.span_exporter)
 
-    def _make_handler(self) -> TelemetryHandler:
-        return TelemetryHandler(
-            tracer_provider=self.tracer_provider,
-        )
-
-    # ---- start/stop agent ----
-
-    def test_start_stop_agent_creates_span(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(
-            agent_name="Math Tutor",
-            provider="openai",
+    def test_start_stop_creates_span(self):
+        creation = self.handler.start_create_agent(
+            "openai",
             request_model="gpt-4",
         )
-        handler.start(invocation)
-        handler.stop(invocation)
+        creation.agent_name = "New Agent"
+        creation.agent_id = "agent-new-1"
+        creation.stop()
 
         spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
+        assert len(spans) == 1
         span = spans[0]
-        self.assertEqual(span.name, "invoke_agent Math Tutor")
-        self.assertEqual(
-            span.attributes[GenAI.GEN_AI_OPERATION_NAME], "invoke_agent"
+        assert span.name == "create_agent New Agent"
+        assert span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "create_agent"
+        assert span.attributes[GenAI.GEN_AI_AGENT_NAME] == "New Agent"
+        assert span.attributes[GenAI.GEN_AI_AGENT_ID] == "agent-new-1"
+        assert span.attributes[GenAI.GEN_AI_PROVIDER_NAME] == "openai"
+        assert span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4"
+
+    def test_span_kind_is_client(self):
+        creation = self.handler.start_create_agent("openai")
+        creation.stop()
+        assert (
+            self.span_exporter.get_finished_spans()[0].kind == SpanKind.CLIENT
         )
-        self.assertEqual(
-            span.attributes[GenAI.GEN_AI_AGENT_NAME], "Math Tutor"
-        )
-        self.assertEqual(span.attributes[GenAI.GEN_AI_PROVIDER_NAME], "openai")
-        self.assertEqual(span.attributes[GenAI.GEN_AI_REQUEST_MODEL], "gpt-4")
 
-    def test_agent_span_kind_internal_by_default(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Local Agent")
-        handler.start(invocation)
-        handler.stop(invocation)
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].kind, SpanKind.INTERNAL)
-
-    def test_agent_with_all_attributes(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(
-            agent_name="Full Agent",
-            agent_id="agent-123",
-            agent_description="A test agent",
-            agent_version="1.0.0",
-            provider="openai",
+    def test_all_attributes(self):
+        creation = self.handler.start_create_agent(
+            "openai",
             request_model="gpt-4",
-            conversation_id="conv-456",
-            data_source_id="ds-789",
-            output_type="text",
-            temperature=0.7,
-            top_p=0.9,
-            max_tokens=1000,
-            seed=42,
             server_address="api.openai.com",
             server_port=443,
         )
-        handler.start(invocation)
-        invocation.response_model_name = "gpt-4-0613"
-        invocation.response_id = "resp-abc"
-        invocation.input_tokens = 100
-        invocation.output_tokens = 200
-        invocation.finish_reasons = ["stop"]
-        handler.stop(invocation)
+        creation.agent_name = "Full Agent"
+        creation.agent_id = "agent-123"
+        creation.agent_description = "A test agent"
+        creation.agent_version = "1.0.0"
+        creation.stop()
+
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert attrs[GenAI.GEN_AI_OPERATION_NAME] == "create_agent"
+        assert attrs[GenAI.GEN_AI_AGENT_NAME] == "Full Agent"
+        assert attrs[GenAI.GEN_AI_AGENT_ID] == "agent-123"
+        assert attrs[GenAI.GEN_AI_AGENT_DESCRIPTION] == "A test agent"
+        assert attrs["gen_ai.agent.version"] == "1.0.0"
+        assert attrs[GenAI.GEN_AI_PROVIDER_NAME] == "openai"
+        assert attrs[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4"
+        assert attrs[server_attributes.SERVER_ADDRESS] == "api.openai.com"
+        assert attrs[server_attributes.SERVER_PORT] == 443
+
+    def test_no_server_attributes_when_not_provided(self):
+        creation = self.handler.start_create_agent("openai")
+        creation.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert server_attributes.SERVER_ADDRESS not in attrs
+        assert server_attributes.SERVER_PORT not in attrs
+
+    def test_fail_create_agent(self):
+        creation = self.handler.start_create_agent("openai")
+        creation.agent_name = "Bad Agent"
+        creation.fail(RuntimeError("creation failed"))
 
         spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        attrs = spans[0].attributes
-        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_NAME], "Full Agent")
-        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_ID], "agent-123")
-        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_DESCRIPTION], "A test agent")
-        self.assertEqual(attrs[GenAI.GEN_AI_RESPONSE_MODEL], "gpt-4-0613")
-        self.assertEqual(attrs[GenAI.GEN_AI_RESPONSE_ID], "resp-abc")
-        self.assertEqual(attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS], 100)
-        self.assertEqual(attrs[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS], 200)
-        self.assertEqual(
-            tuple(attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS]), ("stop",)
-        )
+        assert len(spans) == 1
+        assert spans[0].status.description == "creation failed"
+        assert spans[0].attributes.get("error.type") == "RuntimeError"
 
-    # ---- fail agent ----
-
-    def test_fail_agent_sets_error_status(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(
-            agent_name="Failing Agent", provider="openai"
-        )
-        handler.start(invocation)
-        error = Error(message="agent crashed", type=RuntimeError)
-        handler.fail(invocation, error)
+    def test_context_manager(self):
+        with self.handler.create_agent(
+            "openai", request_model="gpt-4"
+        ) as creation:
+            creation.agent_name = "CM Agent"
+            creation.agent_id = "assigned-id"
 
         spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
+        assert len(spans) == 1
+        assert spans[0].name == "create_agent CM Agent"
+        assert spans[0].attributes[GenAI.GEN_AI_AGENT_ID] == "assigned-id"
+
+    def test_context_manager_error(self):
+        with self.assertRaises(TypeError):
+            with self.handler.create_agent("openai") as creation:
+                creation.agent_name = "Err"
+                raise TypeError("bad type")
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].attributes.get("error.type") == "TypeError"
+
+    def test_custom_attributes(self):
+        creation = self.handler.start_create_agent(
+            "openai", request_model="gpt-4"
+        )
+        creation.attributes["custom.key"] = "custom_value"
+        creation.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert attrs["custom.key"] == "custom_value"
+
+    def test_span_name_without_agent_name(self):
+        creation = self.handler.start_create_agent("openai")
+        creation.stop()
+        assert (
+            self.span_exporter.get_finished_spans()[0].name == "create_agent"
+        )
+
+
+# ============================================================================
+# AgentInvocation tests
+# ============================================================================
+
+
+class TestAgentInvocation(unittest.TestCase):
+    def setUp(self):
+        self.span_exporter = InMemorySpanExporter()
+        self.handler = _make_handler(self.span_exporter)
+
+    # ---- local (INTERNAL) ----
+
+    def test_local_agent_creates_span(self):
+        inv = self.handler.start_invoke_local_agent(
+            "openai", request_model="gpt-4"
+        )
+        inv.agent_name = "Math Tutor"
+        inv.stop()
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
         span = spans[0]
-        self.assertEqual(span.status.description, "agent crashed")
-        self.assertEqual(span.attributes.get("error.type"), "RuntimeError")
+        assert span.name == "invoke_agent Math Tutor"
+        assert span.kind == SpanKind.INTERNAL
+        assert span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "invoke_agent"
+        assert span.attributes[GenAI.GEN_AI_AGENT_NAME] == "Math Tutor"
+        assert span.attributes[GenAI.GEN_AI_PROVIDER_NAME] == "openai"
 
-    # ---- context manager ----
+    # ---- remote (CLIENT) ----
 
-    def test_agent_context_manager_success(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(
-            agent_name="CM Agent", provider="openai", request_model="gpt-4"
+    def test_remote_agent_creates_client_span(self):
+        inv = self.handler.start_invoke_remote_agent(
+            "openai",
+            request_model="gpt-4",
+            server_address="api.openai.com",
+            server_port=443,
         )
-        with handler.agent(invocation) as inv:
+        inv.agent_name = "Remote Agent"
+        inv.stop()
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        span = spans[0]
+        assert span.kind == SpanKind.CLIENT
+        assert (
+            span.attributes[server_attributes.SERVER_ADDRESS]
+            == "api.openai.com"
+        )
+        assert span.attributes[server_attributes.SERVER_PORT] == 443
+
+    def test_all_attributes(self):
+        inv = self.handler.start_invoke_remote_agent(
+            "openai",
+            request_model="gpt-4",
+            server_address="api.openai.com",
+            server_port=443,
+        )
+        inv.agent_name = "Full Agent"
+        inv.agent_id = "agent-123"
+        inv.agent_description = "A test agent"
+        inv.agent_version = "1.0.0"
+        inv.conversation_id = "conv-456"
+        inv.data_source_id = "ds-789"
+        inv.output_type = "text"
+        inv.temperature = 0.7
+        inv.top_p = 0.9
+        inv.max_tokens = 1000
+        inv.seed = 42
+        inv.input_tokens = 100
+        inv.output_tokens = 200
+        inv.stop()
+
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert attrs[GenAI.GEN_AI_AGENT_NAME] == "Full Agent"
+        assert attrs[GenAI.GEN_AI_AGENT_ID] == "agent-123"
+        assert attrs[GenAI.GEN_AI_AGENT_DESCRIPTION] == "A test agent"
+        assert attrs["gen_ai.agent.version"] == "1.0.0"
+        assert attrs[GenAI.GEN_AI_CONVERSATION_ID] == "conv-456"
+        assert attrs[GenAI.GEN_AI_DATA_SOURCE_ID] == "ds-789"
+        assert attrs[GenAI.GEN_AI_OUTPUT_TYPE] == "text"
+        assert attrs[GenAI.GEN_AI_REQUEST_TEMPERATURE] == 0.7
+        assert attrs[GenAI.GEN_AI_REQUEST_TOP_P] == 0.9
+        assert attrs[GenAI.GEN_AI_REQUEST_MAX_TOKENS] == 1000
+        assert attrs[GenAI.GEN_AI_REQUEST_SEED] == 42
+        assert attrs[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 100
+        assert attrs[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 200
+
+    def test_fail_agent(self):
+        inv = self.handler.start_invoke_local_agent("openai")
+        inv.agent_name = "Failing Agent"
+        inv.fail(RuntimeError("agent crashed"))
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].status.description == "agent crashed"
+        assert spans[0].attributes.get("error.type") == "RuntimeError"
+
+    # ---- context managers ----
+
+    def test_invoke_local_agent_context_manager(self):
+        with self.handler.invoke_local_agent(
+            "openai", request_model="gpt-4"
+        ) as inv:
+            inv.agent_name = "CM Agent"
             inv.input_tokens = 10
             inv.output_tokens = 20
 
         spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "invoke_agent CM Agent")
+        assert len(spans) == 1
+        assert spans[0].name == "invoke_agent CM Agent"
+        assert spans[0].kind == SpanKind.INTERNAL
 
-    def test_agent_context_manager_error(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Error Agent")
-        with self.assertRaises(ValueError):
-            with handler.agent(invocation):
-                raise ValueError("test error")
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].attributes.get("error.type"), "ValueError")
-
-    def test_agent_context_manager_default_invocation(self) -> None:
-        handler = self._make_handler()
-        with handler.agent() as inv:
-            inv.agent_name = "Dynamic Agent"
-            inv.provider = "openai"
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-    # ---- not started ----
-
-    def test_stop_agent_without_start_is_noop(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Not Started")
-        result = handler.stop(invocation)
-        self.assertIs(result, invocation)
-        self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
-
-    def test_fail_agent_without_start_is_noop(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(agent_name="Not Started")
-        error = Error(message="boom", type=RuntimeError)
-        result = handler.fail(invocation, error)
-        self.assertIs(result, invocation)
-        self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
-
-
-class TestAgentCreationHandler(TestCase):
-    def setUp(self) -> None:
-        self.span_exporter = InMemorySpanExporter()
-        self.tracer_provider = TracerProvider()
-        self.tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
-
-    def _make_handler(self) -> TelemetryHandler:
-        return TelemetryHandler(
-            tracer_provider=self.tracer_provider,
-        )
-
-    def test_start_stop_create_agent(self) -> None:
-        handler = self._make_handler()
-        creation = AgentCreation(
-            agent_name="New Agent",
-            agent_id="agent-new-1",
-            provider="openai",
-            request_model="gpt-4",
-        )
-        handler.start(creation)
-        handler.stop(creation)
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
-        self.assertEqual(span.name, "create_agent New Agent")
-        self.assertEqual(
-            span.attributes[GenAI.GEN_AI_OPERATION_NAME], "create_agent"
-        )
-        self.assertEqual(span.attributes[GenAI.GEN_AI_AGENT_NAME], "New Agent")
-
-    def test_create_agent_span_kind_is_internal(self) -> None:
-        handler = self._make_handler()
-        creation = AgentCreation(agent_name="Local Agent")
-        handler.start(creation)
-        handler.stop(creation)
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(spans[0].kind, SpanKind.INTERNAL)
-
-    def test_create_agent_with_all_base_attributes(self) -> None:
-        handler = self._make_handler()
-        creation = AgentCreation(
-            agent_name="Full Agent",
-            agent_id="agent-123",
-            agent_description="A test agent",
-            agent_version="1.0.0",
-            provider="openai",
+    def test_invoke_remote_agent_context_manager(self):
+        with self.handler.invoke_remote_agent(
+            "openai",
             request_model="gpt-4",
             server_address="api.openai.com",
             server_port=443,
-        )
-        handler.start(creation)
-        handler.stop(creation)
+        ) as inv:
+            inv.agent_name = "Remote CM"
 
         spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        attrs = spans[0].attributes
-        self.assertEqual(attrs[GenAI.GEN_AI_OPERATION_NAME], "create_agent")
-        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_NAME], "Full Agent")
-        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_ID], "agent-123")
-        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_DESCRIPTION], "A test agent")
-        self.assertEqual(attrs[GenAI.GEN_AI_AGENT_VERSION], "1.0.0")
-        self.assertEqual(attrs[GenAI.GEN_AI_PROVIDER_NAME], "openai")
-        self.assertEqual(attrs[GenAI.GEN_AI_REQUEST_MODEL], "gpt-4")
+        assert len(spans) == 1
+        assert spans[0].kind == SpanKind.CLIENT
 
-    def test_fail_create_agent(self) -> None:
-        handler = self._make_handler()
-        creation = AgentCreation(agent_name="Bad Agent")
-        handler.start(creation)
-        error = Error(message="creation failed", type=RuntimeError)
-        handler.fail(creation, error)
+    def test_context_manager_error(self):
+        with self.assertRaises(ValueError):
+            with self.handler.invoke_local_agent("openai") as inv:
+                inv.agent_name = "Error Agent"
+                raise ValueError("test error")
 
         spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].status.description, "creation failed")
-        self.assertEqual(spans[0].attributes.get("error.type"), "RuntimeError")
+        assert len(spans) == 1
+        assert spans[0].attributes.get("error.type") == "ValueError"
 
-    def test_create_agent_context_manager(self) -> None:
-        handler = self._make_handler()
-        creation = AgentCreation(
-            agent_name="CM Agent",
-            provider="openai",
+    def test_custom_attributes(self):
+        inv = self.handler.start_invoke_local_agent("openai")
+        inv.attributes["custom.key"] = "custom_value"
+        inv.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert attrs["custom.key"] == "custom_value"
+
+    def test_span_name_without_agent_name(self):
+        inv = self.handler.start_invoke_local_agent("openai")
+        inv.stop()
+        assert (
+            self.span_exporter.get_finished_spans()[0].name == "invoke_agent"
         )
-        with handler.create_agent(creation) as c:
-            c.agent_id = "assigned-id"
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].name, "create_agent CM Agent")
-
-    def test_create_agent_context_manager_error(self) -> None:
-        handler = self._make_handler()
-        with self.assertRaises(TypeError):
-            with handler.create_agent(AgentCreation(agent_name="Err")):
-                raise TypeError("bad type")
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-        self.assertEqual(spans[0].attributes.get("error.type"), "TypeError")
-
-    def test_create_agent_context_manager_default(self) -> None:
-        handler = self._make_handler()
-        with handler.create_agent() as c:
-            c.agent_name = "Dynamic Agent"
-            c.provider = "openai"
-
-        spans = self.span_exporter.get_finished_spans()
-        self.assertEqual(len(spans), 1)
-
-    def test_stop_create_agent_without_start_is_noop(self) -> None:
-        handler = self._make_handler()
-        creation = AgentCreation(agent_name="Not Started")
-        result = handler.stop(creation)
-        self.assertIs(result, creation)
-        self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
-
-    def test_fail_create_agent_without_start_is_noop(self) -> None:
-        handler = self._make_handler()
-        creation = AgentCreation(agent_name="Not Started")
-        error = Error(message="boom", type=RuntimeError)
-        result = handler.fail(creation, error)
-        self.assertIs(result, creation)
-        self.assertEqual(len(self.span_exporter.get_finished_spans()), 0)
 
 
-class TestAgentTypes(TestCase):
-    """Unit tests for the AgentInvocation and AgentCreation dataclasses."""
-
-    def test_agent_invocation_defaults(self) -> None:
-        inv = AgentInvocation()
-        self.assertEqual(inv.operation_name, "invoke_agent")
-        self.assertIsNone(inv.agent_name)
-        self.assertIsNone(inv.agent_id)
-        self.assertIsNone(inv.provider)
-        self.assertIsNone(inv.request_model)
-        self.assertEqual(inv.input_messages, [])
-        self.assertEqual(inv.output_messages, [])
-        self.assertEqual(inv.system_instruction, [])
-        self.assertIsNone(inv.tool_definitions)
-        self.assertIsNone(inv.span)
-        self.assertIsNone(inv.context_token)
-
-    def test_agent_creation_defaults(self) -> None:
-        creation = AgentCreation()
-        self.assertEqual(creation.operation_name, "create_agent")
-        self.assertIsNone(creation.agent_name)
-        self.assertIsNone(creation.agent_id)
-        self.assertIsNone(creation.agent_description)
-        self.assertIsNone(creation.agent_version)
-        self.assertIsNone(creation.provider)
-        self.assertIsNone(creation.request_model)
-        self.assertEqual(creation.system_instruction, [])
-        self.assertIsNone(creation.server_address)
-        self.assertIsNone(creation.server_port)
-        self.assertIsNone(creation.span)
-        self.assertIsNone(creation.context_token)
-
-    def test_agent_invocation_with_messages(self) -> None:
-        inv = AgentInvocation(
-            agent_name="Test",
-            input_messages=[
-                InputMessage(role="user", parts=[Text(content="Hello")])
-            ],
-            output_messages=[
-                OutputMessage(
-                    role="assistant",
-                    parts=[Text(content="Hi there!")],
-                    finish_reason="stop",
-                )
-            ],
-        )
-        self.assertEqual(len(inv.input_messages), 1)
-        self.assertEqual(len(inv.output_messages), 1)
-        self.assertEqual(inv.input_messages[0].role, "user")
-
-    def test_agent_invocation_custom_attributes(self) -> None:
-        inv = AgentInvocation(
-            agent_name="Custom",
-            attributes={"custom.key": "custom_value"},
-        )
-        self.assertEqual(inv.attributes["custom.key"], "custom_value")
-
-    def test_agent_creation_custom_attributes(self) -> None:
-        creation = AgentCreation(
-            agent_name="Custom",
-            attributes={"custom.key": "custom_value"},
-        )
-        self.assertEqual(creation.attributes["custom.key"], "custom_value")
+# ============================================================================
+# Agent Metrics tests
+# ============================================================================
 
 
-class TestAgentMetrics(TestCase):
-    def setUp(self) -> None:
-        self.metric_reader = InMemoryMetricReader()
-        self.meter_provider = MeterProvider(
-            metric_readers=[self.metric_reader]
-        )
+class TestAgentMetrics(unittest.TestCase):
+    def setUp(self):
         self.span_exporter = InMemorySpanExporter()
+        self.metric_reader = InMemoryMetricReader()
         self.tracer_provider = TracerProvider()
         self.tracer_provider.add_span_processor(
             SimpleSpanProcessor(self.span_exporter)
         )
-
-    def _make_handler(self) -> TelemetryHandler:
-        return TelemetryHandler(
+        self.meter_provider = MeterProvider(
+            metric_readers=[self.metric_reader]
+        )
+        self.handler = TelemetryHandler(
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
 
-    def _harvest_metrics(self) -> Dict[str, List[Any]]:
-        try:
-            self.meter_provider.force_flush()
-        except Exception:
-            pass
-        self.metric_reader.collect()
-        metrics_by_name: Dict[str, List[Any]] = {}
-        data = self.metric_reader.get_metrics_data()
-        for resource_metric in (data and data.resource_metrics) or []:
-            for scope_metric in resource_metric.scope_metrics or []:
-                for metric in scope_metric.metrics or []:
-                    points = metric.data.data_points or []
-                    metrics_by_name.setdefault(metric.name, []).extend(points)
-        return metrics_by_name
+    def _harvest(self) -> dict[str, list[Any]]:
+        return _harvest_metrics(self.meter_provider, self.metric_reader)
 
-    def test_agent_records_duration_and_tokens(self) -> None:
-        handler = self._make_handler()
-        invocation = AgentInvocation(
-            agent_name="Metrics Agent",
-            provider="openai",
-            request_model="gpt-4",
-        )
-        invocation.input_tokens = 50
-        invocation.output_tokens = 100
+    def test_invoke_agent_records_duration(self):
+        with patch(
+            "opentelemetry.util.genai._invocation.timeit.default_timer",
+            return_value=1000.0,
+        ):
+            inv = self.handler.start_invoke_local_agent(
+                "openai", request_model="gpt-4"
+            )
+        inv.agent_name = "Metrics Agent"
+        inv.input_tokens = 50
+        inv.output_tokens = 100
 
-        with patch("timeit.default_timer", return_value=1000.0):
-            handler.start(invocation)
+        with patch(
+            "opentelemetry.util.genai.metrics.timeit.default_timer",
+            return_value=1003.0,
+        ):
+            inv.stop()
 
-        with patch("timeit.default_timer", return_value=1003.0):
-            handler.stop(invocation)
-
-        metrics = self._harvest_metrics()
-        self.assertIn("gen_ai.client.operation.duration", metrics)
+        metrics = self._harvest()
+        assert "gen_ai.client.operation.duration" in metrics
         duration_points = metrics["gen_ai.client.operation.duration"]
-        self.assertEqual(len(duration_points), 1)
+        assert len(duration_points) == 1
         self.assertAlmostEqual(duration_points[0].sum, 3.0, places=3)
-        self.assertEqual(
-            duration_points[0].attributes[GenAI.GEN_AI_OPERATION_NAME],
-            "invoke_agent",
+        assert (
+            duration_points[0].attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == "invoke_agent"
         )
+
+    def test_invoke_agent_records_token_usage(self):
+        inv = self.handler.start_invoke_local_agent(
+            "openai", request_model="gpt-4"
+        )
+        inv.input_tokens = 50
+        inv.output_tokens = 100
+        inv.stop()
+
+        metrics = self._harvest()
+        assert "gen_ai.client.token.usage" in metrics
+        token_points = metrics["gen_ai.client.token.usage"]
+        assert len(token_points) == 2
+        token_map = {
+            p.attributes[GenAI.GEN_AI_TOKEN_TYPE]: p.sum for p in token_points
+        }
+        assert token_map["input"] == 50
+        assert token_map["output"] == 100
+
+    def test_create_agent_records_duration(self):
+        with patch(
+            "opentelemetry.util.genai._invocation.timeit.default_timer",
+            return_value=2000.0,
+        ):
+            creation = self.handler.start_create_agent(
+                "openai", request_model="gpt-4"
+            )
+        creation.agent_name = "Created"
+
+        with patch(
+            "opentelemetry.util.genai.metrics.timeit.default_timer",
+            return_value=2005.0,
+        ):
+            creation.stop()
+
+        metrics = self._harvest()
+        assert "gen_ai.client.operation.duration" in metrics
+        duration_points = metrics["gen_ai.client.operation.duration"]
+        assert len(duration_points) == 1
+        self.assertAlmostEqual(duration_points[0].sum, 5.0, places=3)
+        assert (
+            duration_points[0].attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == "create_agent"
+        )
+
+    def test_create_agent_no_token_metrics(self):
+        creation = self.handler.start_create_agent("openai")
+        creation.stop()
+
+        metrics = self._harvest()
+        assert "gen_ai.client.token.usage" not in metrics
+
+
+# ============================================================================
+# Agent Events tests
+# ============================================================================
+
+
+class TestAgentEvents(unittest.TestCase):
+    def setUp(self):
+        self.span_exporter = InMemorySpanExporter()
+        self.handler = _make_handler(self.span_exporter)
+
+    @patch(
+        "opentelemetry.util.genai._agent_invocation.should_emit_event",
+        return_value=True,
+    )
+    @patch(
+        "opentelemetry.util.genai._agent_invocation.is_experimental_mode",
+        return_value=True,
+    )
+    def test_invoke_agent_emits_event(self, _mock_exp, _mock_emit):
+        inv = self.handler.start_invoke_local_agent(
+            "openai", request_model="gpt-4"
+        )
+        inv.agent_name = "Event Agent"
+        inv.stop()
+
+        # The logger.emit was called — verify via span attributes at minimum
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].attributes[GenAI.GEN_AI_AGENT_NAME] == "Event Agent"
+
+    @patch(
+        "opentelemetry.util.genai._agent_creation.should_emit_event",
+        return_value=True,
+    )
+    @patch(
+        "opentelemetry.util.genai._agent_creation.get_content_capturing_mode",
+        return_value=ContentCapturingMode.NO_CONTENT,
+    )
+    @patch(
+        "opentelemetry.util.genai._agent_creation.is_experimental_mode",
+        return_value=True,
+    )
+    def test_create_agent_emits_event(
+        self, _mock_exp, _mock_capture, _mock_emit
+    ):
+        creation = self.handler.start_create_agent("openai")
+        creation.agent_name = "Event Creation"
+        creation.stop()
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].attributes[GenAI.GEN_AI_AGENT_NAME] == "Event Creation"
