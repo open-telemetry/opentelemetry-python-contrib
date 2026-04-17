@@ -14,8 +14,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
-from typing import Any, Union
+from typing import Any
 
 from opentelemetry._logs import Logger
 from opentelemetry.semconv._incubating.attributes import (
@@ -23,32 +22,27 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind, Tracer
+from opentelemetry.util.genai._content import _get_content_attributes
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
-    FunctionToolDefinition,
-    GenericToolDefinition,
     InputMessage,
     MessagePart,
     OutputMessage,
+    ToolDefinition,
 )
-from opentelemetry.util.genai.utils import (
-    ContentCapturingMode,
-    gen_ai_json_dumps,
-    get_content_capturing_mode,
-    is_experimental_mode,
-)
-
-ToolDefinition = Union[FunctionToolDefinition, GenericToolDefinition]
 
 
 class AgentInvocation(GenAIInvocation):
     """Represents a single agent invocation (invoke_agent span).
 
-    Use handler.start_agent() or the handler.invoke_agent() context manager
-    rather than constructing this directly.
+    Use handler.start_invoke_local_agent() / handler.start_invoke_remote_agent()
+    or the handler.invoke_local_agent() / handler.invoke_remote_agent() context
+    managers rather than constructing this directly.
 
-    Reference: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#invoke-agent-span
+    Reference:
+        Client span: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#invoke-agent-client-span
+        Internal span: https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md#invoke-agent-internal-span
     """
 
     def __init__(
@@ -58,24 +52,22 @@ class AgentInvocation(GenAIInvocation):
         logger: Logger,
         provider: str,
         *,
+        span_kind: SpanKind = SpanKind.INTERNAL,
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
-        agent_name: str | None = None,
         attributes: dict[str, Any] | None = None,
         metric_attributes: dict[str, Any] | None = None,
     ) -> None:
-        """Use handler.start_agent() or handler.invoke_agent() instead of calling this directly."""
+        """Use handler.start_invoke_local_agent() or handler.start_invoke_remote_agent() instead of calling this directly."""
         _operation_name = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         super().__init__(
             tracer,
             metrics_recorder,
             logger,
             operation_name=_operation_name,
-            span_name=f"{_operation_name} {agent_name}"
-            if agent_name
-            else _operation_name,
-            span_kind=SpanKind.CLIENT,
+            span_name=_operation_name,
+            span_kind=span_kind,
             attributes=attributes,
             metric_attributes=metric_attributes,
         )
@@ -84,7 +76,7 @@ class AgentInvocation(GenAIInvocation):
         self.server_address = server_address
         self.server_port = server_port
 
-        self.agent_name = agent_name
+        self.agent_name: str | None = None
         self.agent_id: str | None = None
         self.agent_description: str | None = None
         self.agent_version: str | None = None
@@ -102,8 +94,6 @@ class AgentInvocation(GenAIInvocation):
         self.seed: int | None = None
         self.choice_count: int | None = None
 
-        self.finish_reasons: list[str] | None = None
-        self.response_model_name: str | None = None
         self.input_tokens: int | None = None
         self.output_tokens: int | None = None
         self.cache_creation_input_tokens: int | None = None
@@ -115,18 +105,6 @@ class AgentInvocation(GenAIInvocation):
         self.tool_definitions: list[ToolDefinition] | None = None
 
         self._start()
-
-    def _get_finish_reasons(self) -> list[str] | None:
-        if self.finish_reasons is not None:
-            return self.finish_reasons or None
-        if self.output_messages:
-            reasons = [
-                msg.finish_reason
-                for msg in self.output_messages
-                if msg.finish_reason
-            ]
-            return reasons or None
-        return None
 
     def _get_common_attributes(self) -> dict[str, Any]:
         optional_attrs = (
@@ -160,10 +138,8 @@ class AgentInvocation(GenAIInvocation):
         )
         return {k: v for k, v in optional_attrs if v is not None}
 
-    def _get_response_attributes(self) -> dict[str, Any]:
+    def _get_usage_attributes(self) -> dict[str, Any]:
         optional_attrs = (
-            (GenAI.GEN_AI_RESPONSE_FINISH_REASONS, self._get_finish_reasons()),
-            (GenAI.GEN_AI_RESPONSE_MODEL, self.response_model_name),
             (GenAI.GEN_AI_USAGE_INPUT_TOKENS, self.input_tokens),
             (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, self.output_tokens),
             (
@@ -177,47 +153,19 @@ class AgentInvocation(GenAIInvocation):
         )
         return {k: v for k, v in optional_attrs if v is not None}
 
-    def _get_messages_for_span(self) -> dict[str, Any]:
-        if not is_experimental_mode() or get_content_capturing_mode() not in (
-            ContentCapturingMode.SPAN_ONLY,
-            ContentCapturingMode.SPAN_AND_EVENT,
-        ):
-            return {}
-        optional_attrs = (
-            (
-                GenAI.GEN_AI_INPUT_MESSAGES,
-                gen_ai_json_dumps([asdict(m) for m in self.input_messages])
-                if self.input_messages
-                else None,
-            ),
-            (
-                GenAI.GEN_AI_OUTPUT_MESSAGES,
-                gen_ai_json_dumps([asdict(m) for m in self.output_messages])
-                if self.output_messages
-                else None,
-            ),
-            (
-                GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
-                gen_ai_json_dumps([asdict(p) for p in self.system_instruction])
-                if self.system_instruction
-                else None,
-            ),
-            (
-                GenAI.GEN_AI_TOOL_DEFINITIONS,
-                gen_ai_json_dumps([asdict(t) for t in self.tool_definitions])
-                if self.tool_definitions
-                else None,
-            ),
+    def _get_content_attributes_for_span(self) -> dict[str, Any]:
+        return _get_content_attributes(
+            input_messages=self.input_messages,
+            output_messages=self.output_messages,
+            system_instruction=self.system_instruction,
+            tool_definitions=self.tool_definitions,
+            for_span=True,
         )
-        return {
-            key: value for key, value in optional_attrs if value is not None
-        }
 
     def _get_metric_attributes(self) -> dict[str, Any]:
         optional_attrs = (
             (GenAI.GEN_AI_PROVIDER_NAME, self.provider),
             (GenAI.GEN_AI_REQUEST_MODEL, self.request_model),
-            (GenAI.GEN_AI_RESPONSE_MODEL, self.response_model_name),
             (server_attributes.SERVER_ADDRESS, self.server_address),
             (server_attributes.SERVER_PORT, self.server_port),
         )
@@ -249,8 +197,8 @@ class AgentInvocation(GenAIInvocation):
         attributes: dict[str, Any] = {}
         attributes.update(self._get_common_attributes())
         attributes.update(self._get_request_attributes())
-        attributes.update(self._get_response_attributes())
-        attributes.update(self._get_messages_for_span())
+        attributes.update(self._get_usage_attributes())
+        attributes.update(self._get_content_attributes_for_span())
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
         self._metrics_recorder.record(self)
