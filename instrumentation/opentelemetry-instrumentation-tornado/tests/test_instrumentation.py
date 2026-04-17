@@ -14,6 +14,7 @@
 
 
 import asyncio
+import logging
 from unittest.mock import Mock, patch
 
 import tornado.websocket
@@ -369,6 +370,81 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
                 HTTP_STATUS_CODE: 403,
             },
         )
+
+    def _capture_active_span_on_log(self, logger_names):
+        """Attach a logging handler that records the currently active
+        span each time a record is emitted. Returns (handler, records)."""
+
+        records = []
+
+        class _SpanCaptureHandler(logging.Handler):
+            def emit(self, record):
+                span_context = trace.get_current_span().get_span_context()
+                records.append(
+                    (
+                        record.name,
+                        span_context.trace_id,
+                        span_context.span_id,
+                    )
+                )
+
+        handler = _SpanCaptureHandler(level=logging.DEBUG)
+        loggers = [logging.getLogger(name) for name in logger_names]
+        prior_levels = [lg.level for lg in loggers]
+        for lg in loggers:
+            lg.addHandler(handler)
+            lg.setLevel(logging.DEBUG)
+
+        def cleanup():
+            for lg, prior in zip(loggers, prior_levels):
+                lg.removeHandler(handler)
+                lg.setLevel(prior)
+
+        return records, cleanup
+
+    def _assert_logs_have_active_span(self, path, expected_status):
+        records, cleanup = self._capture_active_span_on_log(
+            ["tornado.general", "tornado.access"]
+        )
+        try:
+            response = self.fetch(path)
+        finally:
+            cleanup()
+        self.assertEqual(response.code, expected_status)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        server, _ = spans
+
+        self.assertTrue(
+            len(records) >= 1,
+            "expected at least one tornado.general/access log record",
+        )
+        for logger_name, trace_id, span_id in records:
+            self.assertNotEqual(
+                trace_id,
+                0,
+                f"{logger_name} emitted with trace_id=0 for {path}",
+            )
+            self.assertNotEqual(
+                span_id,
+                0,
+                f"{logger_name} emitted with span_id=0 for {path}",
+            )
+            self.assertEqual(trace_id, server.context.trace_id)
+            self.assertEqual(span_id, server.context.span_id)
+
+    def test_log_correlation_on_http_error(self):
+        """Regression test for issue #1063: when a handler raises
+        HTTPError, both tornado.general (via log_exception) and
+        tornado.access (via log_request inside finish()) must be
+        emitted while the server span is still active."""
+        self._assert_logs_have_active_span("/raise_403", 403)
+
+    def test_log_correlation_on_unhandled_exception(self):
+        """Regression test for issue #1063: uncaught exceptions that
+        map to 500 must also be logged within the active span."""
+        self._assert_logs_have_active_span("/div_by_zero", 500)
 
     def test_dynamic_handler(self):
         response = self.fetch("/dyna")

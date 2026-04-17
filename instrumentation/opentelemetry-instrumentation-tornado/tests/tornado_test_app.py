@@ -119,6 +119,11 @@ class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(403)
 
 
+class DivideByZeroHandler(tornado.web.RequestHandler):
+    def get(self):
+        1 / 0
+
+
 class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
     async def on_message(self, message):
         with self.application.tracer.start_as_current_span("audit_message"):
@@ -141,6 +146,7 @@ def make_app(tracer):
             (r"/ping", HealthCheckHandler),
             (r"/test_custom_response_headers", CustomResponseHeaderHandler),
             (r"/raise_403", RaiseHTTPErrorHandler),
+            (r"/div_by_zero", DivideByZeroHandler),
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
         ]

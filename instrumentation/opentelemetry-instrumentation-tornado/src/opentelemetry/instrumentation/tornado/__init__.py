@@ -574,6 +574,7 @@ def _prepare(
     otel_handler_state = {
         _START_TIME: default_timer(),
         "exclude_request": _excluded_urls.url_disabled(request.uri),
+        "error": None,
     }
     setattr(handler, _HANDLER_STATE_KEY, otel_handler_state)
 
@@ -600,10 +601,12 @@ def _on_finish(
     try:
         return func(*args, **kwargs)
     finally:
+        otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None) or {}
+        error = otel_handler_state.get("error")
         _record_on_finish_metrics(
-            server_histograms, handler, None, sem_conv_opt_in_mode
+            server_histograms, handler, error, sem_conv_opt_in_mode
         )
-        _finish_span(tracer, handler, None, sem_conv_opt_in_mode)
+        _finish_span(tracer, handler, error, sem_conv_opt_in_mode)
 
 
 def _websockethandler_on_close(
@@ -633,15 +636,18 @@ def _log_exception(
     args,
     kwargs,
 ):
+    # Stash the exception so _on_finish can record it when it ends the span.
+    # The wrapped log_exception is called first so Tornado emits its log
+    # record (e.g. tornado.general) while the server span is still active,
+    # letting LoggingInstrumentor inject trace/span IDs. See issue #1063.
     error = None
     if len(args) == 3:
         error = args[1]
 
-    _record_on_finish_metrics(
-        server_histograms, handler, error, sem_conv_opt_in_mode
-    )
+    otel_handler_state = getattr(handler, _HANDLER_STATE_KEY, None)
+    if otel_handler_state is not None:
+        otel_handler_state["error"] = error
 
-    _finish_span(tracer, handler, error, sem_conv_opt_in_mode)
     return func(*args, **kwargs)
 
 

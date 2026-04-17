@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Drop Python 3.9 support
   ([#4412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4412))
 
+### Fixed
+
+- `opentelemetry-instrumentation-tornado`: Keep the server span active through `log_exception` and `log_request` so trace/span IDs are injected into Tornado error and access logs when a handler raises an exception
+  ([#1063](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1063))
+
 ## Version 1.41.0/0.62b0 (2026-04-09)
 
 ### Added
