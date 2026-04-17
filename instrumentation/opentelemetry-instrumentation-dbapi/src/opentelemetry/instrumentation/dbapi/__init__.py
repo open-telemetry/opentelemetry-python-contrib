@@ -177,10 +177,13 @@ from wrapt import wrap_function_wrapper
 
 try:
     # wrapt 2.0.0+
-    from wrapt import BaseObjectProxy, ObjectProxy  # pylint: disable=no-name-in-module
+    from wrapt import (  # pylint: disable=no-name-in-module
+        BaseObjectProxy,
+        ObjectProxy,
+    )
 except ImportError:
-    from wrapt import ObjectProxy as BaseObjectProxy
     from wrapt import ObjectProxy
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
