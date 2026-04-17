@@ -618,7 +618,7 @@ _STATUS_CODE_PRIORITY = {
 
 
 def _set_span_status(span: Span, status: StatusCode) -> None:
-    current = span.status
+    current = getattr(span, "status", None)
     if current is None:
         span.set_status(Status(status))
         return
