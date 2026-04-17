@@ -568,3 +568,14 @@ class TestUtils(TestCase):
         get_span.assert_not_called()
         consume_hook.assert_not_called()
         returned_span.end.assert_not_called()
+
+    def test_deque_proxy_is_iterable(self) -> None:
+        deque = collections.deque([1, 2, 3])
+        generator_info = mock.MagicMock(
+            spec=_QueueConsumerGeneratorInfo,
+            consumer_tag="mock_task_name",
+        )
+        proxy = utils.ReadyMessagesDequeProxy(
+            deque, generator_info, None
+        )
+        self.assertEqual(list(proxy), [1, 2, 3])
