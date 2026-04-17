@@ -854,7 +854,8 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                     if metric.name != "http.server.active_requests":
                         continue
                     points = [
-                        p.value for p in metric.data.data_points
+                        p.value
+                        for p in metric.data.data_points
                         if isinstance(p, NumberDataPoint)
                     ]
                     if points:
