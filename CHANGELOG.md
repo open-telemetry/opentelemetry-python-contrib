@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Bump `pylint` to `4.0.5`
+  ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
+
 ### Breaking changes
 
 - Drop Python 3.9 support

@@ -28,7 +28,7 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
-    LLMInvocation,
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
     MessagePart,
     OutputMessage,
     Text,
@@ -158,7 +158,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,
+            invocation=llm_invocation,  # pyright: ignore[reportArgumentType]
         )
 
     def on_llm_end(
@@ -171,7 +171,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
@@ -262,7 +263,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
