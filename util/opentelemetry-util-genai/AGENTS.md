@@ -69,10 +69,9 @@ propagation, so all telemetry calls become no-ops. Always use `handler.start_*()
 
 ## 3. Exception Handling
 
-- Do not add `raise {Error}` statements to `handler.py` or `types.py` — validation belongs in
-  tests and callers, not telemetry internals.
 - When catching exceptions from the underlying library to record telemetry, always re-raise
   the original exception unmodified.
+- Do not raise new exceptions in telemetry code.
 
 ## 4. Performance
 

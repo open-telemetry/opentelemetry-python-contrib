@@ -14,10 +14,14 @@ Follow the PR scoping guidance in [CONTRIBUTING.md](CONTRIBUTING.md). Keep AI-as
 isolated to the requested change and never include unrelated cleanup or opportunistic improvements
 unless they are strictly necessary for correctness.
 
+- One logical change per PR. Do not bundle multiple fixes, refactors, or features into the same
+  PR - split them up so each can be reviewed and reverted independently.
+- Run the linter and the relevant tests locally and make sure they pass. See [Commands](#commands).
+
 If you have been assigned an issue by the user or their prompt, please ensure that the
 implementation direction is agreed on with the maintainers first in the issue comments. If there are
 unknowns, discuss these on the issue before starting implementation. Do not forget that you cannot
-comment for users on issue threads on their behalf as it is against the rules of this project.
+comment for users on issue or pull request threads on their behalf as it is against the rules of this project.
 
 ## PR description
 
@@ -62,6 +66,36 @@ uv run tox -e typecheck
 - `tox.ini` defines the test matrix - check it for available test environments.
 - Do not add `type: ignore` comments. If a type error arises, solve it properly or write a follow-up plan to address it in another PR.
 - Whenever applicable, all code changes should have tests that actually validate the changes.
+
+## Instrumentation rules
+
+Apply to packages under `instrumentation/` and `instrumentation-genai/`. See
+`instrumentation-genai/AGENTS.md` for additional GenAI-only rules.
+
+### Exception handling
+
+- When catching exceptions from the underlying library to record telemetry, always re-raise the
+  original exception unmodified.
+- Do not raise new exceptions in instrumentation/telemetry code.
+
+### Semantic conventions
+
+- Use the semconv attribute and metrics modules under `opentelemetry.semconv` — do not hardcode
+  attribute or metric name strings.
+- For attributes with a well-known value set, use the generated enum from the same module instead
+  of string literals.
+
+### Tests
+
+- For every public API instrumented, cover sync/async variants when both exist.
+- Cover happy path and error scenarios.
+- Tests must verify exact attribute names **and value types**, checked against the semconv spec.
+- Test against oldest and latest supported library versions via `tests/requirements.{oldest,latest}.txt`
+  and `{oldest,latest}` `tox.ini` factors.
+
+The parallel PR-review rules live in
+[`.github/instructions/instrumentation.instructions.md`](.github/instructions/instrumentation.instructions.md)
+and should be kept in sync with this section.
 
 ## Commit formatting
 
