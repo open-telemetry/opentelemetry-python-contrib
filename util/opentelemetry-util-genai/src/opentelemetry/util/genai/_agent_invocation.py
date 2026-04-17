@@ -22,14 +22,28 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind, Tracer
-from opentelemetry.util.genai._content import _get_content_attributes
-from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai._invocation import (
+    Error,
+    GenAIInvocation,
+    get_content_attributes,
+)
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
     InputMessage,
     MessagePart,
     OutputMessage,
     ToolDefinition,
+)
+
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS: str = getattr(
+    GenAI,
+    "GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS",
+    "gen_ai.usage.cache_creation.input_tokens",
+)
+_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS: str = getattr(
+    GenAI,
+    "GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS",
+    "gen_ai.usage.cache_read.input_tokens",
 )
 
 
@@ -143,18 +157,18 @@ class AgentInvocation(GenAIInvocation):
             (GenAI.GEN_AI_USAGE_INPUT_TOKENS, self.input_tokens),
             (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, self.output_tokens),
             (
-                GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+                _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
                 self.cache_creation_input_tokens,
             ),
             (
-                GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+                _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
                 self.cache_read_input_tokens,
             ),
         )
         return {k: v for k, v in optional_attrs if v is not None}
 
     def _get_content_attributes_for_span(self) -> dict[str, Any]:
-        return _get_content_attributes(
+        return get_content_attributes(
             input_messages=self.input_messages,
             output_messages=self.output_messages,
             system_instruction=self.system_instruction,

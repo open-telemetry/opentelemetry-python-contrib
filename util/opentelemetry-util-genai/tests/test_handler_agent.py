@@ -16,6 +16,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import INVALID_SPAN, SpanKind
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
+    ContentCapturingMode,
     Error,
     FunctionToolDefinition,
     InputMessage,
@@ -79,8 +80,12 @@ class TestLocalAgentInvocation(unittest.TestCase):
         invocation.output_type = "text"
         invocation.temperature = 0.7
         invocation.top_p = 0.9
+        invocation.frequency_penalty = 0.5
+        invocation.presence_penalty = 0.3
         invocation.max_tokens = 1000
+        invocation.stop_sequences = ["END", "STOP"]
         invocation.seed = 42
+        invocation.choice_count = 3
         invocation.input_tokens = 100
         invocation.output_tokens = 200
         invocation.stop()
@@ -97,8 +102,12 @@ class TestLocalAgentInvocation(unittest.TestCase):
         assert attrs[GenAI.GEN_AI_OUTPUT_TYPE] == "text"
         assert attrs[GenAI.GEN_AI_REQUEST_TEMPERATURE] == 0.7
         assert attrs[GenAI.GEN_AI_REQUEST_TOP_P] == 0.9
+        assert attrs[GenAI.GEN_AI_REQUEST_FREQUENCY_PENALTY] == 0.5
+        assert attrs[GenAI.GEN_AI_REQUEST_PRESENCE_PENALTY] == 0.3
         assert attrs[GenAI.GEN_AI_REQUEST_MAX_TOKENS] == 1000
+        assert attrs[GenAI.GEN_AI_REQUEST_STOP_SEQUENCES] == ("END", "STOP")
         assert attrs[GenAI.GEN_AI_REQUEST_SEED] == 42
+        assert attrs[GenAI.GEN_AI_REQUEST_CHOICE_COUNT] == 3
 
     def test_no_response_model_or_finish_reasons(self):
         invocation = self.handler.start_invoke_local_agent("openai")
@@ -164,8 +173,8 @@ class TestLocalAgentInvocation(unittest.TestCase):
         assert invocation.agent_name is None
         assert invocation.provider == "openai"
         assert invocation.request_model is None
-        assert invocation.input_messages == []
-        assert invocation.output_messages == []
+        assert not invocation.input_messages
+        assert not invocation.output_messages
         assert invocation.tool_definitions is None
         assert invocation.cache_creation_input_tokens is None
         assert invocation.cache_read_input_tokens is None
@@ -237,6 +246,95 @@ class TestLocalAgentInvocation(unittest.TestCase):
         invocation.stop()
         attrs = self.span_exporter.get_finished_spans()[0].attributes
         assert attrs[GenAI.GEN_AI_PROVIDER_NAME] == "gcp_vertex_ai"
+
+
+class TestAgentInvocationContent(unittest.TestCase):
+    def setUp(self):
+        self.span_exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+        self.handler = TelemetryHandler(tracer_provider=tracer_provider)
+
+    @patch(
+        "opentelemetry.util.genai._invocation.get_content_capturing_mode",
+        return_value=ContentCapturingMode.SPAN_AND_EVENT,
+    )
+    @patch(
+        "opentelemetry.util.genai._invocation.is_experimental_mode",
+        return_value=True,
+    )
+    def test_system_instruction_on_span(self, _mock_exp, _mock_cap):
+        invocation = self.handler.start_invoke_local_agent("openai")
+        invocation.system_instruction = [
+            Text(content="You are a helpful assistant."),
+        ]
+        invocation.stop()
+
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert GenAI.GEN_AI_SYSTEM_INSTRUCTIONS in attrs
+
+    @patch(
+        "opentelemetry.util.genai._invocation.get_content_capturing_mode",
+        return_value=ContentCapturingMode.SPAN_AND_EVENT,
+    )
+    @patch(
+        "opentelemetry.util.genai._invocation.is_experimental_mode",
+        return_value=True,
+    )
+    def test_tool_definitions_on_span(self, _mock_exp, _mock_cap):
+        tool = FunctionToolDefinition(
+            name="get_weather",
+            description="Get the weather",
+            parameters={"type": "object", "properties": {}},
+        )
+        invocation = self.handler.start_invoke_local_agent("openai")
+        invocation.tool_definitions = [tool]
+        invocation.stop()
+
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert GenAI.GEN_AI_TOOL_DEFINITIONS in attrs
+
+    @patch(
+        "opentelemetry.util.genai._invocation.get_content_capturing_mode",
+        return_value=ContentCapturingMode.SPAN_AND_EVENT,
+    )
+    @patch(
+        "opentelemetry.util.genai._invocation.is_experimental_mode",
+        return_value=True,
+    )
+    def test_messages_on_span(self, _mock_exp, _mock_cap):
+        invocation = self.handler.start_invoke_local_agent("openai")
+        invocation.input_messages = [
+            InputMessage(role="user", parts=[Text(content="Hello")])
+        ]
+        invocation.output_messages = [
+            OutputMessage(
+                role="assistant",
+                parts=[Text(content="Hi!")],
+                finish_reason="stop",
+            )
+        ]
+        invocation.stop()
+
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert GenAI.GEN_AI_INPUT_MESSAGES in attrs
+        assert GenAI.GEN_AI_OUTPUT_MESSAGES in attrs
+
+    def test_content_not_on_span_by_default(self):
+        invocation = self.handler.start_invoke_local_agent("openai")
+        invocation.system_instruction = [
+            Text(content="You are a helpful assistant."),
+        ]
+        invocation.input_messages = [
+            InputMessage(role="user", parts=[Text(content="Hello")])
+        ]
+        invocation.stop()
+
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert GenAI.GEN_AI_SYSTEM_INSTRUCTIONS not in attrs
+        assert GenAI.GEN_AI_INPUT_MESSAGES not in attrs
 
 
 class TestRemoteAgentInvocation(unittest.TestCase):
