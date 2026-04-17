@@ -575,7 +575,5 @@ class TestUtils(TestCase):
             spec=_QueueConsumerGeneratorInfo,
             consumer_tag="mock_task_name",
         )
-        proxy = utils.ReadyMessagesDequeProxy(
-            deque, generator_info, None
-        )
+        proxy = utils.ReadyMessagesDequeProxy(deque, generator_info, None)
         self.assertEqual(list(proxy), [1, 2, 3])

@@ -7,7 +7,6 @@ from pika.adapters.blocking_connection import (
 )
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
-
 from wrapt import ObjectProxy
 
 from opentelemetry import context, propagate, trace
