@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation-niquests`: Add instrumentation for the niquests HTTP client library with sync/async support, TLS span attributes, OCSP revocation status, and connection sub-duration histogram metrics
+  ([#4459](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4459))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests

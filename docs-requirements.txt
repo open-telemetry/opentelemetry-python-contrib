@@ -32,6 +32,7 @@ flask~=2.0
 falcon~=2.0
 grpcio~=1.27
 httpx>=0.18.0
+niquests>=3,<4
 kafka-python>=2.0,<3.0
 mysql-connector-python~=8.0
 mysqlclient~=2.1.1

@@ -30,6 +30,7 @@
 | [opentelemetry-instrumentation-logging](./opentelemetry-instrumentation-logging) | logging | No | development
 | [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python >= 8.0, < 10.0 | No | development
 | [opentelemetry-instrumentation-mysqlclient](./opentelemetry-instrumentation-mysqlclient) | mysqlclient < 3 | No | development
+| [opentelemetry-instrumentation-niquests](./opentelemetry-instrumentation-niquests) | niquests >= 3.0, < 4 | Yes | migration
 | [opentelemetry-instrumentation-pika](./opentelemetry-instrumentation-pika) | pika >= 0.12.0 | No | development
 | [opentelemetry-instrumentation-psycopg](./opentelemetry-instrumentation-psycopg) | psycopg >= 3.1.0 | No | development
 | [opentelemetry-instrumentation-psycopg2](./opentelemetry-instrumentation-psycopg2) | psycopg2 >= 2.7.3.1,psycopg2-binary >= 2.7.3.1 | No | development

@@ -58,6 +58,7 @@ dependencies = [
     "opentelemetry-instrumentation-logging==0.63b0.dev",
     "opentelemetry-instrumentation-mysql==0.63b0.dev",
     "opentelemetry-instrumentation-mysqlclient==0.63b0.dev",
+    "opentelemetry-instrumentation-niquests==0.63b0.dev",
     "opentelemetry-instrumentation-pika==0.63b0.dev",
     "opentelemetry-instrumentation-psycopg==0.63b0.dev",
     "opentelemetry-instrumentation-psycopg2==0.63b0.dev",

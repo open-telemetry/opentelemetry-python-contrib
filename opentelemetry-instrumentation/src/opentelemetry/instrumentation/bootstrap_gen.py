@@ -137,6 +137,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-mysqlclient==0.63b0.dev",
     },
     {
+        "library": "niquests >= 3.0, < 4",
+        "instrumentation": "opentelemetry-instrumentation-niquests==0.63b0.dev",
+    },
+    {
         "library": "pika >= 0.12.0",
         "instrumentation": "opentelemetry-instrumentation-pika==0.63b0.dev",
     },
