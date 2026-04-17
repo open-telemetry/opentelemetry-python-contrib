@@ -307,6 +307,8 @@ The continuous integration overrides that environment variable with as per the c
 
 Below is a checklist of things to be mindful of when implementing a new instrumentation or working on a specific instrumentation. It is one of our goals as a community to keep the implementation specific details of instrumentations as similar across the board as possible for ease of testing and feature parity. It is also good to abstract as much common functionality as possible.
 
+- Find or Create a new [Issue](https://github.com/open-telemetry/opentelemetry-python-contrib/issues) describing the framework to instrument and its use cases to support with OpenTelemetry.
+  - Be familiar with the [expectations from contributors](#expectations-from-contributors) that apply.
 - Follow semantic conventions
   - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/semantic-conventions/tree/main/docs).
   - To ensure consistency, we encourage contributions that align with [STABLE](https://opentelemetry.io/docs/specs/otel/document-status/#lifecycle-status) semantic conventions if available. This approach helps us avoid potential confusion and reduces the need to support multiple outdated versions of semantic conventions. However, we are still open to considering exceptional cases where changes are well justified.
