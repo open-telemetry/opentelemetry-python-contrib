@@ -2,7 +2,7 @@
 [project]
 name = "opentelemetry-python-contrib"
 version = "0.0.0" # This is not used.
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
@@ -154,7 +154,7 @@ members = [
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
-target-version = "py39"
+target-version = "py310"
 line-length = 79
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
@@ -198,7 +198,7 @@ known-third-party = [
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = true
 reportMissingTypeStubs = false
-pythonVersion = "3.9"
+pythonVersion = "3.10"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [

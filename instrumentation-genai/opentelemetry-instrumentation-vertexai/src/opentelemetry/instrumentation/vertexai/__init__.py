@@ -163,8 +163,8 @@ class VertexAIInstrumentor(BaseInstrumentor):
         ):
             wrap_function_wrapper(
                 client_class,
-                name=method_name,
-                wrapper=wrapper,
+                method_name,
+                wrapper,
             )
             self._methods_to_unwrap.append((client_class, method_name))
 
