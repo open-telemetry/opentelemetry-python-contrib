@@ -18,7 +18,6 @@ context cleanup and streaming response handling.
 """
 
 import io
-import sys
 import threading
 import time
 from unittest import mock, skipIf
@@ -297,10 +296,6 @@ class TestFlaskCompatibility(WsgiTestBase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.data, b"Data")
 
-    @skipIf(
-        sys.version_info < (3, 10),
-        "Flask 3.1+ streaming context cleanup only enabled on Python 3.10+",
-    )
     @skipIf(
         lambda: (
             not __import__(

@@ -119,9 +119,9 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="Completions.create",
-            wrapper=(
+            "openai.resources.chat.completions",
+            "Completions.create",
+            (
                 chat_completions_create_v_new(handler, content_mode)
                 if latest_experimental_enabled
                 else chat_completions_create_v_old(
@@ -131,9 +131,9 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="AsyncCompletions.create",
-            wrapper=(
+            "openai.resources.chat.completions",
+            "AsyncCompletions.create",
+            (
                 async_chat_completions_create_v_new(handler, content_mode)
                 if latest_experimental_enabled
                 else async_chat_completions_create_v_old(
@@ -144,17 +144,17 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         # Add instrumentation for the embeddings API
         wrap_function_wrapper(
-            module="openai.resources.embeddings",
-            name="Embeddings.create",
-            wrapper=embeddings_create(
+            "openai.resources.embeddings",
+            "Embeddings.create",
+            embeddings_create(
                 tracer, instruments, latest_experimental_enabled
             ),
         )
 
         wrap_function_wrapper(
-            module="openai.resources.embeddings",
-            name="AsyncEmbeddings.create",
-            wrapper=async_embeddings_create(
+            "openai.resources.embeddings",
+            "AsyncEmbeddings.create",
+            async_embeddings_create(
                 tracer, instruments, latest_experimental_enabled
             ),
         )
