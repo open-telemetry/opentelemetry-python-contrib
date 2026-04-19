@@ -4,11 +4,9 @@ OpenTelemetry Cohere Instrumentation Example
 This is an example of how to instrument Cohere calls when configuring
 OpenTelemetry SDK and Instrumentations manually.
 
-When `main.py <main.py>`_ is run, it exports traces and logs to an OTLP
-compatible endpoint. Traces include details such as the model used and the
-duration of the chat request. Logs capture the chat request and the generated
-response, providing a comprehensive view of the performance and behavior of
-your Cohere requests.
+When chat completions support is added in a follow-up PR, `main.py <main.py>`_
+will export traces and logs to an OTLP compatible endpoint. For now the
+instrumentor is a no-op scaffold.
 
 Note: `.env <.env>`_ file configures additional environment variables:
 

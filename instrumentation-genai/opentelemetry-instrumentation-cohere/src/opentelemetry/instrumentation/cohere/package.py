@@ -14,5 +14,3 @@
 
 
 _instruments = ("cohere >= 5.0.0",)
-
-_supports_metrics = True

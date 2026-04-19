@@ -48,12 +48,15 @@ Configuration
 Capture Message Content
 ***********************
 
-By default, prompts and completions are not captured. To enable message content capture,
-set the environment variable:
+By default, prompts and completions are not captured once chat instrumentation
+is added. To enable message content capture, set the environment variable:
 
 ::
 
     export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
+
+Note: This setting has no effect until chat completions support is added
+in a follow-up PR.
 
 
 References
