@@ -19,10 +19,6 @@ import pytest
 from openai import APIConnectionError, AsyncOpenAI, BadRequestError, NotFoundError
 
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
-from opentelemetry.instrumentation.openai_v2.response_extractors import (
-    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
-    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
-)
 from opentelemetry.instrumentation.openai_v2.response_wrappers import (
     AsyncResponseStreamWrapper,
 )
@@ -42,6 +38,7 @@ from .test_utils import (
     USER_ONLY_EXPECTED_INPUT_MESSAGES,
     USER_ONLY_PROMPT,
     assert_all_attributes,
+    assert_cache_attributes,
     assert_messages_attribute,
     format_simple_expected_output_message,
     get_responses_weather_tool_definition,
@@ -139,38 +136,6 @@ async def _collect_completed_response(stream):
             response = event.response
     assert response is not None
     return response
-
-
-def _get_usage_details(usage):
-    return getattr(usage, "input_tokens_details", None) or getattr(
-        usage, "prompt_tokens_details", None
-    )
-
-
-def _assert_cache_attributes(span, usage):
-    details = _get_usage_details(usage)
-    assert details is not None
-
-    cached_tokens = getattr(details, "cached_tokens", None)
-    if cached_tokens is None:
-        assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS not in span.attributes
-    else:
-        assert (
-            span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
-            == cached_tokens
-        )
-
-    cache_creation = getattr(details, "cache_creation_input_tokens", None)
-    if cache_creation is None:
-        assert (
-            GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
-            not in span.attributes
-        )
-    else:
-        assert (
-            span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
-            == cache_creation
-        )
 
 
 def test_async_responses_uninstrument_removes_patching(
@@ -352,7 +317,7 @@ async def test_async_responses_create_aggregates_cache_tokens(
     )
 
     (span,) = span_exporter.get_finished_spans()
-    _assert_cache_attributes(span, response.usage)
+    assert_cache_attributes(span, response.usage)
 
 
 @pytest.mark.asyncio()
@@ -469,7 +434,7 @@ async def test_async_responses_create_streaming_aggregates_cache_tokens(
         response = await _collect_completed_response(stream)
 
     (span,) = span_exporter.get_finished_spans()
-    _assert_cache_attributes(span, response.usage)
+    assert_cache_attributes(span, response.usage)
 
 
 @pytest.mark.asyncio()
