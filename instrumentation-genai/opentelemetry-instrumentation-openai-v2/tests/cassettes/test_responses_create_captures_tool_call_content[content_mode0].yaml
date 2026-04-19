@@ -71,15 +71,15 @@ interactions:
     body:
       string: |-
         {
-          "id": "resp_0cb296f9e5607fd60069d85fef5a9c8190b9a1023b905723b8",
+          "id": "resp_0bedf6e1ffba28050069e2f401ae1c8196be360fd5993c96de",
           "object": "response",
-          "created_at": 1775788015,
+          "created_at": 1776481281,
           "status": "completed",
           "background": false,
           "billing": {
             "payer": "developer"
           },
-          "completed_at": 1775788015,
+          "completed_at": 1776481282,
           "error": null,
           "frequency_penalty": 0.0,
           "incomplete_details": null,
@@ -89,11 +89,11 @@ interactions:
           "model": "gpt-4o-mini-2024-07-18",
           "output": [
             {
-              "id": "fc_0cb296f9e5607fd60069d85fefc01c8190b80847c9f8782620",
+              "id": "fc_0bedf6e1ffba28050069e2f402203c8196b45065342d00ed17",
               "type": "function_call",
               "status": "completed",
               "arguments": "{\"location\":\"Seattle, WA\"}",
-              "call_id": "call_9JGnHg3Qns7ZqDfSVNhAEArE",
+              "call_id": "call_90uO5LcGP5vTBTCrjyhYtWsA",
               "name": "get_current_weather"
             }
           ],
@@ -101,7 +101,7 @@ interactions:
           "presence_penalty": 0.0,
           "previous_response_id": null,
           "prompt_cache_key": null,
-          "prompt_cache_retention": null,
+          "prompt_cache_retention": "in_memory",
           "reasoning": {
             "effort": null,
             "summary": null
@@ -160,13 +160,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9e9e4f379c69ccb6-EWR
+      - 9ee06caa3d06c745-EWR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Fri, 10 Apr 2026 02:26:56 GMT
+      - Sat, 18 Apr 2026 03:01:22 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -181,18 +181,18 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '2027'
+      - '2034'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '674'
+      - '713'
       openai-project:
       - proj_s74VWObPgWXRchv2sHdrOTPY
       openai-version:
       - '2020-10-01'
       set-cookie:
-      - __cf_bm=br01RxGo5SXW00_woYY5L7MyEcOiE8dmdgiNFie.oTo-1775788015.2997324-1.0.1.1-RbN016RUGisBdZ1wBbRYnN_LIzdDghSFytfdtUSHT7hKp09BZqJYvJKB_EN.HojlHyCtS25A2c9KRzLF2X1nk7yQHndMvs2VjtElBF_G5TaBgehj6B4Hu.uWXleelGGa;
-        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 10 Apr 2026
-        02:56:56 GMT
+      - __cf_bm=77TblxQ40FwSWcmbiooIxTpBbJWtYa4Sa8xnnuOb8P4-1776481281.6342883-1.0.1.1-wYyCi1iDQ3bB4g5c2Jj1pldvzLmLS9NtJ1ryP99rJkxwR77VRG3qXvTHSKzUAQk9LBvwdBumDx4dWSKvmBqXsb7K2O8zcH3uxfGFCw4SLKIaQIsDy2SGcb9JuoVZMe4r;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Sat, 18 Apr 2026
+        03:31:22 GMT
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
@@ -202,11 +202,11 @@ interactions:
       x-ratelimit-remaining-tokens:
       - '199711'
       x-ratelimit-reset-requests:
-      - 1m50.441s
+      - 1m51.595s
       x-ratelimit-reset-tokens:
       - 86ms
       x-request-id:
-      - req_c096da9861fc4615bae077d9124c49ac
+      - req_66f20a8d196540e7928ba09ef1baad00
     status:
       code: 200
       message: OK

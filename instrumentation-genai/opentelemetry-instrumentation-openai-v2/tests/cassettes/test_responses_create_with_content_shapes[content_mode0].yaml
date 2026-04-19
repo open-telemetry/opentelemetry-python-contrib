@@ -48,15 +48,15 @@ interactions:
     body:
       string: |-
         {
-          "id": "resp_098a0b1ff5a64ee20069d85ffe52c88194893322bd491c639f",
+          "id": "resp_01acf44208ca9e520069e2f4099678819e8c2299266edf8dd9",
           "object": "response",
-          "created_at": 1775788030,
+          "created_at": 1776481289,
           "status": "completed",
           "background": false,
           "billing": {
             "payer": "developer"
           },
-          "completed_at": 1775788030,
+          "completed_at": 1776481290,
           "error": null,
           "frequency_penalty": 0.0,
           "incomplete_details": null,
@@ -66,7 +66,7 @@ interactions:
           "model": "gpt-4o-mini-2024-07-18",
           "output": [
             {
-              "id": "msg_098a0b1ff5a64ee20069d85ffe914c8194be619807a7563617",
+              "id": "msg_01acf44208ca9e520069e2f409f884819eaca68786696b7288",
               "type": "message",
               "status": "completed",
               "content": [
@@ -84,7 +84,7 @@ interactions:
           "presence_penalty": 0.0,
           "previous_response_id": null,
           "prompt_cache_key": null,
-          "prompt_cache_retention": null,
+          "prompt_cache_retention": "in_memory",
           "reasoning": {
             "effort": null,
             "summary": null
@@ -120,13 +120,13 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9e9e4f954876f580-EWR
+      - 9ee06cdbaa31422b-EWR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Fri, 10 Apr 2026 02:27:10 GMT
+      - Sat, 18 Apr 2026 03:01:30 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -141,32 +141,32 @@ interactions:
       cf-cache-status:
       - DYNAMIC
       content-length:
-      - '1568'
+      - '1575'
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '419'
+      - '603'
       openai-project:
       - proj_s74VWObPgWXRchv2sHdrOTPY
       openai-version:
       - '2020-10-01'
       set-cookie:
-      - __cf_bm=Juk22lx7il5.8Dj6Qe5r0zTzUIfPoLJZNurFR7m_GYU-1775788030.281736-1.0.1.1-uLuVFdyZdmquFgAnQfRAwqbKloj_E0.QfRNnNrZfHeG59Fwx.niIYpSuDPXtMJHvegKV2z5LOlUcLEd9qhLIfkDAcBP.1pARVA.z4fX2tY5hLz07O_7xN53nP6KKkWtz;
-        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 10 Apr 2026
-        02:57:10 GMT
+      - __cf_bm=3pcBlrNa0zJv69OLTd4yxZpGI8qo9kit67GOWbSewGw-1776481289.5427396-1.0.1.1-y4PEDxH1KGfCLLqS1RU2rGQzjVs5Geu.4l1KiumBkopZqZr9iYhBgNUQqWbKSwcxuMwyZ_wg1PWlT2iNZa2wxQT0BKjIQnSezB_Nt012VMo3yeeBIorIbyfBn16kt65i;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Sat, 18 Apr 2026
+        03:31:30 GMT
       x-ratelimit-limit-requests:
       - '10000'
       x-ratelimit-limit-tokens:
       - '200000'
       x-ratelimit-remaining-requests:
-      - '9987'
+      - '9985'
       x-ratelimit-remaining-tokens:
       - '199959'
       x-ratelimit-reset-requests:
-      - 1m44.133s
+      - 2m1.016s
       x-ratelimit-reset-tokens:
       - 12ms
       x-request-id:
-      - req_cd01f60cdb89459fa65289f9ea499362
+      - req_74b0c90fe8d74bcda9d4e2ddb05f82ee
     status:
       code: 200
       message: OK

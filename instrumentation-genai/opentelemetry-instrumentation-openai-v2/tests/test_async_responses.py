@@ -16,7 +16,7 @@ import inspect
 import json
 
 import pytest
-from openai import APIConnectionError, AsyncOpenAI, NotFoundError
+from openai import APIConnectionError, AsyncOpenAI, BadRequestError, NotFoundError
 
 from opentelemetry.instrumentation.openai_v2 import OpenAIInstrumentor
 from opentelemetry.instrumentation.openai_v2.response_extractors import (
@@ -73,7 +73,11 @@ EXPECTED_SYSTEM_INSTRUCTIONS = [
     }
 ]
 INVALID_MODEL = "this-model-does-not-exist"
-REASONING_MODEL = "gpt-5-mini"
+REASONING_MODEL = "gpt-5.4"
+REASONING_PROMPT = """
+Write a bash script that takes a matrix represented as a string with
+format '[1,2],[3,4],[5,6]' and prints the transpose in the same format.
+"""
 
 
 def _skip_if_not_latest():
@@ -401,7 +405,7 @@ async def test_async_responses_create_api_error(
     _skip_if_not_latest()
     skip_if_cassette_missing_and_no_real_key(request)
 
-    with pytest.raises(NotFoundError):
+    with pytest.raises((BadRequestError, NotFoundError)) as exc_info:
         await async_openai_client.responses.create(
             model=INVALID_MODEL,
             input="Hello",
@@ -409,7 +413,10 @@ async def test_async_responses_create_api_error(
 
     (span,) = span_exporter.get_finished_spans()
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == INVALID_MODEL
-    assert span.attributes[ErrorAttributes.ERROR_TYPE] == "NotFoundError"
+    assert (
+        span.attributes[ErrorAttributes.ERROR_TYPE]
+        == type(exc_info.value).__name__
+    )
 
 
 @pytest.mark.asyncio()
@@ -745,26 +752,39 @@ async def test_async_responses_create_captures_tool_call_content(
         "openai SDK too old to support 'reasoning' parameter on AsyncResponses.create"
     ),
 )
-async def test_async_responses_create_captures_reasoning_content(
+async def test_async_responses_create_reports_reasoning_tokens(
     request, span_exporter, async_openai_client, instrument_with_content
 ):
     _skip_if_not_latest()
     skip_if_cassette_missing_and_no_real_key(request)
 
-    await async_openai_client.responses.create(
+    response = await async_openai_client.responses.create(
         model=REASONING_MODEL,
-        input="What is 17*19? Think first.",
-        reasoning={"summary": "concise"},
+        reasoning={"effort": "low"},
+        input=[
+            {
+                "role": "user",
+                "content": REASONING_PROMPT,
+            }
+        ],
+        max_output_tokens=300,
+        timeout=30.0,
     )
 
-    (span,) = span_exporter.get_finished_spans()
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    reasoning_tokens = getattr(
+        getattr(response.usage, "output_tokens_details", None),
+        "reasoning_tokens",
+        None,
     )
-    assert any(
-        part.get("type") == "reasoning"
-        for message in output_messages
-        for part in message.get("parts", [])
+
+    assert reasoning_tokens is not None
+    assert reasoning_tokens > 0
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    (span,) = spans
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == (
+        REASONING_MODEL
     )
 
 

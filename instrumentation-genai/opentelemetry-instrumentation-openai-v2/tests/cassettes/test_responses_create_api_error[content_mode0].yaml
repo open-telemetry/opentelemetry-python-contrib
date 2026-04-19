@@ -55,7 +55,7 @@ interactions:
         }
     headers:
       CF-RAY:
-      - 9e9e4ee6c98f780c-EWR
+      - 9ee06c562f5c0f7d-EWR
       Connection:
       - keep-alive
       Content-Length:
@@ -63,7 +63,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Fri, 10 Apr 2026 02:26:42 GMT
+      - Sat, 18 Apr 2026 03:01:08 GMT
       Server:
       - cloudflare
       Set-Cookie: test_set_cookie
@@ -77,17 +77,17 @@ interactions:
       - DYNAMIC
       openai-organization: test_openai_org_id
       openai-processing-ms:
-      - '78'
+      - '107'
       openai-project:
       - proj_s74VWObPgWXRchv2sHdrOTPY
       openai-version:
       - '2020-10-01'
       set-cookie:
-      - __cf_bm=CsRql7dORYmp6jh3htZAm_m0RErYeE1U_PlETalT3QQ-1775788002.3668075-1.0.1.1-aur_w.sUFC8IJwwMM6gXZkWGPoxg7q_jyVIbIkxGi5IqIrU3.CMkvupgsED_7sTuqhp81oRru4_SDZh_J1d6vmJInETx3alIpHCrR5UWJ0vvkhAkJwxLGnZ3AsfrKIoF;
-        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 10 Apr 2026
-        02:56:42 GMT
+      - __cf_bm=sImUBrv0bwxemWtgUZK8rUGOArohh1idXm1s6ve.9PM-1776481268.1848395-1.0.1.1-wfALia92HJtSuU5STTxRZGW0Cd1tZtPVOpbKTSFoiJLjLOcwVrsTA4C4j2yaYyhAqXvYCG9Ns.EIIhy5ZQv_PNuB11_p2HjTGRNJGtclgs_deByUIWyOSuE2JuY9zxD.;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Sat, 18 Apr 2026
+        03:31:08 GMT
       x-request-id:
-      - req_f337a313a905474498b8d6f35de72475
+      - req_48f6dc739d654972b34e069edb97d2dc
     status:
       code: 400
       message: Bad Request

@@ -9,37 +9,6 @@ from typing import TYPE_CHECKING, Callable, Generator, Generic, TypeVar
 
 from opentelemetry.util.genai.types import Error
 
-# OpenAI Responses internals are version-gated (added in openai>=1.66.0), so
-# pylint may not resolve them in all lint environments even though we guard
-# runtime usage with ImportError fallbacks below.
-try:
-    from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
-        ResponseCompletedEvent,
-    )
-    from openai.types.responses import (  # pylint: disable=no-name-in-module
-        ResponseCreatedEvent,
-        ResponseErrorEvent,
-        ResponseFailedEvent,
-        ResponseIncompleteEvent,
-        ResponseInProgressEvent,
-    )
-
-    _RESPONSE_EVENTS_WITH_RESPONSE = (
-        ResponseCreatedEvent,
-        ResponseInProgressEvent,
-        ResponseFailedEvent,
-        ResponseIncompleteEvent,
-        ResponseCompletedEvent,
-    )
-except ImportError:
-    ResponseCompletedEvent = None
-    ResponseCreatedEvent = None
-    ResponseErrorEvent = None
-    ResponseFailedEvent = None
-    ResponseIncompleteEvent = None
-    ResponseInProgressEvent = None
-    _RESPONSE_EVENTS_WITH_RESPONSE = ()
-
 try:
     from opentelemetry.instrumentation.openai_v2.response_extractors import (  # pylint: disable=no-name-in-module
         _set_invocation_response_attributes,
@@ -235,21 +204,20 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
 
     def process_event(self, event: "ResponseStreamEvent[TextFormatT]") -> None:
         event_type = event.type
-        response: "ParsedResponse[TextFormatT] | Response | None" = None
-
-        if isinstance(event, _RESPONSE_EVENTS_WITH_RESPONSE):
-            response = event.response
+        response: "ParsedResponse[TextFormatT] | Response | None" = getattr(
+            event, "response", None
+        )
 
         if response and not self.invocation.request_model:
             model = response.model
             if model:
                 self.invocation.request_model = model
 
-        if isinstance(event, ResponseCompletedEvent):
+        if event_type == "response.completed":
             self._stop(response)
             return
 
-        if isinstance(event, (ResponseFailedEvent, ResponseIncompleteEvent)):
+        if event_type in {"response.failed", "response.incomplete"}:
             with self._safe_instrumentation("response attribute extraction"):
                 _set_response_attributes(
                     self.invocation, response, self._capture_content
@@ -257,9 +225,9 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             self._fail(event_type, RuntimeError)
             return
 
-        if isinstance(event, ResponseErrorEvent):
-            error_type = event.code or "response.error"
-            message = event.message or error_type
+        if event_type == "response.error":
+            error_type = getattr(event, "code", None) or "response.error"
+            message = getattr(event, "message", None) or error_type
             self._fail(message, RuntimeError)
 
 
