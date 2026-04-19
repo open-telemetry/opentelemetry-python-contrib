@@ -31,7 +31,7 @@ from .response_extractors import (
     _get_inference_creation_kwargs,
     _set_invocation_response_attributes,
 )
-from .response_wrappers import AsyncResponseStreamWrapper, ResponseStreamWrapper
+from .response_wrappers import ResponseStreamWrapper
 from .utils import is_streaming
 
 
@@ -72,46 +72,7 @@ def responses_create(
     return traced_method
 
 
-def async_responses_create(
-    handler: TelemetryHandler,
-    content_capturing_mode: ContentCapturingMode,
-):
-    """Wrap the `create` method of the `AsyncResponses` class to trace it."""
-
-    capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
-
-    async def traced_method(wrapped, instance, args, kwargs):
-        invocation = handler.start_inference(
-            **_get_inference_creation_kwargs(kwargs, instance)
-        )
-        _apply_request_attributes(invocation, kwargs, capture_content)
-
-        try:
-            result = await wrapped(*args, **kwargs)
-            parsed_result = _get_response_stream_result(result)
-
-            if is_streaming(kwargs):
-                return AsyncResponseStreamWrapper(
-                    parsed_result,
-                    invocation,
-                    capture_content,
-                )
-
-            _set_invocation_response_attributes(
-                invocation, parsed_result, capture_content
-            )
-            invocation.stop()
-            return result
-        except Exception as error:
-            invocation.fail(Error(type=type(error), message=str(error)))
-            raise
-
-    return traced_method
-
-
 def _get_response_stream_result(result):
     if hasattr(result, "parse"):
         return result.parse()
     return result
-
-

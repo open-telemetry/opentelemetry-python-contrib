@@ -72,7 +72,6 @@ from .patch import (
     embeddings_create,
 )
 from .patch_responses import (
-    async_responses_create,
     responses_create,
 )
 
@@ -172,12 +171,6 @@ class OpenAIInstrumentor(BaseInstrumentor):
                 wrapper=responses_create(handler, content_mode),
             )
 
-            wrap_function_wrapper(
-                module="openai.resources.responses.responses",
-                name="AsyncResponses.create",
-                wrapper=async_responses_create(handler, content_mode),
-            )
-
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
@@ -188,7 +181,6 @@ class OpenAIInstrumentor(BaseInstrumentor):
         responses_module = _get_responses_module()
         if responses_module is not None:
             unwrap(responses_module.Responses, "create")
-            unwrap(responses_module.AsyncResponses, "create")
 
 
 def _get_responses_module():
