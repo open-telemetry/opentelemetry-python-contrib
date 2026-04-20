@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `opentelemetry.util.genai.environment_variables` instead of re-defining it locally,
   making `opentelemetry-util-genai` the single source of truth for this constant.
   ([#4455](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4455))
+- Fix compatibility with wrapt 2.x by using positional arguments in `wrap_function_wrapper()` calls
+  ([#4445](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4445))
 - Fix `ChoiceBuffer` crash on streaming tool-call deltas with `arguments=None`
   ([#4350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4350))
 - Fix `StreamWrapper` missing `.headers` and other attributes when using `with_raw_response` streaming
@@ -23,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4280](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4280))
 - Add async wrappers for OpenAI Responses API streams and response stream managers
   ([#4325](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4325))
+- Add strongly typed Responses API extractors with validation and content
+  extraction improvements
+  ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
 
 ## Version 2.3b0 (2025-12-24)
 

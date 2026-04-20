@@ -41,7 +41,7 @@ from opentelemetry.util.genai.environment_variables import (
 )
 from opentelemetry.util.genai.types import (
     InputMessage,
-    LLMInvocation,
+    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
     OutputMessage,
     Text,
     ToolCallRequest,
