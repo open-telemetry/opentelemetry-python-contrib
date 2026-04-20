@@ -47,9 +47,9 @@ land the semconv change first.
 
 ## 5. Exception handling
 
-- No `raise` statements in `handler.py` or `types.py` — validation belongs in tests and callers.
-- When catching library exceptions to record telemetry, re-raise the original exception
-  unmodified.
+- When catching exceptions from the underlying library to record telemetry, always re-raise the
+  original exception unmodified.
+- Do not raise **new** exceptions in utils code.
 
 ## 6. Performance
 

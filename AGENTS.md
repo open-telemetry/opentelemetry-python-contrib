@@ -69,8 +69,7 @@ uv run tox -e typecheck
 
 ## Instrumentation rules
 
-Apply to packages under `instrumentation/` and `instrumentation-genai/`. See
-`instrumentation-genai/AGENTS.md` for additional GenAI-only rules.
+Apply to packages under `instrumentation/` and `instrumentation-genai/`.
 
 ### Exception handling
 

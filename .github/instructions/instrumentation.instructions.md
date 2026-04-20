@@ -37,9 +37,9 @@ prefer opt-in or additive. Breaking changes need explicit justification in the P
 
 ## 3. Exception handling
 
-- No new `raise` statements in instrumentation/telemetry code.
-- When catching library exceptions to record telemetry, re-raise the original exception
-  unmodified.
+- When catching exceptions from the underlying library to record telemetry, always re-raise the
+  original exception unmodified.
+- Do not raise **new** exceptions in instrumentation/telemetry code.
 
 ## 4. Tests
 
