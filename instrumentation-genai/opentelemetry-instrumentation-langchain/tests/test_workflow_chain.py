@@ -43,11 +43,10 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch
 
-from langchain_core.outputs import ChatGeneration, LLMResult
 from langchain_core.messages import AIMessage
+from langchain_core.outputs import ChatGeneration, LLMResult
 
 from opentelemetry import baggage
-from opentelemetry import context as otel_context
 from opentelemetry.instrumentation.langchain.callback_handler import (
     OpenTelemetryLangChainCallbackHandler,
 )
@@ -63,10 +62,10 @@ from opentelemetry.util.genai.context_attributes import (
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_serialized(name: str) -> dict:
     """Minimal serialized dict that on_chain_start / on_chat_model_start expect."""
@@ -78,17 +77,25 @@ def _make_llm_result(content: str = "hello") -> LLMResult:
     msg = AIMessage(content=content)
     gen = ChatGeneration(message=msg, text=content)
     gen.generation_info = {"finish_reason": "stop"}
-    return LLMResult(generations=[[gen]], llm_output={"model_name": "gpt-3.5-turbo"})
+    return LLMResult(
+        generations=[[gen]], llm_output={"model_name": "gpt-3.5-turbo"}
+    )
 
 
 def _make_chat_invocation_params(model_name: str = "gpt-3.5-turbo") -> dict:
     """kwargs dict that on_chat_model_start receives for a ChatOpenAI call."""
-    return {"invocation_params": {"model_name": model_name, "params": {"model_name": model_name}}}
+    return {
+        "invocation_params": {
+            "model_name": model_name,
+            "params": {"model_name": model_name},
+        }
+    }
 
 
 # ---------------------------------------------------------------------------
 # Base test class
 # ---------------------------------------------------------------------------
+
 
 class _CallbackHandlerTestBase(TestCase):
     def setUp(self) -> None:
@@ -112,6 +119,7 @@ class _CallbackHandlerTestBase(TestCase):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestWorkflowSpanCreation(_CallbackHandlerTestBase):
     """Verify that a workflow span is created for top-level chains."""
@@ -243,7 +251,9 @@ class TestLLMSpanGetsWorkflowName(_CallbackHandlerTestBase):
 
         internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
         self.assertEqual(len(internal_spans), 1)
-        self.assertEqual(internal_spans[0].name, "invoke_workflow my_custom_wf")
+        self.assertEqual(
+            internal_spans[0].name, "invoke_workflow my_custom_wf"
+        )
 
         client_spans = self._spans_by_kind(SpanKind.CLIENT)
         self.assertEqual(len(client_spans), 1)
@@ -257,7 +267,11 @@ class TestCSANotLeakedToBaggage(_CallbackHandlerTestBase):
     """Verify that gen_ai.workflow.name is NOT written to W3C Baggage by default."""
 
     def test_csa_not_leaked_to_baggage(self) -> None:
-        env = {k: v for k, v in os.environ.items() if k != "OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE"}
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            if k != "OTEL_PYTHON_GENAI_CAPTURE_BAGGAGE"
+        }
         with patch.dict(os.environ, env, clear=True):
             chain_run_id = uuid.uuid4()
 
@@ -458,9 +472,13 @@ class TestLLMErrorInsideWorkflow(_CallbackHandlerTestBase):
         # Workflow span still finishes (not in error state)
         internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
         self.assertEqual(len(internal_spans), 1)
-        self.assertNotEqual(internal_spans[0].status.status_code, StatusCode.ERROR)
+        self.assertNotEqual(
+            internal_spans[0].status.status_code, StatusCode.ERROR
+        )
 
-    def test_llm_error_inside_workflow_llm_span_is_child_of_workflow(self) -> None:
+    def test_llm_error_inside_workflow_llm_span_is_child_of_workflow(
+        self,
+    ) -> None:
         chain_run_id = uuid.uuid4()
         llm_run_id = uuid.uuid4()
 
@@ -520,7 +538,9 @@ class TestWorkflowNameFallback(_CallbackHandlerTestBase):
             run_id=chain_run_id,
             parent_run_id=None,
         )
-        self.handler.on_chain_end(outputs={}, run_id=chain_run_id, parent_run_id=None)
+        self.handler.on_chain_end(
+            outputs={}, run_id=chain_run_id, parent_run_id=None
+        )
 
         internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
         self.assertEqual(len(internal_spans), 1)
@@ -537,7 +557,9 @@ class TestWorkflowNameFallback(_CallbackHandlerTestBase):
             parent_run_id=None,
             metadata={"langgraph_node": "my_node"},
         )
-        self.handler.on_chain_end(outputs={}, run_id=chain_run_id, parent_run_id=None)
+        self.handler.on_chain_end(
+            outputs={}, run_id=chain_run_id, parent_run_id=None
+        )
 
         internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
         self.assertEqual(len(internal_spans), 1)
@@ -552,7 +574,9 @@ class TestWorkflowNameFallback(_CallbackHandlerTestBase):
             run_id=chain_run_id,
             parent_run_id=None,
         )
-        self.handler.on_chain_end(outputs={}, run_id=chain_run_id, parent_run_id=None)
+        self.handler.on_chain_end(
+            outputs={}, run_id=chain_run_id, parent_run_id=None
+        )
 
         internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
         self.assertEqual(len(internal_spans), 1)

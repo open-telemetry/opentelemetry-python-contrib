@@ -25,8 +25,10 @@ from opentelemetry.instrumentation.langchain.invocation_manager import (
     _InvocationManager,
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.invocation import InferenceInvocation
-from opentelemetry.util.genai.invocation import WorkflowInvocation
+from opentelemetry.util.genai.invocation import (
+    InferenceInvocation,
+    WorkflowInvocation,
+)
 from opentelemetry.util.genai.types import (
     InputMessage,
     MessagePart,
@@ -58,21 +60,26 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> Any:
         payload = serialized or {}
         name_source = (
-                payload.get("name")
-                or payload.get("id")
-                or kwargs.get("name")
-                or (metadata.get("langgraph_node") if metadata else None)
+            payload.get("name")
+            or payload.get("id")
+            or kwargs.get("name")
+            or (metadata.get("langgraph_node") if metadata else None)
         )
         name = str(name_source or "chain")
 
         if parent_run_id is None:
-            workflow_name_override = metadata.get("workflow_name") if metadata else None
-            wf = self._telemetry_handler.start_workflow(name=workflow_name_override or name)
+            workflow_name_override = (
+                metadata.get("workflow_name") if metadata else None
+            )
+            wf = self._telemetry_handler.start_workflow(
+                name=workflow_name_override or name
+            )
             self._invocation_manager.add_invocation_state(run_id, None, wf)
             return
         else:
-            self._invocation_manager.add_invocation_state(run_id, parent_run_id)
-
+            self._invocation_manager.add_invocation_state(
+                run_id, parent_run_id
+            )
 
     def on_chain_end(
         self,
@@ -93,7 +100,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
 
         if not invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id)
-
 
     def on_chain_error(
         self,
@@ -336,4 +342,3 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         llm_invocation.fail(error)
         if not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
-

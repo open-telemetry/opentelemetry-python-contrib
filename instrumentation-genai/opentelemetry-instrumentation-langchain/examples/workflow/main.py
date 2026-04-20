@@ -8,7 +8,6 @@ the LLM calls made from within the graph node.
 
 from typing import Annotated
 
-
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
@@ -32,7 +31,6 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
 
 # Configure tracing
 trace.set_tracer_provider(TracerProvider())
