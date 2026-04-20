@@ -86,7 +86,17 @@ from opentelemetry.instrumentation.pymongo.utils import (
 )
 from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
-from opentelemetry.semconv.trace import DbSystemValues, SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_MONGODB_COLLECTION,
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.trace import DbSystemValues
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
 from opentelemetry.trace.span import Span
 from opentelemetry.trace.status import Status, StatusCode
@@ -137,22 +147,14 @@ class CommandTracer(monitoring.CommandListener):
         try:
             span = self._tracer.start_span(span_name, kind=SpanKind.CLIENT)
             if span.is_recording():
-                span.set_attribute(
-                    SpanAttributes.DB_SYSTEM, DbSystemValues.MONGODB.value
-                )
-                span.set_attribute(SpanAttributes.DB_NAME, event.database_name)
-                span.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                span.set_attribute(DB_SYSTEM, DbSystemValues.MONGODB.value)
+                span.set_attribute(DB_NAME, event.database_name)
+                span.set_attribute(DB_STATEMENT, statement)
                 if collection:
-                    span.set_attribute(
-                        SpanAttributes.DB_MONGODB_COLLECTION, collection
-                    )
+                    span.set_attribute(DB_MONGODB_COLLECTION, collection)
                 if event.connection_id is not None:
-                    span.set_attribute(
-                        SpanAttributes.NET_PEER_NAME, event.connection_id[0]
-                    )
-                    span.set_attribute(
-                        SpanAttributes.NET_PEER_PORT, event.connection_id[1]
-                    )
+                    span.set_attribute(NET_PEER_NAME, event.connection_id[0])
+                    span.set_attribute(NET_PEER_PORT, event.connection_id[1])
             try:
                 self.start_hook(span, event)
             except (

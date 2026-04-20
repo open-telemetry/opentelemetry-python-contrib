@@ -7,7 +7,7 @@ OpenTelemetry Google GenAI SDK Instrumentation
    :target: https://pypi.org/project/opentelemetry-instrumentation-google-genai/
 
 This library adds instrumentation to the `Google GenAI SDK library <https://pypi.org/project/google-genai/>`_
-to emit telemetry data following `Semantic Conventions for GenAI systems <https://opentelemetry.io/docs/specs/semconv/gen-ai/>`_. 
+to emit telemetry data following `Semantic Conventions for GenAI systems <https://opentelemetry.io/docs/specs/semconv/gen-ai/>`_.
 It adds trace spans for GenAI operations, events/logs for recording prompts/responses, and emits metrics that describe the
 GenAI operations in aggregate.
 
@@ -33,16 +33,18 @@ If you don't have a Google GenAI SDK application, yet, try our `examples <exampl
 
 Check out `zero-code example <examples/zero-code>`_ for a quick start.
 
+
 Usage
 -----
 
 This section describes how to set up Google GenAI SDK instrumentation if you're setting OpenTelemetry up manually.
 Check out the `manual example <examples/manual>`_ for more details.
 
+
 Instrumenting all clients
 *************************
 
-When using the instrumentor, all clients will automatically trace GenAI `generate_content` operations.
+When using the instrumentor, all clients will automatically trace GenAI ``generate_content`` operations.
 You can also optionally capture prompts and responses as log events.
 
 Make sure to configure OpenTelemetry tracing, logging, metrics, and events to capture all telemetry emitted by the instrumentation.
@@ -54,18 +56,31 @@ Make sure to configure OpenTelemetry tracing, logging, metrics, and events to ca
 
     GoogleGenAiSdkInstrumentor().instrument()
 
-
     client = Client()
     response = client.models.generate_content(
         model="gemini-1.5-flash-002",
-        contents="Write a short poem on OpenTelemetry.")
+        contents="Write a short poem on OpenTelemetry."
+    )
+
+
+Limitations
+***********
+
+When using the Google GenAI SDK with automatic function calling enabled,
+the OpenTelemetry instrumentation creates a span only for the top-level
+``generate_content`` call.
+
+Internal model or tool calls triggered automatically by the SDK are executed
+within the SDK internals and are not traced as separate spans.
+
 
 Enabling message content
 *************************
 
 Message content such as the contents of the prompt and response
 are not captured by default. To capture message content as log events, set the environment variable
-`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` to `true`.
+``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` to ``true``.
+
 
 Uninstrument
 ************
@@ -82,6 +97,7 @@ To uninstrument clients, call the uninstrument method:
     # Uninstrument all clients
     GoogleGenAiSdkInstrumentor().uninstrument()
 
+
 References
 ----------
 * `Google Gen AI SDK Documentation <https://ai.google.dev/gemini-api/docs/sdks>`_
@@ -89,4 +105,3 @@ References
 * `Using Vertex AI with Google Gen AI SDK <https://cloud.google.com/vertex-ai/generative-ai/docs/sdks/overview>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
-

@@ -87,8 +87,10 @@ def run_with_test_server(
                 await runnable(server)
         return netloc
 
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(do_request())
+    return asyncio.run(do_request())
+
+
+SCOPE = "opentelemetry.instrumentation.aiohttp_client"
 
 
 # pylint: disable=too-many-public-methods
@@ -122,7 +124,7 @@ class TestAioHttpIntegration(TestBase):
         )
 
     def _assert_metrics(self, num_metrics: int = 1):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), num_metrics)
         return metrics
 
@@ -484,9 +486,8 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
-                loop = asyncio.get_event_loop()
                 with self.assertRaises(aiohttp.ClientConnectorError):
-                    loop.run_until_complete(do_request(url))
+                    asyncio.run(do_request(url))
 
             self._assert_spans(
                 [
@@ -707,8 +708,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -749,8 +749,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -794,8 +793,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -1312,7 +1310,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         return finished_spans
 
     def _assert_metrics(self, num_metrics: int = 1):
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), num_metrics)
         return metrics
 

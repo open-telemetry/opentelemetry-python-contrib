@@ -23,6 +23,11 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogExporter,
+    SimpleLogRecordProcessor,
+)
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
@@ -32,31 +37,36 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
+    error_attributes,
+    server_attributes,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace.status import StatusCode
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+    OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.handler import get_telemetry_handler
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     InputMessage,
-    LLMInvocation,
+    MessagePart,
     OutputMessage,
     Text,
 )
-from opentelemetry.util.genai.utils import get_content_capturing_mode
+from opentelemetry.util.genai.utils import (
+    get_content_capturing_mode,
+)
 
 
-def patch_env_vars(stability_mode, content_capturing):
+def patch_env_vars(stability_mode, content_capturing, emit_event):
     def decorator(test_case):
         @patch.dict(
             os.environ,
             {
                 OTEL_SEMCONV_STABILITY_OPT_IN: stability_mode,
                 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: content_capturing,
+                OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT: emit_event,
             },
         )
         def wrapper(*args, **kwargs):
@@ -84,6 +94,12 @@ def _create_output_message(
     )
 
 
+def _create_system_instruction(
+    content: str = "You are a helpful assistant.",
+) -> list[MessagePart]:
+    return [Text(content=content)]
+
+
 def _get_single_span(span_exporter: InMemorySpanExporter) -> ReadableSpan:
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
@@ -107,6 +123,9 @@ def _assert_span_attributes(
 ) -> None:
     for key, value in expected_values.items():
         assert span_attrs.get(key) == value
+    assert len(span_attrs) == len(expected_values), (
+        f"Actual {span_attrs} are different than expected {expected_values}"
+    )
 
 
 def _get_messages_from_attr(
@@ -140,21 +159,38 @@ def _assert_text_message(
         assert message.get("finish_reason") == finish_reason
 
 
+def _normalize_to_list(value: Any) -> list[Any]:
+    """Normalize tuple or list to list for OpenTelemetry compatibility."""
+    return list(value) if isinstance(value, tuple) else value
+
+
+def _normalize_to_dict(value: Any) -> dict[str, Any]:
+    """Normalize tuple or dict to dict for OpenTelemetry compatibility."""
+    return dict(value) if isinstance(value, tuple) else value
+
+
 class TestVersion(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_get_content_capturing_mode_parses_valid_envvar(self):  # pylint: disable=no-self-use
         assert get_content_capturing_mode() == ContentCapturingMode.SPAN_ONLY
 
     @patch_env_vars(
-        stability_mode="gen_ai_latest_experimental", content_capturing=""
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="",
+        emit_event="",
     )
     def test_empty_content_capturing_envvar(self):  # pylint: disable=no-self-use
         assert get_content_capturing_mode() == ContentCapturingMode.NO_CONTENT
 
-    @patch_env_vars(stability_mode="default", content_capturing="True")
+    @patch_env_vars(
+        stability_mode="default",
+        content_capturing="True",
+        emit_event="",
+    )
     def test_get_content_capturing_mode_raises_exception_when_semconv_stability_default(
         self,
     ):  # pylint: disable=no-self-use
@@ -164,6 +200,7 @@ class TestVersion(unittest.TestCase):
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="INVALID_VALUE",
+        emit_event="",
     )
     def test_get_content_capturing_mode_raises_exception_on_invalid_envvar(
         self,
@@ -183,43 +220,53 @@ class TestTelemetryHandler(unittest.TestCase):
         tracer_provider.add_span_processor(
             SimpleSpanProcessor(self.span_exporter)
         )
+        self.log_exporter = InMemoryLogExporter()
+        logger_provider = LoggerProvider()
+        logger_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(self.log_exporter)
+        )
         self.telemetry_handler = get_telemetry_handler(
-            tracer_provider=tracer_provider
+            tracer_provider=tracer_provider, logger_provider=logger_provider
         )
 
     def tearDown(self):
         # Clear spans and reset the singleton telemetry handler so each test starts clean
         self.span_exporter.clear()
+        self.log_exporter.clear()
         if hasattr(get_telemetry_handler, "_default_handler"):
             delattr(get_telemetry_handler, "_default_handler")
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_llm_start_and_stop_creates_span(self):  # pylint: disable=no-self-use
         message = _create_input_message("hello world")
         chat_generation = _create_output_message("hello back")
+        system_instruction = _create_system_instruction()
 
-        with self.telemetry_handler.llm() as invocation:
-            for attr, value in {
-                "request_model": "test-model",
-                "input_messages": [message],
-                "provider": "test-provider",
-                "attributes": {"custom_attr": "value"},
-                "temperature": 0.5,
-                "top_p": 0.9,
-                "stop_sequences": ["stop"],
-                "finish_reasons": ["stop"],
-                "response_model_name": "test-response-model",
-                "response_id": "response-id",
-                "input_tokens": 321,
-                "output_tokens": 654,
-            }.items():
-                setattr(invocation, attr, value)
+        with self.telemetry_handler.inference(
+            "test-provider",
+            request_model="test-model",
+            server_address="custom.server.com",
+            server_port=42,
+        ) as invocation:
+            invocation.input_messages = [message]
+            invocation.system_instruction = system_instruction
+            invocation.attributes = {"custom_attr": "value"}
+            invocation.temperature = 0.5
+            invocation.top_p = 0.9
+            invocation.stop_sequences = ["stop"]
+            invocation.finish_reasons = ["stop"]
+            invocation.response_model_name = "test-response-model"
+            invocation.response_id = "response-id"
+            invocation.input_tokens = 321
+            invocation.output_tokens = 654
             assert invocation.span is not None
             invocation.output_messages = [chat_generation]
             invocation.attributes.update({"extra": "info"})
+            invocation.metric_attributes = {"should not be on span": "value"}
 
         span = _get_single_span(self.span_exporter)
         self.assertEqual(span.name, "chat test-model")
@@ -231,7 +278,11 @@ class TestTelemetryHandler(unittest.TestCase):
             span_attrs,
             {
                 GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "test-model",
                 GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_INPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_OUTPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_SYSTEM_INSTRUCTIONS: AnyNonNone(),
                 GenAI.GEN_AI_REQUEST_TEMPERATURE: 0.5,
                 GenAI.GEN_AI_REQUEST_TOP_P: 0.9,
                 GenAI.GEN_AI_REQUEST_STOP_SEQUENCES: ("stop",),
@@ -240,6 +291,8 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_RESPONSE_ID: "response-id",
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 321,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 654,
+                server_attributes.SERVER_ADDRESS: "custom.server.com",
+                server_attributes.SERVER_PORT: 42,
                 "extra": "info",
                 "custom_attr": "value",
             },
@@ -256,26 +309,33 @@ class TestTelemetryHandler(unittest.TestCase):
         self.assertEqual(invocation.attributes.get("custom_attr"), "value")
         self.assertEqual(invocation.attributes.get("extra"), "info")
 
+        # Verify system instruction is present in span as JSON string
+        self.assertIn(GenAI.GEN_AI_SYSTEM_INSTRUCTIONS, span_attrs)
+        span_system = json.loads(span_attrs[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS])
+        self.assertIsInstance(span_system, list)
+        self.assertEqual(
+            span_system[0]["content"], "You are a helpful assistant."
+        )
+        self.assertEqual(span_system[0]["type"], "text")
+
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_llm_manual_start_and_stop_creates_span(self):
         message = _create_input_message("hi")
         chat_generation = _create_output_message("ok")
 
-        invocation = LLMInvocation(
-            request_model="manual-model",
-            input_messages=[message],
-            provider="test-provider",
-            attributes={"manual": True},
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", request_model="manual-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.input_messages = [message]
+        invocation.attributes["manual"] = True
         assert invocation.span is not None
         invocation.output_messages = [chat_generation]
         invocation.attributes.update({"extra_manual": "yes"})
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         span = _get_single_span(self.span_exporter)
         assert span.name == "chat manual-model"
@@ -286,25 +346,28 @@ class TestTelemetryHandler(unittest.TestCase):
         _assert_span_attributes(
             attrs,
             {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "manual-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_INPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_OUTPUT_MESSAGES: AnyNonNone(),
+                GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("stop",),
                 "manual": True,
                 "extra_manual": "yes",
             },
         )
 
     def test_llm_span_finish_reasons_without_output_messages(self):
-        invocation = LLMInvocation(
-            request_model="model-without-output",
-            provider="test-provider",
-            finish_reasons=["length"],
-            response_model_name="alt-model",
-            response_id="resp-001",
-            input_tokens=12,
-            output_tokens=34,
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", request_model="model-without-output"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.finish_reasons = ["length"]
+        invocation.response_model_name = "alt-model"
+        invocation.response_id = "resp-001"
+        invocation.input_tokens = 12
+        invocation.output_tokens = 34
         assert invocation.span is not None
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         span = _get_single_span(self.span_exporter)
         _assert_span_time_order(span)
@@ -312,6 +375,9 @@ class TestTelemetryHandler(unittest.TestCase):
         _assert_span_attributes(
             attrs,
             {
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "model-without-output",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
                 GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("length",),
                 GenAI.GEN_AI_RESPONSE_MODEL: "alt-model",
                 GenAI.GEN_AI_RESPONSE_ID: "resp-001",
@@ -320,55 +386,46 @@ class TestTelemetryHandler(unittest.TestCase):
             },
         )
 
-    def test_llm_span_finish_reasons_deduplicated_from_invocation(self):
-        invocation = LLMInvocation(
-            request_model="model-dedup",
-            provider="test-provider",
-            finish_reasons=["stop", "length", "stop"],
+    def test_llm_span_finish_reasons_from_invocation(self):
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", request_model="model-reasons"
         )
-
-        self.telemetry_handler.start_llm(invocation)
+        invocation.finish_reasons = ["stop", "length", "stop"]
         assert invocation.span is not None
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         span = _get_single_span(self.span_exporter)
         attrs = _get_span_attributes(span)
         self.assertEqual(
             attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS],
-            ("length", "stop"),
+            ("stop", "length", "stop"),
         )
 
-    def test_llm_span_finish_reasons_deduplicated_from_output_messages(self):
-        invocation = LLMInvocation(
-            request_model="model-output-dedup",
-            provider="test-provider",
+    def test_llm_span_finish_reasons_from_output_messages(self):
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", request_model="model-output-reasons"
         )
-
-        self.telemetry_handler.start_llm(invocation)
         assert invocation.span is not None
         invocation.output_messages = [
             _create_output_message("response-1", finish_reason="stop"),
             _create_output_message("response-2", finish_reason="length"),
             _create_output_message("response-3", finish_reason="stop"),
         ]
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         span = _get_single_span(self.span_exporter)
         attrs = _get_span_attributes(span)
         self.assertEqual(
             attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS],
-            ("length", "stop"),
+            ("stop", "length", "stop"),
         )
 
     def test_llm_span_uses_expected_schema_url(self):
-        invocation = LLMInvocation(
-            request_model="schema-model",
-            provider="schema-provider",
+        invocation = self.telemetry_handler.start_inference(
+            "schema-provider", request_model="schema-model"
         )
-
-        self.telemetry_handler.start_llm(invocation)
         assert invocation.span is not None
-        self.telemetry_handler.stop_llm(invocation)
+        invocation.stop()
 
         span = _get_single_span(self.span_exporter)
         instrumentation = getattr(span, "instrumentation_scope", None)
@@ -383,26 +440,39 @@ class TestTelemetryHandler(unittest.TestCase):
 
     @patch_env_vars(
         stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="true",
+    )
+    def test_llm_log_uses_expected_schema_url(self):
+        invocation = self.telemetry_handler.start_inference(
+            "schema-provider", request_model="schema-model"
+        )
+        invocation.output_messages = [_create_output_message()]
+        invocation.stop()
+
+        logs = self.log_exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(
+            logs[0].instrumentation_scope.schema_url, Schemas.V1_37_0.value
+        )
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
         content_capturing="SPAN_ONLY",
+        emit_event="",
     )
     def test_parent_child_span_relationship(self):
         message = _create_input_message("hi")
         chat_generation = _create_output_message("ok")
 
-        with self.telemetry_handler.llm() as parent_invocation:
-            for attr, value in {
-                "request_model": "parent-model",
-                "input_messages": [message],
-                "provider": "test-provider",
-            }.items():
-                setattr(parent_invocation, attr, value)
-            with self.telemetry_handler.llm() as child_invocation:
-                for attr, value in {
-                    "request_model": "child-model",
-                    "input_messages": [message],
-                    "provider": "test-provider",
-                }.items():
-                    setattr(child_invocation, attr, value)
+        with self.telemetry_handler.inference(
+            "test-provider", request_model="parent-model"
+        ) as parent_invocation:
+            parent_invocation.input_messages = [message]
+            with self.telemetry_handler.inference(
+                "test-provider", request_model="child-model"
+            ) as child_invocation:
+                child_invocation.input_messages = [message]
                 # Stop child first by exiting inner context
                 child_invocation.output_messages = [chat_generation]
             # Then stop parent by exiting outer context
@@ -423,6 +493,72 @@ class TestTelemetryHandler(unittest.TestCase):
         # Parent should not have a parent (root)
         assert parent_span.parent is None
 
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_embedding_parent_child_span_relationship(self):
+        parent_invocation = self.telemetry_handler.start_embedding(
+            "test-provider", request_model="embed-parent-model"
+        )
+        parent_invocation.input_tokens = 10
+        assert parent_invocation.span is not None
+        child_invocation = self.telemetry_handler.start_embedding(
+            "test-provider", request_model="embed-child-model"
+        )
+        child_invocation.input_tokens = 5
+        assert child_invocation.span is not None
+        child_invocation.stop()
+        parent_invocation.stop()
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+        child_span = next(
+            s for s in spans if s.name == "embeddings embed-child-model"
+        )
+        parent_span = next(
+            s for s in spans if s.name == "embeddings embed-parent-model"
+        )
+
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
+        assert parent_span.parent is None
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_llm_parent_embedding_child_span_relationship(self):
+        message = _create_input_message("hi")
+        chat_generation = _create_output_message("ok")
+
+        with self.telemetry_handler.inference(
+            "test-provider", request_model="parent-model"
+        ) as parent_invocation:
+            parent_invocation.input_messages = [message]
+            child_invocation = self.telemetry_handler.start_embedding(
+                "test-provider", request_model="embed-child-model"
+            )
+            child_invocation.input_tokens = 3
+            assert child_invocation.span is not None
+            child_invocation.stop()
+            parent_invocation.output_messages = [chat_generation]
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 2
+        child_span = next(
+            s for s in spans if s.name == "embeddings embed-child-model"
+        )
+        parent_span = next(s for s in spans if s.name == "chat parent-model")
+
+        assert child_span.context.trace_id == parent_span.context.trace_id
+        assert child_span.parent is not None
+        assert child_span.parent.span_id == parent_span.context.span_id
+        assert parent_span.parent is None
+
     def test_llm_context_manager_error_path_records_error_status_and_attrs(
         self,
     ):
@@ -430,14 +566,12 @@ class TestTelemetryHandler(unittest.TestCase):
             pass
 
         message = _create_input_message("hi", role="user")
-        invocation = LLMInvocation(
-            request_model="test-model",
-            input_messages=[message],
-            provider="test-provider",
-        )
 
         with self.assertRaises(BoomError):
-            with self.telemetry_handler.llm(invocation):
+            with self.telemetry_handler.inference(
+                "test-provider", request_model="test-model"
+            ) as invocation:
+                invocation.input_messages = [message]
                 for attr, value in {
                     "max_tokens": 128,
                     "seed": 123,
@@ -457,7 +591,9 @@ class TestTelemetryHandler(unittest.TestCase):
         _assert_span_attributes(
             span_attrs,
             {
-                ErrorAttributes.ERROR_TYPE: BoomError.__qualname__,
+                GenAI.GEN_AI_OPERATION_NAME: "chat",
+                GenAI.GEN_AI_REQUEST_MODEL: "test-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
                 GenAI.GEN_AI_REQUEST_MAX_TOKENS: 128,
                 GenAI.GEN_AI_REQUEST_SEED: 123,
                 GenAI.GEN_AI_RESPONSE_FINISH_REASONS: ("error",),
@@ -465,5 +601,110 @@ class TestTelemetryHandler(unittest.TestCase):
                 GenAI.GEN_AI_RESPONSE_ID: "error-response",
                 GenAI.GEN_AI_USAGE_INPUT_TOKENS: 11,
                 GenAI.GEN_AI_USAGE_OUTPUT_TOKENS: 22,
+                error_attributes.ERROR_TYPE: BoomError.__qualname__,
             },
         )
+
+    def test_embedding_context_manager_error_path_records_error_status_and_attrs(
+        self,
+    ):
+        class BoomError(RuntimeError):
+            pass
+
+        with self.assertRaises(BoomError):
+            with self.telemetry_handler.embedding(
+                "test-provider",
+                request_model="embed-model",
+                server_address="embed.example.com",
+                server_port=443,
+            ) as invocation:
+                invocation.dimension_count = 1536
+                invocation.input_tokens = 7
+                invocation.attributes["custom_embed_attr"] = "value"
+                invocation.response_model_name = "embed-response-model"
+                raise BoomError("embedding boom")
+
+        span = _get_single_span(self.span_exporter)
+        assert span.status.status_code == StatusCode.ERROR
+        _assert_span_time_order(span)
+        span_attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            span_attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "embeddings",
+                GenAI.GEN_AI_REQUEST_MODEL: "embed-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_EMBEDDINGS_DIMENSION_COUNT: 1536,
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS: 7,
+                GenAI.GEN_AI_RESPONSE_MODEL: "embed-response-model",
+                server_attributes.SERVER_ADDRESS: "embed.example.com",
+                server_attributes.SERVER_PORT: 443,
+                "custom_embed_attr": "value",
+                error_attributes.ERROR_TYPE: BoomError.__qualname__,
+            },
+        )
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_embedding_manual_start_and_stop_creates_span(self):
+        invocation = self.telemetry_handler.start_embedding(
+            "test-provider",
+            request_model="embed-model",
+            server_address="custom.server.com",
+            server_port=42,
+        )
+        invocation.dimension_count = 1536
+        invocation.encoding_formats = ["float"]
+        invocation.input_tokens = 123
+        invocation.attributes["custom_embed_attr"] = "value"
+        assert invocation.span is not None
+        invocation.attributes.update({"extra_embed": "info"})
+        invocation.metric_attributes = {"should not be on span": "value"}
+        invocation.stop()
+
+        span = _get_single_span(self.span_exporter)
+        self.assertEqual(span.name, "embeddings embed-model")
+        self.assertEqual(span.kind, trace.SpanKind.CLIENT)
+        _assert_span_time_order(span)
+
+        attrs = _get_span_attributes(span)
+        _assert_span_attributes(
+            attrs,
+            {
+                GenAI.GEN_AI_OPERATION_NAME: "embeddings",
+                GenAI.GEN_AI_REQUEST_MODEL: "embed-model",
+                GenAI.GEN_AI_PROVIDER_NAME: "test-provider",
+                GenAI.GEN_AI_EMBEDDINGS_DIMENSION_COUNT: 1536,
+                GenAI.GEN_AI_REQUEST_ENCODING_FORMATS: ("float",),
+                GenAI.GEN_AI_USAGE_INPUT_TOKENS: 123,
+                server_attributes.SERVER_ADDRESS: "custom.server.com",
+                server_attributes.SERVER_PORT: 42,
+                "custom_embed_attr": "value",
+                "extra_embed": "info",
+            },
+        )
+
+    def test_fail_with_exception_sets_error_status_and_type(self):
+        class BoomError(RuntimeError):
+            pass
+
+        invocation = self.telemetry_handler.start_inference(
+            "test-provider", request_model="test-model"
+        )
+        invocation.fail(BoomError("boom"))
+
+        span = _get_single_span(self.span_exporter)
+        assert span.status.status_code == StatusCode.ERROR
+        assert span.status.description == "boom"
+        assert (
+            _get_span_attributes(span)[error_attributes.ERROR_TYPE]
+            == BoomError.__qualname__
+        )
+
+
+class AnyNonNone:
+    def __eq__(self, other):
+        return other is not None

@@ -117,8 +117,7 @@ def _is_installed(req):
 
 
 def _find_installed_libraries(default_instrumentations, libraries):
-    for lib in default_instrumentations:
-        yield lib
+    yield from default_instrumentations
 
     for lib in libraries:
         if _is_installed(lib["library"]):

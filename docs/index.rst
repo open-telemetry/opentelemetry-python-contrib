@@ -103,6 +103,14 @@ install <https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>
 
     resource/**
 
+.. toctree::
+    :maxdepth: 2
+    :caption: OpAMP
+    :name: OpAMP
+    :glob:
+
+    opamp/**
+
 Indices and tables
 ------------------
 

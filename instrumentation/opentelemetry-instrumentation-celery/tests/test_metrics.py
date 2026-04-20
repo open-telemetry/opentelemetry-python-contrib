@@ -10,6 +10,8 @@ from opentelemetry.test.test_base import TestBase
 
 from .celery_test_tasks import app, task_add
 
+SCOPE = "opentelemetry.instrumentation.celery"
+
 
 class TestMetrics(TestBase):
     def setUp(self):
@@ -34,7 +36,7 @@ class TestMetrics(TestBase):
             if time.time() > timeout:
                 break
             time.sleep(0.05)
-        return self.get_sorted_metrics()
+        return self.get_sorted_metrics(SCOPE)
 
     def test_basic_metric(self):
         CeleryInstrumentor().instrument()
@@ -71,43 +73,22 @@ class TestMetrics(TestBase):
     def test_metric_uninstrument(self):
         CeleryInstrumentor().instrument()
 
-        self.get_metrics()
+        metrics = self.get_metrics()
         self.assertEqual(
-            (
-                self.memory_metrics_reader.get_metrics_data()
-                .resource_metrics[0]
-                .scope_metrics[0]
-                .metrics[0]
-                .data.data_points[0]
-                .bucket_counts[1]
-            ),
+            metrics[0].data.data_points[0].bucket_counts[1],
             1,
         )
 
-        self.get_metrics()
+        metrics = self.get_metrics()
         self.assertEqual(
-            (
-                self.memory_metrics_reader.get_metrics_data()
-                .resource_metrics[0]
-                .scope_metrics[0]
-                .metrics[0]
-                .data.data_points[0]
-                .bucket_counts[1]
-            ),
+            metrics[0].data.data_points[0].bucket_counts[1],
             2,
         )
 
         CeleryInstrumentor().uninstrument()
 
-        self.get_metrics()
+        metrics = self.get_metrics()
         self.assertEqual(
-            (
-                self.memory_metrics_reader.get_metrics_data()
-                .resource_metrics[0]
-                .scope_metrics[0]
-                .metrics[0]
-                .data.data_points[0]
-                .bucket_counts[1]
-            ),
+            metrics[0].data.data_points[0].bucket_counts[1],
             2,
         )

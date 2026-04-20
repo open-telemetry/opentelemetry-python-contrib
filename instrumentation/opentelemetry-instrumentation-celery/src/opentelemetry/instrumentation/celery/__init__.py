@@ -76,7 +76,9 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_MESSAGE_ID,
+)
 from opentelemetry.trace.status import Status, StatusCode
 
 if VERSION >= (4, 0, 1):
@@ -102,8 +104,18 @@ class CeleryGetter(Getter):
         value = getattr(carrier, key, None)
         if value is None:
             return None
-        if isinstance(value, str) or not isinstance(value, Iterable):
+        # Celery's Context copies all message properties as instance
+        # attributes, including non-string values like timelimit (tuple
+        # of ints).  The TextMapPropagator contract requires string
+        # values, so coerce anything that isn't already a string.
+        if isinstance(value, str):
             value = (value,)
+        elif isinstance(value, Iterable):
+            value = tuple(
+                str(v) if not isinstance(v, str) else v for v in value
+            )
+        else:
+            value = (str(value),)
         return value
 
     def keys(self, carrier):
@@ -180,7 +192,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         )
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         utils.attach_context(task, task_id, span, activation, token)
 
     def _trace_postrun(self, *args, **kwargs):
@@ -240,12 +252,12 @@ class CeleryInstrumentor(BaseInstrumentor):
         # apply some attributes here because most of the data is not available
         if span.is_recording():
             span.set_attribute(_TASK_TAG_KEY, _TASK_APPLY_ASYNC)
-            span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, task_id)
+            span.set_attribute(MESSAGING_MESSAGE_ID, task_id)
             span.set_attribute(_TASK_NAME_KEY, task_name)
             utils.set_attributes_from_context(span, kwargs)
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
         utils.attach_context(
             task, task_id, span, activation, None, is_publish=True
@@ -272,7 +284,7 @@ class CeleryInstrumentor(BaseInstrumentor):
 
         _, activation, _ = ctx
 
-        activation.__exit__(None, None, None)  # pylint: disable=E1101
+        activation.__exit__(None, None, None)  # pylint: disable=unnecessary-dunder-call
         utils.detach_context(task, task_id, is_publish=True)
 
     @staticmethod

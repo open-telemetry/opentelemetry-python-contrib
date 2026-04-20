@@ -16,3 +16,5 @@
 _instruments = ("pyramid >= 1.7",)
 
 _supports_metrics = True
+
+_semconv_status = "migration"

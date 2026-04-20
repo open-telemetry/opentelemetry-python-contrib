@@ -1485,7 +1485,11 @@ def test_invoke_model_with_content(
             "content": "\n\nA man stands before a crowd of people",
         }
         finish_reason = "length"
+    else:
+        pytest.xfail("model family not handled: {model_family}")
+
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
+
     choice_body = {
         "index": 0,
         "finish_reason": finish_reason,
@@ -1621,6 +1625,8 @@ def test_invoke_model_with_content_different_events(
         system = anthropic_claude_system()
         finish_reason = "end_turn"
         choice_content = [{"type": "text", "text": "This is a test"}]
+    else:
+        pytest.xfail("llm_model_value not handled: {llm_model_value}")
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -2060,6 +2066,8 @@ def test_invoke_model_with_content_tool_call(
     elif model_family == "anthropic.claude":
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
+    else:
+        pytest.xfail("model family not handled: {model_family}")
 
     invoke_model_tool_call(
         span_exporter,
@@ -2143,6 +2151,9 @@ def test_invoke_model_no_content(
     elif model_family == "mistral.mistral":
         choice_message = {}
         finish_reason = "length"
+    else:
+        pytest.xfail("model family not handled: {model_family}")
+
     choice_body = {
         "index": 0,
         "finish_reason": finish_reason,
@@ -2173,6 +2184,8 @@ def test_invoke_model_no_content_different_events(
         messages = anthropic_claude_messages()
         system = anthropic_claude_system()
         finish_reason = "end_turn"
+    else:
+        pytest.xfail("llm_model_value not handled: {llm_model_value}")
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -2226,6 +2239,8 @@ def test_invoke_model_no_content_tool_call(
     elif model_family == "anthropic.claude":
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
+    else:
+        pytest.xfail("model family not handled: {model_family}")
 
     invoke_model_tool_call(
         span_exporter,
@@ -2378,6 +2393,9 @@ def test_invoke_model_with_response_stream_with_content(
                 {"text": "\nHello! I am a computer program designed to"}
             ]
         }
+    else:
+        pytest.xfail("model family not handled: {model_family}")
+
     choice_body = {
         "index": 0,
         "finish_reason": finish_reason,
@@ -2410,6 +2428,8 @@ def test_invoke_model_with_response_stream_with_content_different_events(
         system = anthropic_claude_system()
         finish_reason = "end_turn"
         choice_content = [{"text": "This is a test", "type": "text"}]
+    else:
+        pytest.xfail("llm_model_value not handled: {llm_model_value}")
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2642,6 +2662,8 @@ def test_invoke_model_with_response_stream_with_content_tool_call(
     elif model_family == "anthropic.claude":
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
+    else:
+        pytest.xfail("model family not handled: {model_family}")
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,
@@ -2768,6 +2790,8 @@ def test_invoke_model_with_response_stream_no_content_different_events(
         messages = anthropic_claude_messages()
         system = anthropic_claude_system()
         finish_reason = "end_turn"
+    else:
+        pytest.xfail("llm_model_value not handled: {llm_model_value}")
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2828,6 +2852,8 @@ def test_invoke_model_with_response_stream_no_content_tool_call(
     elif model_family == "anthropic.claude":
         llm_model_value = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"
         llm_model_config = AnthropicClaudeModel
+    else:
+        pytest.xfail("model family not handled: {model_family}")
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,
