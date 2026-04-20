@@ -23,7 +23,7 @@ __all__ = ["_InvocationManager"]
 
 @dataclass
 class _InvocationState:
-    invocation: GenAIInvocation
+    invocation: Optional[GenAIInvocation]
     children: List[UUID] = field(default_factory=lambda: list())
 
 
@@ -39,7 +39,7 @@ class _InvocationManager:
         self,
         run_id: UUID,
         parent_run_id: Optional[UUID],
-        invocation: GenAIInvocation = None,
+        invocation: Optional[GenAIInvocation] = None,
     ):
         invocation_state = _InvocationState(invocation=invocation)
         self._invocations[run_id] = invocation_state
