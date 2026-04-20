@@ -7,10 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add metrics support for EmbeddingInvocation
+  ([#4377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4377))
+- Add support for workflow in genAI utils handler.
+  ([#4366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4366))
+- Enrich ToolCall type, breaking change: usage of ToolCall class renamed to ToolCallRequest
+  ([#4218](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4218))
+- Add EmbeddingInvocation span lifecycle support
+  ([#4219](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4219))
 - Populate schema_url on metrics
   ([#4320](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4320))
 - Add workflow invocation type to genAI utils
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310](#4310))
+  ([#4310](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4310))
+- Check if upload works at startup in initializer of the `UploadCompletionHook`, instead
+of repeatedly failing on every upload ([#4390](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4390)).
+- Refactor public API: add factory methods (`start_inference`, `start_embedding`, `start_tool`, `start_workflow`) and invocation-owned lifecycle (`invocation.stop()` / `invocation.fail(exc)`); rename `LLMInvocation` → `InferenceInvocation` and `ToolCall` → `ToolInvocation`. Existing usages remain fully functional via deprecated aliases.
+  ([#4391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4391))
+
 
 ## Version 0.3b0 (2026-02-20)
 
@@ -21,29 +34,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Log error when `fsspec` fails to be imported instead of silently failing ([#4037](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4037)).
 - Minor change to check LRU cache in Completion Hook before acquiring semaphore/thread ([#3907](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3907)).
 - Add environment variable for genai upload hook queue size
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3943](#3943))
+  ([#3943](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3943))
 - Add more Semconv attributes to LLMInvocation spans.
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3862](#3862))
+  ([#3862](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3862))
 - Limit the upload hook thread pool to 64 workers
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3944](#3944))
+  ([#3944](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3944))
 - Add metrics to LLMInvocation traces
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3891](#3891))
+  ([#3891](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3891))
 - Add parent class genAI invocation
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3889](#3889))
+  ([#3889](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3889))
 
 ## Version 0.2b0 (2025-10-14)
 
 - Add jsonlines support to fsspec uploader
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3791](#3791))
+  ([#3791](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3791))
 - Rename "fsspec_upload" entry point and classes to more generic "upload"
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3798](#3798))
+  ([#3798](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3798))
 - Record content-type and use canonical paths in fsspec genai uploader
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3795](#3795))
+  ([#3795](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3795))
 - Make inputs / outputs / system instructions optional params to `on_completion`,
-  ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3802](#3802)).
-  - Use a SHA256 hash of the system instructions as it's upload filename, and check
-  if the file exists before re-uploading it, ([https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3814](#3814)).
-
+  ([#3802](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3802)).
+- Use a SHA256 hash of the system instructions as it's upload filename, and check
+  if the file exists before re-uploading it, ([#3814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3814)).
 
 ## Version 0.1b0 (2025-09-25)
 
@@ -57,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3752](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3752))
   ([#3759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3759))
   ([#3763](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3763))
+
 - Add a utility to parse the `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` environment variable.
   Add `gen_ai_latest_experimental` as a new value to the Sem Conv stability flag ([#3716](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3716)).
 

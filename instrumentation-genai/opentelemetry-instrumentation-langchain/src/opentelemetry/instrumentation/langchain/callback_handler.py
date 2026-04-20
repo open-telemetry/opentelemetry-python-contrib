@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -28,7 +28,8 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
-    LLMInvocation,
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
+    MessagePart,
     OutputMessage,
     Text,
 )
@@ -133,7 +134,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                                     Text(content=text_value, type="text")
                                 )
 
-                input_messages.append(InputMessage(parts=parts, role=role))
+                input_messages.append(
+                    InputMessage(
+                        parts=cast(list[MessagePart], parts), role=role
+                    )
+                )
 
         llm_invocation = LLMInvocation(
             request_model=request_model,
@@ -153,7 +158,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,
+            invocation=llm_invocation,  # pyright: ignore[reportArgumentType]
         )
 
     def on_llm_end(
@@ -166,7 +171,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
@@ -206,7 +212,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     role = chat_generation.message.type
                     output_message = OutputMessage(
                         role=role,
-                        parts=parts,
+                        parts=cast(list[MessagePart], parts),
                         finish_reason=finish_reason,
                     )
                     output_messages.append(output_message)
@@ -257,7 +263,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
