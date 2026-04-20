@@ -83,9 +83,9 @@ class LangChainInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            module="langchain_core.callbacks",
-            name="BaseCallbackManager.__init__",
-            wrapper=_BaseCallbackManagerInitWrapper(otel_callback_handler),
+            "langchain_core.callbacks",
+            "BaseCallbackManager.__init__",
+            _BaseCallbackManagerInitWrapper(otel_callback_handler),
         )
 
     def _uninstrument(self, **kwargs: Any):
