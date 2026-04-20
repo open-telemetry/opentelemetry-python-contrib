@@ -64,12 +64,16 @@ def _get_llm_common_attributes(
         (server_attributes.SERVER_ADDRESS, invocation.server_address),
         (server_attributes.SERVER_PORT, invocation.server_port),
         ("gen_ai.workflow.name", invocation.workflow_name),
+        ("gen_ai.conversation.id", invocation.conversation_id),
     )
 
-    return {
+    attrs: dict[str, Any] = {
         GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
         **{key: value for key, value in optional_attrs if value is not None},
     }
+    for key, value in invocation.association_properties.items():
+        attrs[f"gen_ai.association.properties.{key}"] = value
+    return attrs
 
 
 def _get_embedding_common_attributes(
@@ -382,9 +386,17 @@ def _get_workflow_common_attributes(
 
     Returns a dictionary of attributes.
     """
-    return {
+    optional_attrs = (
+        ("gen_ai.conversation.id", invocation.conversation_id),
+    )
+
+    attrs: dict[str, Any] = {
         GenAI.GEN_AI_OPERATION_NAME: invocation.operation_name,
+        **{key: value for key, value in optional_attrs if value is not None},
     }
+    for key, value in invocation.association_properties.items():
+        attrs[f"gen_ai.association.properties.{key}"] = value
+    return attrs
 
 
 def _get_embedding_response_attributes(

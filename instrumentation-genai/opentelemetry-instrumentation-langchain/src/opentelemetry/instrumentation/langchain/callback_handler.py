@@ -69,6 +69,15 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         if parent_run_id is None:
             workflow_name_override = metadata.get("workflow_name") if metadata else None
             wf = WorkflowInvocation(name=workflow_name_override or name)
+            if metadata:
+                conversation_id = metadata.get("conversation_id") or metadata.get("thread_id")
+                if conversation_id is not None:
+                    wf.conversation_id = str(conversation_id)
+                association_properties = metadata.get("association_properties")
+                if isinstance(association_properties, dict):
+                    wf.association_properties = {
+                        str(k): str(v) for k, v in association_properties.items()
+                    }
             self._telemetry_handler.start(wf)
             self._invocation_manager.add_invocation_state(run_id, None, wf)
             return

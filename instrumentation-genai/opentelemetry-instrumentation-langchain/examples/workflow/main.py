@@ -101,7 +101,22 @@ def main():
         HumanMessage(content="What is the capital of France?"),
     ]
 
-    result = graph.invoke({"messages": initial_messages})
+    # Pass conversation_id and association_properties via LangGraph's config
+    # metadata. The instrumentation will automatically propagate them to all
+    # child spans as gen_ai.conversation.id and
+    # gen_ai.association.properties.<key>.
+    result = graph.invoke(
+        {"messages": initial_messages},
+        config={
+            "configurable": {"thread_id": "my-conversation-123"},
+            "metadata": {
+                "workflow_name": "Encyclopedia",
+                "association_properties": {
+                    "user.id": "alice",
+                },
+            },
+        },
+    )
 
     print("LangGraph output (messages):")
     for msg in result.get("messages", []):

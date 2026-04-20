@@ -63,7 +63,7 @@ from __future__ import annotations
 import logging
 import timeit
 from contextlib import contextmanager
-from typing import Iterator, TypeVar
+from typing import Any, Iterator, TypeVar
 
 from opentelemetry import baggage
 from opentelemetry import context as otel_context
@@ -197,6 +197,13 @@ class TelemetryHandler:
             invocation.workflow_name = csa.get(
                 "gen_ai.workflow.name"
             ) or baggage.get_baggage("gen_ai.workflow.name", ctx)
+            # Read conversation_id and association_properties from CSA.
+            if not invocation.conversation_id:
+                invocation.conversation_id = csa.get("gen_ai.conversation.id")
+            for key, value in csa.items():
+                if key.startswith("gen_ai.association.properties."):
+                    prop_key = key[len("gen_ai.association.properties."):]
+                    invocation.association_properties.setdefault(prop_key, value)
         elif isinstance(invocation, EmbeddingInvocation):
             span_name = _get_embedding_span_name(invocation)
             kind = SpanKind.CLIENT
@@ -219,9 +226,13 @@ class TelemetryHandler:
         if isinstance(invocation, WorkflowInvocation):
             # Primary mechanism: store workflow name as a process-local
             # context-scoped attribute (never leaked to W3C Baggage headers).
-            ctx = set_context_scoped_attributes(
-                {"gen_ai.workflow.name": workflow_name}, ctx
-            )
+            csa_attrs: dict[str, Any] = {"gen_ai.workflow.name": workflow_name}
+            # Propagate conversation_id and association_properties to child spans.
+            if invocation.conversation_id:
+                csa_attrs["gen_ai.conversation.id"] = invocation.conversation_id
+            for key, value in invocation.association_properties.items():
+                csa_attrs[f"gen_ai.association.properties.{key}"] = value
+            ctx = set_context_scoped_attributes(csa_attrs, ctx)
             # Opt-in: also write to baggage for cross-process propagation.
             if is_baggage_propagation_enabled():
                 ctx = baggage.set_baggage(

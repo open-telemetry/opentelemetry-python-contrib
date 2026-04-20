@@ -270,6 +270,8 @@ class GenAIInvocation:
 
     workflow_name: str | None = None
     agent_name: str | None = None
+    conversation_id: str | None = None
+    association_properties: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
