@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4461))
 - `opentelemetry-instrumentation-dbapi` Use `ObjectProxy` instead of `BaseObjectProxy` for `TracedCursorProxy` to restore iterability with wrapt 2.x
   ([#4427](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4427))
+- `opentelemetry-instrumentation-flask`: Clean up environ keys in `_teardown_request` to prevent duplicate execution
+  ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
 
 ### Breaking changes
 
