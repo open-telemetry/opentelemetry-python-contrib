@@ -1177,7 +1177,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
 - Add metric instrumentation for urllib
   ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
-- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/ecs/ and [`aws.logs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
+- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/ecs/) and [`aws.logs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 - `opentelemetry-instrumentation-aio-pika` Support `aio_pika` 8.x
   ([#1481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1481))
@@ -2394,8 +2394,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-ext-http-requests` Updates for core library changes
 
 - `Added support for PyPy3` Initial release
-
-## [#1033](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1033)
+  ([#1033](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1033))
 
 ## Version 0.1a0 (2019-09-30)
 
