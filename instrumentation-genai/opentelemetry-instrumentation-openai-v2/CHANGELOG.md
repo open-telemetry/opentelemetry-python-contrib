@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `opentelemetry.util.genai.environment_variables` instead of re-defining it locally,
   making `opentelemetry-util-genai` the single source of truth for this constant.
   ([#4455](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4455))
-
 - Fix `ChoiceBuffer` crash on streaming tool-call deltas with `arguments=None`
   ([#4350](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4350))
 - Fix `StreamWrapper` missing `.headers` and other attributes when using `with_raw_response` streaming
