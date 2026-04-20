@@ -321,18 +321,6 @@ def assert_message_in_logs(log, event_name, expected_content, parent_span):
     assert_log_parent(log, parent_span)
 
 
-def skip_if_cassette_missing_and_no_real_key(request):
-    cassette_path = (
-        Path(__file__).parent / "cassettes" / f"{request.node.name}.yaml"
-    )
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not cassette_path.exists() and api_key == "test_openai_api_key":
-        pytest.skip(
-            f"Cassette {cassette_path.name} is missing. "
-            "Set a real OPENAI_API_KEY to record it."
-        )
-
-
 def assert_embedding_attributes(
     span: ReadableSpan,
     request_model: str,

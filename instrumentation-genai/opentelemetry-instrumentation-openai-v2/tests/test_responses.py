@@ -42,7 +42,6 @@ from .test_utils import (
     assert_messages_attribute,
     format_simple_expected_output_message,
     get_responses_weather_tool_definition,
-    skip_if_cassette_missing_and_no_real_key,
 )
 
 try:
@@ -184,7 +183,6 @@ def test_responses_create_basic(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     response = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -217,7 +215,6 @@ def test_responses_create_captures_content(
     request, span_exporter, log_exporter, openai_client, instrument_with_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     response = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -236,7 +233,6 @@ def test_responses_create_with_all_params(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     response = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -275,7 +271,6 @@ def test_responses_create_token_usage(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     response = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -299,7 +294,6 @@ def test_responses_create_aggregates_cache_tokens(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     response = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -316,7 +310,6 @@ def test_responses_create_stop_reason(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -354,7 +347,6 @@ def test_responses_create_api_error(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     with pytest.raises((BadRequestError, NotFoundError)) as exc_info:
         openai_client.responses.create(
@@ -375,7 +367,6 @@ def test_responses_create_streaming(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     with openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -405,7 +396,6 @@ def test_responses_create_streaming_aggregates_cache_tokens(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     with openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -424,7 +414,6 @@ def test_responses_create_streaming_captures_content(
     request, span_exporter, log_exporter, openai_client, instrument_with_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     with openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -443,7 +432,6 @@ def test_responses_create_streaming_iteration(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     stream = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -466,7 +454,6 @@ def test_responses_create_streaming_delegates_response_attribute(
     request, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     stream = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -506,7 +493,6 @@ def test_responses_stream_wrapper_finalize_idempotent(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     stream = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -537,7 +523,6 @@ def test_responses_create_stream_propagation_error(
     request, span_exporter, openai_client, instrument_no_content, monkeypatch
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     stream = openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -585,7 +570,6 @@ def test_responses_create_streaming_user_exception(
     request, span_exporter, openai_client, instrument_no_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     with pytest.raises(ValueError, match="User raised exception"):
         with openai_client.responses.create(
@@ -607,7 +591,6 @@ def test_responses_create_instrumentation_error_swallowed(
     request, span_exporter, openai_client, instrument_no_content, monkeypatch
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     def exploding_process_event(self, event):
         del self
@@ -642,7 +625,6 @@ def test_responses_create_captures_tool_call_content(
     request, span_exporter, openai_client, instrument_with_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -673,7 +655,6 @@ def test_responses_create_reports_reasoning_tokens(
     request, span_exporter, openai_client, instrument_with_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     response = openai_client.responses.create(
         model=REASONING_MODEL,
@@ -714,7 +695,6 @@ def test_responses_create_with_content_span_unsampled(
     instrument_with_content_unsampled,
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -732,7 +712,6 @@ def test_responses_create_with_content_shapes(
     request, span_exporter, log_exporter, openai_client, instrument_with_content
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -761,7 +740,6 @@ def test_responses_create_event_only_no_content_in_span(
     request, span_exporter, log_exporter, openai_client, instrument_event_only
 ):
     _skip_if_not_latest()
-    skip_if_cassette_missing_and_no_real_key(request)
 
     openai_client.responses.create(
         model=DEFAULT_MODEL,

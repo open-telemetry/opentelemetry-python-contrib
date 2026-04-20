@@ -164,6 +164,11 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         responses_module = _get_responses_module()
+        # Responses instrumentation is intentionally limited to the latest
+        # experimental semconv path. Unlike chat completions, we do not carry
+        # a second legacy wrapper here; the current implementation is built on
+        # the inference handler lifecycle and would need a separate old-path
+        # implementation to support legacy semconv mode.
         if responses_module is not None and latest_experimental_enabled:
             wrap_function_wrapper(
                 module="openai.resources.responses.responses",
