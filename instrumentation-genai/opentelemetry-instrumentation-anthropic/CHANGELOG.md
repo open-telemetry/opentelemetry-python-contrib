@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fix compatibility with wrapt 2.x by using positional arguments in `wrap_function_wrapper()` calls
+  ([#4445](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4445))
+
 ### Added
 
 - Add async Anthropic message stream wrappers and manager wrappers, with wrapper
