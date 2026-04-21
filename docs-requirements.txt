@@ -50,6 +50,7 @@ sqlalchemy>=1.0
 starlette~=0.50
 tornado>=5.1.1
 tortoise-orm>=0.17.0
+wrapt~=2.1
 
 # required by opamp
 uuid_utils
