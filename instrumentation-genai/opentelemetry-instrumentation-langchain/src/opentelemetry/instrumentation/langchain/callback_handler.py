@@ -79,7 +79,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         else:
             # TODO: For agent invocation
             self._invocation_manager.add_invocation_state(
-                run_id, parent_run_id, None
+                run_id, parent_run_id, None # type: ignore[arg-type]
             )
 
     def on_chain_end(
