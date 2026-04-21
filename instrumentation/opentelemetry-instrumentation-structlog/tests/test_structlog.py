@@ -132,7 +132,7 @@ class TestStructlogHandler(TestBase):
         self.assertEqual(len(logs), 1)
 
         log = logs[0]
-        self.assertEqual(log.log_record.severity_text, "CRITICAL")
+        self.assertEqual(log.log_record.severity_text, "FATAL")
         self.assertEqual(log.log_record.severity_number, SeverityNumber.FATAL)
 
     def test_exception_from_exc_info_tuple(self):

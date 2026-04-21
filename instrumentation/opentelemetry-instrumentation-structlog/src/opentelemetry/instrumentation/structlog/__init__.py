@@ -31,8 +31,8 @@ context including trace context, custom attributes, and exception information.
 """
 
 import sys
-import threading
 import traceback
+from datetime import datetime, timezone
 from time import time_ns
 from typing import Any, Callable, Collection, Optional
 
@@ -76,6 +76,37 @@ _STRUCTLOG_LEVEL_TO_LEVELNO = {
     "critical": 50,
     "fatal": 50,
 }
+
+# Map structlog level names to OTel canonical severity text where they differ
+_STRUCTLOG_TO_OTEL_SEVERITY_TEXT = {
+    "warning": "WARN",
+    "critical": "FATAL",
+    "fatal": "FATAL",
+}
+
+
+def _parse_structlog_timestamp(value: Any) -> Optional[int]:
+    """
+    Convert a structlog timestamp value to nanoseconds since epoch, or None.
+
+    structlog's TimeStamper emits either a float (UNIX seconds, the default)
+    or a string (ISO 8601 when fmt="iso", or a strftime pattern otherwise).
+    We handle float and ISO 8601; anything else returns None so the SDK can
+    fill in the observed time.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return int(value * 1e9)
+    if isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return int(dt.timestamp() * 1e9)
+        except ValueError:
+            return None
+    return None
 
 
 class StructlogHandler:
@@ -185,20 +216,23 @@ class StructlogHandler:
         Returns:
             An OpenTelemetry LogRecord.
         """
-        # Use current time for both timestamp and observed_timestamp
-        # structlog's timestamps are unreliable/varied depending on configuration
-        timestamp = observed_timestamp = time_ns()
+        # observed_timestamp is when the SDK received the event (always now).
+        # timestamp is when the event occurred; use the structlog "timestamp"
+        # field if present and parseable (UNIX float or ISO 8601 string),
+        # otherwise leave as None and let the SDK fill it in.
+        observed_timestamp = time_ns()
+        timestamp = _parse_structlog_timestamp(event_dict.get("timestamp"))
 
         # Get the log level and map to OTel severity
         level_str = event_dict.get("level", "info")
         levelno = _STRUCTLOG_LEVEL_TO_LEVELNO.get(level_str.lower(), 20)
         severity_number = std_to_otel(levelno)
 
-        # Normalize severity text: "warning" -> "WARN", otherwise uppercase
-        if level_str.lower() == "warning":
-            severity_text = "WARN"
-        else:
-            severity_text = level_str.upper()
+        # Normalize severity text to OTel canonical names where structlog
+        # level names differ: "warning" -> "WARN", "critical"/"fatal" -> "FATAL"
+        severity_text = _STRUCTLOG_TO_OTEL_SEVERITY_TEXT.get(
+            level_str.lower(), level_str.upper()
+        )
 
         # Get the message body
         body = event_dict.get("event")
@@ -222,15 +256,11 @@ class StructlogHandler:
     def flush(self) -> None:
         """
         Flush the logger provider.
-
-        This method flushes any pending logs. It runs in a separate thread
-        to avoid potential deadlocks.
         """
         if hasattr(self._logger_provider, "force_flush") and callable(
             self._logger_provider.force_flush
         ):
-            thread = threading.Thread(target=self._logger_provider.force_flush)
-            thread.start()
+            self._logger_provider.force_flush()
 
 
 class StructlogInstrumentor(BaseInstrumentor):
@@ -248,7 +278,7 @@ class StructlogInstrumentor(BaseInstrumentor):
         >>> logger.info("hello", user="alice")
     """
 
-    _processor = None
+    _processor: Optional["StructlogHandler"] = None
     _original_configure: Optional[Callable] = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
@@ -303,21 +333,10 @@ class StructlogInstrumentor(BaseInstrumentor):
         # instrumentation, the handler is re-inserted into the new chain.
         StructlogInstrumentor._original_configure = structlog.configure
 
-        def _patched_configure(*args, **kwargs):
+        def _patched_configure(**kwargs):
             # If the user is supplying a processors list, ensure our handler
             # is included before passing it to the original configure.
-            # processors may be passed as the first positional arg or as a kwarg.
-            if args:
-                processors = list(args[0])
-                if not any(
-                    isinstance(p, StructlogHandler) for p in processors
-                ):
-                    insert_position = max(len(processors) - 1, 0)
-                    processors.insert(
-                        insert_position, StructlogInstrumentor._processor
-                    )
-                args = (processors,) + args[1:]
-            elif "processors" in kwargs:
+            if "processors" in kwargs:
                 processors = list(kwargs["processors"])
                 if not any(
                     isinstance(p, StructlogHandler) for p in processors
@@ -329,7 +348,7 @@ class StructlogInstrumentor(BaseInstrumentor):
                     kwargs["processors"] = processors
             original = StructlogInstrumentor._original_configure
             if original is not None:
-                return original(*args, **kwargs)
+                return original(**kwargs)
             return None
 
         structlog.configure = _patched_configure

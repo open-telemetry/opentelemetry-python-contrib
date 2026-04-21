@@ -489,8 +489,6 @@ No significant changes.
   ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
 
 ### Added
-- `opentelemetry-instrumentation-structlog`: Add new package providing `StructlogHandler` and `StructlogInstrumentor` to bridge structlog into the OpenTelemetry Logs SDK pipeline with trace context correlation and exception capture.
-  ([#4286](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4286))
 - `opentelemetry-instrumentation-botocore`: Add support for AWS Secrets Manager semantic convention attribute
   ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
 - `opentelemetry-instrumentation-dbapi`: Add support for `commenter_options` in `trace_integration` function to control SQLCommenter behavior
