@@ -1,3 +1,10 @@
+"""Telemetry Context Manager for OpenAI Realtime Sessions
+
+Manages OpenTelemetry span lifecycle and context propagation for realtime
+sessions. Provides anchor-span bookkeeping so that response and tool-call
+spans are correctly parented under the session span.
+"""
+
 from __future__ import annotations
 
 import contextlib

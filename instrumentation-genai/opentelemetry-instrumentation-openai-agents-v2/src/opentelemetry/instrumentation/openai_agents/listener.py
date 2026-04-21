@@ -1,22 +1,18 @@
-"""OpenTelemetry listener for OpenAI Realtime API sessions.
-#TODO
-Implements telemetry following the OpenTelemetry GenAI semantic conventions:
+"""OpenTelemetry Listener for OpenAI Realtime API Sessions
 
-Spans
+Implements a ``RealtimeModelListener`` that translates raw server events
+from the OpenAI Realtime API into OpenTelemetry spans and metrics
+following the GenAI semantic conventions.
+
+Spans:
   * Session span        -- ``gen_ai.operation.name = invoke_agent``
-  * Response span       -- ``gen_ai.operation.name = agent.response``
+  * Response span       -- ``gen_ai.operation.name = generate_content``
   * Tool execution span -- ``gen_ai.operation.name = execute_tool``
 
-Metrics (histograms)
+Metrics (histograms):
   * ``gen_ai.client.token.usage``
   * ``gen_ai.client.operation.duration``
   * ``gen_ai.server.time_to_first_token``
-
-Attributes are limited to the required / recommended set from the spec:
-``gen_ai.operation.name``, ``gen_ai.system`` / ``gen_ai.provider.name``,
-``gen_ai.request.model``, ``gen_ai.response.model``, ``gen_ai.session.id``,
-``server.address``, ``server.port``, token-usage attributes, and
-``error.type`` on failures.
 """
 
 from __future__ import annotations
