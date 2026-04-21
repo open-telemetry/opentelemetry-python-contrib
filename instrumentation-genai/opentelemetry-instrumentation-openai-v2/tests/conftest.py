@@ -227,9 +227,7 @@ def instrument_with_content_unsampled(
 
 
 @pytest.fixture(scope="function")
-def instrument_event_only(
-    tracer_provider, logger_provider, meter_provider
-):
+def instrument_event_only(tracer_provider, logger_provider, meter_provider):
     _OpenTelemetrySemanticConventionStability._initialized = False
 
     os.environ.update(

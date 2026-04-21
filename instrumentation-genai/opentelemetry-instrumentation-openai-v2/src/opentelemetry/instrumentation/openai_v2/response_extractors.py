@@ -62,6 +62,8 @@ try:
         OutputMessage,
         Reasoning,
         Text,
+    )
+    from opentelemetry.util.genai.types import (
         ToolCallRequest as ToolCall,
     )
 except ImportError:
@@ -511,7 +513,9 @@ def _get_request_attributes(
     if port is not None:
         attributes[ServerAttributes.SERVER_PORT] = port
 
-    return {key: value for key, value in attributes.items() if value_is_set(value)}
+    return {
+        key: value for key, value in attributes.items() if value_is_set(value)
+    }
 
 
 def _get_inference_creation_kwargs(
@@ -554,9 +558,7 @@ def _apply_request_attributes(
 
     output_type = _extract_output_type(kwargs)
     if output_type is not None:
-        invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
-            output_type
-        )
+        invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = output_type
 
     if capture_content:
         invocation.system_instruction = _extract_system_instruction(kwargs)

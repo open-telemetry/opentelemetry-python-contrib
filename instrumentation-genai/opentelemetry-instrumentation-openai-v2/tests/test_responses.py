@@ -98,9 +98,10 @@ def _assert_response_content(span, response, log_exporter):
         span.attributes[GenAIAttributes.GEN_AI_INPUT_MESSAGES],
         USER_ONLY_EXPECTED_INPUT_MESSAGES,
     )
-    assert json.loads(
-        span.attributes[GenAIAttributes.GEN_AI_SYSTEM_INSTRUCTIONS]
-    ) == EXPECTED_SYSTEM_INSTRUCTIONS
+    assert (
+        json.loads(span.attributes[GenAIAttributes.GEN_AI_SYSTEM_INSTRUCTIONS])
+        == EXPECTED_SYSTEM_INSTRUCTIONS
+    )
     assert_messages_attribute(
         span.attributes[GenAIAttributes.GEN_AI_OUTPUT_MESSAGES],
         format_simple_expected_output_message(response.output_text),
@@ -129,7 +130,9 @@ def _assert_request_attrs(
             == max_tokens
         )
     if output_type is not None:
-        assert span.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] == output_type
+        assert (
+            span.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] == output_type
+        )
 
 
 def _collect_completed_response(stream):
@@ -206,9 +209,8 @@ def test_responses_create_basic(
         response.usage.output_tokens,
         response_service_tier=getattr(response, "service_tier", None),
     )
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS]
-        == ("stop",)
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
+        "stop",
     )
     assert GenAIAttributes.GEN_AI_INPUT_MESSAGES not in span.attributes
     assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES not in span.attributes
@@ -216,7 +218,11 @@ def test_responses_create_basic(
 
 @pytest.mark.vcr()
 def test_responses_create_captures_content(
-    request, span_exporter, log_exporter, openai_client, instrument_with_content
+    request,
+    span_exporter,
+    log_exporter,
+    openai_client,
+    instrument_with_content,
 ):
     _skip_if_not_latest()
 
@@ -327,7 +333,9 @@ def test_responses_create_stop_reason(
     )
 
 
-def test_responses_create_connection_error(span_exporter, instrument_no_content):
+def test_responses_create_connection_error(
+    span_exporter, instrument_no_content
+):
     _skip_if_not_latest()
 
     client = OpenAI(base_url="http://localhost:4242")
@@ -340,7 +348,9 @@ def test_responses_create_connection_error(span_exporter, instrument_no_content)
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    )
     assert span.attributes[ServerAttributes.SERVER_ADDRESS] == "localhost"
     assert span.attributes[ServerAttributes.SERVER_PORT] == 4242
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "APIConnectionError"
@@ -359,7 +369,9 @@ def test_responses_create_api_error(
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == INVALID_MODEL
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == INVALID_MODEL
+    )
     assert (
         span.attributes[ErrorAttributes.ERROR_TYPE]
         == type(exc_info.value).__name__
@@ -415,7 +427,11 @@ def test_responses_create_streaming_aggregates_cache_tokens(
 
 @pytest.mark.vcr()
 def test_responses_create_streaming_captures_content(
-    request, span_exporter, log_exporter, openai_client, instrument_with_content
+    request,
+    span_exporter,
+    log_exporter,
+    openai_client,
+    instrument_with_content,
 ):
     _skip_if_not_latest()
 
@@ -448,7 +464,9 @@ def test_responses_create_streaming_iteration(
     assert len(events) > 0
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    )
     assert GenAIAttributes.GEN_AI_RESPONSE_ID in span.attributes
     assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
 
@@ -488,7 +506,9 @@ def test_responses_create_streaming_connection_error(
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    )
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "APIConnectionError"
 
 
@@ -559,13 +579,17 @@ def test_responses_create_stream_propagation_error(
         stream, "stream", ErrorInjectingStreamDelegate(stream.stream)
     )
 
-    with pytest.raises(ConnectionError, match="connection reset during stream"):
+    with pytest.raises(
+        ConnectionError, match="connection reset during stream"
+    ):
         with stream:
             for _ in stream:
                 pass
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    )
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "ConnectionError"
 
 
@@ -586,7 +610,9 @@ def test_responses_create_streaming_user_exception(
                 raise ValueError("User raised exception")
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    )
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "ValueError"
 
 
@@ -616,7 +642,9 @@ def test_responses_create_instrumentation_error_swallowed(
     assert len(events) > 0
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    )
     assert ErrorAttributes.ERROR_TYPE not in span.attributes
 
 
@@ -713,7 +741,11 @@ def test_responses_create_with_content_span_unsampled(
 
 @pytest.mark.vcr()
 def test_responses_create_with_content_shapes(
-    request, span_exporter, log_exporter, openai_client, instrument_with_content
+    request,
+    span_exporter,
+    log_exporter,
+    openai_client,
+    instrument_with_content,
 ):
     _skip_if_not_latest()
 
