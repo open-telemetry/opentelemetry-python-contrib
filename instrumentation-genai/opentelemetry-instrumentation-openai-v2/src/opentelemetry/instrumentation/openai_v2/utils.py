@@ -36,6 +36,9 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from opentelemetry.util.genai.types import (
     InputMessage,
     LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
@@ -43,10 +46,6 @@ from opentelemetry.util.genai.types import (
     Text,
     ToolCallRequest,
     ToolCallResponse,
-)
-
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
 
 
