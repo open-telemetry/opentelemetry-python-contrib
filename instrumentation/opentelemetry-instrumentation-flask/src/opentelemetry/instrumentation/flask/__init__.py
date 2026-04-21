@@ -310,12 +310,9 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
-# Use importlib.metadata rather than flask.__version__: the latter has been
-# deprecated in Flask 3.1 and emits a DeprecationWarning on import; it is
-# scheduled for removal in Flask 3.2.
 flask_version = version("flask")
 
-# Global constant for Flask 3.1+ streaming context cleanup.
+# Global constant for Flask 3.1+ streaming context cleanup
 _IS_FLASK_31_PLUS = package_version.parse(
     flask_version
 ) >= package_version.parse("3.1.0")

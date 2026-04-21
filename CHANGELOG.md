@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-flask`: Stop reading the deprecated `flask.__version__` attribute; resolve the Flask version via `importlib.metadata` only so import no longer emits a `DeprecationWarning` under Flask 3.1+
+- `opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1) `flask.__version__` attribute; resolve the Flask version via `importlib.metadata`
   ([#4422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4422))
 
 ### Breaking changes
