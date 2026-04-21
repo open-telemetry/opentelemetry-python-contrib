@@ -26,6 +26,9 @@ from .span_processor import (
     GenAISemanticProcessor,
     GenAIToolType,
 )
+from wrapt import wrap_function_wrapper
+
+from .listener import RealtimeTelemetryListener
 
 __all__ = [
     "OpenAIAgentsInstrumentor",
@@ -191,10 +194,50 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
         provider.set_processors([*existing, processor])
         self._processor = processor
 
+        async def _wrap_run(wrapped: Any, instance: Any, args: Any, kwargs: Any) -> Any:
+            session = await wrapped(*args, **kwargs)
+            logger.debug("Attaching realtime telemetry listener to session %s", session)
+            try:
+                listener = RealtimeTelemetryListener()
+                # TODO content capture, metric, events, etc flags
+                session.model.add_listener(listener)
+                if not hasattr(session, "_auto_telemetry_listeners"):
+                    session._auto_telemetry_listeners = []
+                session._auto_telemetry_listeners.append(listener)
+            except Exception:
+                logger.warning("Failed to auto-attach telemetry listener", exc_info=True)
+            return session
+
+        async def _wrap_aexit(wrapped: Any, instance: Any, args: Any, kwargs: Any) -> Any:
+            try:
+                for listener in getattr(instance, "_auto_telemetry_listeners", []):
+                    if hasattr(listener, "cleanup"):
+                        listener.cleanup()
+            except Exception:
+                logger.debug("Error during auto telemetry cleanup", exc_info=True)
+            return await wrapped(*args, **kwargs)
+
+        wrap_function_wrapper(
+            "agents.realtime.runner", "RealtimeRunner.run", _wrap_run
+        )
+        wrap_function_wrapper(
+            "agents.realtime.session", "RealtimeSession.__aexit__", _wrap_aexit
+        )
+        self._realtime_patched = True
+    
+
     def _uninstrument(self, **kwargs) -> None:
         if self._processor is None:
             return
 
+        if getattr(self, "_realtime_patched", False):
+            from agents.realtime import runner as runner_module 
+            from agents.realtime import session as session_module 
+            from opentelemetry.instrumentation.utils import unwrap 
+            unwrap(runner_module.RealtimeRunner, "run")
+            unwrap(session_module.RealtimeSession, "__aexit__")
+            self._realtime_patched = False
+        
         tracing = _load_tracing_module()
         provider = tracing.get_trace_provider()
         current = _get_registered_processors(provider)
