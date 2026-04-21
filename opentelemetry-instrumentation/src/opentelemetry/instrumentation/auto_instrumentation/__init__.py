@@ -28,6 +28,7 @@ from opentelemetry.instrumentation.auto_instrumentation._load import (
 )
 from opentelemetry.instrumentation.environment_variables import (
     OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH,
+    OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES,
 )
 from opentelemetry.instrumentation.utils import _python_path_without_directory
 from opentelemetry.instrumentation.version import __version__
@@ -129,8 +130,17 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
 
     :param swallow_exceptions: Whether or not to propagate instrumentation exceptions to the caller. Exceptions are logged and swallowed by default.
     """
+    instrument_subprocesses = (
+        environ.get(
+            OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES, ""
+        )
+        .strip()
+        .lower()
+        == "true"
+    )
+
     # prevents auto-instrumentation of subprocesses if code execs another python process
-    if "PYTHONPATH" in environ:
+    if "PYTHONPATH" in environ and not instrument_subprocesses:
         environ["PYTHONPATH"] = _python_path_without_directory(
             environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
         )

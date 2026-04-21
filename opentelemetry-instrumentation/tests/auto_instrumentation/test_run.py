@@ -20,6 +20,9 @@ from unittest.mock import patch
 
 from opentelemetry.environment_variables import OTEL_TRACES_EXPORTER
 from opentelemetry.instrumentation import auto_instrumentation
+from opentelemetry.instrumentation.environment_variables import (
+    OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES,
+)
 
 
 class TestRun(TestCase):
@@ -103,6 +106,7 @@ class TestExecl(TestCase):
 
 class TestArgs(TestCase):
     @patch("opentelemetry.instrumentation.auto_instrumentation.execl")
+    @patch.dict("os.environ", {}, clear=True)
     def test_exporter(self, _):  # pylint: disable=no-self-use
         with patch("sys.argv", ["instrument", "2"]):
             auto_instrumentation.run()
@@ -114,3 +118,24 @@ class TestArgs(TestCase):
         ):
             auto_instrumentation.run()
             self.assertEqual(environ.get(OTEL_TRACES_EXPORTER), "jaeger")
+
+    @patch("opentelemetry.instrumentation.auto_instrumentation.execl")
+    @patch.dict("os.environ", {}, clear=True)
+    def test_instrument_subprocesses_argument(self, _):
+        with patch(
+            "sys.argv",
+            [
+                "instrument",
+                "--auto_instrumentation_instrument_subprocesses",
+                "true",
+                "1",
+                "2",
+            ],
+        ):
+            auto_instrumentation.run()
+            self.assertEqual(
+                environ.get(
+                    OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES
+                ),
+                "true",
+            )

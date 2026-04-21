@@ -114,6 +114,14 @@ If set by the user to `patch_all` , opentelemetry instrument will call the geven
 This is considered experimental but can be useful to instrument gevent applications.
 e.g OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH=patch_all
 
+* ``OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES``
+
+By default, auto-instrumentation removes the auto-instrumentation ``sitecustomize.py`` directory
+from ``PYTHONPATH`` after initialization so child Python processes are not automatically instrumented.
+If set to ``true``, the directory remains on ``PYTHONPATH`` and subprocesses can
+be auto-instrumented.
+e.g OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES=true
+
 
 Examples
 ^^^^^^^^
