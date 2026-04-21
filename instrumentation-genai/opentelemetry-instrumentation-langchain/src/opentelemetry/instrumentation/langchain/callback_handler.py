@@ -81,6 +81,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             self._invocation_manager.add_invocation_state(
                 run_id,
                 parent_run_id,
+                None
             )
 
     def on_chain_end(
