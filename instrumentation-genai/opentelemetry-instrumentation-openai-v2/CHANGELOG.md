@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add strongly typed Responses API extractors with validation and content
   extraction improvements
   ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
+- Add instrumentation for OpenAI Responses API `create`
+  ([#4474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4474))
 
 ## Version 2.3b0 (2025-12-24)
 
