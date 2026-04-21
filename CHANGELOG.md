@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
+- `opentelemetry-instrumentation`: add ability to auto-instrument subprocesses with `OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES` environment variable
+  ([#4469](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4469))
 
 ### Fixed
 
