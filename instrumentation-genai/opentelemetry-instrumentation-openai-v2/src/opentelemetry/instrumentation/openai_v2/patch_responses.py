@@ -14,18 +14,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
-)
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import ContentCapturingMode, Error
 
-from .instruments import Instruments
 from .response_extractors import (
     _apply_request_attributes,
     _get_inference_creation_kwargs,

@@ -15,11 +15,7 @@
 """Shared test utilities for OpenAI instrumentation tests."""
 
 import json
-import os
-from pathlib import Path
 from typing import Any, Optional
-
-import pytest
 
 from opentelemetry.instrumentation.openai_v2.response_extractors import (
     GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,

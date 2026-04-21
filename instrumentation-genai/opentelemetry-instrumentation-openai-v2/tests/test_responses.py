@@ -45,6 +45,10 @@ from .test_utils import (
 )
 
 try:
+    # Responses is not available in the oldest supported OpenAI SDK, so keep
+    # this import guarded. Pylint runs against the oldest dependency set and
+    # cannot resolve this optional module there.
+    # pylint: disable-next=no-name-in-module
     from openai.resources.responses.responses import Responses as _Responses
 
     HAS_RESPONSES_API = True
@@ -329,7 +333,7 @@ def test_responses_create_connection_error(span_exporter, instrument_no_content)
     client = OpenAI(base_url="http://localhost:4242")
 
     with pytest.raises(APIConnectionError):
-        client.responses.create(
+        client.responses.create(  # pylint: disable=no-member
             model=DEFAULT_MODEL,
             input="Hello",
             timeout=0.1,
@@ -476,7 +480,7 @@ def test_responses_create_streaming_connection_error(
     client = OpenAI(base_url="http://localhost:4242")
 
     with pytest.raises(APIConnectionError):
-        client.responses.create(
+        client.responses.create(  # pylint: disable=no-member
             model=DEFAULT_MODEL,
             input="Hello",
             stream=True,

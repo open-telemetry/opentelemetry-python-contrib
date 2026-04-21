@@ -38,6 +38,8 @@ from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
 
+from .utils import get_server_address_and_port, value_is_set
+
 _PYDANTIC_V2 = hasattr(BaseModel, "model_validate")
 
 if _PYDANTIC_V2:
@@ -69,8 +71,6 @@ except ImportError:
     Reasoning = None
     Text = None
     ToolCall = None
-
-from .utils import get_server_address_and_port, value_is_set
 
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
