@@ -171,9 +171,9 @@ class OpenAIInstrumentor(BaseInstrumentor):
         # implementation to support legacy semconv mode.
         if responses_module is not None and latest_experimental_enabled:
             wrap_function_wrapper(
-                module="openai.resources.responses.responses",
-                name="Responses.create",
-                wrapper=responses_create(handler, content_mode),
+                "openai.resources.responses.responses",
+                "Responses.create",
+                responses_create(handler, content_mode),
             )
 
     def _uninstrument(self, **kwargs):

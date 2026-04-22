@@ -34,11 +34,8 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
-)
 
-from .utils import get_server_address_and_port, value_is_set
+from .utils import get_server_address_and_port
 
 _PYDANTIC_V2 = hasattr(BaseModel, "model_validate")
 
@@ -464,58 +461,6 @@ def _extract_request_service_tier(
         return None
 
     return service_tier
-
-
-def _get_request_attributes(
-    kwargs: Mapping[str, object],
-    client_instance: object,
-    latest_experimental_enabled: bool,
-) -> dict[str, object]:
-    request = _validate_request_kwargs(kwargs)
-    request_model = request.model if request is not None else None
-    attributes: dict[str, object] = {
-        GenAIAttributes.GEN_AI_OPERATION_NAME: (
-            GenAIAttributes.GenAiOperationNameValues.CHAT.value
-        ),
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_model,
-    }
-
-    if latest_experimental_enabled:
-        attributes[GenAIAttributes.GEN_AI_PROVIDER_NAME] = (
-            GenAIAttributes.GenAiProviderNameValues.OPENAI.value
-        )
-    else:
-        attributes[GenAIAttributes.GEN_AI_SYSTEM] = (
-            GenAIAttributes.GenAiSystemValues.OPENAI.value
-        )
-
-    output_type = _extract_output_type(kwargs)
-    if output_type is not None:
-        output_type_key = (
-            GenAIAttributes.GEN_AI_OUTPUT_TYPE
-            if latest_experimental_enabled
-            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-        )
-        attributes[output_type_key] = output_type
-
-    service_tier = _extract_request_service_tier(kwargs)
-    if service_tier is not None:
-        service_tier_key = (
-            OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER
-            if latest_experimental_enabled
-            else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
-        )
-        attributes[service_tier_key] = service_tier
-
-    address, port = get_server_address_and_port(client_instance)
-    if address is not None:
-        attributes[ServerAttributes.SERVER_ADDRESS] = address
-    if port is not None:
-        attributes[ServerAttributes.SERVER_PORT] = port
-
-    return {
-        key: value for key, value in attributes.items() if value_is_set(value)
-    }
 
 
 def _get_inference_creation_kwargs(
