@@ -17,7 +17,6 @@ Metrics (histograms):
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import time
 from typing import Any
@@ -27,10 +26,15 @@ from agents.realtime.model_events import RealtimeModelEvent
 from agents.realtime.openai_realtime import get_server_event_type_adapter
 from openai.types.realtime import (
     ConversationItemAdded,
+    ConversationItemInputAudioTranscriptionCompletedEvent,
+    ConversationItemInputAudioTranscriptionFailedEvent,
+    InputAudioBufferSpeechStartedEvent,
+    InputAudioBufferSpeechStoppedEvent,
     RealtimeConversationItemFunctionCallOutput,
     RealtimeErrorEvent,
     RealtimeResponseUsage,
     RealtimeSessionCreateRequest,
+    ResponseAudioTranscriptDoneEvent,
     ResponseCreatedEvent,
     ResponseDoneEvent,
     ResponseFunctionCallArgumentsDoneEvent,
@@ -95,8 +99,13 @@ class RealtimeEventType:
     FUNCTION_CALL = "response.function_call_arguments.done"
     CONVERSATION_ITEM_ADDED = "conversation.item.added"
     AUDIO_DELTA = "response.output_audio.delta"
-    TRANSCRIPT_DELTA = "response.audio_transcript.delta"
+    TRANSCRIPT_DELTA = "response.output_audio_transcript.delta"
+    TRANSCRIPT_DONE = "response.output_audio_transcript.done"
     TEXT_DELTA = "response.text.delta"
+    SPEECH_STARTED = "input_audio_buffer.speech_started"
+    SPEECH_STOPPED = "input_audio_buffer.speech_stopped"
+    INPUT_TRANSCRIPTION_COMPLETED = "conversation.item.input_audio_transcription.completed"
+    INPUT_TRANSCRIPTION_FAILED = "conversation.item.input_audio_transcription.failed"
     ERROR = "error"
 
 class SpanName:
@@ -105,6 +114,7 @@ class SpanName:
     SESSION_CREATED = "realtime_session"
     AGENT_RESPONSE = "agent.response"
     FUNCTION_CALL = "execute_tool"
+    USER_INPUT = "user.input"
 
 
 # ─── Metrics ─────────────────────────────────────────
@@ -140,6 +150,7 @@ class RealtimeTelemetryListener(RealtimeModelListener):
     def __init__(
         self,
         *,
+        capture_context: bool = False,
         server_address: str | None = None,
         server_port: int | None = None,
         provider_name: str | None = None,
@@ -150,6 +161,8 @@ class RealtimeTelemetryListener(RealtimeModelListener):
         self.agent_name: str | None = agent_name
         self.provider_name = provider_name or "openai"
         self._otel = TelemetryContext(root_span=get_current_span())
+        self.capture_context = capture_context
+
 
         self._model: str | None = None
         self._response_start_times: dict[str, float] = {}
@@ -172,8 +185,10 @@ class RealtimeTelemetryListener(RealtimeModelListener):
         match parsed.type:
             case RealtimeEventType.SESSION_CREATED:
                 self._handle_session_created(parsed)
-            case RealtimeEventType.SESSION_UPDATED:
-                self._handle_session_updated(parsed)
+            case RealtimeEventType.SPEECH_STARTED:
+                self._handle_speech_started(parsed)
+            case RealtimeEventType.SPEECH_STOPPED:
+                self._handle_speech_stopped(parsed)
             case RealtimeEventType.RESPONSE_CREATED:
                 self._handle_response_created(parsed)
             case RealtimeEventType.RESPONSE_DONE:
@@ -188,6 +203,12 @@ class RealtimeTelemetryListener(RealtimeModelListener):
                 | RealtimeEventType.TEXT_DELTA
             ):
                 self._maybe_record_ttft(parsed.response_id)
+            case RealtimeEventType.TRANSCRIPT_DONE:
+                self._handle_response_audio_transcript_done(parsed)
+            case RealtimeEventType.INPUT_TRANSCRIPTION_COMPLETED:
+                self._handle_input_audio_transcription_completed(parsed)
+            case RealtimeEventType.INPUT_TRANSCRIPTION_FAILED:
+                self._handle_input_audio_transcription_failed(parsed)
             case RealtimeEventType.ERROR:
                 self._handle_error(parsed)
             case _:
@@ -208,11 +229,6 @@ class RealtimeTelemetryListener(RealtimeModelListener):
         if session_id:
             self._otel.session_id = session_id
             span.set_attribute(GEN_AI_SESSION_ID, session_id)
-            if self._otel.root_span is not None:
-                with contextlib.suppress(Exception):
-                    self._otel.root_span.set_attribute(
-                        GEN_AI_SESSION_ID, session_id
-                    )
 
         span.set_attribute(GEN_AI_OPERATION_NAME, INVOKE_AGENT)
         span.set_attribute(GEN_AI_PROVIDER_NAME, self.provider_name)
@@ -228,16 +244,28 @@ class RealtimeTelemetryListener(RealtimeModelListener):
                 self._model = event.session.model
                 span.set_attribute(GEN_AI_REQUEST_MODEL, self._model)
 
-    def _handle_session_updated(self, event: SessionUpdatedEvent) -> None:
-        if (
-            isinstance(event.session, RealtimeSessionCreateRequest)
-            and event.session.model is not None
-        ):
-            self._model = event.session.model
-            span = self._otel.get_anchor_span("session")
-            if span:
-                span.set_attribute(GEN_AI_REQUEST_MODEL, self._model)
 
+    
+    def _handle_speech_started(
+        self, event: InputAudioBufferSpeechStartedEvent
+    ) -> None:
+        ctx = self._otel.get_span_context(key="session")
+        span = tracer.start_span(
+            SpanName.USER_INPUT, context=ctx, kind=SpanKind.INTERNAL
+        )
+        item_id = event.item_id
+        self._otel.start_anchor_span(item_id, span, context=ctx)
+
+
+        span.set_attribute(GEN_AI_OPERATION_NAME, SpanName.USER_INPUT)
+        span.set_attribute(GEN_AI_PROVIDER_NAME, self.provider_name)
+
+    def _handle_speech_stopped(
+        self, event: InputAudioBufferSpeechStoppedEvent
+    ) -> None:
+        self._otel.end_anchor_span(event.item_id)
+
+    
     def _handle_response_created(self, event: ResponseCreatedEvent) -> None:
         ctx = self._otel.get_span_context(key="session")
         span = tracer.start_span(
@@ -338,6 +366,40 @@ class RealtimeTelemetryListener(RealtimeModelListener):
     ) -> None:
         if isinstance(event.item, RealtimeConversationItemFunctionCallOutput):
             self._otel.end_anchor_span(event.item.call_id)
+
+    def _handle_response_audio_transcript_done(
+        self, event: ResponseAudioTranscriptDoneEvent
+    ) -> None:
+        if self.capture_context:
+            logger.info("Assistant: %s", event.transcript)
+
+    def _handle_input_audio_transcription_completed(
+        self,
+        event: ConversationItemInputAudioTranscriptionCompletedEvent,
+    ) -> None:
+        if self.capture_context:
+            logger.info("User: %s", event.transcript)
+
+    def _handle_input_audio_transcription_failed(
+        self,
+        event: ConversationItemInputAudioTranscriptionFailedEvent,
+    ) -> None:
+        error = event.error
+        logger.warning(
+            "Transcription failed for item %s: %s",
+            event.item_id,
+            error.message if error else _UNKNOWN,
+        )
+        span = self._otel.get_anchor_span(
+            event.item_id
+        ) or self._otel.get_anchor_span("session")
+        if span and error:
+            span.add_event(
+                "gen_ai.transcription.failed",
+                attributes={
+                    ERROR_TYPE: error.type or _UNKNOWN,
+                },
+            )
 
     def _handle_error(self, event: RealtimeErrorEvent) -> None:
         error = event.error
