@@ -39,7 +39,6 @@ from openai.types.realtime import (
     ResponseDoneEvent,
     ResponseFunctionCallArgumentsDoneEvent,
     SessionCreatedEvent,
-    SessionUpdatedEvent,
 )
 
 from opentelemetry import metrics, trace
@@ -85,7 +84,6 @@ GENERATE_CONTENT = GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.val
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
-meter = metrics.get_meter(__name__)
 
 _UNKNOWN = "unknown"
 
@@ -126,26 +124,6 @@ class MetricName:
     TIME_TO_FIRST_TOKEN = "gen_ai.server.time_to_first_token"
 
 
-
-_token_usage_histogram = meter.create_histogram(
-    MetricName.TOKEN_USAGE,
-    description="Number of input and output tokens used",
-    unit="{token}",
-)
-
-_operation_duration_histogram = meter.create_histogram(
-    MetricName.OPERATION_DURATION,
-    description="GenAI operation duration",
-    unit="s",
-)
-
-_time_to_first_token = meter.create_histogram(
-    MetricName.TIME_TO_FIRST_TOKEN,
-    description="Time to generate first token for successful responses",
-    unit="s",
-)
-
-
 class RealtimeTelemetryListener(RealtimeModelListener):
     def __init__(
         self,
@@ -163,11 +141,34 @@ class RealtimeTelemetryListener(RealtimeModelListener):
         self._otel = TelemetryContext(root_span=get_current_span())
         self.capture_context = capture_context
 
+        self._init_metrics()
 
         self._model: str | None = None
         self._response_start_times: dict[str, float] = {}
         self._first_token_recorded: set[str] = set()
 
+    def _init_metrics(self):
+        """Initialize metrics instruments."""
+        _meter = metrics.get_meter(
+            "opentelemetry.instrumentation.openai_agents",
+            "0.1.0",
+        )
+        self._token_usage_histogram = _meter.create_histogram(
+            MetricName.TOKEN_USAGE,
+            description="Number of input and output tokens used",
+            unit="{token}",
+        )
+        self._operation_duration_histogram = _meter.create_histogram(
+            MetricName.OPERATION_DURATION,
+            description="GenAI operation duration",
+            unit="s",
+        )
+        self._time_to_first_token = _meter.create_histogram(
+            MetricName.TIME_TO_FIRST_TOKEN,
+            description="Time to generate first token for successful responses",
+            unit="s",
+        )
+        
     def cleanup(self) -> None:
         """End all open spans."""
         self._otel.cleanup()
@@ -337,7 +338,7 @@ class RealtimeTelemetryListener(RealtimeModelListener):
                 attrs[GEN_AI_REQUEST_MODEL] = self._model
             if response.status and response.status in ("failed", "incomplete"):
                 attrs[ERROR_TYPE] = response.status
-            _operation_duration_histogram.record(duration, attrs)
+            self._operation_duration_histogram.record(duration, attrs)
 
         self._otel.end_anchor_span(response_id)
 
@@ -444,11 +445,11 @@ class RealtimeTelemetryListener(RealtimeModelListener):
             base_attrs[GEN_AI_RESPONSE_MODEL] = self._model
 
         if input_tokens is not None:
-            _token_usage_histogram.record(
+            self._token_usage_histogram.record(
                 input_tokens, {**base_attrs, GEN_AI_TOKEN_TYPE: "input"}
             )
         if output_tokens is not None:
-            _token_usage_histogram.record(
+            self._token_usage_histogram.record(
                 output_tokens, {**base_attrs, GEN_AI_TOKEN_TYPE: "output"}
             )
 
@@ -468,7 +469,7 @@ class RealtimeTelemetryListener(RealtimeModelListener):
         if self._model:
             attrs[GEN_AI_REQUEST_MODEL] = self._model
             attrs[GEN_AI_RESPONSE_MODEL] = self._model
-        _time_to_first_token.record(ttft, attrs)
+        self._time_to_first_token.record(ttft, attrs)
 
 
 # ─── Helper utilities ─────────────────────────────────────────────────
