@@ -80,6 +80,7 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 
 class _ExtractorModel(BaseModel):
     if _PYDANTIC_V2:
+        assert ConfigDict is not None
         model_config = ConfigDict(extra="ignore", from_attributes=True)
     else:
 
@@ -138,7 +139,8 @@ def _rebuild_model(model_type: type[BaseModel]) -> None:
     if _PYDANTIC_V2:
         model_type.model_rebuild(_types_namespace=globals())
     else:
-        model_type.update_forward_refs(**globals())
+        update_forward_refs = getattr(model_type, "update_forward_refs")
+        update_forward_refs(**globals())
 
 
 for _model_type in (
@@ -158,8 +160,10 @@ def _validate_model(
         if _PYDANTIC_V2:
             return model_type.model_validate(value)
         if isinstance(value, Mapping):
-            return model_type.parse_obj(value)
-        return model_type.from_orm(value)
+            parse_obj = getattr(model_type, "parse_obj")
+            return parse_obj(value)
+        from_orm = getattr(model_type, "from_orm")
+        return from_orm(value)
     except ValidationError:
         _logger.debug(
             "Anthropic messages extractor validation failed for %s",
@@ -178,7 +182,7 @@ def _validate_message_result(result: object) -> _MessageResultModel | None:
 
 
 def extract_usage_tokens(
-    usage: Usage | MessageDeltaUsage | None,
+    usage: Usage | MessageDeltaUsage | _UsageModel | None,
 ) -> UsageTokens:
     if usage is None:
         return UsageTokens()
