@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - `opentelemetry-instrumentation-dbapi`: Add Database client operation duration and returned rows metrics
+  ([#4481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4481))
 
 ### Fixed
 

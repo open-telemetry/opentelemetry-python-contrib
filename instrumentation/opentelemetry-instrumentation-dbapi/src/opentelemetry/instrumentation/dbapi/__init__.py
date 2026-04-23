@@ -289,6 +289,7 @@ def trace_integration(
     )
 
 
+# pylint: disable-next=too-many-positional-arguments
 def wrap_connect(
     name: str,
     connect_module: Callable[..., Any],
@@ -373,6 +374,7 @@ def unwrap_connect(
     unwrap(connect_module, connect_method_name)
 
 
+# pylint: disable-next=too-many-positional-arguments
 def instrument_connection(
     name: str,
     connection: ConnectionT | TracedConnectionProxy[ConnectionT],

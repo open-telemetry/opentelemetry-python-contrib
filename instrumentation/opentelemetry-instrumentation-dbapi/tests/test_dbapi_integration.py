@@ -430,7 +430,7 @@ class TestDBApiIntegration(TestBase):
         cursor_tracer = dbapi.CursorTracer(db_integration)
         mock_cursor = MockCursor()
 
-        async def async_execute(query, rowcount=-1):
+        async def async_execute(_query, rowcount=-1):
             mock_cursor.rowcount = rowcount
             return None
 
