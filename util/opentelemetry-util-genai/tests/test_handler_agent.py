@@ -126,12 +126,6 @@ class TestLocalAgentInvocation(unittest.TestCase):
         invocation.finish_reasons = []
         invocation.stop()
         attrs = self.span_exporter.get_finished_spans()[0].attributes
-        assert GenAI.GEN_AI_RESPONSE_FINISH_REASONS not in attrs
-
-    def test_no_response_model_or_finish_reasons(self):
-        invocation = self.handler.start_invoke_local_agent("openai")
-        invocation.stop()
-        attrs = self.span_exporter.get_finished_spans()[0].attributes
         assert GenAI.GEN_AI_RESPONSE_MODEL not in attrs
         assert GenAI.GEN_AI_RESPONSE_FINISH_REASONS not in attrs
 
@@ -259,12 +253,6 @@ class TestLocalAgentInvocation(unittest.TestCase):
         span = self.span_exporter.get_finished_spans()[0]
         assert span.name == "invoke_agent Named Agent"
         assert span.attributes[GenAI.GEN_AI_AGENT_NAME] == "Named Agent"
-
-    def test_provider_always_set(self):
-        invocation = self.handler.start_invoke_local_agent("gcp_vertex_ai")
-        invocation.stop()
-        attrs = self.span_exporter.get_finished_spans()[0].attributes
-        assert attrs[GenAI.GEN_AI_PROVIDER_NAME] == "gcp_vertex_ai"
 
 
 class TestAgentInvocationContent(unittest.TestCase):

@@ -40,16 +40,11 @@ from opentelemetry.util.genai.utils import (
     should_emit_event,
 )
 
-_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS: str = getattr(
-    GenAI,
-    "GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS",
-    "gen_ai.usage.cache_creation.input_tokens",
+# TODO: Migrate to GenAI constants once available in semconv package
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
 )
-_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS: str = getattr(
-    GenAI,
-    "GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS",
-    "gen_ai.usage.cache_read.input_tokens",
-)
+_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 class InferenceInvocation(GenAIInvocation):
