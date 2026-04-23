@@ -177,8 +177,12 @@ from wrapt import wrap_function_wrapper
 
 try:
     # wrapt 2.0.0+
-    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+    from wrapt import (  # pylint: disable=no-name-in-module
+        BaseObjectProxy,
+        ObjectProxy,
+    )
 except ImportError:
+    from wrapt import ObjectProxy
     from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
@@ -835,14 +839,14 @@ class CursorTracer(Generic[CursorT]):
 
 
 # pylint: disable=abstract-method,no-member
-class TracedCursorProxy(BaseObjectProxy, Generic[CursorT]):
+class TracedCursorProxy(ObjectProxy, Generic[CursorT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
     ):
-        BaseObjectProxy.__init__(self, cursor)
+        ObjectProxy.__init__(self, cursor)
         self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):

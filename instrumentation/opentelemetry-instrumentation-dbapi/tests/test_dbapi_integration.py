@@ -494,6 +494,20 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
 
+    # pylint: disable=no-self-use
+    def test_executemany_iterable_cursor(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Test query")
+
+        for _row in cursor:
+            pass
+
     def test_executemany_comment(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
@@ -1484,12 +1498,16 @@ class MockCursor:
         self._cnx._cmysql.get_client_info = mock.MagicMock(
             return_value="1.2.3"
         )
+        self._items = []
 
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
             # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
+
+    def __iter__(self):
+        yield from self._items
 
     # pylint: disable=unused-argument, no-self-use
     def executemany(self, query, params=None, throw_exception=False):
