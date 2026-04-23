@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
 - `opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1) `flask.__version__` attribute; resolve the Flask version via `importlib.metadata`
   ([#4422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4422))
+- `opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints
+  ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
+- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
+  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
 
 ### Breaking changes
 
@@ -53,8 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints
-  ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
  ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
 - `opentelemetry-instrumentation-confluent-kafka`: Skip `recv` span creation when `poll()` returns no message or `consume()` returns an empty list, avoiding empty spans on idle polls
@@ -69,8 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
   ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
-- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name.
-  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
 - `opentelemetry-instrumentation-aiokafka`: fix `Unclosed AIOKafkaProducer` warning and `RuntimeWarning: coroutine was never awaited` in tests
   ([#4384](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4384))
 - `opentelemetry-instrumentation-aiokafka`: Fix compatibility with aiokafka 0.13 by calling
