@@ -86,6 +86,7 @@ class TestLocalAgentInvocation(unittest.TestCase):
         invocation.stop_sequences = ["END", "STOP"]
         invocation.seed = 42
         invocation.choice_count = 3
+        invocation.finish_reasons = ["stop"]
         invocation.input_tokens = 100
         invocation.output_tokens = 200
         invocation.stop()
@@ -108,6 +109,24 @@ class TestLocalAgentInvocation(unittest.TestCase):
         assert attrs[GenAI.GEN_AI_REQUEST_STOP_SEQUENCES] == ("END", "STOP")
         assert attrs[GenAI.GEN_AI_REQUEST_SEED] == 42
         assert attrs[GenAI.GEN_AI_REQUEST_CHOICE_COUNT] == 3
+        assert attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == ("stop",)
+
+    def test_finish_reasons_multiple(self):
+        invocation = self.handler.start_invoke_local_agent("openai")
+        invocation.finish_reasons = ["stop", "length"]
+        invocation.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert attrs[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == (
+            "stop",
+            "length",
+        )
+
+    def test_finish_reasons_empty_list_omitted(self):
+        invocation = self.handler.start_invoke_local_agent("openai")
+        invocation.finish_reasons = []
+        invocation.stop()
+        attrs = self.span_exporter.get_finished_spans()[0].attributes
+        assert GenAI.GEN_AI_RESPONSE_FINISH_REASONS not in attrs
 
     def test_no_response_model_or_finish_reasons(self):
         invocation = self.handler.start_invoke_local_agent("openai")

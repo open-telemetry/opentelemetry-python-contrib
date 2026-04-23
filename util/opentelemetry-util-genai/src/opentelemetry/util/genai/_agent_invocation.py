@@ -35,16 +35,11 @@ from opentelemetry.util.genai.types import (
     ToolDefinition,
 )
 
-_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS: str = getattr(
-    GenAI,
-    "GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS",
-    "gen_ai.usage.cache_creation.input_tokens",
+_GEN_AI_AGENT_VERSION = "gen_ai.agent.version"
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
 )
-_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS: str = getattr(
-    GenAI,
-    "GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS",
-    "gen_ai.usage.cache_read.input_tokens",
-)
+_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 class AgentInvocation(GenAIInvocation):
@@ -108,6 +103,8 @@ class AgentInvocation(GenAIInvocation):
         self.seed: int | None = None
         self.choice_count: int | None = None
 
+        self.finish_reasons: list[str] | None = None
+
         self.input_tokens: int | None = None
         self.output_tokens: int | None = None
         self.cache_creation_input_tokens: int | None = None
@@ -128,7 +125,7 @@ class AgentInvocation(GenAIInvocation):
             (GenAI.GEN_AI_AGENT_NAME, self.agent_name),
             (GenAI.GEN_AI_AGENT_ID, self.agent_id),
             (GenAI.GEN_AI_AGENT_DESCRIPTION, self.agent_description),
-            (GenAI.GEN_AI_AGENT_VERSION, self.agent_version),
+            (_GEN_AI_AGENT_VERSION, self.agent_version),
         )
         return {
             GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
@@ -151,6 +148,11 @@ class AgentInvocation(GenAIInvocation):
             (GenAI.GEN_AI_REQUEST_CHOICE_COUNT, self.choice_count),
         )
         return {k: v for k, v in optional_attrs if v is not None}
+
+    def _get_response_attributes(self) -> dict[str, Any]:
+        if self.finish_reasons:
+            return {GenAI.GEN_AI_RESPONSE_FINISH_REASONS: self.finish_reasons}
+        return {}
 
     def _get_usage_attributes(self) -> dict[str, Any]:
         optional_attrs = (
@@ -211,6 +213,7 @@ class AgentInvocation(GenAIInvocation):
         attributes: dict[str, Any] = {}
         attributes.update(self._get_common_attributes())
         attributes.update(self._get_request_attributes())
+        attributes.update(self._get_response_attributes())
         attributes.update(self._get_usage_attributes())
         attributes.update(self._get_content_attributes_for_span())
         attributes.update(self.attributes)
