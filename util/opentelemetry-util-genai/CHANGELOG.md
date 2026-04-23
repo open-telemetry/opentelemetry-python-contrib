@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Add `AgentInvocation` type with `invoke_agent` span lifecycle via `start_invoke_local_agent` / `start_invoke_remote_agent` factory methods and `invoke_local_agent` / `invoke_remote_agent` context managers; add `finish_reasons` field to `AgentInvocation` per semconv `gen_ai.response.finish_reasons` (Recommended); add shared `_content.py` helper to deduplicate message serialization between `AgentInvocation` and `InferenceInvocation`; add `tool_definitions`, `cache_creation_input_tokens`, and `cache_read_input_tokens` to `InferenceInvocation`; add `getattr` fallback for `GEN_AI_AGENT_VERSION` semconv constant
+- Add `AgentInvocation` type with `invoke_agent` span lifecycle
   ([#4274](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4274))
 - Add metrics support for EmbeddingInvocation
   ([#4377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4377))
