@@ -55,23 +55,6 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     )  # type: ignore[assignment]
 
 from opentelemetry.context import attach, detach
-from opentelemetry.metrics import Histogram, get_meter
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
-)
-from opentelemetry.trace import Span as OtelSpan
-from opentelemetry.trace import (
-    SpanKind,
-    Status,
-    StatusCode,
-    Tracer,
-    set_span_in_context,
-)
-from opentelemetry.util.types import AttributeValue
-
 from opentelemetry.instrumentation.openai_agents._constants import (
     GEN_AI_AGENT_DESCRIPTION,
     GEN_AI_AGENT_ID,
@@ -113,15 +96,29 @@ from opentelemetry.instrumentation.openai_agents._constants import (
     GEN_AI_TOOL_DESCRIPTION,
     GEN_AI_TOOL_NAME,
     GEN_AI_TOOL_TYPE,
-    GEN_AI_USAGE_COMPLETION_TOKENS,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
-    GEN_AI_USAGE_PROMPT_TOKENS,
     METER_NAME,
     METER_VERSION,
     OPERATION_DURATION_METRIC,
     TOKEN_USAGE_METRIC,
 )
+from opentelemetry.metrics import Histogram, get_meter
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    server_attributes as ServerAttributes,
+)
+from opentelemetry.trace import Span as OtelSpan
+from opentelemetry.trace import (
+    SpanKind,
+    Status,
+    StatusCode,
+    Tracer,
+    set_span_in_context,
+)
+from opentelemetry.util.types import AttributeValue
 
 # ---- GenAI semantic convention helpers ----
 

@@ -39,9 +39,6 @@ from openai.types.realtime import (
 
 from opentelemetry import metrics, trace
 from opentelemetry.context import Context
-from opentelemetry.trace import Span, SpanKind, StatusCode, get_current_span
-from opentelemetry.trace.propagation import set_span_in_context
-
 from opentelemetry.instrumentation.openai_agents._constants import (
     ERROR_TYPE,
     EXECUTE_TOOL,
@@ -70,6 +67,8 @@ from opentelemetry.instrumentation.openai_agents._constants import (
     TIME_TO_FIRST_TOKEN_METRIC,
     TOKEN_USAGE_METRIC,
 )
+from opentelemetry.trace import Span, SpanKind, StatusCode, get_current_span
+from opentelemetry.trace.propagation import set_span_in_context
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -145,7 +144,7 @@ class RealtimeTelemetryHandler:
             description="Time to generate first token for successful responses",
             unit="s",
         )
-        
+
     def _context_for(self, *keys: str) -> Context:
         """Return context for the first matching span, falling back to session then root."""
         for key in keys:
@@ -178,15 +177,15 @@ class RealtimeTelemetryHandler:
     # ------------------------------------------------------------------
     # Event dispatch
     # ------------------------------------------------------------------
-    
-    async def handle_event(self, event: RealtimeModelEvent) -> Context | None:
+
+    async def handle_event(self, event: RealtimeModelEvent) -> Context:
         if event.type != "raw_server_event":
             match event.type:
                 case "function_call":
                     return self._context_for(event.call_id)
                 case _:
                     return self._context_for()
-  
+
         else:
             parsed = get_server_event_type_adapter().validate_python(event.data)
 
@@ -223,12 +222,12 @@ class RealtimeTelemetryHandler:
     # ------------------------------------------------------------------
 
     def _handle_session_created(self, event: SessionCreatedEvent) -> Context:
-        session_id = getattr(event.session, "id", None)
         span = tracer.start_span(
             SpanName.SESSION_CREATED, context=self._root_context, kind=SpanKind.INTERNAL
         )
         self._spans["session"] = span
 
+        session_id = getattr(event.session, "id", None)
         if session_id:
             self._session_id = session_id
             span.set_attribute(GEN_AI_SESSION_ID, session_id)
@@ -248,7 +247,7 @@ class RealtimeTelemetryHandler:
                 span.set_attribute(GEN_AI_REQUEST_MODEL, self._model)
         return set_span_in_context(span)
 
-    
+
     def _handle_speech_started(
         self, event: InputAudioBufferSpeechStartedEvent
     ) -> Context:
@@ -268,7 +267,7 @@ class RealtimeTelemetryHandler:
     ) -> Context:
         return self._end_span(event.item_id)
 
-    
+
     def _handle_response_created(self, event: ResponseCreatedEvent) -> Context:
         ctx = self._context_for()
         span = tracer.start_span(
@@ -287,11 +286,10 @@ class RealtimeTelemetryHandler:
         self._response_start_times[response_id] = time.monotonic()
         return set_span_in_context(span)
 
-    def _handle_response_done(self, event: ResponseDoneEvent) -> Context | None:
+    def _handle_response_done(self, event: ResponseDoneEvent) -> Context:
         response = event.response
         response_id = response.id or _UNKNOWN
         span = self._spans.pop(response_id, None)
-        ctx = set_span_in_context(span) if span else None
 
         if span:
             if response.status:
@@ -347,11 +345,11 @@ class RealtimeTelemetryHandler:
 
         if span is not None and span.is_recording():
             span.end()
-        return ctx
+        return self._context_for(response_id)
 
     def _handle_function_call_arguments_done(
         self, event: ResponseFunctionCallArgumentsDoneEvent
-    ) -> Context | None:
+    ) -> Context:
         ctx = self._context_for(event.response_id)
         function_name = event.name
         call_id = event.call_id

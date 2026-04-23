@@ -5,16 +5,15 @@ attribute keys, and operation name values so that ``span_processor`` and
 ``handler`` stay in sync without duplicating strings.
 """
 
-from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
-)
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
-
+from opentelemetry.semconv.attributes import (
+    error_attributes as ErrorAttributes,
+)
 
 METER_NAME = "opentelemetry.instrumentation.openai_agents"
 METER_VERSION = "0.1.0"
