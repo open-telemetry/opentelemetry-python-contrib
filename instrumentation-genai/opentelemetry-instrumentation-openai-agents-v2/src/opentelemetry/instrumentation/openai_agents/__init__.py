@@ -230,7 +230,7 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
                 if handler is not None:
                     event = args[0] if args else kwargs.get("event")
                     if event is not None:
-                        ctx = await handler.handle_event(event)
+                        ctx = handler.handle_event(event)
                         if ctx is not None:
                             token = context_api.attach(ctx)
                             try:

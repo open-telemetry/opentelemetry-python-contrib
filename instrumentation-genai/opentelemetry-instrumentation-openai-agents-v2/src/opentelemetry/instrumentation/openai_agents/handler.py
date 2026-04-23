@@ -145,40 +145,29 @@ class RealtimeTelemetryHandler:
             unit="s",
         )
 
-    def _context_for(self, *keys: str) -> Context:
+    def _context_for(self, key: str | None = None) -> Context:
         """Return context for the first matching span, falling back to session then root."""
-        for key in keys:
+        if key is not None:
             if span := self._spans.get(key):
                 return set_span_in_context(span)
         if session := self._spans.get("session"):
             return set_span_in_context(session)
         return self._root_context
 
-    def _end_span(self, key: str) -> Context:
-        """Pop a span by key, end it, and return its context (or fallback)."""
+    def _end_span(self, key: str) -> None:
         span = self._spans.pop(key, None)
         if span is not None:
-            ctx = set_span_in_context(span)
-            if span.is_recording():
-                span.end()
-            return ctx
-        return self._context_for()
-
-    def cleanup(self) -> None:
-        """End all open spans."""
-        for span in self._spans.values():
             try:
                 if span.is_recording():
                     span.end()
             except Exception:
-                logger.debug("Failed to end span during cleanup")
-        self._spans.clear()
+                logger.debug("Failed to end span for key %s", key)
 
-    # ------------------------------------------------------------------
-    # Event dispatch
-    # ------------------------------------------------------------------
+    def cleanup(self) -> None:
+        for key in list(self._spans):
+            self._end_span(key)
 
-    async def handle_event(self, event: RealtimeModelEvent) -> Context:
+    def handle_event(self, event: RealtimeModelEvent) -> Context:
         if event.type != "raw_server_event":
             match event.type:
                 case "function_call":
@@ -186,40 +175,39 @@ class RealtimeTelemetryHandler:
                 case _:
                     return self._context_for()
 
-        else:
+        try:
             parsed = get_server_event_type_adapter().validate_python(event.data)
+        except Exception:
+            logger.debug("Failed to parse realtime server event", exc_info=True)
+            return self._context_for()
 
-            match parsed.type:
-                case RealtimeEventType.SESSION_CREATED:
-                    return self._handle_session_created(parsed)
-                case RealtimeEventType.SPEECH_STARTED:
-                    return self._handle_speech_started(parsed)
-                case RealtimeEventType.RESPONSE_CREATED:
-                    return self._handle_response_created(parsed)
-                case RealtimeEventType.SPEECH_STOPPED:
-                    return self._handle_speech_stopped(parsed)
-                case RealtimeEventType.RESPONSE_DONE:
-                    return self._handle_response_done(parsed)
-                case RealtimeEventType.FUNCTION_CALL:
-                    return self._handle_function_call_arguments_done(parsed)
-                case RealtimeEventType.CONVERSATION_ITEM_ADDED:
-                    return self._handle_conversation_item_added(parsed)
-                case (
-                    RealtimeEventType.AUDIO_DELTA
-                    | RealtimeEventType.TRANSCRIPT_DELTA
-                    | RealtimeEventType.TEXT_DELTA
-                ):
-                    self._maybe_record_ttft(parsed.response_id)
-                    return self._context_for()
+        match parsed.type:
+            case RealtimeEventType.SESSION_CREATED:
+                return self._handle_session_created(parsed)
+            case RealtimeEventType.SPEECH_STARTED:
+                return self._handle_speech_started(parsed)
+            case RealtimeEventType.RESPONSE_CREATED:
+                return self._handle_response_created(parsed)
+            case RealtimeEventType.SPEECH_STOPPED:
+                return self._handle_speech_stopped(parsed)
+            case RealtimeEventType.RESPONSE_DONE:
+                return self._handle_response_done(parsed)
+            case RealtimeEventType.FUNCTION_CALL:
+                return self._handle_function_call_arguments_done(parsed)
+            case RealtimeEventType.CONVERSATION_ITEM_ADDED:
+                return self._handle_conversation_item_added(parsed)
+            case (
+                RealtimeEventType.AUDIO_DELTA
+                | RealtimeEventType.TRANSCRIPT_DELTA
+                | RealtimeEventType.TEXT_DELTA
+            ):
+                self._maybe_record_ttft(parsed.response_id)
+                return self._context_for()
 
-                case RealtimeEventType.ERROR:
-                    return self._handle_error(parsed)
-                case _:
-                    return self._context_for()
-
-    # ------------------------------------------------------------------
-    # Event handlers
-    # ------------------------------------------------------------------
+            case RealtimeEventType.ERROR:
+                return self._handle_error(parsed)
+            case _:
+                return self._context_for()
 
     def _handle_session_created(self, event: SessionCreatedEvent) -> Context:
         span = tracer.start_span(
@@ -234,11 +222,11 @@ class RealtimeTelemetryHandler:
 
         span.set_attribute(GEN_AI_OPERATION_NAME, INVOKE_AGENT)
         span.set_attribute(GEN_AI_PROVIDER_NAME, self.provider_name)
-        if self._server_address:
+        if self._server_address is not None:
             span.set_attribute(SERVER_ADDRESS, self._server_address)
         if self._server_port is not None:
             span.set_attribute(SERVER_PORT, self._server_port)
-        if self.agent_name:
+        if self.agent_name is not None:
             span.set_attribute(GEN_AI_AGENT_NAME, self.agent_name)
 
         if isinstance(event.session, RealtimeSessionCreateRequest):
@@ -265,7 +253,8 @@ class RealtimeTelemetryHandler:
     def _handle_speech_stopped(
         self, event: InputAudioBufferSpeechStoppedEvent
     ) -> Context:
-        return self._end_span(event.item_id)
+        self._end_span(event.item_id)
+        return self._context_for()
 
 
     def _handle_response_created(self, event: ResponseCreatedEvent) -> Context:
@@ -289,11 +278,11 @@ class RealtimeTelemetryHandler:
     def _handle_response_done(self, event: ResponseDoneEvent) -> Context:
         response = event.response
         response_id = response.id or _UNKNOWN
-        span = self._spans.pop(response_id, None)
-
+        span = self._spans.get(response_id)
+        
         if span:
             if response.status:
-                span.set_attribute(GEN_AI_RESPONSE_STATUS, response.status) #TODO use GEN_AI_RESPONSE_FINISH_REASONS instead?!
+                span.set_attribute(GEN_AI_RESPONSE_STATUS, response.status)
             if self._model:
                 span.set_attribute(GEN_AI_RESPONSE_MODEL, self._model)
 
@@ -343,9 +332,8 @@ class RealtimeTelemetryHandler:
             self._operation_duration_histogram.record(duration, attrs)
 
 
-        if span is not None and span.is_recording():
-            span.end()
-        return self._context_for(response_id)
+        self._end_span(response_id)
+        return self._context_for()
 
     def _handle_function_call_arguments_done(
         self, event: ResponseFunctionCallArgumentsDoneEvent
@@ -372,27 +360,27 @@ class RealtimeTelemetryHandler:
         self, event: ConversationItemAdded
     ) -> Context:
         if isinstance(event.item, RealtimeConversationItemFunctionCallOutput):
-            return self._end_span(event.item.call_id)
+            self._end_span(event.item.call_id)
         return self._context_for()
 
 
     def _handle_error(self, event: RealtimeErrorEvent) -> Context:
         error = event.error
         logger.error(
-            "Realtime API error: [%s] %s (code=%s)",
+            "Realtime API error: [%s] %s (code=%s, event_id=%s)",
             error.type,
             error.message,
             error.code,
+            error.event_id,
         )
         span = self._spans.get("session")
         if span:
             span.set_status(StatusCode.ERROR, error.message)
             span.set_attribute(ERROR_TYPE, error.type or _UNKNOWN)
+            if error.event_id is not None:
+                span.set_attribute("gen_ai.error.event_id", error.event_id)
         return self._context_for()
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
 
     def _record_token_usage_metric(self, usage: RealtimeResponseUsage) -> None:
         input_tokens = usage.input_tokens
@@ -411,7 +399,7 @@ class RealtimeTelemetryHandler:
             GEN_AI_OPERATION_NAME: GENERATE_CONTENT,
             GEN_AI_PROVIDER_NAME: self.provider_name,
         }
-        if self._server_address:
+        if self._server_address is not None:
             base_attrs[SERVER_ADDRESS] = self._server_address
         if self._server_port is not None:
             base_attrs[SERVER_PORT] = self._server_port
@@ -446,8 +434,6 @@ class RealtimeTelemetryHandler:
             attrs[GEN_AI_RESPONSE_MODEL] = self._model
         self._time_to_first_token.record(ttft, attrs)
 
-
-# ─── Helper utilities ─────────────────────────────────────────────────
 
 
 def _extract_token_attributes(usage: RealtimeResponseUsage) -> dict[str, Any]:
