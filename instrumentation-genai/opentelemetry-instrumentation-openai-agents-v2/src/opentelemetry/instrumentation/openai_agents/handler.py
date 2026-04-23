@@ -25,15 +25,12 @@ from agents.realtime.model_events import RealtimeModelEvent
 from agents.realtime.openai_realtime import get_server_event_type_adapter
 from openai.types.realtime import (
     ConversationItemAdded,
-    ConversationItemInputAudioTranscriptionCompletedEvent,
-    ConversationItemInputAudioTranscriptionFailedEvent,
     InputAudioBufferSpeechStartedEvent,
     InputAudioBufferSpeechStoppedEvent,
     RealtimeConversationItemFunctionCallOutput,
     RealtimeErrorEvent,
     RealtimeResponseUsage,
     RealtimeSessionCreateRequest,
-    ResponseAudioTranscriptDoneEvent,
     ResponseCreatedEvent,
     ResponseDoneEvent,
     ResponseFunctionCallArgumentsDoneEvent,
@@ -41,44 +38,38 @@ from openai.types.realtime import (
 )
 
 from opentelemetry import metrics, trace
-from opentelemetry.semconv._incubating.attributes import (
-    gen_ai_attributes as GenAIAttributes,
-)
-from opentelemetry.semconv._incubating.attributes import (
-    server_attributes as ServerAttributes,
-)
+from opentelemetry.context import Context
 from opentelemetry.trace import Span, SpanKind, StatusCode, get_current_span
 from opentelemetry.trace.propagation import set_span_in_context
-from opentelemetry.context import Context
 
-
-GEN_AI_OPERATION_NAME = GenAIAttributes.GEN_AI_OPERATION_NAME
-GEN_AI_PROVIDER_NAME = GenAIAttributes.GEN_AI_PROVIDER_NAME
-GEN_AI_REQUEST_MODEL = GenAIAttributes.GEN_AI_REQUEST_MODEL
-GEN_AI_RESPONSE_ID = GenAIAttributes.GEN_AI_RESPONSE_ID
-GEN_AI_RESPONSE_MODEL = GenAIAttributes.GEN_AI_RESPONSE_MODEL
-GEN_AI_RESPONSE_FINISH_REASONS = GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS
-GEN_AI_USAGE_INPUT_TOKENS = GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
-GEN_AI_USAGE_OUTPUT_TOKENS = GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS
-GEN_AI_AGENT_NAME = GenAIAttributes.GEN_AI_AGENT_NAME
-GEN_AI_TOOL_NAME = GenAIAttributes.GEN_AI_TOOL_NAME
-GEN_AI_TOOL_TYPE = GenAIAttributes.GEN_AI_TOOL_TYPE
-GEN_AI_TOOL_CALL_ID = GenAIAttributes.GEN_AI_TOOL_CALL_ID
-GEN_AI_TOKEN_TYPE = GenAIAttributes.GEN_AI_TOKEN_TYPE
-
-GEN_AI_SESSION_ID = "gen_ai.session.id"
-GEN_AI_RESPONSE_STATUS = "gen_ai.response.status"
-GEN_AI_USAGE_TOTAL_TOKENS = "gen_ai.usage.total_tokens"
-ERROR_TYPE = "error.type"
-
-SERVER_ADDRESS = ServerAttributes.SERVER_ADDRESS
-SERVER_PORT = ServerAttributes.SERVER_PORT
-
-# ---- Operation name values ----
-
-INVOKE_AGENT = GenAIAttributes.GenAiOperationNameValues.INVOKE_AGENT.value
-EXECUTE_TOOL = GenAIAttributes.GenAiOperationNameValues.EXECUTE_TOOL.value
-GENERATE_CONTENT = GenAIAttributes.GenAiOperationNameValues.GENERATE_CONTENT.value
+from opentelemetry.instrumentation.openai_agents._constants import (
+    ERROR_TYPE,
+    EXECUTE_TOOL,
+    GEN_AI_AGENT_NAME,
+    GEN_AI_OPERATION_NAME,
+    GEN_AI_PROVIDER_NAME,
+    GEN_AI_REQUEST_MODEL,
+    GEN_AI_RESPONSE_FINISH_REASONS,
+    GEN_AI_RESPONSE_ID,
+    GEN_AI_RESPONSE_MODEL,
+    GEN_AI_RESPONSE_STATUS,
+    GEN_AI_SESSION_ID,
+    GEN_AI_TOKEN_TYPE,
+    GEN_AI_TOOL_CALL_ID,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
+    GEN_AI_USAGE_INPUT_TOKENS,
+    GEN_AI_USAGE_OUTPUT_TOKENS,
+    GENERATE_CONTENT,
+    INVOKE_AGENT,
+    METER_NAME,
+    METER_VERSION,
+    OPERATION_DURATION_METRIC,
+    SERVER_ADDRESS,
+    SERVER_PORT,
+    TIME_TO_FIRST_TOKEN_METRIC,
+    TOKEN_USAGE_METRIC,
+)
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -113,15 +104,6 @@ class SpanName:
     USER_INPUT = "user.input"
 
 
-# ─── Metrics ─────────────────────────────────────────
-class MetricName:
-    """Semantic convention metric instrument names."""
-
-    TOKEN_USAGE = "gen_ai.client.token.usage"
-    OPERATION_DURATION = "gen_ai.client.operation.duration"
-    TIME_TO_FIRST_TOKEN = "gen_ai.server.time_to_first_token"
-
-
 class RealtimeTelemetryHandler:
     def __init__(
         self,
@@ -145,24 +127,21 @@ class RealtimeTelemetryHandler:
         self._response_start_times: dict[str, float] = {}
         self._first_token_recorded: set[str] = set()
 
-    def _init_metrics(self): # TODO make this module level pass in meter name and version has constants
+    def _init_metrics(self): # TODO make this module level pass in meter name and version has constants to avoid initialization on every handler instance creation
         """Initialize metrics instruments."""
-        _meter = metrics.get_meter(
-            "opentelemetry.instrumentation.openai_agents",
-            "0.1.0",
-        )
+        _meter = metrics.get_meter(METER_NAME, METER_VERSION)
         self._token_usage_histogram = _meter.create_histogram(
-            MetricName.TOKEN_USAGE,
+            TOKEN_USAGE_METRIC,
             description="Number of input and output tokens used",
             unit="{token}",
         )
         self._operation_duration_histogram = _meter.create_histogram(
-            MetricName.OPERATION_DURATION,
+            OPERATION_DURATION_METRIC,
             description="GenAI operation duration",
             unit="s",
         )
         self._time_to_first_token = _meter.create_histogram(
-            MetricName.TIME_TO_FIRST_TOKEN,
+            TIME_TO_FIRST_TOKEN_METRIC,
             description="Time to generate first token for successful responses",
             unit="s",
         )
@@ -199,7 +178,6 @@ class RealtimeTelemetryHandler:
     # ------------------------------------------------------------------
     # Event dispatch
     # ------------------------------------------------------------------
-
     
     async def handle_event(self, event: RealtimeModelEvent) -> Context | None:
         if event.type != "raw_server_event":
@@ -317,7 +295,7 @@ class RealtimeTelemetryHandler:
 
         if span:
             if response.status:
-                span.set_attribute(GEN_AI_RESPONSE_STATUS, response.status)
+                span.set_attribute(GEN_AI_RESPONSE_STATUS, response.status) #TODO use GEN_AI_RESPONSE_FINISH_REASONS instead?!
             if self._model:
                 span.set_attribute(GEN_AI_RESPONSE_MODEL, self._model)
 
@@ -477,9 +455,6 @@ class RealtimeTelemetryHandler:
 def _extract_token_attributes(usage: RealtimeResponseUsage) -> dict[str, Any]:
     """Extract token usage attributes for span recording."""
     attrs: dict[str, Any] = {}
-
-    if usage.total_tokens is not None:
-        attrs[GEN_AI_USAGE_TOTAL_TOKENS] = usage.total_tokens
 
     if usage.input_tokens is not None:
         attrs[GEN_AI_USAGE_INPUT_TOKENS] = usage.input_tokens
