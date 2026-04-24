@@ -36,17 +36,16 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from opentelemetry.util.genai.types import (
     InputMessage,
-    LLMInvocation,
+    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
     OutputMessage,
     Text,
-    ToolCall,
+    ToolCallRequest,
     ToolCallResponse,
-)
-
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
 
 
@@ -452,7 +451,7 @@ def _prepare_input_messages(messages) -> List[InputMessage]:
     return chat_messages
 
 
-def extract_tool_calls_new(tool_calls) -> list[ToolCall]:
+def extract_tool_calls_new(tool_calls) -> list[ToolCallRequest]:
     parts = []
     for tool_call in tool_calls:
         call_id = get_property_value(tool_call, "id")
@@ -470,7 +469,9 @@ def extract_tool_calls_new(tool_calls) -> list[ToolCall]:
                     arguments = arguments_str
 
         # TODO: support custom
-        parts.append(ToolCall(id=call_id, name=func_name, arguments=arguments))
+        parts.append(
+            ToolCallRequest(id=call_id, name=func_name, arguments=arguments)
+        )
     return parts
 
 

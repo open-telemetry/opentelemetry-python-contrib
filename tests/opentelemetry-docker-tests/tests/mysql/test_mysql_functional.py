@@ -74,18 +74,10 @@ class TestFunctionalMysql(TestBase):
         self.assertIs(db_span.parent, root_span.get_span_context())
         self.assertIs(db_span.kind, trace_api.SpanKind.CLIENT)
         self.assertEqual(db_span.attributes[DB_SYSTEM], "mysql")
-        self.assertEqual(
-            db_span.attributes[DB_NAME], MYSQL_DB_NAME
-        )
-        self.assertEqual(
-            db_span.attributes[DB_USER], MYSQL_USER
-        )
-        self.assertEqual(
-            db_span.attributes[NET_PEER_NAME], MYSQL_HOST
-        )
-        self.assertEqual(
-            db_span.attributes[NET_PEER_PORT], MYSQL_PORT
-        )
+        self.assertEqual(db_span.attributes[DB_NAME], MYSQL_DB_NAME)
+        self.assertEqual(db_span.attributes[DB_USER], MYSQL_USER)
+        self.assertEqual(db_span.attributes[NET_PEER_NAME], MYSQL_HOST)
+        self.assertEqual(db_span.attributes[NET_PEER_PORT], MYSQL_PORT)
 
     def test_execute(self):
         """Should create a child span for execute"""
@@ -118,6 +110,16 @@ class TestFunctionalMysql(TestBase):
             data = (("1",), ("2",), ("3",))
             self._cursor.executemany(stmt, data)
         self.validate_spans("INSERT")
+
+    def test_executemany_with_cursor_iteration(self):
+        """Should create a child span for executemany while iterating over the cursor"""
+        stmt = "SELECT * FROM test"
+        with self._tracer.start_as_current_span("rootSpan"):
+            with self._connection.cursor() as cursor:
+                cursor.execute(stmt)
+                for _row in cursor:
+                    pass
+        self.validate_spans("SELECT")
 
     def test_callproc(self):
         """Should create a child span for callproc"""

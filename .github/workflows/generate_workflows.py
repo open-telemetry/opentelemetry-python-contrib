@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from generate_workflows_lib import (
+    generate_ci_workflow,
     generate_contrib_workflow,
     generate_lint_workflow,
     generate_misc_workflow,
@@ -14,3 +15,4 @@ generate_test_workflow(tox_ini_path, workflows_directory_path, "ubuntu-latest")
 generate_lint_workflow(tox_ini_path, workflows_directory_path)
 generate_misc_workflow(tox_ini_path, workflows_directory_path)
 generate_contrib_workflow(workflows_directory_path)
+generate_ci_workflow(workflows_directory_path)
