@@ -235,6 +235,16 @@ def test_responses_create_captures_content(
     )
 
     (span,) = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        span,
+        DEFAULT_MODEL,
+        True,
+        response.id,
+        response.model,
+        response.usage.input_tokens,
+        response.usage.output_tokens,
+        response_service_tier=getattr(response, "service_tier", None),
+    )
     _assert_response_content(span, response, log_exporter)
 
 
@@ -444,6 +454,16 @@ def test_responses_create_streaming_captures_content(
         response = _collect_completed_response(stream)
 
     (span,) = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        span,
+        DEFAULT_MODEL,
+        True,
+        response.id,
+        response.model,
+        response.usage.input_tokens,
+        response.usage.output_tokens,
+        response_service_tier=getattr(response, "service_tier", None),
+    )
     _assert_response_content(span, response, log_exporter)
 
 
@@ -469,6 +489,11 @@ def test_responses_create_streaming_iteration(
     )
     assert GenAIAttributes.GEN_AI_RESPONSE_ID in span.attributes
     assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
+        "stop",
+    )
+    assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
+    assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
 
 
 @pytest.mark.vcr()
@@ -666,14 +691,30 @@ def test_responses_create_captures_tool_call_content(
     )
 
     (span,) = span_exporter.get_finished_spans()
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    )
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
+        "tool_calls",
+    )
+
+    input_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
+    )
+    assert input_messages[0]["role"] == "user"
+
     output_messages = _load_span_messages(
         span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
     )
-    assert any(
-        part.get("type") == "tool_call"
+    tool_call_parts = [
+        part
         for message in output_messages
         for part in message.get("parts", [])
-    )
+        if part.get("type") == "tool_call"
+    ]
+    assert len(tool_call_parts) > 0
+    assert tool_call_parts[0]["name"] == "get_current_weather"
+    assert "arguments" in tool_call_parts[0]
 
 
 @pytest.mark.vcr()
@@ -716,6 +757,22 @@ def test_responses_create_reports_reasoning_tokens(
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == (
         REASONING_MODEL
     )
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
+        == response.usage.input_tokens
+    )
+    assert (
+        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+        == response.usage.output_tokens
+    )
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
+        "stop",
+    )
+
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+    assert len(output_messages) > 0
 
 
 @pytest.mark.vcr()
