@@ -11,10 +11,10 @@ from opentelemetry.util.genai.types import Error
 
 try:
     from opentelemetry.instrumentation.openai_v2.response_extractors import (  # pylint: disable=no-name-in-module
-        _set_invocation_response_attributes,
+        set_invocation_response_attributes,
     )
 except ImportError:
-    _set_invocation_response_attributes = None
+    set_invocation_response_attributes = None
 
 if TYPE_CHECKING:
     from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
@@ -41,9 +41,9 @@ def _set_response_attributes(
     result: "ParsedResponse[TextFormatT] | Response | None",
     capture_content: bool,
 ) -> None:
-    if _set_invocation_response_attributes is None:
+    if set_invocation_response_attributes is None:
         return
-    _set_invocation_response_attributes(invocation, result, capture_content)
+    set_invocation_response_attributes(invocation, result, capture_content)
 
 
 def _get_stream_response(stream):

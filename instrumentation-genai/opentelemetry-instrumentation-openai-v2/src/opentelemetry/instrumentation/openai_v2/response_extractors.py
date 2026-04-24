@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from opentelemetry.semconv._incubating.attributes import (
@@ -29,11 +29,38 @@ from opentelemetry.semconv._incubating.attributes import (
 from .utils import get_server_address_and_port
 
 if TYPE_CHECKING:
+    from openai.types.responses.response import Response
+    from openai.types.responses.response_usage import ResponseUsage
     from opentelemetry.util.genai.types import (
         InputMessage,
         OutputMessage,
         Text,
     )
+
+try:
+    from openai.types.responses.response import Response
+    from openai.types.responses.response_function_tool_call import (
+        ResponseFunctionToolCall,
+    )
+    from openai.types.responses.response_output_message import (
+        ResponseOutputMessage,
+    )
+    from openai.types.responses.response_output_refusal import (
+        ResponseOutputRefusal,
+    )
+    from openai.types.responses.response_output_text import ResponseOutputText
+    from openai.types.responses.response_reasoning_item import (
+        ResponseReasoningItem,
+    )
+    from openai.types.responses.response_usage import ResponseUsage
+except ImportError:
+    Response = None
+    ResponseFunctionToolCall = None
+    ResponseOutputMessage = None
+    ResponseOutputRefusal = None
+    ResponseOutputText = None
+    ResponseReasoningItem = None
+    ResponseUsage = None
 
 try:
     from opentelemetry.util.genai.types import (
@@ -47,7 +74,6 @@ try:
     )
 except ImportError:
     InputMessage = None
-    LLMInvocation = None
     OutputMessage = None
     Reasoning = None
     Text = None
@@ -63,9 +89,7 @@ GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
 class ResponseRequestParams:
     model: str | None = None
     instructions: str | None = None
-    input: object | None = None
-    system_instruction: list["Text"] = field(default_factory=list)
-    input_messages: list["InputMessage"] = field(default_factory=list)
+    input: str | Sequence[object] | None = None
     max_output_tokens: int | None = None
     service_tier: str | None = None
     temperature: float | None = None
@@ -120,8 +144,50 @@ def _extract_output_type_from_value(text_config: object) -> str | None:
     return None
 
 
-def _extract_input_messages_from_value(
-    input_value: object,
+def extract_params(
+    *,
+    model: str | None = None,
+    instructions: str | None = None,
+    input: str | Sequence[object] | None = None,
+    max_output_tokens: int | None = None,
+    service_tier: str | None = None,
+    temperature: float | None = None,
+    text: object | None = None,
+    top_p: float | None = None,
+    **_kwargs: object,
+) -> ResponseRequestParams:
+    return ResponseRequestParams(
+        model=model if isinstance(model, str) else None,
+        instructions=instructions if isinstance(instructions, str) else None,
+        input=(
+            input
+            if isinstance(input, str)
+            or (
+                isinstance(input, Sequence)
+                and not isinstance(input, (str, bytes, bytearray))
+            )
+            else None
+        ),
+        max_output_tokens=_get_int(max_output_tokens),
+        service_tier=(
+            service_tier
+            if isinstance(service_tier, str) and service_tier != "auto"
+            else None
+        ),
+        temperature=_get_float(temperature),
+        output_type=_extract_output_type_from_value(text),
+        top_p=_get_float(top_p),
+    )
+
+
+def get_system_instruction(instructions: str | None) -> list["Text"]:
+    if Text is None or instructions is None:
+        return []
+    return [Text(content=instructions)]
+
+
+def get_input_messages(
+    input_value: str | Sequence[object] | None,
 ) -> list["InputMessage"]:
     if InputMessage is None or Text is None:
         return []
@@ -153,58 +219,20 @@ def _extract_input_messages_from_value(
     return messages
 
 
-def extract_params(**kwargs: object) -> ResponseRequestParams:
-    model = kwargs.get("model")
-    instructions = kwargs.get("instructions")
-    input_value = kwargs.get("input")
-    service_tier = kwargs.get("service_tier")
-
-    params = ResponseRequestParams(
-        model=model if isinstance(model, str) else None,
-        instructions=instructions if isinstance(instructions, str) else None,
-        input=input_value,
-        max_output_tokens=_get_int(kwargs.get("max_output_tokens")),
-        service_tier=(
-            service_tier
-            if isinstance(service_tier, str) and service_tier != "auto"
-            else None
-        ),
-        temperature=_get_float(kwargs.get("temperature")),
-        output_type=_extract_output_type_from_value(kwargs.get("text")),
-        top_p=_get_float(kwargs.get("top_p")),
-    )
-
-    params.system_instruction = get_system_instruction(params.instructions)
-    params.input_messages = get_input_messages(params.input)
-
-    return params
-
-
-def get_system_instruction(instructions: str | None) -> list["Text"]:
-    if Text is None or instructions is None:
-        return []
-    return [Text(content=instructions)]
-
-
-def get_input_messages(input_value: object) -> list["InputMessage"]:
-    return _extract_input_messages_from_value(input_value)
-
-
-def _extract_output_parts(
-    content_blocks: Sequence[object],
-) -> list["Text"]:
-    if Text is None:
+def _extract_output_parts(content_blocks: Sequence[object]) -> list["Text"]:
+    if (
+        Text is None
+        or ResponseOutputText is None
+        or ResponseOutputRefusal is None
+    ):
         return []
 
     parts: list[Text] = []
     for block in content_blocks:
-        block_type = _get_field(block, "type")
-        text = _get_field(block, "text")
-        refusal = _get_field(block, "refusal")
-        if block_type == "output_text" and isinstance(text, str):
-            parts.append(Text(content=text))
-        elif block_type == "refusal" and isinstance(refusal, str):
-            parts.append(Text(content=refusal))
+        if isinstance(block, ResponseOutputText):
+            parts.append(Text(content=block.text))
+        elif isinstance(block, ResponseOutputRefusal):
+            parts.append(Text(content=block.refusal))
     return parts
 
 
@@ -219,29 +247,24 @@ def _parse_tool_call_arguments(arguments: str | None) -> object:
 
 
 def _extract_reasoning_parts(
-    item: object,
+    item: "ResponseReasoningItem",
 ) -> list["Reasoning"]:
     if Reasoning is None:
         return []
 
     parts: list[Reasoning] = []
-    for block in _get_sequence(_get_field(item, "summary")):
-        text = _get_field(block, "text")
-        if isinstance(text, str):
-            parts.append(Reasoning(content=text))
-    for block in _get_sequence(_get_field(item, "content")):
-        if _get_field(block, "type") == "reasoning_text":
-            text = _get_field(block, "text")
-            if isinstance(text, str):
-                parts.append(Reasoning(content=text))
+    for block in item.summary:
+        if isinstance(block.text, str):
+            parts.append(Reasoning(content=block.text))
+    for block in item.content or []:
+        if getattr(block, "type", None) == "reasoning_text" and isinstance(
+            getattr(block, "text", None), str
+        ):
+            parts.append(Reasoning(content=block.text))
     return parts
 
 
 def _finish_reason_from_status(status: str | None) -> str | None:
-    # Responses API output items expose lifecycle statuses rather than finish
-    # reasons. We map the normal terminal state to the GenAI "stop" reason,
-    # preserve the other terminal statuses verbatim, and drop non-terminal or
-    # unknown states from the finish_reasons attribute.
     if status == "completed":
         return "stop"
     if status in {"failed", "cancelled", "incomplete"}:
@@ -250,40 +273,40 @@ def _finish_reason_from_status(status: str | None) -> str | None:
 
 
 def get_output_messages_from_response(
-    response: object | None,
+    response: "Response | None",
 ) -> list["OutputMessage"]:
-    if OutputMessage is None or Text is None:
+    if (
+        Response is None
+        or ResponseOutputMessage is None
+        or ResponseFunctionToolCall is None
+        or ResponseReasoningItem is None
+        or not isinstance(response, Response)
+        or OutputMessage is None
+        or Text is None
+    ):
         return []
 
     messages: list[OutputMessage] = []
-    for item in _get_sequence(_get_field(response, "output")):
-        item_type = _get_field(item, "type")
-        item_status = _get_field(item, "status")
-        if item_type == "message":
-            finish_reason = _finish_reason_from_status(item_status)
+    for item in response.output:
+        if isinstance(item, ResponseOutputMessage):
+            finish_reason = _finish_reason_from_status(item.status)
             if finish_reason is None:
                 continue
 
             messages.append(
                 OutputMessage(
-                    role=(
-                        _get_field(item, "role")
-                        if isinstance(_get_field(item, "role"), str)
-                        else "assistant"
-                    ),
-                    parts=_extract_output_parts(
-                        _get_sequence(_get_field(item, "content"))
-                    ),
+                    role=item.role,
+                    parts=_extract_output_parts(item.content),
                     finish_reason=finish_reason,
                 )
             )
             continue
 
-        if item_type == "function_call":
-            item_name = _get_field(item, "name")
-            if ToolCall is None or not isinstance(item_name, str):
-                continue
-            if item_status not in {"completed", "incomplete"}:
+        if isinstance(item, ResponseFunctionToolCall):
+            if ToolCall is None or item.status not in {
+                "completed",
+                "incomplete",
+            }:
                 continue
 
             messages.append(
@@ -291,13 +314,9 @@ def get_output_messages_from_response(
                     role="assistant",
                     parts=[
                         ToolCall(
-                            id=_get_field(item, "call_id")
-                            if _get_field(item, "call_id")
-                            else _get_field(item, "id"),
-                            name=item_name,
-                            arguments=_parse_tool_call_arguments(
-                                _get_field(item, "arguments")
-                            ),
+                            id=item.call_id if item.call_id else item.id,
+                            name=item.name,
+                            arguments=_parse_tool_call_arguments(item.arguments),
                         )
                     ],
                     finish_reason="tool_calls",
@@ -305,8 +324,8 @@ def get_output_messages_from_response(
             )
             continue
 
-        if item_type == "reasoning":
-            finish_reason = _finish_reason_from_status(item_status)
+        if isinstance(item, ResponseReasoningItem):
+            finish_reason = _finish_reason_from_status(item.status)
             if finish_reason is None:
                 continue
 
@@ -323,35 +342,30 @@ def get_output_messages_from_response(
     return messages
 
 
-def extract_finish_reasons(response: object | None) -> list[str]:
+def extract_finish_reasons(response: "Response | None") -> list[str]:
+    if (
+        Response is None
+        or ResponseOutputMessage is None
+        or ResponseFunctionToolCall is None
+        or not isinstance(response, Response)
+    ):
+        return []
+
     finish_reasons: list[str] = []
-    for item in _get_sequence(_get_field(response, "output")):
-        item_type = _get_field(item, "type")
-        item_status = _get_field(item, "status")
-        if item_type == "function_call" and item_status in {
+    for item in response.output:
+        if isinstance(item, ResponseFunctionToolCall) and item.status in {
             "completed",
             "incomplete",
         }:
             finish_reasons.append("tool_calls")
             continue
 
-        if item_type != "message":
+        if not isinstance(item, ResponseOutputMessage):
             continue
-        finish_reason = _finish_reason_from_status(item_status)
+        finish_reason = _finish_reason_from_status(item.status)
         if finish_reason is not None:
             finish_reasons.append(finish_reason)
     return list(dict.fromkeys(finish_reasons))
-
-
-def _extract_output_type(kwargs: Mapping[str, object]) -> str | None:
-    """Extract output type from Responses API request text.format."""
-    return extract_params(**kwargs).output_type
-
-
-def _extract_request_service_tier(
-    kwargs: Mapping[str, object],
-) -> str | None:
-    return extract_params(**kwargs).service_tier
 
 
 def get_inference_creation_kwargs(
@@ -392,60 +406,56 @@ def apply_request_attributes(
         )
 
     if capture_content:
-        invocation.system_instruction = params.system_instruction
-        invocation.input_messages = params.input_messages
+        invocation.system_instruction = get_system_instruction(
+            params.instructions
+        )
+        invocation.input_messages = get_input_messages(params.input)
 
 
-def extract_usage_tokens(usage: object | None) -> UsageTokens:
-    if usage is None:
+def extract_usage_tokens(usage: "ResponseUsage | None") -> UsageTokens:
+    if (
+        ResponseUsage is None
+        or usage is None
+        or not isinstance(usage, ResponseUsage)
+    ):
         return UsageTokens()
 
-    input_tokens = _get_int(_get_field(usage, "input_tokens"))
-    output_tokens = _get_int(_get_field(usage, "output_tokens"))
-    prompt_tokens = _get_int(_get_field(usage, "prompt_tokens"))
-    completion_tokens = _get_int(_get_field(usage, "completion_tokens"))
-    details = (
-        _get_field(usage, "input_tokens_details")
-        if _get_field(usage, "input_tokens_details") is not None
-        else _get_field(usage, "prompt_tokens_details")
-    )
+    details = usage.input_tokens_details
     return UsageTokens(
-        input_tokens=input_tokens
-        if input_tokens is not None
-        else prompt_tokens,
-        output_tokens=(
-            output_tokens if output_tokens is not None else completion_tokens
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        # `cache_creation_input_tokens` is not present on every SDK version's
+        # input token details model, so keep this attribute access guarded for
+        # compatibility across the supported OpenAI range.
+        cache_creation_input_tokens=(
+            details.cache_creation_input_tokens
+            if details is not None
+            and hasattr(details, "cache_creation_input_tokens")
+            else None
         ),
-        cache_read_input_tokens=_get_int(_get_field(details, "cached_tokens")),
-        cache_creation_input_tokens=_get_int(
-            _get_field(details, "cache_creation_input_tokens")
+        cache_read_input_tokens=(
+            details.cached_tokens if details is not None else None
         ),
     )
 
 
 def set_invocation_response_attributes(
     invocation,
-    response: object | None,
+    response: "Response | None",
     capture_content: bool,
 ) -> None:
-    if response is None:
+    if Response is None or not isinstance(response, Response):
         return
 
-    model = _get_field(response, "model")
-    if isinstance(model, str):
-        invocation.response_model_name = model
+    invocation.response_model_name = response.model
+    invocation.response_id = response.id
 
-    response_id = _get_field(response, "id")
-    if isinstance(response_id, str):
-        invocation.response_id = response_id
-
-    service_tier = _get_field(response, "service_tier")
-    if service_tier is not None:
+    if response.service_tier is not None:
         invocation.attributes[
             OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER
-        ] = service_tier
+        ] = response.service_tier
 
-    tokens = extract_usage_tokens(_get_field(response, "usage"))
+    tokens = extract_usage_tokens(response.usage)
     invocation.input_tokens = tokens.input_tokens
     invocation.output_tokens = tokens.output_tokens
     if tokens.cache_creation_input_tokens is not None:
@@ -465,68 +475,3 @@ def set_invocation_response_attributes(
         output_messages = get_output_messages_from_response(response)
         if output_messages:
             invocation.output_messages = output_messages
-
-
-def _extract_request_params(
-    kwargs: Mapping[str, object],
-) -> ResponseRequestParams:
-    return extract_params(**kwargs)
-
-
-def _extract_system_instruction(kwargs: Mapping[str, object]) -> list["Text"]:
-    return get_system_instruction(_extract_request_params(kwargs).instructions)
-
-
-def _extract_input_messages(
-    kwargs: Mapping[str, object],
-) -> list["InputMessage"]:
-    return get_input_messages(_extract_request_params(kwargs).input)
-
-
-def _extract_output_messages(result: object | None) -> list["OutputMessage"]:
-    return get_output_messages_from_response(result)
-
-
-def _extract_finish_reasons(result: object | None) -> list[str]:
-    return extract_finish_reasons(result)
-
-
-def _get_inference_creation_kwargs(
-    kwargs: Mapping[str, object],
-    client_instance: object,
-) -> dict[str, object]:
-    return get_inference_creation_kwargs(
-        _extract_request_params(kwargs), client_instance
-    )
-
-
-def _apply_request_attributes(
-    invocation,
-    kwargs: Mapping[str, object],
-    capture_content: bool,
-) -> None:
-    apply_request_attributes(
-        invocation, _extract_request_params(kwargs), capture_content
-    )
-
-
-def _set_invocation_usage_attributes(invocation, usage: object) -> None:
-    tokens = extract_usage_tokens(usage)
-    invocation.input_tokens = tokens.input_tokens
-    invocation.output_tokens = tokens.output_tokens
-    if tokens.cache_creation_input_tokens is not None:
-        invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = (
-            tokens.cache_creation_input_tokens
-        )
-    if tokens.cache_read_input_tokens is not None:
-        invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
-            tokens.cache_read_input_tokens
-        )
-
-
-def _set_invocation_response_attributes(
-    invocation,
-    result: object | None,
-    capture_content: bool,
-) -> None:
-    set_invocation_response_attributes(invocation, result, capture_content)

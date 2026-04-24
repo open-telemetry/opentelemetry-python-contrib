@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+from openai.types.responses.response import Response
 
 from opentelemetry.instrumentation.openai_v2 import response_extractors
 from opentelemetry.semconv._incubating.attributes import (
@@ -41,10 +42,33 @@ def _gen_ai_usage_cache_read_input_tokens_fixture(loaded_module):
     return loaded_module.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
 
 
+def _make_response(output=None, **overrides):
+    payload = {
+        "id": "resp_123",
+        "created_at": 0.0,
+        "model": "gpt-4.1",
+        "object": "response",
+        "output": output or [],
+        "parallel_tool_calls": False,
+        "tool_choice": "auto",
+        "tools": [],
+        "temperature": 1.0,
+        "top_p": 1.0,
+        "usage": {
+            "input_tokens": 11,
+            "input_tokens_details": {"cached_tokens": 0},
+            "output_tokens": 7,
+            "output_tokens_details": {"reasoning_tokens": 0},
+            "total_tokens": 18,
+        },
+    }
+    payload.update(overrides)
+    return Response.model_validate(payload)
+
+
 def test_extract_system_instruction_returns_text_for_string(loaded_module):
-    instructions = loaded_module._extract_system_instruction(
-        {"instructions": "Be concise"}
-    )
+    params = loaded_module.extract_params(instructions="Be concise")
+    instructions = loaded_module.get_system_instruction(params.instructions)
 
     assert [part.content for part in instructions] == ["Be concise"]
 
@@ -52,22 +76,20 @@ def test_extract_system_instruction_returns_text_for_string(loaded_module):
 def test_extract_input_messages_supports_string_and_mixed_message_content(
     loaded_module,
 ):
-    from_string = loaded_module._extract_input_messages({"input": "Hello"})
-    from_list = loaded_module._extract_input_messages(
-        {
-            "input": [
-                {"role": "user", "content": "First"},
-                SimpleNamespace(
-                    role="assistant",
-                    content=[
-                        {"text": "Second"},
-                        SimpleNamespace(text="Third"),
-                        {"type": "input_image", "image_url": "ignored"},
-                    ],
-                ),
-                {"role": None, "content": "ignored"},
-            ]
-        }
+    from_string = loaded_module.get_input_messages("Hello")
+    from_list = loaded_module.get_input_messages(
+        [
+            {"role": "user", "content": "First"},
+            SimpleNamespace(
+                role="assistant",
+                content=[
+                    {"text": "Second"},
+                    SimpleNamespace(text="Third"),
+                    {"type": "input_image", "image_url": "ignored"},
+                ],
+            ),
+            {"role": None, "content": "ignored"},
+        ]
     )
 
     assert [
@@ -82,48 +104,55 @@ def test_extract_input_messages_supports_string_and_mixed_message_content(
 
 
 def test_extract_output_messages_maps_parts_and_finish_reasons(loaded_module):
-    result = SimpleNamespace(
+    response = _make_response(
         output=[
-            SimpleNamespace(
-                type="message",
-                role="assistant",
-                status="completed",
-                content=[
-                    SimpleNamespace(type="output_text", text="Done"),
-                    SimpleNamespace(type="refusal", refusal="Cannot comply"),
-                    SimpleNamespace(type="summary", text="ignored"),
+            {
+                "id": "msg_1",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [
+                    {"type": "output_text", "text": "Done", "annotations": []},
+                    {"type": "refusal", "refusal": "Cannot comply"},
                 ],
-            ),
-            SimpleNamespace(
-                type="message",
-                status="incomplete",
-                content=[SimpleNamespace(type="output_text", text="Partial")],
-            ),
-            SimpleNamespace(
-                type="message",
-                status="queued",
-                content=[SimpleNamespace(type="output_text", text="Pending")],
-            ),
-            SimpleNamespace(
-                type="function_call",
-                status="completed",
-                name="get_weather",
-                call_id="call_123",
-                arguments='{"city":"SF"}',
-                content=[],
-            ),
-            SimpleNamespace(
-                type="reasoning",
-                status="completed",
-                summary=[
-                    SimpleNamespace(type="summary_text", text="Thought step")
+            },
+            {
+                "id": "msg_2",
+                "type": "message",
+                "role": "assistant",
+                "status": "incomplete",
+                "content": [
+                    {"type": "output_text", "text": "Partial", "annotations": []}
                 ],
-                content=[],
-            ),
+            },
+            {
+                "id": "msg_3",
+                "type": "message",
+                "role": "assistant",
+                "status": "in_progress",
+                "content": [
+                    {"type": "output_text", "text": "Pending", "annotations": []}
+                ],
+            },
+            {
+                "id": "fc_1",
+                "type": "function_call",
+                "status": "completed",
+                "name": "get_weather",
+                "call_id": "call_123",
+                "arguments": '{"city":"SF"}',
+            },
+            {
+                "id": "rs_1",
+                "type": "reasoning",
+                "status": "completed",
+                "summary": [{"type": "summary_text", "text": "Thought step"}],
+                "content": None,
+            },
         ]
     )
 
-    messages = loaded_module._extract_output_messages(result)
+    messages = loaded_module.get_output_messages_from_response(response)
 
     assert [(msg.role, msg.finish_reason) for msg in messages] == [
         ("assistant", "stop"),
@@ -146,16 +175,34 @@ def test_extract_output_messages_maps_parts_and_finish_reasons(loaded_module):
 def test_extract_finish_reasons_maps_terminal_message_and_tool_items(
     loaded_module,
 ):
-    result = SimpleNamespace(
+    response = _make_response(
         output=[
-            SimpleNamespace(type="message", status="completed"),
-            SimpleNamespace(type="message", status=None),
-            SimpleNamespace(type="message", status="in_progress"),
-            SimpleNamespace(type="function_call", status="incomplete"),
+            {
+                "id": "msg_1",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [],
+            },
+            {
+                "id": "msg_2",
+                "type": "message",
+                "role": "assistant",
+                "status": "in_progress",
+                "content": [],
+            },
+            {
+                "id": "fc_1",
+                "type": "function_call",
+                "status": "incomplete",
+                "name": "tool",
+                "call_id": "call_1",
+                "arguments": "{}",
+            },
         ]
     )
 
-    assert loaded_module._extract_finish_reasons(result) == [
+    assert loaded_module.extract_finish_reasons(response) == [
         "stop",
         "tool_calls",
     ]
@@ -163,40 +210,29 @@ def test_extract_finish_reasons_maps_terminal_message_and_tool_items(
 
 def test_extract_output_type_handles_text_format_mapping(loaded_module):
     assert (
-        loaded_module._extract_output_type(
-            {"text": {"format": {"type": "json_schema"}}}
-        )
+        loaded_module.extract_params(
+            text={"format": {"type": "json_schema"}}
+        ).output_type
         == "json"
     )
     assert (
-        loaded_module._extract_output_type(
-            {"text": {"format": {"type": "text"}}}
-        )
+        loaded_module.extract_params(text={"format": {"type": "text"}}).output_type
         == "text"
     )
     assert (
-        loaded_module._extract_output_type(
-            {
-                "text": SimpleNamespace(
-                    format=SimpleNamespace(type="json_schema")
-                )
-            }
-        )
+        loaded_module.extract_params(
+            text=SimpleNamespace(format=SimpleNamespace(type="json_schema"))
+        ).output_type
         == "json"
     )
     assert (
-        loaded_module._extract_output_type(
-            {"text": SimpleNamespace(format=SimpleNamespace(type="text"))}
-        )
+        loaded_module.extract_params(
+            text=SimpleNamespace(format=SimpleNamespace(type="text"))
+        ).output_type
         == "text"
     )
-    # Invalid request shapes should degrade to no extracted output type rather
-    # than surfacing validation errors from instrumentation.
-    assert (
-        loaded_module._extract_output_type({"text": {"format": "plain"}})
-        is None
-    )
-    assert loaded_module._extract_output_type({"text": "plain"}) is None
+    assert loaded_module.extract_params(text={"format": "plain"}).output_type is None
+    assert loaded_module.extract_params(text="plain").output_type is None
 
 
 def test_extractors_handle_missing_genai_types_import(loaded_module):
@@ -205,15 +241,20 @@ def test_extractors_handle_missing_genai_types_import(loaded_module):
         mock.patch.object(loaded_module, "InputMessage", None),
         mock.patch.object(loaded_module, "OutputMessage", None),
     ):
+        assert loaded_module.get_system_instruction("hi") == []
+        assert loaded_module.get_input_messages("hi") == []
         assert (
-            loaded_module._extract_system_instruction({"instructions": "hi"})
-            == []
-        )
-        assert loaded_module._extract_input_messages({"input": "hi"}) == []
-        assert (
-            loaded_module._extract_output_messages(
-                SimpleNamespace(
-                    output=[SimpleNamespace(type="message", content=[])]
+            loaded_module.get_output_messages_from_response(
+                _make_response(
+                    output=[
+                        {
+                            "id": "msg_1",
+                            "type": "message",
+                            "role": "assistant",
+                            "status": "completed",
+                            "content": [],
+                        }
+                    ]
                 )
             )
             == []
@@ -226,21 +267,21 @@ def test_set_invocation_response_attributes_populates_usage_and_metadata(
     gen_ai_usage_cache_read_input_tokens,
 ):
     invocation = LLMInvocation(request_model="gpt-4o-mini")
-    result = SimpleNamespace(
-        model="gpt-4.1",
-        id="resp_123",
+    result = _make_response(
         service_tier="scale",
-        usage=SimpleNamespace(
-            prompt_tokens=11,
-            completion_tokens=7,
-            prompt_tokens_details=SimpleNamespace(
-                cached_tokens=3,
-                cache_creation_input_tokens=5,
-            ),
-        ),
+        usage={
+            "input_tokens": 11,
+            "input_tokens_details": {
+                "cached_tokens": 3,
+                "cache_creation_input_tokens": 5,
+            },
+            "output_tokens": 7,
+            "output_tokens_details": {"reasoning_tokens": 0},
+            "total_tokens": 18,
+        },
     )
 
-    loaded_module._set_invocation_response_attributes(
+    loaded_module.set_invocation_response_attributes(
         invocation, result, capture_content=False
     )
 
@@ -255,51 +296,25 @@ def test_set_invocation_response_attributes_populates_usage_and_metadata(
     }
 
 
-def test_set_invocation_response_attributes_accepts_mapping_usage(
-    loaded_module,
-    gen_ai_usage_cache_creation_input_tokens,
-    gen_ai_usage_cache_read_input_tokens,
-):
-    invocation = LLMInvocation(request_model="gpt-4o-mini")
-    result = SimpleNamespace(
-        usage={
-            "input_tokens": 13,
-            "output_tokens": 8,
-            "input_tokens_details": {
-                "cached_tokens": 2,
-                "cache_creation_input_tokens": 4,
-            },
-        }
-    )
-
-    loaded_module._set_invocation_response_attributes(
-        invocation, result, capture_content=False
-    )
-
-    assert invocation.input_tokens == 13
-    assert invocation.output_tokens == 8
-    assert invocation.attributes == {
-        gen_ai_usage_cache_read_input_tokens: 2,
-        gen_ai_usage_cache_creation_input_tokens: 4,
-    }
-
-
 def test_set_invocation_response_attributes_populates_output_messages(
     loaded_module,
 ):
     invocation = LLMInvocation(request_model="gpt-4o-mini")
-    result = SimpleNamespace(
+    result = _make_response(
         output=[
-            SimpleNamespace(
-                type="message",
-                role="assistant",
-                status="completed",
-                content=[SimpleNamespace(type="output_text", text="Done")],
-            )
+            {
+                "id": "msg_1",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [
+                    {"type": "output_text", "text": "Done", "annotations": []}
+                ],
+            }
         ]
     )
 
-    loaded_module._set_invocation_response_attributes(
+    loaded_module.set_invocation_response_attributes(
         invocation, result, capture_content=True
     )
 
@@ -317,17 +332,12 @@ def test_set_invocation_response_attributes_populates_output_messages(
 def test_extractors_ignore_invalid_request_shapes_without_validation(
     loaded_module,
 ):
-    assert (
-        loaded_module._extract_system_instruction(
-            {"instructions": ["not-a-string"]}
-        )
-        == []
+    params = loaded_module.extract_params(
+        instructions=["not-a-string"], input=42, text={"format": {"type": 42}}
     )
-    assert loaded_module._extract_input_messages({"input": 42}) == []
-    assert (
-        loaded_module._extract_output_type({"text": {"format": {"type": 42}}})
-        is None
-    )
+    assert loaded_module.get_system_instruction(params.instructions) == []
+    assert loaded_module.get_input_messages(params.input) == []
+    assert params.output_type is None
 
 
 def test_response_extractors_ignore_invalid_shapes_without_validation(
@@ -336,10 +346,10 @@ def test_response_extractors_ignore_invalid_shapes_without_validation(
     invocation = LLMInvocation(request_model="gpt-4o-mini")
     invalid_result = SimpleNamespace(output=42, usage=42)
 
-    assert loaded_module._extract_output_messages(invalid_result) == []
-    assert loaded_module._extract_finish_reasons(invalid_result) == []
+    assert loaded_module.get_output_messages_from_response(invalid_result) == []
+    assert loaded_module.extract_finish_reasons(invalid_result) == []
 
-    loaded_module._set_invocation_response_attributes(
+    loaded_module.set_invocation_response_attributes(
         invocation, invalid_result, capture_content=True
     )
 
