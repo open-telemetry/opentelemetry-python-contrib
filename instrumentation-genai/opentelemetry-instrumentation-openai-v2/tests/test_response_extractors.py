@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+
 from opentelemetry.instrumentation.openai_v2 import response_extractors
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,

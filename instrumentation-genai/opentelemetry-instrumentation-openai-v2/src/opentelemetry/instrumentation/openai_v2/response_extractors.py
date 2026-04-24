@@ -149,7 +149,7 @@ def extract_params(
     *,
     model: str | None = None,
     instructions: str | None = None,
-    input: str | Sequence[object] | None = None,
+    input_items: str | Sequence[object] | None = None,
     max_output_tokens: int | None = None,
     service_tier: str | None = None,
     temperature: float | None = None,
@@ -161,11 +161,11 @@ def extract_params(
         model=model if isinstance(model, str) else None,
         instructions=instructions if isinstance(instructions, str) else None,
         input=(
-            input
-            if isinstance(input, str)
+            input_items
+            if isinstance(input_items, str)
             or (
-                isinstance(input, Sequence)
-                and not isinstance(input, (str, bytes, bytearray))
+                isinstance(input_items, Sequence)
+                and not isinstance(input_items, (str, bytes, bytearray))
             )
             else None
         ),
