@@ -20,7 +20,7 @@ from pydantic import BaseModel
 class CalendarEvent(BaseModel):
     name: str
     date: str
-    participants: list
+    participants: list[str]
 
 
 STRUCTURED_OUTPUT_PROMPT = [
