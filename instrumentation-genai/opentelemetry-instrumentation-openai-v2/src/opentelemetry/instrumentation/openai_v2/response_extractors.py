@@ -31,7 +31,6 @@ from .utils import get_server_address_and_port
 if TYPE_CHECKING:
     from opentelemetry.util.genai.types import (
         InputMessage,
-        LLMInvocation,
         OutputMessage,
         Text,
     )
@@ -39,7 +38,6 @@ if TYPE_CHECKING:
 try:
     from opentelemetry.util.genai.types import (
         InputMessage,
-        LLMInvocation,
         OutputMessage,
         Reasoning,
         Text,
