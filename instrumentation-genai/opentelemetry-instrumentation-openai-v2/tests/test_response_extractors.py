@@ -16,13 +16,28 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
-from openai.types.responses.response import Response
+
+try:
+    # Responses types are not available in the oldest supported OpenAI SDK.
+    # pylint: disable-next=no-name-in-module
+    from openai.types.responses.response import Response
+
+    HAS_RESPONSES_TYPES = True
+except ImportError:
+    Response = None
+    HAS_RESPONSES_TYPES = False
 
 from opentelemetry.instrumentation.openai_v2 import response_extractors
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.util.genai.types import LLMInvocation
+
+
+pytestmark = pytest.mark.skipif(
+    not HAS_RESPONSES_TYPES,
+    reason="Responses SDK types require a newer openai SDK",
+)
 
 
 @pytest.fixture(scope="module", name="loaded_module")
