@@ -26,6 +26,7 @@ Users can import everything from this single module:
     )
 """
 
+from opentelemetry.util.genai._agent_creation import AgentCreation
 from opentelemetry.util.genai._embedding_invocation import EmbeddingInvocation
 from opentelemetry.util.genai._inference_invocation import InferenceInvocation
 from opentelemetry.util.genai._invocation import (
@@ -37,6 +38,7 @@ from opentelemetry.util.genai._tool_invocation import ToolInvocation
 from opentelemetry.util.genai._workflow_invocation import WorkflowInvocation
 
 __all__ = [
+    "AgentCreation",
     "ContextToken",
     "Error",
     "GenAIInvocation",

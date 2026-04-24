@@ -60,6 +60,7 @@ from opentelemetry.trace import (
     TracerProvider,
     get_tracer,
 )
+from opentelemetry.util.genai._agent_creation import AgentCreation
 from opentelemetry.util.genai._inference_invocation import (
     LLMInvocation,
 )
@@ -297,6 +298,52 @@ class TelemetryHandler:
             tool_call_id=tool_call_id,
             tool_type=tool_type,
             tool_description=tool_description,
+        )._managed()
+
+    def start_create_agent(
+        self,
+        provider: str,
+        *,
+        request_model: str | None = None,
+        server_address: str | None = None,
+        server_port: int | None = None,
+    ) -> AgentCreation:
+        """Create and start an agent creation invocation.
+
+        Set remaining attributes (agent_name, etc.) on the returned
+        invocation, then call invocation.stop() or invocation.fail().
+        """
+        return AgentCreation(
+            self._tracer,
+            self._metrics_recorder,
+            self._logger,
+            provider,
+            request_model=request_model,
+            server_address=server_address,
+            server_port=server_port,
+        )
+
+    def create_agent(
+        self,
+        provider: str,
+        *,
+        request_model: str | None = None,
+        server_address: str | None = None,
+        server_port: int | None = None,
+    ) -> AbstractContextManager[AgentCreation]:
+        """Context manager for agent creation.
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        return self.start_create_agent(
+            provider=provider,
+            request_model=request_model,
+            server_address=server_address,
+            server_port=server_port,
         )._managed()
 
     def workflow(
