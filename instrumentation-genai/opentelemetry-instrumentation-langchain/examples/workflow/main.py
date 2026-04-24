@@ -88,7 +88,7 @@ def main():
         top_p=0.9,
         frequency_penalty=0.5,
         presence_penalty=0.5,
-        stop_sequences=["\n", "Human:", "AI:"],
+        stop=["\n", "Human:", "AI:"],
         seed=100,
     )
 
