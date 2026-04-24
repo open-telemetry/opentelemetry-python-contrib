@@ -157,6 +157,9 @@ def extract_params(
     top_p: float | None = None,
     **_kwargs: object,
 ) -> ResponseRequestParams:
+    if input_items is None and "input" in _kwargs:
+        input_items = _kwargs["input"]
+
     return ResponseRequestParams(
         model=model if isinstance(model, str) else None,
         instructions=instructions if isinstance(instructions, str) else None,
@@ -273,14 +276,20 @@ def _finish_reason_from_status(status: str | None) -> str | None:
     return None
 
 
+def _response_types_available() -> bool:
+    return (
+        Response is not None
+        and ResponseOutputMessage is not None
+        and ResponseFunctionToolCall is not None
+        and ResponseReasoningItem is not None
+    )
+
+
 def get_output_messages_from_response(
     response: "Response | None",
 ) -> list["OutputMessage"]:
     if (
-        Response is None
-        or ResponseOutputMessage is None
-        or ResponseFunctionToolCall is None
-        or ResponseReasoningItem is None
+        not _response_types_available()
         or not isinstance(response, Response)
         or OutputMessage is None
         or Text is None
