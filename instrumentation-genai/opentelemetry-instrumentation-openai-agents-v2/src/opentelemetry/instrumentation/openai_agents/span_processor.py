@@ -122,7 +122,7 @@ class GenAIOperationName:
     SPEECH = "speech_generation"
     GUARDRAIL = "guardrail_check"
     HANDOFF = "agent_handoff"
-    MCP_LIST_TOOLS = "mcp.list_tools"
+
     RESPONSE = "response"  # internal aggregator in current processor
 
     CLASS_FALLBACK = {
@@ -242,9 +242,8 @@ GEN_AI_GUARDRAIL_NAME = "gen_ai.guardrail.name"
 GEN_AI_GUARDRAIL_TRIGGERED = "gen_ai.guardrail.triggered"
 GEN_AI_HANDOFF_FROM_AGENT = "gen_ai.handoff.from_agent"
 GEN_AI_HANDOFF_TO_AGENT = "gen_ai.handoff.to_agent"
-MCP_SERVER_NAME = "mcp.server.name"
-MCP_TOOLS_COUNT = "mcp.tools.count"
-MCP_TOOLS_LIST = "mcp.tools.list"
+MCP_METHOD_NAME = "mcp.method.name"
+MCP_METHOD_TOOLS_LIST = "tools/list"
 GEN_AI_EMBEDDINGS_DIMENSION_COUNT = "gen_ai.embeddings.dimension.count"
 GEN_AI_TOKEN_TYPE = _attr("GEN_AI_TOKEN_TYPE", "gen_ai.token.type")
 
@@ -401,10 +400,18 @@ def get_span_name(
     model: Optional[str] = None,
     agent_name: Optional[str] = None,
     tool_name: Optional[str] = None,
-    mcp_server_name: Optional[str] = None,
+    mcp_method_name: Optional[str] = None,
+    mcp_target: Optional[str] = None,
 ) -> str:
     """Generate spec-compliant span name based on operation type."""
     base_name = operation_name
+
+    if mcp_method_name:
+        return (
+            f"{mcp_method_name} {mcp_target}"
+            if mcp_target
+            else mcp_method_name
+        )
 
     if operation_name in {
         GenAIOperationName.CHAT,
@@ -426,13 +433,6 @@ def get_span_name(
 
     if operation_name == GenAIOperationName.HANDOFF:
         return f"{base_name} {agent_name}" if agent_name else base_name
-
-    if operation_name == GenAIOperationName.MCP_LIST_TOOLS:
-        return (
-            f"{base_name} {mcp_server_name}"
-            if mcp_server_name
-            else base_name
-        )
 
     return base_name
 
@@ -1297,7 +1297,9 @@ class GenAISemanticProcessor(TracingProcessor):
                 MCPListToolsSpanData,
             ),
         ):
-            return SpanKind.CLIENT  # API calls to model providers / MCP servers
+            return (
+                SpanKind.CLIENT
+            )  # API calls to model providers / MCP servers
         if _is_instance_of(span_data, AgentSpanData):
             return SpanKind.CLIENT
         if _is_instance_of(span_data, (GuardrailSpanData, HandoffSpanData)):
@@ -1382,24 +1384,29 @@ class GenAISemanticProcessor(TracingProcessor):
             else None
         )
 
-        # For MCP list tools spans, use server name in span name
-        mcp_server_name = (
-            getattr(span.span_data, "server", None)
-            if _is_instance_of(span.span_data, MCPListToolsSpanData)
-            else None
-        )
+        # For MCP list tools spans, use method name in span name
+        mcp_method_name = None
+        mcp_target = None
+        if _is_instance_of(span.span_data, MCPListToolsSpanData):
+            mcp_method_name = MCP_METHOD_TOOLS_LIST
+            mcp_target = getattr(span.span_data, "server", None)
 
         # Generate spec-compliant span name
         span_name = get_span_name(
-            operation_name, model, agent_name, tool_name,
-            mcp_server_name=mcp_server_name,
+            operation_name,
+            model,
+            agent_name,
+            tool_name,
+            mcp_method_name=mcp_method_name,
+            mcp_target=mcp_target,
         )
 
         attributes = {
             GEN_AI_PROVIDER_NAME: self.system_name,
             GEN_AI_SYSTEM_KEY: self.system_name,
-            GEN_AI_OPERATION_NAME: operation_name,
         }
+        if not mcp_method_name:
+            attributes[GEN_AI_OPERATION_NAME] = operation_name
         # Legacy emission removed
 
         # Add configured agent and server attributes
@@ -1414,7 +1421,8 @@ class GenAISemanticProcessor(TracingProcessor):
             attributes[GEN_AI_AGENT_ID] = agent_id_override
         if agent_desc_override:
             attributes[GEN_AI_AGENT_DESCRIPTION] = agent_desc_override
-        attributes.update(self._get_server_attributes())
+        if not mcp_method_name:
+            attributes.update(self._get_server_attributes())
 
         otel_span = self._tracer.start_span(
             name=span_name,
@@ -1573,7 +1581,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
         if _is_instance_of(span_data, MCPListToolsSpanData):
-            return GenAIOperationName.MCP_LIST_TOOLS
+            return MCP_METHOD_TOOLS_LIST
         return "unknown"
 
     def _extract_genai_attributes(
@@ -1603,9 +1611,10 @@ class GenAISemanticProcessor(TracingProcessor):
         if agent_desc_override:
             yield GEN_AI_AGENT_DESCRIPTION, agent_desc_override
 
-        # Server attributes
-        for key, value in self._get_server_attributes().items():
-            yield key, value
+        # Server attributes (skip for MCP spans — they set server.address themselves)
+        if not _is_instance_of(span_data, MCPListToolsSpanData):
+            for key, value in self._get_server_attributes().items():
+                yield key, value
 
         # Process different span types
         if _is_instance_of(span_data, GenerationSpanData):
@@ -2207,18 +2216,12 @@ class GenAISemanticProcessor(TracingProcessor):
         self, span_data: MCPListToolsSpanData
     ) -> Iterator[tuple[str, AttributeValue]]:
         """Extract attributes from MCP list tools span."""
-        yield GEN_AI_OPERATION_NAME, GenAIOperationName.MCP_LIST_TOOLS
+        # mcp.method.name is REQUIRED per MCP semconv
+        yield MCP_METHOD_NAME, MCP_METHOD_TOOLS_LIST
 
+        # server.address is RECOMMENDED per MCP semconv
         if span_data.server:
-            yield MCP_SERVER_NAME, span_data.server
-
-        if span_data.result is not None:
-            yield MCP_TOOLS_COUNT, len(span_data.result)
-            if (
-                self.include_sensitive_data
-                and self._content_mode.capture_in_span
-            ):
-                yield MCP_TOOLS_LIST, gen_ai_json_dumps(span_data.result)
+            yield ServerAttributes.SERVER_ADDRESS, span_data.server
 
         yield (
             GEN_AI_OUTPUT_TYPE,
