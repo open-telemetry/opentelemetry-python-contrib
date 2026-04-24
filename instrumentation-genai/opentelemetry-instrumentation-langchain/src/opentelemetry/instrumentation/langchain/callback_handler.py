@@ -75,14 +75,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                 name=workflow_name_override or name
             )
             self._invocation_manager.add_invocation_state(run_id, None, wf)
-            return
-        else:
-            # TODO: For agent invocation
-            self._invocation_manager.add_invocation_state(
-                run_id,
-                parent_run_id,
-                None,  # type: ignore[arg-type]
-            )
+        # TODO: handle non-workflow chains (e.g. agent sub-chains) in the future
 
     def on_chain_end(
         self,
@@ -96,12 +89,6 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         if invocation is None or not isinstance(
             invocation, WorkflowInvocation
         ):
-            # In on_chain_start, invocation state with None invocation will be added for intermediate chains and agents.
-            # If the invocation is None, it means on_chain_start was called but we are not tracking this chain (e.g. it's an agent or intermediate chain),
-            # so we should not attempt to stop it. Instead, we just clean up the invocation state since we won't be tracking it.
-            if self._invocation_manager.get_invocation_state(run_id):
-                self._invocation_manager.delete_invocation_state(run_id)
-
             # If the invocation does not exist, we cannot set attributes or end it
             return
 

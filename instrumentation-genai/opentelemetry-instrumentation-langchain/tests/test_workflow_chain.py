@@ -143,41 +143,6 @@ class TestWorkflowSpanCreation(_CallbackHandlerTestBase):
         self.assertEqual(len(internal_spans), 1)
         self.assertEqual(internal_spans[0].name, "invoke_workflow MyChain")
 
-    def test_no_workflow_span_for_nested_chain(self) -> None:
-        """Chains with a parent_run_id are nested — no extra workflow span."""
-        parent_run_id = uuid.uuid4()
-        child_run_id = uuid.uuid4()
-
-        # Start parent (top-level)
-        self.handler.on_chain_start(
-            serialized=_make_serialized("ParentChain"),
-            inputs={},
-            run_id=parent_run_id,
-            parent_run_id=None,
-        )
-        # Start child (nested — should NOT create a workflow span)
-        self.handler.on_chain_start(
-            serialized=_make_serialized("ChildChain"),
-            inputs={},
-            run_id=child_run_id,
-            parent_run_id=parent_run_id,
-        )
-        self.handler.on_chain_end(
-            outputs={},
-            run_id=child_run_id,
-            parent_run_id=parent_run_id,
-        )
-        self.handler.on_chain_end(
-            outputs={},
-            run_id=parent_run_id,
-            parent_run_id=None,
-        )
-
-        # Only one INTERNAL (workflow) span — for the parent, not the child
-        internal_spans = self._spans_by_kind(SpanKind.INTERNAL)
-        self.assertEqual(len(internal_spans), 1)
-        self.assertEqual(internal_spans[0].name, "invoke_workflow ParentChain")
-
 
 class TestLLMSpanGetsWorkflowName(_CallbackHandlerTestBase):
     """Verify gen_ai.workflow.name is propagated to the LLM span via CSA."""

@@ -40,17 +40,13 @@ class _InvocationManager:
         run_id: UUID,
         parent_run_id: Optional[UUID],
         invocation: GenAIInvocation,
-    ):
+    ) -> None:
         invocation_state = _InvocationState(invocation=invocation)
         self._invocations[run_id] = invocation_state
 
         if parent_run_id is not None and parent_run_id in self._invocations:
             parent_invocation_state = self._invocations[parent_run_id]
             parent_invocation_state.children.append(run_id)
-    
-    def get_invocation_state(self, run_id: UUID) -> Optional[_InvocationState]:
-        invocation_state = self._invocations.get(run_id)
-        return invocation_state
 
     def get_invocation(self, run_id: UUID) -> Optional[GenAIInvocation]:
         invocation_state = self._invocations.get(run_id)
