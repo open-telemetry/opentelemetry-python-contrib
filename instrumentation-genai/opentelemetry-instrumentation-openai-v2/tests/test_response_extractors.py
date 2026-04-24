@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 from types import SimpleNamespace
 from unittest import mock
 
@@ -23,10 +22,6 @@ from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
 from opentelemetry.util.genai.types import LLMInvocation
-
-
-def _validate_compat_model(loaded_module, model_type, value):
-    return loaded_module._validate_model(model_type, value, "test")
 
 
 @pytest.fixture(scope="module", name="loaded_module")
@@ -319,60 +314,25 @@ def test_set_invocation_response_attributes_populates_output_messages(
     ] == [["Done"]]
 
 
-def test_prevalidated_response_model_skips_revalidation(
-    loaded_module, monkeypatch
+def test_extractors_ignore_invalid_request_shapes_without_validation(
+    loaded_module,
 ):
-    validated_result = _validate_compat_model(
-        loaded_module,
-        loaded_module._ResponsesResultModel,
-        SimpleNamespace(
-            output=[
-                SimpleNamespace(
-                    type="message",
-                    status="completed",
-                    content=[SimpleNamespace(type="output_text", text="Done")],
-                )
-            ]
-        ),
+    assert (
+        loaded_module._extract_system_instruction(
+            {"instructions": ["not-a-string"]}
+        )
+        == []
     )
-    assert validated_result is not None
-
-    def _unexpected_validation(_result):
-        raise AssertionError("unexpected response revalidation")
-
-    monkeypatch.setattr(
-        loaded_module, "_validate_response_result", _unexpected_validation
+    assert loaded_module._extract_input_messages({"input": 42}) == []
+    assert (
+        loaded_module._extract_output_type({"text": {"format": {"type": 42}}})
+        is None
     )
 
-    assert loaded_module._extract_finish_reasons(validated_result) == ["stop"]
-    messages = loaded_module._extract_output_messages(validated_result)
-    assert [part.content for part in messages[0].parts] == ["Done"]
 
-
-@pytest.mark.parametrize(
-    ("kwargs", "extractor_name"),
-    [
-        ({"instructions": ["not-a-string"]}, "_extract_system_instruction"),
-        ({"input": 42}, "_extract_input_messages"),
-        ({"text": {"format": {"type": 42}}}, "_extract_output_type"),
-    ],
-)
-def test_request_validation_errors_are_logged_and_ignored(
-    loaded_module, caplog, kwargs, extractor_name
+def test_response_extractors_ignore_invalid_shapes_without_validation(
+    loaded_module,
 ):
-    caplog.set_level(logging.DEBUG, logger=loaded_module.__name__)
-    extractor = getattr(loaded_module, extractor_name)
-
-    result = extractor(kwargs)
-
-    assert result in ([], None)
-    assert "OpenAI responses extractor validation failed" in caplog.text
-
-
-def test_response_validation_errors_are_logged_and_ignored(
-    loaded_module, caplog
-):
-    caplog.set_level(logging.DEBUG, logger=loaded_module.__name__)
     invocation = LLMInvocation(request_model="gpt-4o-mini")
     invalid_result = SimpleNamespace(output=42, usage=42)
 
@@ -390,4 +350,3 @@ def test_response_validation_errors_are_logged_and_ignored(
     assert invocation.finish_reasons is None
     assert not invocation.output_messages
     assert not invocation.attributes
-    assert "OpenAI responses extractor validation failed" in caplog.text

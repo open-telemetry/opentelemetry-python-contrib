@@ -18,9 +18,10 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import ContentCapturingMode, Error
 
 from .response_extractors import (
-    _apply_request_attributes,
-    _get_inference_creation_kwargs,
-    _set_invocation_response_attributes,
+    apply_request_attributes,
+    extract_params,
+    get_inference_creation_kwargs,
+    set_invocation_response_attributes,
 )
 from .response_wrappers import ResponseStreamWrapper
 from .utils import is_streaming
@@ -35,10 +36,11 @@ def responses_create(
     capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
 
     def traced_method(wrapped, instance, args, kwargs):
+        params = extract_params(**kwargs)
         invocation = handler.start_inference(
-            **_get_inference_creation_kwargs(kwargs, instance)
+            **get_inference_creation_kwargs(params, instance)
         )
-        _apply_request_attributes(invocation, kwargs, capture_content)
+        apply_request_attributes(invocation, params, capture_content)
 
         try:
             result = wrapped(*args, **kwargs)
@@ -51,7 +53,7 @@ def responses_create(
                     capture_content,
                 )
 
-            _set_invocation_response_attributes(
+            set_invocation_response_attributes(
                 invocation, parsed_result, capture_content
             )
             invocation.stop()
