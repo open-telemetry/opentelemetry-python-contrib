@@ -45,6 +45,9 @@ def test_structured_output_with_content(
             response_format=CalendarEvent,
         )
 
+    # Verify wrapper doesn't interfere with parse() return
+    assert response.choices[0].message.parsed is not None
+
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_all_attributes(
@@ -62,7 +65,8 @@ def test_structured_output_with_content(
         if latest_experimental_enabled
         else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
     )
-    assert spans[0].attributes[output_type_attr_key] == "json"
+    expected_value = "json" if latest_experimental_enabled else "json_schema"
+    assert spans[0].attributes[output_type_attr_key] == expected_value
 
     if latest_experimental_enabled:
         assert_messages_attribute(
@@ -103,6 +107,9 @@ def test_structured_output_no_content(
             response_format=CalendarEvent,
         )
 
+    # Verify wrapper doesn't interfere with parse() return
+    assert response.choices[0].message.parsed is not None
+
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     assert_all_attributes(
@@ -120,7 +127,8 @@ def test_structured_output_no_content(
         if latest_experimental_enabled
         else GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
     )
-    assert spans[0].attributes[output_type_attr_key] == "json"
+    expected_value = "json" if latest_experimental_enabled else "json_schema"
+    assert spans[0].attributes[output_type_attr_key] == expected_value
 
     logs = log_exporter.get_finished_logs()
     if latest_experimental_enabled:
