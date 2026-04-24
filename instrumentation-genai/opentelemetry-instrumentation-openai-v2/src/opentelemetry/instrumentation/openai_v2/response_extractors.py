@@ -31,6 +31,7 @@ from .utils import get_server_address_and_port
 if TYPE_CHECKING:
     from openai.types.responses.response import Response
     from openai.types.responses.response_usage import ResponseUsage
+
     from opentelemetry.util.genai.types import (
         InputMessage,
         OutputMessage,
@@ -316,7 +317,9 @@ def get_output_messages_from_response(
                         ToolCall(
                             id=item.call_id if item.call_id else item.id,
                             name=item.name,
-                            arguments=_parse_tool_call_arguments(item.arguments),
+                            arguments=_parse_tool_call_arguments(
+                                item.arguments
+                            ),
                         )
                     ],
                     finish_reason="tool_calls",

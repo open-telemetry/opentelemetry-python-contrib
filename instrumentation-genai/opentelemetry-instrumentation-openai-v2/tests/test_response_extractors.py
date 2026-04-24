@@ -16,6 +16,11 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+from opentelemetry.instrumentation.openai_v2 import response_extractors
+from opentelemetry.semconv._incubating.attributes import (
+    openai_attributes as OpenAIAttributes,
+)
+from opentelemetry.util.genai.types import LLMInvocation
 
 try:
     # Responses types are not available in the oldest supported OpenAI SDK.
@@ -26,13 +31,6 @@ try:
 except ImportError:
     Response = None
     HAS_RESPONSES_TYPES = False
-
-from opentelemetry.instrumentation.openai_v2 import response_extractors
-from opentelemetry.semconv._incubating.attributes import (
-    openai_attributes as OpenAIAttributes,
-)
-from opentelemetry.util.genai.types import LLMInvocation
-
 
 pytestmark = pytest.mark.skipif(
     not HAS_RESPONSES_TYPES,
@@ -137,7 +135,11 @@ def test_extract_output_messages_maps_parts_and_finish_reasons(loaded_module):
                 "role": "assistant",
                 "status": "incomplete",
                 "content": [
-                    {"type": "output_text", "text": "Partial", "annotations": []}
+                    {
+                        "type": "output_text",
+                        "text": "Partial",
+                        "annotations": [],
+                    }
                 ],
             },
             {
@@ -146,7 +148,11 @@ def test_extract_output_messages_maps_parts_and_finish_reasons(loaded_module):
                 "role": "assistant",
                 "status": "in_progress",
                 "content": [
-                    {"type": "output_text", "text": "Pending", "annotations": []}
+                    {
+                        "type": "output_text",
+                        "text": "Pending",
+                        "annotations": [],
+                    }
                 ],
             },
             {
@@ -231,7 +237,9 @@ def test_extract_output_type_handles_text_format_mapping(loaded_module):
         == "json"
     )
     assert (
-        loaded_module.extract_params(text={"format": {"type": "text"}}).output_type
+        loaded_module.extract_params(
+            text={"format": {"type": "text"}}
+        ).output_type
         == "text"
     )
     assert (
@@ -246,7 +254,10 @@ def test_extract_output_type_handles_text_format_mapping(loaded_module):
         ).output_type
         == "text"
     )
-    assert loaded_module.extract_params(text={"format": "plain"}).output_type is None
+    assert (
+        loaded_module.extract_params(text={"format": "plain"}).output_type
+        is None
+    )
     assert loaded_module.extract_params(text="plain").output_type is None
 
 
@@ -361,7 +372,9 @@ def test_response_extractors_ignore_invalid_shapes_without_validation(
     invocation = LLMInvocation(request_model="gpt-4o-mini")
     invalid_result = SimpleNamespace(output=42, usage=42)
 
-    assert loaded_module.get_output_messages_from_response(invalid_result) == []
+    assert (
+        loaded_module.get_output_messages_from_response(invalid_result) == []
+    )
     assert loaded_module.extract_finish_reasons(invalid_result) == []
 
     loaded_module.set_invocation_response_attributes(
