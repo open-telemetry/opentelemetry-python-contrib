@@ -235,6 +235,7 @@ class OutputMessage:
     finish_reason: str | FinishReason
 
 
+
 @dataclass
 class Error:
     message: str

@@ -9,9 +9,11 @@ from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
+from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
     create_token_histogram,
+    create_ttfc_histogram,
 )
 
 from ._invocation import GenAIInvocation
@@ -23,6 +25,7 @@ class InvocationMetricsRecorder:
     def __init__(self, meter: Meter):
         self._duration_histogram: Histogram = create_duration_histogram(meter)
         self._token_histogram: Histogram = create_token_histogram(meter)
+        self._ttfc_histogram: Histogram = create_ttfc_histogram(meter)
 
     def record(self, invocation: GenAIInvocation) -> None:
         """Record duration and token metrics for an invocation if possible."""
@@ -47,6 +50,14 @@ class InvocationMetricsRecorder:
             self._token_histogram.record(
                 token_count,
                 attributes=attributes | {GenAI.GEN_AI_TOKEN_TYPE: token_type},
+                context=invocation._span_context,
+            )
+
+        ttfc_s = getattr(invocation, 'time_to_first_token_s', None)
+        if ttfc_s is not None and error_attributes.ERROR_TYPE not in attributes:
+            self._ttfc_histogram.record(
+                ttfc_s,
+                attributes=attributes,
                 context=invocation._span_context,
             )
 

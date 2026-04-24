@@ -113,6 +113,8 @@ class InferenceInvocation(GenAIInvocation):
         self.seed = seed
         self.server_address = server_address
         self.server_port = server_port
+        self.time_to_first_token_s: float | None = None
+        """Time to first token in seconds (streaming responses only)."""
         self._start()
 
     def _get_message_attributes(self, *, for_span: bool) -> dict[str, Any]:
@@ -283,6 +285,8 @@ class LLMInvocation:
     seed: int | None = None
     server_address: str | None = None
     server_port: int | None = None
+    time_to_first_token_s: float | None = None
+    """Time to first token in seconds (streaming responses only)."""
 
     _inference_invocation: InferenceInvocation | None = field(
         default=None, init=False, repr=False
@@ -347,6 +351,7 @@ class LLMInvocation:
         inv.server_port = self.server_port
         inv.attributes = self.attributes
         inv.metric_attributes = self.metric_attributes
+        inv.time_to_first_token_s = self.time_to_first_token_s
 
     @property
     def span(self) -> Span:
@@ -356,3 +361,10 @@ class LLMInvocation:
             if self._inference_invocation is not None
             else INVALID_SPAN
         )
+
+    @property
+    def monotonic_start_s(self) -> float | None:
+        """Monotonic start time, delegated from the underlying InferenceInvocation."""
+        if self._inference_invocation is not None:
+            return self._inference_invocation._monotonic_start_s
+        return None
