@@ -214,25 +214,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-openai-v2-latest -- -ra
 
-  py313-test-instrumentation-openai-v2-pydantic1_ubuntu-latest:
-    name: instrumentation-openai-v2-pydantic1 3.13 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py313-test-instrumentation-openai-v2-pydantic1 -- -ra
-
   pypy3-test-instrumentation-openai-v2-oldest_ubuntu-latest:
     name: instrumentation-openai-v2-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
