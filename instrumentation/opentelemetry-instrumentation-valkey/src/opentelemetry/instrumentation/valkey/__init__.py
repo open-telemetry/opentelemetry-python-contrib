@@ -13,68 +13,68 @@
 # limitations under the License.
 #
 """
-Instrument `redis`_ to report Redis queries.
+Instrument `valkey`_ to report Valkey queries.
 
-.. _redis: https://pypi.org/project/redis/
+.. _valkey: https://pypi.org/project/valkey/
 
 
 Instrument All Clients
 ----------------------
 
-The easiest way to instrument all redis client instances is by
-``RedisInstrumentor().instrument()``:
+The easiest way to instrument all valkey client instances is by
+``ValkeyInstrumentor().instrument()``:
 
 .. code:: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    import redis
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+    import valkey
 
 
-    # Instrument redis
-    RedisInstrumentor().instrument()
+    # Instrument valkey
+    ValkeyInstrumentor().instrument()
 
     # This will report a span with the default settings
-    client = redis.StrictRedis(host="localhost", port=6379)
+    client = valkey.StrictValkey(host="localhost", port=6379)
     client.get("my-key")
 
-Async Redis clients (i.e. ``redis.asyncio.Redis``) are also instrumented in the same way:
+Async Valkey clients (i.e. ``valkey.asyncio.Valkey``) are also instrumented in the same way:
 
 .. code:: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    import redis.asyncio
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+    import valkey.asyncio
 
 
-    # Instrument redis
-    RedisInstrumentor().instrument()
+    # Instrument valkey
+    ValkeyInstrumentor().instrument()
 
     # This will report a span with the default settings
-    async def redis_get():
-        client = redis.asyncio.Redis(host="localhost", port=6379)
+    async def valkey_get():
+        client = valkey.asyncio.Valkey(host="localhost", port=6379)
         await client.get("my-key")
 
 .. note::
     Calling the ``instrument`` method will instrument the client classes, so any client
     created after the ``instrument`` call will be instrumented. To instrument only a
-    single client, use :func:`RedisInstrumentor.instrument_client` method.
+    single client, use :func:`ValkeyInstrumentor.instrument_client` method.
 
 Instrument Single Client
 ------------------------
 
-The :func:`RedisInstrumentor.instrument_client` can instrument a connection instance. This is useful when there are multiple clients with a different redis database index.
+The :func:`ValkeyInstrumentor.instrument_client` can instrument a connection instance. This is useful when there are multiple clients with a different valkey database index.
 Or, you might have a different connection pool used for an application function you
 don't want instrumented.
 
 .. code:: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    import redis
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+    import valkey
 
-    instrumented_client = redis.Redis()
-    not_instrumented_client = redis.Redis()
+    instrumented_client = valkey.Valkey()
+    not_instrumented_client = valkey.Valkey()
 
-    # Instrument redis
-    RedisInstrumentor.instrument_client(client=instrumented_client)
+    # Instrument valkey
+    ValkeyInstrumentor.instrument_client(client=instrumented_client)
 
     # This will report a span with the default settings
     instrumented_client.get("my-key")
@@ -83,17 +83,17 @@ don't want instrumented.
     not_instrumented_client.get("my-key")
 
 .. warning::
-    All client instances created after calling ``RedisInstrumentor().instrument`` will
+    All client instances created after calling ``ValkeyInstrumentor().instrument`` will
     be instrumented. To avoid instrumenting all clients, use
-    :func:`RedisInstrumentor.instrument_client` .
+    :func:`ValkeyInstrumentor.instrument_client` .
 
 Request/Response Hooks
 ----------------------
 
 .. code:: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    import redis
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+    import valkey
 
     def request_hook(span, instance, args, kwargs):
         if span and span.is_recording():
@@ -103,30 +103,30 @@ Request/Response Hooks
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    # Instrument redis with hooks
-    RedisInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+    # Instrument valkey with hooks
+    ValkeyInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
 
     # This will report a span with the default settings and the custom attributes added from the hooks
-    client = redis.StrictRedis(host="localhost", port=6379)
+    client = valkey.StrictValkey(host="localhost", port=6379)
     client.get("my-key")
 
 Suppress Instrumentation
 ------------------------
 
 You can use the ``suppress_instrumentation`` context manager to prevent instrumentation
-from being applied to specific Redis operations. This is useful when you want to avoid
+from being applied to specific Valkey operations. This is useful when you want to avoid
 creating spans for internal operations, health checks, or during specific code paths.
 
 .. code:: python
 
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
+    from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
     from opentelemetry.instrumentation.utils import suppress_instrumentation
-    import redis
+    import valkey
 
-    # Instrument redis
-    RedisInstrumentor().instrument()
+    # Instrument valkey
+    ValkeyInstrumentor().instrument()
 
-    client = redis.StrictRedis(host="localhost", port=6379)
+    client = valkey.StrictValkey(host="localhost", port=6379)
 
     # This will report a span
     client.get("my-key")
@@ -146,9 +146,10 @@ API
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Collection
+from typing import TYPE_CHECKING, Any, Callable, Collection
 
-import redis
+import valkey
+import valkey.asyncio
 from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._redis_valkey import (
@@ -159,49 +160,35 @@ from opentelemetry.instrumentation._redis_valkey import (
     _traced_execute_pipeline_factory,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.redis.package import _instruments
-from opentelemetry.instrumentation.redis.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.valkey.package import _instruments
+from opentelemetry.instrumentation.valkey.version import __version__
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_REDIS_DATABASE_INDEX,
     DB_SYSTEM,
 )
-from opentelemetry.semconv.trace import DbSystemValues
 from opentelemetry.trace import TracerProvider, get_tracer
 
 if TYPE_CHECKING:
-    from opentelemetry.instrumentation.redis.custom_types import (
-        RequestHook,
-        ResponseHook,
-    )
+    import valkey.asyncio.client
+    import valkey.asyncio.cluster
+    import valkey.client
+    import valkey.cluster
+    import valkey.connection
 
 
 _logger = logging.getLogger(__name__)
 
-_REDIS_ASYNCIO_VERSION = (4, 2, 0)
-_REDIS_CLUSTER_VERSION = (4, 1, 0)
-_REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
-
-_CLIENT_ASYNCIO_SUPPORT = redis.VERSION >= _REDIS_ASYNCIO_VERSION
-_CLIENT_ASYNCIO_CLUSTER_SUPPORT = (
-    redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION
-)
-_CLIENT_CLUSTER_SUPPORT = redis.VERSION >= _REDIS_CLUSTER_VERSION
-_CLIENT_BEFORE_V3 = redis.VERSION < (3, 0, 0)
-
-if _CLIENT_ASYNCIO_SUPPORT:
-    import redis.asyncio
-
 _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 
-_REDIS_CONFIG = KVStoreConfig(
-    backend_name="redis",
-    db_system=DbSystemValues.REDIS.value,
+_VALKEY_CONFIG = KVStoreConfig(
+    backend_name="valkey",
+    db_system="valkey",
     db_system_attr=DB_SYSTEM,
     db_index_attr=DB_REDIS_DATABASE_INDEX,
     args_length_attr="db.redis.args_length",
     pipeline_length_attr="db.redis.pipeline_length",
-    watch_error_class=redis.WatchError,
+    watch_error_class=valkey.WatchError,
 )
 
 
@@ -212,72 +199,68 @@ def _instrument(
     response_hook=None,
 ):
     _traced_execute_command = _traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
     _traced_execute_pipeline = _traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
-    pipeline_class = "BasePipeline" if _CLIENT_BEFORE_V3 else "Pipeline"
-    redis_class = "StrictRedis" if _CLIENT_BEFORE_V3 else "Redis"
 
     wrap_function_wrapper(
-        "redis", f"{redis_class}.execute_command", _traced_execute_command
+        "valkey", "Valkey.execute_command", _traced_execute_command
     )
     wrap_function_wrapper(
-        "redis.client",
-        f"{pipeline_class}.execute",
+        "valkey.client",
+        "Pipeline.execute",
         _traced_execute_pipeline,
     )
     wrap_function_wrapper(
-        "redis.client",
-        f"{pipeline_class}.immediate_execute_command",
+        "valkey.client",
+        "Pipeline.immediate_execute_command",
         _traced_execute_command,
     )
-    if _CLIENT_CLUSTER_SUPPORT:
-        wrap_function_wrapper(
-            "redis.cluster",
-            "RedisCluster.execute_command",
-            _traced_execute_command,
-        )
-        wrap_function_wrapper(
-            "redis.cluster",
-            "ClusterPipeline.execute",
-            _traced_execute_pipeline,
-        )
+    wrap_function_wrapper(
+        "valkey.cluster",
+        "ValkeyCluster.execute_command",
+        _traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.cluster",
+        "ClusterPipeline.execute",
+        _traced_execute_pipeline,
+    )
 
     _async_traced_execute_command = _async_traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
     _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
-    if _CLIENT_ASYNCIO_SUPPORT:
-        wrap_function_wrapper(
-            "redis.asyncio",
-            f"{redis_class}.execute_command",
-            _async_traced_execute_command,
-        )
-        wrap_function_wrapper(
-            "redis.asyncio.client",
-            f"{pipeline_class}.execute",
-            _async_traced_execute_pipeline,
-        )
-        wrap_function_wrapper(
-            "redis.asyncio.client",
-            f"{pipeline_class}.immediate_execute_command",
-            _async_traced_execute_command,
-        )
-    if _CLIENT_ASYNCIO_CLUSTER_SUPPORT:
-        wrap_function_wrapper(
-            "redis.asyncio.cluster",
-            "RedisCluster.execute_command",
-            _async_traced_execute_command,
-        )
-        wrap_function_wrapper(
-            "redis.asyncio.cluster",
-            "ClusterPipeline.execute",
-            _async_traced_execute_pipeline,
-        )
+
+    wrap_function_wrapper(
+        "valkey.asyncio",
+        "Valkey.execute_command",
+        _async_traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.client",
+        "Pipeline.execute",
+        _async_traced_execute_pipeline,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.client",
+        "Pipeline.immediate_execute_command",
+        _async_traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.cluster",
+        "ValkeyCluster.execute_command",
+        _async_traced_execute_command,
+    )
+    wrap_function_wrapper(
+        "valkey.asyncio.cluster",
+        "ClusterPipeline.execute",
+        _async_traced_execute_pipeline,
+    )
 
 
 def _instrument_client(
@@ -286,15 +269,14 @@ def _instrument_client(
     request_hook=None,
     response_hook=None,
 ):
-    # first, handle async clients and cluster clients
     _async_traced_execute = _async_traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
     _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
 
-    if _CLIENT_ASYNCIO_SUPPORT and isinstance(client, redis.asyncio.Redis):
+    if isinstance(client, valkey.asyncio.Valkey):
 
         def _async_pipeline_wrapper(func, instance, args, kwargs):
             result = func(*args, **kwargs)
@@ -310,9 +292,7 @@ def _instrument_client(
         wrap_function_wrapper(client, "pipeline", _async_pipeline_wrapper)
         return
 
-    if _CLIENT_ASYNCIO_CLUSTER_SUPPORT and isinstance(
-        client, redis.asyncio.RedisCluster
-    ):
+    if isinstance(client, valkey.asyncio.ValkeyCluster):
 
         def _async_cluster_pipeline_wrapper(func, instance, args, kwargs):
             result = func(*args, **kwargs)
@@ -326,13 +306,12 @@ def _instrument_client(
             client, "pipeline", _async_cluster_pipeline_wrapper
         )
         return
-    # for redis.client.Redis, redis.Cluster and v3.0.0 redis.client.StrictRedis
-    # the wrappers are the same
+
     _traced_execute = _traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
     _traced_execute_pipeline = _traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        _VALKEY_CONFIG, tracer, request_hook, response_hook
     )
 
     def _pipeline_wrapper(func, instance, args, kwargs):
@@ -355,7 +334,12 @@ def _instrument_client(
     )
 
 
-class RedisInstrumentor(BaseInstrumentor):
+class ValkeyInstrumentor(BaseInstrumentor):
+    """An instrumentor for Valkey.
+
+    See `BaseInstrumentor`
+    """
+
     @staticmethod
     def _get_tracer(**kwargs):
         tracer_provider = kwargs.get("tracer_provider")
@@ -369,11 +353,11 @@ class RedisInstrumentor(BaseInstrumentor):
     def instrument(
         self,
         tracer_provider: TracerProvider | None = None,
-        request_hook: RequestHook | None = None,
-        response_hook: ResponseHook | None = None,
+        request_hook: Callable | None = None,
+        response_hook: Callable | None = None,
         **kwargs,
     ):
-        """Instruments all Redis/StrictRedis/RedisCluster and async client instances.
+        """Instruments all Valkey/StrictValkey/ValkeyCluster and async client instances.
 
         Args:
             tracer_provider: A TracerProvider, defaults to global.
@@ -384,7 +368,7 @@ class RedisInstrumentor(BaseInstrumentor):
                 command arguments. For example ``client.set("mykey", "value", ex=5)`` would
                 have ``args`` as ``('SET', 'mykey', 'value', 'EX', 5)``.
 
-                The ``kwargs`` represents occasional ``options`` passed by redis. For example,
+                The ``kwargs`` represents occasional ``options`` passed by valkey. For example,
                 if you use ``client.set("mykey", "value", get=True)``, the ``kwargs`` would be
                 ``{'get': True}``.
             response_hook:
@@ -400,7 +384,7 @@ class RedisInstrumentor(BaseInstrumentor):
         )
 
     def _instrument(self, **kwargs: Any):
-        """Instruments the redis module
+        """Instruments the valkey module
 
         Args:
             **kwargs: Optional arguments
@@ -415,108 +399,77 @@ class RedisInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs: Any):
-        if _CLIENT_BEFORE_V3:
-            unwrap(redis.StrictRedis, "execute_command")
-            unwrap(redis.StrictRedis, "pipeline")
-            unwrap(redis.Redis, "pipeline")
-            unwrap(
-                redis.client.BasePipeline,  # pylint:disable=no-member
-                "execute",
-            )
-            unwrap(
-                redis.client.BasePipeline,  # pylint:disable=no-member
-                "immediate_execute_command",
-            )
-        else:
-            unwrap(redis.Redis, "execute_command")
-            unwrap(redis.Redis, "pipeline")
-            unwrap(redis.client.Pipeline, "execute")
-            unwrap(redis.client.Pipeline, "immediate_execute_command")
-        if _CLIENT_CLUSTER_SUPPORT:
-            unwrap(redis.cluster.RedisCluster, "execute_command")
-            unwrap(redis.cluster.ClusterPipeline, "execute")
-        if _CLIENT_ASYNCIO_SUPPORT:
-            unwrap(redis.asyncio.Redis, "execute_command")
-            unwrap(redis.asyncio.Redis, "pipeline")
-            unwrap(redis.asyncio.client.Pipeline, "execute")
-            unwrap(redis.asyncio.client.Pipeline, "immediate_execute_command")
-        if _CLIENT_ASYNCIO_CLUSTER_SUPPORT:
-            unwrap(redis.asyncio.cluster.RedisCluster, "execute_command")
-            unwrap(redis.asyncio.cluster.ClusterPipeline, "execute")
+        unwrap(valkey.Valkey, "execute_command")
+        unwrap(valkey.Valkey, "pipeline")
+        unwrap(valkey.client.Pipeline, "execute")
+        unwrap(valkey.client.Pipeline, "immediate_execute_command")
+        unwrap(valkey.cluster.ValkeyCluster, "execute_command")
+        unwrap(valkey.cluster.ClusterPipeline, "execute")
+        unwrap(valkey.asyncio.Valkey, "execute_command")
+        unwrap(valkey.asyncio.Valkey, "pipeline")
+        unwrap(valkey.asyncio.client.Pipeline, "execute")
+        unwrap(valkey.asyncio.client.Pipeline, "immediate_execute_command")
+        unwrap(valkey.asyncio.cluster.ValkeyCluster, "execute_command")
+        unwrap(valkey.asyncio.cluster.ClusterPipeline, "execute")
 
     @staticmethod
     def instrument_client(
-        client: redis.StrictRedis
-        | redis.Redis
-        | redis.asyncio.Redis
-        | redis.cluster.RedisCluster
-        | redis.asyncio.cluster.RedisCluster,
+        client: valkey.Valkey
+        | valkey.asyncio.Valkey
+        | valkey.cluster.ValkeyCluster
+        | valkey.asyncio.ValkeyCluster,
         tracer_provider: TracerProvider | None = None,
-        request_hook: RequestHook | None = None,
-        response_hook: ResponseHook | None = None,
+        request_hook: Callable | None = None,
+        response_hook: Callable | None = None,
     ):
-        """Instrument the provided Redis Client. The client can be sync or async.
+        """Instrument the provided Valkey Client. The client can be sync or async.
         Cluster client is also supported.
 
         Args:
-            client: The redis client.
+            client: The valkey client.
             tracer_provider: A TracerProvider, defaults to global.
             request_hook: a function with extra user-defined logic to run before
                 performing the request.
-
-                The ``args`` is a tuple, where items are
-                command arguments. For example ``client.set("mykey", "value", ex=5)`` would
-                have ``args`` as ``('SET', 'mykey', 'value', 'EX', 5)``.
-
-                The ``kwargs`` represents occasional ``options`` passed by redis. For example,
-                if you use ``client.set("mykey", "value", get=True)``, the ``kwargs`` would be
-                ``{'get': True}``.
-
             response_hook: a function with extra user-defined logic to run after
                 the request is complete.
-
-                The ``args`` represents the response.
         """
         if not hasattr(client, _INSTRUMENTATION_ATTR):
             setattr(client, _INSTRUMENTATION_ATTR, False)
         if not getattr(client, _INSTRUMENTATION_ATTR):
             _instrument_client(
                 client,
-                RedisInstrumentor._get_tracer(tracer_provider=tracer_provider),
+                ValkeyInstrumentor._get_tracer(
+                    tracer_provider=tracer_provider
+                ),
                 request_hook=request_hook,
                 response_hook=response_hook,
             )
             setattr(client, _INSTRUMENTATION_ATTR, True)
         else:
             _logger.warning(
-                "Attempting to instrument Redis connection while already instrumented"
+                "Attempting to instrument Valkey connection while already instrumented"
             )
 
     @staticmethod
     def uninstrument_client(
-        client: redis.StrictRedis
-        | redis.Redis
-        | redis.asyncio.Redis
-        | redis.cluster.RedisCluster
-        | redis.asyncio.cluster.RedisCluster,
+        client: valkey.Valkey
+        | valkey.asyncio.Valkey
+        | valkey.cluster.ValkeyCluster
+        | valkey.asyncio.ValkeyCluster,
     ):
         """Disables instrumentation for the given client instance
 
         Args:
-            client: The redis client
+            client: The valkey client
         """
         if getattr(client, _INSTRUMENTATION_ATTR):
-            # for all clients we need to unwrap execute_command and pipeline functions
             unwrap(client, "execute_command")
-            # the method was creating a pipeline and wrapping the functions of the
-            # created instance. any pipelines created before un-instrumenting will
-            # remain instrumented (pipelines should usually have a short span)
             unwrap(client, "pipeline")
         else:
             _logger.warning(
-                "Attempting to un-instrument Redis connection that wasn't instrumented"
+                "Attempting to un-instrument Valkey connection that wasn't instrumented"
             )
+            return
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        """Return a list of python packages with versions that the will be instrumented."""
         return _instruments
