@@ -22,7 +22,7 @@ import logging
 import posixpath
 import threading
 from collections import OrderedDict
-from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+from concurrent.futures import (
     Future,
     ThreadPoolExecutor,
 )
@@ -52,9 +52,8 @@ GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
     gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS + "_ref"
 )
 
-GEN_AI_TOOL_DEFINITIONS = getattr(
-    gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
-)
+# TODO: Migrate to gen_ai_attributes constant once available in semconv package
+GEN_AI_TOOL_DEFINITIONS = "gen_ai.tool.definitions"
 GEN_AI_TOOL_DEFINITIONS_REF: Final = GEN_AI_TOOL_DEFINITIONS + "_ref"
 
 _MESSAGE_INDEX_KEY = "index"
