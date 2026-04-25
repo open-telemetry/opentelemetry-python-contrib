@@ -15,9 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
+- `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
+  ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
+- Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
+  ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
 
 ### Fixed
 
+- `opentelemetry-instrumentation-pika` Use `ObjectProxy` instead of `BaseObjectProxy` for `ReadyMessagesDequeProxy` to restore iterability with wrapt 2.x
+  ([#4461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4461))
+- `opentelemetry-instrumentation-dbapi` Use `ObjectProxy` instead of `BaseObjectProxy` for `TracedCursorProxy` to restore iterability with wrapt 2.x
+  ([#4427](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4427))
+- `opentelemetry-instrumentation-flask`: Clean up environ keys in `_teardown_request` to prevent duplicate execution
+  ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
+- `opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1) `flask.__version__` attribute; resolve the Flask version via `importlib.metadata`
+  ([#4422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4422))
+- `opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints
+  ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
+- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
+  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
 - `opentelemetry-instrumentation-flask`: Wrap `wsgi_app` call in try/finally so the `http.server.active_requests` gauge is decremented when a request raises, preventing a long-term gauge drift
   ([#4433](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4433))
 
@@ -1175,7 +1191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1573](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1573))
 - Add metric instrumentation for urllib
   ([#1553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1553))
-- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/resource/cloud-provider/aws/ecs.md) and [`aws.logs.*`](https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/cloud_provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
+- `opentelemetry/sdk/extension/aws` Implement [`aws.ecs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/ecs/) and [`aws.logs.*`](https://opentelemetry.io/docs/specs/semconv/resource/cloud-provider/aws/logs/) resource attributes in the `AwsEcsResourceDetector` detector when the ECS Metadata v4 is available
   ([#1212](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1212))
 - `opentelemetry-instrumentation-aio-pika` Support `aio_pika` 8.x
   ([#1481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1481))
@@ -1371,7 +1387,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add a test for asgi using NoOpTracerProvider
   ([#1367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1367))
 
-## 1.12.0rc2-0.32b0 - 2022-07-01
+## [1.12.0rc2-0.32b0](https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.12.0rc2) - 2022-07-01
 
 - Pyramid: Only categorize 500s server exceptions as errors
   ([#1037](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1037))
@@ -2392,8 +2408,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-ext-http-requests` Updates for core library changes
 
 - `Added support for PyPy3` Initial release
-
-## [#1033](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1033)
+  ([#1033](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1033))
 
 ## Version 0.1a0 (2019-09-30)
 
