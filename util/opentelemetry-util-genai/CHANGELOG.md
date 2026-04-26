@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add `AgentInvocation` type with `invoke_agent` span lifecycle
+  ([#4274](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4274))
 - Add metrics support for EmbeddingInvocation
   ([#4377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4377))
 - Add support for workflow in genAI utils handler.
