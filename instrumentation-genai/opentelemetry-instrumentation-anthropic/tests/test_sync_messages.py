@@ -483,6 +483,162 @@ def test_sync_messages_create_streaming_captures_content(
 
 
 @pytest.mark.vcr()
+def test_sync_messages_stream(  # pylint: disable=too-many-locals
+    request, span_exporter, anthropic_client, instrument_no_content
+):
+    """Test Messages.stream produces correct span."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    response_id = None
+    response_model = None
+    stop_reason = None
+    input_tokens = None
+    output_tokens = None
+
+    with anthropic_client.messages.stream(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    ) as stream:
+        for chunk in stream:
+            if chunk.type == "message_start":
+                message = getattr(chunk, "message", None)
+                if message:
+                    response_id = getattr(message, "id", None)
+                    response_model = getattr(message, "model", None)
+                    usage = getattr(message, "usage", None)
+                    if usage:
+                        input_tokens = getattr(usage, "input_tokens", None)
+            elif chunk.type == "message_delta":
+                delta = getattr(chunk, "delta", None)
+                if delta:
+                    stop_reason = getattr(delta, "stop_reason", None)
+                usage = getattr(chunk, "usage", None)
+                if usage:
+                    output_tokens = getattr(usage, "output_tokens", None)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    assert_span_attributes(
+        spans[0],
+        request_model=model,
+        response_id=response_id,
+        response_model=response_model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        finish_reasons=[normalize_stop_reason(stop_reason)]
+        if stop_reason
+        else None,
+    )
+
+
+@pytest.mark.vcr()
+def test_sync_messages_stream_captures_content(
+    request, span_exporter, anthropic_client, instrument_with_content
+):
+    """Test content capture on Messages.stream."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    with anthropic_client.messages.stream(
+        model=model,
+        max_tokens=100,
+        messages=messages,
+    ) as stream:
+        for _ in stream:
+            pass
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+
+    input_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
+    )
+    output_messages = _load_span_messages(
+        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
+    )
+    assert input_messages[0]["role"] == "user"
+    assert input_messages[0]["parts"][0]["type"] == "text"
+    assert output_messages[0]["role"] == "assistant"
+    assert output_messages[0]["parts"]
+
+
+@pytest.mark.vcr()
+def test_sync_messages_stream_delegates_response_attribute(
+    request, anthropic_client, instrument_no_content
+):
+    """Messages.stream wrapper should expose attributes from the wrapped stream."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+
+    with anthropic_client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=100,
+        messages=[{"role": "user", "content": "Say hi."}],
+    ) as stream:
+        assert stream.response is not None
+        assert stream.response.status_code == 200
+        assert stream.response.headers.get("request-id") is not None
+
+
+def test_sync_messages_stream_connection_error(
+    span_exporter, instrument_no_content
+):
+    """Test that connection errors from Messages.stream are handled correctly."""
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Hello"}]
+
+    client = Anthropic(base_url="http://localhost:9999")
+
+    with pytest.raises(APIConnectionError):
+        with client.messages.stream(
+            model=model,
+            max_tokens=100,
+            messages=messages,
+            timeout=0.1,
+        ) as stream:
+            list(stream)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert ErrorAttributes.ERROR_TYPE in span.attributes
+    assert "APIConnectionError" in span.attributes[ErrorAttributes.ERROR_TYPE]
+
+
+@pytest.mark.vcr()
+def test_sync_messages_stream_api_error(
+    request, span_exporter, anthropic_client, instrument_no_content
+):
+    """Test that API errors from Messages.stream are propagated."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+    model = "invalid-model-name"
+    messages = [{"role": "user", "content": "Hello"}]
+
+    with pytest.raises(NotFoundError):
+        with anthropic_client.messages.stream(
+            model=model,
+            max_tokens=100,
+            messages=messages,
+        ) as stream:
+            list(stream)
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert ErrorAttributes.ERROR_TYPE in span.attributes
+    assert "NotFoundError" in span.attributes[ErrorAttributes.ERROR_TYPE]
+
+
+@pytest.mark.vcr()
 def test_sync_messages_create_streaming_iteration(
     span_exporter, anthropic_client, instrument_no_content
 ):
@@ -857,6 +1013,31 @@ def test_sync_messages_create_streaming_user_exception(
             max_tokens=100,
             messages=messages,
             stream=True,
+        ) as stream:
+            for _ in stream:
+                raise ValueError("User raised exception")
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
+    assert span.attributes[ErrorAttributes.ERROR_TYPE] == "ValueError"
+
+
+@pytest.mark.vcr()
+def test_sync_messages_stream_user_exception(
+    request, span_exporter, anthropic_client, instrument_no_content
+):
+    """Test that user raised exceptions from Messages.stream are propagated."""
+    _skip_if_cassette_missing_and_no_real_key(request)
+    model = "claude-sonnet-4-20250514"
+    messages = [{"role": "user", "content": "Say hello in one word."}]
+
+    with pytest.raises(ValueError, match="User raised exception"):
+        with anthropic_client.messages.stream(
+            model=model,
+            max_tokens=100,
+            messages=messages,
         ) as stream:
             for _ in stream:
                 raise ValueError("User raised exception")

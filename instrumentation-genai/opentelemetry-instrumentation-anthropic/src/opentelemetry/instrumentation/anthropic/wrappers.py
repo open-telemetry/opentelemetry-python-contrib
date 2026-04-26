@@ -28,10 +28,8 @@ from typing import (
     cast,
 )
 
-from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
-    LLMInvocation,  # TODO: migrate to InferenceInvocation
 )
 
 from .messages_extractors import set_invocation_response_attributes
@@ -68,7 +66,7 @@ accumulate_event = cast("Callable[..., Message] | None", _sdk_accumulate_event)
 
 
 def _set_response_attributes(
-    invocation: LLMInvocation,
+    invocation: Any,
     result: "Message | None",
     capture_content: bool,
 ) -> None:
@@ -112,7 +110,7 @@ class MessageWrapper:
         self._message = message
         self._capture_content = capture_content
 
-    def extract_into(self, invocation: LLMInvocation) -> None:
+    def extract_into(self, invocation: Any) -> None:
         """Extract response data into the invocation."""
         set_invocation_response_attributes(
             invocation, self._message, self._capture_content
@@ -135,12 +133,10 @@ class MessagesStreamWrapper(
     def __init__(
         self,
         stream: "Stream[RawMessageStreamEvent] | MessageStream[ResponseFormatT]",
-        handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: Any,
         capture_content: bool,
     ):
         self.stream = stream
-        self.handler = handler
         self.invocation = invocation
         self._message: "Message | ParsedMessage[ResponseFormatT] | None" = None
         self._capture_content = capture_content
@@ -202,17 +198,15 @@ class MessagesStreamWrapper(
             _set_response_attributes(
                 self.invocation, self._message, self._capture_content
             )
-        with self._safe_instrumentation("stop_llm"):
-            self.handler.stop_llm(self.invocation)
+        with self._safe_instrumentation("invocation stop"):
+            self.invocation.stop()
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]) -> None:
         if self._finalized:
             return
-        with self._safe_instrumentation("fail_llm"):
-            self.handler.fail_llm(
-                self.invocation, Error(message=message, type=error_type)
-            )
+        with self._safe_instrumentation("invocation fail"):
+            self.invocation.fail(Error(message=message, type=error_type))
         self._finalized = True
 
     @staticmethod
@@ -257,12 +251,10 @@ class AsyncMessagesStreamWrapper(MessagesStreamWrapper[ResponseFormatT]):
     def __init__(
         self,
         stream: "AsyncStream[RawMessageStreamEvent] | AsyncMessageStream[ResponseFormatT]",
-        handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: Any,
         capture_content: bool,
     ):
         self.stream = stream
-        self.handler = handler
         self.invocation = invocation
         self._message: "Message | ParsedMessage[ResponseFormatT] | None" = None
         self._capture_content = capture_content
@@ -323,12 +315,10 @@ class MessagesStreamManagerWrapper(Generic[ResponseFormatT]):
     def __init__(
         self,
         manager: "MessageStreamManager[ResponseFormatT]",
-        handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: Any,
         capture_content: bool,
     ):
         self._manager = manager
-        self._handler = handler
         self._invocation = invocation
         self._capture_content = capture_content
         self._stream_wrapper: MessagesStreamWrapper[ResponseFormatT] | None = (
@@ -336,10 +326,13 @@ class MessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         )
 
     def __enter__(self) -> MessagesStreamWrapper[ResponseFormatT]:
-        stream = self._manager.__enter__()
+        try:
+            stream = self._manager.__enter__()
+        except Exception as exc:
+            self._invocation.fail(exc)
+            raise
         self._stream_wrapper = MessagesStreamWrapper(
             stream,
-            self._handler,
             self._invocation,
             self._capture_content,
         )
@@ -381,12 +374,10 @@ class AsyncMessagesStreamManagerWrapper(Generic[ResponseFormatT]):
     def __init__(
         self,
         manager: "AsyncMessageStreamManager[ResponseFormatT]",
-        handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: Any,
         capture_content: bool,
     ):
         self._manager = manager
-        self._handler = handler
         self._invocation = invocation
         self._capture_content = capture_content
         self._stream_wrapper: (
@@ -399,7 +390,6 @@ class AsyncMessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         msg_stream = await self._manager.__aenter__()
         self._stream_wrapper = AsyncMessagesStreamWrapper(
             msg_stream,
-            self._handler,
             self._invocation,
             self._capture_content,
         )
