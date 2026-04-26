@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `sqlcommenter`: prepend SQL comment to beginning of query instead of appending to end
+  ([#3583](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3583))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
