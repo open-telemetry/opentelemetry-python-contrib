@@ -18,15 +18,17 @@ from opentelemetry.instrumentation.utils import _url_quote
 
 def _add_sql_comment(sql, **meta) -> str:
     """
-    Appends comments to the sql statement and returns it
+    Prepends comments to the sql statement and returns it
     """
     meta.update(**_add_framework_tags())
     comment = _generate_sql_comment(**meta)
-    sql = sql.rstrip()
+    if not comment:
+        return sql
+    sql = sql.strip()
     if sql.endswith(";"):
-        sql = sql[:-1] + comment + ";"
+        sql = comment + " " + sql[:-1] + ";"
     else:
-        sql = sql + comment
+        sql = comment + " " + sql
     return sql
 
 
