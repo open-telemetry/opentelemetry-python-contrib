@@ -291,7 +291,8 @@ def test_sync_manager_enter_fails_invocation_when_manager_raises():
     )
 
     with pytest.raises(RuntimeError, match="manager enter failure"):
-        wrapper.__enter__()
+        with wrapper:
+            pass
 
     assert failures == [error]
 

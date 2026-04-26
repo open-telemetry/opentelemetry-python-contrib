@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for sync Messages.create instrumentation."""
+# pylint: disable=too-many-lines
 
 import inspect
 import json

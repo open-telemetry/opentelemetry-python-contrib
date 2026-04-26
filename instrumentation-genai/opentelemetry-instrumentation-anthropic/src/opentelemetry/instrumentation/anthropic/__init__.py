@@ -53,14 +53,15 @@ from wrapt import (
     wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
 )
 
-from opentelemetry.instrumentation.anthropic.package import _instruments
-from opentelemetry.instrumentation.anthropic.patch import (
-    messages_create,
-    messages_stream,
-)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.util.genai.handler import TelemetryHandler
+
+from .package import _instruments
+from .patch import (
+    messages_create,
+    messages_stream,
+)
 
 
 class AnthropicInstrumentor(BaseInstrumentor):

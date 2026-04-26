@@ -22,11 +22,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind, Tracer
-from opentelemetry.util.genai._invocation import (
-    Error,
-    GenAIInvocation,
-    get_content_attributes,
-)
+from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
     InputMessage,
@@ -34,6 +30,8 @@ from opentelemetry.util.genai.types import (
     OutputMessage,
     ToolDefinition,
 )
+
+from ._invocation import get_content_attributes
 
 # TODO: Migrate to GenAI constants once available in semconv package
 _GEN_AI_AGENT_VERSION = "gen_ai.agent.version"
