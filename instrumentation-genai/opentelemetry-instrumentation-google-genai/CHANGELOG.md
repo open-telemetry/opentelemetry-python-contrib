@@ -32,7 +32,7 @@ Ensure same sem conv attributes are on the log and span. Fix an issue where the 
 - Implement the new semantic convention changes made in https://github.com/open-telemetry/semantic-conventions/pull/2179.
 A single event (`gen_ai.client.inference.operation.details`) is used to capture Chat History. This is opt-in,
 an environment variable OTEL_SEMCONV_STABILITY_OPT_IN needs to be set to `gen_ai_latest_experimental` to see them ([#3386](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3386))
-- Support CompletionHook for upload to cloud storage. 
+- Support CompletionHook for upload to cloud storage.
 
 ## Version 0.3b0 (2025-07-08)
 
@@ -52,4 +52,4 @@ span attribute `gen_ai.response.finish_reasons` is empty ([#3417](https://github
   ([#3298](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3298))
 
 Create an initial version of Open Telemetry instrumentation for github.com/googleapis/python-genai.
-([#3256](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3256)) 
+([#3256](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3256))
