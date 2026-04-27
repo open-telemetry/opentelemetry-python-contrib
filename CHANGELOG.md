@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - `opentelemetry-instrumentation-dbapi`: Add Database client operation duration and returned rows metrics
   ([#4481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4481))
+- Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
+  ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
 
 ### Fixed
 
@@ -30,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
 - `opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1) `flask.__version__` attribute; resolve the Flask version via `importlib.metadata`
   ([#4422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4422))
+- `opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints
+  ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
+- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
+  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
 
 ### Breaking changes
 
@@ -40,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Enabled the flake8-tidy-import plugins rules for the ruff linter. These rules throw warnings for relative imports in the modules.
+([#4395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4395))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
@@ -55,8 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints
-  ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
  ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
 - `opentelemetry-instrumentation-confluent-kafka`: Skip `recv` span creation when `poll()` returns no message or `consume()` returns an empty list, avoiding empty spans on idle polls

@@ -171,6 +171,7 @@ select = [
   "PLE", # pylint error
   "Q",   # flake8-quotes
   "A",   # flake8-builtins
+  "TID", # flake8-tidy-imports
 ]
 ignore = [
   "E501", # line-too-long
@@ -178,6 +179,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "docs/**/*.*" = ["A001"]
+"instrumentation-genai/opentelemetry-instrumentation-google-genai/tests/*" = ["TID252"]
 
 [tool.ruff.lint.isort]
 detect-same-package = false # to not consider instrumentation packages as first-party
