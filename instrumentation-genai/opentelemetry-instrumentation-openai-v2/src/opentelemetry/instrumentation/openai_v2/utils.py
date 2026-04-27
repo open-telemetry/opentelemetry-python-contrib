@@ -214,7 +214,7 @@ def get_llm_request_attributes(
 
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model", ""),
     }
 
     if latest_experimental_enabled:

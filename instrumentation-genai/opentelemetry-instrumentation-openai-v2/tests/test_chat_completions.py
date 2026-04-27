@@ -1484,5 +1484,20 @@ def chat_completion_multiple_tools_streaming(
         )
 
 
+def test_chat_completion_model_attribute(
+    span_exporter, openai_client, instrument_no_content, vcr
+):
+    """Verify GEN_AI_REQUEST_MODEL defaults to '' when model is not provided."""
+    with vcr.use_cassette("test_chat_completion_no_content.yaml"):
+        openai_client.chat.completions.create(
+            messages=USER_ONLY_PROMPT, stream=False
+        )
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+    assert spans[0].attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == ""
+    assert spans[0].name == "chat "
+
+
 def assert_no_invalid_type_warning(caplog):
     assert "Invalid type" not in caplog.text
