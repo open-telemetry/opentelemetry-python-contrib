@@ -83,18 +83,17 @@ def _to_otel_attribute(python_value):
 
 
 def _is_capture_content_enabled() -> bool:
-    mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.GEN_AI
-    )
-    if mode == _StabilityMode.DEFAULT:
-        return bool(is_content_recording_enabled(mode))
-    if mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
-        capturing_mode = is_content_recording_enabled(mode)
-        return capturing_mode in [
+    if (
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI
+        )
+        == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+    ):
+        return is_content_recording_enabled(True) in [
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]
-    raise RuntimeError(f"{mode} mode not supported")
+    return bool(is_content_recording_enabled(False))
 
 
 def _create_function_span_name(wrapped_function):
