@@ -1490,7 +1490,7 @@ def test_chat_completion_model_attribute(
     """Verify GEN_AI_REQUEST_MODEL defaults to '' when model is not provided."""
     with vcr.use_cassette("test_chat_completion_no_content.yaml"):
         openai_client.chat.completions.create(
-            messages=USER_ONLY_PROMPT, stream=False
+            messages=USER_ONLY_PROMPT, model=None, stream=False
         )
 
     spans = span_exporter.get_finished_spans()

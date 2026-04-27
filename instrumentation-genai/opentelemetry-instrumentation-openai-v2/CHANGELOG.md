@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extraction improvements
   ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
 - Default empty string for `GEN_AI_REQUEST_MODEL` attribute on missing model.
-  ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
+  ([#4494](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4494))
 
 ## Version 2.3b0 (2025-12-24)
 
