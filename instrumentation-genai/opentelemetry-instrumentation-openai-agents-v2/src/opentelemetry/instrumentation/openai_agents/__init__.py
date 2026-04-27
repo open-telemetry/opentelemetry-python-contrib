@@ -204,8 +204,9 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             def _wrap_init(wrapped: Any, instance: Any, args: Any, kwargs: Any) -> Any:
                 wrapped(*args, **kwargs)
                 try:
-                    agent_name = getattr(instance._current_agent, "name", None)
-                    handler = RealtimeTelemetryHandler(agent_name=agent_name)
+                    handler = RealtimeTelemetryHandler(
+                        tracer=tracer,
+                    )
                     setattr(instance.model, _OTEL_HANDLER_ATTR, handler)
                     logger.debug("Attached realtime telemetry handler to model %s", instance.model)
                 except Exception:

@@ -61,17 +61,18 @@ from opentelemetry.instrumentation.openai_agents._constants import (
     INVOKE_AGENT,
     METER_NAME,
     METER_VERSION,
-    OPERATION_DURATION_METRIC,
     SERVER_ADDRESS,
     SERVER_PORT,
-    TIME_TO_FIRST_TOKEN_METRIC,
-    TOKEN_USAGE_METRIC,
 )
+from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 from opentelemetry.trace import Span, SpanKind, StatusCode, get_current_span
 from opentelemetry.trace.propagation import set_span_in_context
+from opentelemetry.util.genai.instruments import (
+    create_duration_histogram,
+    create_token_histogram,
+)
 
 logger = logging.getLogger(__name__)
-tracer = trace.get_tracer(__name__)
 
 _UNKNOWN = "unknown"
 
@@ -107,40 +108,33 @@ class RealtimeTelemetryHandler:
     def __init__(
         self,
         *,
+        tracer: trace.Tracer,
         server_address: str | None = None,
         server_port: int | None = None,
         provider_name: str | None = None,
         agent_name: str | None = None,
     ) -> None:
+        self._tracer = tracer
         self._server_address = server_address
         self._server_port = server_port
-        self.agent_name: str | None = agent_name
+        self.agent_name: str | None = agent_name or "realtime_agent"
         self.provider_name = provider_name or "openai"
         self._root_context: Context = set_span_in_context(get_current_span())
         self._spans: dict[str, Span] = {}
         self._session_id: str | None = None
-
-        self._init_metrics()
-
         self._model: str | None = None
         self._response_start_times: dict[str, float] = {}
         self._first_token_recorded: set[str] = set()
 
-    def _init_metrics(self): # TODO make this module level pass in meter name and version has constants to avoid initialization on every handler instance creation
-        """Initialize metrics instruments."""
-        _meter = metrics.get_meter(METER_NAME, METER_VERSION)
-        self._token_usage_histogram = _meter.create_histogram(
-            TOKEN_USAGE_METRIC,
-            description="Number of input and output tokens used",
-            unit="{token}",
-        )
-        self._operation_duration_histogram = _meter.create_histogram(
-            OPERATION_DURATION_METRIC,
-            description="GenAI operation duration",
-            unit="s",
-        )
-        self._time_to_first_token = _meter.create_histogram(
-            TIME_TO_FIRST_TOKEN_METRIC,
+        self._init_metrics()
+
+    def _init_metrics(self) -> None:
+        """Create metric instruments using shared util-genai histogram factories."""
+        meter = metrics.get_meter(METER_NAME, METER_VERSION)
+        self._token_usage_histogram = create_token_histogram(meter)
+        self._operation_duration_histogram = create_duration_histogram(meter)
+        self._ttft_histogram = meter.create_histogram(
+            name=gen_ai_metrics.GEN_AI_SERVER_TIME_TO_FIRST_TOKEN,
             description="Time to generate first token for successful responses",
             unit="s",
         )
@@ -210,7 +204,7 @@ class RealtimeTelemetryHandler:
                 return self._context_for()
 
     def _handle_session_created(self, event: SessionCreatedEvent) -> Context:
-        span = tracer.start_span(
+        span = self._tracer.start_span(
             SpanName.SESSION_CREATED, context=self._root_context, kind=SpanKind.INTERNAL
         )
         self._spans["session"] = span
@@ -240,7 +234,7 @@ class RealtimeTelemetryHandler:
         self, event: InputAudioBufferSpeechStartedEvent
     ) -> Context:
         ctx = self._context_for()
-        span = tracer.start_span(
+        span = self._tracer.start_span(
             SpanName.USER_INPUT, context=ctx, kind=SpanKind.INTERNAL
         )
         item_id = event.item_id
@@ -259,7 +253,7 @@ class RealtimeTelemetryHandler:
 
     def _handle_response_created(self, event: ResponseCreatedEvent) -> Context:
         ctx = self._context_for()
-        span = tracer.start_span(
+        span = self._tracer.start_span(
             SpanName.AGENT_RESPONSE, context=ctx, kind=SpanKind.INTERNAL
         )
         response = event.response
@@ -342,7 +336,7 @@ class RealtimeTelemetryHandler:
         function_name = event.name
         call_id = event.call_id
 
-        span = tracer.start_span(
+        span = self._tracer.start_span(
             f"{SpanName.FUNCTION_CALL} {function_name}",
             context=ctx,
             kind=SpanKind.INTERNAL,
@@ -432,7 +426,7 @@ class RealtimeTelemetryHandler:
         if self._model:
             attrs[GEN_AI_REQUEST_MODEL] = self._model
             attrs[GEN_AI_RESPONSE_MODEL] = self._model
-        self._time_to_first_token.record(ttft, attrs)
+        self._ttft_histogram.record(ttft, attrs)
 
 
 

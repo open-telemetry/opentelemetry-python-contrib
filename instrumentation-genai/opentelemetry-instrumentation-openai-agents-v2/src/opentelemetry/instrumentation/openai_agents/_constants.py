@@ -18,10 +18,6 @@ from opentelemetry.semconv.attributes import (
 METER_NAME = "opentelemetry.instrumentation.openai_agents"
 METER_VERSION = "0.1.0"
 
-TOKEN_USAGE_METRIC = "gen_ai.client.token.usage"
-OPERATION_DURATION_METRIC = "gen_ai.client.operation.duration"
-TIME_TO_FIRST_TOKEN_METRIC = "gen_ai.server.time_to_first_token"
-
 
 
 def _attr(name: str, fallback: str) -> str:

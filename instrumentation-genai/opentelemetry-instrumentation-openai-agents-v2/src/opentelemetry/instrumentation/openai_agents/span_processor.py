@@ -100,8 +100,6 @@ from opentelemetry.instrumentation.openai_agents._constants import (
     GEN_AI_USAGE_OUTPUT_TOKENS,
     METER_NAME,
     METER_VERSION,
-    OPERATION_DURATION_METRIC,
-    TOKEN_USAGE_METRIC,
 )
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv._incubating.attributes import (
@@ -493,14 +491,14 @@ class GenAISemanticProcessor(TracingProcessor):
 
         # Operation duration histogram
         self._duration_histogram = self._meter.create_histogram(
-            name=OPERATION_DURATION_METRIC,
+            name="gen_ai.client.operation.duration",
             description="GenAI operation duration",
             unit="s",
         )
 
         # Token usage histogram
         self._token_usage_histogram = self._meter.create_histogram(
-            name=TOKEN_USAGE_METRIC,
+            name="gen_ai.client.token.usage",
             description="Number of input and output tokens used",
             unit="{token}",
         )
