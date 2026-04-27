@@ -18,17 +18,33 @@ import timeit
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from contextvars import Token
-from typing import TYPE_CHECKING, Any, Iterator
+from dataclasses import asdict
+from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
 from typing_extensions import Self, TypeAlias
 
 from opentelemetry._logs import Logger
 from opentelemetry.context import Context, attach, detach
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
 from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace import INVALID_SPAN as _INVALID_SPAN
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
-from opentelemetry.util.genai.types import Error
+from opentelemetry.util.genai.types import (
+    Error,
+    InputMessage,
+    MessagePart,
+    OutputMessage,
+    ToolDefinition,
+)
+from opentelemetry.util.genai.utils import (
+    ContentCapturingMode,
+    gen_ai_json_dumps,
+    get_content_capturing_mode,
+    is_experimental_mode,
+)
 
 if TYPE_CHECKING:
     from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
@@ -138,3 +154,64 @@ class GenAIInvocation(ABC):
             self.fail(exc)
             raise
         self.stop()
+
+
+def get_content_attributes(
+    *,
+    input_messages: Sequence[InputMessage],
+    output_messages: Sequence[OutputMessage],
+    system_instruction: Sequence[MessagePart],
+    tool_definitions: Sequence[ToolDefinition] | None,
+    for_span: bool,
+) -> dict[str, Any]:
+    """Serialize messages, system instructions, and tool definitions into attributes.
+
+    Args:
+        input_messages: Input messages to serialize.
+        output_messages: Output messages to serialize.
+        system_instruction: System instructions to serialize.
+        tool_definitions: Tool definitions to serialize (may be None).
+        for_span: If True, serialize for span attributes (JSON string);
+                  if False, serialize for event attributes (list of dicts).
+    """
+    if not is_experimental_mode():
+        return {}
+
+    mode = get_content_capturing_mode()
+    allowed_modes = (
+        (
+            ContentCapturingMode.SPAN_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+        if for_span
+        else (
+            ContentCapturingMode.EVENT_ONLY,
+            ContentCapturingMode.SPAN_AND_EVENT,
+        )
+    )
+    if mode not in allowed_modes:
+        return {}
+
+    def serialize(items: Sequence[Any]) -> Any:
+        dicts = [asdict(item) for item in items]
+        return gen_ai_json_dumps(dicts) if for_span else dicts
+
+    optional_attrs = (
+        (
+            GenAI.GEN_AI_INPUT_MESSAGES,
+            serialize(input_messages) if input_messages else None,
+        ),
+        (
+            GenAI.GEN_AI_OUTPUT_MESSAGES,
+            serialize(output_messages) if output_messages else None,
+        ),
+        (
+            GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
+            serialize(system_instruction) if system_instruction else None,
+        ),
+        (
+            GenAI.GEN_AI_TOOL_DEFINITIONS,
+            serialize(tool_definitions) if tool_definitions else None,
+        ),
+    )
+    return {key: value for key, value in optional_attrs if value is not None}
