@@ -1,0 +1,4 @@
+pytest==7.4.4
+aerospike >= 17.0.0
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-aerospike
