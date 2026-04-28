@@ -581,7 +581,6 @@ class _GenerateContentInstrumentationHelper:
         final_attributes = {
             gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS: self._input_tokens,
             gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS: self._output_tokens,
-            GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS: self._thoughts_tokens,
             gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS: sorted(
                 self._finish_reasons_set
             ),
