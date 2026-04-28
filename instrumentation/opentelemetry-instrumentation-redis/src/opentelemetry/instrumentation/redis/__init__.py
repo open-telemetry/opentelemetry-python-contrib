@@ -698,7 +698,6 @@ class RedisInstrumentor(BaseInstrumentor):
             _logger.warning(
                 "Attempting to un-instrument Redis connection that wasn't instrumented"
             )
-            return
 
     def instrumentation_dependencies(self) -> Collection[str]:
         """Return a list of python packages with versions that the will be instrumented."""

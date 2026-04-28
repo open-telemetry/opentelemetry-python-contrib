@@ -79,7 +79,6 @@ asyncio metric types
 * asyncio.process.duration (seconds) - Duration of asyncio process
 * asyncio.process.count (count) - Number of asyncio process
 
-
 API
 ---
 """

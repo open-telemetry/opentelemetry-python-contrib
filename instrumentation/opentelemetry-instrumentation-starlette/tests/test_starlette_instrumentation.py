@@ -624,7 +624,7 @@ class TestBaseWithCustomHeaders(TestBase):
         app = applications.Starlette()
 
         @app.route("/foobar")
-        def _(request):
+        def _foobar(request):
             return PlainTextResponse(
                 content="hi",
                 headers={
@@ -637,7 +637,7 @@ class TestBaseWithCustomHeaders(TestBase):
             )
 
         @app.websocket_route("/foobar_web")
-        async def _(websocket: WebSocket) -> None:
+        async def _foobar_web(websocket: WebSocket) -> None:
             message = await websocket.receive()
             if message.get("type") == "websocket.connect":
                 await websocket.send(

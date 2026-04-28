@@ -271,7 +271,7 @@ class _DjangoMiddleware:
                 span.set_attribute(key, value)
 
         activation = use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation

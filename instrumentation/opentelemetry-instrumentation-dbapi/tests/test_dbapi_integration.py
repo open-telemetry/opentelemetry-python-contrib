@@ -306,6 +306,20 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
 
+    # pylint: disable=no-self-use
+    def test_executemany_iterable_cursor(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.executemany("Test query")
+
+        for _row in cursor:
+            pass
+
     def test_executemany_comment(self):
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"
@@ -1052,7 +1066,7 @@ class TestDBApiIntegration(TestBase):
         dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
         connection = mock_dbapi.connect()
         self.assertEqual(mock_dbapi.connect.call_count, 1)
-        self.assertIsInstance(connection.__wrapped__, mock.Mock)
+        self.assertIsInstance(connection.__wrapped__, mock.Mock)  # pylint: disable=no-member
 
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_unwrap_connect(self, mock_dbapi):
@@ -1071,7 +1085,7 @@ class TestDBApiIntegration(TestBase):
         connection2 = dbapi.instrument_connection(
             "instrumenting_module_test_name", mocked_conn, "dbname"
         )
-        self.assertIs(connection2.__wrapped__, mocked_conn)
+        self.assertIs(connection2.__wrapped__, mocked_conn)  # pylint: disable=no-member
 
     @mock.patch("opentelemetry.instrumentation.dbapi.DatabaseApiIntegration")
     def test_instrument_connection_kwargs_defaults(self, mock_dbapiint):
@@ -1138,7 +1152,7 @@ class TestDBApiIntegration(TestBase):
         connection2 = dbapi.instrument_connection(
             "instrumenting_module_test_name", mocked_conn, "-"
         )
-        self.assertIs(connection2.__wrapped__, mocked_conn)
+        self.assertIs(connection2.__wrapped__, mocked_conn)  # pylint: disable=no-member
 
         connection3 = dbapi.uninstrument_connection(connection2)
         self.assertIs(connection3, mocked_conn)
@@ -1296,12 +1310,16 @@ class MockCursor:
         self._cnx._cmysql.get_client_info = mock.MagicMock(
             return_value="1.2.3"
         )
+        self._items = []
 
     # pylint: disable=unused-argument, no-self-use
     def execute(self, query, params=None, throw_exception=False):
         if throw_exception:
             # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
+
+    def __iter__(self):
+        yield from self._items
 
     # pylint: disable=unused-argument, no-self-use
     def executemany(self, query, params=None, throw_exception=False):

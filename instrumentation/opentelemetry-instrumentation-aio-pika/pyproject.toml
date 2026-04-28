@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "OpenTelemetry Aio-pika instrumentation"
 readme = "README.rst"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
 ]
@@ -18,7 +18,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -27,8 +26,8 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.5",
-  "opentelemetry-instrumentation == 0.61b0.dev",
-  "wrapt >= 1.0.0, < 2.0.0",
+  "opentelemetry-instrumentation == 0.63b0.dev",
+  "wrapt >= 1.0.0, < 3.0.0",
 ]
 
 [project.optional-dependencies]
