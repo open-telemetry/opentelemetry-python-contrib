@@ -55,6 +55,7 @@ from wrapt import (
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
 from opentelemetry.instrumentation.anthropic.patch import (
+    async_messages_create,
     messages_create,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -99,11 +100,18 @@ class AnthropicInstrumentor(BaseInstrumentor):
             logger_provider=logger_provider,
         )
 
-        # Patch Messages.create
+        # Patch Messages.create (sync)
         wrap_function_wrapper(
             "anthropic.resources.messages",
             "Messages.create",
             messages_create(handler),
+        )
+
+        # Patch AsyncMessages.create (async)
+        wrap_function_wrapper(
+            "anthropic.resources.messages",
+            "AsyncMessages.create",
+            async_messages_create(handler),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -115,5 +123,9 @@ class AnthropicInstrumentor(BaseInstrumentor):
 
         unwrap(
             anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
+            "create",
+        )
+        unwrap(
+            anthropic.resources.messages.AsyncMessages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
             "create",
         )
