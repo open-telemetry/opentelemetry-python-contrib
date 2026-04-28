@@ -261,16 +261,22 @@ class NonStreamingTestCase(TestCase):
 
     def test_generated_span_counts_tokens(self):
         self.configure_valid_response(
-            input_tokens=123, candidates_tokens=456, thoughts_tokens=789
+            input_tokens=123,
+            candidates_tokens=456,
+            thoughts_tokens=789,
+            cached_tokens=50,
         )
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 123)
         self.assertEqual(
-            span.attributes["gen_ai.usage.reasoning.output_tokens"], 789
+            span.attributes["gen_ai.usage.output_tokens"], 456 + 789
         )
-        self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 1245)
+        # New sem conv should not appear when flag is not experimental mode..
+        self.assertNotIn(
+            "gen_ai.usage.cache_read.input_tokens", span.attributes
+        )
 
     @patch.dict(
         "os.environ",
@@ -450,7 +456,9 @@ class NonStreamingTestCase(TestCase):
             ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
-                    self.configure_valid_response(text=output)
+                    self.configure_valid_response(
+                        text=output, cached_tokens=50
+                    )
                     self.generate_content(
                         model="gemini-2.0-flash",
                         contents=content,
@@ -465,6 +473,12 @@ class NonStreamingTestCase(TestCase):
                     )
                     event = self.otel.get_event_named(
                         "gen_ai.client.inference.operation.details"
+                    )
+                    self.assertEqual(
+                        event.attributes[
+                            "gen_ai.usage.cache_read.input_tokens"
+                        ],
+                        50,
                     )
                     assert (
                         event.attributes[
@@ -770,7 +784,9 @@ class NonStreamingTestCase(TestCase):
             ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
-                    self.configure_valid_response(text="Some response content")
+                    self.configure_valid_response(
+                        text="Some response content", cached_tokens=50
+                    )
                     self.generate_content(
                         model="gemini-2.0-flash",
                         contents="Some input",
@@ -782,6 +798,12 @@ class NonStreamingTestCase(TestCase):
                     )
                     span = self.otel.get_span_named(
                         "generate_content gemini-2.0-flash"
+                    )
+                    self.assertEqual(
+                        span.attributes[
+                            "gen_ai.usage.cache_read.input_tokens"
+                        ],
+                        50,
                     )
                     if mode in [
                         ContentCapturingMode.SPAN_ONLY,

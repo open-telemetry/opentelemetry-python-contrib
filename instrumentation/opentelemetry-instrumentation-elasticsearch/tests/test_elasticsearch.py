@@ -42,6 +42,7 @@ from . import sanitization_queries  # pylint: disable=no-name-in-module
 
 major_version, minor_version = elasticsearch.VERSION[:2]
 
+helpers = None
 if major_version == 8:
     from . import helpers_es8 as helpers  # pylint: disable=no-name-in-module
 elif major_version == 7:

@@ -17,6 +17,8 @@ Before you can contribute, you will need to sign the [Contributor License Agreem
 
 Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-telemetry/community/blob/main/guides/contributor/README.md).
 
+If you are using AI agents to assist with contributions, please read [AGENTS.md](AGENTS.md) for guidance on how to use them responsibly in this project.
+
 ## Index
 
 - [Contributing to opentelemetry-python-contrib](#contributing-to-opentelemetry-python-contrib)
@@ -31,6 +33,7 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
     - [How to Receive Comments](#how-to-receive-comments)
     - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
     - [How to Get PRs Merged](#how-to-get-prs-merged)
+    - [Stale PRs](#stale-prs)
   - [Design Choices](#design-choices)
     - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
   - [Running Tests Locally](#running-tests-locally)
@@ -41,6 +44,7 @@ Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-t
   - [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
     - [Get Involved](#get-involved)
   - [Expectations from contributors](#expectations-from-contributors)
+    - [Guidelines for native OpenTelemetry instrumentation](#guidelines-for-native-opentelemetry-instrumentation)
   - [Updating supported Python versions](#updating-supported-python-versions)
     - [Bumping the Python baseline](#bumping-the-python-baseline)
     - [Adding support for a new Python release](#adding-support-for-a-new-python-release)
@@ -241,6 +245,12 @@ A PR is considered to be **ready to merge** when:
 
 Any Approver / Maintainer can merge the PR once it is **ready to merge**.
 
+### Stale PRs
+
+PRs with no activity for 14 days will be automatically marked as stale and closed after a further 14 days of inactivity. To prevent a PR from being marked stale, ensure there is regular activity (commits, comments, reviews, etc).
+
+Project managers can also exempt a PR from this by applying one of the following labels: `hold`, `WIP`, `blocked-by-spec`, `do not merge`.
+
 ## Design Choices
 
 As with other OpenTelemetry clients, opentelemetry-python follows the
@@ -286,7 +296,7 @@ Some of the tox targets install packages from the [OpenTelemetry Python Core Rep
 CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
 ```
 
-The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test_0.yml#L14).
+The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test.yml#L17).
 
 ## Style Guide
 
@@ -300,6 +310,9 @@ The continuous integration overrides that environment variable with as per the c
 
 Below is a checklist of things to be mindful of when implementing a new instrumentation or working on a specific instrumentation. It is one of our goals as a community to keep the implementation specific details of instrumentations as similar across the board as possible for ease of testing and feature parity. It is also good to abstract as much common functionality as possible.
 
+- Find or create a new [Issue](https://github.com/open-telemetry/opentelemetry-python-contrib/issues) describing the tool or framework to instrument and its use cases to support with OpenTelemetry.
+  - Be familiar with the [expectations from contributors](#expectations-from-contributors) that apply.
+  - If you're a tool or framework maintainer, please consider using the OpenTelemetry API directly to support [native instrumentation](#guidelines-for-native-opentelemetry-instrumentation) instead of adding a new community instrumentation library.
 - Follow semantic conventions
   - The instrumentation should follow the semantic conventions defined [here](https://github.com/open-telemetry/semantic-conventions/tree/main/docs).
   - To ensure consistency, we encourage contributions that align with [STABLE](https://opentelemetry.io/docs/specs/otel/document-status/#lifecycle-status) semantic conventions if available. This approach helps us avoid potential confusion and reduces the need to support multiple outdated versions of semantic conventions. However, we are still open to considering exceptional cases where changes are well justified.
@@ -376,6 +389,16 @@ Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/sp
 ## Expectations from contributors
 
 OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project. With that being said, there is a certain level of expectation from contributors even after a pull request is merged, specifically pertaining to instrumentations. The OpenTelemetry Python community expects contributors to maintain a level of support and interest in the instrumentations they contribute. This is to ensure that the instrumentation does not become stale and still functions the way the original contributor intended. Some instrumentations also pertain to libraries that the current members of the community are not so familiar with, so it is necessary to rely on the expertise of the original contributing parties.
+
+### Guidelines for native OpenTelemetry instrumentation
+
+The preferred approach to supporting instrumentation of a tool or framework is native OpenTelemetry instrumentation. Compared to adding a new instrumentation library to this community repository, native instrumentation is better for:
+
+* continued support by framework experts long-term
+* access to more context for critical paths and correlations
+* granularity and performance
+
+To support native instrumentation, the tool or framework should use the [OpenTelemetry API](https://opentelemetry-python.readthedocs.io/en/latest/) directly to emit traces, metrics, and logs.
 
 ## Updating supported Python versions
 

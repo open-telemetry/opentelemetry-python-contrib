@@ -7,5 +7,3 @@ requests
 tomli
 tomli_w
 hatch
-# TODO: stick with virtualenv < 21 until a new hatch release
-virtualenv<21
