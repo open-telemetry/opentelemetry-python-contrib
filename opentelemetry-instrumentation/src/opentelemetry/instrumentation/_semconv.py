@@ -620,6 +620,7 @@ def _set_span_status(span: Span, status: StatusCode) -> None:
     if _STATUS_CODE_PRIORITY.get(status, 0) < _STATUS_CODE_PRIORITY.get(
         current.status_code, 0
     ):
+        return
     description = (
         current.description
         if current.description and status == current.status_code
