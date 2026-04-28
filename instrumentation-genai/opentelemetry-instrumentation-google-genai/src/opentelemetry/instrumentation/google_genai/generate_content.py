@@ -799,7 +799,7 @@ class _GenerateContentInstrumentationHelper:
         span.set_attribute(
             GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS, self._thoughts_tokens
         )
-        event.attribute[GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS] = (
+        event.attributes[GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS] = (
             self._thoughts_tokens
         )
         tool_definitions = tool_definitions or []
