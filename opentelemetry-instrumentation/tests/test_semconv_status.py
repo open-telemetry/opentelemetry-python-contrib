@@ -71,7 +71,7 @@ class TestSetStatus(unittest.TestCase):
         last_call = span.set_status.call_args[0][0]
         self.assertEqual(last_call.status_code, StatusCode.ERROR)
 
-    def test_unset_to_ok(self):
+    def test_client_2xx_sets_unset_status(self):
         """2xx client spans should not change existing UNSET status"""
         span = _make_span(StatusCode.UNSET)
         _set_status(

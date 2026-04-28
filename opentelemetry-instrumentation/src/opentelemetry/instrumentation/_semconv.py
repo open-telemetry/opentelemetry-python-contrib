@@ -218,7 +218,6 @@ class _OpenTelemetrySemanticConventionStability:
     def _initialize(cls):
         with cls._lock:
             if cls._initialized:
-                return
 
             # Users can pass in comma delimited string for opt-in options
             # Only values for http, gen ai, and database stability are supported for now
@@ -232,7 +231,6 @@ class _OpenTelemetrySemanticConventionStability:
                     _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.DEFAULT,
                 }
                 cls._initialized = True
-                return
 
             opt_in_list = [s.strip() for s in opt_in.split(",")]
 
@@ -618,14 +616,10 @@ _STATUS_CODE_PRIORITY = {
 
 
 def _set_span_status(span: Span, status: StatusCode) -> None:
-    current = getattr(span, "status", None)
-    if current is None:
-        span.set_status(Status(status))
-        return
+    current = span.status
     if _STATUS_CODE_PRIORITY.get(status, 0) < _STATUS_CODE_PRIORITY.get(
         current.status_code, 0
     ):
-        return
     description = (
         current.description
         if current.description and status == current.status_code
