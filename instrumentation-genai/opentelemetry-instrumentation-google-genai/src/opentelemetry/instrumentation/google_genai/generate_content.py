@@ -640,7 +640,6 @@ class _GenerateContentInstrumentationHelper:
         if thoughts_tokens and isinstance(thoughts_tokens, int):
             output_tokens += thoughts_tokens
 
-
         cached_tokens = _get_response_property(
             response, "usage_metadata.cached_content_token_count"
         )
