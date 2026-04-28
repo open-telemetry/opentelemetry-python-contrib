@@ -2,7 +2,7 @@
 [project]
 name = "opentelemetry-python-contrib"
 version = "0.0.0" # This is not used.
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
@@ -154,7 +154,7 @@ members = [
 
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
-target-version = "py39"
+target-version = "py310"
 line-length = 79
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
@@ -171,6 +171,7 @@ select = [
   "PLE", # pylint error
   "Q",   # flake8-quotes
   "A",   # flake8-builtins
+  "TID", # flake8-tidy-imports
 ]
 ignore = [
   "E501", # line-too-long
@@ -178,6 +179,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "docs/**/*.*" = ["A001"]
+"instrumentation-genai/opentelemetry-instrumentation-google-genai/tests/*" = ["TID252"]
 
 [tool.ruff.lint.isort]
 detect-same-package = false # to not consider instrumentation packages as first-party
@@ -196,7 +198,7 @@ known-third-party = [
 typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = true
 reportMissingTypeStubs = false
-pythonVersion = "3.9"
+pythonVersion = "3.10"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [
