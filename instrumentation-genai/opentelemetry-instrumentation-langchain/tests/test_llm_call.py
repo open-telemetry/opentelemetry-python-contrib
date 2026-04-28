@@ -178,6 +178,25 @@ def test_us_amazon_nova_lite_v1_0_bedrock_llm_call(
     assert_bedrock_completion_attributes(spans[0], result)
 
 
+# span_exporter, start_instrumentation, chat_anthropic_claude_sonnet are coming from fixtures defined in conftest.py
+@pytest.mark.vcr()
+def test_chat_anthropic_claude_sonnet_llm_call(
+    span_exporter, start_instrumentation, chat_anthropic_claude_sonnet
+):
+    messages = [
+        SystemMessage(content="You are a helpful assistant!"),
+        HumanMessage(content="What is the capital of France?"),
+    ]
+
+    result = chat_anthropic_claude_sonnet.invoke(messages)
+
+    assert result.content.find("The capital of France is Paris") != -1
+
+    # verify spans
+    spans = span_exporter.get_finished_spans()
+    assert_anthropic_completion_attributes(spans[0], result)
+
+
 # span_exporter, start_instrumentation, gemini are coming from fixtures defined in conftest.py
 @pytest.mark.vcr()
 def test_gemini(span_exporter, start_instrumentation, gemini):
@@ -322,6 +341,43 @@ def assert_bedrock_completion_attributes(
     )
 
     assert span.attributes["gen_ai.provider.name"] == "amazon_bedrock"
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
+    assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
+
+    input_tokens = response.usage_metadata.get("input_tokens")
+    if input_tokens:
+        assert (
+            input_tokens
+            == span.attributes[gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS]
+        )
+    else:
+        assert (
+            gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS not in span.attributes
+        )
+
+    output_tokens = response.usage_metadata.get("output_tokens")
+    if output_tokens:
+        assert (
+            output_tokens
+            == span.attributes[gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS]
+        )
+    else:
+        assert (
+            gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS not in span.attributes
+        )
+
+
+def assert_anthropic_completion_attributes(
+    span: ReadableSpan, response: Optional
+):
+    assert span.name == "chat claude-sonnet-4-20250514"
+    assert span.attributes[gen_ai_attributes.GEN_AI_OPERATION_NAME] == "chat"
+    assert (
+        span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL]
+        == "claude-sonnet-4-20250514"
+    )
+
+    assert span.attributes["gen_ai.provider.name"] == "anthropic"
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert span.attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
 

@@ -6,6 +6,7 @@ import os
 import boto3
 import pytest
 import yaml
+from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
@@ -40,6 +41,16 @@ def fixture_chat_openai_gpt_3_5_turbo_model():
         presence_penalty=0.5,
         stop_sequences=["\n", "Human:", "AI:"],
         seed=100,
+    )
+    yield llm
+
+
+@pytest.fixture(scope="function", name="chat_anthropic_claude_sonnet")
+def fixture_chat_anthropic_claude_sonnet():
+    llm = ChatAnthropic(
+        model="claude-sonnet-4-20250514",
+        temperature=0.1,
+        max_tokens=100,
     )
     yield llm
 
@@ -131,6 +142,8 @@ def start_instrumentation(
 def environment():
     if not os.getenv("OPENAI_API_KEY"):
         os.environ["OPENAI_API_KEY"] = "test_openai_api_key"
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        os.environ["ANTHROPIC_API_KEY"] = "test_anthropic_api_key"
 
 
 @pytest.fixture(scope="module")
@@ -141,6 +154,7 @@ def vcr_config():
             ("authorization", "Bearer test_openai_api_key"),
             ("openai-organization", "test_openai_org_id"),
             ("openai-project", "test_openai_project_id"),
+            ("x-api-key", "test_anthropic_api_key"),
         ],
         "decode_compressed_response": True,
         "before_record_response": scrub_response_headers,
