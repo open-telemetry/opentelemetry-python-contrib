@@ -101,6 +101,10 @@ _logger = logging.getLogger(__name__)
 GEN_AI_TOOL_DEFINITIONS = getattr(
     gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
 )
+# TODO: Replace with the new semconv once it's defined.
+GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS = (
+    "gen_ai.usage.reasoning.output_tokens"
+)
 
 # Constant used to make the absence of content more understandable.
 _CONTENT_ELIDED = "<elided>"
@@ -577,8 +581,7 @@ class _GenerateContentInstrumentationHelper:
         final_attributes = {
             gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS: self._input_tokens,
             gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS: self._output_tokens,
-            # TODO: Use the centralized attribute once it's created.
-            "gen_ai.usage.reasoning.output_tokens": self._thoughts_tokens,
+            GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS: self._thoughts_tokens,
             gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS: sorted(
                 self._finish_reasons_set
             ),
@@ -793,6 +796,12 @@ class _GenerateContentInstrumentationHelper:
         event.attributes[
             gen_ai_attributes.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
         ] = self._cached_tokens
+        span.set_attribute(
+            GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS, self._thoughts_tokens
+        )
+        event.attribute[GEN_AI_USAGE_CACHE_REASONING_OUTPUT_TOKENS] = (
+            self._thoughts_tokens
+        )
         tool_definitions = tool_definitions or []
         self.completion_hook.on_completion(
             inputs=input_messages,
