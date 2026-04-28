@@ -262,7 +262,7 @@ class NonStreamingTestCase(TestCase):
     def test_generated_span_counts_tokens(self):
         self.configure_valid_response(
             input_tokens=123,
-            candidate_tokens=456,
+            candidates_tokens=456,
             thoughts_tokens=789,
             cached_tokens=50,
         )
