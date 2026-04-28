@@ -218,6 +218,7 @@ class _OpenTelemetrySemanticConventionStability:
     def _initialize(cls):
         with cls._lock:
             if cls._initialized:
+                return
 
             # Users can pass in comma delimited string for opt-in options
             # Only values for http, gen ai, and database stability are supported for now
