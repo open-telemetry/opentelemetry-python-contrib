@@ -20,6 +20,7 @@ context cleanup and streaming response handling.
 import io
 import threading
 import time
+from importlib.metadata import version
 from unittest import mock, skipIf
 
 import flask
@@ -37,7 +38,7 @@ from opentelemetry.test.wsgitestutil import WsgiTestBase
 class TestFlaskCompatibility(WsgiTestBase):
     def setUp(self):
         super().setUp()
-        self.flask_version = flask.__version__
+        self.flask_version = version("flask")
 
     def test_streaming_response_context_cleanup(self):
         """Test that streaming responses properly clean up context"""
