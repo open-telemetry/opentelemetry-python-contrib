@@ -277,6 +277,9 @@ class NonStreamingTestCase(TestCase):
         self.assertNotIn(
             "gen_ai.usage.cache_read.input_tokens", span.attributes
         )
+        self.assertNotIn(
+            "gen_ai.usage.reasoning.output_tokens", span.attributes
+        )
 
     @patch.dict(
         "os.environ",
@@ -457,7 +460,7 @@ class NonStreamingTestCase(TestCase):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
                     self.configure_valid_response(
-                        text=output, cached_tokens=50
+                        text=output, cached_tokens=50, thoughts_tokens=10
                     )
                     self.generate_content(
                         model="gemini-2.0-flash",
@@ -479,6 +482,12 @@ class NonStreamingTestCase(TestCase):
                             "gen_ai.usage.cache_read.input_tokens"
                         ],
                         50,
+                    )
+                    self.assertEqual(
+                        event.attributes[
+                            "gen_ai.usage.reasoning.output_tokens"
+                        ],
+                        10,
                     )
                     assert (
                         event.attributes[
@@ -785,7 +794,9 @@ class NonStreamingTestCase(TestCase):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
                     self.configure_valid_response(
-                        text="Some response content", cached_tokens=50
+                        text="Some response content",
+                        cached_tokens=50,
+                        thoughts_tokens=10,
                     )
                     self.generate_content(
                         model="gemini-2.0-flash",
@@ -804,6 +815,12 @@ class NonStreamingTestCase(TestCase):
                             "gen_ai.usage.cache_read.input_tokens"
                         ],
                         50,
+                    )
+                    self.assertEqual(
+                        span.attributes[
+                            "gen_ai.usage.reasoning.output_tokens"
+                        ],
+                        10,
                     )
                     if mode in [
                         ContentCapturingMode.SPAN_ONLY,

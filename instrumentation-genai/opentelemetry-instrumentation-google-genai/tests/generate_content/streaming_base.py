@@ -106,10 +106,10 @@ class StreamingTestCase(TestCase):
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 3)
-        self.assertEqual(
-            span.attributes["gen_ai.usage.reasoning.output_tokens"], 2
-        )
         self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 7)
+        self.assertNotIn(
+            "gen_ai.usage.reasoning.output_tokens", span.attributes
+        )
 
     def test_new_semconv_log_has_extra_genai_attributes(self):
         patched_environ = patch.dict(
@@ -126,7 +126,9 @@ class StreamingTestCase(TestCase):
             },
         )
         with patched_environ, patched_otel_mapping:
-            self.configure_valid_response(text="Yep, it works!")
+            self.configure_valid_response(
+                text="Yep, it works!", thoughts_tokens=10
+            )
             tok = context_api.attach(
                 context_api.set_value(
                     GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
@@ -143,6 +145,10 @@ class StreamingTestCase(TestCase):
                 )
                 event = self.otel.get_event_named(
                     "gen_ai.client.inference.operation.details"
+                )
+                self.assertEqual(
+                    event.attributes["gen_ai.usage.reasoning.output_tokens"],
+                    10,
                 )
                 assert (
                     event.attributes["extra_attribute_key"]
