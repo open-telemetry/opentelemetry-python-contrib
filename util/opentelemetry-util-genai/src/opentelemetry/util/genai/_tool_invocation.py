@@ -81,6 +81,13 @@ class ToolInvocation(GenAIInvocation):
         self.tool_result = tool_result
         self._start()
 
+    def _get_metric_attributes(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {
+            GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
+        }
+        attrs.update(self.metric_attributes)
+        return attrs
+
     def _apply_finish(self, error: Error | None = None) -> None:
         if error is not None:
             self._apply_error_attributes(error)
@@ -96,3 +103,4 @@ class ToolInvocation(GenAIInvocation):
         }
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
+        self._metrics_recorder.record(self)

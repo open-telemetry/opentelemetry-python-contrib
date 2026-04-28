@@ -57,9 +57,15 @@ from opentelemetry._logs import (
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import (
+    SpanKind,
     TracerProvider,
     get_tracer,
 )
+from opentelemetry.util.genai._agent_invocation import AgentInvocation
+from opentelemetry.util.genai._inference_invocation import (
+    LLMInvocation,
+)
+from opentelemetry.util.genai._invocation import Error
 from opentelemetry.util.genai.invocation import (
     EmbeddingInvocation,
     InferenceInvocation,
@@ -301,6 +307,100 @@ class TelemetryHandler:
             tool_call_id=tool_call_id,
             tool_type=tool_type,
             tool_description=tool_description,
+        )._managed()
+
+    def start_invoke_local_agent(
+        self,
+        provider: str,
+        *,
+        request_model: str | None = None,
+    ) -> AgentInvocation:
+        """Create and start a local agent invocation (INTERNAL span kind).
+
+        Use for agents running within the same process (e.g. LangChain, CrewAI).
+
+        Set remaining attributes (agent_name, etc.) on the returned invocation,
+        then call invocation.stop() or invocation.fail().
+        """
+        return AgentInvocation(
+            self._tracer,
+            self._metrics_recorder,
+            self._logger,
+            provider,
+            span_kind=SpanKind.INTERNAL,
+            request_model=request_model,
+        )
+
+    def start_invoke_remote_agent(
+        self,
+        provider: str,
+        *,
+        request_model: str | None = None,
+        server_address: str | None = None,
+        server_port: int | None = None,
+    ) -> AgentInvocation:
+        """Create and start a remote agent invocation (CLIENT span kind).
+
+        Use for agents invoked over a remote service (e.g. OpenAI Assistants, AWS Bedrock).
+
+        Set remaining attributes (agent_name, etc.) on the returned invocation,
+        then call invocation.stop() or invocation.fail().
+        """
+        return AgentInvocation(
+            self._tracer,
+            self._metrics_recorder,
+            self._logger,
+            provider,
+            span_kind=SpanKind.CLIENT,
+            request_model=request_model,
+            server_address=server_address,
+            server_port=server_port,
+        )
+
+    def invoke_local_agent(
+        self,
+        provider: str,
+        *,
+        request_model: str | None = None,
+    ) -> AbstractContextManager[AgentInvocation]:
+        """Context manager for local agent invocations (INTERNAL span kind).
+
+        Use for agents running within the same process (e.g. LangChain, CrewAI).
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        return self.start_invoke_local_agent(
+            provider,
+            request_model=request_model,
+        )._managed()
+
+    def invoke_remote_agent(
+        self,
+        provider: str,
+        *,
+        request_model: str | None = None,
+        server_address: str | None = None,
+        server_port: int | None = None,
+    ) -> AbstractContextManager[AgentInvocation]:
+        """Context manager for remote agent invocations (CLIENT span kind).
+
+        Use for agents invoked over a remote service (e.g. OpenAI Assistants, AWS Bedrock).
+
+        Only set data attributes on the invocation object, do not modify the span or context.
+
+        Starts the span on entry. On normal exit, finalizes the invocation and ends the span.
+        If an exception occurs inside the context, marks the span as error, ends it, and
+        re-raises the original exception.
+        """
+        return self.start_invoke_remote_agent(
+            provider,
+            request_model=request_model,
+            server_address=server_address,
+            server_port=server_port,
         )._managed()
 
     def workflow(

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from opentelemetry._logs import Logger, LogRecord
@@ -23,11 +23,19 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import INVALID_SPAN, Span, SpanKind, Tracer
-from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai._invocation import (
+    Error,
+    GenAIInvocation,
+    get_content_attributes,
+)
+from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
+from opentelemetry.util.genai.types import (
+    InputMessage,
+    MessagePart,
+    OutputMessage,
+    ToolDefinition,
+)
 from opentelemetry.util.genai.utils import (
-    ContentCapturingMode,
-    gen_ai_json_dumps,
-    get_content_capturing_mode,
     is_experimental_mode,
     should_emit_event,
 )
@@ -39,6 +47,11 @@ if TYPE_CHECKING:
         MessagePart,
         OutputMessage,
     )  #
+# TODO: Migrate to GenAI constants once available in semconv package
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
+)
+_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 class InferenceInvocation(GenAIInvocation):
@@ -115,53 +128,19 @@ class InferenceInvocation(GenAIInvocation):
         self.seed = seed
         self.server_address = server_address
         self.server_port = server_port
+        self.cache_creation_input_tokens: int | None = None
+        self.cache_read_input_tokens: int | None = None
+        self.tool_definitions: list[ToolDefinition] | None = None
         self._start()
 
     def _get_message_attributes(self, *, for_span: bool) -> dict[str, Any]:
-        if not is_experimental_mode():
-            return {}
-        mode = get_content_capturing_mode()
-        allowed_modes = (
-            (
-                ContentCapturingMode.SPAN_ONLY,
-                ContentCapturingMode.SPAN_AND_EVENT,
-            )
-            if for_span
-            else (
-                ContentCapturingMode.EVENT_ONLY,
-                ContentCapturingMode.SPAN_AND_EVENT,
-            )
+        return get_content_attributes(
+            input_messages=self.input_messages,
+            output_messages=self.output_messages,
+            system_instruction=self.system_instruction,
+            tool_definitions=self.tool_definitions,
+            for_span=for_span,
         )
-        if mode not in allowed_modes:
-            return {}
-
-        def serialize(items: list[Any]) -> Any:
-            dicts = [asdict(item) for item in items]
-            return gen_ai_json_dumps(dicts) if for_span else dicts
-
-        optional_attrs = (
-            (
-                GenAI.GEN_AI_INPUT_MESSAGES,
-                serialize(self.input_messages)
-                if self.input_messages
-                else None,
-            ),
-            (
-                GenAI.GEN_AI_OUTPUT_MESSAGES,
-                serialize(self.output_messages)
-                if self.output_messages
-                else None,
-            ),
-            (
-                GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
-                serialize(self.system_instruction)
-                if self.system_instruction
-                else None,
-            ),
-        )
-        return {
-            key: value for key, value in optional_attrs if value is not None
-        }
 
     def _get_finish_reasons(self) -> list[str] | None:
         if self.finish_reasons is not None:
@@ -202,6 +181,14 @@ class InferenceInvocation(GenAIInvocation):
             (GenAI.GEN_AI_RESPONSE_ID, self.response_id),
             (GenAI.GEN_AI_USAGE_INPUT_TOKENS, self.input_tokens),
             (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, self.output_tokens),
+            (
+                _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+                self.cache_creation_input_tokens,
+            ),
+            (
+                _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+                self.cache_read_input_tokens,
+            ),
         )
         attrs.update({k: v for k, v in optional_attrs if v is not None})
         return attrs
