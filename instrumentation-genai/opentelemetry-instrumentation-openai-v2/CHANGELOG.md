@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Refactor chat completion stream wrappers to use shared GenAI stream lifecycle helpers.
+  ([#4500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4500))
 - Import `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` from
   `opentelemetry.util.genai.environment_variables` instead of re-defining it locally,
   making `opentelemetry-util-genai` the single source of truth for this constant.
