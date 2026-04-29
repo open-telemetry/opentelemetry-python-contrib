@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate experimental path from deprecated `LLMInvocation` to `InferenceInvocation`,
   using `handler.start_inference()` and `invocation.stop()`/`invocation.fail()` directly
   ([#4502](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4502))
+- Use `create_duration_histogram` and `create_token_histogram` from
+  `opentelemetry-util-genai` instead of defining bucket boundaries locally
+  ([#4501](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4501))
 - Import `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` from
   `opentelemetry.util.genai.environment_variables` instead of re-defining it locally,
   making `opentelemetry-util-genai` the single source of truth for this constant.
