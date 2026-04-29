@@ -48,6 +48,7 @@ dependencies = [
     "opentelemetry-instrumentation-dbapi==0.63b0.dev",
     "opentelemetry-instrumentation-django==0.63b0.dev",
     "opentelemetry-instrumentation-elasticsearch==0.63b0.dev",
+    "opentelemetry-instrumentation-exceptions==0.63b0.dev",
     "opentelemetry-instrumentation-falcon==0.63b0.dev",
     "opentelemetry-instrumentation-fastapi==0.63b0.dev",
     "opentelemetry-instrumentation-flask==0.63b0.dev",

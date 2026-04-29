@@ -216,6 +216,7 @@ libraries = [
 default_instrumentations = [
     "opentelemetry-instrumentation-asyncio==0.63b0.dev",
     "opentelemetry-instrumentation-dbapi==0.63b0.dev",
+    "opentelemetry-instrumentation-exceptions==0.63b0.dev",
     "opentelemetry-instrumentation-logging==0.63b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.63b0.dev",
     "opentelemetry-instrumentation-threading==0.63b0.dev",
