@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 from contextlib import AsyncExitStack, ExitStack, contextmanager
-from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -28,7 +27,6 @@ from typing import (
     cast,
 )
 
-from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     LLMInvocation,  # TODO: migrate to InferenceInvocation
@@ -44,6 +42,8 @@ except ImportError:
     _sdk_accumulate_event = None
 
 if TYPE_CHECKING:
+    from types import TracebackType  #
+
     from anthropic._streaming import AsyncStream, Stream
     from anthropic.lib.streaming._messages import (  # pylint: disable=no-name-in-module
         AsyncMessageStream,
@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     )
     from anthropic.types.parsed_message import ParsedMessage
 
+    from opentelemetry.util.genai.handler import TelemetryHandler
 
 _logger = logging.getLogger(__name__)
 ResponseT = TypeVar("ResponseT")

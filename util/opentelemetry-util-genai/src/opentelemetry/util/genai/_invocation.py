@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
 from typing_extensions import Self, TypeAlias
 
-from opentelemetry._logs import Logger
 from opentelemetry.context import Context, attach, detach
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -47,6 +46,7 @@ from opentelemetry.util.genai.utils import (
 )
 
 if TYPE_CHECKING:
+    from opentelemetry._logs import Logger  #
     from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 
 ContextToken: TypeAlias = Token[Context]

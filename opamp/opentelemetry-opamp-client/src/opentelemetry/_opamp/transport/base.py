@@ -15,9 +15,11 @@
 from __future__ import annotations
 
 import abc
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
 
-from opentelemetry._opamp.proto import opamp_pb2
+if TYPE_CHECKING:
+    from opentelemetry._opamp.proto import opamp_pb2
+
 
 base_headers = {
     "Content-Type": "application/x-protobuf",

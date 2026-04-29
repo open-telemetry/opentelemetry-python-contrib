@@ -15,25 +15,27 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from opentelemetry._logs import Logger
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
-from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
-from opentelemetry.util.genai.types import (
-    InputMessage,
-    OutputMessage,
-)
 from opentelemetry.util.genai.utils import (
     ContentCapturingMode,
     gen_ai_json_dumps,
     get_content_capturing_mode,
     is_experimental_mode,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry._logs import Logger  #
+    from opentelemetry.util.genai.metrics import InvocationMetricsRecorder  #
+    from opentelemetry.util.genai.types import (
+        InputMessage,
+        OutputMessage,
+    )  #
 
 
 class WorkflowInvocation(GenAIInvocation):

@@ -25,11 +25,13 @@ schematized in YAML and the Weaver tool supports it.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any, Iterable, Literal
+from typing import TYPE_CHECKING, Any, Iterable, Literal
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
-from opentelemetry.util.types import AnyValue
+
+if TYPE_CHECKING:
+    from opentelemetry.util.types import AnyValue
 
 
 def user_event(

@@ -21,16 +21,22 @@ from __future__ import annotations
 import random
 from logging import getLogger
 from threading import Timer
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from typing_extensions import override
 
 # pylint: disable=no-name-in-module
-from opentelemetry.context import Context
 from opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client import (
     DEFAULT_SAMPLING_PROXY_ENDPOINT,
     _AwsXRaySamplingClient,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.context import Context
+    from opentelemetry.trace import Link, SpanKind
+    from opentelemetry.trace.span import TraceState
+    from opentelemetry.util.types import Attributes
+
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.sampling import (
     Decision,
@@ -38,9 +44,6 @@ from opentelemetry.sdk.trace.sampling import (
     Sampler,
     SamplingResult,
 )
-from opentelemetry.trace import Link, SpanKind
-from opentelemetry.trace.span import TraceState
-from opentelemetry.util.types import Attributes
 
 _logger = getLogger(__name__)
 

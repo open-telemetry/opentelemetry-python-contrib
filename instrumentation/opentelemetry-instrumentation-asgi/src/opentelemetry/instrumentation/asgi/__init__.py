@@ -215,7 +215,7 @@ import urllib
 from collections import defaultdict
 from functools import wraps
 from timeit import default_timer
-from typing import Any, Awaitable, Callable, DefaultDict, Tuple
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, DefaultDict, Tuple
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -245,11 +245,6 @@ from opentelemetry.instrumentation._semconv import (
     _set_http_user_agent,
     _set_status,
     _StabilityMode,
-)
-from opentelemetry.instrumentation.asgi.types import (
-    ClientRequestHook,
-    ClientResponseHook,
-    ServerRequestHook,
 )
 from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
@@ -294,6 +289,13 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.instrumentation.asgi.types import (
+        ClientRequestHook,
+        ClientResponseHook,
+        ServerRequestHook,
+    )
 
 
 class ASGIGetter(Getter[dict]):

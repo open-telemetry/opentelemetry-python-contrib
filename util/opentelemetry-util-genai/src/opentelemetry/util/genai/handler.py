@@ -48,7 +48,7 @@ Usage:
 
 from __future__ import annotations
 
-from contextlib import AbstractContextManager
+from typing import TYPE_CHECKING
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -74,6 +74,14 @@ from opentelemetry.util.genai.invocation import (
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.version import __version__
+
+if TYPE_CHECKING:
+    from contextlib import AbstractContextManager  #
+
+    from opentelemetry.util.genai._inference_invocation import (
+        LLMInvocation,
+    )  #
+    from opentelemetry.util.genai._invocation import Error  #
 
 
 class TelemetryHandler:

@@ -144,7 +144,7 @@ API
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Collection, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Collection, TypeVar
 
 import psycopg  # pylint: disable=import-self
 from psycopg.sql import Composable  # pylint: disable=no-name-in-module
@@ -153,7 +153,9 @@ from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg.package import _instruments
 from opentelemetry.instrumentation.psycopg.version import __version__
-from opentelemetry.trace import TracerProvider
+
+if TYPE_CHECKING:
+    from opentelemetry.trace import TracerProvider
 
 _logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"

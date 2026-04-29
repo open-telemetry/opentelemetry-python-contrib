@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Enabled the flake8-type-checking plugin rules for ruff linter. These rules do not allow the import of python objects outside the type-checking block, if they are only used for type annotations and are not used at runtime.
+([#4398](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4398))
 - Enabled the flake8-tidy-import plugins rules for the ruff linter. These rules throw warnings for relative imports in the modules.
 ([#4395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4395))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed

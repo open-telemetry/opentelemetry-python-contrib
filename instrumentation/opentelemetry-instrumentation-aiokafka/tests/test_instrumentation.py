@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
 import uuid
-from typing import Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
 
 import aiokafka
@@ -25,11 +24,14 @@ from aiokafka import (
     ConsumerRecord,
     TopicPartition,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.sdk.trace import ReadableSpan
+
 from wrapt import BoundFunctionWrapper
 
 from opentelemetry import baggage, context
 from opentelemetry.instrumentation.aiokafka import AIOKafkaInstrumentor
-from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.test.test_base import TestBase
@@ -153,7 +155,9 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
             client_id=client_id, group_id=group_id
         )
         self.addAsyncCleanup(consumer.stop)
-        next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
+        next_record_mock = cast(
+            "mock.AsyncMock", consumer._fetcher.next_record
+        )
 
         expected_spans = [
             {
@@ -236,7 +240,9 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         consumer = await self.consumer_factory()
         self.addAsyncCleanup(consumer.stop)
-        next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
+        next_record_mock = cast(
+            "mock.AsyncMock", consumer._fetcher.next_record
+        )
 
         self.memory_exporter.clear()
 
@@ -270,7 +276,9 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
 
         consumer = await self.consumer_factory()
         self.addAsyncCleanup(consumer.stop)
-        next_record_mock = cast(mock.AsyncMock, consumer._fetcher.next_record)
+        next_record_mock = cast(
+            "mock.AsyncMock", consumer._fetcher.next_record
+        )
 
         next_record_mock.side_effect = [
             self.consumer_record_factory(1, headers=())
@@ -288,7 +296,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         )
         self.addAsyncCleanup(consumer.stop)
         fetched_records_mock = cast(
-            mock.AsyncMock, consumer._fetcher.fetched_records
+            "mock.AsyncMock", consumer._fetcher.fetched_records
         )
 
         expected_spans = [
@@ -394,7 +402,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         producer = await self.producer_factory()
         self.addAsyncCleanup(producer.stop)
         add_message_mock = cast(
-            mock.AsyncMock, producer._message_accumulator.add_message
+            "mock.AsyncMock", producer._message_accumulator.add_message
         )
 
         tracer = self.tracer_provider.get_tracer(__name__)
@@ -427,7 +435,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         producer = await self.producer_factory()
         self.addAsyncCleanup(producer.stop)
         add_message_mock = cast(
-            mock.AsyncMock, producer._message_accumulator.add_message
+            "mock.AsyncMock", producer._message_accumulator.add_message
         )
 
         tracer = self.tracer_provider.get_tracer(__name__)

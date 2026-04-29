@@ -25,17 +25,20 @@ from __future__ import annotations
 
 import logging
 from os import environ
-from typing import Any, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
-from opentelemetry._logs import LogRecord
-from opentelemetry.trace import Span
 from opentelemetry.util._importlib_metadata import (
     entry_points,  # pyright: ignore[reportUnknownVariableType]
 )
-from opentelemetry.util.genai import types
 from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry._logs import LogRecord
+    from opentelemetry.trace import Span
+    from opentelemetry.util.genai import types
+
 
 _logger = logging.getLogger(__name__)
 
@@ -100,7 +103,7 @@ def load_completion_hook() -> CompletionHook:
     for entry_point in entry_points(  # pyright: ignore[reportUnknownVariableType]
         group="opentelemetry_genai_completion_hook"
     ):
-        name = cast(str, entry_point.name)  # pyright: ignore[reportUnknownMemberType]
+        name = cast("str", entry_point.name)  # pyright: ignore[reportUnknownMemberType]
         try:
             if hook_name != name:
                 continue

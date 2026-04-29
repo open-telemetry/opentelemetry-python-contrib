@@ -26,6 +26,12 @@ from concurrent.futures import (
     Future,
     ThreadPoolExecutor,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from opentelemetry._logs import LogRecord
+    from opentelemetry.trace import Span
+
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from functools import partial
@@ -35,9 +41,7 @@ from uuid import uuid4
 
 import fsspec
 
-from opentelemetry._logs import LogRecord
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
-from opentelemetry.trace import Span
 from opentelemetry.util.genai import types
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.utils import gen_ai_json_dump

@@ -168,7 +168,6 @@ from psycopg2.extensions import (
 )
 from psycopg2.sql import Composed  # pylint: disable=no-name-in-module
 
-from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.psycopg2.package import (
@@ -184,6 +183,8 @@ if typing.TYPE_CHECKING:
     from psycopg2.extensions import (  # pylint: disable=no-name-in-module
         connection as PgConnection,
     )
+
+    from opentelemetry import trace as trace_api
 
 
 class Psycopg2Instrumentor(BaseInstrumentor):

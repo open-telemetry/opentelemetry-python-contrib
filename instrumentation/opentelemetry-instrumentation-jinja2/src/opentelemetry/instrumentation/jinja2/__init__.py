@@ -42,11 +42,9 @@ API
 from __future__ import annotations
 
 import logging
-from types import CodeType
-from typing import Any, Callable, Collection, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Collection, TypeVar
 
 import jinja2
-from jinja2.environment import Template
 from wrapt import wrap_function_wrapper as _wrap
 
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -54,6 +52,11 @@ from opentelemetry.instrumentation.jinja2.package import _instruments
 from opentelemetry.instrumentation.jinja2.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.trace import SpanKind, Tracer, get_tracer
+
+if TYPE_CHECKING:
+    from types import CodeType
+
+    from jinja2.environment import Template
 
 logger = logging.getLogger(__name__)
 

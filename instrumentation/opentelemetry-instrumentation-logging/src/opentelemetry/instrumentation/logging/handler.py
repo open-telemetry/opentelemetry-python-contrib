@@ -20,7 +20,7 @@ import threading
 import traceback
 from contextvars import ContextVar
 from time import time_ns
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -30,11 +30,14 @@ from opentelemetry._logs import (
     get_logger,
     get_logger_provider,
 )
+
+if TYPE_CHECKING:
+    from opentelemetry.util.types import _ExtendedAttributes
+
 from opentelemetry.attributes import _VALID_ANY_VALUE_TYPES
 from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
-from opentelemetry.util.types import _ExtendedAttributes
 
 _internal_logger = logging.getLogger(__name__ + ".internal")
 _internal_logger.propagate = False

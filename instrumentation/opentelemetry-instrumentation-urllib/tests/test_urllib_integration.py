@@ -17,11 +17,11 @@ from __future__ import annotations
 import abc
 import socket
 import urllib
+from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import patch
 from urllib import request
 from urllib.error import HTTPError
-from urllib.request import OpenerDirector
 
 import httpretty
 
@@ -31,6 +31,10 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
 )
+
+if TYPE_CHECKING:
+    from urllib.request import OpenerDirector
+
 from opentelemetry.instrumentation.urllib import (  # pylint: disable=no-name-in-module,import-error
     URLLibInstrumentor,
 )

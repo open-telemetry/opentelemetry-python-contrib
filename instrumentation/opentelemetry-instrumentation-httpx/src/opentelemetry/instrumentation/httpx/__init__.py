@@ -320,7 +320,7 @@ from collections import defaultdict
 from functools import partial
 from inspect import iscoroutinefunction
 from timeit import default_timer
-from types import TracebackType
+from typing import TYPE_CHECKING
 
 import httpx
 from wrapt import wrap_function_wrapper
@@ -382,6 +382,10 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
 
 _logger = logging.getLogger(__name__)
 

@@ -81,7 +81,6 @@ from urllib.parse import urlencode
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import context as context_api
-from opentelemetry.context.context import Context
 from opentelemetry.instrumentation.aws_lambda.package import _instruments
 from opentelemetry.instrumentation.aws_lambda.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -147,6 +146,8 @@ if TYPE_CHECKING:
         aws_request_id: str
         log_group_name: str
         log_stream_name: str
+
+    from opentelemetry.context.context import Context
 
 
 def _default_event_context_extractor(lambda_event: Any) -> Context:

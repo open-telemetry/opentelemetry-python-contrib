@@ -14,17 +14,19 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from opentelemetry._logs import Logger
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
-from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
-from opentelemetry.util.types import AttributeValue
+
+if TYPE_CHECKING:
+    from opentelemetry._logs import Logger  #
+    from opentelemetry.util.genai.metrics import InvocationMetricsRecorder  #
+    from opentelemetry.util.types import AttributeValue  #
 
 
 class EmbeddingInvocation(GenAIInvocation):

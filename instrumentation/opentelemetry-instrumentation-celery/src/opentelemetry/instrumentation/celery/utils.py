@@ -18,16 +18,18 @@ import logging
 from typing import TYPE_CHECKING, Optional, Tuple
 
 from celery import registry  # pylint: disable=no-name-in-module
-from celery.app.task import Task
 
 from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
 )
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import Span
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
+
+    from celery.app.task import Task
+
+    from opentelemetry.trace import Span
 
 logger = logging.getLogger(__name__)
 

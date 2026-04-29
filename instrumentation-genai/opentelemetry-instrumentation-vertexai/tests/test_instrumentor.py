@@ -14,13 +14,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from google.cloud.aiplatform_v1.services.prediction_service import client
 from google.cloud.aiplatform_v1beta1.services.prediction_service import (
     client as client_v1beta1,
 )
 
-from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
+if TYPE_CHECKING:
+    from opentelemetry.instrumentation.vertexai import VertexAIInstrumentor
 
 
 @pytest.fixture(

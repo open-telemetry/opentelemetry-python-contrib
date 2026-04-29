@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import timeit
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -14,7 +13,10 @@ from opentelemetry.util.genai.instruments import (
     create_token_histogram,
 )
 
-from ._invocation import GenAIInvocation
+if TYPE_CHECKING:
+    from opentelemetry.metrics import Histogram, Meter
+
+    from ._invocation import GenAIInvocation
 
 
 class InvocationMetricsRecorder:

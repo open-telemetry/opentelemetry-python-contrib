@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace.export import SpanProcessor
-from opentelemetry.trace import Span
+
+if TYPE_CHECKING:
+    from opentelemetry.trace import Span
 
 # A BaggageKeyPredicate is a function that takes a baggage key and returns a boolean
 BaggageKeyPredicateT = Callable[[str], bool]

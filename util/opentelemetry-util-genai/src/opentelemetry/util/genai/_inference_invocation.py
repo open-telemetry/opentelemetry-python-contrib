@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.semconv._incubating.attributes import (
@@ -40,6 +40,13 @@ from opentelemetry.util.genai.utils import (
     should_emit_event,
 )
 
+if TYPE_CHECKING:
+    from opentelemetry.util.genai.metrics import InvocationMetricsRecorder  #
+    from opentelemetry.util.genai.types import (
+        InputMessage,
+        MessagePart,
+        OutputMessage,
+    )  #
 # TODO: Migrate to GenAI constants once available in semconv package
 _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
     "gen_ai.usage.cache_creation.input_tokens"
