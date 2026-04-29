@@ -22,11 +22,11 @@ from openai import Stream
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
-from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai._stream import (
     AsyncStreamWrapper,
     SyncStreamWrapper,
 )
+from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
     OutputMessage,
     Text,
