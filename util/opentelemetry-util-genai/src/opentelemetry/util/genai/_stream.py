@@ -1,0 +1,193 @@
+# Copyright The OpenTelemetry Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+import logging
+from abc import ABC, abstractmethod
+from types import TracebackType
+from typing import Any, Generic, Literal, TypeVar
+
+ChunkT = TypeVar("ChunkT")
+_logger = logging.getLogger(__name__)
+
+
+class SyncStreamWrapper(ABC, Generic[ChunkT]):
+    """Base class for synchronous instrumented stream wrappers."""
+
+    def __init__(self, stream: Any):
+        self.stream = stream
+        self._finalized = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
+        try:
+            if exc_type is not None:
+                self._finalize_failure(exc_val or Exception())
+        finally:
+            self.close()
+        return False
+
+    def close(self) -> None:
+        try:
+            self.stream.close()
+        finally:
+            self._finalize_success()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> ChunkT:
+        try:
+            chunk = next(self.stream)
+        except StopIteration:
+            self._finalize_success()
+            raise
+        except Exception as error:
+            self._finalize_failure(error)
+            raise
+        try:
+            self._process_chunk(chunk)
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            self._handle_process_chunk_error(error)
+        return chunk
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.stream, name)
+
+    def _finalize_success(self) -> None:
+        if self._finalized:
+            return
+        self._stop_stream()
+        self._finalized = True
+
+    def _finalize_failure(self, error: BaseException) -> None:
+        if self._finalized:
+            return
+        self._fail_stream(error)
+        self._finalized = True
+
+    @abstractmethod
+    def _process_chunk(self, chunk: ChunkT) -> None:
+        """Process one stream chunk for telemetry."""
+
+    @abstractmethod
+    def _stop_stream(self) -> None:
+        """Finalize the stream successfully."""
+
+    @abstractmethod
+    def _fail_stream(self, error: BaseException) -> None:
+        """Finalize the stream with failure."""
+
+    @staticmethod
+    def _handle_process_chunk_error(_error: Exception) -> None:
+        _logger.debug(
+            "GenAI stream instrumentation error during chunk processing",
+            exc_info=True,
+        )
+
+
+class AsyncStreamWrapper(ABC, Generic[ChunkT]):
+    """Base class for asynchronous instrumented stream wrappers."""
+
+    def __init__(self, stream: Any):
+        self.stream = stream
+        self._finalized = False
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
+        try:
+            if exc_type is not None:
+                self._finalize_failure(exc_val or Exception())
+        finally:
+            await self.close()
+        return False
+
+    async def close(self) -> None:
+        try:
+            await self.stream.close()
+        finally:
+            self._finalize_success()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self) -> ChunkT:
+        try:
+            chunk = await self.stream.__anext__()
+        except StopAsyncIteration:
+            self._finalize_success()
+            raise
+        except Exception as error:
+            self._finalize_failure(error)
+            raise
+        try:
+            self._process_chunk(chunk)
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            self._handle_process_chunk_error(error)
+        return chunk
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.stream, name)
+
+    def _finalize_success(self) -> None:
+        if self._finalized:
+            return
+        self._stop_stream()
+        self._finalized = True
+
+    def _finalize_failure(self, error: BaseException) -> None:
+        if self._finalized:
+            return
+        self._fail_stream(error)
+        self._finalized = True
+
+    @abstractmethod
+    def _process_chunk(self, chunk: ChunkT) -> None:
+        """Process one stream chunk for telemetry."""
+
+    @abstractmethod
+    def _stop_stream(self) -> None:
+        """Finalize the stream successfully."""
+
+    @abstractmethod
+    def _fail_stream(self, error: BaseException) -> None:
+        """Finalize the stream with failure."""
+
+    @staticmethod
+    def _handle_process_chunk_error(_error: Exception) -> None:
+        _logger.debug(
+            "GenAI stream instrumentation error during chunk processing",
+            exc_info=True,
+        )
+
+
+__all__ = [
+    "AsyncStreamWrapper",
+    "SyncStreamWrapper",
+]
