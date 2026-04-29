@@ -211,12 +211,15 @@ def get_llm_request_attributes(
     latest_experimental_enabled,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-locals
 
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
     }
+
+    model = kwargs.get("model")
+    if model:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = model
 
     if latest_experimental_enabled:
         attributes.update(
