@@ -15,6 +15,7 @@ from agents.tracing import (
     AgentSpanData,
     FunctionSpanData,
     GenerationSpanData,
+    MCPListToolsSpanData,
     ResponseSpanData,
 )
 
@@ -180,6 +181,9 @@ def test_operation_and_span_naming(processor_setup):
         processor._get_operation_name(response_data)
         == sp.GenAIOperationName.CHAT
     )
+
+    mcp_data = MCPListToolsSpanData()
+    assert processor._get_operation_name(mcp_data) == "list_tools"
 
     class UnknownSpanData:
         pass

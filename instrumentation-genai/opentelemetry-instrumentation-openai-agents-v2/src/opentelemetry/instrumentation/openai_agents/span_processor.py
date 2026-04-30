@@ -34,6 +34,7 @@ try:
         GenerationSpanData,
         GuardrailSpanData,
         HandoffSpanData,
+        MCPListToolsSpanData,
         ResponseSpanData,
         SpeechSpanData,
         TranscriptionSpanData,
@@ -48,6 +49,7 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     GenerationSpanData = getattr(tracing_module, "GenerationSpanData", Any)  # type: ignore[assignment]
     GuardrailSpanData = getattr(tracing_module, "GuardrailSpanData", Any)  # type: ignore[assignment]
     HandoffSpanData = getattr(tracing_module, "HandoffSpanData", Any)  # type: ignore[assignment]
+    MCPListToolsSpanData = getattr(tracing_module, "MCPListToolsSpanData", Any)  # type: ignore[assignment]
     ResponseSpanData = getattr(tracing_module, "ResponseSpanData", Any)  # type: ignore[assignment]
     SpeechSpanData = getattr(tracing_module, "SpeechSpanData", Any)  # type: ignore[assignment]
     TranscriptionSpanData = getattr(
@@ -1545,6 +1547,8 @@ class GenAISemanticProcessor(TracingProcessor):
             return GenAIOperationName.GUARDRAIL
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return "list_tools"
         return "unknown"
 
     def _extract_genai_attributes(
