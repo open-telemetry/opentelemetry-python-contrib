@@ -49,9 +49,7 @@ from .protobuf import test_server_pb2_grpc  # pylint: disable=no-name-in-module
 class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
     recorded_details = None
 
-    async def intercept_unary_unary(
-        self, continuation, client_call_details, request
-    ):
+    async def intercept_unary_unary(self, continuation, client_call_details, request):
         self.recorded_details = client_call_details
         return await continuation(client_call_details, request)
 
@@ -194,9 +192,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
 
-        self.assertEqual(
-            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
-        )
+        self.assertEqual(span.name, "/GRPCTestServer/BidirectionalStreamingMethod")
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
@@ -265,9 +261,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
 
     async def test_error_stream_stream(self):
         with self.assertRaises(grpc.RpcError):
-            async for _ in bidirectional_streaming_method(
-                self._stub, error=True
-            ):
+            async for _ in bidirectional_streaming_method(self._stub, error=True):
                 pass
 
         spans = self.memory_exporter.get_finished_spans()
@@ -344,8 +338,6 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
 
     async def test_unary_unary_add_done_callback_not_implemented(self):
         """Span should still be finished when add_done_callback raises NotImplementedError."""
-
-        original_method = grpc.aio.UnaryUnaryCall.add_done_callback
 
         def _raise_not_implemented(self_call, callback):
             raise NotImplementedError
