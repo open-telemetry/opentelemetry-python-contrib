@@ -85,7 +85,7 @@ Configuration recording
 ***********************
 
 The instrumentation can optionally record ``GenerateContentConfig`` parameters
-as span attributes under the ``gcp.gen_ai.operation.config.*`` namespace.
+as span and event attributes under the ``gcp.gen_ai.operation.config.*`` namespace.
 
 By default, no config fields are recorded. You can control which fields are
 captured using the following environment variables:
