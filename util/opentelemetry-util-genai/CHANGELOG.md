@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add `AgentInvocation` type with `invoke_agent` span lifecycle
+  ([#4274](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4274))
 - Add metrics support for EmbeddingInvocation
   ([#4377](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4377))
 - Add support for workflow in genAI utils handler.
@@ -23,7 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 of repeatedly failing on every upload ([#4390](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4390)).
 - Refactor public API: add factory methods (`start_inference`, `start_embedding`, `start_tool`, `start_workflow`) and invocation-owned lifecycle (`invocation.stop()` / `invocation.fail(exc)`); rename `LLMInvocation` → `InferenceInvocation` and `ToolCall` → `ToolInvocation`. Existing usages remain fully functional via deprecated aliases.
   ([#4391](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4391))
-
+- `TelemetryHandler` now accepts a `completion_hook` parameter and calls it after each LLM invocation, passing inputs, outputs, the active span, and the log record. Content capture is enabled automatically when a real hook is configured.
+  ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Add metrics to ToolInvocations ([#4443](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4443))
+- Wrap completion hooks loaded via `load_completion_hook` so exceptions raised by
+  `on_completion` are logged and swallowed instead of propagating to instrumentation
+  call sites.
 
 ## Version 0.3b0 (2026-02-20)
 

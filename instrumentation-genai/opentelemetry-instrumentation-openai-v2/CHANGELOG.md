@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+
+- Migrate experimental path from deprecated `LLMInvocation` to `InferenceInvocation`,
+  using `handler.start_inference()` and `invocation.stop()`/`invocation.fail()` directly
+  ([#4502](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4502))
+- Use `create_duration_histogram` and `create_token_histogram` from
+  `opentelemetry-util-genai` instead of defining bucket boundaries locally
+  ([#4501](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4501))
+- Import `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` from
+  `opentelemetry.util.genai.environment_variables` instead of re-defining it locally,
+  making `opentelemetry-util-genai` the single source of truth for this constant.
+  ([#4455](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4455))
 - Fix compatibility with wrapt 2.x by using positional arguments in `wrap_function_wrapper()` calls
   ([#4445](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4445))
 - Fix `ChoiceBuffer` crash on streaming tool-call deltas with `arguments=None`
@@ -24,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add strongly typed Responses API extractors with validation and content
   extraction improvements
   ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
+- Add completion hook support.
+  ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Fix `response_format` handling: map `json_object`/`json_schema` to `json` output type.
+  ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Skip attribute values with `openai.Omit` value.
+  ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Default empty string for `gen_ai.request.model` attribute on missing model.
+  ([#4494](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4494))
 
 ## Version 2.3b0 (2025-12-24)
 

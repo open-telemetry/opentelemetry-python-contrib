@@ -19,6 +19,7 @@ from os import environ
 from typing import Any, Iterable, List, Mapping
 from urllib.parse import urlparse
 
+import openai
 from httpx import URL
 from openai import NotGiven
 
@@ -36,18 +37,20 @@ from opentelemetry.semconv.attributes import (
     error_attributes as ErrorAttributes,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
+from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
     InputMessage,
-    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
     OutputMessage,
     Text,
     ToolCallRequest,
     ToolCallResponse,
 )
 
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
-)
+_OpenAIOmit = getattr(openai, "Omit", None)
 
 
 def is_content_enabled() -> bool:
@@ -202,7 +205,15 @@ def non_numerical_value_is_set(value: bool | str | NotGiven | None):
 
 
 def value_is_set(value):
+    if _OpenAIOmit is not None and isinstance(value, _OpenAIOmit):
+        return False
     return value is not None and not isinstance(value, NotGiven)
+
+
+def _openai_response_format_to_output_type(response_format_type: str) -> str:
+    if response_format_type in ("json_object", "json_schema"):
+        return GenAIAttributes.GenAiOutputTypeValues.JSON.value
+    return response_format_type
 
 
 def get_llm_request_attributes(
@@ -211,12 +222,15 @@ def get_llm_request_attributes(
     latest_experimental_enabled,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-locals
 
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
     }
+
+    model = kwargs.get("model")
+    if model:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = model
 
     if latest_experimental_enabled:
         attributes.update(
@@ -283,7 +297,7 @@ def get_llm_request_attributes(
                     attributes[request_response_format_attr_key] = (
                         response_format_type
                     )
-            else:
+            elif isinstance(response_format, str):
                 attributes[request_response_format_attr_key] = response_format
 
         # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
@@ -329,42 +343,37 @@ def get_llm_request_attributes(
 
 
 def create_chat_invocation(
+    handler: TelemetryHandler,
     kwargs,
     client_instance,
     capture_content: bool,
-) -> LLMInvocation:
+) -> InferenceInvocation:
     # pylint: disable=too-many-branches
 
-    llm_invocation = LLMInvocation(request_model=kwargs.get("model", ""))
-    llm_invocation.provider = (
-        GenAIAttributes.GenAiProviderNameValues.OPENAI.value
+    address, port = get_server_address_and_port(client_instance)
+    invocation = handler.start_inference(
+        GenAIAttributes.GenAiProviderNameValues.OPENAI.value,
+        request_model=kwargs.get("model", ""),
+        server_address=address if address else None,
+        server_port=port if port else None,
     )
-    llm_invocation.temperature = get_value(kwargs.get("temperature"))
-    llm_invocation.top_p = get_value(kwargs.get("p") or kwargs.get("top_p"))
-    llm_invocation.max_tokens = get_value(kwargs.get("max_tokens"))
-    llm_invocation.presence_penalty = get_value(kwargs.get("presence_penalty"))
-    llm_invocation.frequency_penalty = get_value(
-        kwargs.get("frequency_penalty")
-    )
-    llm_invocation.seed = get_value(kwargs.get("seed"))
+    invocation.temperature = get_value(kwargs.get("temperature"))
+    invocation.top_p = get_value(kwargs.get("p") or kwargs.get("top_p"))
+    invocation.max_tokens = get_value(kwargs.get("max_tokens"))
+    invocation.presence_penalty = get_value(kwargs.get("presence_penalty"))
+    invocation.frequency_penalty = get_value(kwargs.get("frequency_penalty"))
+    invocation.seed = get_value(kwargs.get("seed"))
     if (stop_sequences := get_value(kwargs.get("stop"))) is not None:
         if isinstance(stop_sequences, str):
             stop_sequences = [stop_sequences]
-        llm_invocation.stop_sequences = stop_sequences
+        invocation.stop_sequences = stop_sequences
 
-    address, port = get_server_address_and_port(client_instance)
-    if address:
-        llm_invocation.server_address = address
-    if port:
-        llm_invocation.server_port = port
-
-    attributes = {}
     if (choice_count := get_value(kwargs.get("n"))) is not None:
         # Only add non default, meaningful values
         if isinstance(choice_count, int) and choice_count != 1:
-            attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
-                choice_count
-            )
+            invocation.attributes[
+                GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT
+            ] = choice_count
 
     if (
         response_format := get_value(kwargs.get("response_format"))
@@ -374,13 +383,15 @@ def create_chat_invocation(
             if (
                 response_format_type := get_value(response_format.get("type"))
             ) is not None:
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
-                    response_format_type
+                invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                    _openai_response_format_to_output_type(
+                        response_format_type
+                    )
                 )
-        else:
-            attributes[
-                GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
-            ] = response_format
+        elif isinstance(response_format, str):
+            invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                _openai_response_format_to_output_type(response_format)
+            )
 
     # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
     service_tier = get_value(kwargs.get("service_tier"))
@@ -389,16 +400,15 @@ def create_chat_invocation(
         if isinstance(extra_body, Mapping):
             service_tier = get_value(extra_body.get("service_tier"))
     if service_tier is not None:
-        attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = service_tier
-
-    if len(attributes) > 0:
-        llm_invocation.attributes = attributes
+        invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = (
+            service_tier
+        )
 
     if capture_content:  # optimization
-        llm_invocation.input_messages = _prepare_input_messages(
+        invocation.input_messages = _prepare_input_messages(
             kwargs.get("messages", [])
         )
-    return llm_invocation
+    return invocation
 
 
 def get_value(v: Any):
