@@ -44,18 +44,6 @@ def _loaded_module_fixture():
     return response_extractors
 
 
-@pytest.fixture(
-    scope="module", name="gen_ai_usage_cache_creation_input_tokens"
-)
-def _gen_ai_usage_cache_creation_input_tokens_fixture(loaded_module):
-    return loaded_module.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
-
-
-@pytest.fixture(scope="module", name="gen_ai_usage_cache_read_input_tokens")
-def _gen_ai_usage_cache_read_input_tokens_fixture(loaded_module):
-    return loaded_module.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
-
-
 def _make_response(output=None, **overrides):
     payload = {
         "id": "resp_123",
@@ -290,8 +278,6 @@ def test_extractors_handle_missing_genai_types_import(loaded_module):
 
 def test_set_invocation_response_attributes_populates_usage_and_metadata(
     loaded_module,
-    gen_ai_usage_cache_creation_input_tokens,
-    gen_ai_usage_cache_read_input_tokens,
 ):
     invocation = LLMInvocation(request_model="gpt-4o-mini")
     result = _make_response(
@@ -316,10 +302,10 @@ def test_set_invocation_response_attributes_populates_usage_and_metadata(
     assert invocation.response_id == "resp_123"
     assert invocation.input_tokens == 11
     assert invocation.output_tokens == 7
+    assert getattr(invocation, "cache_read_input_tokens") == 3
+    assert getattr(invocation, "cache_creation_input_tokens") == 5
     assert invocation.attributes == {
         OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: "scale",
-        gen_ai_usage_cache_read_input_tokens: 3,
-        gen_ai_usage_cache_creation_input_tokens: 5,
     }
 
 

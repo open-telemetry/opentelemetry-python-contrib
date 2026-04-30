@@ -31,13 +31,15 @@ if TYPE_CHECKING:
         Response,
     )
 
+    from opentelemetry.util.genai._invocation import GenAIInvocation
+
 _logger = logging.getLogger(__name__)
 TextFormatT = TypeVar("TextFormatT")
 ResponseT = TypeVar("ResponseT")
 
 
 def _set_response_attributes(
-    invocation,
+    invocation: "GenAIInvocation",
     result: "ParsedResponse[TextFormatT] | Response | None",
     capture_content: bool,
 ) -> None:
@@ -96,7 +98,7 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         stream: "ResponseStream[TextFormatT]",
-        invocation,
+        invocation: "GenAIInvocation",
         capture_content: bool,
     ):
         self.stream = stream

@@ -17,10 +17,6 @@
 import json
 from typing import Any, Optional
 
-from opentelemetry.instrumentation.openai_v2.response_extractors import (
-    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
-    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
-)
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
@@ -34,6 +30,10 @@ from opentelemetry.semconv._incubating.attributes import (
 
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
+)
+GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
 USER_ONLY_EXPECTED_INPUT_MESSAGES = [
     {
