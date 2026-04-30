@@ -28,6 +28,9 @@ of repeatedly failing on every upload ([#4390](https://github.com/open-telemetry
 - `TelemetryHandler` now accepts a `completion_hook` parameter and calls it after each LLM invocation, passing inputs, outputs, the active span, and the log record. Content capture is enabled automatically when a real hook is configured.
   ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
 - Add metrics to ToolInvocations ([#4443](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4443))
+- Wrap completion hooks loaded via `load_completion_hook` so exceptions raised by
+  `on_completion` are logged and swallowed instead of propagating to instrumentation
+  call sites.
 
 ## Version 0.3b0 (2026-02-20)
 
