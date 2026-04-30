@@ -33,10 +33,10 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     Error,
-    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
     OutputMessage,
     Text,
     ToolCallRequest,
@@ -68,7 +68,9 @@ def chat_completions_create_v_old(
             **get_llm_request_attributes(kwargs, instance, False)
         }
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+        span_name = f"{operation_name} {model}" if model else operation_name
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
@@ -128,10 +130,8 @@ def chat_completions_create_v_new(
     capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
 
     def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = handler.start_llm(
-            create_chat_invocation(
-                kwargs, instance, capture_content=capture_content
-            )
+        chat_invocation = create_chat_invocation(
+            handler, kwargs, instance, capture_content=capture_content
         )
 
         try:
@@ -143,18 +143,16 @@ def chat_completions_create_v_new(
                 parsed_result = result
             if is_streaming(kwargs):
                 return ChatStreamWrapper(
-                    parsed_result, handler, chat_invocation, capture_content
+                    parsed_result, chat_invocation, capture_content
                 )
 
             _set_response_properties(
                 chat_invocation, parsed_result, capture_content
             )
-            handler.stop_llm(chat_invocation)
+            chat_invocation.stop()
             return result
         except Exception as error:
-            handler.fail_llm(
-                chat_invocation, Error(type=type(error), message=str(error))
-            )
+            chat_invocation.fail(Error(type=type(error), message=str(error)))
             raise
 
     return traced_method
@@ -173,7 +171,9 @@ def async_chat_completions_create_v_old(
             **get_llm_request_attributes(kwargs, instance, False)
         }
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+        span_name = f"{operation_name} {model}" if model else operation_name
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
@@ -232,10 +232,8 @@ def async_chat_completions_create_v_new(
     capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
 
     async def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = handler.start_llm(
-            create_chat_invocation(
-                kwargs, instance, capture_content=capture_content
-            )
+        chat_invocation = create_chat_invocation(
+            handler, kwargs, instance, capture_content=capture_content
         )
 
         try:
@@ -247,19 +245,17 @@ def async_chat_completions_create_v_new(
                 parsed_result = result
             if is_streaming(kwargs):
                 return ChatStreamWrapper(
-                    parsed_result, handler, chat_invocation, capture_content
+                    parsed_result, chat_invocation, capture_content
                 )
 
             _set_response_properties(
                 chat_invocation, parsed_result, capture_content
             )
-            handler.stop_llm(chat_invocation)
+            chat_invocation.stop()
             return result
 
         except Exception as error:
-            handler.fail_llm(
-                chat_invocation, Error(type=type(error), message=str(error))
-            )
+            chat_invocation.fail(Error(type=type(error), message=str(error)))
             raise
 
     return traced_method
@@ -373,7 +369,9 @@ def async_embeddings_create(
 
 def _get_embeddings_span_name(span_attributes):
     """Get span name for embeddings operations."""
-    return f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+    operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+    model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+    return f"{operation_name} {model}" if model else operation_name
 
 
 def _record_metrics(
@@ -495,8 +493,8 @@ def _set_response_attributes(span, result):
 
 
 def _set_response_properties(
-    chat_invocation: LLMInvocation, result, capture_content: bool
-) -> LLMInvocation:
+    chat_invocation: InferenceInvocation, result, capture_content: bool
+) -> InferenceInvocation:
     if getattr(result, "model", None):
         chat_invocation.response_model_name = result.model
 
@@ -868,8 +866,7 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
 
 
 class ChatStreamWrapper(BaseStreamWrapper):
-    handler: TelemetryHandler
-    invocation: LLMInvocation
+    invocation: InferenceInvocation
     response_id: Optional[str] = None
     response_model: Optional[str] = None
     service_tier: Optional[str] = None
@@ -880,13 +877,11 @@ class ChatStreamWrapper(BaseStreamWrapper):
     def __init__(
         self,
         stream: Stream,
-        handler: TelemetryHandler,
-        invocation: LLMInvocation,
+        invocation: InferenceInvocation,
         capture_content: bool,
     ):
         super().__init__(stream, capture_content=capture_content)
         self.stream = stream
-        self.handler = handler
         self.invocation = invocation
         self.choice_buffers = []
 
@@ -944,9 +939,7 @@ class ChatStreamWrapper(BaseStreamWrapper):
         self._set_output_messages()
 
         if error:
-            self.handler.fail_llm(
-                self.invocation, Error(type=type(error), message=str(error))
-            )
+            self.invocation.fail(Error(type=type(error), message=str(error)))
         else:
-            self.handler.stop_llm(self.invocation)
+            self.invocation.stop()
         self._started = False
