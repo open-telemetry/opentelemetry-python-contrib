@@ -3,3 +3,4 @@ gen-ai:
       - any-glob-to-any-file:
           - 'instrumentation-genai/**'
           - 'util/opentelemetry-util-genai/**'
+          - 'docs/instrumentation-genai/**'
