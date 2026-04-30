@@ -316,3 +316,113 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         kwargs = hook.on_completion.call_args.kwargs
         self.assertEqual(kwargs["inputs"], [])
         self.assertEqual(kwargs["outputs"], [])
+
+    def test_local_agent_hook_called_on_stop_with_messages(self):
+        hook = MagicMock()
+        handler = self._make_handler(hook)
+
+        input_messages = [
+            InputMessage(role="user", parts=[Text(content="what is 2+2?")])
+        ]
+        output_messages = [
+            OutputMessage(
+                role="assistant",
+                parts=[Text(content="4")],
+                finish_reason="stop",
+            )
+        ]
+        system_instruction = [Text(content="be helpful")]
+
+        invocation = handler.start_invoke_local_agent(
+            "openai", request_model="gpt-4"
+        )
+        invocation.agent_name = "Math Tutor"
+        invocation.input_messages = input_messages
+        invocation.output_messages = output_messages
+        invocation.system_instruction = system_instruction
+        invocation.stop()
+
+        hook.on_completion.assert_called_once()
+        kwargs = hook.on_completion.call_args.kwargs
+        self.assertEqual(kwargs["inputs"], input_messages)
+        self.assertEqual(kwargs["outputs"], output_messages)
+        self.assertEqual(kwargs["system_instruction"], system_instruction)
+        self.assertIsNotNone(kwargs["span"])
+        self.assertIsNone(kwargs.get("log_record"))
+
+    def test_local_agent_hook_called_on_fail(self):
+        hook = MagicMock()
+        handler = self._make_handler(hook)
+
+        invocation = handler.start_invoke_local_agent(
+            "openai", request_model="gpt-4"
+        )
+        invocation.input_messages = [
+            InputMessage(role="user", parts=[Text(content="hello")])
+        ]
+        invocation.fail(RuntimeError("agent failed"))
+
+        hook.on_completion.assert_called_once()
+        kwargs = hook.on_completion.call_args.kwargs
+        self.assertIsNotNone(kwargs["span"])
+
+    def test_remote_agent_hook_called_on_stop_with_messages(self):
+        hook = MagicMock()
+        handler = self._make_handler(hook)
+
+        input_messages = [
+            InputMessage(role="user", parts=[Text(content="hi")])
+        ]
+        output_messages = [
+            OutputMessage(
+                role="assistant",
+                parts=[Text(content="hello")],
+                finish_reason="stop",
+            )
+        ]
+
+        invocation = handler.start_invoke_remote_agent(
+            "openai",
+            request_model="gpt-4",
+            server_address="api.openai.com",
+            server_port=443,
+        )
+        invocation.input_messages = input_messages
+        invocation.output_messages = output_messages
+        invocation.stop()
+
+        hook.on_completion.assert_called_once()
+        kwargs = hook.on_completion.call_args.kwargs
+        self.assertEqual(kwargs["inputs"], input_messages)
+        self.assertEqual(kwargs["outputs"], output_messages)
+        self.assertIsNotNone(kwargs["span"])
+        self.assertIsNone(kwargs.get("log_record"))
+
+    def test_remote_agent_hook_called_on_fail(self):
+        hook = MagicMock()
+        handler = self._make_handler(hook)
+
+        invocation = handler.start_invoke_remote_agent("openai")
+        invocation.fail(RuntimeError("remote agent crashed"))
+
+        hook.on_completion.assert_called_once()
+        kwargs = hook.on_completion.call_args.kwargs
+        self.assertIsNotNone(kwargs["span"])
+
+    def test_agent_hook_called_with_empty_messages_when_none_set(self):
+        hook = MagicMock()
+        handler = self._make_handler(hook)
+
+        handler.start_invoke_local_agent("openai").stop()
+
+        hook.on_completion.assert_called_once()
+        kwargs = hook.on_completion.call_args.kwargs
+        self.assertEqual(kwargs["inputs"], [])
+        self.assertEqual(kwargs["outputs"], [])
+        self.assertEqual(kwargs["system_instruction"], [])
+
+    def test_agent_hook_not_called_when_not_set(self):
+        # No hook — stop should not raise
+        handler = self._make_handler()
+        handler.start_invoke_local_agent("openai").stop()
+        handler.start_invoke_remote_agent("openai").stop()

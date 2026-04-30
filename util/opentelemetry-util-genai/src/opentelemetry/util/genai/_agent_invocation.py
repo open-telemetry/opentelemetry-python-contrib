@@ -27,6 +27,7 @@ from opentelemetry.util.genai._invocation import (
     GenAIInvocation,
     get_content_attributes,
 )
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
     InputMessage,
@@ -60,6 +61,7 @@ class AgentInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         provider: str,
         *,
         span_kind: SpanKind = SpanKind.INTERNAL,
@@ -75,6 +77,7 @@ class AgentInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
             span_name=_operation_name,
             span_kind=span_kind,
@@ -219,4 +222,16 @@ class AgentInvocation(GenAIInvocation):
         attributes.update(self._get_content_attributes_for_span())
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
+        self._call_completion_hook()
         self._metrics_recorder.record(self)
+
+    def _call_completion_hook(
+        self,
+    ) -> None:
+        self._completion_hook.on_completion(
+            inputs=self.input_messages,
+            outputs=self.output_messages,
+            system_instruction=self.system_instruction,
+            span=self.span,
+            log_record=None,
+        )
