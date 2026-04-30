@@ -133,7 +133,7 @@ class TestSafeCompletionHook(TestCase):
         safe = _SafeCompletionHook(RaisingCompletionHook())
 
         with self.assertLogs(
-            "opentelemetry.util.genai.completion_hook", level=logging.ERROR
+            "opentelemetry.util.genai.completion_hook", level=logging.WARNING
         ) as logs:
             safe.on_completion(
                 inputs=[],
@@ -142,6 +142,7 @@ class TestSafeCompletionHook(TestCase):
             )
 
         self.assertEqual(len(logs.records), 1)
+        self.assertEqual(logs.records[0].levelno, logging.WARNING)
         self.assertIn("raised an exception", logs.records[0].getMessage())
         self.assertIsInstance(logs.records[0].exc_info[1], RuntimeError)
 

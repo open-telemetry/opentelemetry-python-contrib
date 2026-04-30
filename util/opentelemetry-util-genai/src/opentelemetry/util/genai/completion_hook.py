@@ -56,6 +56,14 @@ class CompletionHook(Protocol):
     The span and log_record arguments should be provided based on the content capturing mode
     :func:`~opentelemetry.util.genai.utils.get_content_capturing_mode`.
 
+    .. note::
+        Hooks returned from :func:`load_completion_hook` are wrapped so any
+        exception raised by :meth:`on_completion` is logged and swallowed.
+        Instrumentation code calling ``on_completion`` on a hook obtained
+        from :func:`load_completion_hook` does not need a ``try``/``except``
+        around the call - exceptions never escape into the instrumented
+        application.
+
     Args:
         inputs: The inputs of the GenAI interaction.
         outputs: The outputs of the GenAI interaction.
@@ -100,10 +108,11 @@ class _SafeCompletionHook(CompletionHook):
     def on_completion(self, **kwargs: Any) -> None:
         try:
             self._wrapped.on_completion(**kwargs)
-        except Exception:  # pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-except
             _logger.warning(
                 "CompletionHook %r raised an exception; suppressing",
                 self._wrapped,
+                exc_info=ex,
             )
 
 
