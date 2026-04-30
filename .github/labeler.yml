@@ -1,0 +1,5 @@
+gen-ai:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'instrumentation-genai/**'
+          - 'util/opentelemetry-util-genai/**'
