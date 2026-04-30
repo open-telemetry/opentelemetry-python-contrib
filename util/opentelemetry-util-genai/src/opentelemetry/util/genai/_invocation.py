@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
 from typing_extensions import Self, TypeAlias
 
-from opentelemetry._logs import Logger
+from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import Context, attach, detach
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -32,6 +32,7 @@ from opentelemetry.semconv.attributes import error_attributes
 from opentelemetry.trace import INVALID_SPAN as _INVALID_SPAN
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
@@ -68,6 +69,7 @@ class GenAIInvocation(ABC):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         operation_name: str,
         span_name: str,
         span_kind: SpanKind = SpanKind.CLIENT,
@@ -77,6 +79,7 @@ class GenAIInvocation(ABC):
         self._tracer = tracer
         self._metrics_recorder = metrics_recorder
         self._logger = logger
+        self._completion_hook = completion_hook
         self._operation_name: str = operation_name
         self.attributes: dict[str, Any] = (
             {} if attributes is None else attributes
@@ -117,6 +120,29 @@ class GenAIInvocation(ABC):
         self.span.set_status(Status(StatusCode.ERROR, error.message))
         self.attributes[error_attributes.ERROR_TYPE] = error_type
         self.metric_attributes[error_attributes.ERROR_TYPE] = error_type
+
+    def _call_completion_hook(
+        self,
+        *,
+        inputs: list[InputMessage] | None = None,
+        outputs: list[OutputMessage] | None = None,
+        system_instruction: list[MessagePart] | None = None,
+        tool_definitions: list[ToolDefinition] | None = None,
+        log_record: LogRecord | None = None,
+    ) -> None:
+        """Invoke the completion hook with the invocation's content.
+
+        Subclasses pass whichever content fields they carry; the wrapper substitutes []
+        for unspecified list fields
+        """
+        self._completion_hook.on_completion(
+            inputs=inputs or [],
+            outputs=outputs or [],
+            system_instruction=system_instruction or [],
+            tool_definitions=tool_definitions,
+            span=self.span,
+            log_record=log_record,
+        )
 
     @abstractmethod
     def _apply_finish(self, error: Error | None = None) -> None:
