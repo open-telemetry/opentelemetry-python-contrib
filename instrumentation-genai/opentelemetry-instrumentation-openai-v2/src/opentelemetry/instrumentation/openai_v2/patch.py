@@ -35,7 +35,6 @@ from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
-    ContentCapturingMode,
     Error,
     OutputMessage,
     Text,
@@ -123,11 +122,9 @@ def chat_completions_create_v_old(
 
 def chat_completions_create_v_new(
     handler: TelemetryHandler,
-    content_capturing_mode: ContentCapturingMode,
 ):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
-
-    capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
+    capture_content = handler.should_capture_content()
 
     def traced_method(wrapped, instance, args, kwargs):
         chat_invocation = create_chat_invocation(
@@ -226,10 +223,9 @@ def async_chat_completions_create_v_old(
 
 def async_chat_completions_create_v_new(
     handler: TelemetryHandler,
-    content_capturing_mode: ContentCapturingMode,
 ):
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
-    capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
+    capture_content = handler.should_capture_content()
 
     async def traced_method(wrapped, instance, args, kwargs):
         chat_invocation = create_chat_invocation(
