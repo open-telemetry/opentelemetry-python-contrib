@@ -222,16 +222,10 @@ class AgentInvocation(GenAIInvocation):
         attributes.update(self._get_content_attributes_for_span())
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
-        self._call_completion_hook()
-        self._metrics_recorder.record(self)
-
-    def _call_completion_hook(
-        self,
-    ) -> None:
-        self._completion_hook.on_completion(
+        self._call_completion_hook(
             inputs=self.input_messages,
             outputs=self.output_messages,
             system_instruction=self.system_instruction,
-            span=self.span,
-            log_record=None,
+            tool_definitions=self.tool_definitions,
         )
+        self._metrics_recorder.record(self)

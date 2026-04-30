@@ -34,6 +34,7 @@ from opentelemetry.util.genai.environment_variables import (
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
+    FunctionToolDefinition,
     InputMessage,
     OutputMessage,
     Text,
@@ -81,11 +82,19 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
         system_instruction = [Text(content="be helpful")]
+        tool_definitions = [
+            FunctionToolDefinition(
+                name="get_weather",
+                description="Get the weather",
+                parameters={"type": "object", "properties": {}},
+            )
+        ]
 
         invocation = handler.start_inference("openai", request_model="gpt-4o")
         invocation.input_messages = input_messages
         invocation.output_messages = output_messages
         invocation.system_instruction = system_instruction
+        invocation.tool_definitions = tool_definitions
         invocation.stop()
 
         hook.on_completion.assert_called_once()
@@ -93,6 +102,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         self.assertEqual(kwargs["inputs"], input_messages)
         self.assertEqual(kwargs["outputs"], output_messages)
         self.assertEqual(kwargs["system_instruction"], system_instruction)
+        self.assertEqual(kwargs["tool_definitions"], tool_definitions)
         self.assertIsNotNone(kwargs["span"])
 
     def test_hook_called_on_fail(self):
@@ -118,7 +128,9 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         handler.start_inference("openai", request_model="gpt-4o").stop()
 
     def test_log_record_is_none_when_events_disabled(self):
-        # Default env: no experimental mode, so log_record should be None
+        # Default env: no experimental mode, so log_record should be None.
+        # Also pins that tool_definitions defaults to None when unset
+        # (the upload hook hashes off None vs []).
         hook = MagicMock()
         handler = self._make_handler(hook)
 
@@ -126,6 +138,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
 
         kwargs = hook.on_completion.call_args.kwargs
         self.assertIsNone(kwargs["log_record"])
+        self.assertIsNone(kwargs["tool_definitions"])
 
     @patch.dict(os.environ, _EXPERIMENTAL_ENV)
     def test_log_record_passed_when_events_enabled(self):
@@ -289,6 +302,8 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         self.assertEqual(kwargs["inputs"], input_messages)
         self.assertEqual(kwargs["outputs"], output_messages)
         self.assertEqual(kwargs["system_instruction"], [])
+        # Workflows don't carry tool_definitions — must be None, not [].
+        self.assertIsNone(kwargs["tool_definitions"])
         self.assertIsNotNone(kwargs["span"])
         self.assertIsNone(kwargs["log_record"])
 
@@ -332,6 +347,13 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
         system_instruction = [Text(content="be helpful")]
+        tool_definitions = [
+            FunctionToolDefinition(
+                name="get_weather",
+                description="Get the weather",
+                parameters={"type": "object", "properties": {}},
+            )
+        ]
 
         invocation = handler.start_invoke_local_agent(
             "openai", request_model="gpt-4"
@@ -340,6 +362,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         invocation.input_messages = input_messages
         invocation.output_messages = output_messages
         invocation.system_instruction = system_instruction
+        invocation.tool_definitions = tool_definitions
         invocation.stop()
 
         hook.on_completion.assert_called_once()
@@ -347,6 +370,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         self.assertEqual(kwargs["inputs"], input_messages)
         self.assertEqual(kwargs["outputs"], output_messages)
         self.assertEqual(kwargs["system_instruction"], system_instruction)
+        self.assertEqual(kwargs["tool_definitions"], tool_definitions)
         self.assertIsNotNone(kwargs["span"])
         self.assertIsNone(kwargs.get("log_record"))
 
@@ -381,6 +405,14 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
 
+        tool_definitions = [
+            FunctionToolDefinition(
+                name="get_weather",
+                description="Get the weather",
+                parameters={"type": "object", "properties": {}},
+            )
+        ]
+
         invocation = handler.start_invoke_remote_agent(
             "openai",
             request_model="gpt-4",
@@ -389,12 +421,14 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         )
         invocation.input_messages = input_messages
         invocation.output_messages = output_messages
+        invocation.tool_definitions = tool_definitions
         invocation.stop()
 
         hook.on_completion.assert_called_once()
         kwargs = hook.on_completion.call_args.kwargs
         self.assertEqual(kwargs["inputs"], input_messages)
         self.assertEqual(kwargs["outputs"], output_messages)
+        self.assertEqual(kwargs["tool_definitions"], tool_definitions)
         self.assertIsNotNone(kwargs["span"])
         self.assertIsNone(kwargs.get("log_record"))
 
@@ -414,12 +448,13 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         handler = self._make_handler(hook)
 
         handler.start_invoke_local_agent("openai").stop()
+        handler.start_invoke_remote_agent("openai").stop()
 
-        hook.on_completion.assert_called_once()
-        kwargs = hook.on_completion.call_args.kwargs
-        self.assertEqual(kwargs["inputs"], [])
-        self.assertEqual(kwargs["outputs"], [])
-        self.assertEqual(kwargs["system_instruction"], [])
+        for call in hook.on_completion.call_args_list:
+            self.assertEqual(call.kwargs["inputs"], [])
+            self.assertEqual(call.kwargs["outputs"], [])
+            self.assertEqual(call.kwargs["system_instruction"], [])
+            self.assertIsNone(call.kwargs["tool_definitions"])
 
     def test_agent_hook_not_called_when_not_set(self):
         # No hook — stop should not raise

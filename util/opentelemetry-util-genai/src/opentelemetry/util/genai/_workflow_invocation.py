@@ -106,15 +106,6 @@ class WorkflowInvocation(GenAIInvocation):
             key: value for key, value in optional_attrs if value is not None
         }
 
-    def _call_completion_hook(self) -> None:
-        self._completion_hook.on_completion(
-            inputs=self.input_messages,
-            outputs=self.output_messages,
-            system_instruction=[],
-            span=self.span,
-            log_record=None,
-        )
-
     def _apply_finish(self, error: Error | None = None) -> None:
         attributes: dict[str, Any] = {
             GenAI.GEN_AI_OPERATION_NAME: self._operation_name
@@ -124,5 +115,8 @@ class WorkflowInvocation(GenAIInvocation):
             self._apply_error_attributes(error)
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
-        self._call_completion_hook()
+        self._call_completion_hook(
+            inputs=self.input_messages,
+            outputs=self.output_messages,
+        )
         # TODO: Add workflow metrics when supported

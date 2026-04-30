@@ -206,18 +206,6 @@ class InferenceInvocation(GenAIInvocation):
             )
         return counts
 
-    def _call_completion_hook(
-        self,
-        log_record: LogRecord | None,
-    ) -> None:
-        self._completion_hook.on_completion(
-            inputs=self.input_messages,
-            outputs=self.output_messages,
-            system_instruction=self.system_instruction,
-            span=self.span,
-            log_record=log_record,
-        )
-
     def _apply_finish(self, error: Error | None = None) -> None:
         if error is not None:
             self._apply_error_attributes(error)
@@ -227,7 +215,13 @@ class InferenceInvocation(GenAIInvocation):
         self.span.set_attributes(attributes)
         self._metrics_recorder.record(self)
         log_record = self._maybe_create_event()
-        self._call_completion_hook(log_record)
+        self._call_completion_hook(
+            inputs=self.input_messages,
+            outputs=self.output_messages,
+            system_instruction=self.system_instruction,
+            tool_definitions=self.tool_definitions,
+            log_record=log_record,
+        )
         if log_record is not None:
             self._logger.emit(log_record)
 

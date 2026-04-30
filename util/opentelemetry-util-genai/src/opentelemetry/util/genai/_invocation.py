@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Iterator, Sequence
 
 from typing_extensions import Self, TypeAlias
 
-from opentelemetry._logs import Logger
+from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import Context, attach, detach
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -120,6 +120,29 @@ class GenAIInvocation(ABC):
         self.span.set_status(Status(StatusCode.ERROR, error.message))
         self.attributes[error_attributes.ERROR_TYPE] = error_type
         self.metric_attributes[error_attributes.ERROR_TYPE] = error_type
+
+    def _call_completion_hook(
+        self,
+        *,
+        inputs: list[InputMessage] | None = None,
+        outputs: list[OutputMessage] | None = None,
+        system_instruction: list[MessagePart] | None = None,
+        tool_definitions: list[ToolDefinition] | None = None,
+        log_record: LogRecord | None = None,
+    ) -> None:
+        """Invoke the completion hook with the invocation's content.
+
+        Subclasses pass whichever content fields they carry; the wrapper substitutes []
+        for unspecified list fields
+        """
+        self._completion_hook.on_completion(
+            inputs=inputs or [],
+            outputs=outputs or [],
+            system_instruction=system_instruction or [],
+            tool_definitions=tool_definitions,
+            span=self.span,
+            log_record=log_record,
+        )
 
     @abstractmethod
     def _apply_finish(self, error: Error | None = None) -> None:
