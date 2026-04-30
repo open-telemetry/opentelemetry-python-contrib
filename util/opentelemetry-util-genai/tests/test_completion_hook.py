@@ -109,21 +109,17 @@ class TestSafeCompletionHook(TestCase):
         wrapped = Mock(spec=CompletionHook)
         safe = _SafeCompletionHook(wrapped)
 
-        safe.on_completion(
-            inputs=[],
-            outputs=[],
-            system_instruction=[],
-            span=None,
-            log_record=None,
-        )
+        kwargs = {
+            "inputs": [],
+            "outputs": [],
+            "system_instruction": [],
+            "span": None,
+            "log_record": None,
+        }
+        safe.on_completion(**kwargs)
 
-        wrapped.on_completion.assert_called_once_with(
-            inputs=[],
-            outputs=[],
-            system_instruction=[],
-            span=None,
-            log_record=None,
-        )
+        self.assertEqual(wrapped.on_completion.call_count, 1)
+        self.assertEqual(wrapped.on_completion.call_args.kwargs, kwargs)
 
     def test_swallows_exception_from_wrapped_hook(self):
         class RaisingCompletionHook(CompletionHook):
