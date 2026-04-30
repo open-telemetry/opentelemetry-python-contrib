@@ -36,9 +36,6 @@ from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     Error,
-    OutputMessage,
-    Text,
-    ToolCallRequest,
 )
 
 from .chat_buffers import ChoiceBuffer
@@ -47,12 +44,12 @@ from .instruments import Instruments
 from .utils import (
     _prepare_output_messages,
     choice_to_event,
+    create_chat_invocation,
     get_llm_request_attributes,
     handle_span_exception,
     is_streaming,
     message_to_event,
     set_span_attribute,
-    start_chat_invocation,
 )
 
 
@@ -245,7 +242,7 @@ def async_chat_completions_create_v_new(
             else:
                 parsed_result = result
             if is_streaming(kwargs):
-                return ChatStreamWrapper(
+                return AsyncChatStreamWrapper(
                     parsed_result, chat_invocation, capture_content
                 )
 
@@ -823,84 +820,4 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
             handle_span_exception(self.span, error)
         else:
             self.span.end()
-        self._started = False
-
-
-class ChatStreamWrapper(BaseStreamWrapper):
-    invocation: InferenceInvocation
-    response_id: Optional[str] = None
-    response_model: Optional[str] = None
-    service_tier: Optional[str] = None
-    finish_reasons: list = []
-    prompt_tokens: Optional[int] = None
-    completion_tokens: Optional[int] = None
-
-    def __init__(
-        self,
-        stream: Stream,
-        invocation: InferenceInvocation,
-        capture_content: bool,
-    ):
-        super().__init__(stream, capture_content=capture_content)
-        self.stream = stream
-        self.invocation = invocation
-        self.choice_buffers = []
-
-    def _set_output_messages(self):
-        if not self.capture_content:  # optimization
-            return
-        output_messages = []
-        for choice in self.choice_buffers:
-            message = OutputMessage(
-                role="assistant",
-                finish_reason=choice.finish_reason or "error",
-                parts=[],
-            )
-            if choice.text_content:
-                message.parts.append(
-                    Text(content="".join(choice.text_content))
-                )
-            if choice.tool_calls_buffers:
-                tool_calls = []
-                for tool_call in choice.tool_calls_buffers:
-                    arguments = None
-                    arguments_str = "".join(tool_call.arguments)
-                    if arguments_str:
-                        try:
-                            arguments = json.loads(arguments_str)
-                        except json.JSONDecodeError:
-                            arguments = arguments_str
-                    tool_call_part = ToolCallRequest(
-                        name=tool_call.function_name,
-                        id=tool_call.tool_call_id,
-                        arguments=arguments,
-                    )
-                    tool_calls.append(tool_call_part)
-                message.parts.extend(tool_calls)
-            output_messages.append(message)
-
-        self.invocation.output_messages = output_messages
-
-    def cleanup(self, error: Optional[BaseException] = None):
-        if not self._started:
-            return
-
-        self.invocation.response_model_name = self.response_model
-        self.invocation.response_id = self.response_id
-        self.invocation.input_tokens = self.prompt_tokens
-        self.invocation.output_tokens = self.completion_tokens
-        self.invocation.finish_reasons = self.finish_reasons
-        if self.service_tier:
-            self.invocation.attributes.update(
-                {
-                    OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self.service_tier
-                },
-            )
-
-        self._set_output_messages()
-
-        if error:
-            self.invocation.fail(Error(type=type(error), message=str(error)))
-        else:
-            self.invocation.stop()
         self._started = False
