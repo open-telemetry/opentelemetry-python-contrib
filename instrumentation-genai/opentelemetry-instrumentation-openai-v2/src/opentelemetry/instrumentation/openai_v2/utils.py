@@ -211,12 +211,15 @@ def get_llm_request_attributes(
     latest_experimental_enabled,
     operation_name=GenAIAttributes.GenAiOperationNameValues.CHAT.value,
 ):
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-locals
 
     attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: kwargs.get("model"),
     }
+
+    model = kwargs.get("model")
+    if model:
+        attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] = model
 
     if latest_experimental_enabled:
         attributes.update(
@@ -328,7 +331,7 @@ def get_llm_request_attributes(
     return {k: v for k, v in attributes.items() if value_is_set(v)}
 
 
-def start_chat_invocation(
+def create_chat_invocation(
     handler: TelemetryHandler,
     kwargs,
     client_instance,
@@ -337,34 +340,29 @@ def start_chat_invocation(
     # pylint: disable=too-many-branches
 
     address, port = get_server_address_and_port(client_instance)
-    chat_invocation = handler.start_inference(
+    invocation = handler.start_inference(
         GenAIAttributes.GenAiProviderNameValues.OPENAI.value,
-        request_model=get_value(kwargs.get("model")),
-        server_address=address,
-        server_port=port,
+        request_model=kwargs.get("model", ""),
+        server_address=address if address else None,
+        server_port=port if port else None,
     )
-    chat_invocation.temperature = get_value(kwargs.get("temperature"))
-    chat_invocation.top_p = get_value(kwargs.get("p") or kwargs.get("top_p"))
-    chat_invocation.max_tokens = get_value(kwargs.get("max_tokens"))
-    chat_invocation.presence_penalty = get_value(
-        kwargs.get("presence_penalty")
-    )
-    chat_invocation.frequency_penalty = get_value(
-        kwargs.get("frequency_penalty")
-    )
-    chat_invocation.seed = get_value(kwargs.get("seed"))
+    invocation.temperature = get_value(kwargs.get("temperature"))
+    invocation.top_p = get_value(kwargs.get("p") or kwargs.get("top_p"))
+    invocation.max_tokens = get_value(kwargs.get("max_tokens"))
+    invocation.presence_penalty = get_value(kwargs.get("presence_penalty"))
+    invocation.frequency_penalty = get_value(kwargs.get("frequency_penalty"))
+    invocation.seed = get_value(kwargs.get("seed"))
     if (stop_sequences := get_value(kwargs.get("stop"))) is not None:
         if isinstance(stop_sequences, str):
             stop_sequences = [stop_sequences]
-        chat_invocation.stop_sequences = stop_sequences
+        invocation.stop_sequences = stop_sequences
 
-    attributes = {}
     if (choice_count := get_value(kwargs.get("n"))) is not None:
         # Only add non default, meaningful values
         if isinstance(choice_count, int) and choice_count != 1:
-            attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
-                choice_count
-            )
+            invocation.attributes[
+                GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT
+            ] = choice_count
 
     if (
         response_format := get_value(kwargs.get("response_format"))
@@ -374,11 +372,11 @@ def start_chat_invocation(
             if (
                 response_format_type := get_value(response_format.get("type"))
             ) is not None:
-                attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
                     response_format_type
                 )
         else:
-            attributes[
+            invocation.attributes[
                 GenAIAttributes.GEN_AI_OPENAI_REQUEST_RESPONSE_FORMAT
             ] = response_format
 
@@ -389,16 +387,15 @@ def start_chat_invocation(
         if isinstance(extra_body, Mapping):
             service_tier = get_value(extra_body.get("service_tier"))
     if service_tier is not None:
-        attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = service_tier
-
-    if len(attributes) > 0:
-        chat_invocation.attributes = attributes
+        invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = (
+            service_tier
+        )
 
     if capture_content:  # optimization
-        chat_invocation.input_messages = _prepare_input_messages(
+        invocation.input_messages = _prepare_input_messages(
             kwargs.get("messages", [])
         )
-    return chat_invocation
+    return invocation
 
 
 def get_value(v: Any):
