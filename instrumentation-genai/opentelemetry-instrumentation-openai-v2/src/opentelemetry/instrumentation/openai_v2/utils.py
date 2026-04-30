@@ -212,7 +212,7 @@ def value_is_set(value):
 
 def _openai_response_format_to_output_type(response_format_type: str) -> str:
     if response_format_type in ("json_object", "json_schema"):
-        return "json"
+        return GenAIAttributes.GenAiOutputTypeValues.JSON.value
     return response_format_type
 
 

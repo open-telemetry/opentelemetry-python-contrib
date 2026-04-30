@@ -113,9 +113,9 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="Completions.create",
-            wrapper=(
+            "openai.resources.chat.completions",
+            "Completions.create",
+            (
                 chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
                 else chat_completions_create_v_old(
@@ -125,9 +125,9 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="AsyncCompletions.create",
-            wrapper=(
+            "openai.resources.chat.completions",
+            "AsyncCompletions.create",
+            (
                 async_chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
                 else async_chat_completions_create_v_old(
