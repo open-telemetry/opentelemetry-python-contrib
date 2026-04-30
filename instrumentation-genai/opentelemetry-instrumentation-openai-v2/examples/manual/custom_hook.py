@@ -4,6 +4,7 @@ that prints prompts and completions to stdout.
 
 Run with: dotenv run -- python custom_hook.py
 """
+
 import os
 
 from openai import OpenAI
