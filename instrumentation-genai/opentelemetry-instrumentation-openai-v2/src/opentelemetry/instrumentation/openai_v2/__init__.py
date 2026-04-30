@@ -138,17 +138,17 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         # Add instrumentation for the embeddings API
         wrap_function_wrapper(
-            module="openai.resources.embeddings",
-            name="Embeddings.create",
-            wrapper=embeddings_create(
+            "openai.resources.embeddings",
+            "Embeddings.create",
+            embeddings_create(
                 tracer, instruments, latest_experimental_enabled
             ),
         )
 
         wrap_function_wrapper(
-            module="openai.resources.embeddings",
-            name="AsyncEmbeddings.create",
-            wrapper=async_embeddings_create(
+            "openai.resources.embeddings",
+            "AsyncEmbeddings.create",
+            async_embeddings_create(
                 tracer, instruments, latest_experimental_enabled
             ),
         )

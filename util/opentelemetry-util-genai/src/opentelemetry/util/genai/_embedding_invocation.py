@@ -123,5 +123,4 @@ class EmbeddingInvocation(GenAIInvocation):
             self._apply_error_attributes(error)
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
-        # Metrics recorder currently supports InferenceInvocation fields only.
-        # No-op until dedicated embedding metric support is added.
+        self._metrics_recorder.record(self)
