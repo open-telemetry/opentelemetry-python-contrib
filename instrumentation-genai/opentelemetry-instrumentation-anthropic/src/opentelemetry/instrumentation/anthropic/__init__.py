@@ -101,9 +101,9 @@ class AnthropicInstrumentor(BaseInstrumentor):
 
         # Patch Messages.create
         wrap_function_wrapper(
-            module="anthropic.resources.messages",
-            name="Messages.create",
-            wrapper=messages_create(handler),
+            "anthropic.resources.messages",
+            "Messages.create",
+            messages_create(handler),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
