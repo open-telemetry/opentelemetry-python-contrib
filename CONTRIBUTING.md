@@ -212,7 +212,7 @@ A descriptive PR title will help the community better triage and review your cha
 
 * "opentelemetry-instrumentation-dbapi: add client operation duration metrics"
 * "GenAI Utils: Add _BaseAgent base class and agent creation lifecycle"
-* "docs(google-genai): document config recording environment variables "
+* "docs(google-genai): document config recording environment variables"
 
 ### How to Receive Comments
 
