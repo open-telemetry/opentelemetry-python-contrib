@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
+- `opentelemetry-instrumentation-dbapi`: Add instrumentation for `commit()` and `rollback()` transaction operations
+  ([#4519](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4519))
+- `opentelemetry-instrumentation-dbapi`: Add `enable_transaction_spans` configuration flag to control transaction span creation (default: `True`)
+  ([#4519](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4519))
+- `opentelemetry-instrumentation-pymysql`, `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-psycopg`, `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-sqlite3`, `opentelemetry-instrumentation-pymssql`: Add support for transaction span instrumentation via `enable_transaction_spans` parameter
+  ([#4519](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4519))
 
 ### Fixed
 
@@ -58,13 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
-
-- `opentelemetry-instrumentation-dbapi`: Add instrumentation for `commit()` and `rollback()` transaction operations
-  ([#3964](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3964))
-- `opentelemetry-instrumentation-dbapi`: Add `enable_transaction_spans` configuration flag to control transaction span creation (default: `True`)
-  ([#3964](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3964))
-- `opentelemetry-instrumentation-pymysql`, `opentelemetry-instrumentation-mysql`, `opentelemetry-instrumentation-mysqlclient`, `opentelemetry-instrumentation-psycopg`, `opentelemetry-instrumentation-psycopg2`, `opentelemetry-instrumentation-sqlite3`, `opentelemetry-instrumentation-pymssql`: Add support for transaction span instrumentation via `enable_transaction_spans` parameter
-  ([#3964](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3964))
 
 ### Fixed
 
