@@ -191,7 +191,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(
             commented_sql_without_semicolon,
-            "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/",
+            "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/;",
         )
 
     def test_add_sql_comments_without_semicolon(self):
@@ -203,7 +203,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(
             commented_sql_without_semicolon,
-            "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/",
+            "Select 1 /*comment%%202='value%%203',comment_1='value%%201'*/;",
         )
 
     def test_add_sql_comments_without_comments(self):
