@@ -26,6 +26,7 @@ from opentelemetry.trace import INVALID_SPAN, Span, SpanKind, Tracer
 from opentelemetry.util.genai._invocation import (
     Error,
     GenAIInvocation,
+    get_content_attributes,
 )
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
@@ -39,8 +40,6 @@ from opentelemetry.util.genai.utils import (
     is_experimental_mode,
     should_emit_event,
 )
-
-from ._invocation import get_content_attributes
 
 # TODO: Migrate to GenAI constants once available in semconv package
 _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (

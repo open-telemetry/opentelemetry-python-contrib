@@ -202,7 +202,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             wrap_function_wrapper(
                 "openai.resources.responses.responses",
                 "Responses.create",
-                responses_create(handler, content_mode),
+                responses_create(handler),
             )
 
     def _uninstrument(self, **kwargs):

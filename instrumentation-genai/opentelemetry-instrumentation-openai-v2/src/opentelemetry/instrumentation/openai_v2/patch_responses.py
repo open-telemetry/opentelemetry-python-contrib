@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import ContentCapturingMode, Error
+from opentelemetry.util.genai.types import Error
 
 from .response_extractors import (
     apply_request_attributes,
@@ -27,13 +27,10 @@ from .response_wrappers import ResponseStreamWrapper
 from .utils import is_streaming
 
 
-def responses_create(
-    handler: TelemetryHandler,
-    content_capturing_mode: ContentCapturingMode,
-):
+def responses_create(handler: TelemetryHandler):
     """Wrap the `create` method of the `Responses` class to trace it."""
 
-    capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
+    capture_content = handler.should_capture_content()
 
     def traced_method(wrapped, instance, args, kwargs):
         params = extract_params(**kwargs)
