@@ -24,7 +24,18 @@ _logger = logging.getLogger(__name__)
 
 
 class SyncStreamWrapper(ABC, Generic[ChunkT]):
-    """Base class for synchronous instrumented stream wrappers."""
+    """Base class for synchronous instrumented stream wrappers.
+
+    Subclass this when wrapping a provider SDK stream that is consumed with
+    normal iteration. The subclass should pass the SDK stream to
+    ``super().__init__(stream)`` and implement the three telemetry hooks:
+    ``_process_chunk`` for per-chunk state, ``_stop_stream`` for successful
+    finalization, and ``_fail_stream`` for failure finalization.
+
+    Users should consume subclasses as normal streams, for example with
+    ``for chunk in wrapper`` or ``with wrapper``. The hook methods are called
+    internally by the wrapper lifecycle and are not part of the public API.
+    """
 
     def __init__(self, stream: Any):
         self.stream = stream
@@ -106,7 +117,19 @@ class SyncStreamWrapper(ABC, Generic[ChunkT]):
 
 
 class AsyncStreamWrapper(ABC, Generic[ChunkT]):
-    """Base class for asynchronous instrumented stream wrappers."""
+    """Base class for asynchronous instrumented stream wrappers.
+
+    Subclass this when wrapping a provider SDK stream that is consumed with
+    async iteration. The subclass should pass the SDK stream to
+    ``super().__init__(stream)`` and implement the three telemetry hooks:
+    ``_process_chunk`` for per-chunk state, ``_stop_stream`` for successful
+    finalization, and ``_fail_stream`` for failure finalization.
+
+    Users should consume subclasses as normal async streams, for example with
+    ``async for chunk in wrapper`` or ``async with wrapper``. The hook methods
+    remain synchronous telemetry hooks; async stream reads and close handling
+    are owned by this base class.
+    """
 
     def __init__(self, stream: Any):
         self.stream = stream

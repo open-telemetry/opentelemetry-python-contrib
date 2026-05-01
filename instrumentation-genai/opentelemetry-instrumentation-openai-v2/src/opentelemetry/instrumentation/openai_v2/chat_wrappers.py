@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from openai import Stream
+from openai import AsyncStream, Stream
 
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
@@ -36,27 +36,18 @@ from opentelemetry.util.genai.types import (
 from .chat_buffers import ChoiceBuffer
 
 
-class ChatStreamWrapper(SyncStreamWrapper[Any]):
+class _ChatStreamMixin:
+    """Chat-specific hooks shared by sync and async stream wrappers."""
+
     invocation: InferenceInvocation
+    capture_content: bool
+    choice_buffers: list
     response_id: Optional[str] = None
     response_model: Optional[str] = None
     service_tier: Optional[str] = None
     finish_reasons: list = []
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
-
-    def __init__(
-        self,
-        stream: Stream,
-        invocation: InferenceInvocation,
-        capture_content: bool,
-    ):
-        SyncStreamWrapper.__init__(self, stream)
-        self.stream = stream
-        self.invocation = invocation
-        self.choice_buffers = []
-        self._started = True
-        self.capture_content = capture_content
 
     def _set_response_model(self, chunk):
         if self.response_model:
@@ -155,19 +146,16 @@ class ChatStreamWrapper(SyncStreamWrapper[Any]):
         self.invocation.output_messages = output_messages
 
     def _stop_stream(self) -> None:
-        self.cleanup()
+        self._cleanup()
 
     def _fail_stream(self, error: BaseException) -> None:
-        self.cleanup(error)
+        self._cleanup(error)
 
     def parse(self):
         """Called when using with_raw_response with stream=True."""
         return self
 
-    def cleanup(self, error: Optional[BaseException] = None):
-        if not self._started:
-            return
-
+    def _cleanup(self, error: Optional[BaseException] = None) -> None:
         self.invocation.response_model_name = self.response_model
         self.invocation.response_id = self.response_id
         self.invocation.input_tokens = self.prompt_tokens
@@ -188,31 +176,39 @@ class ChatStreamWrapper(SyncStreamWrapper[Any]):
             self.invocation.fail(error)
         else:
             self.invocation.stop()
-        self._started = False
 
 
-class AsyncChatStreamWrapper(
-    AsyncStreamWrapper[Any],
-    ChatStreamWrapper,
+class ChatStreamWrapper(
+    _ChatStreamMixin,
+    SyncStreamWrapper[Any],
 ):
-    invocation: InferenceInvocation
-
     def __init__(
         self,
         stream: Stream,
         invocation: InferenceInvocation,
         capture_content: bool,
     ):
-        ChatStreamWrapper.__init__(self, stream, invocation, capture_content)
+        super().__init__(stream)
+        self.invocation = invocation
+        self.choice_buffers = []
+        self.capture_content = capture_content
 
-    def _process_chunk(self, chunk):
-        ChatStreamWrapper._process_chunk(self, chunk)
 
-    def _stop_stream(self) -> None:
-        ChatStreamWrapper._stop_stream(self)
+class AsyncChatStreamWrapper(
+    _ChatStreamMixin,
+    AsyncStreamWrapper[Any],
+):
 
-    def _fail_stream(self, error: BaseException) -> None:
-        ChatStreamWrapper._fail_stream(self, error)
+    def __init__(
+        self,
+        stream: AsyncStream,
+        invocation: InferenceInvocation,
+        capture_content: bool,
+    ):
+        super().__init__(stream)
+        self.invocation = invocation
+        self.choice_buffers = []
+        self.capture_content = capture_content
 
 
 __all__ = [
