@@ -195,6 +195,7 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION_NAME,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -643,7 +644,9 @@ class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
         with self._self_db_api_integration._tracer.start_as_current_span(
             operation_name, kind=trace_api.SpanKind.CLIENT
         ) as span:
-            self._self_db_api_integration.populate_common_span_attributes(span)
+            if span.is_recording():
+                self._self_db_api_integration.populate_common_span_attributes(span)
+                span.set_attribute(DB_OPERATION_NAME, operation_name)
             return operation_method()
 
     def commit(self):
@@ -674,7 +677,9 @@ class AsyncTracedConnectionProxy(TracedConnectionProxy[ConnectionT]):
         with self._self_db_api_integration._tracer.start_as_current_span(
             operation_name, kind=trace_api.SpanKind.CLIENT
         ) as span:
-            self._self_db_api_integration.populate_common_span_attributes(span)
+            if span.is_recording():
+                self._self_db_api_integration.populate_common_span_attributes(span)
+                span.set_attribute(DB_OPERATION_NAME, operation_name)
             return await operation_method()
 
     async def commit(self):

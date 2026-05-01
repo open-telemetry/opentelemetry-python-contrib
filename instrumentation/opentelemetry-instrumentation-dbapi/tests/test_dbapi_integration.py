@@ -26,6 +26,7 @@ from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes import net_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION_NAME,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -1073,6 +1074,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "COMMIT")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "COMMIT")
 
     def test_rollback(self):
         db_integration = dbapi.DatabaseApiIntegration(
@@ -1086,6 +1088,7 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "ROLLBACK")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "ROLLBACK")
 
     def test_commit_with_suppress_instrumentation(self):
         """Test that commit doesn't create a span when instrumentation is suppressed"""

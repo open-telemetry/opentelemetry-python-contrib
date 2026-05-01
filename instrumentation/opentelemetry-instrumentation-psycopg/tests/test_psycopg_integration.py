@@ -22,6 +22,9 @@ from psycopg.sql import SQL, Composed
 import opentelemetry.instrumentation.psycopg
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_OPERATION_NAME,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -451,6 +454,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "COMMIT")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "COMMIT")
 
     def test_rollback(self):
         PsycopgInstrumentor().instrument()
@@ -462,6 +466,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "ROLLBACK")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "ROLLBACK")
 
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_enabled(self, event_mocked):
@@ -623,6 +628,7 @@ class TestPostgresqlIntegrationAsync(
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "COMMIT")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "COMMIT")
 
         PsycopgInstrumentor().uninstrument()
 
@@ -636,6 +642,7 @@ class TestPostgresqlIntegrationAsync(
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "ROLLBACK")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "ROLLBACK")
 
         PsycopgInstrumentor().uninstrument()
 
