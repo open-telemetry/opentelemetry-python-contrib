@@ -198,7 +198,6 @@ class AsyncChatStreamWrapper(
     _ChatStreamMixin,
     AsyncStreamWrapper[Any],
 ):
-
     def __init__(
         self,
         stream: AsyncStream,
