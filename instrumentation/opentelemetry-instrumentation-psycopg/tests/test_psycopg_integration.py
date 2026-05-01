@@ -445,7 +445,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(len(spans_list), 1)
 
     def test_commit(self):
-        PsycopgInstrumentor().instrument()
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
 
         cnx = psycopg.connect(database="test")
         cnx.commit()
@@ -457,7 +457,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(span.attributes[DB_OPERATION_NAME], "COMMIT")
 
     def test_rollback(self):
-        PsycopgInstrumentor().instrument()
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
 
         cnx = psycopg.connect(database="test")
         cnx.rollback()
@@ -619,7 +619,7 @@ class TestPostgresqlIntegrationAsync(
         PsycopgInstrumentor().uninstrument()
 
     async def test_async_commit(self):
-        PsycopgInstrumentor().instrument()
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
 
         cnx = await psycopg.AsyncConnection.connect("test")
         await cnx.commit()
@@ -633,7 +633,7 @@ class TestPostgresqlIntegrationAsync(
         PsycopgInstrumentor().uninstrument()
 
     async def test_async_rollback(self):
-        PsycopgInstrumentor().instrument()
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
 
         cnx = await psycopg.AsyncConnection.connect("test")
         await cnx.rollback()

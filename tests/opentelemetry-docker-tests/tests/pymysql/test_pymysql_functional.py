@@ -40,7 +40,7 @@ class TestFunctionalPyMysql(TestBase):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
-        PyMySQLInstrumentor().instrument()
+        PyMySQLInstrumentor().instrument(enable_transaction_spans=True)
         self._connection = pymy.connect(
             user=MYSQL_USER,
             password=MYSQL_PASSWORD,

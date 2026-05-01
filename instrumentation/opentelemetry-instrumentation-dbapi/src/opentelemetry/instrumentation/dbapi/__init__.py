@@ -228,7 +228,7 @@ def trace_integration(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     enable_attribute_commenter: bool = False,
     commenter_options: dict[str, Any] | None = None,
-    enable_transaction_spans: bool = True,
+    enable_transaction_spans: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -248,7 +248,7 @@ def trace_integration(
             default one is used.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
         commenter_options: Configurations for tags to be appended at the sql query.
-        enable_transaction_spans: Flag to enable/disable transaction spans (commit/rollback). Defaults to True.
+        enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
     """
     wrap_connect(
         __name__,
@@ -280,7 +280,7 @@ def wrap_connect(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
-    enable_transaction_spans: bool = True,
+    enable_transaction_spans: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -300,7 +300,7 @@ def wrap_connect(
             default one is used.
         commenter_options: Configurations for tags to be appended at the sql query.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
-        enable_transaction_spans: Flag to enable/disable transaction spans (commit/rollback). Defaults to True.
+        enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
 
     """
     db_api_integration_factory = (
@@ -363,7 +363,7 @@ def instrument_connection(
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
-    enable_transaction_spans: bool = True,
+    enable_transaction_spans: bool = False,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
 
@@ -385,7 +385,7 @@ def instrument_connection(
             replacement for :class:`DatabaseApiIntegration`. Can be used to
             obtain connection attributes from the connect method instead of
             from the connection itself (as done by the pymssql intrumentor).
-        enable_transaction_spans: Flag to enable/disable transaction spans (commit/rollback). Defaults to True.
+        enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
 
     Returns:
         An instrumented connection.
@@ -446,7 +446,7 @@ class DatabaseApiIntegration:
         commenter_options: dict[str, Any] | None = None,
         connect_module: Callable[..., Any] | None = None,
         enable_attribute_commenter: bool = False,
-        enable_transaction_spans: bool = True,
+        enable_transaction_spans: bool = False,
     ):
         if connection_attributes is None:
             self.connection_attributes = {

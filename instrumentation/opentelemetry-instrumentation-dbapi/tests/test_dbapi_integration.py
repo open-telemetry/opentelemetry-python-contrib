@@ -1064,7 +1064,9 @@ class TestDBApiIntegration(TestBase):
 
     def test_commit(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -1078,7 +1080,9 @@ class TestDBApiIntegration(TestBase):
 
     def test_rollback(self):
         db_integration = dbapi.DatabaseApiIntegration(
-            "instrumenting_module_test_name", "testcomponent"
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -1095,6 +1099,7 @@ class TestDBApiIntegration(TestBase):
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name",
             "testcomponent",
+            enable_transaction_spans=True,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}
@@ -1110,6 +1115,7 @@ class TestDBApiIntegration(TestBase):
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name",
             "testcomponent",
+            enable_transaction_spans=True,
         )
         mock_connection = db_integration.wrapped_connection(
             mock_connect, {}, {}

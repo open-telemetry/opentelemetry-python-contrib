@@ -489,7 +489,7 @@ class TestPyMysqlIntegration(TestBase):
     # pylint: disable=unused-argument
     def test_commit(self, mock_connect):
         """Test that commit creates a span"""
-        PyMySQLInstrumentor().instrument()
+        PyMySQLInstrumentor().instrument(enable_transaction_spans=True)
         cnx = pymysql.connect(database="test")
         cnx.commit()
 
@@ -505,7 +505,7 @@ class TestPyMysqlIntegration(TestBase):
     # pylint: disable=unused-argument
     def test_rollback(self, mock_connect):
         """Test that rollback creates a span"""
-        PyMySQLInstrumentor().instrument()
+        PyMySQLInstrumentor().instrument(enable_transaction_spans=True)
         cnx = pymysql.connect(database="test")
         cnx.rollback()
 
@@ -521,7 +521,7 @@ class TestPyMysqlIntegration(TestBase):
     # pylint: disable=unused-argument
     def test_commit_and_query(self, mock_connect):
         """Test that both execute and commit create spans"""
-        PyMySQLInstrumentor().instrument()
+        PyMySQLInstrumentor().instrument(enable_transaction_spans=True)
         cnx = pymysql.connect(database="test")
         cursor = cnx.cursor()
         cursor.execute("SELECT * FROM test")
