@@ -122,6 +122,7 @@ class GenAIOperationName:
     SPEECH = "speech_generation"
     GUARDRAIL = "guardrail_check"
     HANDOFF = "agent_handoff"
+    LIST_TOOLS = "list_tools"
     RESPONSE = "response"  # internal aggregator in current processor
 
     CLASS_FALLBACK = {
@@ -1159,6 +1160,8 @@ class GenAISemanticProcessor(TracingProcessor):
         if _is_instance_of(span_data, FunctionSpanData):
             # Tool results are typically JSON
             return GenAIOutputType.JSON
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return GenAIOutputType.JSON
         if _is_instance_of(span_data, TranscriptionSpanData):
             return GenAIOutputType.TEXT
         if _is_instance_of(span_data, SpeechSpanData):
@@ -1548,7 +1551,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
         if _is_instance_of(span_data, MCPListToolsSpanData):
-            return "list_tools"
+            return GenAIOperationName.LIST_TOOLS
         return "unknown"
 
     def _extract_genai_attributes(
@@ -1609,6 +1612,10 @@ class GenAISemanticProcessor(TracingProcessor):
             yield from self._get_attributes_from_guardrail_span_data(span_data)
         elif _is_instance_of(span_data, HandoffSpanData):
             yield from self._get_attributes_from_handoff_span_data(span_data)
+        elif _is_instance_of(span_data, MCPListToolsSpanData):
+            yield from self._get_attributes_from_mcp_list_tools_span_data(
+                span_data
+            )
 
     def _get_attributes_from_generation_span_data(
         self, span_data: GenerationSpanData, payload: ContentPayload
@@ -2168,6 +2175,21 @@ class GenAISemanticProcessor(TracingProcessor):
 
         if span_data.to_agent:
             yield GEN_AI_HANDOFF_TO_AGENT, span_data.to_agent
+
+        yield (
+            GEN_AI_OUTPUT_TYPE,
+            normalize_output_type(self._infer_output_type(span_data)),
+        )
+
+    def _get_attributes_from_mcp_list_tools_span_data(
+        self, span_data: MCPListToolsSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from MCP list-tools spans."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.LIST_TOOLS
+
+        tools = getattr(span_data, "tools", None)
+        if self._capture_tool_definitions and tools:
+            yield GEN_AI_TOOL_DEFINITIONS, safe_json_dumps(tools)
 
         yield (
             GEN_AI_OUTPUT_TYPE,
