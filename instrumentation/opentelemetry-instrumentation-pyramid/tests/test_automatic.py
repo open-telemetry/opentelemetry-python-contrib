@@ -480,6 +480,7 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
 
     def _verify_duration_point(self, point):
         self.assertIn(HTTP_REQUEST_METHOD, point.attributes)
+        self.assertIn(HTTP_RESPONSE_STATUS_CODE, point.attributes)
         self.assertIn(URL_SCHEME, point.attributes)
         self.assertNotIn(HTTP_METHOD, point.attributes)
         self.assertNotIn(HTTP_SCHEME, point.attributes)
