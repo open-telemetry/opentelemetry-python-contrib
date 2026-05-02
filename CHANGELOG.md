@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
   ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
+- `opentelemetry-instrumentation-flask`: Wrap `wsgi_app` call in try/finally so the `http.server.active_requests` gauge is decremented when a request raises, preventing a long-term gauge drift
+  ([#4433](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4433))
 
 ### Breaking changes
 
