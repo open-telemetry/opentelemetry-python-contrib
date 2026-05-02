@@ -82,6 +82,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whose signature changed in 0.13 from `(topic, key, value)` to `(key, value, headers)`
   ([#4379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4379))
 
+### Changed
+
+- Remove redundant `pylint: disable=attribute-defined-outside-init` comments and add rule to global `.pylintrc` disable list
+  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
+
 ### Breaking changes
 
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
