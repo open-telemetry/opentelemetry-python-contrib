@@ -12,6 +12,9 @@ components:
   instrumentation/opentelemetry-instrumentation-asyncio:
     - bourbonkk
 
+  instrumentation/opentelemetry-instrumentation-exceptions:
+    - iblancasa
+
   instrumentation/opentelemetry-instrumentation-botocore:
     - lukeina2z
     - yiyuan-he
