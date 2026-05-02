@@ -171,6 +171,7 @@ select = [
   "PLE", # pylint error
   "Q",   # flake8-quotes
   "A",   # flake8-builtins
+  "T10", # flake8-debugger
   "TID", # flake8-tidy-imports
 ]
 ignore = [
