@@ -191,10 +191,82 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
         provider.set_processors([*existing, processor])
         self._processor = processor
 
+        try:
+            from wrapt import wrap_function_wrapper
+            from opentelemetry import context as context_api
+            from .handler import RealtimeTelemetryHandler
+        except ImportError:
+            logger.debug("Realtime instrumentation dependencies not available, skipping")
+        else:
+            # Attribute storing the telemetry handler on the model instance
+            _OTEL_HANDLER_ATTR = "_otel_telemetry_handler"
+
+            def _wrap_init(wrapped: Any, instance: Any, args: Any, kwargs: Any) -> Any:
+                wrapped(*args, **kwargs)
+                try:
+                    handler = RealtimeTelemetryHandler(
+                        tracer=tracer,
+                    )
+                    setattr(instance.model, _OTEL_HANDLER_ATTR, handler)
+                    logger.debug("Attached realtime telemetry handler to model %s", instance.model)
+                except Exception:
+                    logger.warning("Failed to auto-attach telemetry handler", exc_info=True)
+
+            async def _wrap_close(wrapped: Any, instance: Any, args: Any, kwargs: Any) -> Any:
+                try:
+                    return await wrapped(*args, **kwargs)
+                finally:
+                    try:
+                        model = getattr(instance, "model", None)
+                        if model is not None:
+                            handler = getattr(model, _OTEL_HANDLER_ATTR, None)
+                            if handler is not None and hasattr(handler, "cleanup"):
+                                handler.cleanup()
+                            setattr(model, _OTEL_HANDLER_ATTR, None)
+                    except Exception:
+                        logger.debug("Error during auto telemetry cleanup", exc_info=True)
+
+            async def _wrap_emit_event(wrapped: Any, instance: Any, args: Any, kwargs: Any) -> Any:
+                handler = getattr(instance, _OTEL_HANDLER_ATTR, None)
+                if handler is not None:
+                    event = args[0] if args else kwargs.get("event")
+                    if event is not None:
+                        ctx = handler.handle_event(event)
+                        if ctx is not None:
+                            token = context_api.attach(ctx)
+                            try:
+                                return await wrapped(*args, **kwargs)
+                            finally:
+                                context_api.detach(token)
+                return await wrapped(*args, **kwargs)
+
+
+            wrap_function_wrapper(
+                "agents.realtime.session", "RealtimeSession.__init__", _wrap_init
+            )
+            wrap_function_wrapper(
+                "agents.realtime.session", "RealtimeSession.close", _wrap_close
+            )
+            wrap_function_wrapper(
+                "agents.realtime.openai_realtime",
+                "OpenAIRealtimeWebSocketModel._emit_event",
+                _wrap_emit_event,
+            )
+            self._realtime_patched = True
+
     def _uninstrument(self, **kwargs) -> None:
         if self._processor is None:
             return
 
+        if getattr(self, "_realtime_patched", False):
+            from agents.realtime import session as session_module
+            from agents.realtime import openai_realtime as realtime_model_module
+            from opentelemetry.instrumentation.utils import unwrap
+            unwrap(session_module.RealtimeSession, "__init__")
+            unwrap(session_module.RealtimeSession, "close")
+            unwrap(realtime_model_module.OpenAIRealtimeWebSocketModel, "_emit_event")
+            self._realtime_patched = False
+        
         tracing = _load_tracing_module()
         provider = tracing.get_trace_provider()
         current = _get_registered_processors(provider)
