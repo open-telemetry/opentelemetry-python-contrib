@@ -57,7 +57,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         # Other providers/LLMs may be supported in the future and telemetry for them is skipped for now.
-        if serialized.get("name") not in ("ChatOpenAI", "ChatBedrock"):
+        if serialized.get("name") not in (
+            "ChatOpenAI",
+            "ChatBedrock",
+            "ChatAnthropic",
+        ):
             return
 
         if "invocation_params" in kwargs:
@@ -72,6 +76,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         for model_tag in (
             "model_name",  # ChatOpenAI
             "model_id",  # ChatBedrock
+            "model",  # ChatAnthropic
         ):
             if (model := (params or {}).get(model_tag)) is not None:
                 request_model = model
@@ -97,10 +102,12 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             top_p = params.get("top_p")
             frequency_penalty = params.get("frequency_penalty")
             presence_penalty = params.get("presence_penalty")
-            stop_sequences = params.get("stop")
+            stop_sequences = params.get("stop") or params.get("stop_sequences")
             seed = params.get("seed")
             temperature = params.get("temperature")
-            max_tokens = params.get("max_completion_tokens")
+            max_tokens = params.get("max_completion_tokens") or params.get(
+                "max_tokens"
+            )
 
         provider = "unknown"
         if metadata is not None:
@@ -187,7 +194,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                 )
                 if generation_info is not None:
                     finish_reason = generation_info.get(
-                        "finish_reason", "unknown"
+                        "finish_reason",
+                        generation_info.get("stop_reason", "unknown"),
                     )
 
                 if chat_generation.message:
@@ -198,7 +206,10 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     ):
                         finish_reason = (
                             chat_generation.message.response_metadata.get(
-                                "stopReason", "unknown"
+                                "stopReason",
+                                chat_generation.message.response_metadata.get(
+                                    "stop_reason", "unknown"
+                                ),
                             )
                         )
 
