@@ -15,6 +15,7 @@ from agents.tracing import (
     AgentSpanData,
     FunctionSpanData,
     GenerationSpanData,
+    MCPListToolsSpanData,
     ResponseSpanData,
 )
 
@@ -179,6 +180,12 @@ def test_operation_and_span_naming(processor_setup):
     assert (
         processor._get_operation_name(response_data)
         == sp.GenAIOperationName.CHAT
+    )
+
+    mcp_data = MCPListToolsSpanData()
+    assert (
+        processor._get_operation_name(mcp_data)
+        == sp.GenAIOperationName.LIST_TOOLS
     )
 
     class UnknownSpanData:
@@ -357,6 +364,20 @@ def test_attribute_builders(processor_setup):
     assert function_attrs[sp.GEN_AI_TOOL_CALL_ARGUMENTS] == {"city": "seattle"}
     assert function_attrs[sp.GEN_AI_TOOL_CALL_RESULT] == {"temperature": 70}
     assert function_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
+
+    mcp_span = MCPListToolsSpanData(
+        tools=[{"type": "function", "name": "lookup_weather"}]
+    )
+    mcp_attrs = _collect(
+        processor._get_attributes_from_mcp_list_tools_span_data(mcp_span)
+    )
+    assert (
+        mcp_attrs[sp.GEN_AI_OPERATION_NAME] == sp.GenAIOperationName.LIST_TOOLS
+    )
+    assert json.loads(mcp_attrs[sp.GEN_AI_TOOL_DEFINITIONS]) == [
+        {"type": "function", "name": "lookup_weather"}
+    ]
+    assert mcp_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
 
 
 def test_extract_genai_attributes_unknown_type(processor_setup):
