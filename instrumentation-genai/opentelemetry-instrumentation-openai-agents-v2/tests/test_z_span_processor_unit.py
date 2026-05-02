@@ -372,8 +372,7 @@ def test_attribute_builders(processor_setup):
         processor._get_attributes_from_mcp_list_tools_span_data(mcp_span)
     )
     assert (
-        mcp_attrs[sp.GEN_AI_OPERATION_NAME]
-        == sp.GenAIOperationName.LIST_TOOLS
+        mcp_attrs[sp.GEN_AI_OPERATION_NAME] == sp.GenAIOperationName.LIST_TOOLS
     )
     assert json.loads(mcp_attrs[sp.GEN_AI_TOOL_DEFINITIONS]) == [
         {"type": "function", "name": "lookup_weather"}
