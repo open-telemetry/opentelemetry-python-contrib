@@ -59,13 +59,16 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection, Iterable
 from timeit import default_timer
-from typing import Collection, Iterable
 
 from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
+from celery.worker.request import Request  # pylint: disable=no-name-in-module
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -99,8 +102,8 @@ _TASK_REVOKED_TERMINATED_SIGNAL_KEY = "celery.terminated.signal"
 _TASK_NAME_KEY = "celery.task_name"
 
 
-class CeleryGetter(Getter):
-    def get(self, carrier, key):
+class CeleryGetter(Getter[Request]):
+    def get(self, carrier: Request, key: str) -> list[str] | None:
         value = getattr(carrier, key, None)
         if value is None:
             return None
@@ -109,16 +112,12 @@ class CeleryGetter(Getter):
         # of ints).  The TextMapPropagator contract requires string
         # values, so coerce anything that isn't already a string.
         if isinstance(value, str):
-            value = (value,)
-        elif isinstance(value, Iterable):
-            value = tuple(
-                str(v) if not isinstance(v, str) else v for v in value
-            )
-        else:
-            value = (str(value),)
-        return value
+            return [value]
+        if isinstance(value, Iterable):
+            return [str(v) if not isinstance(v, str) else v for v in value]
+        return [str(value)]
 
-    def keys(self, carrier):
+    def keys(self, carrier: Request) -> list[str]:
         return []
 
 
