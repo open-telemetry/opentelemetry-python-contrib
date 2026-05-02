@@ -19,6 +19,9 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from opentelemetry.instrumentation import auto_instrumentation
+from opentelemetry.instrumentation.environment_variables import (
+    OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES,
+)
 
 # TODO: convert to assertNoLogs instead of mocking logger when 3.10 is baseline
 
@@ -46,6 +49,43 @@ class TestInitialize(TestCase):
     )
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     def test_clears_auto_instrumentation_path(self, logger_mock):
+        auto_instrumentation.initialize()
+        self.assertEqual(environ["PYTHONPATH"], "foo")
+        logger_mock.exception.assert_not_called()
+
+    @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
+    def test_keeps_auto_instrumentation_path_for_subprocesses(
+        self, logger_mock
+    ):
+        for value in ("true", "TrUe", " \tTrue\n", "TRUE"):
+            with self.subTest(value=value):
+                with patch.dict(
+                    "os.environ",
+                    {
+                        "PYTHONPATH": self.auto_instrumentation_path
+                        + pathsep
+                        + "foo",
+                        OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES: value,
+                    },
+                ):
+                    auto_instrumentation.initialize()
+                    self.assertEqual(
+                        environ["PYTHONPATH"],
+                        self.auto_instrumentation_path + pathsep + "foo",
+                    )
+                    logger_mock.exception.assert_not_called()
+
+    @patch.dict(
+        "os.environ",
+        {
+            "PYTHONPATH": auto_instrumentation_path + pathsep + "foo",
+            OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES: "false",
+        },
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
+    def test_clears_auto_instrumentation_path_when_subprocesses_false(
+        self, logger_mock
+    ):
         auto_instrumentation.initialize()
         self.assertEqual(environ["PYTHONPATH"], "foo")
         logger_mock.exception.assert_not_called()

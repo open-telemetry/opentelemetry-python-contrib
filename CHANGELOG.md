@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
+- `opentelemetry-instrumentation`: add ability to auto-instrument subprocesses with `OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES` environment variable
+  ([#4469](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4469))
 
 ### Fixed
 
