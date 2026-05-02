@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 2.4b0 (2026-05-01)
+
 
 - Migrate experimental path from deprecated `LLMInvocation` to `InferenceInvocation`,
   using `handler.start_inference()` and `invocation.stop()`/`invocation.fail()` directly
