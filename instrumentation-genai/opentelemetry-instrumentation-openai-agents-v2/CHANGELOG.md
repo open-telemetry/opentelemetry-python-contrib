@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+
+- Import `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` from
+  `opentelemetry.util.genai.environment_variables` instead of re-defining it locally;
+  add `meter_provider` parameter to `GenAISemanticProcessor` so a caller-supplied
+  provider is no longer silently ignored; use `create_duration_histogram` and
+  `create_token_histogram` from `opentelemetry.util.genai.instruments` to apply
+  semconv-specified histogram bucket boundaries.
+  ([#4456](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4456))
 - Align AgentSpanData test stubs and span processor with real OpenAI Agents SDK;
   remove non-existent `operation`, `description`, `agent_id`, and `model` fields.
   ([#4229](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4229))
