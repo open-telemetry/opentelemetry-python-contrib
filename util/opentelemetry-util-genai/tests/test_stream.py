@@ -17,7 +17,7 @@ import inspect
 
 import pytest
 
-from opentelemetry.util.genai._stream import (
+from opentelemetry.util.genai.stream import (
     AsyncStreamWrapper,
     SyncStreamWrapper,
 )

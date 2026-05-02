@@ -77,7 +77,7 @@ Apply to packages under `instrumentation/` and `instrumentation-genai/`.
   original exception unmodified.
 - Do not raise new exceptions in instrumentation/telemetry code.
 - For GenAI streaming wrappers, prefer the shared `SyncStreamWrapper` and `AsyncStreamWrapper`
-  helpers from `opentelemetry.util.genai._stream` instead of reimplementing iteration,
+  helpers from `opentelemetry.util.genai.stream` instead of reimplementing iteration,
   close/context-manager, and finalization behavior in provider packages.
 - Put provider-specific chunk parsing and telemetry finalization in private hook methods or a
   narrow mixin. Do not make async stream wrappers inherit from sync stream wrappers.

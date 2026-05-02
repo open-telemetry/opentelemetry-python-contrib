@@ -22,7 +22,7 @@ from openai import AsyncStream, Stream
 from opentelemetry.semconv._incubating.attributes import (
     openai_attributes as OpenAIAttributes,
 )
-from opentelemetry.util.genai._stream import (
+from opentelemetry.util.genai.stream import (
     AsyncStreamWrapper,
     SyncStreamWrapper,
 )
@@ -45,7 +45,6 @@ class _ChatStreamMixin:
     response_id: Optional[str] = None
     response_model: Optional[str] = None
     service_tier: Optional[str] = None
-    finish_reasons: list = []
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
 
@@ -160,9 +159,13 @@ class _ChatStreamMixin:
         self.invocation.response_id = self.response_id
         self.invocation.input_tokens = self.prompt_tokens
         self.invocation.output_tokens = self.completion_tokens
-        # TODO: Derive finish_reasons from choice_buffers so streaming
-        # invocations match non-streaming response finalization.
-        self.invocation.finish_reasons = self.finish_reasons
+        finish_reasons = [
+            choice.finish_reason
+            for choice in self.choice_buffers
+            if choice.finish_reason
+        ]
+        if finish_reasons:
+            self.invocation.finish_reasons = finish_reasons
         if self.service_tier:
             self.invocation.attributes.update(
                 {
