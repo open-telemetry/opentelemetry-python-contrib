@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
+- `opentelemetry-instrumentation-dbapi`: Add Database client operation duration and returned rows metrics
+  ([#4481](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4481))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
 
