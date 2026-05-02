@@ -152,7 +152,7 @@ def _get_span(
         kind=span_kind,
     )
     if span.is_recording():
-        _enrich_span(span, channel, properties, task_name, operation)
+        _enrich_span(span, channel, properties, destination, operation)
     return span
 
 
