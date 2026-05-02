@@ -151,7 +151,7 @@ class AutoInstrumentedConsumer(Consumer):
         return super().close()
 
 
-class ProxiedProducer(Producer):
+class ProxiedProducer:
     def __init__(self, producer: Producer, tracer: Tracer):
         self._producer = producer
         self._tracer = tracer
@@ -177,8 +177,11 @@ class ProxiedProducer(Producer):
     def original_producer(self):
         return self._producer
 
+    def __getattr__(self, name):
+        return getattr(self._producer, name)
 
-class ProxiedConsumer(Consumer):
+
+class ProxiedConsumer:
     def __init__(self, consumer: Consumer, tracer: Tracer):
         self._consumer = consumer
         self._tracer = tracer
@@ -223,6 +226,9 @@ class ProxiedConsumer(Consumer):
 
     def original_consumer(self):
         return self._consumer
+
+    def __getattr__(self, name):
+        return getattr(self._consumer, name)
 
 
 class ConfluentKafkaInstrumentor(BaseInstrumentor):

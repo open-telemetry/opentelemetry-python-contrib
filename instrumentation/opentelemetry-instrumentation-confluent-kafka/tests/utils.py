@@ -18,6 +18,12 @@ class MockConsumer(Consumer):
             return self._queue.pop(0)
         return None
 
+    def list_topics(self, topic=None, timeout=-1):  # pylint: disable=no-self-use
+        return "consumer_topics"
+
+    def assignment(self):  # pylint: disable=no-self-use
+        return []
+
 
 class MockedMessage:
     def __init__(
@@ -77,3 +83,6 @@ class MockedProducer(Producer):
 
     def flush(self, *args, **kwargs):
         return len(self._queue)
+
+    def list_topics(self, topic=None, timeout=-1):  # pylint: disable=no-self-use
+        return "producer_topics"
