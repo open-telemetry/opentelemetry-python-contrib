@@ -91,6 +91,7 @@ from opentelemetry.test.asgitestutil import (
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, format_span_id, format_trace_id
+from opentelemetry.trace.status import Status, StatusCode
 
 _expected_metric_names_old = [
     "http.server.active_requests",
@@ -1900,6 +1901,7 @@ class TestAsgiAttributes(unittest.TestCase):
         self.scope = {}
         setup_testing_defaults(self.scope)
         self.span = mock.create_autospec(trace_api.Span, spec_set=True)
+        self.span.status = Status(StatusCode.UNSET)
 
     def test_request_attributes(self):
         self.scope["query_string"] = b"foo=bar"

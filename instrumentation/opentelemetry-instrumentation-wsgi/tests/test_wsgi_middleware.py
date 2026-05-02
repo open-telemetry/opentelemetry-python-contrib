@@ -78,6 +78,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import StatusCode
+from opentelemetry.trace.status import Status
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
@@ -593,6 +594,7 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ = {}
         wsgiref_util.setup_testing_defaults(self.environ)
         self.span = mock.create_autospec(trace_api.Span, spec_set=True)
+        self.span.status = Status(StatusCode.UNSET)
 
     def test_request_attributes(self):
         self.environ["QUERY_STRING"] = "foo=bar"
