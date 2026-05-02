@@ -25,10 +25,12 @@ from opentelemetry.instrumentation.langchain.invocation_manager import (
     _InvocationManager,
 )
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.invocation import (
+    InferenceInvocation,
+    WorkflowInvocation,
+)
 from opentelemetry.util.genai.types import (
-    Error,
     InputMessage,
-    LLMInvocation,  # TODO: migrate to InferenceInvocation
     MessagePart,
     OutputMessage,
     Text,
@@ -44,6 +46,75 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         super().__init__()
         self._telemetry_handler = telemetry_handler
         self._invocation_manager = _InvocationManager()
+
+    def on_chain_start(
+        self,
+        serialized: dict[str, Any],
+        inputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        tags: Optional[list[str]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Any:
+        payload = serialized or {}
+        name_source = (
+            payload.get("name")
+            or payload.get("id")
+            or kwargs.get("name")
+            or (metadata.get("langgraph_node") if metadata else None)
+        )
+        name = str(name_source or "chain")
+
+        if parent_run_id is None:
+            workflow_name_override = (
+                metadata.get("workflow_name") if metadata else None
+            )
+            wf = self._telemetry_handler.start_workflow(
+                name=workflow_name_override or name
+            )
+            self._invocation_manager.add_invocation_state(run_id, None, wf)
+        # TODO: handle non-workflow chains (e.g. agent sub-chains) in the future
+
+    def on_chain_end(
+        self,
+        outputs: dict[str, Any],
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if invocation is None or not isinstance(
+            invocation, WorkflowInvocation
+        ):
+            # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        invocation.stop()
+
+        if not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id)
+
+    def on_chain_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        parent_run_id: Optional[UUID] = None,
+        **kwargs: Any,
+    ) -> Any:
+        invocation = self._invocation_manager.get_invocation(run_id=run_id)
+        if invocation is None or not isinstance(
+            invocation, WorkflowInvocation
+        ):
+            # If the invocation does not exist, we cannot set attributes or end it
+            return
+
+        invocation.fail(error)
+        if not invocation.span.is_recording():
+            self._invocation_manager.delete_invocation_state(run_id=run_id)
 
     def on_chat_model_start(
         self,
@@ -140,25 +211,22 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     )
                 )
 
-        llm_invocation = LLMInvocation(
+        llm_invocation = self._telemetry_handler.start_inference(
+            provider,
             request_model=request_model,
-            input_messages=input_messages,
-            provider=provider,
-            top_p=top_p,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            stop_sequences=stop_sequences,
-            seed=seed,
-            temperature=temperature,
-            max_tokens=max_tokens,
         )
-        llm_invocation = self._telemetry_handler.start_llm(
-            invocation=llm_invocation
-        )
+        llm_invocation.input_messages = input_messages
+        llm_invocation.top_p = top_p
+        llm_invocation.frequency_penalty = frequency_penalty
+        llm_invocation.presence_penalty = presence_penalty
+        llm_invocation.stop_sequences = stop_sequences
+        llm_invocation.seed = seed
+        llm_invocation.temperature = temperature
+        llm_invocation.max_tokens = max_tokens
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,  # pyright: ignore[reportArgumentType]
+            invocation=llm_invocation,
         )
 
     def on_llm_end(
@@ -172,7 +240,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
             llm_invocation,
-            LLMInvocation,
+            InferenceInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
@@ -247,10 +315,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
             if response_id is not None:
                 llm_invocation.response_id = str(response_id)
 
-        llm_invocation = self._telemetry_handler.stop_llm(
-            invocation=llm_invocation
-        )
-        if llm_invocation.span and not llm_invocation.span.is_recording():
+        llm_invocation.stop()
+        if not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)
 
     def on_llm_error(
@@ -264,14 +330,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
             llm_invocation,
-            LLMInvocation,
+            InferenceInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
 
-        error_otel = Error(message=str(error), type=type(error))
-        llm_invocation = self._telemetry_handler.fail_llm(
-            invocation=llm_invocation, error=error_otel
-        )
-        if llm_invocation.span and not llm_invocation.span.is_recording():
+        llm_invocation.fail(error)
+        if not llm_invocation.span.is_recording():
             self._invocation_manager.delete_invocation_state(run_id=run_id)

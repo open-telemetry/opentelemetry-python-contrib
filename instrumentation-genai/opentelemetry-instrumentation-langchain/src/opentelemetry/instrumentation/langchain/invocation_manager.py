@@ -40,7 +40,7 @@ class _InvocationManager:
         run_id: UUID,
         parent_run_id: Optional[UUID],
         invocation: GenAIInvocation,
-    ):
+    ) -> None:
         invocation_state = _InvocationState(invocation=invocation)
         self._invocations[run_id] = invocation_state
 
