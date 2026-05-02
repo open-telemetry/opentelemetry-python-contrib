@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
+- `opentelemetry-instrumentation-celery`: Add task and worker lifecycle metrics matching Celery Flower
+  ([#4439](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4439))
 
 ### Fixed
 
@@ -34,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
   ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
+- `opentelemetry-instrumentation-celery`: Fix memory leak in `task_id_to_start_time` dict never being cleaned up
+  ([#4439](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4439))
 
 ### Breaking changes
 
