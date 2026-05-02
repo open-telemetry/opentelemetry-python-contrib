@@ -525,6 +525,7 @@ class _GenerateContentInstrumentationHelper:
         self._error_type = None
         self._input_tokens = 0
         self._cached_tokens = 0
+        self._thinking_tokens = 0
         self._output_tokens = 0
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.GEN_AI
@@ -633,12 +634,21 @@ class _GenerateContentInstrumentationHelper:
         cached_tokens = _get_response_property(
             response, "usage_metadata.cached_content_token_count"
         )
+        thinking_tokens = _get_response_property(
+            response, "usage_metadata.thoughts_token_count"
+        )
         if cached_tokens and isinstance(cached_tokens, int):
             self._cached_tokens = cached_tokens
         if input_tokens and isinstance(input_tokens, int):
             self._input_tokens = input_tokens
         if output_tokens and isinstance(output_tokens, int):
             self._output_tokens = output_tokens
+        if thinking_tokens and isinstance(thinking_tokens, int):
+            # Pricing of tokens is the sum of output tokens and thinking tokens:
+            # https://ai.google.dev/gemini-api/docs/thinking#pricing
+            # Also the sem conv recommends combining these counts.
+            self._output_tokens += thinking_tokens
+            self._thinking_tokens = thinking_tokens
 
     def _maybe_update_error_type(self, response: GenerateContentResponse):
         if response.candidates:
@@ -778,6 +788,14 @@ class _GenerateContentInstrumentationHelper:
         event.attributes[
             gen_ai_attributes.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
         ] = self._cached_tokens
+        # TODO: replace these strings with the sem conv constant in `gen_ai_attributes` once it becomes available.
+        span.set_attribute(
+            "gen_ai.usage.reasoning.output_tokens",
+            self._thinking_tokens,
+        )
+        event.attributes["gen_ai.usage.reasoning.output_tokens"] = (
+            self._thinking_tokens
+        )
         tool_definitions = tool_definitions or []
         self.completion_hook.on_completion(
             inputs=input_messages,
