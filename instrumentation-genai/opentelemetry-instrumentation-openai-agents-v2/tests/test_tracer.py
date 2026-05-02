@@ -205,6 +205,66 @@ def test_agent_invoke_span_records_attributes():
         exporter.clear()
 
 
+def test_mcp_list_tools_span_records_attributes():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        from agents.tracing import mcp_list_tools_span  # noqa: PLC0415
+
+        with trace("workflow"):
+            with mcp_list_tools_span(
+                server="Time",
+                result=["get_current_time", "convert_timezone"],
+            ):
+                pass
+
+        spans = exporter.get_finished_spans()
+        mcp_span = next(
+            span
+            for span in spans
+            if span.attributes.get("mcp.method.name") == "tools/list"
+        )
+
+        assert mcp_span.kind is SpanKind.CLIENT
+        assert mcp_span.name == "tools/list Time"
+        assert mcp_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
+        assert mcp_span.attributes["mcp.method.name"] == "tools/list"
+        assert mcp_span.attributes["server.address"] == "Time"
+        # gen_ai.operation.name SHOULD NOT be set for non-tool-call MCP ops
+        assert GenAI.GEN_AI_OPERATION_NAME not in mcp_span.attributes
+        # Non-spec attributes must NOT be present
+        assert "mcp.server.name" not in mcp_span.attributes
+        assert "mcp.tools.count" not in mcp_span.attributes
+        assert "mcp.tools.list" not in mcp_span.attributes
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_mcp_list_tools_span_without_server():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        from agents.tracing import mcp_list_tools_span  # noqa: PLC0415
+
+        with trace("workflow"):
+            with mcp_list_tools_span(server=None, result=["tool_a"]):
+                pass
+
+        spans = exporter.get_finished_spans()
+        mcp_span = next(
+            span
+            for span in spans
+            if span.attributes.get("mcp.method.name") == "tools/list"
+        )
+
+        assert mcp_span.name == "tools/list"
+        assert "server.address" not in mcp_span.attributes
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
 def _placeholder_message() -> dict[str, Any]:
     return {
         "role": "user",

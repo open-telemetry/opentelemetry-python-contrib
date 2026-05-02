@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Handle `MCPListToolsSpanData` spans with `mcp.method.name` and `server.address`
+  attributes following MCP semantic conventions instead of showing as `unknown`.
+  ([#4197](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4197))
 - Align AgentSpanData test stubs and span processor with real OpenAI Agents SDK;
   remove non-existent `operation`, `description`, `agent_id`, and `model` fields.
   ([#4229](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4229))
