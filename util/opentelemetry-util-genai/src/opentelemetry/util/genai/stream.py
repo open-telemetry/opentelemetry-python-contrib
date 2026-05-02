@@ -70,8 +70,7 @@ class SyncStreamWrapper(ABC, Generic[ChunkT]):
         except Exception as error:
             self._safe_finalize_failure(error)
             raise
-        else:
-            self._safe_finalize_success()
+        self._safe_finalize_success()
 
     def __iter__(self):
         return self
@@ -192,8 +191,7 @@ class AsyncStreamWrapper(ABC, Generic[ChunkT]):
         except Exception as error:
             self._safe_finalize_failure(error)
             raise
-        else:
-            self._safe_finalize_success()
+        self._safe_finalize_success()
 
     def __aiter__(self):
         return self
