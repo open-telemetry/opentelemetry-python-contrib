@@ -20,7 +20,7 @@ import os
 
 import pytest
 import yaml
-from anthropic import Anthropic
+from anthropic import Anthropic, AsyncAnthropic
 
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -102,6 +102,12 @@ def environment():
 def anthropic_client():
     """Create and return an Anthropic client."""
     return Anthropic()
+
+
+@pytest.fixture
+def async_anthropic_client():
+    """Create and return an async Anthropic client."""
+    return AsyncAnthropic()
 
 
 @pytest.fixture(scope="module")
