@@ -19,7 +19,7 @@ from unittest.mock import patch
 from urllib import request
 from urllib.parse import urlencode
 
-import httpretty
+import pook
 from pytest import mark
 
 from opentelemetry.instrumentation._semconv import (
@@ -67,16 +67,16 @@ class TestUrllibMetricsInstrumentation(TestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
         URLLibInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
-        httpretty.register_uri(
-            httpretty.POST, self.URL_POST, body=b"Hello World!"
-        )
+        pook.on()
+        pook.get(self.URL, reply=200, response_body=b"Hello!").persist()
+        pook.post(
+            self.URL_POST, reply=200, response_body=b"Hello World!"
+        ).persist()
 
     def tearDown(self):
         super().tearDown()
         URLLibInstrumentor().uninstrument()
-        httpretty.disable()
+        pook.off()
 
     # Return Sequence with one histogram
     def create_histogram_data_points(
