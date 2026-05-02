@@ -171,6 +171,7 @@ select = [
   "PLE", # pylint error
   "Q",   # flake8-quotes
   "A",   # flake8-builtins
+  "T20", # flake8-print
   "TID", # flake8-tidy-imports
 ]
 ignore = [
@@ -179,6 +180,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "docs/**/*.*" = ["A001"]
+"scripts/*" = ["T20"]
+"**/tests/*" = ["T20"]
+"**/examples/*" = ["T20"]
+"opentelemetry-instrumentation/src/opentelemetry/instrumentation/bootstrap.py" = ["T20"]
 "instrumentation-genai/opentelemetry-instrumentation-google-genai/tests/*" = ["TID252"]
 
 [tool.ruff.lint.isort]
