@@ -89,6 +89,9 @@ class SQLite3Instrumentor(BaseInstrumentor):
         https://docs.python.org/3/library/sqlite3.html
         """
         tracer_provider = kwargs.get("tracer_provider")
+        enable_transaction_spans = kwargs.get(
+            "enable_transaction_spans", False
+        )
 
         for module in self._TO_WRAP:
             dbapi.wrap_connect(
@@ -99,6 +102,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 _CONNECTION_ATTRIBUTES,
                 version=__version__,
                 tracer_provider=tracer_provider,
+                enable_transaction_spans=enable_transaction_spans,
             )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -110,6 +114,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
     def instrument_connection(
         connection: SQLite3Connection,
         tracer_provider: TracerProvider | None = None,
+        enable_transaction_spans: bool = False,
     ) -> SQLite3Connection:
         """Enable instrumentation in a SQLite connection.
 
@@ -117,6 +122,8 @@ class SQLite3Instrumentor(BaseInstrumentor):
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            enable_transaction_spans: Experimental flag to enable transaction
+                (commit/rollback) spans. Defaults to False.
 
         Returns:
             An instrumented SQLite connection that supports
@@ -130,6 +137,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     @staticmethod

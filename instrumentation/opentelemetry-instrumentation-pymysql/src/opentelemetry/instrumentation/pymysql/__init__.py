@@ -189,6 +189,9 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        enable_transaction_spans = kwargs.get(
+            "enable_transaction_spans", False
+        )
 
         dbapi.wrap_connect(
             __name__,
@@ -201,6 +204,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -214,6 +218,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         enable_commenter=None,
         commenter_options=None,
         enable_attribute_commenter=None,
+        enable_transaction_spans=False,
     ):
         """Enable instrumentation in a PyMySQL connection.
 
@@ -232,6 +237,8 @@ class PyMySQLInstrumentor(BaseInstrumentor):
                 You can specify various options, such as enabling driver information, database version logging,
                 traceparent propagation, and other customizable metadata enhancements.
                 See *SQLCommenter Configurations* above for more information.
+            enable_transaction_spans:
+                Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
         Returns:
             An instrumented connection.
         """
@@ -247,6 +254,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             connect_module=pymysql,
             enable_attribute_commenter=enable_attribute_commenter,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     @staticmethod

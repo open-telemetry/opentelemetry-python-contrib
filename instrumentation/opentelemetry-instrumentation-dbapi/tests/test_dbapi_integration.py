@@ -26,6 +26,7 @@ from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes import net_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION_NAME,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -1061,6 +1062,70 @@ class TestDBApiIntegration(TestBase):
             "Test stored procedure",
         )
 
+    def test_commit(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        mock_connection.commit()
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "COMMIT")
+
+    def test_rollback(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        mock_connection.rollback()
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
+        self.assertEqual(span.attributes[DB_OPERATION_NAME], "ROLLBACK")
+
+    def test_commit_with_suppress_instrumentation(self):
+        """Test that commit doesn't create a span when instrumentation is suppressed"""
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        with suppress_instrumentation():
+            mock_connection.commit()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_rollback_with_suppress_instrumentation(self):
+        """Test that rollback doesn't create a span when instrumentation is suppressed"""
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        with suppress_instrumentation():
+            mock_connection.rollback()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_wrap_connect(self, mock_dbapi):
         dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
@@ -1297,6 +1362,14 @@ class MockConnection:
     # pylint: disable=no-self-use
     def cursor(self):
         return MockCursor()
+
+    # pylint: disable=no-self-use
+    def commit(self):
+        pass
+
+    # pylint: disable=no-self-use
+    def rollback(self):
+        pass
 
 
 class MockCursor:
