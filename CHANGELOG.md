@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
   ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
 
+### Fixed
+
+- `opentelemetry-instrumentation-redis`: Extract `ClusterPipeline` commands from `_execution_strategy` in redis-py 6+ so span attributes include the pipelined commands instead of being empty
+  ([#4436](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4436))
+
 ### Breaking changes
 
 - Drop Python 3.9 support
