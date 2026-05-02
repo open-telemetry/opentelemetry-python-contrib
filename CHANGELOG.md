@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
   ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
 
+### Fixed
+
+- `opentelemetry-instrumentation-grpc`: Fix `NotImplementedError` when `grpc.aio` call object does not implement `add_done_callback` (e.g. when a user interceptor awaits the call)
+  ([#4429](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4429))
+
 ### Breaking changes
 
 - Drop Python 3.9 support
