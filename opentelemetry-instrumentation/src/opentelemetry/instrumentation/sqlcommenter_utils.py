@@ -11,22 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from opentelemetry import context
 from opentelemetry.instrumentation.utils import _url_quote
 
 
-def _add_sql_comment(sql, **meta) -> str:
+def _add_sql_comment(sql, comment_position="end", **meta) -> str:
     """
-    Appends comments to the sql statement and returns it
+    Adds comments to the sql statement and returns it.
+    By default, the comment is appended to the end of the query.
+    Set comment_position="start" to prepend the comment instead.
     """
     meta.update(**_add_framework_tags())
     comment = _generate_sql_comment(**meta)
-    sql = sql.rstrip()
-    if sql.endswith(";"):
-        sql = sql[:-1] + comment + ";"
+    if not comment:
+        return sql
+    sql = sql.strip()
+    if comment_position == "start":
+        if sql.endswith(";"):
+            sql = comment + " " + sql[:-1] + ";"
+        else:
+            sql = comment + " " + sql
     else:
-        sql = sql + comment
+        if sql.endswith(";"):
+            sql = sql[:-1] + comment + ";"
+        else:
+            sql = sql + comment
     return sql
 
 
@@ -36,10 +45,8 @@ def _generate_sql_comment(**meta) -> str:
     **meta kwargs.
     """
     key_value_delimiter = ","
-
     if not meta:  # No entries added.
         return ""
-
     # Sort the keywords to ensure that caching works and that testing is
     # deterministic. It eases visual inspection as well.
     return (
@@ -57,7 +64,6 @@ def _add_framework_tags() -> dict:
     """
     Returns orm related tags if any set by the context
     """
-
     sqlcommenter_framework_values = (
         context.get_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES")
         if context.get_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES")
