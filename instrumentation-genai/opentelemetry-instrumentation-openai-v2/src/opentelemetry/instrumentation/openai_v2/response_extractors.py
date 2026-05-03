@@ -134,7 +134,9 @@ def _extract_output_type_from_value(text_config: object) -> str | None:
 
     format_type = _get_field(format_config, "type")
     if format_type == "json_schema":
-        return "json"
+        return GenAIAttributes.GenAiOutputTypeValues.JSON.value
+    if format_type == "text":
+        return GenAIAttributes.GenAiOutputTypeValues.TEXT.value
     if isinstance(format_type, str):
         return format_type
     return None
