@@ -96,14 +96,14 @@ class SyncStreamWrapper(ABC, Generic[ChunkT]):
     def _finalize_success(self) -> None:
         if self._finalized:
             return
-        self._stop_stream()
         self._finalized = True
+        self._stop_stream()
 
     def _finalize_failure(self, error: BaseException) -> None:
         if self._finalized:
             return
-        self._fail_stream(error)
         self._finalized = True
+        self._fail_stream(error)
 
     def _safe_finalize_success(self) -> None:
         try:
@@ -217,14 +217,14 @@ class AsyncStreamWrapper(ABC, Generic[ChunkT]):
     def _finalize_success(self) -> None:
         if self._finalized:
             return
-        self._stop_stream()
         self._finalized = True
+        self._stop_stream()
 
     def _finalize_failure(self, error: BaseException) -> None:
         if self._finalized:
             return
-        self._fail_stream(error)
         self._finalized = True
+        self._fail_stream(error)
 
     def _safe_finalize_success(self) -> None:
         try:

@@ -82,11 +82,13 @@ class _FailingSyncProcessStreamWrapper(_TestSyncStreamWrapper):
 
 class _FailingSyncStopStreamWrapper(_TestSyncStreamWrapper):
     def _stop_stream(self):
+        self.stop_count += 1
         raise ValueError("instrumentation failed")
 
 
 class _FailingSyncFailStreamWrapper(_TestSyncStreamWrapper):
     def _fail_stream(self, error):
+        self.failures.append(error)
         raise ValueError("instrumentation failed")
 
 
@@ -171,14 +173,22 @@ def test_sync_stream_wrapper_swallows_finalize_errors():
     wrapper = _FailingSyncStopStreamWrapper(_FakeSyncStream())
 
     wrapper.close()
+    wrapper.close()
+
+    assert wrapper.stop_count == 1
 
 
 def test_sync_stream_wrapper_swallows_failure_finalize_errors():
-    error = RuntimeError("close failure")
-    wrapper = _FailingSyncFailStreamWrapper(_FakeSyncStream(close_error=error))
+    close_error = RuntimeError("close failure")
+    stream = _FakeSyncStream(close_error=close_error)
+    wrapper = _FailingSyncFailStreamWrapper(stream)
 
     with pytest.raises(RuntimeError, match="close failure"):
         wrapper.close()
+    stream._close_error = None
+    wrapper.close()
+
+    assert wrapper.failures == [close_error]
 
 
 def test_sync_stream_wrapper_swallows_stop_iteration_finalize_errors():
@@ -267,11 +277,13 @@ class _FailingAsyncProcessStreamWrapper(_TestAsyncStreamWrapper):
 
 class _FailingAsyncStopStreamWrapper(_TestAsyncStreamWrapper):
     def _stop_stream(self):
+        self.stop_count += 1
         raise ValueError("instrumentation failed")
 
 
 class _FailingAsyncFailStreamWrapper(_TestAsyncStreamWrapper):
     def _fail_stream(self, error):
+        self.failures.append(error)
         raise ValueError("instrumentation failed")
 
 
@@ -372,19 +384,25 @@ def test_async_stream_wrapper_swallows_finalize_errors():
         wrapper = _FailingAsyncStopStreamWrapper(_FakeAsyncStream())
 
         await wrapper.close()
+        await wrapper.close()
+
+        assert wrapper.stop_count == 1
 
     asyncio.run(exercise())
 
 
 def test_async_stream_wrapper_swallows_failure_finalize_errors():
     async def exercise():
-        error = RuntimeError("close failure")
-        wrapper = _FailingAsyncFailStreamWrapper(
-            _FakeAsyncStream(close_error=error)
-        )
+        close_error = RuntimeError("close failure")
+        stream = _FakeAsyncStream(close_error=close_error)
+        wrapper = _FailingAsyncFailStreamWrapper(stream)
 
         with pytest.raises(RuntimeError, match="close failure"):
             await wrapper.close()
+        stream._close_error = None
+        await wrapper.close()
+
+        assert wrapper.failures == [close_error]
 
     asyncio.run(exercise())
 
