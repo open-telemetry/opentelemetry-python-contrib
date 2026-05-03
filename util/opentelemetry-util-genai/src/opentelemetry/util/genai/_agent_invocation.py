@@ -36,8 +36,6 @@ from opentelemetry.util.genai.types import (
     ToolDefinition,
 )
 
-from ._invocation import get_content_attributes
-
 # TODO: Migrate to GenAI constants once available in semconv package
 _GEN_AI_AGENT_VERSION = "gen_ai.agent.version"
 _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (

@@ -41,8 +41,6 @@ from opentelemetry.util.genai.utils import (
     should_emit_event,
 )
 
-from ._invocation import get_content_attributes
-
 # TODO: Migrate to GenAI constants once available in semconv package
 _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
     "gen_ai.usage.cache_creation.input_tokens"
