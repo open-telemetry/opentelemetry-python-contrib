@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Refactor chat completion stream wrappers to use shared GenAI stream lifecycle helpers.
+  ([#4500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4500))
 ## Version 2.4b0 (2026-05-01)
 
 

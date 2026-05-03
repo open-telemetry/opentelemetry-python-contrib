@@ -287,6 +287,17 @@ def test_chat_completion_404(
     )
 
 
+def test_chat_completion_api_exception_propagates(
+    openai_client, instrument_no_content, vcr
+):
+    with vcr.use_cassette("test_chat_completion_404.yaml"):
+        with pytest.raises(NotFoundError):
+            openai_client.chat.completions.create(
+                messages=USER_ONLY_PROMPT,
+                model="this-model-does-not-exist",
+            )
+
+
 def test_chat_completion_extra_params(
     span_exporter, openai_client, instrument_no_content, vcr
 ):
@@ -995,6 +1006,123 @@ def test_chat_completion_streaming(
         assert_message_in_logs(
             logs[1], "gen_ai.choice", choice_event, spans[0]
         )
+
+
+def test_chat_completion_streaming_user_exception_propagates(
+    span_exporter, openai_client, instrument_with_content, vcr
+):
+    latest_experimental_enabled = is_experimental_mode()
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    response_stream_model = None
+    response_stream_id = None
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+        with pytest.raises(RuntimeError, match="user failure"):
+            with response:
+                for chunk in response:
+                    response_stream_model = chunk.model
+                    response_stream_id = chunk.id
+                    raise RuntimeError("user failure")
+
+    spans = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        spans[0],
+        DEFAULT_MODEL,
+        latest_experimental_enabled,
+        response_stream_id,
+        response_stream_model,
+    )
+    assert "RuntimeError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+def test_chat_completion_streaming_user_exception_wins_over_close_exception(
+    span_exporter, openai_client, instrument_with_content, vcr, monkeypatch
+):
+    if not is_experimental_mode():
+        pytest.skip("new stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+        original_close = response.stream.close
+
+        def close_raises():
+            original_close()
+            raise RuntimeError("close failure")
+
+        monkeypatch.setattr(response.stream, "close", close_raises)
+        with pytest.raises(RuntimeError, match="user failure"):
+            with response:
+                raise RuntimeError("user failure")
+
+    spans = span_exporter.get_finished_spans()
+    assert "RuntimeError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+def test_chat_completion_streaming_close_exception_propagates_when_first(
+    span_exporter, openai_client, instrument_with_content, vcr, monkeypatch
+):
+    if not is_experimental_mode():
+        pytest.skip("new stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+        original_close = response.stream.close
+
+        def close_raises():
+            original_close()
+            raise RuntimeError("close failure")
+
+        monkeypatch.setattr(response.stream, "close", close_raises)
+        with pytest.raises(RuntimeError, match="close failure"):
+            response.close()
+
+    spans = span_exporter.get_finished_spans()
+    assert "RuntimeError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+def test_chat_completion_streaming_instrumentation_finalize_errors_swallowed(
+    span_exporter, openai_client, instrument_with_content, vcr, monkeypatch
+):
+    if not is_experimental_mode():
+        pytest.skip("new stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+
+        def stop_raises():
+            raise RuntimeError("instrumentation failure")
+
+        monkeypatch.setattr(response, "_stop_stream", stop_raises)
+        response.close()
+
+    assert span_exporter.get_finished_spans() == ()
 
 
 def test_chat_completion_streaming_not_complete(
