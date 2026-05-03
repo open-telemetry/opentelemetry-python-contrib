@@ -24,39 +24,26 @@ from opentelemetry.instrumentation.anthropic.wrappers import (
 )
 
 
-def _noop_stop_llm(invocation):
-    del invocation
-
-
-def _noop_fail_llm(invocation, error):
-    del invocation
-    del error
-
-
-def _make_handler():
+def _make_invocation():
     return SimpleNamespace(
-        stop_llm=_noop_stop_llm,
-        fail_llm=_noop_fail_llm,
+        attributes={},
+        request_model=None,
+        stop=lambda: None,
+        fail=lambda error: None,
     )
 
 
-def _make_invocation():
-    return SimpleNamespace(attributes={}, request_model=None)
-
-
-def _make_stream_wrapper(stream, handler=None):
+def _make_stream_wrapper(stream):
     return MessagesStreamWrapper(
         stream=stream,
-        handler=handler or _make_handler(),
         invocation=_make_invocation(),
         capture_content=False,
     )
 
 
-def _make_async_stream_wrapper(stream, handler=None):
+def _make_async_stream_wrapper(stream):
     return AsyncMessagesStreamWrapper(
         stream=stream,
-        handler=handler or _make_handler(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -106,13 +93,18 @@ class _FakeAsyncStream:
 
 
 class _FakeSyncManager:
-    def __init__(self, stream, suppressed=False, exit_error=None):
+    def __init__(
+        self, stream, suppressed=False, enter_error=None, exit_error=None
+    ):
         self._stream = stream
         self._suppressed = suppressed
+        self._enter_error = enter_error
         self._exit_error = exit_error
         self.exit_args = None
 
     def __enter__(self):
+        if self._enter_error is not None:
+            raise self._enter_error
         return self._stream
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -274,7 +266,6 @@ def test_sync_manager_enter_constructs_stream_wrapper():
     stream = _FakeSyncStream()
     wrapper = MessagesStreamManagerWrapper(
         manager=_FakeSyncManager(stream=stream),
-        handler=_make_handler(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -285,10 +276,30 @@ def test_sync_manager_enter_constructs_stream_wrapper():
         assert wrapper._stream_wrapper is result
 
 
+def test_sync_manager_enter_fails_invocation_when_manager_raises():
+    error = RuntimeError("manager enter failure")
+    failures = []
+    invocation = _make_invocation()
+    invocation.fail = failures.append
+    wrapper = MessagesStreamManagerWrapper(
+        manager=_FakeSyncManager(
+            stream=SimpleNamespace(),
+            enter_error=error,
+        ),
+        invocation=invocation,
+        capture_content=False,
+    )
+
+    with pytest.raises(RuntimeError, match="manager enter failure"):
+        with wrapper:
+            pass
+
+    assert failures == [error]
+
+
 def test_sync_manager_exit_forwards_exception_to_stream_wrapper():
     wrapper = MessagesStreamManagerWrapper(
         manager=_FakeSyncManager(stream=SimpleNamespace(), suppressed=False),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -306,7 +317,6 @@ def test_sync_manager_exit_forwards_exception_to_stream_wrapper():
 def test_sync_manager_exit_uses_none_exception_when_manager_suppresses():
     wrapper = MessagesStreamManagerWrapper(
         manager=_FakeSyncManager(stream=SimpleNamespace(), suppressed=True),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -329,7 +339,6 @@ def test_sync_manager_exit_still_finalizes_stream_wrapper_when_manager_raises():
             suppressed=False,
             exit_error=manager_error,
         ),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -463,7 +472,6 @@ async def test_async_manager_enter_constructs_async_stream_wrapper():
     stream = _FakeAsyncStream()
     wrapper = AsyncMessagesStreamManagerWrapper(
         manager=_FakeAsyncManager(stream=stream),
-        handler=_make_handler(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -478,7 +486,6 @@ async def test_async_manager_enter_constructs_async_stream_wrapper():
 async def test_async_manager_exit_forwards_exception_to_stream_wrapper():
     wrapper = AsyncMessagesStreamManagerWrapper(
         manager=_FakeAsyncManager(stream=SimpleNamespace(), suppressed=False),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -497,7 +504,6 @@ async def test_async_manager_exit_forwards_exception_to_stream_wrapper():
 async def test_async_manager_exit_uses_none_exception_when_manager_suppresses():
     wrapper = AsyncMessagesStreamManagerWrapper(
         manager=_FakeAsyncManager(stream=SimpleNamespace(), suppressed=True),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -521,7 +527,6 @@ async def test_async_manager_exit_still_finalizes_stream_wrapper_when_manager_ra
             suppressed=False,
             exit_error=manager_error,
         ),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )

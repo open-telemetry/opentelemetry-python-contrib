@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add instrumentation for Anthropic `Messages.stream()` helper method
+  ([#4499](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4499))
 - Add async Anthropic message stream wrappers and manager wrappers, with wrapper
   tests ([#4346](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4346))
   - `AsyncMessagesStreamWrapper` for async message stream telemetry
