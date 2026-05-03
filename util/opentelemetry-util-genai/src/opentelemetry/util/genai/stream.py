@@ -39,6 +39,7 @@ class SyncStreamWrapper(ABC, Generic[ChunkT]):
 
     def __init__(self, stream: Any):
         self.stream = stream
+        self._iterator = iter(stream)
         self._finalized = False
 
     def __enter__(self):
@@ -77,7 +78,7 @@ class SyncStreamWrapper(ABC, Generic[ChunkT]):
 
     def __next__(self) -> ChunkT:
         try:
-            chunk = next(self.stream)
+            chunk = next(self._iterator)
         except StopIteration:
             self._safe_finalize_success()
             raise
@@ -160,6 +161,7 @@ class AsyncStreamWrapper(ABC, Generic[ChunkT]):
 
     def __init__(self, stream: Any):
         self.stream = stream
+        self._aiter = aiter(stream)
         self._finalized = False
 
     async def __aenter__(self):
@@ -198,7 +200,7 @@ class AsyncStreamWrapper(ABC, Generic[ChunkT]):
 
     async def __anext__(self) -> ChunkT:
         try:
-            chunk = await self.stream.__anext__()
+            chunk = await anext(self._aiter)
         except StopAsyncIteration:
             self._safe_finalize_success()
             raise

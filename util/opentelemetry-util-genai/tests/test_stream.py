@@ -45,6 +45,9 @@ class _FakeSyncStream:
         self.close_count = 0
         self.extra_attribute = "passthrough"
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
         if self._chunks:
             return self._chunks.pop(0)
@@ -56,6 +59,18 @@ class _FakeSyncStream:
         self.close_count += 1
         if self._close_error:
             raise self._close_error
+
+
+class _FakeSyncIterable:
+    def __init__(self, chunks=None):
+        self.iterator = iter(chunks or [])
+        self.close_count = 0
+
+    def __iter__(self):
+        return self.iterator
+
+    def close(self):
+        self.close_count += 1
 
 
 class _TestSyncStreamWrapper(SyncStreamWrapper):
@@ -103,6 +118,19 @@ def test_sync_stream_wrapper_processes_chunks_and_stops():
         next(wrapper)
     except StopIteration:
         pass
+
+    assert wrapper.stop_count == 1
+
+
+def test_sync_stream_wrapper_processes_iterables():
+    stream = _FakeSyncIterable(chunks=["chunk"])
+    wrapper = _TestSyncStreamWrapper(stream)
+
+    assert next(wrapper) == "chunk"
+    assert wrapper.processed == ["chunk"]
+
+    with pytest.raises(StopIteration):
+        next(wrapper)
 
     assert wrapper.stop_count == 1
 
@@ -240,6 +268,9 @@ class _FakeAsyncStream:
         self.close_count = 0
         self.extra_attribute = "passthrough"
 
+    def __aiter__(self):
+        return self
+
     async def __anext__(self):
         if self._chunks:
             return self._chunks.pop(0)
@@ -251,6 +282,18 @@ class _FakeAsyncStream:
         self.close_count += 1
         if self._close_error:
             raise self._close_error
+
+
+class _FakeAsyncIterable:
+    def __init__(self, chunks=None):
+        self.iterator = _FakeAsyncStream(chunks=chunks)
+        self.close_count = 0
+
+    def __aiter__(self):
+        return self.iterator
+
+    async def close(self):
+        self.close_count += 1
 
 
 class _TestAsyncStreamWrapper(AsyncStreamWrapper):
@@ -298,6 +341,22 @@ def test_async_stream_wrapper_processes_chunks_and_stops():
             await anext(wrapper)
         except StopAsyncIteration:
             pass
+
+        assert wrapper.stop_count == 1
+
+    asyncio.run(exercise())
+
+
+def test_async_stream_wrapper_processes_async_iterables():
+    async def exercise():
+        stream = _FakeAsyncIterable(chunks=["chunk"])
+        wrapper = _TestAsyncStreamWrapper(stream)
+
+        assert await anext(wrapper) == "chunk"
+        assert wrapper.processed == ["chunk"]
+
+        with pytest.raises(StopAsyncIteration):
+            await anext(wrapper)
 
         assert wrapper.stop_count == 1
 
