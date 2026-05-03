@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 from asyncpg import Connection, Record, cursor
+from asyncpg.prepared_stmt import PreparedStatement
 
 try:
     # wrapt 2.0.0+
@@ -144,3 +145,103 @@ class TestAsyncPGInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_prepared_statement_instrumentation(self):
+        def assert_wrapped(assert_fnc):
+            for method_name in (
+                "fetch",
+                "fetchval",
+                "fetchrow",
+                "executemany",
+            ):
+                method = getattr(PreparedStatement, method_name, None)
+                assert_fnc(
+                    isinstance(method, BaseObjectProxy),
+                    f"{method} isinstance {type(method)}",
+                )
+
+        assert_wrapped(self.assertFalse)
+        AsyncPGInstrumentor().instrument()
+        assert_wrapped(self.assertTrue)
+        AsyncPGInstrumentor().uninstrument()
+        assert_wrapped(self.assertFalse)
+
+    def _make_prepared_stmt_conn(self):
+        async def bind_execute_mock(*args, **kwargs):
+            return [], b"SELECT 1", True
+
+        async def bind_execute_many_mock(*args, **kwargs):
+            return None
+
+        conn = mock.Mock()
+        conn._pool_release_ctr = 0
+        conn.is_closed = lambda: False
+        conn._protocol = mock.Mock()
+        conn._protocol.bind_execute = bind_execute_mock
+        conn._protocol.bind_execute_many = bind_execute_many_mock
+
+        state = mock.Mock()
+        state.closed = False
+        return conn, state
+
+    def test_prepared_statement_fetch_span(self):
+        conn, state = self._make_prepared_stmt_conn()
+
+        apg = AsyncPGInstrumentor()
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        stmt = PreparedStatement(conn, "SELECT * FROM users", state)
+        asyncio.run(stmt.fetch())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "SELECT")
+        self.assertTrue(spans[0].status.is_ok)
+        self.assertEqual(
+            spans[0].attributes.get("db.statement"), "SELECT * FROM users"
+        )
+        self.assertEqual(spans[0].attributes.get("db.system"), "postgresql")
+
+    def test_prepared_statement_executemany_span(self):
+        conn, state = self._make_prepared_stmt_conn()
+
+        apg = AsyncPGInstrumentor()
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        stmt = PreparedStatement(
+            conn, "INSERT INTO users (name) VALUES ($1)", state
+        )
+        asyncio.run(stmt.executemany([("alice",), ("bob",)]))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(spans[0].name, "INSERT")
+        self.assertTrue(spans[0].status.is_ok)
+        self.assertEqual(
+            spans[0].attributes.get("db.statement"),
+            "INSERT INTO users (name) VALUES ($1)",
+        )
+
+    def test_prepared_statement_error_span(self):
+        async def bind_execute_error(*args, **kwargs):
+            raise RuntimeError("db error")
+
+        conn = mock.Mock()
+        conn._pool_release_ctr = 0
+        conn.is_closed = lambda: False
+        conn._protocol = mock.Mock()
+        conn._protocol.bind_execute = bind_execute_error
+
+        state = mock.Mock()
+        state.closed = False
+
+        apg = AsyncPGInstrumentor()
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        stmt = PreparedStatement(conn, "SELECT 1", state)
+        with self.assertRaises(RuntimeError):
+            asyncio.run(stmt.fetch())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertFalse(spans[0].status.is_ok)

@@ -53,6 +53,7 @@ import re
 from typing import Collection
 
 import asyncpg
+import asyncpg.prepared_stmt
 import wrapt
 
 from opentelemetry import trace
@@ -153,7 +154,31 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 "asyncpg.cursor", method, self._do_cursor_execute
             )
 
+        prepared_stmt_methods = [
+            "fetch",
+            "fetchval",
+            "fetchrow",
+            "executemany",
+        ]
+        if hasattr(asyncpg.prepared_stmt.PreparedStatement, "fetchmany"):
+            prepared_stmt_methods.append("fetchmany")
+        for method in prepared_stmt_methods:
+            wrapt.wrap_function_wrapper(
+                "asyncpg.prepared_stmt",
+                f"PreparedStatement.{method}",
+                self._do_prepared_execute,
+            )
+
     def _uninstrument(self, **__):
+        prepared_stmt_methods = [
+            "fetch",
+            "fetchval",
+            "fetchrow",
+            "executemany",
+        ]
+        if hasattr(asyncpg.prepared_stmt.PreparedStatement, "fetchmany"):
+            prepared_stmt_methods.append("fetchmany")
+
         for cls, methods in [
             (
                 asyncpg.connection.Connection,
@@ -161,6 +186,10 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             ),
             (asyncpg.cursor.Cursor, ("forward", "fetch", "fetchrow")),
             (asyncpg.cursor.CursorIterator, ("__anext__",)),
+            (
+                asyncpg.prepared_stmt.PreparedStatement,
+                tuple(prepared_stmt_methods),
+            ),
         ]:
             for method_name in methods:
                 unwrap(cls, method_name)
@@ -243,3 +272,32 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         if not stop:
             return result
         raise StopAsyncIteration
+
+    async def _do_prepared_execute(self, func, instance, args, kwargs):
+        exception = None
+        query = instance._query or ""
+
+        try:
+            name = self._leading_comment_remover.sub("", query).split()[0]
+        except IndexError:
+            name = ""
+
+        span_attributes = _hydrate_span_from_args(
+            instance._connection,
+            query,
+            args if self.capture_parameters else None,
+        )
+
+        with self._tracer.start_as_current_span(
+            name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
+            try:
+                result = await func(*args, **kwargs)
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                raise
+            finally:
+                if span.is_recording() and exception is not None:
+                    span.set_status(Status(StatusCode.ERROR))
+
+        return result
