@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+-Add `gen_ai.usage.reasoning.output_tokens` attribute to capture thinking tokens on spans/events when the experimental sem conv flag is set. Add thinking tokens to output tokens. ([#4313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4313))
 -Add `gen_ai.usage.cache_read.input_tokens` attribute to capture cached tokens on spans/events when the experimental sem conv flag is set. ([#4313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4313))
 
 ## Version 0.7b0 (2026-02-20)
