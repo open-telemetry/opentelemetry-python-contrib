@@ -30,11 +30,15 @@ from opentelemetry.semconv._incubating.attributes import (
 
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    GenAIAttributes.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS  # pylint: disable=no-member
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = getattr(
+    GenAIAttributes,
+    "GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS",
+    "gen_ai.usage.cache_creation.input_tokens",
 )
-GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = (
-    GenAIAttributes.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS  # pylint: disable=no-member
+GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = getattr(
+    GenAIAttributes,
+    "GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS",
+    "gen_ai.usage.cache_read.input_tokens",
 )
 USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
 USER_ONLY_EXPECTED_INPUT_MESSAGES = [
