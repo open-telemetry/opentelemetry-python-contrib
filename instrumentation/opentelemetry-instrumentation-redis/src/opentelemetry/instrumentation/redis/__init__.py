@@ -220,18 +220,25 @@ if _CLIENT_ASYNCIO_SUPPORT:
 _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 
 
+def _get_semconv_opt_in_modes():
+    _OpenTelemetrySemanticConventionStability._initialize()
+    return (
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE
+        ),
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP
+        ),
+    )
+
+
 def _traced_execute_factory(
     tracer: Tracer,
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    # Get semconv opt-in modes for database and HTTP signal types
-    _OpenTelemetrySemanticConventionStability._initialize()
-    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.DATABASE
-    )
-    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.HTTP
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_semconv_opt_in_modes()
     )
 
     def _traced_execute_command(
@@ -283,13 +290,8 @@ def _traced_execute_pipeline_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    # Get semconv opt-in modes for database and HTTP signal types
-    _OpenTelemetrySemanticConventionStability._initialize()
-    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.DATABASE
-    )
-    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.HTTP
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_semconv_opt_in_modes()
     )
 
     def _traced_execute_pipeline(
@@ -351,13 +353,8 @@ def _async_traced_execute_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    # Get semconv opt-in modes for database and HTTP signal types
-    _OpenTelemetrySemanticConventionStability._initialize()
-    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.DATABASE
-    )
-    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.HTTP
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_semconv_opt_in_modes()
     )
 
     async def _async_traced_execute_command(
@@ -405,13 +402,8 @@ def _async_traced_execute_pipeline_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    # Get semconv opt-in modes for database and HTTP signal types
-    _OpenTelemetrySemanticConventionStability._initialize()
-    db_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.DATABASE
-    )
-    http_sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.HTTP
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_semconv_opt_in_modes()
     )
 
     async def _async_traced_execute_pipeline(
