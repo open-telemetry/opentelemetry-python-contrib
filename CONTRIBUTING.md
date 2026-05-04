@@ -206,7 +206,13 @@ git commit
 git push fork feature
 ```
 
-Open a pull request against the main `opentelemetry-python-contrib` repo.
+Open a pull request (PR) against the main `opentelemetry-python-contrib` repo.
+
+A descriptive PR title will help the community better triage and review your changes. Make sure to prefix with the name(s) of the package/subdirectory/domain that your PR updates. Following any of these examples will help:
+
+* "opentelemetry-instrumentation-dbapi: add client operation duration metrics"
+* "GenAI Utils: Add _BaseAgent base class and agent creation lifecycle"
+* "docs(google-genai): document config recording environment variables"
 
 ### How to Receive Comments
 
