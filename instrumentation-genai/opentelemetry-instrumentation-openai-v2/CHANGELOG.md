@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 2.4b0 (2026-05-01)
+
 
 - Migrate experimental path from deprecated `LLMInvocation` to `InferenceInvocation`,
   using `handler.start_inference()` and `invocation.stop()`/`invocation.fail()` directly
@@ -35,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add strongly typed Responses API extractors with validation and content
   extraction improvements
   ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
+- Add completion hook support.
+  ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Fix `response_format` handling: map `json_object`/`json_schema` to `json` output type.
+  ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
+- Skip attribute values with `openai.Omit` value.
+  ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
 - Default empty string for `gen_ai.request.model` attribute on missing model.
   ([#4494](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4494))
 

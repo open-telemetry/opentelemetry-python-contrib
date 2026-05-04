@@ -56,6 +56,14 @@ class CompletionHook(Protocol):
     The span and log_record arguments should be provided based on the content capturing mode
     :func:`~opentelemetry.util.genai.utils.get_content_capturing_mode`.
 
+    .. note::
+        Hooks returned from :func:`load_completion_hook` are wrapped so any
+        exception raised by :meth:`on_completion` is logged and swallowed.
+        Instrumentation code calling ``on_completion`` on a hook obtained
+        from :func:`load_completion_hook` does not need a ``try``/``except``
+        around the call - exceptions never escape into the instrumented
+        application.
+
     Args:
         inputs: The inputs of the GenAI interaction.
         outputs: The outputs of the GenAI interaction.
@@ -85,6 +93,29 @@ class _NoOpCompletionHook(CompletionHook):
         return None
 
 
+class _SafeCompletionHook(CompletionHook):
+    """Wraps a :class:`CompletionHook` so exceptions raised by ``on_completion``
+    are logged and swallowed instead of propagating to the caller.
+
+    Instrumentation code calls ``on_completion`` from telemetry paths that must
+    not surface telemetry errors to the user's application. Wrapping at the
+    boundary keeps each call site free of repetitive ``try/except`` blocks.
+    """
+
+    def __init__(self, wrapped: CompletionHook) -> None:
+        self._wrapped = wrapped
+
+    def on_completion(self, **kwargs: Any) -> None:
+        try:
+            self._wrapped.on_completion(**kwargs)
+        except Exception as ex:  # pylint: disable=broad-except
+            _logger.warning(
+                "CompletionHook %r raised an exception; suppressing",
+                self._wrapped,
+                exc_info=ex,
+            )
+
+
 def load_completion_hook() -> CompletionHook:
     """Load the completion hook from entry point or return a noop implementation
 
@@ -92,6 +123,9 @@ def load_completion_hook() -> CompletionHook:
     ``opentelemetry_genai_completion_hook`` with name coming from
     :envvar:`OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK`. If one can't be found, returns a no-op
     implementation.
+
+    The returned hook wraps the user-provided implementation so any exception
+    raised by ``on_completion`` is logged and swallowed.
     """
     hook_name = environ.get(OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK, None)
     if not hook_name:
@@ -113,7 +147,7 @@ def load_completion_hook() -> CompletionHook:
                 continue
 
             _logger.debug("Using CompletionHook %s", name)
-            return hook
+            return _SafeCompletionHook(hook)
 
         except Exception:  # pylint: disable=broad-except
             _logger.exception(
