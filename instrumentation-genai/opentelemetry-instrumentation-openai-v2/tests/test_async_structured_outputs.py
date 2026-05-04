@@ -82,14 +82,18 @@ async def test_async_structured_output_with_content(
         )
         assert_messages_attribute(
             spans[0].attributes["gen_ai.output.messages"],
-            format_simple_expected_output_message(response.choices[0].message.content),
+            format_simple_expected_output_message(
+                response.choices[0].message.content
+            ),
         )
     else:
         logs = log_exporter.get_finished_logs()
         assert len(logs) == 2
 
         user_message = {"content": STRUCTURED_OUTPUT_PROMPT[0]["content"]}
-        assert_message_in_logs(logs[0], "gen_ai.user.message", user_message, spans[0])
+        assert_message_in_logs(
+            logs[0], "gen_ai.user.message", user_message, spans[0]
+        )
 
         choice_event = {
             "index": 0,
@@ -99,7 +103,9 @@ async def test_async_structured_output_with_content(
                 "content": response.choices[0].message.content,
             },
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )
 
 
 @pytest.mark.asyncio()
@@ -157,4 +163,6 @@ async def test_async_structured_output_no_content(
             "finish_reason": "stop",
             "message": {"role": "assistant"},
         }
-        assert_message_in_logs(logs[1], "gen_ai.choice", choice_event, spans[0])
+        assert_message_in_logs(
+            logs[1], "gen_ai.choice", choice_event, spans[0]
+        )

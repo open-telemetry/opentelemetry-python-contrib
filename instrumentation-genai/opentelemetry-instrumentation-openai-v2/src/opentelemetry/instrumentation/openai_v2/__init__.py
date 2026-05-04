@@ -200,10 +200,10 @@ class OpenAIInstrumentor(BaseInstrumentor):
         self._parse_supported = _is_parse_supported()
         if self._parse_supported:
             wrap_function_wrapper(
-                module="openai.resources.chat.completions",
-                name="Completions.parse",
-                wrapper=(
-                    chat_completions_create_v_new(handler, content_mode)
+                "openai.resources.chat.completions",
+                "Completions.parse",
+                (
+                    chat_completions_create_v_new(handler)
                     if latest_experimental_enabled
                     else chat_completions_create_v_old(
                         tracer, logger, instruments, is_content_enabled()
@@ -212,10 +212,10 @@ class OpenAIInstrumentor(BaseInstrumentor):
             )
 
             wrap_function_wrapper(
-                module="openai.resources.chat.completions",
-                name="AsyncCompletions.parse",
-                wrapper=(
-                    async_chat_completions_create_v_new(handler, content_mode)
+                "openai.resources.chat.completions",
+                "AsyncCompletions.parse",
+                (
+                    async_chat_completions_create_v_new(handler)
                     if latest_experimental_enabled
                     else async_chat_completions_create_v_old(
                         tracer, logger, instruments, is_content_enabled()
