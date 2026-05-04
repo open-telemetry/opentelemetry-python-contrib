@@ -31,24 +31,24 @@ logger = logging.getLogger(__name__)
 
 
 def _syscall(func):
-    def wrapper(package=None):
+    def wrapper(packages=None):
         try:
-            if package:
-                return func(package)
+            if packages:
+                return func(packages)
             return func()
         except SubprocessError as exp:
             cmd = getattr(exp, "cmd", None)
             if cmd:
                 msg = f'Error calling system command "{" ".join(cmd)}"'
-            if package:
-                msg = f'{msg} for package "{package}"'
+            if packages:
+                msg = f'{msg} for package "{packages}"'
             raise RuntimeError(msg)
 
     return wrapper
 
 
 @_syscall
-def _sys_pip_install(package):
+def _sys_pip_install(packages):
     # explicit upgrade strategy to override potential pip config
     try:
         check_call(
@@ -60,7 +60,7 @@ def _sys_pip_install(package):
                 "-U",
                 "--upgrade-strategy",
                 "only-if-needed",
-                package,
+                *packages,
             ]
         )
     except CalledProcessError as error:
@@ -123,8 +123,9 @@ def _run_requirements(default_instrumentations, libraries):
 
 
 def _run_install(default_instrumentations, libraries):
-    for lib in _find_installed_libraries(default_instrumentations, libraries):
-        _sys_pip_install(lib)
+    libs = list(_find_installed_libraries(default_instrumentations, libraries))
+    if libs:
+        _sys_pip_install(libs)
     _pip_check(libraries)
 
 
