@@ -29,6 +29,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_net_transport,
     _set_status,
     _StabilityMode,
 )
@@ -40,11 +41,17 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_SYSTEM,
     DB_USER,
 )
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_TRANSPORT,
+)
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_OPERATION_NAME,
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_TRANSPORT,
 )
 from opentelemetry.trace.status import StatusCode
 
@@ -325,6 +332,54 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
 
 
 class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
+    def test_net_transport_http_default(self):
+        result = {}
+        _set_net_transport(
+            result,
+            "ip_tcp",
+            "tcp",
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertIn(NET_TRANSPORT, result)
+        self.assertEqual(result[NET_TRANSPORT], "ip_tcp")
+        self.assertNotIn(NETWORK_TRANSPORT, result)
+
+    def test_net_transport_http_stable(self):
+        result = {}
+        _set_net_transport(
+            result,
+            "ip_tcp",
+            "tcp",
+            sem_conv_opt_in_mode=_StabilityMode.HTTP,
+        )
+        self.assertNotIn(NET_TRANSPORT, result)
+        self.assertIn(NETWORK_TRANSPORT, result)
+        self.assertEqual(result[NETWORK_TRANSPORT], "tcp")
+
+    def test_net_transport_http_dup(self):
+        result = {}
+        _set_net_transport(
+            result,
+            "ip_tcp",
+            "tcp",
+            sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP,
+        )
+        self.assertIn(NET_TRANSPORT, result)
+        self.assertEqual(result[NET_TRANSPORT], "ip_tcp")
+        self.assertIn(NETWORK_TRANSPORT, result)
+        self.assertEqual(result[NETWORK_TRANSPORT], "tcp")
+
+    def test_net_transport_none_value(self):
+        result = {}
+        _set_net_transport(
+            result,
+            None,
+            None,
+            sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP,
+        )
+        self.assertNotIn(NET_TRANSPORT, result)
+        self.assertNotIn(NETWORK_TRANSPORT, result)
+
     def test_set_status_for_non_http_code_with_recording_span(self):
         span = Mock()
         span.is_recording.return_value = True

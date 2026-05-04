@@ -47,6 +47,10 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NetTransportValues,
 )
 from opentelemetry.semconv.attributes.db_attributes import DB_QUERY_TEXT
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_TRANSPORT,
+    NetworkTransportValues,
+)
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
@@ -980,6 +984,35 @@ class TestRedisSemconvConfiguration(TestRedis):
         # Network attributes should still be present (HTTP signal type for network attributes)
         self.assertIn(SERVER_ADDRESS, span.attributes)
         self.assertIn(SERVER_PORT, span.attributes)
+        self.assertNotIn(NET_TRANSPORT, span.attributes)
+        self.assertIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NETWORK_TRANSPORT],
+            NetworkTransportValues.TCP.value,
+        )
+
+    @stability_mode("http")
+    def test_net_transport_http_stable_mode_unix_socket(self):
+        # HTTP signal type should suppress old net.transport for unix socket connections too
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis.from_url(
+            "unix://foo@/path/to/socket.sock?db=3&password=bar"
+        )
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(NET_TRANSPORT, span.attributes)
+        self.assertIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NETWORK_TRANSPORT],
+            NetworkTransportValues.UNIX.value,
+        )
 
     @stability_mode("http/dup")
     def test_db_statement_http_dup_mode(self):
@@ -1001,6 +1034,16 @@ class TestRedisSemconvConfiguration(TestRedis):
         # Network attributes should still be present (HTTP signal type for network attributes)
         self.assertIn(SERVER_ADDRESS, span.attributes)
         self.assertIn(SERVER_PORT, span.attributes)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NETWORK_TRANSPORT],
+            NetworkTransportValues.TCP.value,
+        )
 
     @stability_mode("http,database")
     def test_db_statement_combined_http_database_mode(self):

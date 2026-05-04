@@ -25,9 +25,10 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_system,
     _set_http_net_peer_name_client,
     _set_http_peer_port_client,
+    _set_net_transport,
 )
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_TRANSPORT,
+from opentelemetry.semconv.attributes.network_attributes import (
+    NetworkTransportValues,
 )
 from opentelemetry.semconv.trace import (
     DbSystemValues,
@@ -61,7 +62,12 @@ def _extract_conn_attributes(
         _set_http_net_peer_name_client(
             attributes, conn_kwargs.get("path", ""), http_sem_conv_opt_in_mode
         )
-        attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
+        _set_net_transport(
+            attributes,
+            NetTransportValues.OTHER.value,
+            NetworkTransportValues.UNIX.value,
+            http_sem_conv_opt_in_mode,
+        )
     else:
         _set_http_net_peer_name_client(
             attributes,
@@ -73,7 +79,12 @@ def _extract_conn_attributes(
             conn_kwargs.get("port", 6379),
             http_sem_conv_opt_in_mode,
         )
-        attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
+        _set_net_transport(
+            attributes,
+            NetTransportValues.IP_TCP.value,
+            NetworkTransportValues.TCP.value,
+            http_sem_conv_opt_in_mode,
+        )
 
     return attributes
 

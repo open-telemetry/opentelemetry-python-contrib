@@ -48,6 +48,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
     NET_PEER_NAME,
     NET_PEER_PORT,
+    NET_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
@@ -68,6 +69,7 @@ from opentelemetry.semconv.attributes.http_attributes import (
 )
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
+    NETWORK_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
@@ -619,6 +621,18 @@ def _set_db_redis_database_index(
         if database_index is not None:
             result[DB_REDIS_DATABASE_INDEX] = int(database_index)
     # No new attribute - db.redis.database_index was removed with no replacement in semconv 1.38.0
+
+
+def _set_net_transport(
+    result: MutableMapping[str, AttributeValue],
+    old_transport: AttributeValue,
+    new_transport: AttributeValue,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, NET_TRANSPORT, old_transport)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, NETWORK_TRANSPORT, new_transport)
 
 
 # General
