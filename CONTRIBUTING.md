@@ -17,6 +17,8 @@ Before you can contribute, you will need to sign the [Contributor License Agreem
 
 Please also read the [OpenTelemetry Contributor Guide](https://github.com/open-telemetry/community/blob/main/guides/contributor/README.md).
 
+If you are using AI agents to assist with contributions, please read [AGENTS.md](AGENTS.md) for guidance on how to use them responsibly in this project.
+
 ## Index
 
 - [Contributing to opentelemetry-python-contrib](#contributing-to-opentelemetry-python-contrib)
@@ -204,7 +206,13 @@ git commit
 git push fork feature
 ```
 
-Open a pull request against the main `opentelemetry-python-contrib` repo.
+Open a pull request (PR) against the main `opentelemetry-python-contrib` repo.
+
+A descriptive PR title will help the community better triage and review your changes. Make sure to prefix with the name(s) of the package/subdirectory/domain that your PR updates. Following any of these examples will help:
+
+* "opentelemetry-instrumentation-dbapi: add client operation duration metrics"
+* "GenAI Utils: Add _BaseAgent base class and agent creation lifecycle"
+* "docs(google-genai): document config recording environment variables"
 
 ### How to Receive Comments
 
