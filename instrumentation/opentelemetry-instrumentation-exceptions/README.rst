@@ -31,5 +31,5 @@ logs.
 References
 ----------
 
-* `OpenTelemetry unhandled exceptions instrumentation source <https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-exceptions>`_
+* `OpenTelemetry Python Contrib repository <https://github.com/open-telemetry/opentelemetry-python-contrib>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
