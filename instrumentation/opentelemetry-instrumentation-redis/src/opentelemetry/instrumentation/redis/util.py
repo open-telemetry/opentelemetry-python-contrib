@@ -21,12 +21,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from opentelemetry.instrumentation._semconv import (
+    _set_db_redis_database_index,
     _set_db_system,
     _set_http_net_peer_name_client,
     _set_http_peer_port_client,
-)
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_REDIS_DATABASE_INDEX,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_TRANSPORT,
@@ -58,7 +56,7 @@ def _extract_conn_attributes(
     )
 
     db = conn_kwargs.get("db", 0)
-    attributes[DB_REDIS_DATABASE_INDEX] = db
+    _set_db_redis_database_index(attributes, db, db_sem_conv_opt_in_mode)
     if "path" in conn_kwargs:
         _set_http_net_peer_name_client(
             attributes, conn_kwargs.get("path", ""), http_sem_conv_opt_in_mode

@@ -25,6 +25,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
     _set_db_operation,
+    _set_db_redis_database_index,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -34,6 +35,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -503,6 +505,40 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
             result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
         )
         self.assertNotIn(DB_NAME, result)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_default(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, 0, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertIn(DB_REDIS_DATABASE_INDEX, result)
+        self.assertEqual(result[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_database_stable(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, result)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_database_dup(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        self.assertIn(DB_REDIS_DATABASE_INDEX, result)
+        self.assertEqual(result[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_none_value(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, result)
         self.assertNotIn(DB_NAMESPACE, result)
 
     def test_db_statement_default(self):

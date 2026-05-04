@@ -916,6 +916,50 @@ class TestRedisSemconvConfiguration(TestRedis):
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
 
+    @stability_mode("")
+    def test_db_namespace_default_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+
+    @stability_mode("database")
+    def test_db_namespace_database_stable_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+
+    @stability_mode("database/dup")
+    def test_db_namespace_database_dup_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+
     @stability_mode("http")
     def test_db_statement_http_stable_mode(self):
         # HTTP signal type should not affect database attributes; they stay in default behavior

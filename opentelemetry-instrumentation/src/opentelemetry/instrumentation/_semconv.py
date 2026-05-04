@@ -26,6 +26,7 @@ from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -607,6 +608,17 @@ def _set_db_operation(
         set_string_attribute(result, DB_OPERATION, operation)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, DB_OPERATION_NAME, operation)
+
+
+def _set_db_redis_database_index(
+    result: MutableMapping[str, AttributeValue],
+    database_index: int,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        if database_index is not None:
+            result[DB_REDIS_DATABASE_INDEX] = int(database_index)
+    # No new attribute - db.redis.database_index was removed with no replacement in semconv 1.38.0
 
 
 # General
