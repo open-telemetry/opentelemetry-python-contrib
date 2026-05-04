@@ -113,7 +113,10 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
             exc: BaseException,
             tb: TracebackType | None,
         ) -> None:
-            if isinstance(exc, Exception) and self._exception_logger is not None:
+            if (
+                isinstance(exc, Exception)
+                and self._exception_logger is not None
+            ):
                 try:
                     self._exception_logger.emit(
                         exc,
@@ -182,7 +185,10 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
             context: dict[str, Any],
         ) -> None:
             exc = context.get("exception")
-            if isinstance(exc, Exception) and self._exception_logger is not None:
+            if (
+                isinstance(exc, Exception)
+                and self._exception_logger is not None
+            ):
                 try:
                     self._exception_logger.emit(
                         exc,

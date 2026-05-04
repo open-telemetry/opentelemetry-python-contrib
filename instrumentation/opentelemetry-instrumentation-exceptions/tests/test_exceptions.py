@@ -112,9 +112,10 @@ def test_sys_excepthook_emits_log(
     assert isinstance(attributes[exception_attributes.EXCEPTION_TYPE], str)
     assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
     assert isinstance(attributes[exception_attributes.EXCEPTION_MESSAGE], str)
-    assert "ValueError: boom" in attributes[
-        exception_attributes.EXCEPTION_STACKTRACE
-    ]
+    assert (
+        "ValueError: boom"
+        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
+    )
     assert isinstance(
         attributes[exception_attributes.EXCEPTION_STACKTRACE], str
     )
@@ -148,9 +149,10 @@ def test_threading_excepthook_emits_log(
     attributes = log_record.attributes
     assert attributes[exception_attributes.EXCEPTION_TYPE] == "ValueError"
     assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
-    assert "ValueError: boom" in attributes[
-        exception_attributes.EXCEPTION_STACKTRACE
-    ]
+    assert (
+        "ValueError: boom"
+        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
+    )
 
 
 def test_asyncio_unhandled_exception_emits_log(
@@ -190,9 +192,10 @@ def test_asyncio_unhandled_exception_emits_log(
     attributes = log_record.attributes
     assert attributes[exception_attributes.EXCEPTION_TYPE] == "ValueError"
     assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
-    assert "ValueError: boom" in attributes[
-        exception_attributes.EXCEPTION_STACKTRACE
-    ]
+    assert (
+        "ValueError: boom"
+        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
+    )
 
 
 def test_base_exceptions_are_not_emitted(

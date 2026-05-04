@@ -37,6 +37,7 @@ members = [
     "opentelemetry-instrumentation-dbapi",
     "opentelemetry-instrumentation-django",
     "opentelemetry-instrumentation-elasticsearch",
+    "opentelemetry-instrumentation-exceptions",
     "opentelemetry-instrumentation-falcon",
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-flask",
@@ -3312,6 +3313,23 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
+]
+provides-extras = ["instruments"]
+
+[[package]]
+name = "opentelemetry-instrumentation-exceptions"
+source = { editable = "instrumentation/opentelemetry-instrumentation-exceptions" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
 provides-extras = ["instruments"]
 
