@@ -162,54 +162,6 @@ def test_flatten_with_custom_flatten_func():
     }
 
 
-def test_flatten_with_pydantic_model_value():
-    input_dict = {
-        "foo": PydanticModel(str_value="bar", int_value=123),
-    }
-
-    output = dict_util.flatten_dict(input_dict)
-    assert output == {
-        "foo.str_value": "bar",
-        "foo.int_value": 123,
-    }
-    assert dict_util.flatten_dict({"foo": PydanticModel}) == {
-        "foo": "<class 'tests.utils.test_dict_util.PydanticModel'>"
-    }
-
-
-def test_flatten_with_model_dumpable_value():
-    input_dict = {
-        "foo": ModelDumpableNotPydantic(
-            {
-                "str_value": "bar",
-                "int_value": 123,
-            }
-        ),
-    }
-
-    output = dict_util.flatten_dict(input_dict)
-    assert output == {
-        "foo.str_value": "bar",
-        "foo.int_value": 123,
-    }
-
-
-def test_flatten_with_mixed_structures():
-    input_dict = {
-        "foo": ModelDumpableNotPydantic(
-            {
-                "pydantic": PydanticModel(str_value="bar", int_value=123),
-            }
-        ),
-    }
-
-    output = dict_util.flatten_dict(input_dict)
-    assert output == {
-        "foo.pydantic.str_value": "bar",
-        "foo.pydantic.int_value": 123,
-    }
-
-
 def test_converts_tuple_with_json_fallback():
     input_dict = {
         "foo": ("abc", 123),

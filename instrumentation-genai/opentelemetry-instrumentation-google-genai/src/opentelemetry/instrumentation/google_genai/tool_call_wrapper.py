@@ -15,13 +15,9 @@
 import functools
 import inspect
 import json
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
-from google.genai.types import (
-    ToolListUnion,
-    ToolListUnionDict,
-    ToolOrDict,
-)
+from google.genai.types import ToolUnion
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -218,23 +214,12 @@ def _wrap_tool_function(
 
 
 def wrapped(
-    tool_or_tools: Optional[
-        Union[ToolFunction, ToolOrDict, ToolListUnion, ToolListUnionDict]
-    ],
+    tool_or_tools: Optional[ToolUnion],
     otel_wrapper: OTelWrapper,
     **kwargs,
 ):
     if tool_or_tools is None:
         return None
-    if isinstance(tool_or_tools, list):
-        return [
-            wrapped(item, otel_wrapper, **kwargs) for item in tool_or_tools
-        ]
-    if isinstance(tool_or_tools, dict):
-        return {
-            key: wrapped(value, otel_wrapper, **kwargs)
-            for (key, value) in tool_or_tools.items()
-        }
     if callable(tool_or_tools):
         return _wrap_tool_function(tool_or_tools, otel_wrapper, **kwargs)
     return tool_or_tools

@@ -83,40 +83,15 @@ class TestCase(unittest.TestCase):
         )
         self.assertEqual(span.attributes["gen_ai.tool.name"], "somefunction")
 
-    def test_wraps_multiple_tool_functions_as_list(self):
+    def test_wraps_multiple_tool_functions(self):
         def somefunction():
             pass
 
         def otherfunction():
             pass
 
-        wrapped_functions = self.wrap([somefunction, otherfunction])
-        wrapped_somefunction = wrapped_functions[0]
-        wrapped_otherfunction = wrapped_functions[1]
-        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
-        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
-        somefunction()
-        otherfunction()
-        self.otel.assert_does_not_have_span_named("execute_tool somefunction")
-        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
-        wrapped_somefunction()
-        self.otel.assert_has_span_named("execute_tool somefunction")
-        self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
-        wrapped_otherfunction()
-        self.otel.assert_has_span_named("execute_tool otherfunction")
-
-    def test_wraps_multiple_tool_functions_as_dict(self):
-        def somefunction():
-            pass
-
-        def otherfunction():
-            pass
-
-        wrapped_functions = self.wrap(
-            {"somefunction": somefunction, "otherfunction": otherfunction}
-        )
-        wrapped_somefunction = wrapped_functions["somefunction"]
-        wrapped_otherfunction = wrapped_functions["otherfunction"]
+        wrapped_somefunction = self.wrap(somefunction)
+        wrapped_otherfunction = self.wrap(otherfunction)
         self.otel.assert_does_not_have_span_named("execute_tool somefunction")
         self.otel.assert_does_not_have_span_named("execute_tool otherfunction")
         somefunction()
@@ -140,10 +115,14 @@ class TestCase(unittest.TestCase):
         asyncio.run(wrapped_somefunction())
         self.otel.assert_has_span_named("execute_tool somefunction")
 
-    def test_preserves_tool_dict(self):
-        tool_dict = genai_types.ToolDict()
-        wrapped_tool_dict = self.wrap(tool_dict)
-        self.assertEqual(tool_dict, wrapped_tool_dict)
+    def test_preserves_tool_object(self):
+        tool_obj = genai_types.Tool(
+            function_declarations=[
+                genai_types.FunctionDeclaration(name="foo", description="bar")
+            ]
+        )
+        wrapped_tool_obj = self.wrap(tool_obj)
+        self.assertEqual(tool_obj, wrapped_tool_obj)
 
     def test_does_not_have_description_if_no_doc_string(self):
         def somefunction():

@@ -28,17 +28,16 @@ from google.genai.models import t as transformers
 from google.genai.types import (
     BlockedReason,
     Candidate,
-    Content,
     ContentListUnion,
     ContentListUnionDict,
     ContentUnion,
-    ContentUnionDict,
     GenerateContentConfig,
     GenerateContentConfigOrDict,
     GenerateContentResponse,
     Tool,
-    ToolListUnionDict,
-    ToolUnionDict,
+    ToolListUnion,
+    ToolUnion,
+    _GenerateContentParameters,
 )
 
 from opentelemetry import context as context_api
@@ -303,7 +302,7 @@ def _mcp_tool_to_tool_definition(tool: McpTool) -> ToolDefinition:
     )
 
 
-def _to_tool_definition_common(tool: ToolUnionDict) -> list[ToolDefinition]:
+def _to_tool_definition_common(tool: ToolUnion) -> list[ToolDefinition]:
     if isinstance(tool, Tool):
         return _tool_to_tool_definition(tool)
 
@@ -321,7 +320,7 @@ def _to_tool_definition_common(tool: ToolUnionDict) -> list[ToolDefinition]:
     ]
 
 
-def _to_tool_definition(tool: ToolUnionDict) -> list[ToolDefinition]:
+def _to_tool_definition(tool: ToolUnion) -> list[ToolDefinition]:
     if _is_mcp_imported and isinstance(tool, McpClientSession):
         return []
 
@@ -329,7 +328,7 @@ def _to_tool_definition(tool: ToolUnionDict) -> list[ToolDefinition]:
 
 
 async def _to_tool_definition_async(
-    tool: ToolUnionDict,
+    tool: ToolUnion,
 ) -> list[ToolDefinition]:
     if _is_mcp_imported and isinstance(tool, McpClientSession):
         result = await tool.list_tools()
@@ -359,14 +358,14 @@ def _tool_def_without_parameters_attr(
 
 
 def _create_request_attributes(
-    config: Optional[GenerateContentConfigOrDict],
+    config: Optional[GenerateContentConfig],
     allow_list: AllowList,
 ) -> dict[str, AttributeValue]:
     if not config:
         return {}
-    config = _to_dict(config)
+    config_dict = config.model_dump(exclude_none=True)
     attributes = flatten_dict(
-        config,
+        config_dict,
         # A custom prefix is used, because the names/structure of the
         # configuration is likely to be specific to Google Gen AI SDK.
         key_prefix=GCP_GENAI_OPERATION_CONFIG,
@@ -393,7 +392,7 @@ def _create_request_attributes(
             "gcp.gen_ai.operation.config.seed": gen_ai_attributes.GEN_AI_REQUEST_SEED,
         },
     )
-    response_mime_type = config.get("response_mime_type")
+    response_mime_type = config.response_mime_type
     if response_mime_type:
         if response_mime_type == "text/plain":
             attributes[gen_ai_attributes.GEN_AI_OUTPUT_TYPE] = "text"
@@ -424,15 +423,6 @@ def _get_response_property(response: GenerateContentResponse, path: str):
     return current_context
 
 
-def _coerce_config_to_object(
-    config: GenerateContentConfigOrDict,
-) -> GenerateContentConfig:
-    if isinstance(config, GenerateContentConfig):
-        return config
-    # Input must be a dictionary; convert by invoking the constructor.
-    return GenerateContentConfig(**config)
-
-
 def _wrapped_config_with_tools(
     otel_wrapper: OTelWrapper,
     config: GenerateContentConfig,
@@ -448,24 +438,18 @@ def _wrapped_config_with_tools(
 
 
 def _config_to_system_instruction(
-    config: Union[GenerateContentConfigOrDict, None],
-) -> Union[ContentUnion, None]:
+    config: Optional[GenerateContentConfig],
+) -> Optional[ContentUnion]:
     if not config:
         return None
-
-    if isinstance(config, dict):
-        return GenerateContentConfig.model_validate(config).system_instruction
     return config.system_instruction
 
 
 def _config_to_tools(
-    config: Union[GenerateContentConfigOrDict, None],
-) -> Union[ToolListUnionDict, None]:
+    config: Optional[GenerateContentConfig],
+) -> Optional[ToolListUnion]:
     if not config:
         return None
-
-    if isinstance(config, dict):
-        return GenerateContentConfig.model_validate(config).tools
     return config.tools
 
 
@@ -549,13 +533,13 @@ class _GenerateContentInstrumentationHelper:
         self._is_async = is_async
 
     def wrapped_config(
-        self, config: Optional[GenerateContentConfigOrDict]
+        self, config: Optional[GenerateContentConfig]
     ) -> Optional[GenerateContentConfig]:
         if config is None:
             return None
         return _wrapped_config_with_tools(
             self._otel_wrapper,
-            _coerce_config_to_object(config),
+            config,
             extra_span_attributes={"gen_ai.system": self._genai_system},
         )
 
@@ -587,8 +571,8 @@ class _GenerateContentInstrumentationHelper:
 
     def process_request(
         self,
-        contents: Union[ContentListUnion, ContentListUnionDict],
-        config: Optional[GenerateContentConfigOrDict],
+        contents: ContentListUnion,
+        config: Optional[GenerateContentConfig],
         span: Span,
     ):
         span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, self._genai_system)
@@ -757,9 +741,9 @@ class _GenerateContentInstrumentationHelper:
         extra_attributes: dict[str, AttributeValue],
         request_attributes: dict[str, AttributeValue],
         final_attributes: dict[str, AttributeValue],
-        request: Union[ContentListUnion, ContentListUnionDict],
+        request: ContentListUnion,
         candidates: list[Candidate],
-        config: Optional[GenerateContentConfigOrDict] = None,
+        config: Optional[GenerateContentConfig] = None,
         tool_definitions: Optional[list[ToolDefinition]] = None,
     ):
         if not self.experimental_sem_convs_enabled:
@@ -850,9 +834,7 @@ class _GenerateContentInstrumentationHelper:
             },
         )
 
-    def _maybe_log_user_prompt(
-        self, contents: Union[ContentListUnion, ContentListUnionDict]
-    ):
+    def _maybe_log_user_prompt(self, contents: ContentListUnion):
         if isinstance(contents, list):
             total = len(contents)
             index = 0
@@ -865,7 +847,7 @@ class _GenerateContentInstrumentationHelper:
             self._maybe_log_single_user_prompt(contents)
 
     def _maybe_log_single_user_prompt(
-        self, contents: Union[ContentUnion, ContentUnionDict], index=0, total=1
+        self, contents: ContentUnion, index=0, total=1
     ):
         # TODO: figure out how to report the index in a manner that is
         # aligned with the OTel semantic conventions.
@@ -881,10 +863,7 @@ class _GenerateContentInstrumentationHelper:
         # See also: "TODOS.md"
         body = {}
         if self._content_recording_enabled:
-            logged_contents = contents
-            if isinstance(contents, list):
-                logged_contents = Content(parts=contents)
-            body["content"] = _to_dict(logged_contents)
+            body["content"] = _to_dict(contents)
         else:
             body["content"] = _CONTENT_ELIDED
         self._otel_wrapper.log_user_prompt(
@@ -1026,6 +1005,11 @@ def _create_instrumented_generate_content(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
+        params = _GenerateContentParameters(
+            model=model,
+            contents=contents,
+            config=config,
+        )
         candidates = []
         helper = _GenerateContentInstrumentationHelper(
             self,
@@ -1036,7 +1020,7 @@ def _create_instrumented_generate_content(
             is_async=False,
         )
         request_attributes = _create_request_attributes(
-            config,
+            params.config,
             helper._generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
@@ -1045,13 +1029,13 @@ def _create_instrumented_generate_content(
             extra_attributes = _get_extra_generate_content_attributes()
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
-                helper.process_request(contents, config, span)
+                helper.process_request(params.contents, params.config, span)
             try:
                 response = wrapped_func(
                     self,
                     model=model,
-                    contents=contents,
-                    config=helper.wrapped_config(config),
+                    contents=params.contents,
+                    config=helper.wrapped_config(params.config),
                     **kwargs,
                 )
                 if helper.experimental_sem_convs_enabled:
@@ -1069,15 +1053,15 @@ def _create_instrumented_generate_content(
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 maybe_tool_definitions = helper._maybe_get_tool_definitions(
-                    config
+                    params.config
                 )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
                     final_attributes,
-                    contents,
+                    params.contents,
                     candidates,
-                    config,
+                    params.config,
                     maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
@@ -1103,6 +1087,11 @@ def _create_instrumented_generate_content_stream(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> Iterator[GenerateContentResponse]:
+        params = _GenerateContentParameters(
+            model=model,
+            contents=contents,
+            config=config,
+        )
         candidates: list[Candidate] = []
         helper = _GenerateContentInstrumentationHelper(
             self,
@@ -1113,7 +1102,7 @@ def _create_instrumented_generate_content_stream(
             is_async=False,
         )
         request_attributes = _create_request_attributes(
-            config,
+            params.config,
             helper._generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
@@ -1122,13 +1111,13 @@ def _create_instrumented_generate_content_stream(
             extra_attributes = _get_extra_generate_content_attributes()
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
-                helper.process_request(contents, config, span)
+                helper.process_request(params.contents, params.config, span)
             try:
                 for response in wrapped_func(
                     self,
                     model=model,
-                    contents=contents,
-                    config=helper.wrapped_config(config),
+                    contents=params.contents,
+                    config=helper.wrapped_config(params.config),
                     **kwargs,
                 ):
                     if helper.experimental_sem_convs_enabled:
@@ -1146,15 +1135,15 @@ def _create_instrumented_generate_content_stream(
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 maybe_tool_definitions = helper._maybe_get_tool_definitions(
-                    config
+                    params.config
                 )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
                     final_attributes,
-                    contents,
+                    params.contents,
                     candidates,
-                    config,
+                    params.config,
                     maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
@@ -1180,6 +1169,11 @@ def _create_instrumented_async_generate_content(
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> GenerateContentResponse:
+        params = _GenerateContentParameters(
+            model=model,
+            contents=contents,
+            config=config,
+        )
         helper = _GenerateContentInstrumentationHelper(
             self,
             otel_wrapper,
@@ -1189,7 +1183,7 @@ def _create_instrumented_async_generate_content(
             is_async=True,
         )
         request_attributes = _create_request_attributes(
-            config,
+            params.config,
             helper._generate_content_config_key_allowlist,
         )
         candidates: list[Candidate] = []
@@ -1199,13 +1193,13 @@ def _create_instrumented_async_generate_content(
             extra_attributes = _get_extra_generate_content_attributes()
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
-                helper.process_request(contents, config, span)
+                helper.process_request(params.contents, params.config, span)
             try:
                 response = await wrapped_func(
                     self,
                     model=model,
-                    contents=contents,
-                    config=helper.wrapped_config(config),
+                    contents=params.contents,
+                    config=helper.wrapped_config(params.config),
                     **kwargs,
                 )
                 if helper.experimental_sem_convs_enabled:
@@ -1222,15 +1216,17 @@ def _create_instrumented_async_generate_content(
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 maybe_tool_definitions = (
-                    await helper._maybe_get_tool_definitions_async(config)
+                    await helper._maybe_get_tool_definitions_async(
+                        params.config
+                    )
                 )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
                     final_attributes,
-                    contents,
+                    params.contents,
                     candidates,
-                    config,
+                    params.config,
                     maybe_tool_definitions,
                 )
                 helper._record_token_usage_metric()
@@ -1257,6 +1253,11 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
         config: Optional[GenerateContentConfigOrDict] = None,
         **kwargs: Any,
     ) -> Awaitable[AsyncIterator[GenerateContentResponse]]:  # type: ignore
+        params = _GenerateContentParameters(
+            model=model,
+            contents=contents,
+            config=config,
+        )
         helper = _GenerateContentInstrumentationHelper(
             self,
             otel_wrapper,
@@ -1266,7 +1267,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             is_async=True,
         )
         request_attributes = _create_request_attributes(
-            config,
+            params.config,
             helper._generate_content_config_key_allowlist,
         )
         with helper.start_span_as_current_span(
@@ -1277,13 +1278,13 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             extra_attributes = _get_extra_generate_content_attributes()
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
-                helper.process_request(contents, config, span)
+                helper.process_request(params.contents, params.config, span)
             try:
                 response_async_generator = await wrapped_func(
                     self,
                     model=model,
-                    contents=contents,
-                    config=helper.wrapped_config(config),
+                    contents=params.contents,
+                    config=helper.wrapped_config(params.config),
                     **kwargs,
                 )
             except Exception as error:  # pylint: disable=broad-exception-caught
@@ -1292,15 +1293,17 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                 final_attributes = helper.create_final_attributes()
                 span.set_attributes(final_attributes)
                 maybe_tool_definitions = (
-                    await helper._maybe_get_tool_definitions_async(config)
+                    await helper._maybe_get_tool_definitions_async(
+                        params.config
+                    )
                 )
                 helper._maybe_log_completion_details(
                     extra_attributes,
                     request_attributes,
                     final_attributes,
-                    contents,
+                    params.contents,
                     [],
-                    config,
+                    params.config,
                     maybe_tool_definitions,
                 )
                 helper._record_duration_metric()
@@ -1328,16 +1331,16 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                         span.set_attributes(final_attributes)
                         maybe_tool_definitions = (
                             await helper._maybe_get_tool_definitions_async(
-                                config
+                                params.config
                             )
                         )
                         helper._maybe_log_completion_details(
                             extra_attributes,
                             request_attributes,
                             final_attributes,
-                            contents,
+                            params.contents,
                             candidates,
-                            config,
+                            params.config,
                             maybe_tool_definitions,
                         )
                         helper._record_token_usage_metric()
