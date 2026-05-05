@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
@@ -19,8 +19,14 @@ from opentelemetry.trace import Span
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
 
-ContextTuple = Tuple[Span, "AbstractContextManager[Span]", Optional[object]]
-ContextDict = dict[tuple[str, bool], ContextTuple]
+ContextKey = tuple[str, bool]
+ContextTuple = tuple[Span, "AbstractContextManager[Span]", object | None]
+ContextDict = dict[ContextKey, ContextTuple]
+
+
+class ContextCarrier(Protocol):
+    def get(self, key: str, default: Any = None) -> Any: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +60,7 @@ CELERY_CONTEXT_ATTRIBUTES = (
 # pylint:disable=too-many-branches
 def set_attributes_from_context(
     span: Span,
-    context: Mapping[str, Any],
+    context: ContextCarrier,
 ) -> None:
     """Helper to extract meta values from a Celery Context"""
     if not span.is_recording():
