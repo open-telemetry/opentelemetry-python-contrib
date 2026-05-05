@@ -46,7 +46,10 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_TRANSPORT,
     NetTransportValues,
 )
-from opentelemetry.semconv.attributes.db_attributes import DB_QUERY_TEXT
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_TRANSPORT,
     NetworkTransportValues,
@@ -894,6 +897,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_STATEMENT, span.attributes)
         self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
         self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
 
     @stability_mode("database")
     def test_db_statement_database_stable_mode(self):
@@ -910,6 +918,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertNotIn(DB_STATEMENT, span.attributes)
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
 
     @stability_mode("database/dup")
     def test_db_statement_database_dup_mode(self):
@@ -927,6 +940,14 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
 
     @stability_mode("")
     def test_db_namespace_default_mode(self):
@@ -989,6 +1010,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_STATEMENT, span.attributes)
         self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
         self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
         # Network attributes should still be present (HTTP signal type for network attributes)
         self.assertIn(SERVER_ADDRESS, span.attributes)
         self.assertIn(SERVER_PORT, span.attributes)
@@ -1039,6 +1065,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_STATEMENT, span.attributes)
         self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
         self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
         # Network attributes should still be present (HTTP signal type for network attributes)
         self.assertIn(SERVER_ADDRESS, span.attributes)
         self.assertIn(SERVER_PORT, span.attributes)
@@ -1070,6 +1101,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertNotIn(DB_STATEMENT, span.attributes)
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
         # Network attributes should still be present (HTTP signal type)
         self.assertIn(SERVER_ADDRESS, span.attributes)
         self.assertIn(SERVER_PORT, span.attributes)
@@ -1091,6 +1127,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertNotIn(DB_STATEMENT, span.attributes)
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
         # Network attributes should still be present (HTTP signal type)
         self.assertIn(SERVER_ADDRESS, span.attributes)
         self.assertIn(SERVER_PORT, span.attributes)
@@ -1113,6 +1154,14 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
         # Network attributes should still be present (HTTP signal type)
         self.assertIn(SERVER_ADDRESS, span.attributes)
         self.assertIn(SERVER_PORT, span.attributes)
@@ -1136,6 +1185,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn("GET ?", span.attributes[DB_STATEMENT])
         self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
         self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
 
     @stability_mode("http,database")
     def test_pipeline_combined_http_database_mode(self):
@@ -1156,6 +1210,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
         self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
 
     def test_async_db_statement_database_stable_mode(self):
         with patch.dict(
@@ -1175,6 +1234,11 @@ class TestRedisSemconvConfiguration(TestBase):
             self.assertNotIn(DB_STATEMENT, span.attributes)
             self.assertIn(DB_QUERY_TEXT, span.attributes)
             self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertIn(DB_SYSTEM_NAME, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+            )
             self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
             self.assertIn(NET_TRANSPORT, span.attributes)
             self.assertEqual(
@@ -1201,6 +1265,11 @@ class TestRedisSemconvConfiguration(TestBase):
             self.assertIn(DB_STATEMENT, span.attributes)
             self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
             self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+            self.assertIn(DB_SYSTEM, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+            )
+            self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
             self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
             self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
             self.assertIn(NET_TRANSPORT, span.attributes)
@@ -1231,6 +1300,14 @@ class TestRedisSemconvConfiguration(TestBase):
             self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
             self.assertIn(DB_QUERY_TEXT, span.attributes)
             self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+            self.assertIn(DB_SYSTEM, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+            )
+            self.assertIn(DB_SYSTEM_NAME, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+            )
             self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
             self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
             self.assertIn(NET_TRANSPORT, span.attributes)
@@ -1267,6 +1344,11 @@ class TestRedisSemconvConfiguration(TestBase):
             self.assertIn(DB_QUERY_TEXT, span.attributes)
             self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
             self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertIn(DB_SYSTEM_NAME, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+            )
             self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
             self.assertIn(NET_TRANSPORT, span.attributes)
             self.assertEqual(
@@ -1300,6 +1382,11 @@ class TestRedisSemconvConfiguration(TestBase):
             self.assertIn("GET ?", span.attributes[DB_STATEMENT])
             self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
             self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+            self.assertIn(DB_SYSTEM, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+            )
+            self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
             self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
             self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
             self.assertIn(NET_TRANSPORT, span.attributes)
@@ -1338,6 +1425,14 @@ class TestRedisSemconvConfiguration(TestBase):
             self.assertIn(DB_QUERY_TEXT, span.attributes)
             self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
             self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+            self.assertIn(DB_SYSTEM, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+            )
+            self.assertIn(DB_SYSTEM_NAME, span.attributes)
+            self.assertEqual(
+                span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+            )
             self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
             self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
             self.assertIn(NET_TRANSPORT, span.attributes)
