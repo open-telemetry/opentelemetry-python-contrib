@@ -4,6 +4,7 @@
 # pylint: disable=no-name-in-module
 
 import json
+import logging
 from unittest import mock
 
 import pytest
@@ -305,6 +306,49 @@ def test_update_effective_config_json_content_type(client):
         decoded_config[file_name] = json.loads(body)
 
     assert config == decoded_config
+
+
+def test_update_effective_config_text_content_type(client):
+    config = {"config": "FEATURE_ENABLED=false\n"}
+    effective_config = client.update_effective_config(
+        config,
+        content_type="text/plain",
+    )
+    config_entry = effective_config.config_map.config_map["config"]
+    assert config_entry.content_type == "text/plain"
+    assert config_entry.body == b"FEATURE_ENABLED=false\n"
+
+
+def test_update_effective_config_bytes_content(client):
+    config = {"config": b"FEATURE_ENABLED=false\n"}
+    effective_config = client.update_effective_config(
+        config,
+        content_type="text/plain",
+    )
+    config_entry = effective_config.config_map.config_map["config"]
+    assert config_entry.content_type == "text/plain"
+    assert config_entry.body == b"FEATURE_ENABLED=false\n"
+
+
+def test_update_effective_config_skips_unencodable_content(client, caplog):
+    caplog.set_level(logging.WARNING, logger="opentelemetry._opamp.messages")
+    effective_config = client.update_effective_config(
+        {"config": {"a": "config"}},
+        content_type="text/plain",
+    )
+    assert effective_config.config_map.config_map == {}
+    assert "Skipping effective config entry config" in caplog.text
+
+
+def test_build_full_state_message_text_effective_config(client):
+    config = {"config": "FEATURE_ENABLED=false\n"}
+    client.update_effective_config(config, content_type="text/plain")
+    data = client.build_full_state_message()
+    message = opamp_pb2.AgentToServer()
+    message.ParseFromString(data)
+    config_entry = message.effective_config.config_map.config_map["config"]
+    assert config_entry.content_type == "text/plain"
+    assert config_entry.body == b"FEATURE_ENABLED=false\n"
 
 
 def test_build_full_state_message(client):
