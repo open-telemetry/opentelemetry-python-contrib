@@ -16,6 +16,11 @@
 Cohere client instrumentation supporting `cohere`, it can be enabled by
 using ``CohereInstrumentor``.
 
+.. note::
+    This package is currently a scaffold. Chat completions instrumentation
+    will be added in a follow-up PR. Installing and calling instrument() is
+    safe but will not produce spans or logs until then.
+
 .. _cohere: https://pypi.org/project/cohere/
 
 Usage
@@ -23,18 +28,11 @@ Usage
 
 .. code:: python
 
-    from cohere import ClientV2
     from opentelemetry.instrumentation.cohere import CohereInstrumentor
 
     CohereInstrumentor().instrument()
 
-    client = ClientV2()
-    response = client.chat(
-        model="command-r-plus",
-        messages=[
-            {"role": "user", "content": "Write a short poem on open telemetry."},
-        ],
-    )
+    # Chat completions patching will be wired up in a follow-up PR.
 
 API
 ---
