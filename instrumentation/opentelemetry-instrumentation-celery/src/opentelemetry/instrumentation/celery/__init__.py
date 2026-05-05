@@ -117,8 +117,10 @@ celery_getter = CeleryGetter()
 class CeleryInstrumentor(BaseInstrumentor):
     def __init__(self):
         super().__init__()
-        self.metrics = None
-        self.task_id_to_start_time = {}
+        if not hasattr(self, "metrics"):
+            self.metrics = None
+        if not hasattr(self, "task_id_to_start_time"):
+            self.task_id_to_start_time = {}
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
