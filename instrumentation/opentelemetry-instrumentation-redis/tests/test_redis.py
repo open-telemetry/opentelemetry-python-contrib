@@ -843,6 +843,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn("GET ?", span.attributes[DB_STATEMENT])
         self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
         self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
 
     @stability_mode("database")
     def test_pipeline_database_stable_mode(self):
@@ -861,6 +866,11 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
         self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
 
     @stability_mode("database/dup")
     def test_pipeline_database_dup_mode(self):
@@ -881,6 +891,14 @@ class TestRedisSemconvConfiguration(TestBase):
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
         self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
 
     @stability_mode("")
     def test_db_statement_default_mode(self):
