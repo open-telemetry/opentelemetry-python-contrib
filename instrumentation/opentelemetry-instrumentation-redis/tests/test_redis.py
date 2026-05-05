@@ -806,8 +806,16 @@ class TestRedisInstance(TestBase):
             self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
 
 
-class TestRedisSemconvConfiguration(TestRedis):
+class TestRedisSemconvConfiguration(TestBase):
     """Tests semconv migration for both Redis pipeline and db_statement"""
+
+    def setUp(self):
+        super().setUp()
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+    def tearDown(self):
+        super().tearDown()
+        RedisInstrumentor().uninstrument()
 
     def re_instrument_and_clear_exporter(self):
         # Re-instrument to pick up the environment variable change
@@ -1148,6 +1156,198 @@ class TestRedisSemconvConfiguration(TestRedis):
         self.assertIn(DB_QUERY_TEXT, span.attributes)
         self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
         self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+
+    def test_async_db_statement_database_stable_mode(self):
+        with patch.dict(
+            os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "database"}
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            self.re_instrument_and_clear_exporter()
+            redis_client = fakeredis.aioredis.FakeRedis()
+
+            asyncio.run(redis_client.get("key"))
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertIn(DB_QUERY_TEXT, span.attributes)
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+            self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+            self.assertIn(NET_TRANSPORT, span.attributes)
+            self.assertEqual(
+                span.attributes[NET_TRANSPORT],
+                NetTransportValues.IP_TCP.value,
+            )
+            self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_async_db_statement_default_mode(self):
+        with patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: ""}):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            self.re_instrument_and_clear_exporter()
+            redis_client = fakeredis.aioredis.FakeRedis()
+
+            asyncio.run(redis_client.get("key"))
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertIn(DB_STATEMENT, span.attributes)
+            self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+            self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+            self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+            self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+            self.assertIn(NET_TRANSPORT, span.attributes)
+            self.assertEqual(
+                span.attributes[NET_TRANSPORT],
+                NetTransportValues.IP_TCP.value,
+            )
+            self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_async_db_statement_database_dup_mode(self):
+        with patch.dict(
+            os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            self.re_instrument_and_clear_exporter()
+            redis_client = fakeredis.aioredis.FakeRedis()
+
+            asyncio.run(redis_client.get("key"))
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertIn(DB_STATEMENT, span.attributes)
+            self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+            self.assertIn(DB_QUERY_TEXT, span.attributes)
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+            self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+            self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+            self.assertIn(NET_TRANSPORT, span.attributes)
+            self.assertEqual(
+                span.attributes[NET_TRANSPORT],
+                NetTransportValues.IP_TCP.value,
+            )
+            self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_async_pipeline_database_stable_mode(self):
+        with patch.dict(
+            os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "database"}
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            self.re_instrument_and_clear_exporter()
+            redis_client = fakeredis.aioredis.FakeRedis()
+
+            async def _run_pipeline():
+                async with redis_client.pipeline() as pipe:
+                    await pipe.get("key1")
+                    await pipe.set("key2", "value2")
+                    await pipe.execute()
+
+            asyncio.run(_run_pipeline())
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertIn(DB_QUERY_TEXT, span.attributes)
+            self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
+            self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+            self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+            self.assertIn(NET_TRANSPORT, span.attributes)
+            self.assertEqual(
+                span.attributes[NET_TRANSPORT],
+                NetTransportValues.IP_TCP.value,
+            )
+            self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_async_pipeline_default_mode(self):
+        with patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: ""}):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            self.re_instrument_and_clear_exporter()
+            redis_client = fakeredis.aioredis.FakeRedis()
+
+            async def _run_pipeline():
+                async with redis_client.pipeline() as pipe:
+                    await pipe.get("key1")
+                    await pipe.set("key2", "value2")
+                    await pipe.execute()
+
+            asyncio.run(_run_pipeline())
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertIn(DB_STATEMENT, span.attributes)
+            self.assertIn("GET ?", span.attributes[DB_STATEMENT])
+            self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
+            self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+            self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+            self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+            self.assertIn(NET_TRANSPORT, span.attributes)
+            self.assertEqual(
+                span.attributes[NET_TRANSPORT],
+                NetTransportValues.IP_TCP.value,
+            )
+            self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_async_pipeline_database_dup_mode(self):
+        with patch.dict(
+            os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            self.re_instrument_and_clear_exporter()
+            redis_client = fakeredis.aioredis.FakeRedis()
+
+            async def _run_pipeline():
+                async with redis_client.pipeline() as pipe:
+                    await pipe.get("key1")
+                    await pipe.set("key2", "value2")
+                    await pipe.execute()
+
+            asyncio.run(_run_pipeline())
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+
+            span = spans[0]
+            self.assertIn(DB_STATEMENT, span.attributes)
+            self.assertIn("GET ?", span.attributes[DB_STATEMENT])
+            self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
+            self.assertIn(DB_QUERY_TEXT, span.attributes)
+            self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
+            self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+            self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+            self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+            self.assertIn(NET_TRANSPORT, span.attributes)
+            self.assertEqual(
+                span.attributes[NET_TRANSPORT],
+                NetTransportValues.IP_TCP.value,
+            )
+            self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
 
     @stability_mode("")
     def test_schema_url_default_mode(self):
