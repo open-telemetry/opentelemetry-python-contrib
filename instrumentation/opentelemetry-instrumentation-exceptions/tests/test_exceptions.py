@@ -222,9 +222,15 @@ def test_uninstrument_restores_hooks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     instrumentor = UnhandledExceptionInstrumentor()
-    original_sys = object()
-    original_threading = object()
-    original_asyncio = object()
+
+    def original_sys(exc_type, exc, tb) -> None:
+        del exc_type, exc, tb
+
+    def original_threading(args: threading.ExceptHookArgs) -> None:
+        del args
+
+    def original_asyncio(loop, context) -> None:
+        del loop, context
 
     monkeypatch.setattr(sys, "excepthook", original_sys)
     monkeypatch.setattr(threading, "excepthook", original_threading)

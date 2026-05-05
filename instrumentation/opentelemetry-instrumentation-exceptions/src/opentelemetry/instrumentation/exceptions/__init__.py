@@ -37,17 +37,22 @@ import sys
 import threading
 from collections.abc import Collection
 from types import TracebackType
-from typing import Any, Callable
+from typing import Any
 
-from opentelemetry._logs import SeverityNumber, get_logger
+from wrapt import (
+    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+)
+
+from opentelemetry._logs import LoggerProvider, SeverityNumber, get_logger
 from opentelemetry.instrumentation.exceptions.package import _instruments
 from opentelemetry.instrumentation.exceptions.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
 
 
 class _ExceptionLogger:
-    def __init__(self, logger_provider: Any = None):
+    def __init__(self, logger_provider: LoggerProvider | None = None):
         self._logger = get_logger(
             __name__,
             __version__,
@@ -73,18 +78,10 @@ class _ExceptionLogger:
 class UnhandledExceptionInstrumentor(BaseInstrumentor):
     """Emit logs for uncaught exceptions and unhandled asyncio exceptions."""
 
-    def __init__(self, logger_provider: Any = None):
+    def __init__(self, logger_provider: LoggerProvider | None = None):
         super().__init__()
         self._logger_provider = logger_provider
         self._exception_logger: _ExceptionLogger | None = None
-        self._original_sys_excepthook: Callable[..., Any] | None = None
-        self._original_threading_excepthook: Callable[..., Any] | None = None
-        self._original_asyncio_call_exception_handler: (
-            Callable[..., Any] | None
-        ) = None
-        self._sys_excepthook: Callable[..., Any] | None = None
-        self._threading_excepthook: Callable[..., Any] | None = None
-        self._asyncio_call_exception_handler: Callable[..., Any] | None = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -103,116 +100,105 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         self._exception_logger = None
 
     def _install_sys_hook(self) -> None:
-        if self._original_sys_excepthook is not None:
-            return
-
-        self._original_sys_excepthook = sys.excepthook
-
-        def _handle_sys_exc(
-            exc_type: type[BaseException],
-            exc: BaseException,
-            tb: TracebackType | None,
-        ) -> None:
-            if (
-                isinstance(exc, Exception)
-                and self._exception_logger is not None
-            ):
-                try:
-                    self._exception_logger.emit(
-                        exc,
-                        severity_text="FATAL",
-                        severity_number=SeverityNumber.FATAL,
-                    )
-                except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
-                    pass
-            self._original_sys_excepthook(exc_type, exc, tb)
-
-        self._sys_excepthook = _handle_sys_exc
-        sys.excepthook = _handle_sys_exc
-
-    def _restore_sys_hook(self) -> None:
-        if (
-            self._original_sys_excepthook is not None
-            and sys.excepthook is self._sys_excepthook
-        ):
-            sys.excepthook = self._original_sys_excepthook
-        self._original_sys_excepthook = None
-        self._sys_excepthook = None
-
-    def _install_threading_hook(self) -> None:
-        if self._original_threading_excepthook is not None:
-            return
-
-        self._original_threading_excepthook = threading.excepthook
-
-        def _handle_threading_exc(args: threading.ExceptHookArgs) -> None:
-            if (
-                isinstance(args.exc_value, Exception)
-                and self._exception_logger is not None
-            ):
-                try:
-                    self._exception_logger.emit(
-                        args.exc_value,
-                        severity_text="ERROR",
-                        severity_number=SeverityNumber.ERROR,
-                    )
-                except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
-                    pass
-            self._original_threading_excepthook(args)
-
-        self._threading_excepthook = _handle_threading_exc
-        threading.excepthook = _handle_threading_exc
-
-    def _restore_threading_hook(self) -> None:
-        if (
-            self._original_threading_excepthook is not None
-            and threading.excepthook is self._threading_excepthook
-        ):
-            threading.excepthook = self._original_threading_excepthook
-        self._original_threading_excepthook = None
-        self._threading_excepthook = None
-
-    def _install_asyncio_hook(self) -> None:
-        if self._original_asyncio_call_exception_handler is not None:
-            return
-
-        self._original_asyncio_call_exception_handler = (
-            asyncio.BaseEventLoop.call_exception_handler
+        wrap_function_wrapper(
+            sys,
+            "excepthook",
+            self._wrap_sys_excepthook,
         )
 
-        def _call_exception_handler(
-            loop: asyncio.AbstractEventLoop,
-            context: dict[str, Any],
-        ) -> None:
-            exc = context.get("exception")
-            if (
-                isinstance(exc, Exception)
-                and self._exception_logger is not None
-            ):
-                try:
-                    self._exception_logger.emit(
-                        exc,
-                        severity_text="ERROR",
-                        severity_number=SeverityNumber.ERROR,
-                    )
-                except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
-                    pass
-            self._original_asyncio_call_exception_handler(loop, context)
+    @staticmethod
+    def _restore_sys_hook() -> None:
+        unwrap(sys, "excepthook")
 
-        self._asyncio_call_exception_handler = _call_exception_handler
-        asyncio.BaseEventLoop.call_exception_handler = _call_exception_handler
+    def _install_threading_hook(self) -> None:
+        wrap_function_wrapper(
+            threading,
+            "excepthook",
+            self._wrap_threading_excepthook,
+        )
 
-    def _restore_asyncio_hook(self) -> None:
-        if (
-            self._original_asyncio_call_exception_handler is not None
-            and asyncio.BaseEventLoop.call_exception_handler
-            is self._asyncio_call_exception_handler
-        ):
-            asyncio.BaseEventLoop.call_exception_handler = (
-                self._original_asyncio_call_exception_handler
+    @staticmethod
+    def _restore_threading_hook() -> None:
+        unwrap(threading, "excepthook")
+
+    def _install_asyncio_hook(self) -> None:
+        wrap_function_wrapper(
+            asyncio.BaseEventLoop,
+            "call_exception_handler",
+            self._wrap_asyncio_call_exception_handler,
+        )
+
+    @staticmethod
+    def _restore_asyncio_hook() -> None:
+        unwrap(asyncio.BaseEventLoop, "call_exception_handler")
+
+    def _emit_exception(
+        self,
+        exc: BaseException,
+        *,
+        severity_text: str,
+        severity_number: SeverityNumber,
+    ) -> None:
+        if not isinstance(exc, Exception) or self._exception_logger is None:
+            return
+
+        try:
+            self._exception_logger.emit(
+                exc,
+                severity_text=severity_text,
+                severity_number=severity_number,
             )
-        self._original_asyncio_call_exception_handler = None
-        self._asyncio_call_exception_handler = None
+        except (
+            Exception
+        ):  # pragma: no cover  # pylint: disable=broad-exception-caught
+            pass
+
+    def _wrap_sys_excepthook(
+        self,
+        wrapped,
+        instance,
+        args: tuple[type[BaseException], BaseException, TracebackType | None],
+        kwargs: dict[str, Any],
+    ) -> None:
+        _, exc, _ = args
+        self._emit_exception(
+            exc,
+            severity_text="FATAL",
+            severity_number=SeverityNumber.FATAL,
+        )
+        wrapped(*args, **kwargs)
+
+    def _wrap_threading_excepthook(
+        self,
+        wrapped,
+        instance,
+        args: tuple[threading.ExceptHookArgs],
+        kwargs: dict[str, Any],
+    ) -> None:
+        (hook_args,) = args
+        self._emit_exception(
+            hook_args.exc_value,
+            severity_text="ERROR",
+            severity_number=SeverityNumber.ERROR,
+        )
+        wrapped(*args, **kwargs)
+
+    def _wrap_asyncio_call_exception_handler(
+        self,
+        wrapped,
+        instance: asyncio.AbstractEventLoop,
+        args: tuple[dict[str, Any]],
+        kwargs: dict[str, Any],
+    ) -> None:
+        (context,) = args
+        exc = context.get("exception")
+        if isinstance(exc, BaseException):
+            self._emit_exception(
+                exc,
+                severity_text="ERROR",
+                severity_number=SeverityNumber.ERROR,
+            )
+        wrapped(*args, **kwargs)
 
 
 __all__ = ["UnhandledExceptionInstrumentor"]
