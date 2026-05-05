@@ -485,6 +485,7 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         self.assertIn("http.response.status_code", metrics_attributes)
 
 
+# pylint: disable=too-many-public-methods
 class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
     def test_db_system_default(self):
         result = {}
