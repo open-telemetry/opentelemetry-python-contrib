@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 def _syscall(func):
-    def wrapper(packages=None):
+    def wrapper(packages=None, upgrade=True):
         try:
             if packages:
-                return func(packages)
+                return func(packages, upgrade)
             return func()
         except SubprocessError as exp:
             cmd = getattr(exp, "cmd", None)
@@ -48,21 +48,14 @@ def _syscall(func):
 
 
 @_syscall
-def _sys_pip_install(packages):
+def _sys_pip_install(packages, upgrade=True):
     # explicit upgrade strategy to override potential pip config
     try:
-        check_call(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "-U",
-                "--upgrade-strategy",
-                "only-if-needed",
-                *packages,
-            ]
-        )
+        cmd = [sys.executable, "-m", "pip", "install"]
+        if upgrade:
+            cmd += ["-U", "--upgrade-strategy", "only-if-needed"]
+        cmd += [*packages]
+        check_call(cmd)
     except CalledProcessError as error:
         print(error)
 
@@ -122,10 +115,10 @@ def _run_requirements(default_instrumentations, libraries):
     )
 
 
-def _run_install(default_instrumentations, libraries):
+def _run_install(default_instrumentations, libraries, upgrade=True):
     libs = list(_find_installed_libraries(default_instrumentations, libraries))
     if libs:
-        _sys_pip_install(libs)
+        _sys_pip_install(libs, upgrade=upgrade)
     _pip_check(libraries)
 
 
@@ -160,6 +153,11 @@ def run(
                        be piped and appended to a requirements.txt file.
         """,
     )
+    parser.add_argument(
+        "--no-upgrade",
+        action="store_true",
+        help="Do not upgrade packages with -U flag during install",
+    )
     args = parser.parse_args()
 
     if libraries is None:
@@ -168,8 +166,9 @@ def run(
     if default_instrumentations is None:
         default_instrumentations = gen_default_instrumentations
 
-    cmd = {
-        action_install: _run_install,
-        action_requirements: _run_requirements,
-    }[args.action]
-    cmd(default_instrumentations, libraries)
+    if args.action == action_install:
+        _run_install(
+            default_instrumentations, libraries, upgrade=not args.no_upgrade
+        )
+    else:
+        _run_requirements(default_instrumentations, libraries)
