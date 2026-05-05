@@ -24,11 +24,9 @@ secondary goal of this test. Detailed testing of the instrumentation
 output is the purview of the other tests in this directory."""
 
 import asyncio
-import gzip
 import json
 import os
 import subprocess
-import sys
 import time
 
 import fsspec
@@ -258,51 +256,6 @@ def _convert_body_to_literal(data):
     return data
 
 
-# Helper for enforcing GZIP compression where it was originally.
-def _ensure_gzip_single_response(data: bytes):
-    try:
-        # Attempt to decompress, first, to avoid double compression.
-        gzip.decompress(data)
-        return data
-    except gzip.BadGzipFile:
-        # It must not have been compressed in the first place.
-        return gzip.compress(data)
-
-
-# VCRPy automatically decompresses responses before saving them, but it may forget to
-# re-encode them when the data is loaded. This can create issues with decompression.
-# This is why we re-encode on load; to accurately replay what was originally sent.
-#
-# https://vcrpy.readthedocs.io/en/latest/advanced.html#decode-compressed-response
-def _ensure_casette_gzip(loaded_casette):
-    for interaction in loaded_casette["interactions"]:
-        response = interaction["response"]
-        headers = response["headers"]
-        if (
-            "content-encoding" not in headers
-            and "Content-Encoding" not in headers
-        ):
-            continue
-        if (
-            "content-encoding" in headers
-            and "gzip" not in headers["content-encoding"]
-        ):
-            continue
-        if (
-            "Content-Encoding" in headers
-            and "gzip" not in headers["Content-Encoding"]
-        ):
-            continue
-        response["body"]["string"] = _ensure_gzip_single_response(
-            response["body"]["string"].encode()
-        )
-
-
-def _maybe_ensure_casette_gzip(result):
-    if sys.version_info[0] == 3 and sys.version_info[1] == 9:
-        _ensure_casette_gzip(result)
-
-
 class _PrettyPrintJSONBody:
     """This makes request and response body recordings more readable."""
 
@@ -315,9 +268,7 @@ class _PrettyPrintJSONBody:
 
     @staticmethod
     def deserialize(cassette_string):
-        result = yaml.load(cassette_string, Loader=yaml.Loader)
-        _maybe_ensure_casette_gzip(result)
-        return result
+        return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
 @pytest.fixture(name="fully_initialized_vcr", scope="module", autouse=True)

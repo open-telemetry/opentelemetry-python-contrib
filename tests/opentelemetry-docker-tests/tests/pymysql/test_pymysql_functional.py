@@ -102,6 +102,16 @@ class TestFunctionalPyMysql(TestBase):
             self._cursor.executemany(stmt, data)
         self.validate_spans("INSERT")
 
+    def test_executemany_with_cursor_iteration(self):
+        """Should create a child span for executemany while iterating over the cursor"""
+        stmt = "SELECT * FROM test"
+        with self._tracer.start_as_current_span("rootSpan"):
+            with self._connection.cursor() as cursor:
+                cursor.execute(stmt)
+                for _row in cursor:
+                    pass
+        self.validate_spans("SELECT")
+
     def test_callproc(self):
         """Should create a child span for callproc"""
         with (
