@@ -148,9 +148,9 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
                 severity_text=severity_text,
                 severity_number=severity_number,
             )
-        except (
-            Exception
-        ):  # pragma: no cover  # pylint: disable=broad-exception-caught
+        # Logging must never replace the original unhandled exception path.
+        # pylint: disable-next=broad-exception-caught
+        except Exception:  # pragma: no cover
             pass
 
     def _wrap_sys_excepthook(
