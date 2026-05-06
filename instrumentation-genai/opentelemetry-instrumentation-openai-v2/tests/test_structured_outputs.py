@@ -14,6 +14,9 @@
 
 """Tests for OpenAI structured outputs (chat.completions.parse) instrumentation."""
 
+import pytest
+from openai.resources.chat.completions import Completions
+
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -30,6 +33,11 @@ from .test_utils import (
     assert_message_in_logs,
     assert_messages_attribute,
     format_simple_expected_output_message,
+)
+
+pytestmark = pytest.mark.skipif(
+    not hasattr(Completions, "parse"),
+    reason="parse() requires openai >= 1.40.0",
 )
 
 
