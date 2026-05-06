@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from logging import getLogger
+from logging import DEBUG, getLogger
 from os import environ
+from sys import stderr
 
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflictError,
@@ -25,6 +26,37 @@ from opentelemetry.util._importlib_metadata import (
 _logger = getLogger(__name__)
 
 SKIPPED_INSTRUMENTATIONS_WILDCARD = "*"
+OTEL_LOG_LEVEL = "OTEL_LOG_LEVEL"
+_DEBUG_LOG_LEVELS = frozenset(("trace", "debug"))
+
+
+def _diagnostic_debug_enabled() -> bool:
+    log_level = environ.get(OTEL_LOG_LEVEL, "").strip().lower()
+    return log_level in _DEBUG_LOG_LEVELS
+
+
+def _logger_handles_debug() -> bool:
+    return _logger.isEnabledFor(DEBUG) and _logger.hasHandlers()
+
+
+def _format_diagnostic_arg(arg: object) -> object:
+    if isinstance(arg, str):
+        return repr(arg)
+
+    return arg
+
+
+def _debug(message: str, *args: object) -> None:
+    _logger.debug(message, *args)
+
+    if not _diagnostic_debug_enabled() or _logger_handles_debug():
+        return
+
+    if args:
+        message = message % tuple(_format_diagnostic_arg(arg) for arg in args)
+
+    stderr.write(f"DEBUG:{__name__}:{message}\n")
+    stderr.flush()
 
 
 class _EntryPointDistFinder:
@@ -56,12 +88,12 @@ def _load_distro() -> BaseDistro:
             if distro_name is None or distro_name == entry_point.name:
                 distro = entry_point.load()()
                 if not isinstance(distro, BaseDistro):
-                    _logger.debug(
+                    _debug(
                         "%s is not an OpenTelemetry Distro. Skipping",
                         entry_point.name,
                     )
                     continue
-                _logger.debug(
+                _debug(
                     "Distribution %s will be configured", entry_point.name
                 )
                 return distro
@@ -89,7 +121,7 @@ def _load_instrumentors(distro):
             break
 
         if entry_point.name in package_to_exclude:
-            _logger.debug(
+            _debug(
                 "Instrumentation skipped for library %s", entry_point.name
             )
             continue
@@ -98,7 +130,7 @@ def _load_instrumentors(distro):
             entry_point_dist = entry_point_finder.dist_for(entry_point)
             conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
-                _logger.debug(
+                _debug(
                     "Skipping instrumentation %s: %s",
                     entry_point.name,
                     conflict,
@@ -107,13 +139,13 @@ def _load_instrumentors(distro):
 
             # tell instrumentation to not run dep checks again as we already did it above
             distro.load_instrumentor(entry_point, skip_dep_check=True)
-            _logger.debug("Instrumented %s", entry_point.name)
+            _debug("Instrumented %s", entry_point.name)
         except DependencyConflictError as exc:
             # Dependency conflicts are generally caught from get_dist_dependency_conflicts
             # returning a DependencyConflict. Keeping this error handling in case custom
             # distro and instrumentor behavior raises a DependencyConflictError later.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
-            _logger.debug(
+            _debug(
                 "Skipping instrumentation %s: %s",
                 entry_point.name,
                 exc.conflict,
@@ -123,7 +155,7 @@ def _load_instrumentors(distro):
             # ModuleNotFoundError is raised when the library is not installed
             # and the instrumentation is not required to be loaded.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
-            _logger.debug(
+            _debug(
                 "Skipping instrumentation %s: %s", entry_point.name, exc.msg
             )
             continue

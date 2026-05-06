@@ -198,6 +198,105 @@ class TestLoad(TestCase):
             "Skipping instrumentation %s: %s", entry_point, dependency_conflict
         )
 
+    @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debug"}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.stderr")
+    def test_writes_diagnostic_debug_output(
+        self, stderr_mock, logger_mock
+    ):
+        logger_mock.isEnabledFor.return_value = True
+        logger_mock.hasHandlers.return_value = False
+
+        _load._debug("Instrumented %s", "requests")
+
+        logger_mock.debug.assert_called_once_with(
+            "Instrumented %s", "requests"
+        )
+        stderr_mock.write.assert_called_once_with(
+            "DEBUG:"
+            "opentelemetry.instrumentation.auto_instrumentation._load:"
+            "Instrumented 'requests'\n"
+        )
+        stderr_mock.flush.assert_called_once()
+
+    @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "trace"}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.stderr")
+    def test_writes_diagnostic_trace_output(self, stderr_mock, logger_mock):
+        logger_mock.isEnabledFor.return_value = True
+        logger_mock.hasHandlers.return_value = False
+
+        _load._debug("Instrumented %s", "requests")
+
+        logger_mock.debug.assert_called_once_with(
+            "Instrumented %s", "requests"
+        )
+        stderr_mock.write.assert_called_once_with(
+            "DEBUG:"
+            "opentelemetry.instrumentation.auto_instrumentation._load:"
+            "Instrumented 'requests'\n"
+        )
+        stderr_mock.flush.assert_called_once()
+
+    @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debug"}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.stderr")
+    def test_does_not_write_diagnostic_when_logger_handles_debug(
+        self, stderr_mock, logger_mock
+    ):
+        logger_mock.isEnabledFor.return_value = True
+        logger_mock.hasHandlers.return_value = True
+
+        _load._debug("Instrumented %s", "requests")
+
+        logger_mock.debug.assert_called_once_with(
+            "Instrumented %s", "requests"
+        )
+        stderr_mock.write.assert_not_called()
+        stderr_mock.flush.assert_not_called()
+
+    @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "info"}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.stderr")
+    def test_does_not_write_diagnostic_non_debug_output(
+        self, stderr_mock, logger_mock
+    ):
+        _load._debug("Instrumented %s", "requests")
+
+        logger_mock.debug.assert_called_once_with(
+            "Instrumented %s", "requests"
+        )
+        stderr_mock.write.assert_not_called()
+        stderr_mock.flush.assert_not_called()
+
+    @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debug2"}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.stderr")
+    def test_does_not_write_numbered_debug_output(
+        self, stderr_mock, logger_mock
+    ):
+        _load._debug("Instrumented %s", "requests")
+
+        logger_mock.debug.assert_called_once_with(
+            "Instrumented %s", "requests"
+        )
+        stderr_mock.write.assert_not_called()
+        stderr_mock.flush.assert_not_called()
+
+    @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debugger"}, clear=True)
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.stderr")
+    def test_does_not_prefix_match_diagnostic_debug_output(
+        self, stderr_mock, logger_mock
+    ):
+        _load._debug("Instrumented %s", "requests")
+
+        logger_mock.debug.assert_called_once_with(
+            "Instrumented %s", "requests"
+        )
+        stderr_mock.write.assert_not_called()
+        stderr_mock.flush.assert_not_called()
+
     @patch.dict(
         "os.environ",
         {OTEL_PYTHON_DISABLED_INSTRUMENTATIONS: " instr1 , instr3 "},
