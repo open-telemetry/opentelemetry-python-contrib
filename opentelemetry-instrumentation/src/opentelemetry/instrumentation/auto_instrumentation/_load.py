@@ -93,9 +93,7 @@ def _load_distro() -> BaseDistro:
                         entry_point.name,
                     )
                     continue
-                _debug(
-                    "Distribution %s will be configured", entry_point.name
-                )
+                _debug("Distribution %s will be configured", entry_point.name)
                 return distro
         except Exception as exc:  # pylint: disable=broad-except
             _logger.exception(
@@ -121,9 +119,7 @@ def _load_instrumentors(distro):
             break
 
         if entry_point.name in package_to_exclude:
-            _debug(
-                "Instrumentation skipped for library %s", entry_point.name
-            )
+            _debug("Instrumentation skipped for library %s", entry_point.name)
             continue
 
         try:
