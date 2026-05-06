@@ -27,6 +27,7 @@ from opentelemetry.util.genai._upload.completion_hook import (
 )
 from opentelemetry.util.genai.completion_hook import (
     _NoOpCompletionHook,
+    _SafeCompletionHook,
 )
 from opentelemetry.util.genai.completion_hook import (
     load_completion_hook as real_load_completion_hook,
@@ -43,6 +44,10 @@ def fixture_load_completion_hook():
 
         def load_completion_hook():
             hook = real_load_completion_hook()
+            # load_completion_hook wraps user-provided hooks in _SafeCompletionHook;
+            # unwrap here so test bodies can introspect the underlying upload hook.
+            if isinstance(hook, _SafeCompletionHook):
+                hook = hook._wrapped
             if isinstance(hook, UploadCompletionHook):
                 stack.callback(hook.shutdown)
             return hook
