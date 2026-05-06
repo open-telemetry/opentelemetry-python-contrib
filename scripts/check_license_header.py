@@ -3,6 +3,7 @@
 
 import os
 import sys
+from pathlib import Path
 
 SPDX_LINE = "# SPDX-License-Identifier: Apache-2.0\n"
 
@@ -65,7 +66,7 @@ def check_file(path):
 
 
 def main():
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    root = str(Path(__file__).resolve().parents[1])
     failures = []
 
     for dirpath, dirnames, filenames in os.walk(root):
