@@ -273,7 +273,6 @@ from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST,
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE,
     SanitizeValue,
-    _parse_url_query,
     detect_synthetic_user_agent,
     get_custom_headers,
     normalise_request_header_name,
@@ -371,7 +370,8 @@ def collect_request_attributes(
     if target is None:  # Note: `"" or None is None`
         target = environ.get("REQUEST_URI")
     if target:
-        path, query = _parse_url_query(target)
+        path = environ.get("PATH_INFO")
+        query = environ.get("QUERY_STRING")
         _set_http_target(result, target, path, query, sem_conv_opt_in_mode)
     else:
         # old semconv v1.20.0

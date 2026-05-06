@@ -821,9 +821,38 @@ class TestWsgiAttributes(unittest.TestCase):
             HTTP_TARGET: "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing",
         }
         expected_new = {
-            URL_PATH: "/3/library/urllib.parse.html",
-            URL_QUERY: "highlight=params",
+            URL_PATH: self.environ["PATH_INFO"],
         }
+        self.assertGreaterEqual(
+            otel_wsgi.collect_request_attributes(self.environ).items(),
+            expected_old.items(),
+        )
+        self.assertGreaterEqual(
+            otel_wsgi.collect_request_attributes(
+                self.environ,
+                _StabilityMode.HTTP,
+            ).items(),
+            expected_new.items(),
+        )
+
+    def test_request_attributes_with_invalid_request_uri_uses_wsgi_environ(self):
+        self.environ["REQUEST_URI"] = (
+            "http://example.com/\\$%7B#context['xwork.MethodAccessor."
+            "denyMethodExecution']=!(#_memberAccess['allowStaticMethodAccess']"
+            "=true),(@java.lang.Runtime@getRuntime()).exec('id').waitFor()}"
+            '.action"'
+        )
+        self.environ["PATH_INFO"] = "/safe/path"
+        self.environ["QUERY_STRING"] = "a=b"
+
+        expected_old = {
+            HTTP_TARGET: self.environ["REQUEST_URI"],
+        }
+        expected_new = {
+            URL_PATH: "/safe/path",
+            URL_QUERY: "a=b",
+        }
+
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(self.environ).items(),
             expected_old.items(),
