@@ -4,3 +4,7 @@ opentelemetry-sdk~=1.36.0
 opentelemetry-exporter-otlp-proto-grpc~=1.36.0
 opentelemetry-distro~=0.57b0
 opentelemetry-instrumentation-openai-v2~=2.1b0
+
+# Uncomment to enable the upload completion hook (pulls in fsspec).
+# Required when OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK=upload.
+# opentelemetry-util-genai[upload]
