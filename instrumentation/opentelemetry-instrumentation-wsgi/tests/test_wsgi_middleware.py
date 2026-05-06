@@ -836,12 +836,8 @@ class TestWsgiAttributes(unittest.TestCase):
         )
 
     def test_request_attributes_with_invalid_request_uri_uses_wsgi_environ(self):
-        self.environ["REQUEST_URI"] = (
-            "http://example.com/\\$%7B#context['xwork.MethodAccessor."
-            "denyMethodExecution']=!(#_memberAccess['allowStaticMethodAccess']"
-            "=true),(@java.lang.Runtime@getRuntime()).exec('id').waitFor()}"
-            '.action"'
-        )
+        # Previously raised ValueError when REQUEST_URI was parsed.
+        self.environ["REQUEST_URI"] = "http://example.com/[invalid"
         self.environ["PATH_INFO"] = "/safe/path"
         self.environ["QUERY_STRING"] = "a=b"
 
