@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any
 
 from opentelemetry._logs import Logger, LogRecord
@@ -23,20 +23,29 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import INVALID_SPAN, Span, SpanKind, Tracer
-from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai._invocation import (
+    Error,
+    GenAIInvocation,
+    get_content_attributes,
+)
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
     InputMessage,
     MessagePart,
     OutputMessage,
+    ToolDefinition,
 )
 from opentelemetry.util.genai.utils import (
-    ContentCapturingMode,
-    gen_ai_json_dumps,
-    get_content_capturing_mode,
     is_experimental_mode,
     should_emit_event,
 )
+
+# TODO: Migrate to GenAI constants once available in semconv package
+_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
+)
+_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
 class InferenceInvocation(GenAIInvocation):
@@ -51,6 +60,7 @@ class InferenceInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         provider: str,
         *,
         request_model: str | None = None,
@@ -80,6 +90,7 @@ class InferenceInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
             span_name=f"{_operation_name} {request_model}"
             if request_model
@@ -113,53 +124,19 @@ class InferenceInvocation(GenAIInvocation):
         self.seed = seed
         self.server_address = server_address
         self.server_port = server_port
+        self.cache_creation_input_tokens: int | None = None
+        self.cache_read_input_tokens: int | None = None
+        self.tool_definitions: list[ToolDefinition] | None = None
         self._start()
 
     def _get_message_attributes(self, *, for_span: bool) -> dict[str, Any]:
-        if not is_experimental_mode():
-            return {}
-        mode = get_content_capturing_mode()
-        allowed_modes = (
-            (
-                ContentCapturingMode.SPAN_ONLY,
-                ContentCapturingMode.SPAN_AND_EVENT,
-            )
-            if for_span
-            else (
-                ContentCapturingMode.EVENT_ONLY,
-                ContentCapturingMode.SPAN_AND_EVENT,
-            )
+        return get_content_attributes(
+            input_messages=self.input_messages,
+            output_messages=self.output_messages,
+            system_instruction=self.system_instruction,
+            tool_definitions=self.tool_definitions,
+            for_span=for_span,
         )
-        if mode not in allowed_modes:
-            return {}
-
-        def serialize(items: list[Any]) -> Any:
-            dicts = [asdict(item) for item in items]
-            return gen_ai_json_dumps(dicts) if for_span else dicts
-
-        optional_attrs = (
-            (
-                GenAI.GEN_AI_INPUT_MESSAGES,
-                serialize(self.input_messages)
-                if self.input_messages
-                else None,
-            ),
-            (
-                GenAI.GEN_AI_OUTPUT_MESSAGES,
-                serialize(self.output_messages)
-                if self.output_messages
-                else None,
-            ),
-            (
-                GenAI.GEN_AI_SYSTEM_INSTRUCTIONS,
-                serialize(self.system_instruction)
-                if self.system_instruction
-                else None,
-            ),
-        )
-        return {
-            key: value for key, value in optional_attrs if value is not None
-        }
 
     def _get_finish_reasons(self) -> list[str] | None:
         if self.finish_reasons is not None:
@@ -200,6 +177,14 @@ class InferenceInvocation(GenAIInvocation):
             (GenAI.GEN_AI_RESPONSE_ID, self.response_id),
             (GenAI.GEN_AI_USAGE_INPUT_TOKENS, self.input_tokens),
             (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, self.output_tokens),
+            (
+                _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+                self.cache_creation_input_tokens,
+            ),
+            (
+                _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+                self.cache_read_input_tokens,
+            ),
         )
         attrs.update({k: v for k, v in optional_attrs if v is not None})
         return attrs
@@ -229,26 +214,33 @@ class InferenceInvocation(GenAIInvocation):
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
         self._metrics_recorder.record(self)
-        self._emit_event()
+        log_record = self._maybe_create_event()
+        self._call_completion_hook(
+            inputs=self.input_messages,
+            outputs=self.output_messages,
+            system_instruction=self.system_instruction,
+            tool_definitions=self.tool_definitions,
+            log_record=log_record,
+        )
+        if log_record is not None:
+            self._logger.emit(log_record)
 
-    def _emit_event(self) -> None:
+    def _maybe_create_event(self) -> LogRecord | None:
         """Emit a gen_ai.client.inference.operation.details event.
 
         For more details, see the semantic convention documentation:
         https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-events.md#event-eventgen_aiclientinferenceoperationdetails
         """
         if not is_experimental_mode() or not should_emit_event():
-            return
+            return None
 
         attributes = self._get_attributes()
         attributes.update(self._get_message_attributes(for_span=False))
         attributes.update(self.attributes)
-        self._logger.emit(
-            LogRecord(
-                event_name="gen_ai.client.inference.operation.details",
-                attributes=attributes,
-                context=self._span_context,
-            )
+        return LogRecord(
+            event_name="gen_ai.client.inference.operation.details",
+            attributes=attributes,
+            context=self._span_context,
         )
 
 
@@ -293,12 +285,14 @@ class LLMInvocation:
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
     ) -> None:
         """Create and start an InferenceInvocation from this data container. Called by handler.start_llm()."""
         self._inference_invocation = InferenceInvocation(
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             self.provider or "",
             request_model=self.request_model,
             input_messages=self.input_messages,
