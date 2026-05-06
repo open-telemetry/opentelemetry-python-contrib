@@ -130,7 +130,10 @@ def fixture_content_mode(request):
 
 @pytest.fixture(scope="function")
 def instrument_no_content(
-    tracer_provider, logger_provider, meter_provider, content_mode
+    tracer_provider,
+    logger_provider,
+    meter_provider,
+    content_mode,
 ):
     _OpenTelemetrySemanticConventionStability._initialized = False
     latest_experimental_enabled, _ = content_mode
