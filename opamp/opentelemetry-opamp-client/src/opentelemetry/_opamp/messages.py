@@ -125,18 +125,18 @@ def build_effective_config_message(
     config: Mapping[str, Any], content_type: str
 ):
     agent_config_map = opamp_pb2.AgentConfigMap()
-    for config_name, config_value in config.items():
-        body = encode_effective_config_body(content_type, config_value)
+    for filename, value in config.items():
+        body = encode_effective_config_body(content_type, value)
         if body is None:
             _logger.warning(
                 "Skipping effective config entry %s with content type %s "
                 "because the value cannot be encoded",
-                config_name,
+                filename,
                 content_type,
             )
             continue
 
-        config_entry = agent_config_map.config_map[config_name]
+        config_entry = agent_config_map.config_map[filename]
         config_entry.body = body
         config_entry.content_type = content_type
     return opamp_pb2.EffectiveConfig(
