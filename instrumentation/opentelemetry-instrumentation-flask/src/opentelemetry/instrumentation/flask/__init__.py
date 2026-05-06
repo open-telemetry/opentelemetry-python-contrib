@@ -350,10 +350,6 @@ from opentelemetry.util.http import (
 )
 
 _logger = getLogger(__name__)
-# Global constants for Flask 3.1+ streaming context cleanup
-_IS_FLASK_31_PLUS = hasattr(flask, "__version__") and package_version.parse(
-    flask.__version__
-) >= package_version.parse("3.1.0")
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
@@ -365,6 +361,11 @@ _ENVIRON_LABELER_ATTRIBUTES_KEY = "opentelemetry-flask.labeler_attributes"
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
 flask_version = version("flask")
+
+# Global constant for Flask 3.1+ streaming context cleanup
+_IS_FLASK_31_PLUS = package_version.parse(
+    flask_version
+) >= package_version.parse("3.1.0")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
