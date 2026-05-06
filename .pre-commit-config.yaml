@@ -18,5 +18,8 @@ repos:
     rev: 77490ffa33bfc0928975ae3cf904219903db755d # frozen: v6.2.5
     hooks:
       - id: rstcheck
-        additional_dependencies: ['rstcheck[sphinx]']
+        additional_dependencies:
+          - rstcheck[sphinx]
+          - rstcheck-core==1.3.0
         args: ["--report-level", "warning"]
+        exclude: ^_template/autodoc_entry\.rst$

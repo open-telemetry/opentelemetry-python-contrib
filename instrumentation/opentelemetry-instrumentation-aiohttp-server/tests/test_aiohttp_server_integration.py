@@ -143,7 +143,15 @@ async def fixture_server_fixture(tracer, aiohttp_server, suppress):
     AioHttpServerInstrumentor().instrument(tracer_provider=tracer_provider)
 
     app = aiohttp.web.Application()
-    app.add_routes([aiohttp.web.get("/test-path", default_handler)])
+    app.add_routes(
+        [
+            aiohttp.web.get("/test-path", default_handler),
+            aiohttp.web.get("/test-path/{url_param}", default_handler),
+            aiohttp.web.get(
+                "/object/{object_id}/action/{another_param}", default_handler
+            ),
+        ]
+    )
     if suppress:
         with suppress_http_instrumentation():
             server = await aiohttp_server(app)
@@ -196,6 +204,60 @@ async def test_status_code_instrumentation(
     assert expected_method.value == span.attributes[HTTP_METHOD]
     assert expected_status_code == span.attributes[HTTP_STATUS_CODE]
     assert url == span.attributes[HTTP_TARGET]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "span_name, example_paths",
+    [
+        (
+            "GET /test-path/{url_param}",
+            (
+                "/test-path/foo",
+                "/test-path/bar",
+            ),
+        ),
+        (
+            "GET /object/{object_id}/action/{another_param}",
+            (
+                "/object/1/action/bar",
+                "/object/234/action/baz",
+            ),
+        ),
+        (
+            "GET",
+            (
+                "/i/dont/exist",
+                "/me-neither",
+            ),
+        ),
+    ],
+)
+async def test_url_params_instrumentation(
+    tracer,
+    server_fixture,
+    aiohttp_client,
+    span_name,
+    example_paths,
+):
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    client = await aiohttp_client(server)
+    for path in example_paths:
+        await client.get(path)
+
+    assert len(memory_exporter.get_finished_spans()) == 2
+
+    for request_path, span in zip(
+        example_paths, memory_exporter.get_finished_spans()
+    ):
+        assert span_name == span.name
+        assert request_path == span.attributes[HTTP_TARGET]
+        full_url = f"http://{server.host}:{server.port}{request_path}"
+        assert full_url == span.attributes[HTTP_URL]
 
 
 @pytest.mark.asyncio

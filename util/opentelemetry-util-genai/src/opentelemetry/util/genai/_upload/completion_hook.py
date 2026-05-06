@@ -22,7 +22,7 @@ import logging
 import posixpath
 import threading
 from collections import OrderedDict
-from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+from concurrent.futures import (
     Future,
     ThreadPoolExecutor,
 )
@@ -52,9 +52,8 @@ GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
     gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS + "_ref"
 )
 
-GEN_AI_TOOL_DEFINITIONS = getattr(
-    gen_ai_attributes, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
-)
+# TODO: Migrate to gen_ai_attributes constant once available in semconv package
+GEN_AI_TOOL_DEFINITIONS = "gen_ai.tool.definitions"
 GEN_AI_TOOL_DEFINITIONS_REF: Final = GEN_AI_TOOL_DEFINITIONS + "_ref"
 
 _MESSAGE_INDEX_KEY = "index"
@@ -156,6 +155,30 @@ class UploadCompletionHook(CompletionHook):
                 f"Invalid {upload_format=}. Must be one of {_FORMATS}"
             )
         self._format = upload_format
+        self._content_type = (
+            "application/json"
+            if self._format == "json"
+            else "application/jsonl"
+        )
+        test_path = posixpath.join(
+            self._base_path,
+            f".one_off_test_to_see_if_upload_works.{self._format}",
+        )
+        try:
+            with self._fs.open(
+                test_path, "w", content_type=self._content_type
+            ) as file:
+                file.write("\n")
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            raise ValueError(
+                f"Failed to write file to the following path, upload is not working: {test_path}.\n Got error: {exception}"
+            )
+        # Try to delete the file.. But we don't explicitly ask people to grant the GCS delete IAM permission in our
+        # docs, so if delete fails just leave the file..
+        try:
+            self._fs.rm_file(test_path)  # pyright: ignore[reportUnknownMemberType]
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
         # limits the number of queued tasks. If the queue is full, data will be dropped.
@@ -271,13 +294,7 @@ class UploadCompletionHook(CompletionHook):
             for message_idx, line in enumerate(message_lines):
                 line[_MESSAGE_INDEX_KEY] = message_idx
 
-        content_type = (
-            "application/json"
-            if self._format == "json"
-            else "application/jsonl"
-        )
-
-        with self._fs.open(path, "w", content_type=content_type) as file:
+        with self._fs.open(path, "w", content_type=self._content_type) as file:
             for message in message_lines:
                 gen_ai_json_dump(message, file)
                 file.write("\n")

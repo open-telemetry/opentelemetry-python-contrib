@@ -1487,7 +1487,6 @@ def test_invoke_model_with_content(
         finish_reason = "length"
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
@@ -1628,7 +1627,6 @@ def test_invoke_model_with_content_different_events(
         choice_content = [{"type": "text", "text": "This is a test"}]
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -2070,7 +2068,6 @@ def test_invoke_model_with_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_tool_call(
         span_exporter,
@@ -2156,7 +2153,6 @@ def test_invoke_model_no_content(
         finish_reason = "length"
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     choice_body = {
         "index": 0,
@@ -2190,7 +2186,6 @@ def test_invoke_model_no_content_different_events(
         finish_reason = "end_turn"
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -2246,7 +2241,6 @@ def test_invoke_model_no_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_tool_call(
         span_exporter,
@@ -2401,7 +2395,6 @@ def test_invoke_model_with_response_stream_with_content(
         }
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     choice_body = {
         "index": 0,
@@ -2437,7 +2430,6 @@ def test_invoke_model_with_response_stream_with_content_different_events(
         choice_content = [{"text": "This is a test", "type": "text"}]
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2672,7 +2664,6 @@ def test_invoke_model_with_response_stream_with_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,
@@ -2801,7 +2792,6 @@ def test_invoke_model_with_response_stream_no_content_different_events(
         finish_reason = "end_turn"
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2864,7 +2854,6 @@ def test_invoke_model_with_response_stream_no_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,

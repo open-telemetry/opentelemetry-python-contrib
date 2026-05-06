@@ -17,6 +17,10 @@ from sqlite3 import dbapi2
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+from opentelemetry.instrumentation.utils import suppress_instrumentation
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -120,3 +124,107 @@ class TestSQLite3(TestBase):
         ):
             self._cursor.callproc("test", ())
             self.validate_spans("test")
+
+
+class TestSQLite3Integration(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        SQLite3Instrumentor().uninstrument()
+
+    def _connect(self):
+        """Create an in-memory connection with cleanup registered."""
+        cnx = sqlite3.connect(":memory:")
+        self.addCleanup(cnx.close)
+        return cnx
+
+    def test_uninstrument(self):
+        """Should stop generating spans after uninstrument."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = self._connect()
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        SQLite3Instrumentor().uninstrument()
+        self.memory_exporter.clear()
+
+        cnx2 = self._connect()
+        cursor2 = cnx2.cursor()
+        self.addCleanup(cursor2.close)
+        cursor2.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_uninstrument_connection_with_instrument(self):
+        """Should stop generating spans for uninstrumented connection."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = self._connect()
+        query = "CREATE TABLE IF NOT EXISTS test (id integer)"
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
+        self.memory_exporter.clear()
+        cnx = SQLite3Instrumentor.uninstrument_connection(cnx)
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_no_op_tracer_provider(self):
+        """Should produce no spans with NoOpTracerProvider."""
+        SQLite3Instrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
+        cnx = self._connect()
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_suppress_instrumentation(self):
+        """Should produce no spans when suppressed."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = self._connect()
+
+        with suppress_instrumentation():
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_span_failed(self):
+        """Should set error status on span when query fails."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = self._connect()
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+
+        with self.assertRaises(sqlite3.OperationalError):
+            cursor.execute("SELECT * FROM nonexistent_table")
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(
+            span.attributes[DB_STATEMENT],
+            "SELECT * FROM nonexistent_table",
+        )
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(
+            span.status.description,
+            "OperationalError: no such table: nonexistent_table",
+        )
