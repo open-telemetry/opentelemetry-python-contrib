@@ -143,7 +143,6 @@ API
 ---
 """
 
-import urllib
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
@@ -179,6 +178,10 @@ from opentelemetry.instrumentation.propagators import (
     FuncSetter,
     get_global_response_propagator,
 )
+from opentelemetry.instrumentation.tornado._utils import (
+    find_matched_rule,
+    route_from_rule,
+)
 from opentelemetry.instrumentation.tornado.package import _instruments
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -194,6 +197,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
     HTTP_METHOD,
+    HTTP_ROUTE,
     HTTP_SCHEME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
@@ -213,8 +217,6 @@ from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
 from opentelemetry.semconv.attributes.url_attributes import (
-    URL_PATH,
-    URL_QUERY,
     URL_SCHEME,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
@@ -950,13 +952,13 @@ def _create_metric_attributes_new(handler):
     metric_attributes = _create_active_requests_attributes_new(handler.request)
     metric_attributes[HTTP_RESPONSE_STATUS_CODE] = handler.get_status()
 
-    # Add URL path if available
     if handler.request.path:
-        # Parse query from path if present
-        parsed = urllib.parse.urlparse(handler.request.path)
-        if parsed.path:
-            metric_attributes[URL_PATH] = parsed.path
-        if parsed.query:
-            metric_attributes[URL_QUERY] = parsed.query
+        rule = find_matched_rule(handler)
+
+        if rule:
+            route = route_from_rule(rule, handler)
+
+            if route is not None:
+                metric_attributes[HTTP_ROUTE] = route
 
     return metric_attributes
