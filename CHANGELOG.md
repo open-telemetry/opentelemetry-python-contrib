@@ -13,12 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Switch to SPDX license headers and add CI enforcement
+  ([#4533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4533))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
+- Remove redundant `pylint: disable=attribute-defined-outside-init` comments and add rule to global `.pylintrc` disable list
+  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
+- `opentelemetry-exporter-richconsole`: Add support for suppressing resource information
+  ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
 
 ### Fixed
 
