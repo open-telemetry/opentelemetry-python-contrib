@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # pylint: skip-file
 """Same as main.py, but instruments OpenAI with a custom CompletionHook
 that prints prompts and completions to stdout.
