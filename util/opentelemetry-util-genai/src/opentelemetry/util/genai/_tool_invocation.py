@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -22,6 +11,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 
 
@@ -50,6 +40,7 @@ class ToolInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         name: str,
         *,
         arguments: Any = None,
@@ -66,6 +57,7 @@ class ToolInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
             span_name=f"{_operation_name} {name}" if name else _operation_name,
             attributes=attributes,

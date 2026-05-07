@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Content capture demo for the OpenAI Agents instrumentation.
 

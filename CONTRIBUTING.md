@@ -206,7 +206,13 @@ git commit
 git push fork feature
 ```
 
-Open a pull request against the main `opentelemetry-python-contrib` repo.
+Open a pull request (PR) against the main `opentelemetry-python-contrib` repo.
+
+A descriptive PR title will help the community better triage and review your changes. Make sure to prefix with the name(s) of the package/subdirectory/domain that your PR updates. Following any of these examples will help:
+
+* "opentelemetry-instrumentation-dbapi: add client operation duration metrics"
+* "GenAI Utils: Add _BaseAgent base class and agent creation lifecycle"
+* "docs(google-genai): document config recording environment variables"
 
 ### How to Receive Comments
 
@@ -299,6 +305,16 @@ CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
 The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test.yml#L17).
 
 ## Style Guide
+
+* All Python files must include the following SPDX license header as the first
+  two lines (or immediately after a shebang line):
+
+  ```python
+  # Copyright The OpenTelemetry Authors
+  # SPDX-License-Identifier: Apache-2.0
+  ```
+
+  This is enforced by CI via `tox -e lint-license-header-check`.
 
 * docstrings should adhere to the [Google Python Style
   Guide](http://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)

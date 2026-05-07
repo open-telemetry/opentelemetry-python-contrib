@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Optional, Union
 
@@ -25,6 +14,7 @@ def create_response(
     candidates: Optional[list[genai_types.Candidate]] = None,
     text: Optional[str] = None,
     input_tokens: Optional[int] = None,
+    thinking_tokens: Optional[int] = None,
     output_tokens: Optional[int] = None,
     cached_tokens: Optional[int] = None,
     model_version: Optional[str] = None,
@@ -56,6 +46,8 @@ def create_response(
         usage_metadata.candidates_token_count = output_tokens
     if cached_tokens is not None:
         usage_metadata.cached_content_token_count = cached_tokens
+    if thinking_tokens is not None:
+        usage_metadata.thoughts_token_count = thinking_tokens
     return genai_types.GenerateContentResponse(
         candidates=candidates,
         usage_metadata=usage_metadata,
