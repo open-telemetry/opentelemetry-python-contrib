@@ -44,11 +44,13 @@ PyMySQL~=1.1.1
 pymssql~=2.3.2
 pyramid>=1.7
 redis>=2.6
-remoulade>=0.50
+remoulade[limits]>=5.0.0 ; python_version >= "3.12"
+remoulade>=0.50.0 ; python_version < "3.12"
 sqlalchemy>=1.0
 starlette~=0.50
 tornado>=5.1.1
 tortoise-orm>=0.17.0
+wrapt~=2.1
 
 # required by opamp
 uuid_utils

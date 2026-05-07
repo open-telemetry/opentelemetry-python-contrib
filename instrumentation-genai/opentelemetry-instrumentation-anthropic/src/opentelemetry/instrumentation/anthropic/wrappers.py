@@ -31,7 +31,7 @@ from typing import (
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
-    LLMInvocation,
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
 )
 
 from .messages_extractors import set_invocation_response_attributes

@@ -405,13 +405,13 @@ async def test_async_stream_wrapper_processes_events_and_stops_on_completion():
     wrapper._process_chunk = processed.append
     wrapper._stop = lambda: stopped.append(True)
 
-    result = await wrapper.__anext__()
+    result = await anext(wrapper)
 
     assert result is event
     assert processed == [event]
 
     with pytest.raises(StopAsyncIteration):
-        await wrapper.__anext__()
+        await anext(wrapper)
 
     assert stopped == [True]
 
@@ -428,7 +428,7 @@ async def test_async_stream_wrapper_fails_and_reraises_stream_errors():
     )
 
     with pytest.raises(ValueError, match="boom"):
-        await wrapper.__anext__()
+        await anext(wrapper)
 
     assert failures == [("boom", ValueError)]
 
