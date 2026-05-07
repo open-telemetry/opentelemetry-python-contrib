@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
+- Remove redundant `pylint: disable=attribute-defined-outside-init` comments and add rule to global `.pylintrc` disable list
+  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
 
 ### Fixed
 
@@ -81,11 +83,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_key_serializer`/`_value_serializer` directly instead of the internal `_serialize` method
   whose signature changed in 0.13 from `(topic, key, value)` to `(key, value, headers)`
   ([#4379](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4379))
-
-### Changed
-
-- Remove redundant `pylint: disable=attribute-defined-outside-init` comments and add rule to global `.pylintrc` disable list
-  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
 
 ### Breaking changes
 
