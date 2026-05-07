@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- Add `BaggageLogProcessor` to `opentelemetry-processor-baggage`
+  ([#4371](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4371))
 
 - Switch to SPDX license headers and add CI enforcement
   ([#4533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4533))
