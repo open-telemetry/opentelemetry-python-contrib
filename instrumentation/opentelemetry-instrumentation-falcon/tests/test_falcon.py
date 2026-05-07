@@ -21,6 +21,7 @@ from falcon import testing
 from packaging import version as package_version
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._labeler import clear_labeler
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -126,6 +127,7 @@ SCOPE = "opentelemetry.instrumentation.falcon"
 class TestFalconBase(TestBase):
     def setUp(self):
         super().setUp()
+        clear_labeler()
 
         test_name = ""
         if hasattr(self, "_testMethodName"):
@@ -539,6 +541,56 @@ class TestFalconInstrumentation(TestFalconBase, WsgiTestBase):
                 for attr in point.attributes:
                     self.assertIn(attr, _recommended_attrs[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
+
+    def test_falcon_metrics_custom_attributes_skip_override(self):
+        self.client().simulate_get("/user_custom_attr/123")
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+        histogram_point_seen = False
+
+        for metric in metrics:
+            if metric.name == "http.server.active_requests":
+                data_points = list(metric.data.data_points)
+                for point in data_points:
+                    self.assertIsInstance(point, NumberDataPoint)
+                    if point.attributes.get("custom_attr") != "test_value":
+                        continue
+                    self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+                    active_requests_point_seen = True
+                continue
+
+            if metric.name != "http.server.duration":
+                continue
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            point = data_points[0]
+            self.assertIsInstance(point, HistogramDataPoint)
+            self.assertEqual(point.attributes[HTTP_METHOD], "GET")
+            self.assertEqual(point.attributes["custom_attr"], "test_value")
+            histogram_point_seen = True
+
+        self.assertTrue(active_requests_point_seen)
+        self.assertTrue(histogram_point_seen)
+
+    def test_falcon_metrics_active_requests_custom_attributes_new_semconv(
+        self,
+    ):
+        self.client().simulate_get("/user_custom_attr/123")
+        metrics = self.get_sorted_metrics(SCOPE)
+        active_requests_point_seen = False
+
+        for metric in metrics:
+            if metric.name != "http.server.active_requests":
+                continue
+            data_points = list(metric.data.data_points)
+            for point in data_points:
+                self.assertIsInstance(point, NumberDataPoint)
+                if point.attributes.get("custom_attr") != "test_value":
+                    continue
+                self.assertEqual(point.attributes[HTTP_REQUEST_METHOD], "GET")
+                active_requests_point_seen = True
+
+        self.assertTrue(active_requests_point_seen)
 
     def test_falcon_metric_values_new_semconv(self):
         number_data_point_seen = False
