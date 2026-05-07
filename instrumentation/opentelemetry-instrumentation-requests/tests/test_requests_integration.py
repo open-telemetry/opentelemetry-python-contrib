@@ -102,6 +102,9 @@ class InvalidResponseObjectException(Exception):
         self.response = {}
 
 
+SCOPE = "opentelemetry.instrumentation.requests"
+
+
 class RequestsIntegrationTestBase(abc.ABC):
     # pylint: disable=no-member
     # pylint: disable=too-many-public-methods
@@ -1008,26 +1011,23 @@ class TestRequestsIntergrationMetric(TestBase):
             HTTP_SCHEME: "http",
         }
 
-        for (
-            resource_metrics
-        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
-            for scope_metrics in resource_metrics.scope_metrics:
-                self.assertEqual(len(scope_metrics.metrics), 1)
-                for metric in scope_metrics.metrics:
-                    self.assertEqual(metric.unit, "ms")
-                    self.assertEqual(
-                        metric.description,
-                        "measures the duration of the outbound HTTP request",
-                    )
-                    for data_point in metric.data.data_points:
-                        self.assertEqual(
-                            data_point.explicit_bounds,
-                            HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
-                        )
-                        self.assertDictEqual(
-                            expected_attributes, dict(data_point.attributes)
-                        )
-                        self.assertEqual(data_point.count, 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 1)
+        for metric in metrics:
+            self.assertEqual(metric.unit, "ms")
+            self.assertEqual(
+                metric.description,
+                "measures the duration of the outbound HTTP request",
+            )
+            for data_point in metric.data.data_points:
+                self.assertEqual(
+                    data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
+                )
+                self.assertDictEqual(
+                    expected_attributes, dict(data_point.attributes)
+                )
+                self.assertEqual(data_point.count, 1)
 
     def test_basic_metric_new_semconv(self):
         self.perform_request(self.URL)
@@ -1039,25 +1039,22 @@ class TestRequestsIntergrationMetric(TestBase):
             HTTP_REQUEST_METHOD: "GET",
             NETWORK_PROTOCOL_VERSION: "1.1",
         }
-        for (
-            resource_metrics
-        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
-            for scope_metrics in resource_metrics.scope_metrics:
-                self.assertEqual(len(scope_metrics.metrics), 1)
-                for metric in scope_metrics.metrics:
-                    self.assertEqual(metric.unit, "s")
-                    self.assertEqual(
-                        metric.description, "Duration of HTTP client requests."
-                    )
-                    for data_point in metric.data.data_points:
-                        self.assertEqual(
-                            data_point.explicit_bounds,
-                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                        )
-                        self.assertDictEqual(
-                            expected_attributes, dict(data_point.attributes)
-                        )
-                        self.assertEqual(data_point.count, 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 1)
+        for metric in metrics:
+            self.assertEqual(metric.unit, "s")
+            self.assertEqual(
+                metric.description, "Duration of HTTP client requests."
+            )
+            for data_point in metric.data.data_points:
+                self.assertEqual(
+                    data_point.explicit_bounds,
+                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                )
+                self.assertDictEqual(
+                    expected_attributes, dict(data_point.attributes)
+                )
+                self.assertEqual(data_point.count, 1)
 
     def test_basic_metric_both_semconv(self):
         self.perform_request(self.URL)
@@ -1080,24 +1077,21 @@ class TestRequestsIntergrationMetric(TestBase):
             NETWORK_PROTOCOL_VERSION: "1.1",
         }
 
-        for (
-            resource_metrics
-        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
-            for scope_metrics in resource_metrics.scope_metrics:
-                self.assertEqual(len(scope_metrics.metrics), 2)
-                for metric in scope_metrics.metrics:
-                    for data_point in metric.data.data_points:
-                        if metric.unit == "ms":
-                            self.assertDictEqual(
-                                expected_attributes_old,
-                                dict(data_point.attributes),
-                            )
-                        else:
-                            self.assertDictEqual(
-                                expected_attributes_new,
-                                dict(data_point.attributes),
-                            )
-                        self.assertEqual(data_point.count, 1)
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertEqual(len(metrics), 2)
+        for metric in metrics:
+            for data_point in metric.data.data_points:
+                if metric.unit == "ms":
+                    self.assertDictEqual(
+                        expected_attributes_old,
+                        dict(data_point.attributes),
+                    )
+                else:
+                    self.assertDictEqual(
+                        expected_attributes_new,
+                        dict(data_point.attributes),
+                    )
+                self.assertEqual(data_point.count, 1)
 
     def test_custom_histogram_boundaries(self):
         RequestsInstrumentor().uninstrument()
@@ -1154,7 +1148,7 @@ class TestRequestsIntergrationMetric(TestBase):
             self.assertTrue(mock_span.is_recording.called)
             self.assertFalse(mock_span.set_attribute.called)
             self.assertFalse(mock_span.set_status.called)
-            metrics = self.get_sorted_metrics()
+            metrics = self.get_sorted_metrics(SCOPE)
             self.assertEqual(len(metrics), 1)
             duration_data_point = metrics[0].data.data_points[0]
             self.assertDictEqual(

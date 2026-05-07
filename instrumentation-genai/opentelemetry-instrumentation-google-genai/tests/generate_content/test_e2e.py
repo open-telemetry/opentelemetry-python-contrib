@@ -24,11 +24,9 @@ secondary goal of this test. Detailed testing of the instrumentation
 output is the purview of the other tests in this directory."""
 
 import asyncio
-import gzip
 import json
 import os
 import subprocess
-import sys
 import time
 
 import fsspec
@@ -39,6 +37,14 @@ import pytest
 import yaml
 from google.genai import types
 from vcr.record_mode import RecordMode
+
+try:
+    # These modules are only supported in python >= 3.10
+    from aiohttp.client_exceptions import ClientConnectionError
+    from vcr.stubs import aiohttp_stubs
+except ImportError:
+    ClientConnectionError = None
+    aiohttp_stubs = None
 
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
@@ -135,6 +141,9 @@ def _redact_headers(headers):
 
 
 def _before_record_request(request):
+    # aiohttp reports the request method in lower case while it is recorded in the cassette in upper case.
+    if request.method:
+        request.method = request.method.upper()
     if request.headers:
         _redact_headers(request.headers)
     uri = request.uri
@@ -247,51 +256,6 @@ def _convert_body_to_literal(data):
     return data
 
 
-# Helper for enforcing GZIP compression where it was originally.
-def _ensure_gzip_single_response(data: bytes):
-    try:
-        # Attempt to decompress, first, to avoid double compression.
-        gzip.decompress(data)
-        return data
-    except gzip.BadGzipFile:
-        # It must not have been compressed in the first place.
-        return gzip.compress(data)
-
-
-# VCRPy automatically decompresses responses before saving them, but it may forget to
-# re-encode them when the data is loaded. This can create issues with decompression.
-# This is why we re-encode on load; to accurately replay what was originally sent.
-#
-# https://vcrpy.readthedocs.io/en/latest/advanced.html#decode-compressed-response
-def _ensure_casette_gzip(loaded_casette):
-    for interaction in loaded_casette["interactions"]:
-        response = interaction["response"]
-        headers = response["headers"]
-        if (
-            "content-encoding" not in headers
-            and "Content-Encoding" not in headers
-        ):
-            continue
-        if (
-            "content-encoding" in headers
-            and "gzip" not in headers["content-encoding"]
-        ):
-            continue
-        if (
-            "Content-Encoding" in headers
-            and "gzip" not in headers["Content-Encoding"]
-        ):
-            continue
-        response["body"]["string"] = _ensure_gzip_single_response(
-            response["body"]["string"].encode()
-        )
-
-
-def _maybe_ensure_casette_gzip(result):
-    if sys.version_info[0] == 3 and sys.version_info[1] == 9:
-        _ensure_casette_gzip(result)
-
-
 class _PrettyPrintJSONBody:
     """This makes request and response body recordings more readable."""
 
@@ -304,9 +268,7 @@ class _PrettyPrintJSONBody:
 
     @staticmethod
     def deserialize(cassette_string):
-        result = yaml.load(cassette_string, Loader=yaml.Loader)
-        _maybe_ensure_casette_gzip(result)
-        return result
+        return yaml.load(cassette_string, Loader=yaml.Loader)
 
 
 @pytest.fixture(name="fully_initialized_vcr", scope="module", autouse=True)
@@ -314,6 +276,48 @@ def setup_vcr(vcr):
     vcr.register_serializer("yaml", _PrettyPrintJSONBody)
     vcr.serializer = "yaml"
     return vcr
+
+
+@pytest.fixture(name="patch_vcr_aiohttp_stream", scope="module", autouse=True)
+def fixture_patch_vcr_aiohttp_stream():
+    # Allows the async tests to not be stuck in infinite loop when streaming
+    # a VCR cassette with aiohttp stubs.
+    # https://github.com/kevin1024/vcrpy/issues/927
+    if ClientConnectionError is None or aiohttp_stubs is None:
+        return
+
+    class _ReplayMockStream(aiohttp_stubs.MockStream):
+        # Keep vcrpy's stream behavior, but ignore aiohttp's
+        # close-time ClientConnectionError("Connection closed") during
+        # cassette replay, where the full response is already buffered
+        # and this condition should be treated as normal EOF.
+        def set_exception(self, exc):
+            if isinstance(exc, ClientConnectionError) and exc.args == (
+                "Connection closed",
+            ):
+                return
+            super().set_exception(exc)
+
+    class _ReplayMockClientResponse(aiohttp_stubs.MockClientResponse):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._mock_content_stream = None
+
+        @property
+        def content(self):
+            # vcrpy's aiohttp MockClientResponse.content creates a fresh stream object
+            # on every property access. google-genai async streaming repeatedly reads
+            # response.content.readline() and expects the same stream instance until EOF is
+            # reached.
+            if self._mock_content_stream is None:
+                body = self._body or b""
+                stream = _ReplayMockStream()
+                stream.feed_data(body)
+                stream.feed_eof()
+                self._mock_content_stream = stream
+            return self._mock_content_stream
+
+    aiohttp_stubs.MockClientResponse = _ReplayMockClientResponse
 
 
 @pytest.fixture(name="instrumentor")

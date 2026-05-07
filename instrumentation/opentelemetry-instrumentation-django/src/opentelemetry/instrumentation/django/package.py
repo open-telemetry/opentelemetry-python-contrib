@@ -13,5 +13,5 @@
 # limitations under the License.
 
 
-_instruments = ("django >= 1.10",)
+_instruments = ("django >= 2.0",)
 _supports_metrics = True

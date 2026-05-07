@@ -20,7 +20,7 @@ from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
 from opentelemetry.semconv.attributes import (
-    error_attributes as ErrorAttributes,
+    error_attributes,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer, set_span_in_context
 from opentelemetry.trace.status import Status, StatusCode
@@ -112,6 +112,6 @@ class _SpanManager:
             return
         span.set_status(Status(StatusCode.ERROR, str(error)))
         span.set_attribute(
-            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+            error_attributes.ERROR_TYPE, type(error).__qualname__
         )
         self.end_span(run_id)

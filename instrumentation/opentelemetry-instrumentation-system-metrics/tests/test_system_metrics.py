@@ -983,9 +983,15 @@ class TestSystemMetrics(TestBase):
             }
         )
         expected_gc_collections = [
-            _SystemMetricsResult({"generation": "0"}, 10),
-            _SystemMetricsResult({"generation": "1"}, 20),
-            _SystemMetricsResult({"generation": "2"}, 30),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 0, "generation": "0"}, 10
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 1, "generation": "1"}, 20
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 2, "generation": "2"}, 30
+            ),
         ]
         self._test_metrics(
             "cpython.gc.collections",
@@ -1007,9 +1013,15 @@ class TestSystemMetrics(TestBase):
             }
         )
         expected_gc_collected_objects = [
-            _SystemMetricsResult({"generation": "0"}, 100),
-            _SystemMetricsResult({"generation": "1"}, 200),
-            _SystemMetricsResult({"generation": "2"}, 300),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 0, "generation": "0"}, 100
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 1, "generation": "1"}, 200
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 2, "generation": "2"}, 300
+            ),
         ]
         self._test_metrics(
             "cpython.gc.collected_objects",
@@ -1031,9 +1043,15 @@ class TestSystemMetrics(TestBase):
             }
         )
         expected_gc_uncollectable_objects = [
-            _SystemMetricsResult({"generation": "0"}, 1),
-            _SystemMetricsResult({"generation": "1"}, 2),
-            _SystemMetricsResult({"generation": "2"}, 3),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 0, "generation": "0"}, 1
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 1, "generation": "1"}, 2
+            ),
+            _SystemMetricsResult(
+                {"cpython.gc.generation": 2, "generation": "2"}, 3
+            ),
         ]
         self._test_metrics(
             "cpython.gc.uncollectable_objects",

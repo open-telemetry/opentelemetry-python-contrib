@@ -11,7 +11,6 @@ Metrics capture token usage and performance data.
 
 Note: ``.env`` file configures additional environment variables:
 
-- ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`` configures OpenTelemetry SDK to export logs and events.
 - ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` configures OpenAI instrumentation to capture content on events.
 - ``OTEL_LOGS_EXPORTER=otlp`` to specify exporter type.
 

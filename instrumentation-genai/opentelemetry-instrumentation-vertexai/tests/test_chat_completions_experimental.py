@@ -74,7 +74,7 @@ def test_generate_content_with_files(
         "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","uri":"https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg","type":"file_data"},{"data":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","mime_type":"image/jpeg","type":"blob"}]}]',
+        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","modality":"image","uri":"https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg","type":"uri"},{"mime_type":"image/jpeg","modality":"image","content":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","type":"blob"}]}]',
         "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
     }
 
@@ -97,12 +97,14 @@ def test_generate_content_with_files(
                     {"content": "Say this is a test", "type": "text"},
                     {
                         "mime_type": "image/jpeg",
+                        "modality": "image",
                         "uri": "https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg",
-                        "type": "file_data",
+                        "type": "uri",
                     },
                     {
-                        "data": b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x05\x00\x00\x00\x05\x08\x06\x00\x00\x00\x8do&\xe5\x00\x00\x00\x1cIDAT\x08\xd7c\xf8\xff\xff?\xc3\x7f\x06 \x05\xc3 \x12\x84\xd01\xf1\x82X\xcd\x04\x00\x0e\xf55\xcb\xd1\x8e\x0e\x1f\x00\x00\x00\x00IEND\xaeB`\x82",
                         "mime_type": "image/jpeg",
+                        "modality": "image",
+                        "content": b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x05\x00\x00\x00\x05\x08\x06\x00\x00\x00\x8do&\xe5\x00\x00\x00\x1cIDAT\x08\xd7c\xf8\xff\xff?\xc3\x7f\x06 \x05\xc3 \x12\x84\xd01\xf1\x82X\xcd\x04\x00\x0e\xf55\xcb\xd1\x8e\x0e\x1f\x00\x00\x00\x00IEND\xaeB`\x82",
                         "type": "blob",
                     },
                 ),

@@ -95,6 +95,7 @@ def trysetip(
         return True
 
     sock = "<property not accessed>"
+    ip = None
     try:
         sock: typing.Optional[socket.socket] = conn.sock
         logger.debug("Got socket: %s", sock)
@@ -112,8 +113,9 @@ def trysetip(
             stack_info=True,
         )
     else:
-        for span in spanlist:
-            span.set_attribute(NET_PEER_IP, ip)
+        if ip is not None:
+            for span in spanlist:
+                span.set_attribute(NET_PEER_IP, ip)
     return True
 
 

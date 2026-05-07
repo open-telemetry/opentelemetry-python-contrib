@@ -20,7 +20,16 @@ from opentelemetry.instrumentation.pymongo import (
     PymongoInstrumentor,
 )
 from opentelemetry.instrumentation.utils import suppress_instrumentation
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_MONGODB_COLLECTION,
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -58,15 +67,11 @@ class TestPymongo(TestBase):
         span = command_tracer._pop_span(mock_event)
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
         self.assertEqual(span.name, "database_name.find")
-        self.assertEqual(span.attributes[SpanAttributes.DB_SYSTEM], "mongodb")
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_NAME], "database_name"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.DB_STATEMENT], "find")
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "test.com"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], "1234")
+        self.assertEqual(span.attributes[DB_SYSTEM], "mongodb")
+        self.assertEqual(span.attributes[DB_NAME], "database_name")
+        self.assertEqual(span.attributes[DB_STATEMENT], "find")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "test.com")
+        self.assertEqual(span.attributes[NET_PEER_PORT], "1234")
         self.start_callback.assert_called_once_with(span, mock_event)
 
     def test_succeeded(self):
@@ -211,7 +216,7 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT],
+            span.attributes[DB_STATEMENT],
             "getMore test_collection",
         )
 
@@ -235,9 +240,7 @@ class TestPymongo(TestBase):
         span = spans_list[0]
 
         expected_statement = f"aggregate {pipeline}"
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], expected_statement
-        )
+        self.assertEqual(span.attributes[DB_STATEMENT], expected_statement)
 
     def test_capture_statement_disabled_getmore(self):
         command_attrs = {
@@ -254,9 +257,7 @@ class TestPymongo(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "getMore"
-        )
+        self.assertEqual(span.attributes[DB_STATEMENT], "getMore")
 
     def test_capture_statement_disabled_aggregate(self):
         pipeline = [{"$match": {"status": "active"}}]
@@ -274,9 +275,7 @@ class TestPymongo(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
-        self.assertEqual(
-            span.attributes[SpanAttributes.DB_STATEMENT], "aggregate"
-        )
+        self.assertEqual(span.attributes[DB_STATEMENT], "aggregate")
 
     def test_collection_name_attribute(self):
         scenarios = [
@@ -305,12 +304,10 @@ class TestPymongo(TestBase):
                 self.assertEqual(len(spans_list), 1)
                 span = spans_list[0]
 
-                self.assertEqual(
-                    span.attributes[SpanAttributes.DB_STATEMENT], "find"
-                )
+                self.assertEqual(span.attributes[DB_STATEMENT], "find")
 
                 self.assertEqual(
-                    span.attributes.get(SpanAttributes.DB_MONGODB_COLLECTION),
+                    span.attributes.get(DB_MONGODB_COLLECTION),
                     expected,
                 )
                 self.memory_exporter.clear()

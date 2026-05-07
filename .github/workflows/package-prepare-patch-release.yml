@@ -5,12 +5,15 @@ on:
       package:
         type: choice
         options:
+        - opentelemetry-opamp-client
         - opentelemetry-propagator-aws-xray
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
         - opentelemetry-instrumentation-openai-v2
         - opentelemetry-instrumentation-openai-agents-v2
         - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-anthropic
+        - opentelemetry-instrumentation-claude-agent-sdk
         - opentelemetry-instrumentation-google-genai
         - opentelemetry-util-genai
         description: 'Package to be released'
@@ -94,10 +97,10 @@ jobs:
           # replace the version in the version file (1.2.3 -> 1.2.4)
           sed -i -E "s/__version__\s*=\s*\"${VERSION}\"/__version__ = \"${NEXT_VERSION}\"/g" $VERSION_FILE
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
       - name: Install tox
         run: pip install tox
       - name: run tox

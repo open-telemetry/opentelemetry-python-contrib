@@ -255,9 +255,16 @@ from opentelemetry.instrumentation.asgi.version import __version__  # noqa
 from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
 )
-from opentelemetry.instrumentation.utils import _start_internal_or_server_span
+from opentelemetry.instrumentation.utils import (
+    _start_internal_or_server_span,
+    is_http_instrumentation_enabled,
+)
 from opentelemetry.metrics import get_meter
 from opentelemetry.propagators.textmap import Getter, Setter
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_SERVER_NAME,
+    HTTP_TARGET,
+)
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
     USER_AGENT_SYNTHETIC_TYPE,
 )
@@ -270,7 +277,6 @@ from opentelemetry.semconv.metrics import MetricInstruments
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_SERVER_REQUEST_DURATION,
 )
-from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Span, set_span_in_context
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -397,9 +403,7 @@ def collect_request_attributes(
     http_host_value_list = asgi_getter.get(scope, "host")
     if http_host_value_list:
         if _report_old(sem_conv_opt_in_mode):
-            result[SpanAttributes.HTTP_SERVER_NAME] = ",".join(
-                http_host_value_list
-            )
+            result[HTTP_SERVER_NAME] = ",".join(http_host_value_list)
     http_user_agent = asgi_getter.get(scope, "user-agent")
     if http_user_agent:
         user_agent_raw = http_user_agent[0]
@@ -582,7 +586,7 @@ class OpenTelemetryMiddleware:
         exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
     """
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches,too-many-positional-arguments
     def __init__(
         self,
         app,
@@ -744,7 +748,10 @@ class OpenTelemetryMiddleware:
             send: An awaitable callable taking a single dictionary as argument.
         """
         start = default_timer()
-        if scope["type"] not in ("http", "websocket"):
+        if not is_http_instrumentation_enabled() or scope["type"] not in (
+            "http",
+            "websocket",
+        ):
             return await self.app(scope, receive, send)
 
         _, _, url = get_host_port_url_tuple(scope)
@@ -825,7 +832,7 @@ class OpenTelemetryMiddleware:
                     attributes, _StabilityMode.DEFAULT
                 )
                 if target:
-                    duration_attrs_old[SpanAttributes.HTTP_TARGET] = target
+                    duration_attrs_old[HTTP_TARGET] = target
                 duration_attrs_new = _parse_duration_attrs(
                     attributes, _StabilityMode.HTTP
                 )

@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-_instruments = ("anthropic >= 0.3.0",)
+_instruments = ("anthropic >= 0.16.0",)

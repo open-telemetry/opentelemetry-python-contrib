@@ -147,7 +147,7 @@ import logging
 from typing import Any, Callable, Collection, TypeVar
 
 import psycopg  # pylint: disable=import-self
-from psycopg.sql import Composed  # pylint: disable=no-name-in-module
+from psycopg.sql import Composable  # pylint: disable=no-name-in-module
 
 from opentelemetry.instrumentation import dbapi
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -338,7 +338,7 @@ class CursorTracer(dbapi.CursorTracer):
             return ""
 
         statement = args[0]
-        if isinstance(statement, Composed):
+        if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
 
         # `statement` can be empty string. See #2643
@@ -353,7 +353,7 @@ class CursorTracer(dbapi.CursorTracer):
             return ""
 
         statement = args[0]
-        if isinstance(statement, Composed):
+        if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
         return statement
 

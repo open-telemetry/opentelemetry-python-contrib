@@ -14,13 +14,18 @@
 
 from __future__ import annotations
 
+import sys
 import urllib.parse
 from contextlib import contextmanager
 from importlib import import_module
 from re import escape, sub
 from typing import Any, Dict, Generator, Sequence
 
-from wrapt import ObjectProxy
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import context, trace
 
@@ -99,6 +104,9 @@ def unwrap(obj: object, attr: str):
             raise ImportError(
                 f"Cannot parse '{obj}' as dotted import path"
             ) from exc
+        if module_path not in sys.modules:
+            # Was never imported, meaning it could never have been wrapped
+            return
         module = import_module(module_path)
         try:
             obj = getattr(module, class_name)
@@ -108,7 +116,11 @@ def unwrap(obj: object, attr: str):
             ) from exc
 
     func = getattr(obj, attr, None)
-    if func and isinstance(func, ObjectProxy) and hasattr(func, "__wrapped__"):
+    if (
+        func
+        and isinstance(func, BaseObjectProxy)
+        and hasattr(func, "__wrapped__")
+    ):
         setattr(obj, attr, func.__wrapped__)
 
 

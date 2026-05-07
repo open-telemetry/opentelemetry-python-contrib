@@ -134,8 +134,8 @@ class AutoInstrumentedProducer(Producer):
 
 
 class AutoInstrumentedConsumer(Consumer):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._current_consume_span = None
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
@@ -185,9 +185,9 @@ class ProxiedConsumer(Consumer):
         self._current_consume_span = None
         self._current_context_token = None
 
-    def close(self):
+    def close(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_close(
-            self._consumer.close, self
+            self._consumer.close, self, args, kwargs
         )
 
     def committed(self, partitions, timeout=-1):
@@ -277,6 +277,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        # TODO: should probably wrap methods directly instead of going through
+        # these classes. Hopefully it'll make the patching work if called after
+        # the original classes have already been imported,  #4270
         self._original_kafka_producer = confluent_kafka.Producer
         self._original_kafka_consumer = confluent_kafka.Consumer
 
@@ -308,8 +311,10 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                 func, instance, self._tracer, args, kwargs
             )
 
-        def _inner_wrap_close(func, instance):
-            return ConfluentKafkaInstrumentor.wrap_close(func, instance)
+        def _inner_wrap_close(func, instance, args, kwargs):
+            return ConfluentKafkaInstrumentor.wrap_close(
+                func, instance, args, kwargs
+            )
 
         wrapt.wrap_function_wrapper(
             AutoInstrumentedProducer,
@@ -378,11 +383,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            record = func(*args, **kwargs)
-            if record:
+        record = func(*args, **kwargs)
+        if record:
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+            ):
                 _create_new_consume_span(instance, tracer, [record])
                 _enrich_span(
                     instance._current_consume_span,
@@ -391,9 +396,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.offset(),
                     operation=MessagingOperationTypeValues.PROCESS,
                 )
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
+            instance._current_context_token = context.attach(
+                trace.set_span_in_context(instance._current_consume_span)
+            )
 
         return record
 
@@ -402,26 +407,25 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            records = func(*args, **kwargs)
-            if len(records) > 0:
+        records = func(*args, **kwargs)
+        if len(records) > 0:
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+            ):
                 _create_new_consume_span(instance, tracer, records)
                 _enrich_span(
                     instance._current_consume_span,
                     records[0].topic(),
                     operation=MessagingOperationTypeValues.PROCESS,
                 )
-
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
+            instance._current_context_token = context.attach(
+                trace.set_span_in_context(instance._current_consume_span)
+            )
 
         return records
 
     @staticmethod
-    def wrap_close(func, instance):
+    def wrap_close(func, instance, args, kwargs):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
-        func()
+        func(*args, **kwargs)

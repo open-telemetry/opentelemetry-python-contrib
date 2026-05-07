@@ -90,7 +90,7 @@ class _InstrumentationMiddleware(Middleware):
         )
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
         utils.attach_span(
             self._span_registry, message.message_id, (span, activation)
@@ -142,7 +142,7 @@ class _InstrumentationMiddleware(Middleware):
             )
 
         activation = trace.use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
         utils.attach_span(
             self._span_registry,

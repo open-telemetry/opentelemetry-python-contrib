@@ -18,7 +18,15 @@ from pymongo import MongoClient
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_MONGODB_COLLECTION,
+    DB_NAME,
+    DB_STATEMENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 MONGODB_HOST = os.getenv("MONGODB_HOST", "localhost")
@@ -60,21 +68,15 @@ class TestFunctionalPymongo(TestBase):
         self.assertIsNotNone(pymongo_span.parent)
         self.assertIs(pymongo_span.parent, root_span.get_span_context())
         self.assertIs(pymongo_span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(pymongo_span.attributes[DB_NAME], MONGODB_DB_NAME)
+        self.assertEqual(pymongo_span.attributes[NET_PEER_NAME], MONGODB_HOST)
+        self.assertEqual(pymongo_span.attributes[NET_PEER_PORT], MONGODB_PORT)
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_NAME], MONGODB_DB_NAME
-        )
-        self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.NET_PEER_NAME], MONGODB_HOST
-        )
-        self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.NET_PEER_PORT], MONGODB_PORT
-        )
-        self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_MONGODB_COLLECTION],
+            pymongo_span.attributes[DB_MONGODB_COLLECTION],
             MONGODB_COLLECTION_NAME,
         )
         self.assertEqual(
-            pymongo_span.attributes[SpanAttributes.DB_STATEMENT],
+            pymongo_span.attributes[DB_STATEMENT],
             expected_db_statement,
         )
 
