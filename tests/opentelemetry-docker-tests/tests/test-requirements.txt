@@ -27,7 +27,7 @@ flaky==3.7.0
 flask==3.0.2
 greenlet==3.0.3
 grpcio==1.63.2
-idna==2.10
+idna==3.7
 iniconfig==2.0.0
 jsonschema==3.2.0
 kombu==5.3.5
