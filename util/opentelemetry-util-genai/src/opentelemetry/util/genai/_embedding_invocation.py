@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -23,6 +12,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.types import AttributeValue
 
@@ -34,11 +24,12 @@ class EmbeddingInvocation(GenAIInvocation):
     context manager rather than constructing this directly.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-locals
         self,
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         provider: str,
         *,
         request_model: str | None = None,
@@ -57,6 +48,7 @@ class EmbeddingInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
             span_name=f"{_operation_name} {request_model}"
             if request_model
@@ -120,5 +112,4 @@ class EmbeddingInvocation(GenAIInvocation):
             self._apply_error_attributes(error)
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
-        # Metrics recorder currently supports InferenceInvocation fields only.
-        # No-op until dedicated embedding metric support is added.
+        self._metrics_recorder.record(self)

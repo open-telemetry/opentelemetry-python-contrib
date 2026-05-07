@@ -1,3 +1,7 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+
 class ObjectProxy:
     """Minimal stand-in for wrapt.ObjectProxy used in tests."""
 
