@@ -2,7 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from logging import DEBUG, NOTSET, Logger, LoggerAdapter, getLogger
+from logging import (
+    DEBUG,
+    NOTSET,
+    Logger,
+    LoggerAdapter,
+    NullHandler,
+    getLogger,
+)
 from os import environ
 from sys import stderr
 
@@ -50,20 +57,12 @@ class _OtelLogLevelLoggerAdapter(LoggerAdapter):
     OTEL_LOG_LEVEL asks for debug output and Python logging would not emit them.
     """
 
-    def __init__(self, logger, extra):
-        super().__init__(logger, extra)
-        # This adapter is built when this module is imported. That covers the
-        # sitecustomize path where auto-instrumentation runs before application
-        # logging setup, and the edge case where Python logging is set up and then
-        # auto_instrumentation.initialize() is invoked explicitly. If this adapter
-        # is used after application code can change logging, it should be modified
-        # to not use the cached value in the _logger_emits_debug field.
-        self._logger_emits_debug = self._logger_would_emit(DEBUG)
-
     def debug(self, msg: str, *args: object, **kwargs: object) -> None:
         super().debug(msg, *args, **kwargs)
 
-        if not _otel_log_level_allows_debug() or self._logger_emits_debug:
+        if not _otel_log_level_allows_debug() or self._logger_would_emit(
+            DEBUG
+        ):
             return
 
         message = msg
@@ -81,6 +80,9 @@ class _OtelLogLevelLoggerAdapter(LoggerAdapter):
         logger: Logger | None = self.logger
         while logger:
             for handler in logger.handlers:
+                if isinstance(handler, NullHandler):
+                    continue
+
                 if handler.level == NOTSET or level >= handler.level:
                     return True
 

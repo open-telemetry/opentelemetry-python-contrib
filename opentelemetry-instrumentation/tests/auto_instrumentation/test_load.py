@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # type: ignore
 
-from logging import DEBUG, INFO, NullHandler, getLogger
+from io import StringIO
+from logging import DEBUG, INFO, NullHandler, StreamHandler, getLogger
 from unittest import TestCase
 from unittest.mock import Mock, call, patch
 
@@ -304,12 +305,9 @@ class TestLoad(TestCase):
                 )
                 stderr_mock.flush.assert_called_once()
 
-            handler = NullHandler()
-            handler.setLevel(INFO)
-            parent_logger.addHandler(handler)
-            otel_log_level_logger = _load._OtelLogLevelLoggerAdapter(
-                logger, {}
-            )
+            null_handler = NullHandler()
+            null_handler.setLevel(DEBUG)
+            parent_logger.addHandler(null_handler)
 
             with patch(
                 "opentelemetry.instrumentation.auto_instrumentation._load.stderr"
@@ -323,10 +321,23 @@ class TestLoad(TestCase):
                 )
                 stderr_mock.flush.assert_called_once()
 
-            handler.setLevel(DEBUG)
-            otel_log_level_logger = _load._OtelLogLevelLoggerAdapter(
-                logger, {}
-            )
+            stream_handler = StreamHandler(StringIO())
+            stream_handler.setLevel(INFO)
+            parent_logger.addHandler(stream_handler)
+
+            with patch(
+                "opentelemetry.instrumentation.auto_instrumentation._load.stderr"
+            ) as stderr_mock:
+                otel_log_level_logger.debug("Instrumented %s", "requests")
+
+                stderr_mock.write.assert_called_once_with(
+                    "DEBUG:"
+                    "opentelemetry.test.auto_instrumentation.loader:"
+                    "Instrumented 'requests'\n"
+                )
+                stderr_mock.flush.assert_called_once()
+
+            stream_handler.setLevel(DEBUG)
 
             with patch(
                 "opentelemetry.instrumentation.auto_instrumentation._load.stderr"
