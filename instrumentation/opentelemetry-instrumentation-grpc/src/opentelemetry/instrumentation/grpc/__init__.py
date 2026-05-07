@@ -309,7 +309,7 @@ class GrpcInstrumentorServer(BaseInstrumentor):
 
     """
 
-    # pylint:disable=attribute-defined-outside-init, redefined-outer-name
+    # pylint:disable=redefined-outer-name
 
     def __init__(self, filter_=None):
         excluded_service_filter = _excluded_service_filter()
@@ -363,7 +363,7 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
 
     """
 
-    # pylint:disable=attribute-defined-outside-init, redefined-outer-name
+    # pylint:disable=redefined-outer-name
 
     def __init__(self, filter_=None):
         excluded_service_filter = _excluded_service_filter()
@@ -495,7 +495,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
     """
 
-    # pylint:disable=attribute-defined-outside-init, redefined-outer-name
+    # pylint:disable=redefined-outer-name
 
     def __init__(self, filter_=None):
         excluded_service_filter = _excluded_service_filter()

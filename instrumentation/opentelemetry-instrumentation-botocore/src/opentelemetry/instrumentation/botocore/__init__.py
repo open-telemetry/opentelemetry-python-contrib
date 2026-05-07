@@ -140,6 +140,7 @@ from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
     unwrap,
 )
+from opentelemetry.metrics import Instrument
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
     AwsXRayPropagator,
@@ -181,7 +182,15 @@ class BotocoreInstrumentor(BaseInstrumentor):
         return _instruments_botocore
 
     def _instrument(self, **kwargs):
-        # pylint: disable=attribute-defined-outside-init
+        # tracers are lazy initialized per-extension in _get_tracer
+        self._tracers = {}
+        # loggers are lazy initialized per-extension in _get_logger
+        self._loggers = {}
+        # meters are lazy initialized per-extension in _get_meter
+        self._meters = {}
+        # metrics are lazy initialized per-extension in _get_metrics
+        self._metrics: Dict[str, Dict[str, Instrument]] = {}
+
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
 

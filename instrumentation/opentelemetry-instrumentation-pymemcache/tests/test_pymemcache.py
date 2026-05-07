@@ -64,7 +64,6 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         PymemcacheInstrumentor().uninstrument()
 
     def make_client(self, mock_socket_values, **kwargs):
-        # pylint: disable=attribute-defined-outside-init
         self.client = pymemcache.client.base.Client(
             (TEST_HOST, TEST_PORT), **kwargs
         )
@@ -539,7 +538,6 @@ class PymemcacheHashClientTestCase(TestBase):
         # pylint: disable=import-outside-toplevel
         from pymemcache.client.hash import HashClient  # noqa: PLC0415
 
-        # pylint: disable=attribute-defined-outside-init
         self.client = HashClient([], **kwargs)
         ip = TEST_HOST
 
