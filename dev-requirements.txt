@@ -1,4 +1,4 @@
-pylint==3.0.2
+pylint==4.0.5
 httpretty==1.1.4
 pyright==v1.1.404
 sphinx==7.1.2
@@ -13,6 +13,5 @@ codespell==2.1.0
 requests==2.32.3
 ruamel.yaml==0.17.21
 flaky==3.7.0
-pre-commit==3.7.0; python_version >= '3.9'
-pre-commit==3.5.0; python_version < '3.9'
+pre-commit==3.7.0
 ruff==0.14.1

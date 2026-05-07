@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """
 GenAI Semantic Convention Trace Processor
 
@@ -426,6 +429,7 @@ def get_span_name(
 class GenAISemanticProcessor(TracingProcessor):
     """Trace processor adding GenAI semantic convention attributes with metrics."""
 
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         tracer: Optional[Tracer] = None,

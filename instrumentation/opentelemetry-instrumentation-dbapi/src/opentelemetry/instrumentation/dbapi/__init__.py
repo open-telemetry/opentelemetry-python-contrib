@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The trace integration with Database API supports libraries that follow the
@@ -177,8 +166,12 @@ from wrapt import wrap_function_wrapper
 
 try:
     # wrapt 2.0.0+
-    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+    from wrapt import (  # pylint: disable=no-name-in-module
+        BaseObjectProxy,
+        ObjectProxy,
+    )
 except ImportError:
+    from wrapt import ObjectProxy
     from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
@@ -805,14 +798,14 @@ class CursorTracer(Generic[CursorT]):
 
 
 # pylint: disable=abstract-method,no-member
-class TracedCursorProxy(BaseObjectProxy, Generic[CursorT]):
+class TracedCursorProxy(ObjectProxy, Generic[CursorT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
     ):
-        BaseObjectProxy.__init__(self, cursor)
+        ObjectProxy.__init__(self, cursor)
         self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):
