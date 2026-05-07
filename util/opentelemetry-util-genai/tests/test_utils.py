@@ -463,6 +463,51 @@ class TestTelemetryHandler(unittest.TestCase):
         assert len(spans) == 1
         assert spans[0].name == "chat accepted-model"
 
+    def test_start_embedding_passes_sampling_attributes_at_span_creation(self):
+        """Verify that sampling-relevant attributes are available at start_span() time for embeddings."""
+        captured_attributes = {}
+
+        class AttributeCapturingSampler:  # pylint: disable=no-self-use
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+            ):
+                captured_attributes.update(attributes or {})
+                return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+            def get_description(self):
+                return "AttributeCapturingSampler"
+
+        sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
+        sampler_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+        handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+        invocation = handler.start_embedding(
+            "test-provider",
+            request_model="embed-model",
+            server_address="embed.example.com",
+            server_port=443,
+        )
+        invocation.stop()
+
+        assert captured_attributes[GenAI.GEN_AI_OPERATION_NAME] == "embeddings"
+        assert captured_attributes[GenAI.GEN_AI_REQUEST_MODEL] == "embed-model"
+        assert (
+            captured_attributes[GenAI.GEN_AI_PROVIDER_NAME] == "test-provider"
+        )
+        assert (
+            captured_attributes[server_attributes.SERVER_ADDRESS]
+            == "embed.example.com"
+        )
+        assert captured_attributes[server_attributes.SERVER_PORT] == 443
+
     def test_llm_span_finish_reasons_without_output_messages(self):
         invocation = self.telemetry_handler.start_inference(
             "test-provider", request_model="model-without-output"
