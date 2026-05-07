@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `opentelemetry-instrumentation`: Add warning when no `opentelemetry_configurator` 
+  entry points are found, suggesting to install `opentelemetry-distro`.
+  ([#4543](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4543))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests

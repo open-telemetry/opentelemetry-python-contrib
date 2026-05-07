@@ -67,6 +67,14 @@ class TestLoad(TestCase):
     )
     def test_load_configurators_no_ep(self, iter_mock):  # pylint: disable=no-self-use
         iter_mock.return_value = ()
+        with self.assertLogs(
+            "opentelemetry.instrumentation.auto_instrumentation._load",
+            level="WARNING",
+        ) as cm:
+            _load._load_configurators()
+        self.assertTrue(
+            any("opentelemetry-distro" in msg for msg in cm.output)
+        )
         # Confirm method does not crash if not entry points exist.
         _load._load_configurators()
 
