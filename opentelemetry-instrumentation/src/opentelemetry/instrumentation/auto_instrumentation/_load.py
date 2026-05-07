@@ -61,14 +61,6 @@ class _EntryPointDistFinder:
 
 def _load_distro() -> BaseDistro:
     distro_name = environ.get(OTEL_PYTHON_DISTRO, None)
-    all_distros = list(entry_points(group="opentelemetry_distro"))
-    if not all_distros:
-        _logger.warning(
-            "No distro found. Make sure 'opentelemetry-distro' is installed "
-            "if you are using automatic instrumentation. "
-            "See https://opentelemetry.io/docs/zero-code/python/ for details."
-        )
-
     for entry_point in entry_points(group="opentelemetry_distro"):
         try:
             # If no distro is specified, use first to come up.
@@ -168,15 +160,6 @@ def _load_instrumentors(distro):
 def _load_configurators():
     configurator_name = environ.get(OTEL_PYTHON_CONFIGURATOR, None)
     configured = None
-    all_configurators = list(entry_points(group="opentelemetry_configurator"))
-    if not all_configurators:
-        _logger.warning(
-            "No configurator found. Make sure 'opentelemetry-distro' is "
-            "installed if you are using automatic instrumentation. "
-            "See https://opentelemetry.io/docs/zero-code/python/ for details."
-        )
-        return
-
     for entry_point in entry_points(group="opentelemetry_configurator"):
         if configured is not None:
             _logger.warning(
@@ -204,3 +187,10 @@ def _load_configurators():
         except Exception as exc:  # pylint: disable=broad-except
             _logger.exception("Configuration of %s failed", entry_point.name)
             raise exc
+
+    if configured is None:
+        _logger.warning(
+            "No configurator found. Make sure 'opentelemetry-distro' is "
+            "installed if you are using automatic instrumentation. "
+            "See https://opentelemetry.io/docs/zero-code/python/ for details."
+        )
