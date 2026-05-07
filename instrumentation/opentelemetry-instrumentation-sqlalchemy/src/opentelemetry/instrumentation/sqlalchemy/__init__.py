@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument `sqlalchemy`_ to report SQL queries.
@@ -110,16 +99,16 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 SQLComment in span attribute
 ****************************
 If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
-the query span ``db.statement`` attribute for your needs. If ``commenter_options``
-have been set, the span attribute comment will also be configured by this
-setting.
+the query span ``db.statement`` and/or ``db.query.text`` attribute for your
+needs. If ``commenter_options`` have been set, the span attribute comment
+will also be configured by this setting.
 
 .. code:: python
 
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
     # Opts into sqlcomment for SQLAlchemy trace integration.
-    # Opts into sqlcomment for `db.statement` span attribute.
+    # Opts into sqlcomment for `db.statement` and/or `db.query.text` span attribute.
     SQLAlchemyInstrumentor().instrument(
         enable_commenter=True,
         commenter_options={},
@@ -127,7 +116,7 @@ setting.
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
 API
 ---
@@ -141,6 +130,11 @@ from packaging.version import parse as parse_version
 from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.sqlalchemy.engine import (
     EngineTracer,
@@ -181,12 +175,24 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
         """
+        # Initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+
+        # Determine schema URL based on both DATABASE and HTTP signal types
+        # and semconv opt-in mode
+        schema_url = _get_schema_url_for_signal_types(
+            [
+                _OpenTelemetryStabilitySignalType.DATABASE,
+                _OpenTelemetryStabilitySignalType.HTTP,
+            ]
+        )
+
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=schema_url,
         )
 
         meter_provider = kwargs.get("meter_provider")
@@ -194,7 +200,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=schema_url,
         )
 
         connections_usage = meter.create_up_down_counter(

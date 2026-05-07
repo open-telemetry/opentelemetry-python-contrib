@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -41,11 +30,23 @@ _internal_logger.propagate = False
 _internal_logger.addHandler(logging.StreamHandler())
 
 
+_OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME = {
+    "notset": logging.NOTSET,
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warn": logging.WARNING,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+}
+
+
 def _setup_logging_handler(
-    logger_provider: LoggerProvider, log_code_attributes: bool = False
+    logger_provider: LoggerProvider,
+    log_code_attributes: bool = False,
+    level: int | None = None,
 ) -> LoggingHandler:
     handler = LoggingHandler(
-        level=logging.NOTSET,
+        level=level or logging.NOTSET,
         logger_provider=logger_provider,
         log_code_attributes=log_code_attributes,
     )
@@ -188,10 +189,14 @@ class LoggingHandler(logging.Handler):
             else:
                 body = record.getMessage()
 
-        # related to https://github.com/open-telemetry/opentelemetry-python/issues/3548
-        # Severity Text = WARN as defined in https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity.
-        level_name = (
-            "WARN" if record.levelname == "WARNING" else record.levelname
+        # Map Python log level names to OTel severity text as defined in
+        # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
+        _python_to_otel_severity_text = {
+            "WARNING": "WARN",
+            "CRITICAL": "FATAL",
+        }
+        level_name = _python_to_otel_severity_text.get(
+            record.levelname, record.levelname
         )
 
         return LogRecord(
