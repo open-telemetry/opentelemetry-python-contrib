@@ -217,8 +217,7 @@ class TestLoad(TestCase):
                 logger_mock.parent = None
                 logger_mock.propagate = True
                 logger_mock.name = (
-                    "opentelemetry.instrumentation."
-                    "auto_instrumentation._load"
+                    "opentelemetry.instrumentation.auto_instrumentation._load"
                 )
                 logger = _load._OtelLogLevelLoggerAdapter(logger_mock, {})
 
@@ -270,7 +269,9 @@ class TestLoad(TestCase):
                 stderr_mock.flush.assert_not_called()
 
     @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debug"}, clear=True)
-    def test_otel_log_level_output_uses_logger_hierarchy_handlers(self):
+    def test_otel_log_level_output_uses_logger_hierarchy_handlers(
+        self,
+    ):  # pylint: disable=no-self-use
         parent_logger = getLogger("opentelemetry.test.auto_instrumentation")
         logger = getLogger("opentelemetry.test.auto_instrumentation.loader")
 
