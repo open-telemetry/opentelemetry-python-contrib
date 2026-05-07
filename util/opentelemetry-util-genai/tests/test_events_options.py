@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import os
 import unittest
@@ -25,6 +14,7 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
 from opentelemetry.util.genai.utils import (
+    should_capture_content_on_spans_in_experimental_mode,
     should_emit_event,
 )
 
@@ -206,3 +196,45 @@ class TestShouldEmitEvent(unittest.TestCase):
     ):  # pylint: disable=no-self-use
         # User explicitly setting emit_event="true" should override the default (False for NO_CONTENT)
         assert should_emit_event() is True
+
+
+class TestShouldCaptureContent(unittest.TestCase):
+    @patch_env_vars(
+        stability_mode="default",
+        content_capturing="SPAN_AND_EVENT",
+        emit_event="true",
+    )
+    def test_should_capture_content_on_spans_in_experimental_mode_false_when_not_experimental(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content_on_spans_in_experimental_mode() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="NO_CONTENT",
+        emit_event="true",
+    )
+    def test_should_capture_content_on_spans_in_experimental_mode_false_when_no_content(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content_on_spans_in_experimental_mode() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="EVENT_ONLY",
+        emit_event="false",
+    )
+    def test_should_capture_content_on_spans_in_experimental_mode_false_when_event_only_but_event_disabled(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content_on_spans_in_experimental_mode() is False
+
+    @patch_env_vars(
+        stability_mode="gen_ai_latest_experimental",
+        content_capturing="SPAN_ONLY",
+        emit_event="",
+    )
+    def test_should_capture_content_on_spans_in_experimental_mode_true_for_span_only(
+        self,
+    ):  # pylint: disable=no-self-use
+        assert should_capture_content_on_spans_in_experimental_mode() is True

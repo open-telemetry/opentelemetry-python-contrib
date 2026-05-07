@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import wsgiref.util as wsgiref_util
 from logging import getLogger
@@ -148,7 +137,7 @@ def _before_traversal(event):
                 span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
-    activation.__enter__()  # pylint: disable=E1101
+    activation.__enter__()  # pylint: disable=unnecessary-dunder-call
     request_environ[_ENVIRON_ACTIVATION_KEY] = activation
     request_environ[_ENVIRON_SPAN_KEY] = span
     if token:
@@ -212,7 +201,7 @@ def trace_tween_factory(handler, registry):
     # make a request tracing function
     # pylint: disable=too-many-branches
     def trace_tween(request):
-        # pylint: disable=E1101, too-many-locals
+        # pylint: disable=unnecessary-dunder-call, too-many-locals
         if _excluded_urls.url_disabled(request.url):
             request.environ[_ENVIRON_ENABLED_KEY] = False
             # short-circuit when we don't want to trace anything

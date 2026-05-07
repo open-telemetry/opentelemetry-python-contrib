@@ -15,6 +15,7 @@ Note: `.env <.env>`_ file configures additional environment variables:
 - ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=span_only`` configures OpenAI instrumentation to capture prompt and completion contents on *span* attributes.
 - ``OTEL_LOGS_EXPORTER=otlp`` to specify exporter type.
 - ``OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`` enables latest experimental features.
+- ``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK`` (commented out) - uncomment along with ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH`` to upload prompts and completions to an ``fsspec``-compatible destination instead of recording them inline. Also uncomment the ``opentelemetry-util-genai[upload]`` line in `requirements.txt <requirements.txt>`_ and reinstall.
 
 Setup
 -----

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The trace integration with Database API supports libraries that follow the
@@ -173,8 +162,17 @@ import logging
 import re
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
-import wrapt
 from wrapt import wrap_function_wrapper
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import (  # pylint: disable=no-name-in-module
+        BaseObjectProxy,
+        ObjectProxy,
+    )
+except ImportError:
+    from wrapt import ObjectProxy
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.dbapi.version import __version__
@@ -372,7 +370,7 @@ def instrument_connection(
     Returns:
         An instrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, BaseObjectProxy):
         _logger.warning("Connection already instrumented")
         return connection
 
@@ -407,7 +405,7 @@ def uninstrument_connection(
     Returns:
         An uninstrumented connection.
     """
-    if isinstance(connection, wrapt.ObjectProxy):
+    if isinstance(connection, BaseObjectProxy):
         return connection.__wrapped__
 
     _logger.warning("Connection is not instrumented")
@@ -565,15 +563,15 @@ class DatabaseApiIntegration:
             self.span_attributes[NET_PEER_PORT] = port
 
 
-# pylint: disable=abstract-method
-class TracedConnectionProxy(wrapt.ObjectProxy, Generic[ConnectionT]):
+# pylint: disable=abstract-method,no-member
+class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         connection: ConnectionT,
         db_api_integration: DatabaseApiIntegration | None = None,
     ):
-        wrapt.ObjectProxy.__init__(self, connection)
+        BaseObjectProxy.__init__(self, connection)
         self._self_db_api_integration = db_api_integration
 
     def __getattribute__(self, name: str):
@@ -799,15 +797,15 @@ class CursorTracer(Generic[CursorT]):
             return await query_method(*args, **kwargs)
 
 
-# pylint: disable=abstract-method
-class TracedCursorProxy(wrapt.ObjectProxy, Generic[CursorT]):
+# pylint: disable=abstract-method,no-member
+class TracedCursorProxy(ObjectProxy, Generic[CursorT]):
     # pylint: disable=unused-argument
     def __init__(
         self,
         cursor: CursorT,
         db_api_integration: DatabaseApiIntegration,
     ):
-        wrapt.ObjectProxy.__init__(self, cursor)
+        ObjectProxy.__init__(self, cursor)
         self._self_cursor_tracer = CursorTracer[CursorT](db_api_integration)
 
     def execute(self, *args: Any, **kwargs: Any):

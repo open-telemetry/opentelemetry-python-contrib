@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument confluent-kafka-python to report instrumentation-confluent-kafka produced and consumed messages
@@ -230,7 +219,6 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    # pylint: disable=attribute-defined-outside-init
     @staticmethod
     def instrument_producer(
         producer: Producer, tracer_provider=None
@@ -383,11 +371,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            record = func(*args, **kwargs)
-            if record:
+        record = func(*args, **kwargs)
+        if record:
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+            ):
                 _create_new_consume_span(instance, tracer, [record])
                 _enrich_span(
                     instance._current_consume_span,
@@ -396,9 +384,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.offset(),
                     operation=MessagingOperationTypeValues.PROCESS,
                 )
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
+            instance._current_context_token = context.attach(
+                trace.set_span_in_context(instance._current_consume_span)
+            )
 
         return record
 
@@ -407,21 +395,20 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            records = func(*args, **kwargs)
-            if len(records) > 0:
+        records = func(*args, **kwargs)
+        if len(records) > 0:
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+            ):
                 _create_new_consume_span(instance, tracer, records)
                 _enrich_span(
                     instance._current_consume_span,
                     records[0].topic(),
                     operation=MessagingOperationTypeValues.PROCESS,
                 )
-
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
+            instance._current_context_token = context.attach(
+                trace.set_span_in_context(instance._current_consume_span)
+            )
 
         return records
 

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 OpenTelemetry Anthropic Instrumentation
@@ -54,7 +43,9 @@ from wrapt import (
 )
 
 from opentelemetry.instrumentation.anthropic.package import _instruments
-from opentelemetry.instrumentation.anthropic.patch import messages_create
+from opentelemetry.instrumentation.anthropic.patch import (
+    messages_create,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.util.genai.handler import TelemetryHandler
@@ -89,18 +80,19 @@ class AnthropicInstrumentor(BaseInstrumentor):
         # Get providers from kwargs
         tracer_provider = kwargs.get("tracer_provider")
         meter_provider = kwargs.get("meter_provider")
+        logger_provider = kwargs.get("logger_provider")
 
-        # TODO: Add logger_provider to TelemetryHandler to capture content events.
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            logger_provider=logger_provider,
         )
 
         # Patch Messages.create
         wrap_function_wrapper(
-            module="anthropic.resources.messages",
-            name="Messages.create",
-            wrapper=messages_create(handler),
+            "anthropic.resources.messages",
+            "Messages.create",
+            messages_create(handler),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:

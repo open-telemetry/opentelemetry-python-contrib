@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-name-in-module,import-outside-toplevel
 
@@ -197,7 +186,6 @@ class TestConfluentKafka(TestBase):
                     MESSAGING_MESSAGE_ID: "topic-30.1.3",
                 },
             },
-            {"name": "recv", "attributes": {}},
         ]
 
         consumer = MockConsumer(
@@ -213,7 +201,7 @@ class TestConfluentKafka(TestBase):
         consumer.poll()
         consumer.poll()
         consumer.poll()
-        consumer.poll()
+        consumer.poll()  # empty poll — must not produce a span
 
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
@@ -259,7 +247,6 @@ class TestConfluentKafka(TestBase):
                     SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
                 },
             },
-            {"name": "recv", "attributes": {}},
         ]
 
         consumer = MockConsumer(
@@ -276,9 +263,85 @@ class TestConfluentKafka(TestBase):
         consumer.consume(3)
         consumer.consume(1)
         consumer.consume(2)
-        consumer.consume(1)
+        consumer.consume(1)  # empty consume — must not produce a span
         span_list = self.memory_exporter.get_finished_spans()
         self._compare_spans(span_list, expected_spans)
+
+    def test_poll_empty_does_not_create_span(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+    def test_consume_empty_does_not_create_span(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.consume(5)
+        consumer.consume(5)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 0)
+
+    def test_poll_empty_cleans_up_previous_span_and_token(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()  # non-empty: sets _current_consume_span and _current_context_token
+        self.assertIsNotNone(consumer._current_consume_span)
+        self.assertIsNotNone(consumer._current_context_token)
+
+        consumer.poll()  # empty: should clean up both
+        self.assertIsNone(consumer._current_consume_span)
+        self.assertIsNone(consumer._current_context_token)
+
+    def test_consume_empty_cleans_up_previous_span_and_token(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "mygroup",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.consume(
+            1
+        )  # non-empty: sets _current_consume_span and _current_context_token
+        self.assertIsNotNone(consumer._current_consume_span)
+        self.assertIsNotNone(consumer._current_context_token)
+
+        consumer.consume(1)  # empty: should clean up both
+        self.assertIsNone(consumer._current_consume_span)
+        self.assertIsNone(consumer._current_context_token)
 
     def test_close(self) -> None:
         instrumentation = ConfluentKafkaInstrumentor()

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The **OpenTelemetry Rich Console Exporter** provides a span exporter from a batch span processor
@@ -76,12 +65,16 @@ def _ns_to_time(nanoseconds):
     return ts.strftime("%H:%M:%S.%f")
 
 
-def _child_to_tree(child: Tree, span: ReadableSpan):
+def _child_to_tree(
+    child: Tree, span: ReadableSpan, *, suppress_resource: bool
+):
     child.add(
         Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
     )
     _add_status(child, span)
-    _child_add_optional_attributes(child, span)
+    _child_add_optional_attributes(
+        child, span, suppress_resource=suppress_resource
+    )
 
 
 def _add_status(child: Tree, span: ReadableSpan):
@@ -106,7 +99,9 @@ def _add_status(child: Tree, span: ReadableSpan):
         )
 
 
-def _child_add_optional_attributes(child: Tree, span: ReadableSpan):
+def _child_add_optional_attributes(
+    child: Tree, span: ReadableSpan, *, suppress_resource: bool
+):
     if span.events:
         events = child.add(
             label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
@@ -133,7 +128,7 @@ def _child_add_optional_attributes(child: Tree, span: ReadableSpan):
                         f"[bold cyan]{attribute} :[/bold cyan] {span.attributes[attribute]}"
                     )
                 )
-    if span.resource:
+    if span.resource and not suppress_resource:
         resources = child.add(
             label=Text.from_markup("[bold cyan]Resources :[/bold cyan] ")
         )
@@ -155,21 +150,29 @@ class RichConsoleSpanExporter(SpanExporter):
     def __init__(
         self,
         service_name: Optional[str] = None,
+        suppress_resource: bool = False,
     ):
         self.service_name = service_name
+        self.suppress_resource = suppress_resource
         self.console = Console()
 
     def export(self, spans: typing.Sequence[ReadableSpan]) -> SpanExportResult:
         if not spans:
             return SpanExportResult.SUCCESS
 
-        for tree in self.spans_to_tree(spans).values():
+        for tree in self.spans_to_tree(
+            spans, suppress_resource=self.suppress_resource
+        ).values():
             self.console.print(tree)
 
         return SpanExportResult.SUCCESS
 
     @staticmethod
-    def spans_to_tree(spans: typing.Sequence[ReadableSpan]) -> Dict[str, Tree]:
+    def spans_to_tree(
+        spans: typing.Sequence[ReadableSpan],
+        *,
+        suppress_resource: bool = False,
+    ) -> Dict[str, Tree]:
         trees = {}
         parents = {}
         spans = list(spans)
@@ -189,7 +192,9 @@ class RichConsoleSpanExporter(SpanExporter):
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(child, span)
+                    _child_to_tree(
+                        child, span, suppress_resource=suppress_resource
+                    )
                     spans.remove(span)
                 elif span.parent and span.parent.span_id in parents:
                     child = parents[span.parent.span_id].add(
@@ -198,6 +203,8 @@ class RichConsoleSpanExporter(SpanExporter):
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(child, span)
+                    _child_to_tree(
+                        child, span, suppress_resource=suppress_resource
+                    )
                     spans.remove(span)
         return trees

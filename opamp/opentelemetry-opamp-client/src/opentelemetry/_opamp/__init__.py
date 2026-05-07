@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 OpenTelemetry Python - OpAMP client
@@ -35,7 +24,7 @@ class.
 
 Since OpAMP APIs, config options or environment variables are not standardizes the distros are required
 to provide code doing so.
-OTel Python distros would need to provide their own message handler callback that implements the actual
+OTel Python distros would need to provide their own OpAMPCallbacks subclass that implements the actual
 change of whatever configuration their backends sends.
 
 Please note that the API is not finalized yet and so the name is called ``_opamp`` with the underscore.
@@ -48,15 +37,18 @@ Usage
     import os
 
     from opentelemetry._opamp.agent import OpAMPAgent
+    from opentelemetry._opamp.callbacks import OpAMPCallbacks
     from opentelemetry._opamp.client import OpAMPClient
-    from opentelemetry._opamp.proto import opamp_pb2 as opamp_pb2
     from opentelemetry.sdk._configuration import _OTelSDKConfigurator
     from opentelemetry.sdk.resources import OTELResourceDetector
 
 
-    def opamp_handler(agent: OpAMPAgent, client: OpAMPClient, message: opamp_pb2.ServerToAgent):
-        for config_filename, config in message.remote_config.config.config_map.items():
-            print("do something")
+    class MyCallbacks(OpAMPCallbacks):
+        def on_message(self, agent, client, message):
+            if message.remote_config is None:
+                return
+            for config_filename, config in message.remote_config.config.config_map.items():
+                print("do something")
 
 
     class MyOpenTelemetryConfigurator(_OTelSDKConfigurator):
@@ -79,7 +71,7 @@ Usage
                 )
                 opamp_agent = OpAMPAgent(
                     interval=30,
-                    message_handler=opamp_handler,
+                    callbacks=MyCallbacks(),
                     client=opamp_client,
                 )
                 opamp_agent.start()
@@ -90,6 +82,7 @@ API
 """
 
 from opentelemetry._opamp.agent import OpAMPAgent
+from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
 from opentelemetry._opamp.client import OpAMPClient
 
-__all__ = ["OpAMPAgent", "OpAMPClient"]
+__all__ = ["MessageData", "OpAMPAgent", "OpAMPCallbacks", "OpAMPClient"]

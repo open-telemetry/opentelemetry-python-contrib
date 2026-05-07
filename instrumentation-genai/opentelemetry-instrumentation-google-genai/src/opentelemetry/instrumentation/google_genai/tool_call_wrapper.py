@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import functools
 import inspect
@@ -83,18 +72,17 @@ def _to_otel_attribute(python_value):
 
 
 def _is_capture_content_enabled() -> bool:
-    mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-        _OpenTelemetryStabilitySignalType.GEN_AI
-    )
-    if mode == _StabilityMode.DEFAULT:
-        return bool(is_content_recording_enabled(mode))
-    if mode == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL:
-        capturing_mode = is_content_recording_enabled(mode)
-        return capturing_mode in [
+    if (
+        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.GEN_AI
+        )
+        == _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+    ):
+        return is_content_recording_enabled(True) in [
             ContentCapturingMode.SPAN_ONLY,
             ContentCapturingMode.SPAN_AND_EVENT,
         ]
-    raise RuntimeError(f"{mode} mode not supported")
+    return bool(is_content_recording_enabled(False))
 
 
 def _create_function_span_name(wrapped_function):

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import types
 from unittest import mock
@@ -371,3 +360,24 @@ class TestPostgresqlIntegration(TestBase):
         cursor.execute(query)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    def test_span_capture_params_deactivated_by_default(self):
+        Psycopg2Instrumentor().instrument()
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test WHERE id = %s AND name = %s"
+        cursor.execute(query, (42, "John Doe"))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertNotIn("db.statement.parameters", spans_list[0].attributes)
+
+    def test_span_capture_params_activated(self):
+        Psycopg2Instrumentor().instrument(capture_parameters=True)
+        cnx = psycopg2.connect(database="test")
+        cursor = cnx.cursor()
+        query = "SELECT * FROM test WHERE id = %s AND name = %s"
+        cursor.execute(query, (42, "John Doe"))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"],
+            "(42, 'John Doe')",
+        )

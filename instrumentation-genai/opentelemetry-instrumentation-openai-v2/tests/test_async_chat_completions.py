@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-locals,too-many-lines
 
@@ -418,6 +407,9 @@ async def test_chat_completion_with_raw_response_streaming(
     response = raw_response.parse()
 
     message_content = ""
+    response_stream_usage = None
+    response_stream_model = None
+    response_stream_id = None
     async for chunk in response:
         if chunk.choices:
             message_content += chunk.choices[0].delta.content or ""
@@ -983,6 +975,9 @@ async def test_async_chat_completion_multiple_choices_streaming(
             stream_options={"include_usage": True},
         )
 
+        response_stream_usage = None
+        response_stream_model = None
+        response_stream_id = None
         # two strings for each choice
         response_stream_result = ["", ""]
         finish_reasons = ["", ""]
@@ -1203,6 +1198,9 @@ async def async_chat_completion_multiple_tools_streaming(
     )
 
     finish_reason = None
+    response_stream_usage = None
+    response_stream_model = None
+    response_stream_id = None
     # two tools
     tool_names = ["", ""]
     tool_call_ids = ["", ""]
