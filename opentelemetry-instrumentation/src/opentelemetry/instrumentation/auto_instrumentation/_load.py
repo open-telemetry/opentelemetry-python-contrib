@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from logging import DEBUG, getLogger
+from logging import DEBUG, NOTSET, Logger, LoggerAdapter, getLogger
 from os import environ
 from sys import stderr
 
@@ -23,40 +23,78 @@ from opentelemetry.util._importlib_metadata import (
     entry_points,
 )
 
-_logger = getLogger(__name__)
-
 SKIPPED_INSTRUMENTATIONS_WILDCARD = "*"
 OTEL_LOG_LEVEL = "OTEL_LOG_LEVEL"
 _DEBUG_LOG_LEVELS = frozenset(("trace", "debug"))
 
 
-def _diagnostic_debug_enabled() -> bool:
+def _otel_log_level_allows_debug() -> bool:
     log_level = environ.get(OTEL_LOG_LEVEL, "").strip().lower()
     return log_level in _DEBUG_LOG_LEVELS
 
 
-def _logger_handles_debug() -> bool:
-    return _logger.isEnabledFor(DEBUG) and _logger.hasHandlers()
-
-
-def _format_diagnostic_arg(arg: object) -> object:
+def _format_log_arg(arg: object) -> object:
     if isinstance(arg, str):
         return repr(arg)
 
     return arg
 
 
-def _debug(message: str, *args: object) -> None:
-    _logger.debug(message, *args)
+class _OtelLogLevelLoggerAdapter(LoggerAdapter):
+    """Write startup debug messages to stderr when logging would drop them.
 
-    if not _diagnostic_debug_enabled() or _logger_handles_debug():
-        return
+    Auto-instrumentation usually runs from sitecustomize before the
+    application configures logging, so normal logger.debug calls are often
+    not visible even when OTEL_LOG_LEVEL=debug. This adapter keeps normal
+    logging behavior, but also writes the same startup messages to stderr when
+    OTEL_LOG_LEVEL asks for debug output and Python logging would not emit them.
+    """
 
-    if args:
-        message = message % tuple(_format_diagnostic_arg(arg) for arg in args)
+    def __init__(self, logger, extra):
+        super().__init__(logger, extra)
+        # This adapter is built when this module is imported. That covers the
+        # sitecustomize path where auto-instrumentation runs before application
+        # logging setup, and the edge case where Python logging is set up and then
+        # auto_instrumentation.initialize() is invoked explicitly. If this adapter
+        # is used after application code can change logging, it should be modified
+        # to not use the cached value in the _logger_emits_debug field.
+        self._logger_emits_debug = self._logger_would_emit(DEBUG)
 
-    stderr.write(f"DEBUG:{__name__}:{message}\n")
-    stderr.flush()
+    def debug(self, msg: str, *args: object, **kwargs: object) -> None:
+        super().debug(msg, *args, **kwargs)
+
+        if not _otel_log_level_allows_debug() or self._logger_emits_debug:
+            return
+
+        message = msg
+        if args:
+            message = message % tuple(_format_log_arg(arg) for arg in args)
+
+        stderr.write(f"DEBUG:{self.logger.name}:{message}\n")
+        stderr.flush()
+
+    def _logger_would_emit(self, level: int) -> bool:
+        # If the logger itself would reject this level, don't bother walking handlers.
+        if not self.logger.isEnabledFor(level):
+            return False
+
+        logger: Logger | None = self.logger
+        while logger:
+            for handler in logger.handlers:
+                if handler.level == NOTSET or level >= handler.level:
+                    return True
+
+            # If we get here, this logger's handlers would not emit the record.
+            # If propagation is disabled, parent handlers will not see it either.
+            if not logger.propagate:
+                break
+
+            logger = logger.parent
+
+        return False
+
+
+_logger = _OtelLogLevelLoggerAdapter(getLogger(__name__), {})
 
 
 class _EntryPointDistFinder:
@@ -88,12 +126,14 @@ def _load_distro() -> BaseDistro:
             if distro_name is None or distro_name == entry_point.name:
                 distro = entry_point.load()()
                 if not isinstance(distro, BaseDistro):
-                    _debug(
+                    _logger.debug(
                         "%s is not an OpenTelemetry Distro. Skipping",
                         entry_point.name,
                     )
                     continue
-                _debug("Distribution %s will be configured", entry_point.name)
+                _logger.debug(
+                    "Distribution %s will be configured", entry_point.name
+                )
                 return distro
         except Exception as exc:  # pylint: disable=broad-except
             _logger.exception(
@@ -119,14 +159,16 @@ def _load_instrumentors(distro):
             break
 
         if entry_point.name in package_to_exclude:
-            _debug("Instrumentation skipped for library %s", entry_point.name)
+            _logger.debug(
+                "Instrumentation skipped for library %s", entry_point.name
+            )
             continue
 
         try:
             entry_point_dist = entry_point_finder.dist_for(entry_point)
             conflict = get_dist_dependency_conflicts(entry_point_dist)
             if conflict:
-                _debug(
+                _logger.debug(
                     "Skipping instrumentation %s: %s",
                     entry_point.name,
                     conflict,
@@ -135,13 +177,13 @@ def _load_instrumentors(distro):
 
             # tell instrumentation to not run dep checks again as we already did it above
             distro.load_instrumentor(entry_point, skip_dep_check=True)
-            _debug("Instrumented %s", entry_point.name)
+            _logger.debug("Instrumented %s", entry_point.name)
         except DependencyConflictError as exc:
             # Dependency conflicts are generally caught from get_dist_dependency_conflicts
             # returning a DependencyConflict. Keeping this error handling in case custom
             # distro and instrumentor behavior raises a DependencyConflictError later.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610
-            _debug(
+            _logger.debug(
                 "Skipping instrumentation %s: %s",
                 entry_point.name,
                 exc.conflict,
@@ -151,7 +193,7 @@ def _load_instrumentors(distro):
             # ModuleNotFoundError is raised when the library is not installed
             # and the instrumentation is not required to be loaded.
             # See https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3421
-            _debug(
+            _logger.debug(
                 "Skipping instrumentation %s: %s", entry_point.name, exc.msg
             )
             continue
