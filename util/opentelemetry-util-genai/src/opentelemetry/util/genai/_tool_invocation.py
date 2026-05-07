@@ -22,6 +22,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.trace import Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 
 
@@ -50,6 +51,7 @@ class ToolInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         name: str,
         *,
         arguments: Any = None,
@@ -66,6 +68,7 @@ class ToolInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
             span_name=f"{_operation_name} {name}" if name else _operation_name,
             attributes=attributes,
