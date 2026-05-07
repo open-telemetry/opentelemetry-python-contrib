@@ -22,7 +22,7 @@ from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
 
 # Disable snake_case naming style so this class can match the statistics document response from X-Ray
 # pylint: disable=invalid-name
-class _SamplingStatisticsDocument:
+class _SamplingStatisticsDocument:  # pyright: ignore[reportUnusedClass]
     def __init__(
         self,
         clientID: str,

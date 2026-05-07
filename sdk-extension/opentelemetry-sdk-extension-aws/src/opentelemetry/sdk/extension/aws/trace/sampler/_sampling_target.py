@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import List
+from typing import Any, List, cast
 
 _logger = getLogger(__name__)
 
@@ -54,7 +54,7 @@ class _UnprocessedStatistics:
         self.RuleName = RuleName if ErrorCode is not None else ""
 
 
-class _SamplingTargetResponse:
+class _SamplingTargetResponse:  # pyright: ignore[reportUnusedClass]
     def __init__(
         self,
         LastRuleModification: float | None,
@@ -70,17 +70,19 @@ class _SamplingTargetResponse:
             for document in SamplingTargetDocuments:
                 try:
                     self.SamplingTargetDocuments.append(
-                        _SamplingTarget(**document)
+                        _SamplingTarget(**cast(Any, document))
                     )
-                except TypeError as e:
-                    _logger.debug("TypeError occurred: %s", e)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    _logger.debug("Error creating _SamplingTarget: %s", e)
 
         self.UnprocessedStatistics: List[_UnprocessedStatistics] = []
         if UnprocessedStatistics is not None:
             for unprocessed in UnprocessedStatistics:
                 try:
                     self.UnprocessedStatistics.append(
-                        _UnprocessedStatistics(**unprocessed)
+                        _UnprocessedStatistics(**cast(Any, unprocessed))
                     )
-                except TypeError as e:
-                    _logger.debug("TypeError occurred: %s", e)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    _logger.debug(
+                        "Error creating _UnprocessedStatistics: %s", e
+                    )
