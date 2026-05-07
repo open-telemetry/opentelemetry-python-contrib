@@ -54,7 +54,7 @@ Completion Hook / Upload
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 - ``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK``: Name of the completion hook entry point to load (e.g. ``upload``).
-- ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH``: An ``fsspec``-compatible URI/path for uploading prompts and responses
+- ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH``: An ``fsspec``-compatible URI/path for uploading prompts and completions
   (e.g. ``/path/to/prompts`` or ``gs://my_bucket``). Required when using the ``upload`` hook.
 - ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT``: Format for uploaded data -- ``json`` (default) or ``jsonl``.
 - ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE``: Maximum number of concurrent uploads to queue (default: ``20``).
