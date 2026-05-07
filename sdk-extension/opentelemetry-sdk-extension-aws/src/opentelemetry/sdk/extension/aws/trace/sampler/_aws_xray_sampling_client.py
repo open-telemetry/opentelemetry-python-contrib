@@ -37,7 +37,7 @@ _logger = getLogger(__name__)
 DEFAULT_SAMPLING_PROXY_ENDPOINT = "http://127.0.0.1:2000"
 
 
-class _AwsXRaySamplingClient:
+class _AwsXRaySamplingClient:  # pyright: ignore[reportUnusedClass]
     def __init__(
         self,
         endpoint: str = DEFAULT_SAMPLING_PROXY_ENDPOINT,

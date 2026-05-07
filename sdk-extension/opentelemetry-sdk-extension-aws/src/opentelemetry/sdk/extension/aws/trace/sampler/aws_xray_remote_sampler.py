@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import random
 from logging import getLogger
-from threading import Timer
+from threading import Lock, Timer
 from typing import Sequence
 
 from typing_extensions import override
@@ -31,9 +31,16 @@ from opentelemetry.sdk.extension.aws.trace.sampler._aws_xray_sampling_client imp
     DEFAULT_SAMPLING_PROXY_ENDPOINT,
     _AwsXRaySamplingClient,
 )
+from opentelemetry.sdk.extension.aws.trace.sampler._clock import _Clock
+from opentelemetry.sdk.extension.aws.trace.sampler._fallback_sampler import (
+    _FallbackSampler,
+)
+from opentelemetry.sdk.extension.aws.trace.sampler._rule_cache import (
+    DEFAULT_TARGET_POLLING_INTERVAL_SECONDS,
+    _RuleCache,
+)
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.sampling import (
-    Decision,
     ParentBased,
     Sampler,
     SamplingResult,
@@ -47,12 +54,9 @@ _logger = getLogger(__name__)
 DEFAULT_RULES_POLLING_INTERVAL_SECONDS = 300
 
 
-# WORK IN PROGRESS
-# TODO: Rename to AwsXRayRemoteSampler when the implementation is complete and is ready to use
-#
 # Wrapper class to ensure that all XRay Sampler Functionality in _InternalAwsXRayRemoteSampler
 # uses ParentBased logic to respect the parent span's sampling decision
-class _AwsXRayRemoteSampler(Sampler):
+class AwsXRayRemoteSampler(Sampler):
     def __init__(
         self,
         resource: Resource,
@@ -90,14 +94,11 @@ class _AwsXRayRemoteSampler(Sampler):
             trace_state=trace_state,
         )
 
-    # pylint: disable=no-self-use
     @override
     def get_description(self) -> str:
         return f"AwsXRayRemoteSampler{{root:{self._root.get_description()}}}"
 
 
-# WORK IN PROGRESS
-#
 # _InternalAwsXRayRemoteSampler contains all core XRay Sampler Functionality,
 # however it is NOT Parent-based (e.g. Sample logic runs for each span)
 # Not intended for external use, use Parent-based `AwsXRayRemoteSampler` instead.
@@ -136,20 +137,30 @@ class _InternalAwsXRayRemoteSampler(Sampler):
             )
             polling_interval = DEFAULT_RULES_POLLING_INTERVAL_SECONDS
 
+        self.__client_id = self.__generate_client_id()
+        self._clock = _Clock()
         self.__xray_client = _AwsXRaySamplingClient(
             endpoint, log_level=log_level
         )
+        self.__fallback_sampler = _FallbackSampler(self._clock)
 
         self.__polling_interval = polling_interval
+        self.__target_polling_interval = (
+            DEFAULT_TARGET_POLLING_INTERVAL_SECONDS
+        )
         self.__rule_polling_jitter = random.uniform(0.0, 5.0)
+        self.__target_polling_jitter = random.uniform(0.0, 0.1)
 
-        if resource is not None:
-            self.__resource = resource  # pylint: disable=W0238
-        else:
-            _logger.warning(
-                "OTel Resource provided is `None`. Defaulting to empty resource"
-            )
-            self.__resource = Resource.get_empty()  # pylint: disable=W0238
+        self.__resource = resource
+
+        self.__rule_cache_lock = Lock()
+        self.__rule_cache = _RuleCache(
+            self.__resource,
+            self.__fallback_sampler,
+            self.__client_id,
+            self._clock,
+            self.__rule_cache_lock,
+        )
 
         # Schedule the next rule poll now
         # Python Timers only run once, so they need to be recreated for every poll
@@ -157,9 +168,14 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         self._rules_timer.daemon = True  # Ensures that when the main thread exits, the Timer threads are killed
         self._rules_timer.start()
 
-        # (TODO) set up the target poller to go off once after the default interval. Subsequent polls may use new intervals.
+        # set up the target poller to go off once after the default interval. Subsequent polls may use new intervals.
+        self._targets_timer = Timer(
+            self.__target_polling_interval + self.__target_polling_jitter,
+            self.__start_sampling_target_poller,
+        )
+        self._targets_timer.daemon = True  # Ensures that when the main thread exits, the Timer threads are killed
+        self._targets_timer.start()
 
-    # pylint: disable=no-self-use
     @override
     def should_sample(
         self,
@@ -171,9 +187,27 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         links: Sequence["Link"] | None = None,
         trace_state: TraceState | None = None,
     ) -> "SamplingResult":
-        return SamplingResult(
-            decision=Decision.DROP,
+        if self.__rule_cache.expired():
+            _logger.debug(
+                "Rule cache is expired so using fallback sampling strategy"
+            )
+            return self.__fallback_sampler.should_sample(
+                parent_context,
+                trace_id,
+                name,
+                kind=kind,
+                attributes=attributes,
+                links=links,
+                trace_state=trace_state,
+            )
+
+        return self.__rule_cache.should_sample(
+            parent_context,
+            trace_id,
+            name,
+            kind=kind,
             attributes=attributes,
+            links=links,
             trace_state=trace_state,
         )
 
@@ -186,8 +220,8 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         return description
 
     def __get_and_update_sampling_rules(self) -> None:
-        sampling_rules = self.__xray_client.get_sampling_rules()  # pylint: disable=W0612  # noqa: F841
-        # (TODO) update rules cache with sampling rules
+        sampling_rules = self.__xray_client.get_sampling_rules()
+        self.__rule_cache.update_sampling_rules(sampling_rules)
 
     def __start_sampling_rule_poller(self) -> None:
         self.__get_and_update_sampling_rules()
@@ -198,3 +232,35 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         )
         self._rules_timer.daemon = True
         self._rules_timer.start()
+
+    def __get_and_update_sampling_targets(self) -> None:
+        all_statistics = self.__rule_cache.get_all_statistics()
+        sampling_targets_response = self.__xray_client.get_sampling_targets(
+            all_statistics
+        )
+        refresh_rules, min_polling_interval = (
+            self.__rule_cache.update_sampling_targets(
+                sampling_targets_response
+            )
+        )
+        if refresh_rules:
+            self.__get_and_update_sampling_rules()
+        if min_polling_interval is not None:  # type: ignore
+            self.__target_polling_interval = min_polling_interval
+
+    def __start_sampling_target_poller(self) -> None:
+        self.__get_and_update_sampling_targets()
+        # Schedule the next sampling targets poll
+        self._targets_timer = Timer(
+            self.__target_polling_interval + self.__target_polling_jitter,
+            self.__start_sampling_target_poller,
+        )
+        self._targets_timer.daemon = True
+        self._targets_timer.start()
+
+    def __generate_client_id(self) -> str:
+        hex_chars = "0123456789abcdef"
+        client_id_array: list[str] = []
+        for _ in range(0, 24):
+            client_id_array.append(random.choice(hex_chars))
+        return "".join(client_id_array)
