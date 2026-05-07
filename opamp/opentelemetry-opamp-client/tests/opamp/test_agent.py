@@ -18,11 +18,11 @@ from unittest import mock
 
 from opentelemetry._opamp.agent import OpAMPAgent, _safe_invoke
 from opentelemetry._opamp.agent import _Job as Job
-from opentelemetry._opamp.callbacks import Callbacks, MessageData
+from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
 from opentelemetry._opamp.proto import opamp_pb2
 
 
-class _NoOpCallbacks(Callbacks):
+class _NoOpCallbacks(OpAMPCallbacks):
     pass
 
 
@@ -48,7 +48,7 @@ def test_agent_start_will_send_connection_and_disconnetion_messages():
     mock_message.flags = 0
     client_mock.send.return_value = mock_message
 
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     agent = OpAMPAgent(interval=30, client=client_mock, callbacks=cb)
     agent.start()
     # wait for the queue to be consumed
@@ -100,7 +100,7 @@ def test_agent_send_warns_without_worker_thread(caplog):
 def test_agent_retries_before_max_attempts(caplog):
     caplog.set_level(logging.DEBUG, logger="opentelemetry._opamp.agent")
 
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
     connection_message = mock.Mock()
     connection_message.HasField.return_value = False
@@ -136,7 +136,7 @@ def test_agent_retries_before_max_attempts(caplog):
 def test_agent_stops_after_max_attempts(caplog):
     caplog.set_level(logging.DEBUG, logger="opentelemetry._opamp.agent")
 
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
     connection_message = mock.Mock()
     connection_message.HasField.return_value = False
@@ -171,7 +171,7 @@ def test_agent_stops_after_max_attempts(caplog):
 
 
 def test_agent_send_enqueues_job():
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
     msg = mock.Mock()
     msg.HasField.return_value = False
@@ -194,7 +194,7 @@ def test_agent_send_enqueues_job():
 
 
 def test_on_error_called_without_on_message_for_error_response():
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
 
     error_response = opamp_pb2.ServerErrorResponse(
@@ -224,7 +224,7 @@ def test_on_error_called_without_on_message_for_error_response():
 
 
 def test_on_error_not_called_without_error_response():
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
 
     server_msg = opamp_pb2.ServerToAgent()
@@ -255,7 +255,7 @@ def test_dispatch_order_with_error():
         error_response=error_response,
     )
 
-    class OrderTrackingCallbacks(Callbacks):
+    class OrderTrackingCallbacks(OpAMPCallbacks):
         def on_connect(self, agent, client):
             call_order.append("on_connect")
 
@@ -286,7 +286,7 @@ def test_dispatch_order_without_error():
 
     server_msg = opamp_pb2.ServerToAgent()
 
-    class OrderTrackingCallbacks(Callbacks):
+    class OrderTrackingCallbacks(OpAMPCallbacks):
         def on_connect(self, agent, client):
             call_order.append("on_connect")
 
@@ -311,7 +311,7 @@ def test_dispatch_order_without_error():
 
 
 def test_report_full_state_flag_triggers_full_state_send():
-    cb = mock.create_autospec(Callbacks, instance=True)
+    cb = mock.create_autospec(OpAMPCallbacks, instance=True)
     client_mock = mock.Mock()
 
     conn_msg = opamp_pb2.ServerToAgent()

@@ -254,7 +254,6 @@ API
 ---
 """
 
-import sys
 import weakref
 from logging import getLogger
 from time import time_ns
@@ -302,10 +301,6 @@ from opentelemetry.util.http import (
 )
 
 _logger = getLogger(__name__)
-# Global constants for Flask 3.1+ streaming context cleanup
-_IS_FLASK_31_PLUS = hasattr(flask, "__version__") and package_version.parse(
-    flask.__version__
-) >= package_version.parse("3.1.0")
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
@@ -316,6 +311,11 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
 flask_version = version("flask")
+
+# Global constant for Flask 3.1+ streaming context cleanup
+_IS_FLASK_31_PLUS = package_version.parse(
+    flask_version
+) >= package_version.parse("3.1.0")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
@@ -582,14 +582,8 @@ def _wrapped_teardown_request(
         try:
             # For Flask 3.1+, check if this is a streaming response that might
             # have already been cleaned up to prevent double cleanup
-            # Only check for streaming in Flask 3.1+ and Python 3.10+ to avoid interference with older versions
-            is_flask_31_plus = _IS_FLASK_31_PLUS and sys.version_info >= (
-                3,
-                10,
-            )
-
             is_streaming = False
-            if is_flask_31_plus:
+            if _IS_FLASK_31_PLUS:
                 try:
                     # Additional safety check: verify we're in a Flask request context
                     if hasattr(flask, "request") and hasattr(
@@ -605,7 +599,7 @@ def _wrapped_teardown_request(
                     # Not in a proper Flask request context, don't check for streaming
                     is_streaming = False
 
-            if is_flask_31_plus and is_streaming:
+            if _IS_FLASK_31_PLUS and is_streaming:
                 # For Flask 3.1+ streaming responses, ensure OpenTelemetry contexts are cleaned up
                 # This addresses the generator context leak issues documented by Logfire
                 # (open-telemetry/opentelemetry-python#2606)
@@ -643,6 +637,8 @@ def _wrapped_teardown_request(
 
             if token:
                 context.detach(token)
+                flask.request.environ.pop(_ENVIRON_ACTIVATION_KEY, None)
+                flask.request.environ.pop(_ENVIRON_TOKEN, None)
 
         except (RuntimeError, AttributeError, ValueError) as teardown_exc:
             # Log the error but don't raise it to avoid breaking the request handling

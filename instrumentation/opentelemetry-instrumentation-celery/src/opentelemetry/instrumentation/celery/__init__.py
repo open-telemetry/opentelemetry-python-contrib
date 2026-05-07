@@ -104,8 +104,18 @@ class CeleryGetter(Getter):
         value = getattr(carrier, key, None)
         if value is None:
             return None
-        if isinstance(value, str) or not isinstance(value, Iterable):
+        # Celery's Context copies all message properties as instance
+        # attributes, including non-string values like timelimit (tuple
+        # of ints).  The TextMapPropagator contract requires string
+        # values, so coerce anything that isn't already a string.
+        if isinstance(value, str):
             value = (value,)
+        elif isinstance(value, Iterable):
+            value = tuple(
+                str(v) if not isinstance(v, str) else v for v in value
+            )
+        else:
+            value = (str(value),)
         return value
 
     def keys(self, carrier):

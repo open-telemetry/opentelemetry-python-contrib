@@ -21,7 +21,7 @@ import random
 import threading
 from typing import Any, Callable
 
-from opentelemetry._opamp.callbacks import Callbacks, MessageData
+from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
 from opentelemetry._opamp.client import OpAMPClient
 from opentelemetry._opamp.proto import opamp_pb2
 
@@ -85,7 +85,7 @@ class OpAMPAgent:
         self,
         *,
         interval: float = 30,
-        callbacks: Callbacks,
+        callbacks: OpAMPCallbacks,
         max_retries: int = 10,
         heartbeat_max_retries: int = 1,
         initial_backoff: float = 1.0,
@@ -93,7 +93,7 @@ class OpAMPAgent:
     ):
         """
         :param interval: seconds between heartbeat calls
-        :param callbacks: Callbacks instance for receiving client events
+        :param callbacks: OpAMPCallbacks instance for receiving client events
         :param max_retries: how many times to retry a failed job for ad-hoc messages
         :param heartbeat_max_retries: how many times to retry an heartbeat failed job
         :param initial_backoff: base seconds for exponential backoff
