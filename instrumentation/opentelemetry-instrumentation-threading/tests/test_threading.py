@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import threading
-from concurrent.futures import (  # pylint: disable=no-name-in-module; TODO #4199
+from concurrent.futures import (
     Future,
     ThreadPoolExecutor,
 )

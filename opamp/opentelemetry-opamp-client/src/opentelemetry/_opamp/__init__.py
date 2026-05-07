@@ -35,7 +35,7 @@ class.
 
 Since OpAMP APIs, config options or environment variables are not standardizes the distros are required
 to provide code doing so.
-OTel Python distros would need to provide their own Callbacks subclass that implements the actual
+OTel Python distros would need to provide their own OpAMPCallbacks subclass that implements the actual
 change of whatever configuration their backends sends.
 
 Please note that the API is not finalized yet and so the name is called ``_opamp`` with the underscore.
@@ -48,13 +48,13 @@ Usage
     import os
 
     from opentelemetry._opamp.agent import OpAMPAgent
-    from opentelemetry._opamp.callbacks import Callbacks
+    from opentelemetry._opamp.callbacks import OpAMPCallbacks
     from opentelemetry._opamp.client import OpAMPClient
     from opentelemetry.sdk._configuration import _OTelSDKConfigurator
     from opentelemetry.sdk.resources import OTELResourceDetector
 
 
-    class MyCallbacks(Callbacks):
+    class MyCallbacks(OpAMPCallbacks):
         def on_message(self, agent, client, message):
             if message.remote_config is None:
                 return
@@ -93,7 +93,7 @@ API
 """
 
 from opentelemetry._opamp.agent import OpAMPAgent
-from opentelemetry._opamp.callbacks import Callbacks, MessageData
+from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
 from opentelemetry._opamp.client import OpAMPClient
 
-__all__ = ["Callbacks", "MessageData", "OpAMPAgent", "OpAMPClient"]
+__all__ = ["MessageData", "OpAMPAgent", "OpAMPCallbacks", "OpAMPClient"]

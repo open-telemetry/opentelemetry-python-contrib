@@ -14,12 +14,12 @@
 
 from unittest import mock
 
-from opentelemetry._opamp.callbacks import Callbacks, MessageData
+from opentelemetry._opamp.callbacks import MessageData, OpAMPCallbacks
 from opentelemetry._opamp.proto import opamp_pb2
 
 
 def test_subclass_override_subset():
-    class MyCallbacks(Callbacks):
+    class MyCallbacks(OpAMPCallbacks):
         def __init__(self):
             self.connected = False
 

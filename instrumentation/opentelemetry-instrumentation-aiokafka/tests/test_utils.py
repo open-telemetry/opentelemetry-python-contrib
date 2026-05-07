@@ -256,7 +256,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_bootstrap_servers: mock.MagicMock,
         _enrich_getmany_poll_span: mock.MagicMock,
         _enrich_getmany_topic_span: mock.MagicMock,
-        _create_consumer_span: mock.MagicMock,
+        _create_consumer_span: mock.AsyncMock,
         extract: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
@@ -270,6 +270,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             }
         )
         kafka_consumer = mock.MagicMock()
+        _create_consumer_span.return_value = mock.MagicMock()
 
         wrapped_getmany = _wrap_getmany(tracer, consume_hook)
         records = await wrapped_getmany(
@@ -370,7 +371,8 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     async def test_kafka_properties_extractor(self):
         aiokafka_instance_mock = mock.Mock()
-        aiokafka_instance_mock._serialize.return_value = None, None
+        aiokafka_instance_mock._key_serializer = None
+        aiokafka_instance_mock._value_serializer = None
         aiokafka_instance_mock._partition.return_value = "partition"
         aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
         assert (

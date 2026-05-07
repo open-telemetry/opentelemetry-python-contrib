@@ -38,7 +38,7 @@ from opentelemetry.util.genai.types import (
     MessagePart,
     Reasoning,
     Text,
-    ToolCall,
+    ToolCallRequest,
     ToolCallResponse,
 )
 
@@ -114,7 +114,7 @@ def _convert_dict_block_to_part(
 
     if block_type == "tool_use":
         inp = block.get("input")
-        return ToolCall(
+        return ToolCallRequest(
             arguments=inp if isinstance(inp, dict) else None,
             name=str(block.get("name", "")),
             id=str(block.get("id", "")),
@@ -144,7 +144,9 @@ def _convert_content_block_to_part(
         return Text(content=block.text)
 
     if isinstance(block, (ToolUseBlock, ServerToolUseBlock)):
-        return ToolCall(arguments=block.input, name=block.name, id=block.id)
+        return ToolCallRequest(
+            arguments=block.input, name=block.name, id=block.id
+        )
 
     if isinstance(block, (ThinkingBlock, RedactedThinkingBlock)):
         content = (
@@ -229,7 +231,7 @@ def stream_block_state_to_part(state: StreamBlockState) -> MessagePart | None:
                 arguments = json.loads(state.input_json)
             except ValueError:
                 arguments = state.input_json
-        return ToolCall(
+        return ToolCallRequest(
             arguments=arguments,
             name=state.tool_name,
             id=state.tool_id,

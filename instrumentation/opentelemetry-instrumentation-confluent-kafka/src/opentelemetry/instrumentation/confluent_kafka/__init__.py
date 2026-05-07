@@ -383,11 +383,11 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            record = func(*args, **kwargs)
-            if record:
+        record = func(*args, **kwargs)
+        if record:
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+            ):
                 _create_new_consume_span(instance, tracer, [record])
                 _enrich_span(
                     instance._current_consume_span,
@@ -396,9 +396,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.offset(),
                     operation=MessagingOperationTypeValues.PROCESS,
                 )
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
+            instance._current_context_token = context.attach(
+                trace.set_span_in_context(instance._current_consume_span)
+            )
 
         return record
 
@@ -407,21 +407,20 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
         if instance._current_consume_span:
             _end_current_consume_span(instance)
 
-        with tracer.start_as_current_span(
-            "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
-        ):
-            records = func(*args, **kwargs)
-            if len(records) > 0:
+        records = func(*args, **kwargs)
+        if len(records) > 0:
+            with tracer.start_as_current_span(
+                "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
+            ):
                 _create_new_consume_span(instance, tracer, records)
                 _enrich_span(
                     instance._current_consume_span,
                     records[0].topic(),
                     operation=MessagingOperationTypeValues.PROCESS,
                 )
-
-        instance._current_context_token = context.attach(
-            trace.set_span_in_context(instance._current_consume_span)
-        )
+            instance._current_context_token = context.attach(
+                trace.set_span_in_context(instance._current_consume_span)
+            )
 
         return records
 
