@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """Wrappers for OpenAI Responses API streams and stream managers."""
 
 from __future__ import annotations
@@ -8,7 +11,10 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Generator, Generic, TypeVar
 
 from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import Error, LLMInvocation
+from opentelemetry.util.genai.types import (
+    Error,
+    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
+)
 
 # OpenAI Responses internals are version-gated (added in openai>=1.66.0), so
 # pylint may not resolve them in all lint environments even though we guard

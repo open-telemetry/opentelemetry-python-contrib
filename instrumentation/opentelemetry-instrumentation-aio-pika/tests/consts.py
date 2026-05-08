@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from argparse import Namespace
 
 from aio_pika import __version__ as aiopika_version

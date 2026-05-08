@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=empty-docstring,no-value-for-parameter,no-member,no-name-in-module
 
@@ -61,7 +50,7 @@ initializing the `LoggingInstrumentor` class to achieve the same effect:
 
 import logging  # pylint: disable=import-self
 from os import environ
-from typing import Collection
+from typing import Collection, Optional
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -74,6 +63,7 @@ from opentelemetry.instrumentation.logging.environment_variables import (
     OTEL_PYTHON_LOG_CODE_ATTRIBUTES,
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
+    OTEL_PYTHON_LOG_HANDLER_LEVEL,
     OTEL_PYTHON_LOG_LEVEL,
 )
 from opentelemetry.instrumentation.logging.handler import (
@@ -97,6 +87,20 @@ LEVELS = {
 }
 
 _logger = logging.getLogger(__name__)
+
+
+def _get_log_level(level_name: Optional[str]) -> Optional[int]:
+    if level_name is None:
+        return None
+    result = logging.getLevelName(level_name.upper().strip())
+    if not isinstance(result, int):
+        _logger.warning(
+            "Invalid log level %r for %s; defaulting to NOTSET",
+            level_name,
+            OTEL_PYTHON_LOG_HANDLER_LEVEL,
+        )
+        return logging.NOTSET
+    return result
 
 
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
@@ -245,10 +249,15 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 .lower()
                 == "true",
             )
+            handler_level = kwargs.get(
+                "log_handler_level",
+                _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
+            )
             logger_provider = get_logger_provider()
             handler = _setup_logging_handler(
                 logger_provider=logger_provider,
                 log_code_attributes=log_code_attributes,
+                level=handler_level,
             )
             LoggingInstrumentor._logging_handler = handler
 

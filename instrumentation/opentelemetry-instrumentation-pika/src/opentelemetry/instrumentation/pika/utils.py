@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from logging import getLogger
 from typing import Any, Callable, List, Optional
 
@@ -7,12 +10,7 @@ from pika.adapters.blocking_connection import (
 )
 from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
-
-try:
-    # wrapt 2.0.0+
-    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
-except ImportError:
-    from wrapt import ObjectProxy as BaseObjectProxy
+from wrapt import ObjectProxy
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
@@ -201,7 +199,7 @@ def _enrich_span(
 
 
 # pylint:disable=abstract-method
-class ReadyMessagesDequeProxy(BaseObjectProxy):
+class ReadyMessagesDequeProxy(ObjectProxy):
     def __init__(
         self,
         wrapped,

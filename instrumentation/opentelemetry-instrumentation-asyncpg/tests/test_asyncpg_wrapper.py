@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import asyncio
 from unittest import mock
 
@@ -106,7 +109,7 @@ class TestAsyncPGInstrumentation(TestBase):
         )
 
         with pytest.raises(StopAsyncIteration):
-            asyncio.run(crs_iter.__anext__())
+            asyncio.run(anext(crs_iter))
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
