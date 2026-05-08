@@ -43,11 +43,6 @@ class WorkflowInvocation(GenAIInvocation):
         logger: Logger,
         completion_hook: CompletionHook,
         name: str | None,
-        *,
-        input_messages: list[InputMessage] | None = None,
-        output_messages: list[OutputMessage] | None = None,
-        attributes: dict[str, Any] | None = None,
-        metric_attributes: dict[str, Any] | None = None,
     ) -> None:
         """Use handler.start_workflow(name) or handler.workflow(name) instead of calling this directly."""
         _operation_name = "invoke_workflow"
@@ -59,17 +54,18 @@ class WorkflowInvocation(GenAIInvocation):
             operation_name=_operation_name,
             span_name=f"{_operation_name} {name}" if name else _operation_name,
             span_kind=SpanKind.INTERNAL,
-            attributes=attributes,
-            metric_attributes=metric_attributes,
         )
         self.name = name
-        self.input_messages: list[InputMessage] = (
-            [] if input_messages is None else input_messages
-        )
-        self.output_messages: list[OutputMessage] = (
-            [] if output_messages is None else output_messages
-        )
-        self._start()
+        self.input_messages: list[InputMessage] = []
+        self.output_messages: list[OutputMessage] = []
+        self._start(self._get_base_attributes())
+
+    def _get_base_attributes(self) -> dict[str, Any]:
+        """Return sampling-relevant attributes available at span creation time."""
+        attrs: dict[str, Any] = {
+            GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
+        }
+        return attrs
 
     def _get_messages_for_span(self) -> dict[str, Any]:
         if not is_experimental_mode() or get_content_capturing_mode() not in (

@@ -173,6 +173,26 @@ def get_current_weather_tool_definition():
     }
 
 
+EXPECTED_TOOL_DEFINITIONS = [
+    {
+        "type": "function",
+        "name": "get_current_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. Boston, MA",
+                },
+            },
+            "required": ["location"],
+            "additionalProperties": False,
+        },
+    }
+]
+
+
 def remove_none_values(body):
     """Remove None values from a dictionary recursively"""
     result = {}
