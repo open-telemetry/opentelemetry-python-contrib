@@ -352,7 +352,9 @@ class TestLoggingInstrumentor(TestBase):
 
         logger_provider = get_logger_provider()
         setup_mock.assert_called_once_with(
-            logger_provider=logger_provider, log_code_attributes=False
+            logger_provider=logger_provider,
+            log_code_attributes=False,
+            level=None,
         )
 
     @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_CODE_ATTRIBUTES": "true"})
@@ -365,7 +367,9 @@ class TestLoggingInstrumentor(TestBase):
 
         logger_provider = get_logger_provider()
         setup_mock.assert_called_once_with(
-            logger_provider=logger_provider, log_code_attributes=True
+            logger_provider=logger_provider,
+            log_code_attributes=True,
+            level=None,
         )
 
     def test_handler_setup_is_controlled_by_instrumentor_parameter(
@@ -397,5 +401,52 @@ class TestLoggingInstrumentor(TestBase):
 
         logger_provider = get_logger_provider()
         setup_mock.assert_called_once_with(
-            logger_provider=logger_provider, log_code_attributes=True
+            logger_provider=logger_provider,
+            log_code_attributes=True,
+            level=None,
+        )
+
+    @mock.patch.dict("os.environ", {"OTEL_PYTHON_LOG_HANDLER_LEVEL": "error"})
+    def test_handler_level_is_set_from_env_var(self):
+        LoggingInstrumentor().uninstrument()
+        with self.caplog.at_level(level=logging.WARNING):
+            LoggingInstrumentor().instrument()
+
+        root_logger = logging.getLogger()
+        logging_handlers = [
+            h for h in root_logger.handlers if isinstance(h, LoggingHandler)
+        ]
+        self.assertEqual(len(logging_handlers), 1)
+        self.assertEqual(logging_handlers[0].level, logging.ERROR)
+
+    @mock.patch.dict(
+        "os.environ",
+        {"OTEL_PYTHON_LOG_HANDLER_LEVEL": "warning"},
+    )
+    def test_handler_setup_called_with_level_from_env_var(self):
+        LoggingInstrumentor().uninstrument()
+        with mock.patch(
+            "opentelemetry.instrumentation.logging._setup_logging_handler"
+        ) as setup_mock:
+            LoggingInstrumentor().instrument()
+
+        logger_provider = get_logger_provider()
+        setup_mock.assert_called_once_with(
+            logger_provider=logger_provider,
+            log_code_attributes=False,
+            level=logging.WARNING,
+        )
+
+    def test_handler_level_is_controlled_by_instrumentor_parameter(self):
+        LoggingInstrumentor().uninstrument()
+        with mock.patch(
+            "opentelemetry.instrumentation.logging._setup_logging_handler"
+        ) as setup_mock:
+            LoggingInstrumentor().instrument(log_handler_level=logging.DEBUG)
+
+        logger_provider = get_logger_provider()
+        setup_mock.assert_called_once_with(
+            logger_provider=logger_provider,
+            log_code_attributes=False,
+            level=logging.DEBUG,
         )

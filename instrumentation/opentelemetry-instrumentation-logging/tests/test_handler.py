@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 from opentelemetry._logs import NoOpLoggerProvider, SeverityNumber
 from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
+from opentelemetry.instrumentation.logging import _get_log_level
 from opentelemetry.instrumentation.logging.handler import (
     LoggingHandler,
     _setup_logging_handler,
@@ -656,6 +657,52 @@ class SetupLoggingHandlerTestCase(unittest.TestCase):
             )
 
             root_logger.removeHandler(logging_handlers[0])
+
+    def test_setup_logging_handler_with_level(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(
+                logger_provider=logger_provider, level=logging.ERROR
+            )
+            self.assertEqual(handler.level, logging.ERROR)
+            logging.getLogger().removeHandler(handler)
+
+    def test_setup_logging_handler_default_level_is_notset(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(logger_provider=logger_provider)
+            self.assertEqual(handler.level, logging.NOTSET)
+            logging.getLogger().removeHandler(handler)
+
+
+class GetLogLevelTestCase(unittest.TestCase):
+    def test_get_log_level_none_returns_none(self):
+        self.assertIsNone(_get_log_level(None))
+
+    def test_get_log_level_notset(self):
+        self.assertEqual(_get_log_level("notset"), logging.NOTSET)
+
+    def test_get_log_level_notset_with_whitespace(self):
+        self.assertEqual(_get_log_level(" NOTSET "), logging.NOTSET)
+
+    def test_get_log_level_debug(self):
+        self.assertEqual(_get_log_level(" DeBug "), logging.DEBUG)
+
+    def test_get_log_level_info(self):
+        self.assertEqual(_get_log_level(" info "), logging.INFO)
+
+    def test_get_log_level_warning(self):
+        self.assertEqual(_get_log_level(" warnING "), logging.WARNING)
+
+    def test_get_log_level_error(self):
+        self.assertEqual(_get_log_level(" eRroR"), logging.ERROR)
+
+    def test_get_log_level_invalid_falls_back_to_notset(self):
+        with self.assertLogs(
+            "opentelemetry.instrumentation.logging", level="WARNING"
+        ) as cm:
+            self.assertEqual(_get_log_level("foobar"), logging.NOTSET)
+        self.assertTrue(any("foobar" in line for line in cm.output))
 
 
 def set_up_test_logging(
