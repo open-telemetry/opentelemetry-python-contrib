@@ -58,8 +58,9 @@ jobs:
 
       - name: Install tox
         run: pip install tox-uv
+
       - name: Install Microsft SQL ODBC driver
-        run: ACCEPT_EULA=Y sudo apt install -y msodbcsql18 unixodbc-dev unixodbc
+        run: sudo apt update -y && ACCEPT_EULA=Y sudo apt install -y msodbcsql18 unixodbc-dev unixodbc
 
       - name: Run tests
         run: tox -e docker-tests
