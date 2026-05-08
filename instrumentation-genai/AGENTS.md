@@ -19,7 +19,32 @@ This layer is responsible only for:
 Everything else (span creation, metric recording, event emission, context propagation)
 belongs in `util/opentelemetry-util-genai`.
 
-## 2. Invocation Pattern
+## 2. TelemetryHandler Initialization
+
+Construct `TelemetryHandler` once inside `_instrument()`, passing all OTel providers and the
+completion hook. Always prefer an explicitly injected hook (`kwargs.get("completion_hook")`)
+over the entry-point hook loaded by `load_completion_hook()`, so test code can override the
+hook without touching the environment.
+
+```python
+from opentelemetry.util.genai.completion_hook import load_completion_hook
+from opentelemetry.util.genai.handler import TelemetryHandler
+
+def _instrument(self, **kwargs):
+    tracer_provider = kwargs.get("tracer_provider")
+    meter_provider = kwargs.get("meter_provider")
+    logger_provider = kwargs.get("logger_provider")
+
+    handler = TelemetryHandler(
+        tracer_provider=tracer_provider,
+        meter_provider=meter_provider,
+        logger_provider=logger_provider,
+        completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
+    )
+    # pass handler to each patch/wrapper function
+```
+
+## 3. Invocation Pattern
 
 Use `start_*()` and control span lifetime manually:
 
@@ -36,7 +61,7 @@ except Exception as exc:
     raise
 ```
 
-## 3. Semantic conventions
+## 4. Semantic conventions
 
 Attributes, spans, events, and metrics follow the
 [GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions/tree/main/docs/gen-ai).
@@ -45,14 +70,14 @@ Do not emit signals that are not covered by semconv.
 `gen_ai.*` attribute names and the enums for well-known values (e.g. `GenAiOutputTypeValues` for
 `gen_ai.output.type`) live in `opentelemetry.semconv._incubating.attributes.gen_ai_attributes`.
 
-## 4. Tests
+## 5. Tests
 
 - Use VCR cassettes for provider calls. Do not skip tests when an API key is missing.
 - Cover streaming and non-streaming variants when both exist.
 - Cover error scenarios, at minimum: provider error / endpoint unavailable, stream interrupted by
   network, stream closed early by the caller.
 
-## 5. Examples
+## 6. Examples
 
 New instrumentations ship a minimal example under the package's `examples/` directory, with
 both a `manual/` setup and a `zero-code/` (auto-instrumentation) variant.

@@ -12,15 +12,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- Add `BaggageLogProcessor` to `opentelemetry-processor-baggage`
+  ([#4371](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4371))
 
-- `opentelemetry-instrumentation-asyncpg`: Add `exclude_queries` option to `AsyncPGInstrumentor` to silence specific queries from being traced
-  ([#4373](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4373))
+- `opentelemetry-instrumentation-system-metrics`: Add support for `process.disk.io` metric in system-metrics instrumentation
+  ([#4397](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4397))
+- Switch to SPDX license headers and add CI enforcement
+  ([#4533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4533))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
+- `opentelemetry-instrumentation-logging`: Add `OTEL_PYTHON_LOG_HANDLER_LEVEL` and `OTEL_PYTHON_LOG_FORMAT` environment variables to configure the log level and formatter of the auto-instrumented `LoggingHandler`.
+  ([#4298](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4298))
+- Remove redundant `pylint: disable=attribute-defined-outside-init` comments and add rule to global `.pylintrc` disable list
+  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
+- `opentelemetry-exporter-richconsole`: Add support for suppressing resource information
+  ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
 
 ### Fixed
 
@@ -46,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Enabled the flake8-tidy-import plugins rules for the ruff linter. These rules throw warnings for relative imports in the modules.
+([#4395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4395))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
@@ -58,9 +70,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
+- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
+  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
 
 ### Fixed
 
+- `opentelemetry-instrumentation-celery`: Coerce timelimit values to strings in `set_attributes_from_context()` to prevent mixed-type span attribute warning
+  ([#4361](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4361))
 - `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
  ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
 - `opentelemetry-instrumentation-confluent-kafka`: Skip `recv` span creation when `poll()` returns no message or `consume()` returns an empty list, avoiding empty spans on idle polls
