@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 
 # pylint: disable=no-name-in-module
@@ -102,6 +91,8 @@ class TestUploadCompletionHook(TestCase):
         self.hook = UploadCompletionHook(
             base_path=BASE_PATH, max_queue_size=MAXSIZE, lru_cache_max_size=5
         )
+        # 1 upload is done when creating the UploadHook to ensure upload works. Reset mock.
+        self.mock_fs.reset_mock()
 
     def tearDown(self) -> None:
         self.hook.shutdown()
@@ -144,6 +135,18 @@ class TestUploadCompletionHook(TestCase):
             4,
             "should have uploaded 4 files",
         )
+
+    def test_failed_upload_causes_initializer_to_throw(self):
+        self.mock_fs.open.side_effect = ValueError("Failed for some reason!")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Failed to write file to the following path, upload is not working:",
+        ):
+            UploadCompletionHook(
+                base_path=BASE_PATH,
+                max_queue_size=MAXSIZE,
+                lru_cache_max_size=5,
+            )
 
     def test_lru_cache_works(self):
         record = LogRecord()

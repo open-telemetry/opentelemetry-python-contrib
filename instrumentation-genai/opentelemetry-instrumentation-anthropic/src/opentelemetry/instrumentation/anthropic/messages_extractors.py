@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """Get/extract helpers for Anthropic Messages instrumentation."""
 
@@ -29,6 +18,7 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.util.genai.types import (
     InputMessage,
+    LLMInvocation,
     MessagePart,
     OutputMessage,
 )
@@ -151,6 +141,37 @@ def get_output_messages_from_message(
             finish_reason=finish_reason or "",
         )
     ]
+
+
+def set_invocation_response_attributes(
+    invocation: LLMInvocation,
+    message: Message | None,
+    capture_content: bool,
+) -> None:
+    if message is None:
+        return
+
+    invocation.response_model_name = message.model
+    invocation.response_id = message.id
+
+    finish_reason = normalize_finish_reason(message.stop_reason)
+    if finish_reason:
+        invocation.finish_reasons = [finish_reason]
+
+    tokens = extract_usage_tokens(message.usage)
+    invocation.input_tokens = tokens.input_tokens
+    invocation.output_tokens = tokens.output_tokens
+    if tokens.cache_creation_input_tokens is not None:
+        invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = (
+            tokens.cache_creation_input_tokens
+        )
+    if tokens.cache_read_input_tokens is not None:
+        invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
+            tokens.cache_read_input_tokens
+        )
+
+    if capture_content:
+        invocation.output_messages = get_output_messages_from_message(message)
 
 
 def extract_params(  # pylint: disable=too-many-locals

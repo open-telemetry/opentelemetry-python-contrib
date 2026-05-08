@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import asyncio
@@ -162,9 +165,17 @@ async def _extract_send_partition(
         key = _extract_send_key(args, kwargs)
         value = _extract_send_value(args, kwargs)
         partition = _extract_argument("partition", 3, None, args, kwargs)
-        key_bytes, value_bytes = cast(
-            "tuple[bytes | None, bytes | None]",
-            instance._serialize(topic, key, value),  # type: ignore[reportUnknownMemberType]
+        key_bytes = cast(
+            "bytes | None",
+            instance._key_serializer(key)  # type: ignore[reportUnknownMemberType]
+            if instance._key_serializer  # type: ignore[reportUnknownMemberType]
+            else key,
+        )
+        value_bytes = cast(
+            "bytes | None",
+            instance._value_serializer(value)  # type: ignore[reportUnknownMemberType]
+            if instance._value_serializer  # type: ignore[reportUnknownMemberType]
+            else value,
         )
         valid_types = (bytes, bytearray, memoryview, type(None))
         if (

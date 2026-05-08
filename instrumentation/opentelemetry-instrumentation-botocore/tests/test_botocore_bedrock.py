@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint:disable=too-many-lines
 
@@ -1487,7 +1476,6 @@ def test_invoke_model_with_content(
         finish_reason = "length"
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     assert_message_in_logs(logs[0], "gen_ai.user.message", user_content, span)
 
@@ -1628,7 +1616,6 @@ def test_invoke_model_with_content_different_events(
         choice_content = [{"type": "text", "text": "This is a test"}]
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -2070,7 +2057,6 @@ def test_invoke_model_with_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_tool_call(
         span_exporter,
@@ -2156,7 +2142,6 @@ def test_invoke_model_no_content(
         finish_reason = "length"
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     choice_body = {
         "index": 0,
@@ -2190,7 +2175,6 @@ def test_invoke_model_no_content_different_events(
         finish_reason = "end_turn"
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     body = get_invoke_model_body(
         llm_model_value,
@@ -2246,7 +2230,6 @@ def test_invoke_model_no_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_tool_call(
         span_exporter,
@@ -2401,7 +2384,6 @@ def test_invoke_model_with_response_stream_with_content(
         }
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     choice_body = {
         "index": 0,
@@ -2437,7 +2419,6 @@ def test_invoke_model_with_response_stream_with_content_different_events(
         choice_content = [{"text": "This is a test", "type": "text"}]
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2672,7 +2653,6 @@ def test_invoke_model_with_response_stream_with_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,
@@ -2801,7 +2781,6 @@ def test_invoke_model_with_response_stream_no_content_different_events(
         finish_reason = "end_turn"
     else:
         pytest.xfail("llm_model_value not handled: {llm_model_value}")
-        return
 
     max_tokens = 10
     body = get_invoke_model_body(
@@ -2864,7 +2843,6 @@ def test_invoke_model_with_response_stream_no_content_tool_call(
         llm_model_config = AnthropicClaudeModel
     else:
         pytest.xfail("model family not handled: {model_family}")
-        return
 
     invoke_model_with_response_stream_tool_call(
         span_exporter,
