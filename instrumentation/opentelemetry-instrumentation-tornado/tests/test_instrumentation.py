@@ -325,6 +325,40 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             },
         )
 
+    def test_parametrized_url(self):
+        response = self.fetch("/parametrized/hello/")
+        self.assertEqual(response.code, 200)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        server, client = spans
+
+        self.assertEqual(server.name, "GET /parametrized/{message}/")
+        self.assertEqual(server.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            server,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/parametrized/hello/",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 200,
+                "tornado.handler": "tests.tornado_test_app.ParametrizedHandler",
+            },
+        )
+
+        self.assertEqual(client.name, "GET")
+        self.assertEqual(client.kind, SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            client,
+            {
+                HTTP_URL: self.get_url("/parametrized/hello/"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 200,
+            },
+        )
+
     def test_http_error(self):
         response = self.fetch("/raise_403")
         self.assertEqual(response.code, 403)

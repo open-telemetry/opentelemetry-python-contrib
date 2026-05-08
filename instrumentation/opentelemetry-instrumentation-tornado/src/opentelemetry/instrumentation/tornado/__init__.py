@@ -720,22 +720,28 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
     )
 
 
-def _get_default_span_name(request):
+def _get_default_span_name(handler):
     """
-    Default span name is the HTTP method and URL path, or just the method.
+    Default span name is the HTTP method and route, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
 
     Args:
-        request: Tornado request object.
+        request: Tornado handler object.
     Returns:
         Default span name.
     """
 
-    path = request.path
-    method = request.method
-    if method and path:
-        return f"{method} {path}"
+    method = handler.request.method
+    path = handler.request.path
+    rule = find_matched_rule(handler)
+    # if there's no rule it may be a 404 so keep the path
+    if rule:
+        route = route_from_rule(rule, handler)
+    else:
+        route = path
+    if method and route:
+        return f"{method} {route}"
     return f"{method}"
 
 
@@ -750,7 +756,7 @@ def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
     )
     span, token = _start_internal_or_server_span(
         tracer=tracer,
-        span_name=_get_default_span_name(handler.request),
+        span_name=_get_default_span_name(handler),
         start_time=time_ns(),
         context_carrier=handler.request.headers,
         context_getter=textmap.default_getter,
