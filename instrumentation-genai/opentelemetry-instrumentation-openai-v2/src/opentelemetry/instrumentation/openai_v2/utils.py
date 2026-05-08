@@ -32,11 +32,13 @@ from opentelemetry.util.genai.environment_variables import (
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
+    FunctionToolDefinition,
     InputMessage,
     OutputMessage,
     Text,
     ToolCallRequest,
     ToolCallResponse,
+    ToolDefinition,
 )
 
 _OpenAIOmit = getattr(openai, "Omit", None)
@@ -397,6 +399,9 @@ def create_chat_invocation(
         invocation.input_messages = _prepare_input_messages(
             kwargs.get("messages", [])
         )
+        invocation.tool_definitions = _prepare_tool_definitions(
+            kwargs.get("tools")
+        )
     return invocation
 
 
@@ -473,6 +478,26 @@ def extract_tool_calls_new(tool_calls) -> list[ToolCallRequest]:
             ToolCallRequest(id=call_id, name=func_name, arguments=arguments)
         )
     return parts
+
+
+def _prepare_tool_definitions(tools) -> list[ToolDefinition] | None:
+    if not tools:
+        return None
+
+    definitions: list[ToolDefinition] = []
+    for tool in tools:
+        tool_type = get_property_value(tool, "type")
+        if tool_type == "function":
+            func = get_property_value(tool, "function")
+            if func:
+                definitions.append(
+                    FunctionToolDefinition(
+                        name=get_property_value(func, "name") or "",
+                        description=get_property_value(func, "description"),
+                        parameters=get_property_value(func, "parameters"),
+                    )
+                )
+    return definitions
 
 
 def _prepare_output_messages(choices) -> List[OutputMessage]:
