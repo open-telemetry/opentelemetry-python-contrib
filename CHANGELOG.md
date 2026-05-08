@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4397](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4397))
 - Switch to SPDX license headers and add CI enforcement
   ([#4533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4533))
+- `opentelemetry-instrumentation-asyncpg`: Add `exclude_queries` option to `AsyncPGInstrumentor`
+  to silence specific queries from being traced
+  ([#4373](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4373))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
