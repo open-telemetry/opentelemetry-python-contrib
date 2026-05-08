@@ -1,5 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+
+# pylint: disable=too-many-lines
+
 import asyncio
 import os
 from unittest import IsolatedAsyncioTestCase, mock
