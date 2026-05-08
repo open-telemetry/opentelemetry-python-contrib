@@ -497,7 +497,7 @@ def _prepare_tool_definitions(tools) -> list[ToolDefinition] | None:
                         parameters=get_property_value(func, "parameters"),
                     )
                 )
-    return definitions or None
+    return definitions
 
 
 def _prepare_output_messages(choices) -> List[OutputMessage]:
