@@ -33,7 +33,7 @@ MSSQL_CONFIG = {
 
 @pytest.mark.skipif(
     "ODBC Driver 18 for SQL Server" not in pyodbc.drivers(),
-    reason="No MS SQL odbc driver installed",
+    reason="No MS SQL ODBC driver installed",
 )
 class MssqlConnectorTestCase(SQLAlchemyTestMixin):
     """TestCase for pyodbc engine"""

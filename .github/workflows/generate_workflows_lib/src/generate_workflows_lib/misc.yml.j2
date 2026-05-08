@@ -70,7 +70,7 @@ jobs:
 
       {%- if job_data == "docker-tests" %}
 
-      - name: Install Microsft SQL ODBC driver
+      - name: Install Microsoft SQL ODBC driver
         run: sudo apt update -y && ACCEPT_EULA=Y sudo apt install -y msodbcsql18 unixodbc-dev unixodbc
       {%- endif %}
 
