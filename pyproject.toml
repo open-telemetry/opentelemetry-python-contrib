@@ -202,6 +202,7 @@ pythonVersion = "3.10"
 reportPrivateUsage = false  # Ignore private attributes added by instrumentation packages.
 # Add progressively instrumentation packages here.
 include = [
+  "instrumentation/opentelemetry-instrumentation-aiohttp-client",
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
   "instrumentation/opentelemetry-instrumentation-threading",
@@ -214,6 +215,8 @@ include = [
   "exporter/opentelemetry-exporter-credential-provider-gcp",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client",
   "opamp/opentelemetry-opamp-client",
+  "sdk-extension/opentelemetry-sdk-extension-aws/src/opentelemetry/sdk/extension/aws/trace",
+  "opentelemetry-instrumentation/src/opentelemetry/instrumentation/_labeler",
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
 # We are excluding for now because it's easier, and more important to add to the instrumentation packages.

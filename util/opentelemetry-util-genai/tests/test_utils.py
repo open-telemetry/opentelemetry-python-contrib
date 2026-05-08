@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import json
 import os
@@ -33,6 +22,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.sdk.trace.sampling import Decision, SamplingResult
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -46,7 +36,10 @@ from opentelemetry.util.genai.environment_variables import (
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
     OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT,
 )
-from opentelemetry.util.genai.handler import get_telemetry_handler
+from opentelemetry.util.genai.handler import (
+    TelemetryHandler,
+    get_telemetry_handler,
+)
 from opentelemetry.util.genai.types import (
     ContentCapturingMode,
     InputMessage,
@@ -356,6 +349,108 @@ class TestTelemetryHandler(unittest.TestCase):
                 "extra_manual": "yes",
             },
         )
+
+    def test_start_inference_passes_sampling_attributes_at_span_creation(self):
+        """Verify that sampling-relevant attributes are available at start_span() time."""
+        captured_attributes = {}
+
+        class AttributeCapturingSampler:  # pylint: disable=no-self-use
+            """A sampler that records the attributes passed to should_sample."""
+
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+            ):
+                captured_attributes.update(attributes or {})
+
+                return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+            def get_description(self):
+                return "AttributeCapturingSampler"
+
+        sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
+        sampler_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+
+        handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+        invocation = handler.start_inference(
+            "test-provider",
+            request_model="sampler-model",
+            server_address="api.example.com",
+            server_port=8080,
+        )
+        invocation.stop()
+
+        assert captured_attributes[GenAI.GEN_AI_OPERATION_NAME] == "chat"
+        assert (
+            captured_attributes[GenAI.GEN_AI_REQUEST_MODEL] == "sampler-model"
+        )
+        assert (
+            captured_attributes[GenAI.GEN_AI_PROVIDER_NAME] == "test-provider"
+        )
+        assert (
+            captured_attributes[server_attributes.SERVER_ADDRESS]
+            == "api.example.com"
+        )
+        assert captured_attributes[server_attributes.SERVER_PORT] == 8080
+
+    def test_start_inference_sampler_can_drop_span_based_on_attributes(self):
+        """Verify that a sampler can reject spans based on attributes passed at creation time."""
+
+        class ModelRejectingSampler:  # pylint: disable=no-self-use
+            """Drops spans whose gen_ai.request.model matches the reject list."""
+
+            def __init__(self, reject_models):
+                self._reject_models = reject_models
+
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+            ):
+                model = (attributes or {}).get(GenAI.GEN_AI_REQUEST_MODEL)
+                if model in self._reject_models:
+                    return SamplingResult(Decision.DROP)
+                return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+            def get_description(self):
+                return "ModelRejectingSampler"
+
+        sampler_provider = TracerProvider(
+            sampler=ModelRejectingSampler(reject_models={"rejected-model"})
+        )
+        sampler_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+
+        handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+        # This invocation should be dropped
+        invocation = handler.start_inference(
+            "test-provider", request_model="rejected-model"
+        )
+        invocation.stop()
+
+        # This invocation should be recorded
+        invocation = handler.start_inference(
+            "test-provider", request_model="accepted-model"
+        )
+        invocation.stop()
+
+        spans = self.span_exporter.get_finished_spans()
+        assert len(spans) == 1
+        assert spans[0].name == "chat accepted-model"
 
     def test_llm_span_finish_reasons_without_output_messages(self):
         invocation = self.telemetry_handler.start_inference(
