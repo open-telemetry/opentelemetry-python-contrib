@@ -31,10 +31,7 @@ from opentelemetry.util.genai.utils import (
 )
 
 # TODO: Migrate to GenAI constants once available in semconv package
-_GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    "gen_ai.usage.cache_creation.input_tokens"
-)
-_GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
+_GEN_AI_REASONING_OUTPUT_TOKENS = "gen_ai.usage.reasoning.output_tokens"
 
 
 class InferenceInvocation(GenAIInvocation):
@@ -55,18 +52,21 @@ class InferenceInvocation(GenAIInvocation):
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
+        operation_name: str | None = None,
     ) -> None:
+        operation_name = (
+            operation_name or GenAI.GenAiOperationNameValues.CHAT.value
+        )
         """Use handler.start_inference(provider) or handler.inference(provider) instead of calling this directly."""
-        _operation_name = GenAI.GenAiOperationNameValues.CHAT.value
         super().__init__(
             tracer,
             metrics_recorder,
             logger,
             completion_hook,
-            operation_name=_operation_name,
-            span_name=f"{_operation_name} {request_model}"
+            operation_name=operation_name,
+            span_name=f"{operation_name} {request_model}"
             if request_model
-            else _operation_name,
+            else operation_name,
             span_kind=SpanKind.CLIENT,
         )
         self.provider = provider
@@ -81,7 +81,9 @@ class InferenceInvocation(GenAIInvocation):
         self.response_id: str | None = None
         self.finish_reasons: list[str] | None = None
         self.input_tokens: int | None = None
+        # Output tokens will ultimately be the sum of normal output tokens and thinking tokens.
         self.output_tokens: int | None = None
+        self.thinking_tokens: int | None = None
         self.temperature: float | None = None
         self.top_p: float | None = None
         self.frequency_penalty: float | None = None
@@ -129,6 +131,12 @@ class InferenceInvocation(GenAIInvocation):
 
     def _get_attributes(self) -> dict[str, Any]:
         attrs = self._get_base_attributes()
+        if self.output_tokens is None and self.thinking_tokens is None:
+            output_tokens = None
+        else:
+            output_tokens = (self.output_tokens or 0) + (
+                self.thinking_tokens or 0
+            )
         optional_attrs = (
             (GenAI.GEN_AI_REQUEST_TEMPERATURE, self.temperature),
             (GenAI.GEN_AI_REQUEST_TOP_P, self.top_p),
@@ -141,14 +149,18 @@ class InferenceInvocation(GenAIInvocation):
             (GenAI.GEN_AI_RESPONSE_MODEL, self.response_model_name),
             (GenAI.GEN_AI_RESPONSE_ID, self.response_id),
             (GenAI.GEN_AI_USAGE_INPUT_TOKENS, self.input_tokens),
-            (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, self.output_tokens),
+            (GenAI.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens),
             (
-                _GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+                GenAI.GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
                 self.cache_creation_input_tokens,
             ),
             (
-                _GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+                GenAI.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
                 self.cache_read_input_tokens,
+            ),
+            (
+                _GEN_AI_REASONING_OUTPUT_TOKENS,
+                self.thinking_tokens,
             ),
         )
         attrs.update({k: v for k, v in optional_attrs if v is not None})

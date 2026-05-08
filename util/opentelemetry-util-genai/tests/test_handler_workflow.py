@@ -13,6 +13,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.sdk.trace.sampling import Decision, SamplingResult
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -179,6 +180,43 @@ class TelemetryHandlerWorkflowContextManagerTest(_WorkflowTestBase):
             self.assertIsInstance(inv, WorkflowInvocation)
             self.assertIsNone(inv.name)
             self.assertEqual(inv._operation_name, "invoke_workflow")
+
+
+class TelemetryHandlerWorkflowSamplingTest(_WorkflowTestBase):
+    def test_start_workflow_passes_sampling_attributes_at_span_creation(
+        self,
+    ) -> None:
+        """Verify that sampling-relevant attributes are available at start_span() time for workflows."""
+        captured_attributes = {}
+
+        class AttributeCapturingSampler:  # pylint: disable=no-self-use
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+            ):
+                captured_attributes.update(attributes or {})
+                return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+            def get_description(self):
+                return "AttributeCapturingSampler"
+
+        sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
+        sampler_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+        handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+        invocation = handler.start_workflow(name="my-workflow")
+        invocation.stop()
+
+        self.assertEqual(
+            captured_attributes[GenAI.GEN_AI_OPERATION_NAME], "invoke_workflow"
+        )
 
         spans = self._get_finished_spans()
         self.assertEqual(len(spans), 1)
