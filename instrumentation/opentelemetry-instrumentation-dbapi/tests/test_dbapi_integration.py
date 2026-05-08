@@ -35,6 +35,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 
 
@@ -1126,6 +1127,48 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
+    def test_commit_failed(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        with self.assertRaises(Exception):
+            mock_connection.commit(throw_exception=True)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "Exception")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
+    def test_rollback_failed(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        with self.assertRaises(Exception):
+            mock_connection.rollback(throw_exception=True)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "Exception")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_wrap_connect(self, mock_dbapi):
         dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
@@ -1364,12 +1407,14 @@ class MockConnection:
         return MockCursor()
 
     # pylint: disable=no-self-use
-    def commit(self):
-        pass
+    def commit(self, throw_exception=False):
+        if throw_exception:
+            raise Exception("Test Exception")
 
     # pylint: disable=no-self-use
-    def rollback(self):
-        pass
+    def rollback(self, throw_exception=False):
+        if throw_exception:
+            raise Exception("Test Exception")
 
 
 class MockCursor:

@@ -204,6 +204,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
 
@@ -632,14 +633,18 @@ class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
         return get_traced_cursor_proxy(cursor, self._self_db_api_integration)
 
     def _traced_tx_operation(
-        self, operation_name: str, operation_method: Callable[[], None]
+        self,
+        operation_name: str,
+        operation_method: Callable[..., None],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """Execute a traced transaction operation (commit, rollback)."""
         if not is_instrumentation_enabled():
-            return operation_method()
+            return operation_method(*args, **kwargs)
 
         if not self._self_db_api_integration.enable_transaction_spans:
-            return operation_method()
+            return operation_method(*args, **kwargs)
 
         with self._self_db_api_integration._tracer.start_as_current_span(
             operation_name, kind=trace_api.SpanKind.CLIENT
@@ -647,13 +652,22 @@ class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
             if span.is_recording():
                 self._self_db_api_integration.populate_common_span_attributes(span)
                 span.set_attribute(DB_OPERATION, operation_name)
-            return operation_method()
+            try:
+                return operation_method(*args, **kwargs)
+            except Exception as exc:
+                if span.is_recording():
+                    span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
+                raise
 
-    def commit(self):
-        return self._traced_tx_operation("COMMIT", self.__wrapped__.commit)
+    def commit(self, *args: Any, **kwargs: Any):
+        return self._traced_tx_operation(
+            "COMMIT", self.__wrapped__.commit, *args, **kwargs
+        )
 
-    def rollback(self):
-        return self._traced_tx_operation("ROLLBACK", self.__wrapped__.rollback)
+    def rollback(self, *args: Any, **kwargs: Any):
+        return self._traced_tx_operation(
+            "ROLLBACK", self.__wrapped__.rollback, *args, **kwargs
+        )
 
     def __enter__(self):
         self.__wrapped__.__enter__()
@@ -665,14 +679,18 @@ class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
 
 class AsyncTracedConnectionProxy(TracedConnectionProxy[ConnectionT]):
     async def _traced_tx_operation_async(
-        self, operation_name: str, operation_method: Callable[[], Awaitable[None]]
+        self,
+        operation_name: str,
+        operation_method: Callable[..., Awaitable[None]],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """Execute a traced async transaction operation (commit, rollback)."""
         if not is_instrumentation_enabled():
-            return await operation_method()
+            return await operation_method(*args, **kwargs)
 
         if not self._self_db_api_integration.enable_transaction_spans:
-            return await operation_method()
+            return await operation_method(*args, **kwargs)
 
         with self._self_db_api_integration._tracer.start_as_current_span(
             operation_name, kind=trace_api.SpanKind.CLIENT
@@ -680,15 +698,24 @@ class AsyncTracedConnectionProxy(TracedConnectionProxy[ConnectionT]):
             if span.is_recording():
                 self._self_db_api_integration.populate_common_span_attributes(span)
                 span.set_attribute(DB_OPERATION, operation_name)
-            return await operation_method()
+            try:
+                return await operation_method(*args, **kwargs)
+            except Exception as exc:
+                if span.is_recording():
+                    span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
+                raise
 
-    async def commit(self):
+    async def commit(self, *args: Any, **kwargs: Any):
         """Async commit for async connections (e.g., psycopg.AsyncConnection)."""
-        return await self._traced_tx_operation_async("COMMIT", self.__wrapped__.commit)
+        return await self._traced_tx_operation_async(
+            "COMMIT", self.__wrapped__.commit, *args, **kwargs
+        )
 
-    async def rollback(self):
+    async def rollback(self, *args: Any, **kwargs: Any):
         """Async rollback for async connections (e.g., psycopg.AsyncConnection)."""
-        return await self._traced_tx_operation_async("ROLLBACK", self.__wrapped__.rollback)
+        return await self._traced_tx_operation_async(
+            "ROLLBACK", self.__wrapped__.rollback, *args, **kwargs
+        )
 
     # Async context manager support
     async def __aenter__(self):

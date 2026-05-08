@@ -20,11 +20,13 @@ import psycopg
 from psycopg.sql import SQL, Composed
 
 import opentelemetry.instrumentation.psycopg
+from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_OPERATION,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 
 
@@ -87,12 +89,6 @@ class MockAsyncCursor:
 
 
 class MockConnection:
-    commit = mock.MagicMock(spec=types.MethodType)
-    commit.__name__ = "commit"
-
-    rollback = mock.MagicMock(spec=types.MethodType)
-    rollback.__name__ = "rollback"
-
     def __init__(self, *args, **kwargs):
         self.cursor_factory = kwargs.pop("cursor_factory", None)
 
@@ -100,6 +96,14 @@ class MockConnection:
         if self.cursor_factory:
             return self.cursor_factory(self)
         return MockCursor()
+
+    def commit(self, throw_exception=False):  # pylint: disable=no-self-use
+        if throw_exception:
+            raise psycopg.Error("Test Exception")
+
+    def rollback(self, throw_exception=False):  # pylint: disable=no-self-use
+        if throw_exception:
+            raise psycopg.Error("Test Exception")
 
     def get_dsn_parameters(self):  # pylint: disable=no-self-use
         return {"dbname": "test"}
@@ -113,11 +117,13 @@ class MockAsyncConnection(psycopg.AsyncConnection):
     async def connect(*args, **kwargs):
         return MockAsyncConnection(**kwargs)
 
-    async def commit(self):
-        pass
+    async def commit(self, throw_exception=False):
+        if throw_exception:
+            raise psycopg.Error("Test Exception")
 
-    async def rollback(self):
-        pass
+    async def rollback(self, throw_exception=False):
+        if throw_exception:
+            raise psycopg.Error("Test Exception")
 
     def cursor(self, *args, **kwargs):
         if self.cursor_factory:
@@ -468,6 +474,38 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(span.name, "ROLLBACK")
         self.assertEqual(span.attributes[DB_OPERATION], "ROLLBACK")
 
+    def test_commit_failed(self):
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
+
+        cnx = psycopg.connect(database="test")
+        with self.assertRaises(psycopg.Error):
+            cnx.commit(throw_exception=True)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
+    def test_rollback_failed(self):
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
+
+        cnx = psycopg.connect(database="test")
+        with self.assertRaises(psycopg.Error):
+            cnx.rollback(throw_exception=True)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_enabled(self, event_mocked):
         cnx = psycopg.connect(database="test")
@@ -643,6 +681,42 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
         self.assertEqual(span.name, "ROLLBACK")
         self.assertEqual(span.attributes[DB_OPERATION], "ROLLBACK")
+
+        PsycopgInstrumentor().uninstrument()
+
+    async def test_async_commit_failed(self):
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
+
+        cnx = await psycopg.AsyncConnection.connect("test")
+        with self.assertRaises(psycopg.Error):
+            await cnx.commit(throw_exception=True)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
+        PsycopgInstrumentor().uninstrument()
+
+    async def test_async_rollback_failed(self):
+        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
+
+        cnx = await psycopg.AsyncConnection.connect("test")
+        with self.assertRaises(psycopg.Error):
+            await cnx.rollback(throw_exception=True)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
 
         PsycopgInstrumentor().uninstrument()
 
