@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """Wrappers for OpenAI Responses API streams and stream managers."""
 
 from __future__ import annotations

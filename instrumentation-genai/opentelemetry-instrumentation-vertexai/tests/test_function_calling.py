@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from tests.shared_test_utils import (
     ask_about_weather,
