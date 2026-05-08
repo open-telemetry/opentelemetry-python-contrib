@@ -837,7 +837,7 @@ class TestWsgiAttributes(unittest.TestCase):
 
     def test_request_attributes_with_invalid_request_uri_uses_wsgi_environ(self):
         # Previously raised ValueError when REQUEST_URI was parsed.
-        self.environ["REQUEST_URI"] = "http://example.com/[invalid"
+        self.environ["REQUEST_URI"] = "http://example.com[invalid"
         self.environ["PATH_INFO"] = "/safe/path"
         self.environ["QUERY_STRING"] = "a=b"
 
