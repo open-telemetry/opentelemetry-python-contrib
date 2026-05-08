@@ -18,6 +18,61 @@ Usage
 
     FastAPIInstrumentor.instrument_app(app)
 
+Auto-instrumentation
+********************
+
+FastAPI can also be instrumented without code changes by using the
+``opentelemetry-instrument`` command from the
+`opentelemetry-instrumentation <https://pypi.org/project/opentelemetry-instrumentation/>`_
+package together with the
+`opentelemetry-distro <https://pypi.org/project/opentelemetry-distro/>`_
+package:
+
+.. code-block:: sh
+
+    pip install "opentelemetry-distro[otlp]" opentelemetry-instrumentation-fastapi
+    opentelemetry-instrument uvicorn app:app
+
+When auto-instrumentation is used with ``opentelemetry-distro``, the SDK
+configuration is read from standard OpenTelemetry environment variables such as
+``OTEL_SERVICE_NAME``, ``OTEL_TRACES_EXPORTER``, ``OTEL_METRICS_EXPORTER``,
+``OTEL_LOGS_EXPORTER``, ``OTEL_EXPORTER_OTLP_ENDPOINT``, and
+``OTEL_EXPORTER_OTLP_PROTOCOL``. FastAPI-specific options, such as excluded
+URLs and HTTP header capture, are documented below. When using
+``FastAPIInstrumentor.instrument_app(app)`` directly, configure the
+OpenTelemetry SDK providers and exporters in application code or use a distro
+package to configure them.
+
+Trace propagation
+*****************
+
+Incoming context is extracted automatically from FastAPI request headers by the
+underlying ASGI instrumentation, using the configured global OpenTelemetry
+propagator. No manual intervention is needed for incoming HTTP requests.
+Outgoing context propagation is handled by the instrumentation for the client
+library making the outbound request, such as HTTPX, Requests, or aiohttp.
+
+WebSocket connections are instrumented as ASGI ``websocket`` scopes. Context is
+extracted from the WebSocket handshake headers, and spans are created for the
+connection and ASGI send/receive events. Propagation data inside WebSocket
+message payloads is not parsed automatically.
+
+Logs
+****
+
+FastAPI instrumentation emits traces and metrics. To export Python ``logging``
+records as OpenTelemetry logs, install and enable the
+`opentelemetry-instrumentation-logging <https://pypi.org/project/opentelemetry-instrumentation-logging/>`_
+package. With auto-instrumentation and ``opentelemetry-distro``, set
+``OTEL_LOGS_EXPORTER`` (for example, ``otlp``) to configure log export. Set
+``OTEL_PYTHON_LOG_CORRELATION=true`` when log messages should include the
+current trace and span IDs in the formatted log output.
+
+OpenTelemetry logs are exported as log records that can be correlated with
+traces. They are not added to spans as span events automatically; use
+``span.add_event(...)`` for application data that should be recorded as span
+events.
+
 Configuration
 -------------
 
