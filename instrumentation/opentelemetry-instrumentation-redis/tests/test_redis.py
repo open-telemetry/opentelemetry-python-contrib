@@ -1,4 +1,5 @@
 # Copyright The OpenTelemetry Authors
+<<<<<<< HEAD
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +15,9 @@
 
 # pylint: disable=too-many-lines
 
+=======
+# SPDX-License-Identifier: Apache-2.0
+>>>>>>> main
 import asyncio
 import os
 from unittest import IsolatedAsyncioTestCase, mock

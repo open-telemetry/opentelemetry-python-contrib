@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -96,11 +85,16 @@ class GenAIInvocation(ABC):
         self._context_token: ContextToken | None = None
         self._monotonic_start_s: float | None = None
 
-    def _start(self) -> None:
-        """Start the invocation span and attach it to the current context."""
+    def _start(self, attributes: dict[str, Any] | None = None) -> None:
+        """Start the invocation span and attach it to the current context.
+
+        Args:
+            attributes: Initial span attributes available for sampling decisions.
+        """
         self.span = self._tracer.start_span(
             name=self._span_name,
             kind=self._span_kind,
+            attributes=attributes,
         )
         self._span_context = set_span_in_context(self.span)
         self._monotonic_start_s = timeit.default_timer()

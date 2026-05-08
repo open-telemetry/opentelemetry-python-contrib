@@ -306,6 +306,16 @@ The continuous integration overrides that environment variable with as per the c
 
 ## Style Guide
 
+* All Python files must include the following SPDX license header as the first
+  two lines (or immediately after a shebang line):
+
+  ```python
+  # Copyright The OpenTelemetry Authors
+  # SPDX-License-Identifier: Apache-2.0
+  ```
+
+  This is enforced by CI via `tox -e lint-license-header-check`.
+
 * docstrings should adhere to the [Google Python Style
   Guide](http://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
   as specified with the [napoleon
