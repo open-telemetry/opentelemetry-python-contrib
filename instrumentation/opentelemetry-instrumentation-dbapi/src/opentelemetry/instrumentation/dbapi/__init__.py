@@ -227,6 +227,7 @@ def trace_integration(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     enable_attribute_commenter: bool = False,
     commenter_options: dict[str, Any] | None = None,
+    comment_position: str = "end",
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -260,6 +261,7 @@ def trace_integration(
         db_api_integration_factory=db_api_integration_factory,
         enable_attribute_commenter=enable_attribute_commenter,
         commenter_options=commenter_options,
+        comment_position=comment_position,
     )
 
 
@@ -276,6 +278,7 @@ def wrap_connect(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
+    comment_position: str = "end",
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -319,6 +322,7 @@ def wrap_connect(
             commenter_options=commenter_options,
             connect_module=connect_module,
             enable_attribute_commenter=enable_attribute_commenter,
+            comment_position=comment_position,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
@@ -356,6 +360,7 @@ def instrument_connection(
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
+    comment_position: str = "end",
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
 
@@ -400,6 +405,7 @@ def instrument_connection(
         commenter_options=commenter_options,
         connect_module=connect_module,
         enable_attribute_commenter=enable_attribute_commenter,
+        comment_position=comment_position,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -436,6 +442,7 @@ class DatabaseApiIntegration:
         commenter_options: dict[str, Any] | None = None,
         connect_module: Callable[..., Any] | None = None,
         enable_attribute_commenter: bool = False,
+        comment_position: str = "end",
     ):
         if connection_attributes is None:
             self.connection_attributes = {
@@ -458,6 +465,7 @@ class DatabaseApiIntegration:
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
         self.enable_attribute_commenter = enable_attribute_commenter
+        self.comment_position = comment_position
         self.database_system = database_system
         self.connection_props: dict[str, Any] = {}
         self.span_attributes: dict[str, Any] = {}
@@ -681,7 +689,7 @@ class CursorTracer(Generic[CursorT]):
                 args_list[0] = args_list[0].as_string(cursor.connection)
 
             args_list[0] = str(args_list[0])
-            statement = _add_sql_comment(args_list[0], **commenter_data)
+            statement = _add_sql_comment(args_list[0], comment_position=self._db_api_integration.comment_position, **commenter_data)
             args_list[0] = statement
             args = tuple(args_list)
         except Exception as exc:  # pylint: disable=broad-except
