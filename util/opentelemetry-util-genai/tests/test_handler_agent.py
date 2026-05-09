@@ -11,6 +11,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
     InMemorySpanExporter,
 )
+from opentelemetry.sdk.trace.sampling import Decision, SamplingResult
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
 )
@@ -28,7 +29,7 @@ from opentelemetry.util.genai.types import (
 )
 
 
-class TestLocalAgentInvocation(unittest.TestCase):
+class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         self.span_exporter = InMemorySpanExporter()
         tracer_provider = TracerProvider()
@@ -41,8 +42,8 @@ class TestLocalAgentInvocation(unittest.TestCase):
         invocation = self.handler.start_invoke_local_agent(
             "openai",
             request_model="gpt-4",
+            agent_name="Math Tutor",
         )
-        invocation.agent_name = "Math Tutor"
         invocation.stop()
 
         spans = self.span_exporter.get_finished_spans()
@@ -154,9 +155,8 @@ class TestLocalAgentInvocation(unittest.TestCase):
 
     def test_context_manager_success(self):
         with self.handler.invoke_local_agent(
-            "openai", request_model="gpt-4"
+            "openai", request_model="gpt-4", agent_name="CM Agent"
         ) as inv:
-            inv.agent_name = "CM Agent"
             inv.input_tokens = 10
             inv.output_tokens = 20
 
@@ -254,8 +254,81 @@ class TestLocalAgentInvocation(unittest.TestCase):
         invocation.agent_name = "Named Agent"
         invocation.stop()
         span = self.span_exporter.get_finished_spans()[0]
-        assert span.name == "invoke_agent Named Agent"
+        # Span name is not updated after construction — agent_name should be
+        # passed at construction time for correct span naming and sampling.
+        assert span.name == "invoke_agent"
         assert span.attributes[GenAI.GEN_AI_AGENT_NAME] == "Named Agent"
+
+    def test_agent_name_passed_at_construction(self):
+        invocation = self.handler.start_invoke_local_agent(
+            "openai", agent_name="Constructor Agent"
+        )
+        invocation.stop()
+        span = self.span_exporter.get_finished_spans()[0]
+        assert span.name == "invoke_agent Constructor Agent"
+        assert span.attributes[GenAI.GEN_AI_AGENT_NAME] == "Constructor Agent"
+
+    def test_agent_name_at_construction_available_to_sampler(self):
+        captured_attributes = {}
+
+        class AttributeCapturingSampler:  # pylint: disable=no-self-use
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+            ):
+                captured_attributes.update(attributes or {})
+                return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+            def get_description(self):
+                return "AttributeCapturingSampler"
+
+        sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
+        sampler_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+        handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+        invocation = handler.start_invoke_local_agent(
+            "openai", agent_name="Sampler Agent"
+        )
+        invocation.stop()
+
+        assert captured_attributes[GenAI.GEN_AI_AGENT_NAME] == "Sampler Agent"
+
+    def test_agent_name_omitted_not_in_sampler_attributes(self):
+        captured_attributes = {}
+
+        class AttributeCapturingSampler:  # pylint: disable=no-self-use
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+            ):
+                captured_attributes.update(attributes or {})
+                return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+            def get_description(self):
+                return "AttributeCapturingSampler"
+
+        sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
+        sampler_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+        handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+        invocation = handler.start_invoke_local_agent("openai")
+        invocation.stop()
+
+        assert GenAI.GEN_AI_AGENT_NAME not in captured_attributes
 
 
 class TestAgentInvocationContent(unittest.TestCase):
@@ -411,8 +484,9 @@ class TestRemoteAgentInvocation(unittest.TestCase):
             "openai",
             request_model="gpt-4",
             server_address="api.openai.com",
-        ) as inv:
-            inv.agent_name = "CM Remote Agent"
+            agent_name="CM Remote Agent",
+        ) as _inv:
+            pass
 
         span = self.span_exporter.get_finished_spans()[0]
         assert span.name == "invoke_agent CM Remote Agent"
@@ -429,6 +503,57 @@ class TestRemoteAgentInvocation(unittest.TestCase):
             )
             == "ValueError"
         )
+
+    def test_start_invoke_agent_passes_sampling_attributes_at_span_creation(
+        self,
+    ):
+        """Verify that sampling-relevant attributes are available at start_span() time for agent invocations."""
+        captured_attributes = {}
+
+        class AttributeCapturingSampler:  # pylint: disable=no-self-use
+            def should_sample(
+                self,
+                parent_context,
+                trace_id,
+                name,
+                kind=None,
+                attributes=None,
+                links=None,
+            ):
+                captured_attributes.update(attributes or {})
+                return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+            def get_description(self):
+                return "AttributeCapturingSampler"
+
+        sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
+        sampler_provider.add_span_processor(
+            SimpleSpanProcessor(self.span_exporter)
+        )
+        handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+        invocation = handler.start_invoke_remote_agent(
+            "test-provider",
+            request_model="agent-model",
+            agent_name="Math Tutor",
+            server_address="agent.example.com",
+            server_port=8080,
+        )
+        invocation.stop()
+
+        assert (
+            captured_attributes[GenAI.GEN_AI_OPERATION_NAME] == "invoke_agent"
+        )
+        assert (
+            captured_attributes[GenAI.GEN_AI_PROVIDER_NAME] == "test-provider"
+        )
+        assert captured_attributes[GenAI.GEN_AI_REQUEST_MODEL] == "agent-model"
+        assert captured_attributes[GenAI.GEN_AI_AGENT_NAME] == "Math Tutor"
+        assert (
+            captured_attributes[server_attributes.SERVER_ADDRESS]
+            == "agent.example.com"
+        )
+        assert captured_attributes[server_attributes.SERVER_PORT] == 8080
 
 
 class TestAgentInvocationMetrics(TestBase):

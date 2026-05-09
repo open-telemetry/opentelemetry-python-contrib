@@ -6,6 +6,14 @@
 import pytest
 
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.sdk.trace.sampling import Decision, SamplingResult
+from opentelemetry.semconv._incubating.attributes import (
+    gen_ai_attributes as GenAI,
+)
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.invocation import GenAIInvocation
 from opentelemetry.util.genai.types import (
@@ -125,3 +133,46 @@ def test_server_tool_call_in_message():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_start_tool_passes_sampling_attributes_at_span_creation():
+    """Verify that sampling-relevant attributes are available at start_span() time for tools."""
+    captured_attributes = {}
+
+    class AttributeCapturingSampler:  # pylint: disable=no-self-use
+        def should_sample(
+            self,
+            parent_context,
+            trace_id,
+            name,
+            kind=None,
+            attributes=None,
+            links=None,
+        ):
+            captured_attributes.update(attributes or {})
+            return SamplingResult(Decision.RECORD_AND_SAMPLE, attributes)
+
+        def get_description(self):
+            return "AttributeCapturingSampler"
+
+    span_exporter = InMemorySpanExporter()
+    sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
+    sampler_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    handler = TelemetryHandler(tracer_provider=sampler_provider)
+
+    invocation = handler.start_tool(
+        "get_weather",
+        tool_call_id="call_123",
+        tool_type="function",
+        tool_description="Gets weather for a location",
+    )
+    invocation.stop()
+
+    assert captured_attributes[GenAI.GEN_AI_OPERATION_NAME] == "execute_tool"
+    assert captured_attributes[GenAI.GEN_AI_TOOL_NAME] == "get_weather"
+    assert captured_attributes[GenAI.GEN_AI_TOOL_CALL_ID] == "call_123"
+    assert captured_attributes[GenAI.GEN_AI_TOOL_TYPE] == "function"
+    assert (
+        captured_attributes[GenAI.GEN_AI_TOOL_DESCRIPTION]
+        == "Gets weather for a location"
+    )

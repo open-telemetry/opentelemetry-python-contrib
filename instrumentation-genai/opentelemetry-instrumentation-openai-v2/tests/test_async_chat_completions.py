@@ -22,6 +22,7 @@ from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import (
     DEFAULT_MODEL,
+    EXPECTED_TOOL_DEFINITIONS,
     USER_ONLY_EXPECTED_INPUT_MESSAGES,
     USER_ONLY_PROMPT,
     WEATHER_TOOL_EXPECTED_INPUT_MESSAGES,
@@ -616,6 +617,12 @@ async def chat_completion_tool_call(
                 spans[0].attributes["gen_ai.output.messages"], first_output
             )
 
+            assert_messages_attribute(
+                spans[0].attributes["gen_ai.tool.definitions"],
+                EXPECTED_TOOL_DEFINITIONS,
+            )
+            assert "gen_ai.tool.definitions" not in spans[1].attributes
+
             # second call
             del first_output[0]["finish_reason"]
             second_input = []
@@ -1172,7 +1179,7 @@ async def test_async_chat_completion_streaming_unsampled(
 
         assert logs[0].log_record.trace_id is not None
         assert logs[0].log_record.span_id is not None
-        assert logs[0].log_record.trace_flags == 0
+        assert not logs[0].log_record.trace_flags.sampled
 
         assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
         assert logs[0].log_record.span_id == logs[1].log_record.span_id
@@ -1270,6 +1277,10 @@ async def async_chat_completion_multiple_tools_streaming(
             ]
             assert_messages_attribute(
                 spans[0].attributes["gen_ai.output.messages"], first_output
+            )
+            assert_messages_attribute(
+                spans[0].attributes["gen_ai.tool.definitions"],
+                EXPECTED_TOOL_DEFINITIONS,
             )
     else:
         assert len(logs) == 3
