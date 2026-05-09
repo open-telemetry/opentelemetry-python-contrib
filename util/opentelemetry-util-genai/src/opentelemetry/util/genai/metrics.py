@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """Helpers for emitting GenAI metrics from LLM invocations."""
 
 from __future__ import annotations

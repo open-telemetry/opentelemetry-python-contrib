@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(otelTraceID)s span_id=%(otelSpanID)s resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s] - %(message)s"
 
@@ -99,6 +88,22 @@ The default value is:
 .. code-block::
 
     {default_logging_format}
+
+.. envvar:: OTEL_PYTHON_LOG_HANDLER_LEVEL
+
+Set this env var to filter which log records are exported by OpenTelemetry``LoggingHandler`` instrumentation.
+Accepts case-insensitive level names: ``notset``, ``debug``, ``info``, ``warning``, ``error``.
+Only records at or above this level will be exported.
+For example, setting this to warning means DEBUG and INFO logs are still handled by your normal logging setup,
+but they are not exported as OTel logs. Unrecognized values fall back to ``notset``.
+
+Alternatively, the level can be set via the ``log_handler_level`` argument:
+
+.. code-block::
+
+    LoggingInstrumentor(log_handler_level=logging.WARNING)
+
+The default value is ``notset``.
 
 .. envvar:: OTEL_PYTHON_LOG_LEVEL
 

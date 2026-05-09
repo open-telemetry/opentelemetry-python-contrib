@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-locals,too-many-lines
 
@@ -47,6 +36,7 @@ from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import (
     DEFAULT_MODEL,
+    EXPECTED_TOOL_DEFINITIONS,
     USER_ONLY_EXPECTED_INPUT_MESSAGES,
     USER_ONLY_PROMPT,
     WEATHER_TOOL_EXPECTED_INPUT_MESSAGES,
@@ -758,6 +748,12 @@ def chat_completion_tool_call(
                 spans[0].attributes["gen_ai.output.messages"], first_output
             )
 
+            assert_messages_attribute(
+                spans[0].attributes["gen_ai.tool.definitions"],
+                EXPECTED_TOOL_DEFINITIONS,
+            )
+            assert "gen_ai.tool.definitions" not in spans[1].attributes
+
             # second call
             del first_output[0]["finish_reason"]
             second_input = []
@@ -1259,7 +1255,7 @@ def test_chat_completion_with_content_span_unsampled(
 
         assert logs[0].log_record.trace_id is not None
         assert logs[0].log_record.span_id is not None
-        assert logs[0].log_record.trace_flags == 0
+        assert not logs[0].log_record.trace_flags.sampled
 
         assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
         assert logs[0].log_record.span_id == logs[1].log_record.span_id
@@ -1426,6 +1422,10 @@ def chat_completion_multiple_tools_streaming(
             ]
             assert_messages_attribute(
                 spans[0].attributes["gen_ai.output.messages"], first_output
+            )
+            assert_messages_attribute(
+                spans[0].attributes["gen_ai.tool.definitions"],
+                EXPECTED_TOOL_DEFINITIONS,
             )
     else:
         assert len(logs) == 3
