@@ -5,12 +5,9 @@
 from os import environ
 from os.path import abspath, dirname, pathsep
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from opentelemetry.instrumentation import auto_instrumentation
-from opentelemetry.instrumentation.environment_variables import (
-    OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES,
-)
 
 # TODO: convert to assertNoLogs instead of mocking logger when 3.10 is baseline
 
@@ -37,47 +34,35 @@ class TestInitialize(TestCase):
         {"PYTHONPATH": auto_instrumentation_path + pathsep + "foo"},
     )
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
-    def test_clears_auto_instrumentation_path(self, logger_mock):
+    def test_restores_auto_instrumentation_path_after_init(self, logger_mock):
         auto_instrumentation.initialize()
-        self.assertEqual(environ["PYTHONPATH"], "foo")
+        paths = environ["PYTHONPATH"].split(pathsep)
+        self.assertIn(self.auto_instrumentation_path, paths)
+        self.assertIn("foo", paths)
         logger_mock.exception.assert_not_called()
-
-    @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
-    def test_keeps_auto_instrumentation_path_for_subprocesses(
-        self, logger_mock
-    ):
-        for value in ("true", "TrUe", " \tTrue\n", "TRUE"):
-            with self.subTest(value=value):
-                with patch.dict(
-                    "os.environ",
-                    {
-                        "PYTHONPATH": self.auto_instrumentation_path
-                        + pathsep
-                        + "foo",
-                        OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES: value,
-                    },
-                ):
-                    auto_instrumentation.initialize()
-                    self.assertEqual(
-                        environ["PYTHONPATH"],
-                        self.auto_instrumentation_path + pathsep + "foo",
-                    )
-                    logger_mock.exception.assert_not_called()
 
     @patch.dict(
         "os.environ",
-        {
-            "PYTHONPATH": auto_instrumentation_path + pathsep + "foo",
-            OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES: "false",
-        },
+        {"PYTHONPATH": auto_instrumentation_path + pathsep + "foo"},
     )
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
-    def test_clears_auto_instrumentation_path_when_subprocesses_false(
-        self, logger_mock
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
+    def test_preserves_pythonpath_changes_during_init(
+        self, load_distro_mock, logger_mock
     ):
+        def modify_pythonpath(*_):
+            environ["PYTHONPATH"] = (
+                environ.get("PYTHONPATH", "") + pathsep + "added_during_init"
+            )
+            distro = MagicMock()
+            distro.configure.return_value = None
+            return distro
+
+        load_distro_mock.side_effect = modify_pythonpath
         auto_instrumentation.initialize()
-        self.assertEqual(environ["PYTHONPATH"], "foo")
-        logger_mock.exception.assert_not_called()
+        paths = environ["PYTHONPATH"].split(pathsep)
+        self.assertIn(self.auto_instrumentation_path, paths)
+        self.assertIn("added_during_init", paths)
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
