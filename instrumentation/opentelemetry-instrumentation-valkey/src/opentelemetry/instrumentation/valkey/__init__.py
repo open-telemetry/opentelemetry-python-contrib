@@ -469,7 +469,6 @@ class ValkeyInstrumentor(BaseInstrumentor):
             _logger.warning(
                 "Attempting to un-instrument Valkey connection that wasn't instrumented"
             )
-            return
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments

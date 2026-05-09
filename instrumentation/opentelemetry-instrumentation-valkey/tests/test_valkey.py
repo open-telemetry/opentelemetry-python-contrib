@@ -247,9 +247,7 @@ class TestValkey(TestBase):
             "valkey",
         )
         self.assertEqual(span.attributes["db.redis.database_index"], 0)
-        self.assertEqual(
-            span.attributes[SERVER_ADDRESS], "localhost"
-        )
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
         self.assertEqual(span.attributes[SERVER_PORT], 6379)
 
     def test_attributes_tcp(self):
@@ -269,9 +267,7 @@ class TestValkey(TestBase):
             "valkey",
         )
         self.assertEqual(span.attributes["db.redis.database_index"], 1)
-        self.assertEqual(
-            span.attributes[SERVER_ADDRESS], "1.1.1.1"
-        )
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "1.1.1.1")
         self.assertEqual(span.attributes[SERVER_PORT], 6380)
 
     def test_attributes_unix_socket(self):

@@ -20,6 +20,10 @@ import valkey.asyncio
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
@@ -38,11 +42,9 @@ class TestValkeyInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(span.attributes.get("db.valkey.database_index"), 0)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 16379)
+        self.assertEqual(span.attributes.get("db.redis.database_index"), 0)
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 16379)
 
     def test_long_command_sanitized(self):
         ValkeyInstrumentor().uninstrument()
@@ -91,7 +93,7 @@ class TestValkeyInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_basics(self):
         self.assertIsNone(self.valkey_client.get("cheese"))
@@ -102,7 +104,7 @@ class TestValkeyInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_pipeline_traced_sanitized(self):
         ValkeyInstrumentor().uninstrument()
@@ -122,7 +124,7 @@ class TestValkeyInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
     def test_pipeline_traced(self):
         with self.valkey_client.pipeline(transaction=False) as pipeline:
@@ -139,7 +141,7 @@ class TestValkeyInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
     def test_pipeline_immediate_sanitized(self):
         ValkeyInstrumentor().uninstrument()
@@ -223,7 +225,7 @@ class TestValkeyClusterInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_pipeline_traced(self):
         with self.valkey_client.pipeline(transaction=False) as pipeline:
@@ -240,7 +242,7 @@ class TestValkeyClusterInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
     def test_parent(self):
         """Ensure OpenTelemetry works with valkey."""
@@ -282,11 +284,9 @@ class TestAsyncValkeyInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(span.attributes.get("db.valkey.database_index"), 0)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 16379)
+        self.assertEqual(span.attributes.get("db.redis.database_index"), 0)
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 16379)
 
     def test_long_command(self):
         async_call(self.valkey_client.mget(*range(1000)))
@@ -313,7 +313,7 @@ class TestAsyncValkeyInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_execute_command_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -358,7 +358,7 @@ class TestAsyncValkeyInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
     def test_pipeline_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -482,7 +482,7 @@ class TestAsyncValkeyClusterInstrument(TestBase):
         self.assertEqual(
             span.attributes.get(SpanAttributes.DB_STATEMENT), "GET ?"
         )
-        self.assertEqual(span.attributes.get("db.valkey.args_length"), 2)
+        self.assertEqual(span.attributes.get("db.redis.args_length"), 2)
 
     def test_execute_command_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -527,7 +527,7 @@ class TestAsyncValkeyClusterInstrument(TestBase):
             span.attributes.get(SpanAttributes.DB_STATEMENT),
             "SET ? ?\nRPUSH ? ?\nHGETALL ?",
         )
-        self.assertEqual(span.attributes.get("db.valkey.pipeline_length"), 3)
+        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
 
     def test_pipeline_traced_full_time(self):
         """Command should be traced for coroutine execution time, not creation time."""
@@ -593,11 +593,9 @@ class TestValkeyDBIndexInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(
-            span.attributes[SpanAttributes.NET_PEER_NAME], "localhost"
-        )
-        self.assertEqual(span.attributes[SpanAttributes.NET_PEER_PORT], 16379)
-        self.assertEqual(span.attributes["db.valkey.database_index"], 10)
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 16379)
+        self.assertEqual(span.attributes["db.redis.database_index"], 10)
 
     def test_get(self):
         self.assertIsNone(self.valkey_client.get("foo"))
