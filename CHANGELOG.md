@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
 - `opentelemetry-exporter-richconsole`: Add support for suppressing resource information
   ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
-- `opentelemetry-instrumentation`: add ability to auto-instrument subprocesses with `OTEL_PYTHON_AUTO_INSTRUMENTATION_INSTRUMENT_SUBPROCESSES` environment variable
+- `opentelemetry-instrumentation`: update auto-instrumentation to re-inject instrumentation path after init
   ([#4469](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4469))
 
 ### Fixed
