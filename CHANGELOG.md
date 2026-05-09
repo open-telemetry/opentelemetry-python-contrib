@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
   ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
+- Refactor unit tests to allow for population of the random trace id flag in the `traceparent` header
+  ([#4030](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4030))
 
 ### Breaking changes
 
@@ -91,6 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4302))
 - `opentelemetry-instrumentation-grpc`: Fix bidirectional streaming RPCs raising `AttributeError: 'generator' object has no attribute 'add_done_callback'`
   ([#4259](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4259))
+- `opentelemetry-instrumentation-fastapi`: Fix `FastAPI` instrumentation to correctly trace `BackgroundTasks` by wrapping their execution in a dedicated span, ensuring proper parent-child relationships and accurate trace timing
+  ([#4368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4368))
 - `opentelemetry-instrumentation-aiokafka`: fix `Unclosed AIOKafkaProducer` warning and `RuntimeWarning: coroutine was never awaited` in tests
   ([#4384](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4384))
 - `opentelemetry-instrumentation-aiokafka`: Fix compatibility with aiokafka 0.13 by calling
@@ -102,6 +106,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
   ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
+- `opentelemetry-instrumentation-logging`: Use `LogRecord.getMessage()` to format and extract each log record's body text to more closely match the expected usage of the logging system. As a result, all OTel log record bodies are now always strings.
+  Previously, if `LogRecord.msg` (which contains the format string) was set to a non-string object (e.g. `logger.warning(some_dict)`), the object was exported as-is to the OTLP body field. Now, `LogRecord.getMessage()` will convert it to to a string.
+  If you are passing in non-strings as the format string argument and your backend is expecting them as-is, you will need to update accordingly.
+  ([#4372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4372))
 
 ### Added
 
