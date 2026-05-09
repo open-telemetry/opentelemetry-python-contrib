@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add caching, matching, and targets logic to complete AWS X-Ray Remote Sampler implementation
   ([#3366](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3761))
+- `opentelemetry-sdk-extension-aws`: Update xray trace id generator for 'random-trace-id' flags compatibility
+  ([#4030](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4030))
 
 ## Version 2.1.0 (2024-12-24)
 
