@@ -2697,7 +2697,7 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-redis -- -ra
 
-  py39-test-instrumentation-valkey:
+  py310-test-instrumentation-valkey:
     name: instrumentation-valkey
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -2708,17 +2708,17 @@ jobs:
           repository: open-telemetry/opentelemetry-python-contrib
           ref: ${{ env.CONTRIB_REPO_SHA }}
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.10"
           architecture: "x64"
 
       - name: Install tox
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py39-test-instrumentation-valkey -- -ra
+        run: tox -e py310-test-instrumentation-valkey -- -ra
 
   py310-test-instrumentation-remoulade:
     name: instrumentation-remoulade 
