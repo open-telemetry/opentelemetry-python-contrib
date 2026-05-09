@@ -160,7 +160,7 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
     auto_instrumentation_path_was_present = (
         python_path is not None and filedir in python_path.split(pathsep)
     )
-    
+
     # Remove the auto-instrumentation path during initialization to prevent
     # auto-instrumentation from executing in subprocesses spawned during this phase.
     # This suppression is performed to avoid creating a recursive loop scenario
