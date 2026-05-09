@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pass tool definitions from `tools` kwarg to `InferenceInvocation.tool_definitions`
   so `gen_ai.tool.definitions` span attribute is populated on chat completion spans
   ([#4554](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4554))
+- Add instrumentation for `chat.completions.parse()` structured outputs
+  ([#4416](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4416))
 
 ## Version 2.4b0 (2026-05-01)
 
