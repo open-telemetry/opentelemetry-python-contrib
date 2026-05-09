@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
   ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
-- `docker-tests`: Don't require sudo, debian based distro and MS SQL ODBC driver to run locally
+- `docker-tests`: Don't require sudo, debian based distro and MS SQL ODBC driver to run locally. Instead require docker and unixodbc
   ([#4478](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4478))
 
 ### Breaking changes
