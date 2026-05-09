@@ -24,7 +24,7 @@ class EmbeddingInvocation(GenAIInvocation):
     context manager rather than constructing this directly.
     """
 
-    def __init__(  # pylint: disable=too-many-locals
+    def __init__(
         self,
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
@@ -35,12 +35,6 @@ class EmbeddingInvocation(GenAIInvocation):
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
-        encoding_formats: list[str] | None = None,
-        input_tokens: int | None = None,
-        dimension_count: int | None = None,
-        response_model_name: str | None = None,
-        attributes: dict[str, Any] | None = None,
-        metric_attributes: dict[str, Any] | None = None,
     ) -> None:
         """Use handler.start_embedding(provider) or handler.embedding(provider) instead of calling this directly."""
         _operation_name = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
@@ -54,8 +48,6 @@ class EmbeddingInvocation(GenAIInvocation):
             if request_model
             else _operation_name,
             span_kind=SpanKind.CLIENT,
-            attributes=attributes,
-            metric_attributes=metric_attributes,
         )
         self.provider = provider  # e.g., azure.ai.openai, openai, aws.bedrock
         self.request_model = request_model
@@ -63,11 +55,24 @@ class EmbeddingInvocation(GenAIInvocation):
         self.server_port = server_port
         # encoding_formats can be multi-value -> combinational cardinality risk.
         # Keep on spans/events only.
-        self.encoding_formats = encoding_formats
-        self.input_tokens = input_tokens
-        self.dimension_count = dimension_count
-        self.response_model_name = response_model_name
-        self._start()
+        self.encoding_formats: list[str] | None = None
+        self.input_tokens: int | None = None
+        self.dimension_count: int | None = None
+        self.response_model_name: str | None = None
+        self._start(self._get_base_attributes())
+
+    def _get_base_attributes(self) -> dict[str, Any]:
+        """Return sampling-relevant attributes available at span creation time."""
+        optional_attrs = (
+            (GenAI.GEN_AI_REQUEST_MODEL, self.request_model),
+            (GenAI.GEN_AI_PROVIDER_NAME, self.provider),
+            (server_attributes.SERVER_ADDRESS, self.server_address),
+            (server_attributes.SERVER_PORT, self.server_port),
+        )
+        return {
+            GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
+            **{k: v for k, v in optional_attrs if v is not None},
+        }
 
     def _get_metric_attributes(self) -> dict[str, Any]:
         optional_attrs = (

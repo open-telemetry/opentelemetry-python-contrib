@@ -57,8 +57,7 @@ class AgentInvocation(GenAIInvocation):
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
-        attributes: dict[str, Any] | None = None,
-        metric_attributes: dict[str, Any] | None = None,
+        agent_name: str | None = None,
     ) -> None:
         """Use handler.start_invoke_local_agent() or handler.start_invoke_remote_agent() instead of calling this directly."""
         _operation_name = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
@@ -68,17 +67,17 @@ class AgentInvocation(GenAIInvocation):
             logger,
             completion_hook,
             operation_name=_operation_name,
-            span_name=_operation_name,
+            span_name=f"{_operation_name} {agent_name}"
+            if agent_name
+            else _operation_name,
             span_kind=span_kind,
-            attributes=attributes,
-            metric_attributes=metric_attributes,
         )
         self.provider = provider
         self.request_model = request_model
         self.server_address = server_address
         self.server_port = server_port
 
-        self.agent_name: str | None = None
+        self.agent_name: str | None = agent_name
         self.agent_id: str | None = None
         self.agent_description: str | None = None
         self.agent_version: str | None = None
@@ -108,7 +107,21 @@ class AgentInvocation(GenAIInvocation):
         self.system_instruction: list[MessagePart] = []
         self.tool_definitions: list[ToolDefinition] | None = None
 
-        self._start()
+        self._start(self._get_base_attributes())
+
+    def _get_base_attributes(self) -> dict[str, Any]:
+        """Return sampling-relevant attributes available at span creation time."""
+        optional_attrs = (
+            (GenAI.GEN_AI_REQUEST_MODEL, self.request_model),
+            (GenAI.GEN_AI_AGENT_NAME, self.agent_name),
+            (server_attributes.SERVER_ADDRESS, self.server_address),
+            (server_attributes.SERVER_PORT, self.server_port),
+        )
+        return {
+            GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
+            GenAI.GEN_AI_PROVIDER_NAME: self.provider,
+            **{k: v for k, v in optional_attrs if v is not None},
+        }
 
     def _get_common_attributes(self) -> dict[str, Any]:
         optional_attrs = (
@@ -198,10 +211,6 @@ class AgentInvocation(GenAIInvocation):
     def _apply_finish(self, error: Error | None = None) -> None:
         if error is not None:
             self._apply_error_attributes(error)
-
-        # Update span name if agent_name was set after construction
-        if self.agent_name:
-            self.span.update_name(f"{self._operation_name} {self.agent_name}")
 
         attributes: dict[str, Any] = {}
         attributes.update(self._get_common_attributes())
