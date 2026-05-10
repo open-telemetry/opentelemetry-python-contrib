@@ -130,7 +130,38 @@ and right before the span is finished while processing a response.
 
 .. note::
 
-    The request hook receives the raw arguments provided to the transport layer. The response hook receives the raw return values from the transport layer.
+    The request hook receives the raw arguments provided to the transport layer.
+    The response hook receives the raw return values from the transport layer.
+    For HTTPX versions that pass ``httpx.Request`` and ``httpx.Response``
+    objects to the transport layer, these original objects are available as
+    ``request.request`` and ``response.response``. Older HTTPX transport APIs may
+    set these attributes to ``None``.
+
+Request and response bodies can contain sensitive data. If you log or add them
+to spans, make sure to redact and limit the captured content.
+
+.. code-block:: python
+
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    def response_hook(span, request, response):
+        if request.request is not None:
+            logger.debug("HTTPX request body: %r", request.request.content)
+
+        if response.response is not None:
+            logger.debug("HTTPX response body: %r", response.response.read())
+
+    async def async_response_hook(span, request, response):
+        if request.request is not None:
+            logger.debug("HTTPX request body: %r", request.request.content)
+
+        if response.response is not None:
+            logger.debug(
+                "HTTPX response body: %r",
+                await response.response.aread(),
+            )
 
 The hooks can be configured as follows:
 
