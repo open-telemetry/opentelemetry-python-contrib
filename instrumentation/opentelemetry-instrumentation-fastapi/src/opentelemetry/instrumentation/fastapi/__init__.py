@@ -24,53 +24,31 @@ Auto-instrumentation
 FastAPI can also be instrumented without code changes by using the
 ``opentelemetry-instrument`` command from the
 `opentelemetry-instrumentation <https://pypi.org/project/opentelemetry-instrumentation/>`_
-package together with the
-`opentelemetry-distro <https://pypi.org/project/opentelemetry-distro/>`_
-package:
-
-.. code-block:: sh
-
-    pip install "opentelemetry-distro[otlp]" opentelemetry-instrumentation-fastapi
-    opentelemetry-instrument uvicorn app:app
-
-When auto-instrumentation is used with ``opentelemetry-distro``, the SDK
-configuration is read from standard OpenTelemetry environment variables such as
-``OTEL_SERVICE_NAME``, ``OTEL_TRACES_EXPORTER``, ``OTEL_METRICS_EXPORTER``,
-``OTEL_LOGS_EXPORTER``, ``OTEL_EXPORTER_OTLP_ENDPOINT``, and
-``OTEL_EXPORTER_OTLP_PROTOCOL``. FastAPI-specific options, such as excluded
-URLs and HTTP header capture, are documented below. When using
-``FastAPIInstrumentor.instrument_app(app)`` directly, configure the
-OpenTelemetry SDK providers and exporters in application code or use a distro
-package to configure them.
+package. For installation, runtime command, exporter configuration, and
+environment variables, see
+`Python zero-code instrumentation <https://opentelemetry.io/docs/zero-code/python/>`_.
+Install ``opentelemetry-instrumentation-fastapi`` in the same environment so
+the FastAPI integration is available to auto-instrumentation. FastAPI-specific
+options, such as excluded URLs and HTTP header capture, are documented below.
 
 Trace propagation
 *****************
 
-Incoming context is extracted automatically from FastAPI request headers by the
-underlying ASGI instrumentation, using the configured global OpenTelemetry
-propagator. No manual intervention is needed for incoming HTTP requests.
-Outgoing context propagation is handled by the instrumentation for the client
-library making the outbound request, such as HTTPX, Requests, or aiohttp.
-
-WebSocket connections are instrumented as ASGI ``websocket`` scopes. Context is
-extracted from the WebSocket handshake headers, and spans are created for the
-connection and ASGI send/receive events. Propagation data inside WebSocket
-message payloads is not parsed automatically.
+FastAPI instrumentation uses the underlying ASGI instrumentation, which extracts
+incoming context from request headers using the configured global OpenTelemetry
+propagator. WebSocket connections are instrumented as ASGI ``websocket`` scopes,
+with context extracted from the handshake headers. Propagation data inside
+WebSocket message payloads is not parsed automatically. For more information,
+see `Python context propagation <https://opentelemetry.io/docs/languages/python/propagation/>`_
+and `Python distro configuration <https://opentelemetry.io/docs/languages/python/distro/>`_.
 
 Logs
 ****
 
-FastAPI instrumentation emits traces and metrics. To export Python ``logging``
-records as OpenTelemetry logs, install and enable the
-`opentelemetry-instrumentation-logging <https://pypi.org/project/opentelemetry-instrumentation-logging/>`_
-package. With auto-instrumentation and ``opentelemetry-distro``, set
-``OTEL_LOGS_EXPORTER`` (for example, ``otlp``) to configure log export. Set
-``OTEL_PYTHON_LOG_CORRELATION=true`` when log messages should include the
-current trace and span IDs in the formatted log output.
-
-OpenTelemetry logs are exported as log records that can be correlated with
-traces. They are not added to spans as span events automatically; use
-``span.add_event(...)`` for application data that should be recorded as span
+FastAPI instrumentation does not convert Python ``logging`` records to span
+events. For zero-code log export, see
+`Python logs auto-instrumentation <https://opentelemetry.io/docs/zero-code/python/logs-example/>`_.
+Use ``span.add_event(...)`` for application data that should be recorded as span
 events.
 
 Configuration
