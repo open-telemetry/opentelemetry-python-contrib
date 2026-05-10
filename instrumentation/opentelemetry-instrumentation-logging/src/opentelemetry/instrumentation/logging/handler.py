@@ -19,7 +19,6 @@ from opentelemetry._logs import (
     get_logger,
     get_logger_provider,
 )
-from opentelemetry.attributes import _VALID_ANY_VALUE_TYPES
 from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
@@ -169,25 +168,7 @@ class LoggingHandler(logging.Handler):
         if self.formatter:
             body = self.format(record)
         else:
-            # `record.getMessage()` uses `record.msg` as a template to format
-            # `record.args` into. There is a special case in `record.getMessage()`
-            # where it will only attempt formatting if args are provided,
-            # otherwise, it just stringifies `record.msg`.
-            #
-            # Since the OTLP body field has a type of 'any' and the logging module
-            # is sometimes used in such a way that objects incorrectly end up
-            # set as record.msg, in those cases we would like to bypass
-            # `record.getMessage()` completely and set the body to the object
-            # itself instead of its string representation.
-            # For more background, see: https://github.com/open-telemetry/opentelemetry-python/pull/4216
-            if not record.args and not isinstance(record.msg, str):
-                #  if record.msg is not a value we can export, cast it to string
-                if not isinstance(record.msg, _VALID_ANY_VALUE_TYPES):
-                    body = str(record.msg)
-                else:
-                    body = record.msg
-            else:
-                body = record.getMessage()
+            body = record.getMessage()
 
         # Map Python log level names to OTel severity text as defined in
         # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
