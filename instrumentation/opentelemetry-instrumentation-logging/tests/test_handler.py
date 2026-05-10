@@ -441,6 +441,44 @@ class TestLoggingHandler(unittest.TestCase):
 
         logger.removeHandler(handler)
 
+    def test_simple_log_record_processor_custom_single_obj(self):
+        """
+        Tests that logging a single non-string object uses getMessage
+        """
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        # NOTE: the behaviour of `record.getMessage` is detailed in the
+        # `logging.Logger.debug` documentation:
+        # > The msg is the message format string, and the args are the arguments
+        # > which are merged into msg using the string formatting operator. [...]
+        # > No % formatting operation is performed on msg when no args are supplied.
+
+        # This test uses the presence of '%s' in the first arg to determine if
+        # formatting was applied
+
+        # string msg with no args - getMessage bypasses formatting and sets the string directly
+        logger.warning("a string with a percent-s: %s")  # pylint: disable=logging-too-few-args
+
+        # string msg with args - getMessage formats args into the msg
+        logger.warning("a string with a percent-s: %s", "and arg")
+        # non-string msg with args - getMessage stringifies msg and formats args into it
+        logger.warning(["a non-string with a percent-s", "%s"], "and arg")
+        # non-string msg with no args - getMessage stringifies the object and bypasses formatting
+        logger.warning(["a non-string with a percent-s", "%s"])
+
+        logger.removeHandler(handler)
+
+        assert processor.emit_count() == 4
+        expected = [
+            ("a string with a percent-s: %s"),
+            ("a string with a percent-s: and arg"),
+            ("['a non-string with a percent-s', 'and arg']"),
+            ("['a non-string with a percent-s', '%s']"),
+        ]
+        for index, msg in enumerate(expected):
+            record = processor.get_log_record(index)
+            self.assertEqual(record.log_record.body, msg)
+
     @patch.dict(os.environ, {"OTEL_SDK_DISABLED": "true"})
     def test_handler_root_logger_with_disabled_sdk_does_not_go_into_recursion_error(
         self,
