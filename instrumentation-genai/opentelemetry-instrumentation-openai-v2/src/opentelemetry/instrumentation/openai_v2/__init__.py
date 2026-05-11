@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 OpenAI client instrumentation supporting `openai`, it can be enabled by
@@ -75,6 +64,7 @@ API
 ---
 """
 
+from importlib import import_module
 from typing import Collection
 
 from wrapt import wrap_function_wrapper
@@ -101,6 +91,9 @@ from .patch import (
     chat_completions_create_v_new,
     chat_completions_create_v_old,
     embeddings_create,
+)
+from .patch_responses import (
+    responses_create,
 )
 
 
@@ -188,6 +181,19 @@ class OpenAIInstrumentor(BaseInstrumentor):
             ),
         )
 
+        responses_module = _get_responses_module()
+        # Responses instrumentation is intentionally limited to the latest
+        # experimental semconv path. Unlike chat completions, we do not carry
+        # a second legacy wrapper here; the current implementation is built on
+        # the inference handler lifecycle and would need a separate old-path
+        # implementation to support legacy semconv mode.
+        if responses_module is not None and latest_experimental_enabled:
+            wrap_function_wrapper(
+                "openai.resources.responses.responses",
+                "Responses.create",
+                responses_create(handler),
+            )
+
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
@@ -195,3 +201,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
+        responses_module = _get_responses_module()
+        if responses_module is not None:
+            unwrap(responses_module.Responses, "create")
+
+
+def _get_responses_module():
+    try:
+        return import_module("openai.resources.responses.responses")
+    except ImportError:
+        return None
