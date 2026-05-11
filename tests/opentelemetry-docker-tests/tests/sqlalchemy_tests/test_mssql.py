@@ -3,6 +3,7 @@
 
 import os
 
+import pyodbc
 import pytest
 from sqlalchemy.exc import ProgrammingError
 
@@ -30,6 +31,10 @@ MSSQL_CONFIG = {
 }
 
 
+@pytest.mark.skipif(
+    "ODBC Driver 18 for SQL Server" not in pyodbc.drivers(),
+    reason="No MS SQL ODBC driver installed",
+)
 class MssqlConnectorTestCase(SQLAlchemyTestMixin):
     """TestCase for pyodbc engine"""
 
