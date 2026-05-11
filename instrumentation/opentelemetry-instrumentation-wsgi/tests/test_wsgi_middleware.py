@@ -805,12 +805,14 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["REQUEST_URI"] = (
             "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
         )
+        self.environ["QUERY_STRING"] = "highlight=params"
         expected_old = {
             HTTP_HOST: "127.0.0.1:8080",
             HTTP_TARGET: "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing",
         }
         expected_new = {
             URL_PATH: self.environ["PATH_INFO"],
+            URL_QUERY: "highlight=params",
         }
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(self.environ).items(),
