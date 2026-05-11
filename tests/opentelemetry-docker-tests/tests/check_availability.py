@@ -130,8 +130,11 @@ def check_docker_services_availability():
     check_mysql_connection()
     check_postgres_connection()
     check_redis_connection()
-    check_mssql_connection()
-    setup_mssql_db()
+
+    # make accepting EULA for ms sql odbc driver optional
+    if "ODBC Driver 18 for SQL Server" in pyodbc.drivers():
+        check_mssql_connection()
+        setup_mssql_db()
 
 
 check_docker_services_availability()
