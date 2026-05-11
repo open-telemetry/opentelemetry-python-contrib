@@ -36,6 +36,7 @@ from opentelemetry.instrumentation.utils import (
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_HOST,
     HTTP_METHOD,
+    HTTP_RESPONSE_BODY_SIZE,
     HTTP_STATUS_CODE,
     HTTP_URL,
 )
@@ -57,6 +58,9 @@ from opentelemetry.semconv.attributes.url_attributes import URL_FULL
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span, StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
+from opentelemetry.util.http import (
+    OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE,
+)
 
 
 def run_with_test_server(
@@ -1616,6 +1620,80 @@ class TestAioHttpClientInstrumentor(TestBase):
         )
         self._assert_spans(0)
         self._assert_metrics(0)
+
+    @mock.patch.dict(
+        os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "http"}
+    )
+    def test_response_body_size_not_set_by_default(self):
+        AioHttpClientInstrumentor().uninstrument()
+        AioHttpClientInstrumentor().instrument()
+
+        run_with_test_server(
+            self.get_default_request(), self.URL, self.default_handler
+        )
+        span = self._assert_spans(1)
+        self.assertNotIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
+
+    @mock.patch.dict(
+        os.environ,
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "http",
+            OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE: "true",
+        },
+    )
+    def test_response_body_size_set_on_span(self):
+        AioHttpClientInstrumentor().uninstrument()
+        AioHttpClientInstrumentor().instrument()
+        run_with_test_server(
+            self.get_default_request(), self.URL, self.default_handler
+        )
+        span = self._assert_spans(1)
+        self.assertIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
+        self.assertIsInstance(
+            span.attributes[HTTP_RESPONSE_BODY_SIZE], int
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_SEMCONV_STABILITY_OPT_IN: "http",
+            OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE: "true",
+        },
+    )
+    def test_response_body_size_metric_recorded(self):
+        AioHttpClientInstrumentor().uninstrument()
+        AioHttpClientInstrumentor().instrument()
+        run_with_test_server(
+            self.get_default_request(), self.URL, self.default_handler
+        )
+        metrics = self._assert_metrics(2)
+        metric_names = {m.name for m in metrics}
+        self.assertIn(
+            "http.client.response.body.size", metric_names
+        )
+        body_size_metric = next(
+            m
+            for m in metrics
+            if m.name == "http.client.response.body.size"
+        )
+        data_point = body_size_metric.data.data_points[0]
+        self.assertEqual(data_point.count, 1)
+        self.assertTrue(data_point.sum > 0)
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE: "true",
+        },
+    )
+    def test_response_body_size_not_set_without_new_semconv(self):
+        AioHttpClientInstrumentor().uninstrument()
+        AioHttpClientInstrumentor().instrument()
+        run_with_test_server(
+            self.get_default_request(), self.URL, self.default_handler
+        )
+        span = self._assert_spans(1)
+        self.assertNotIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
 
 
 class TestLoadingAioHttpInstrumentor(unittest.TestCase):
