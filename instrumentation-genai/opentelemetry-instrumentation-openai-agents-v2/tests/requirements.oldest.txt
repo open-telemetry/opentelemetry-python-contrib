@@ -31,6 +31,5 @@ opentelemetry-sdk==1.40  # when updating, also update in pyproject.toml
 opentelemetry-semantic-conventions==0.61b0  # when updating, also update in pyproject.toml
 grpcio>=1.60.0; implementation_name != "pypy"
 grpcio<1.60.0; implementation_name == "pypy"
-
--e util/opentelemetry-util-genai
+opentelemetry-util-genai=="0.4b.0"
 -e instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2
