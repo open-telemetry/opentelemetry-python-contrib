@@ -727,8 +727,7 @@ class CursorTracer(Generic[CursorT]):
         _set_db_statement(span_attrs, statement, sem_conv_mode)
 
         # Set all collected attributes
-        for attribute_key, attribute_value in span_attrs.items():
-            span.set_attribute(attribute_key, attribute_value)
+        span.set_attributes(span_attrs)
 
         for (
             attribute_key,
