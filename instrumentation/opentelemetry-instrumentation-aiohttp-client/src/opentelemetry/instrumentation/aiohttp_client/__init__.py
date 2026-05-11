@@ -178,6 +178,25 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Capturing response body size
+****************************
+To capture the ``http.response.body.size`` span attribute and record the
+``http.client.response.body.size`` metric histogram, set the environment variable
+``OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE`` to ``"true"``.
+
+This is an opt-in attribute per the semantic conventions specification. It is
+only emitted when the new HTTP semantic conventions are active
+(``OTEL_SEMCONV_STABILITY_OPT_IN`` includes ``http`` or ``http/dup``).
+
+::
+
+    export OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE="true"
+    export OTEL_SEMCONV_STABILITY_OPT_IN="http"
+
+The body size is derived from the ``Content-Length`` response header. For
+chunked responses that lack a ``Content-Length`` header, the attribute and
+metric are not recorded.
+
 API
 ---
 """
@@ -232,6 +251,12 @@ from opentelemetry.instrumentation.utils import (
 )
 from opentelemetry.metrics import MeterProvider, get_meter
 from opentelemetry.propagate import inject
+from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_RESPONSE_BODY_SIZE,
+)
+from opentelemetry.semconv._incubating.metrics.http_metrics import (
+    create_http_client_response_body_size,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.metrics import (
     MetricInstruments,  # type: ignore[reportDeprecated]
@@ -248,6 +273,7 @@ from opentelemetry.util.http import (
     get_custom_header_attributes,
     get_custom_headers,
     get_excluded_urls,
+    is_capture_response_body_size_enabled,
     normalise_request_header_name,
     normalise_response_header_name,
     redact_url,
@@ -413,6 +439,14 @@ def create_trace_config(
             explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
 
+    capture_response_body_size = is_capture_response_body_size_enabled()
+
+    response_body_size_histogram = None
+    if capture_response_body_size and _report_new(sem_conv_opt_in_mode):
+        response_body_size_histogram = create_http_client_response_body_size(
+            meter
+        )
+
     excluded_urls = get_excluded_urls("AIOHTTP_CLIENT")
 
     def _end_trace(trace_config_ctx: types.SimpleNamespace):
@@ -421,6 +455,24 @@ def create_trace_config(
             context_api.detach(trace_config_ctx.token)
         if trace_config_ctx.span:
             trace_config_ctx.span.end()
+
+        if (
+            trace_config_ctx.response_body_size_histogram is not None
+            and trace_config_ctx.response_body_size is not None
+        ):
+            body_size_attrs = cast(
+                dict[str, Any],
+                _filter_semconv_duration_attrs(
+                    trace_config_ctx.metric_attributes,
+                    _client_duration_attrs_old,
+                    _client_duration_attrs_new,
+                    _StabilityMode.HTTP,
+                ),
+            )
+            trace_config_ctx.response_body_size_histogram.record(
+                trace_config_ctx.response_body_size,
+                attributes=body_size_attrs,
+            )
 
         if trace_config_ctx.duration_histogram_old is not None:
             duration_attrs_old = cast(
@@ -575,6 +627,15 @@ def create_trace_config(
             )
         )
 
+        if capture_response_body_size and _report_new(sem_conv_opt_in_mode):
+            content_length = params.response.content_length
+            if content_length is not None:
+                if trace_config_ctx.span.is_recording():
+                    trace_config_ctx.span.set_attribute(
+                        HTTP_RESPONSE_BODY_SIZE, content_length
+                    )
+                trace_config_ctx.response_body_size = content_length
+
         _end_trace(trace_config_ctx)
 
     async def on_request_exception(
@@ -609,6 +670,8 @@ def create_trace_config(
             token=None,
             duration_histogram_old=duration_histogram_old,
             duration_histogram_new=duration_histogram_new,
+            response_body_size_histogram=response_body_size_histogram,
+            response_body_size=None,
             metric_attributes={},
             url_filter=url_filter,
             excluded_urls=excluded_urls,
