@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `opentelemetry-instrumentation-wsgi`: Use WSGI `PATH_INFO` and `QUERY_STRING` to derive stable HTTP URL attributes instead of parsing `REQUEST_URI`.
+  ([#4551](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4551))
 - `opentelemetry-instrumentation-pika` Use `ObjectProxy` instead of `BaseObjectProxy` for `ReadyMessagesDequeProxy` to restore iterability with wrapt 2.x
   ([#4461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4461))
 - `opentelemetry-instrumentation-dbapi` Use `ObjectProxy` instead of `BaseObjectProxy` for `TracedCursorProxy` to restore iterability with wrapt 2.x
@@ -73,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Enabled the flake8-tidy-import plugins rules for the ruff linter. These rules throw warnings for relative imports in the modules.
-([#4395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4395))
+  ([#4395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4395))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
@@ -90,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `opentelemetry-docker-tests`: Replace deprecated `SpanAttributes` from `opentelemetry.semconv.trace` with `opentelemetry.semconv._incubating.attributes`
- ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
+  ([#4339](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4339))
 - `opentelemetry-instrumentation-confluent-kafka`: Skip `recv` span creation when `poll()` returns no message or `consume()` returns an empty list, avoiding empty spans on idle polls
   ([#4349](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4349))
 - Fix intermittent `Core Contrib Test` CI failures caused by GitHub git CDN SHA propagation lag by installing core packages from the already-checked-out local copy instead of a second git clone
