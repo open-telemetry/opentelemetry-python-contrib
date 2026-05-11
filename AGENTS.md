@@ -65,6 +65,9 @@ uv run tox -e typecheck
 - The monorepo uses `uv` workspaces.
 - `tox.ini` defines the test matrix - check it for available test environments.
 - Do not add `type: ignore` comments. If a type error arises, solve it properly or write a follow-up plan to address it in another PR.
+- When a file uses `from __future__ import annotations`, do not quote type annotations just to
+  avoid forward references. Keep quotes only for expressions still evaluated at runtime, such as
+  `typing.cast(...)`, unless the referenced type is imported at runtime.
 - Whenever applicable, all code changes should have tests that actually validate the changes.
 
 ## Instrumentation rules
