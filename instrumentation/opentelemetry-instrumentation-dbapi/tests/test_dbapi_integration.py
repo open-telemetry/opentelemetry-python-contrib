@@ -106,6 +106,10 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
 
         self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
         self.assertEqual(span.attributes[DB_NAME], "testdatabase")
@@ -134,6 +138,10 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
 
         # Stable attributes only
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
@@ -172,6 +180,10 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
 
         # Both old and new attributes should be present
         # Old attributes
@@ -208,6 +220,10 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
 
         # DB attributes should be stable-only
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
@@ -239,6 +255,10 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.21.0",
+        )
 
         # DB attributes should remain old semconv
         self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
