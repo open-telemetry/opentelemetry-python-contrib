@@ -179,6 +179,7 @@ from weakref import WeakSet as _WeakSet
 
 import fastapi
 from starlette.applications import Starlette
+from starlette.background import BackgroundTask
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -388,6 +389,16 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 app,
             )
 
+            if not hasattr(BackgroundTask, "_otel_original_call"):
+                BackgroundTask._otel_original_call = BackgroundTask.__call__
+
+                async def traced_call(self):
+                    span_name = f"BackgroundTask {getattr(self.func, '__name__', self.func.__class__.__name__)}"
+                    with tracer.start_as_current_span(span_name):
+                        return await BackgroundTask._otel_original_call(self)
+
+                BackgroundTask.__call__ = traced_call
+
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
@@ -405,6 +416,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
             app.build_middleware_stack = original_build_middleware_stack
             del app._original_build_middleware_stack
         app.middleware_stack = app.build_middleware_stack()
+
+        if hasattr(BackgroundTask, "_otel_original_call"):
+            BackgroundTask.__call__ = BackgroundTask._otel_original_call
+            del BackgroundTask._otel_original_call
+
         app._is_instrumented_by_opentelemetry = False
 
         # Remove the app from the set of instrumented apps to avoid calling uninstrument twice
