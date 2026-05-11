@@ -9,6 +9,7 @@ from confluent_kafka import Consumer, Producer
 class MockConsumer(Consumer):
     def __init__(self, queue, config):
         self._queue = queue
+        self.config = config
         super().__init__(config)
 
     def consume(self, num_messages=1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
@@ -61,6 +62,7 @@ class MockedMessage:
 class MockedProducer(Producer):
     def __init__(self, queue, config):
         self._queue = queue
+        self.config = config
         super().__init__(config)
 
     def produce(self, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
