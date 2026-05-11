@@ -49,7 +49,7 @@ pyyaml==6.0.2
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   vcrpy
-requests==2.32.3
+requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
