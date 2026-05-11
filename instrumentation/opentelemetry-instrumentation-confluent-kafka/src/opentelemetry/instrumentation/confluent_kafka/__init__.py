@@ -116,7 +116,27 @@ from .utils import (
 from .version import __version__
 
 
+def _capture_config(args, kwargs):
+    """Return the config dict that was passed to a Producer/Consumer
+    constructor, regardless of whether it was supplied positionally, as
+    ``conf=`` kwarg, or (for Consumer) expanded as **kwargs."""
+    if args and isinstance(args[0], dict):
+        return args[0]
+    conf = kwargs.get("conf")
+    if isinstance(conf, dict):
+        return conf
+    # confluent_kafka.Consumer also supports Consumer(**conf) — in that case
+    # the kwargs themselves are the config.
+    if kwargs:
+        return dict(kwargs)
+    return None
+
+
 class AutoInstrumentedProducer(Producer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.config = _capture_config(args, kwargs)
+
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def produce(self, topic, value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg,useless-super-delegation
         super().produce(topic, value, *args, **kwargs)
@@ -125,6 +145,7 @@ class AutoInstrumentedProducer(Producer):
 class AutoInstrumentedConsumer(Consumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.config = _capture_config(args, kwargs)
         self._current_consume_span = None
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
@@ -144,6 +165,10 @@ class ProxiedProducer(Producer):
     def __init__(self, producer: Producer, tracer: Tracer):
         self._producer = producer
         self._tracer = tracer
+        # Surface the wrapped producer's config (if any) so that
+        # KafkaPropertiesExtractor.extract_bootstrap_servers can read it
+        # through this proxy.
+        self.config = getattr(producer, "config", None)
 
     def flush(self, timeout=-1):
         return self._producer.flush(timeout)
@@ -173,6 +198,8 @@ class ProxiedConsumer(Consumer):
         self._tracer = tracer
         self._current_consume_span = None
         self._current_context_token = None
+        # See ProxiedProducer.__init__ for rationale.
+        self.config = getattr(consumer, "config", None)
 
     def close(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_close(
@@ -355,11 +382,15 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
             topic = KafkaPropertiesExtractor.extract_produce_topic(
                 args, kwargs
             )
+            bootstrap_servers = (
+                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            )
             _enrich_span(
                 span,
                 topic,
-                operation=MessagingOperationTypeValues.RECEIVE,
-            )  # Replace
+                operation=MessagingOperationTypeValues.PUBLISH,
+                bootstrap_servers=bootstrap_servers,
+            )  # Publish
             propagate.inject(
                 headers,
                 setter=_kafka_setter,
@@ -373,6 +404,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         record = func(*args, **kwargs)
         if record:
+            bootstrap_servers = (
+                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            )
             with tracer.start_as_current_span(
                 "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
             ):
@@ -383,6 +417,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     record.partition(),
                     record.offset(),
                     operation=MessagingOperationTypeValues.PROCESS,
+                    bootstrap_servers=bootstrap_servers,
                 )
             instance._current_context_token = context.attach(
                 trace.set_span_in_context(instance._current_consume_span)
@@ -397,6 +432,9 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
 
         records = func(*args, **kwargs)
         if len(records) > 0:
+            bootstrap_servers = (
+                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+            )
             with tracer.start_as_current_span(
                 "recv", end_on_exit=True, kind=trace.SpanKind.CONSUMER
             ):
@@ -405,6 +443,7 @@ class ConfluentKafkaInstrumentor(BaseInstrumentor):
                     instance._current_consume_span,
                     records[0].topic(),
                     operation=MessagingOperationTypeValues.PROCESS,
+                    bootstrap_servers=bootstrap_servers,
                 )
             instance._current_context_token = context.attach(
                 trace.set_span_in_context(instance._current_consume_span)
