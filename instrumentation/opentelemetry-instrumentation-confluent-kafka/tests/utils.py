@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Optional
 
 from confluent_kafka import Consumer, Producer
