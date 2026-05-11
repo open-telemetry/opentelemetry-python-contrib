@@ -165,7 +165,8 @@ API
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Collection, cast
+import logging
+from typing import TYPE_CHECKING, Any, Collection, Literal, cast
 from weakref import WeakSet
 
 from starlette import applications
@@ -185,10 +186,10 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_ROUTE,
 )
 from opentelemetry.trace import TracerProvider, get_tracer
-from opentelemetry.util.http import get_excluded_urls
+from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
 
 if TYPE_CHECKING:
-    from typing import TypedDict, Unpack
+    from typing import TypedDict
 
     class InstrumentKwargs(TypedDict, total=False):
         tracer_provider: TracerProvider
@@ -198,7 +199,8 @@ if TYPE_CHECKING:
         client_response_hook: ClientResponseHook
 
 
-_excluded_urls = get_excluded_urls("STARLETTE")
+_excluded_urls_from_env = get_excluded_urls("STARLETTE")
+_logger = logging.getLogger(__name__)
 
 
 class StarletteInstrumentor(BaseInstrumentor):
@@ -217,6 +219,11 @@ class StarletteInstrumentor(BaseInstrumentor):
         client_response_hook: ClientResponseHook = None,
         meter_provider: MeterProvider | None = None,
         tracer_provider: TracerProvider | None = None,
+        excluded_urls: str | None = None,
+        http_capture_headers_server_request: list[str] | None = None,
+        http_capture_headers_server_response: list[str] | None = None,
+        http_capture_headers_sanitize_fields: list[str] | None = None,
+        exclude_spans: list[Literal["receive", "send"]] | None = None,
     ):
         """Instrument an uninstrumented Starlette application.
 
@@ -232,23 +239,36 @@ class StarletteInstrumentor(BaseInstrumentor):
                 the current globally configured one is used.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            excluded_urls: Optional comma delimited string of regexes to match URLs that should not be traced.
+            http_capture_headers_server_request: Optional list of HTTP headers to capture from the request.
+            http_capture_headers_server_response: Optional list of HTTP headers to capture from the response.
+            http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
+            exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
         """
-        tracer = get_tracer(
-            __name__,
-            __version__,
-            tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
-        )
-        meter = get_meter(
-            __name__,
-            __version__,
-            meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
-        )
+        if not hasattr(app, "_is_instrumented_by_opentelemetry"):
+            app._is_instrumented_by_opentelemetry = False
+
         if not getattr(app, "_is_instrumented_by_opentelemetry", False):
+            if excluded_urls is None:
+                excluded_urls = _excluded_urls_from_env
+            else:
+                excluded_urls = parse_excluded_urls(excluded_urls)
+            tracer = get_tracer(
+                __name__,
+                __version__,
+                tracer_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
+            meter = get_meter(
+                __name__,
+                __version__,
+                meter_provider,
+                schema_url="https://opentelemetry.io/schemas/1.11.0",
+            )
+
             app.add_middleware(
                 OpenTelemetryMiddleware,
-                excluded_urls=_excluded_urls,
+                excluded_urls=excluded_urls,
                 default_span_details=_get_default_span_details,
                 server_request_hook=server_request_hook,
                 client_request_hook=client_request_hook,
@@ -256,11 +276,19 @@ class StarletteInstrumentor(BaseInstrumentor):
                 # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
                 tracer=tracer,
                 meter=meter,
+                http_capture_headers_server_request=http_capture_headers_server_request,
+                http_capture_headers_server_response=http_capture_headers_server_response,
+                http_capture_headers_sanitize_fields=http_capture_headers_sanitize_fields,
+                exclude_spans=exclude_spans,
             )
             app._is_instrumented_by_opentelemetry = True
 
             # adding apps to set for uninstrumenting
             _InstrumentedStarlette._instrumented_starlette_apps.add(app)
+        else:
+            _logger.warning(
+                "Attempting to instrument Starlette app while already instrumented"
+            )
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
@@ -275,64 +303,33 @@ class StarletteInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
+    def _instrument(self, **kwargs: Any):
         self._original_starlette = applications.Starlette
-        _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedStarlette._server_request_hook = kwargs.get(
-            "server_request_hook"
-        )
-        _InstrumentedStarlette._client_request_hook = kwargs.get(
-            "client_request_hook"
-        )
-        _InstrumentedStarlette._client_response_hook = kwargs.get(
-            "client_response_hook"
-        )
-        _InstrumentedStarlette._meter_provider = kwargs.get("meter_provider")
-
+        _InstrumentedStarlette._instrument_kwargs = kwargs
         applications.Starlette = _InstrumentedStarlette
 
     def _uninstrument(self, **kwargs: Any):
         """uninstrumenting all created apps by user"""
-        for instance in _InstrumentedStarlette._instrumented_starlette_apps:
+        # Create a copy of the set to avoid RuntimeError during iteration
+        instances_to_uninstrument = list(
+            _InstrumentedStarlette._instrumented_starlette_apps
+        )
+        for instance in instances_to_uninstrument:
             self.uninstrument_app(instance)
         _InstrumentedStarlette._instrumented_starlette_apps.clear()
         applications.Starlette = self._original_starlette
 
 
 class _InstrumentedStarlette(applications.Starlette):
-    _tracer_provider: TracerProvider | None = None
-    _meter_provider: MeterProvider | None = None
-    _server_request_hook: ServerRequestHook = None
-    _client_request_hook: ClientRequestHook = None
-    _client_response_hook: ClientResponseHook = None
+    _instrument_kwargs: dict[str, Any] = {}
+    # Track instrumented app instances using weak references to avoid GC leaks
     _instrumented_starlette_apps: WeakSet[applications.Starlette] = WeakSet()
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        tracer = get_tracer(
-            __name__,
-            __version__,
-            _InstrumentedStarlette._tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+        StarletteInstrumentor.instrument_app(
+            self, **_InstrumentedStarlette._instrument_kwargs
         )
-        meter = get_meter(
-            __name__,
-            __version__,
-            _InstrumentedStarlette._meter_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
-        )
-        self.add_middleware(
-            OpenTelemetryMiddleware,
-            excluded_urls=_excluded_urls,
-            default_span_details=_get_default_span_details,
-            server_request_hook=_InstrumentedStarlette._server_request_hook,
-            client_request_hook=_InstrumentedStarlette._client_request_hook,
-            client_response_hook=_InstrumentedStarlette._client_response_hook,
-            # Pass in tracer/meter to get __name__and __version__ of starlette instrumentation
-            tracer=tracer,
-            meter=meter,
-        )
-        self._is_instrumented_by_opentelemetry = True
         # adding apps to set for uninstrumenting
         _InstrumentedStarlette._instrumented_starlette_apps.add(self)
 

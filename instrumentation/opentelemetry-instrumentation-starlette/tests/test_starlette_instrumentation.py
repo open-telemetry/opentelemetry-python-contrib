@@ -1,17 +1,20 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=too-many-lines
+
 import unittest
 from timeit import default_timer
 from unittest.mock import patch
 
 from starlette import applications
-from starlette.responses import PlainTextResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Host, Mount, Route
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocket
 
 import opentelemetry.instrumentation.starlette as otel_starlette
+from opentelemetry import trace
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -56,11 +59,23 @@ _recommended_attrs = {
 SCOPE = "opentelemetry.instrumentation.starlette"
 
 
-class TestStarletteManualInstrumentation(TestBase):
+class TestBaseStarlette(TestBase):
     def _create_app(self):
         app = self._create_starlette_app()
         self._instrumentor.instrument_app(
             app=app,
+            server_request_hook=getattr(self, "server_request_hook", None),
+            client_request_hook=getattr(self, "client_request_hook", None),
+            client_response_hook=getattr(self, "client_response_hook", None),
+        )
+        return app
+
+    def _create_app_explicit_excluded_urls(self):
+        app = self._create_starlette_app()
+        to_exclude = "/user/123,/foobar"
+        self._instrumentor.instrument_app(
+            app=app,
+            excluded_urls=to_exclude,
             server_request_hook=getattr(self, "server_request_hook", None),
             client_request_hook=getattr(self, "client_request_hook", None),
             client_response_hook=getattr(self, "client_response_hook", None),
@@ -75,7 +90,7 @@ class TestStarletteManualInstrumentation(TestBase):
         )
         self.env_patch.start()
         self.exclude_patch = patch(
-            "opentelemetry.instrumentation.starlette._excluded_urls",
+            "opentelemetry.instrumentation.starlette._excluded_urls_from_env",
             get_excluded_urls("STARLETTE"),
         )
         self.exclude_patch.start()
@@ -88,6 +103,33 @@ class TestStarletteManualInstrumentation(TestBase):
         self.env_patch.stop()
         self.exclude_patch.stop()
 
+    @staticmethod
+    def _create_starlette_app():
+        def home(_):
+            return PlainTextResponse("hi")
+
+        def health(_):
+            return PlainTextResponse("ok")
+
+        def sub_home(_):
+            return PlainTextResponse("sub hi")
+
+        sub_app = applications.Starlette(routes=[Route("/home", sub_home)])
+
+        app = applications.Starlette(
+            routes=[
+                Route("/foobar", home),
+                Route("/user/{username}", home),
+                Route("/healthzz", health),
+                Mount("/sub", app=sub_app),
+                Host("testserver2", sub_app),
+            ],
+        )
+
+        return app
+
+
+class TestStarletteManualInstrumentation(TestBaseStarlette):
     def test_basic_starlette_call(self):
         self._client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
@@ -164,6 +206,17 @@ class TestStarletteManualInstrumentation(TestBase):
     def test_starlette_excluded_urls(self):
         """Ensure that given starlette routes are excluded."""
         self._client.get("/healthzz")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+    def test_starlette_excluded_urls_not_env(self):
+        """Ensure that given starlette routes are excluded when passed explicitly (not in the environment)"""
+        app = self._create_app_explicit_excluded_urls()
+        client = TestClient(app)
+        client.get("/user/123")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+        client.get("/foobar")
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
 
@@ -268,35 +321,8 @@ class TestStarletteManualInstrumentation(TestBase):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
-    @staticmethod
-    def _create_starlette_app():
-        def home(_):
-            return PlainTextResponse("hi")
 
-        def health(_):
-            return PlainTextResponse("ok")
-
-        def sub_home(_):
-            return PlainTextResponse("sub hi")
-
-        sub_app = applications.Starlette(routes=[Route("/home", sub_home)])
-
-        app = applications.Starlette(
-            routes=[
-                Route("/foobar", home),
-                Route("/user/{username}", home),
-                Route("/healthzz", health),
-                Mount("/sub", app=sub_app),
-                Host("testserver2", sub_app),
-            ],
-        )
-
-        return app
-
-
-class TestStarletteManualInstrumentationHooks(
-    TestStarletteManualInstrumentation
-):
+class TestStarletteBaseHooks(TestBaseStarlette):
     _server_request_hook = None
     _client_request_hook = None
     _client_response_hook = None
@@ -313,6 +339,8 @@ class TestStarletteManualInstrumentationHooks(
         if self._client_response_hook is not None:
             self._client_response_hook(send_span, scope, message)
 
+
+class TestStarletteManualInstrumentationHooks(TestStarletteBaseHooks):
     def test_hooks(self):
         def server_request_hook(span, scope):
             span.update_name("name from server hook")
@@ -346,7 +374,7 @@ class TestStarletteManualInstrumentationHooks(
             )
 
 
-class TestAutoInstrumentation(TestStarletteManualInstrumentation):
+class TestAutoInstrumentation(TestBaseStarlette):
     """Test the auto-instrumented variant
 
     Extending the manual instrumentation as most test cases apply
@@ -474,7 +502,7 @@ class TestAutoInstrumentation(TestStarletteManualInstrumentation):
         )
 
 
-class TestAutoInstrumentationHooks(TestStarletteManualInstrumentationHooks):
+class TestAutoInstrumentationHooks(TestStarletteBaseHooks):
     """
     Test the auto-instrumented variant for request and response hooks
     """
@@ -573,7 +601,7 @@ class TestAutoInstrumentationLogic(unittest.TestCase):
         self.assertIs(original, should_be_original)
 
 
-class TestConditonalServerSpanCreation(TestStarletteManualInstrumentation):
+class TestConditonalServerSpanCreation(TestBaseStarlette):
     def test_mark_span_internal_in_presence_of_another_span(self):
         tracer = get_tracer(__name__)
         with tracer.start_as_current_span(
@@ -950,3 +978,140 @@ class TestNonRecordingSpanWithCustomHeaders(TestBaseWithCustomHeaders):
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 0)
+
+
+class TestHTTPAppWithCustomHeadersParameters(TestBase):
+    """Minimal tests here since the behavior of this logic is tested above and in the ASGI tests."""
+
+    def setUp(self):
+        super().setUp()
+        self._instrumentor = otel_starlette.StarletteInstrumentor()
+        self.kwargs = {
+            "http_capture_headers_server_request": ["a.*", "b.*"],
+            "http_capture_headers_server_response": ["c.*", "d.*"],
+            "http_capture_headers_sanitize_fields": [".*secret.*"],
+        }
+        self.app = None
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            if self.app:
+                self._instrumentor.uninstrument_app(self.app)
+            else:
+                self._instrumentor.uninstrument()
+
+    @staticmethod
+    def _create_app():
+        def home(_):
+            return JSONResponse(
+                content={"message": "hi"},
+                headers={
+                    "carrot": "bar",
+                    "date-secret": "yellow",
+                    "egg": "ham",
+                },
+            )
+
+        app = applications.Starlette(routes=[Route("/foobar", home)])
+
+        return app
+
+    def test_http_custom_request_headers_in_span_attributes_app(self):
+        self.app = self._create_app()
+        self._instrumentor.instrument_app(self.app, **self.kwargs)
+
+        resp = TestClient(self.app).get(
+            "/foobar",
+            headers={
+                "apple": "red",
+                "banana-secret": "yellow",
+                "fig": "green",
+            },
+        )
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            # apple should be included because it starts with a
+            "http.request.header.apple": ("red",),
+            # same with banana because it starts with b,
+            # redacted because it contains "secret"
+            "http.request.header.banana_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.request.header.fig", server_span.attributes)
+
+    def test_http_custom_request_headers_in_span_attributes_instr(self):
+        """As above, but use instrument(), not instrument_app()."""
+        self._instrumentor.instrument(**self.kwargs)
+
+        resp = TestClient(self._create_app()).get(
+            "/foobar",
+            headers={
+                "apple": "red",
+                "banana-secret": "yellow",
+                "fig": "green",
+            },
+        )
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            # apple should be included because it starts with a
+            "http.request.header.apple": ("red",),
+            # same with banana because it starts with b,
+            # redacted because it contains "secret"
+            "http.request.header.banana_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.request.header.fig", server_span.attributes)
+
+    def test_http_custom_response_headers_in_span_attributes_app(self):
+        self.app = self._create_app()
+        self._instrumentor.instrument_app(self.app, **self.kwargs)
+        resp = TestClient(self.app).get("/foobar")
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            "http.response.header.carrot": ("bar",),
+            "http.response.header.date_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.response.header.egg", server_span.attributes)
+
+    def test_http_custom_response_headers_in_span_attributes_inst(self):
+        """As above, but use instrument(), not instrument_app()."""
+        self._instrumentor.instrument(**self.kwargs)
+
+        resp = TestClient(self._create_app()).get("/foobar")
+        self.assertEqual(200, resp.status_code)
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 3)
+
+        server_span = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ][0]
+
+        expected = {
+            "http.response.header.carrot": ("bar",),
+            "http.response.header.date_secret": ("[REDACTED]",),
+        }
+        self.assertSpanHasAttributes(server_span, expected)
+        self.assertNotIn("http.response.header.egg", server_span.attributes)
