@@ -56,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4368))
 - `opentelemetry-instrumentation-celery`: Coerce timelimit values to strings in `set_attributes_from_context()` to prevent mixed-type span attribute warning
   ([#4361](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4361))
+- `opentelemetry-instrumentation-mysqlclient`: Update unit tests to properly validate trace context trace flag values.
+  ([#4560](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4560))
 
 ### Breaking changes
 
