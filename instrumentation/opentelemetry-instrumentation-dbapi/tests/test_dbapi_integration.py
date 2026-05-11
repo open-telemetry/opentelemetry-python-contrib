@@ -70,9 +70,13 @@ class TestDBApiIntegration(TestBase):
             test_name = self._testMethodName
         sem_conv_mode = "default"
         if "new_semconv" in test_name:
-            sem_conv_mode = "database"
+            sem_conv_mode = "database,http"
         elif "both_semconv" in test_name:
-            sem_conv_mode = "database/dup"
+            sem_conv_mode = "database/dup,http/dup"
+        elif "database_only_semconv" in test_name:
+            sem_conv_mode = "database"
+        elif "http_only_semconv" in test_name:
+            sem_conv_mode = "http"
         self.env_patch = mock.patch.dict(
             "os.environ",
             {
@@ -187,6 +191,68 @@ class TestDBApiIntegration(TestBase):
 
         self.assertFalse("db.statement.parameters" in span.attributes)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_span_succeeded_database_only_semconv(self):
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, connection_props
+        )
+        cursor = mock_connection.cursor()
+        cursor.execute("Test query", ("param1Value", False))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # DB attributes should be stable-only
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+        self.assertFalse(DB_SYSTEM in span.attributes)
+        self.assertFalse(DB_NAME in span.attributes)
+        self.assertFalse(DB_STATEMENT in span.attributes)
+
+        # Network attributes should remain old semconv
+        self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 123)
+        self.assertFalse(SERVER_ADDRESS in span.attributes)
+        self.assertFalse(SERVER_PORT in span.attributes)
+
+    def test_span_succeeded_http_only_semconv(self):
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, connection_props
+        )
+        cursor = mock_connection.cursor()
+        cursor.execute("Test query", ("param1Value", False))
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        # DB attributes should remain old semconv
+        self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
+        self.assertFalse(DB_SYSTEM_NAME in span.attributes)
+        self.assertFalse(DB_NAMESPACE in span.attributes)
+        self.assertFalse(DB_QUERY_TEXT in span.attributes)
+
+        # Network attributes should be stable-only
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 123)
+        self.assertFalse(NET_PEER_NAME in span.attributes)
+        self.assertFalse(NET_PEER_PORT in span.attributes)
 
     def test_span_name(self):
         db_integration = dbapi.DatabaseApiIntegration(

@@ -176,7 +176,7 @@ except ImportError:
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
-    _get_schema_url,
+    _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
@@ -429,8 +429,11 @@ class DatabaseApiIntegration:
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
-        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        self._sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.DATABASE,
+        )
+        self._sem_conv_opt_in_mode_http = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
         )
 
         if connection_attributes is None:
@@ -448,7 +451,12 @@ class DatabaseApiIntegration:
             self._name,
             instrumenting_library_version=self._version,
             tracer_provider=tracer_provider,
-            schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
+            schema_url=_get_schema_url_for_signal_types(
+                [
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                ]
+            ),
         )
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
@@ -562,19 +570,19 @@ class DatabaseApiIntegration:
             user = user.decode()
         if user is not None:
             _set_db_user(
-                self.span_attributes, str(user), self._sem_conv_opt_in_mode
+                self.span_attributes, str(user), self._sem_conv_opt_in_mode_db
             )
         host = self.connection_props.get("host")
         if host is not None:
             _set_http_net_peer_name_client(
                 self.span_attributes,
                 host,
-                self._sem_conv_opt_in_mode,
+                self._sem_conv_opt_in_mode_http,
             )
         port = self.connection_props.get("port")
         if port is not None:
             _set_http_peer_port_client(
-                self.span_attributes, port, self._sem_conv_opt_in_mode
+                self.span_attributes, port, self._sem_conv_opt_in_mode_http
             )
 
 
@@ -703,7 +711,7 @@ class CursorTracer(Generic[CursorT]):
         if not span.is_recording():
             return
         statement = self.get_statement(cursor, args)
-        sem_conv_mode = self._db_api_integration._sem_conv_opt_in_mode
+        sem_conv_mode = self._db_api_integration._sem_conv_opt_in_mode_db
         span_attrs = {}
 
         _set_db_system(
