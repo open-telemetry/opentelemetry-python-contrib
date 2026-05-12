@@ -10,6 +10,7 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _get_schema_url_for_signal_types,
     _get_schema_version_for_opt_in_mode,
+    _get_semconv_opt_in_modes,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
@@ -144,6 +145,53 @@ class TestOpenTelemetrySemConvStability(TestCase):
                 _OpenTelemetryStabilitySignalType.GEN_AI
             ),
             _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+        )
+
+    @stability_mode("")
+    def test_get_semconv_opt_in_modes_default(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes(
+                (
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                )
+            ),
+            {
+                _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DEFAULT,
+                _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.DEFAULT,
+            },
+        )
+
+    @stability_mode("database,http/dup")
+    def test_get_semconv_opt_in_modes_database_and_http_dup(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes(
+                (
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                )
+            ),
+            {
+                _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DATABASE,
+                _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.HTTP_DUP,
+            },
+        )
+
+    @stability_mode("database,http,gen_ai_latest_experimental")
+    def test_get_semconv_opt_in_modes_database_http_and_gen_ai(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes(
+                (
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                    _OpenTelemetryStabilitySignalType.GEN_AI,
+                )
+            ),
+            {
+                _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DATABASE,
+                _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.HTTP,
+                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+            },
         )
 
     @stability_mode("database,http/dup")

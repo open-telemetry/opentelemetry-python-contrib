@@ -274,6 +274,21 @@ class _OpenTelemetrySemanticConventionStability:
         )
 
 
+def _get_semconv_opt_in_modes(
+    signal_types: tuple[_OpenTelemetryStabilitySignalType, ...],
+) -> dict[_OpenTelemetryStabilitySignalType, _StabilityMode]:
+    """Returns a mapping of signal type to mode for the provided
+    signal_types (one/more of DATABASE, HTTP, GEN_AI).
+    """
+    _OpenTelemetrySemanticConventionStability._initialize()
+    return {
+        signal_type: _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal_type
+        )
+        for signal_type in signal_types
+    }
+
+
 def _filter_semconv_duration_attrs(
     attrs: Mapping[str, AttributeValue],
     old_attrs: Container[AttributeValue],

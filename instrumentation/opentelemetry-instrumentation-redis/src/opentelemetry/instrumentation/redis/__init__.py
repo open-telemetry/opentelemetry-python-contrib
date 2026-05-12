@@ -143,6 +143,7 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
+    _get_semconv_opt_in_modes,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _set_db_statement,
@@ -209,26 +210,23 @@ if _CLIENT_ASYNCIO_SUPPORT:
 _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 
 
-def _get_semconv_opt_in_modes():
-    _OpenTelemetrySemanticConventionStability._initialize()
-    return (
-        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.DATABASE
-        ),
-        _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.HTTP
-        ),
-    )
-
-
 def _traced_execute_factory(
     tracer: Tracer,
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
-        _get_semconv_opt_in_modes()
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
     )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
 
     def _traced_execute_command(
         func: Callable[..., R],
@@ -279,9 +277,18 @@ def _traced_execute_pipeline_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
-        _get_semconv_opt_in_modes()
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
     )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
 
     def _traced_execute_pipeline(
         func: Callable[..., R],
@@ -342,9 +349,18 @@ def _async_traced_execute_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
-        _get_semconv_opt_in_modes()
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
     )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
 
     async def _async_traced_execute_command(
         func: Callable[..., Awaitable[R]],
@@ -391,9 +407,18 @@ def _async_traced_execute_pipeline_factory(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
-        _get_semconv_opt_in_modes()
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
     )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
 
     async def _async_traced_execute_pipeline(
         func: Callable[..., Awaitable[R]],
