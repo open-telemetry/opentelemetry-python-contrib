@@ -15,6 +15,7 @@ from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -36,6 +37,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
     NET_PEER_NAME,
     NET_PEER_PORT,
+    NET_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
@@ -56,6 +58,7 @@ from opentelemetry.semconv.attributes.http_attributes import (
 )
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
+    NETWORK_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
@@ -269,6 +272,21 @@ class _OpenTelemetrySemanticConventionStability:
         return cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
             signal_type, _StabilityMode.DEFAULT
         )
+
+
+def _get_semconv_opt_in_modes(
+    signal_types: tuple[_OpenTelemetryStabilitySignalType, ...],
+) -> dict[_OpenTelemetryStabilitySignalType, _StabilityMode]:
+    """Returns a mapping of signal type to mode for the provided
+    signal_types (one/more of DATABASE, HTTP, GEN_AI).
+    """
+    _OpenTelemetrySemanticConventionStability._initialize()
+    return {
+        signal_type: _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal_type
+        )
+        for signal_type in signal_types
+    }
 
 
 def _filter_semconv_duration_attrs(
@@ -596,6 +614,29 @@ def _set_db_operation(
         set_string_attribute(result, DB_OPERATION, operation)
     if _report_new(sem_conv_opt_in_mode):
         set_string_attribute(result, DB_OPERATION_NAME, operation)
+
+
+def _set_db_redis_database_index(
+    result: MutableMapping[str, AttributeValue],
+    database_index: int,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        if database_index is not None:
+            result[DB_REDIS_DATABASE_INDEX] = int(database_index)
+    # No new attribute - db.redis.database_index was removed with no replacement in semconv 1.38.0
+
+
+def _set_net_transport(
+    result: MutableMapping[str, AttributeValue],
+    old_transport: AttributeValue,
+    new_transport: AttributeValue,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, NET_TRANSPORT, old_transport)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, NETWORK_TRANSPORT, new_transport)
 
 
 # General
