@@ -308,6 +308,18 @@ def test_update_effective_config_json_content_type(client):
     assert config == decoded_config
 
 
+def test_update_effective_config_skips_non_serializable_json_content(
+    client, caplog
+):
+    caplog.set_level(logging.WARNING, logger="opentelemetry._opamp.messages")
+    effective_config = client.update_effective_config(
+        {"config": {"a": object()}},
+        content_type="application/json",
+    )
+    assert effective_config.config_map.config_map == {}
+    assert "Skipping effective config entry config" in caplog.text
+
+
 def test_update_effective_config_text_content_type(client):
     config = {"config": "FEATURE_ENABLED=false\n"}
     effective_config = client.update_effective_config(
