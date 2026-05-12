@@ -22,3 +22,11 @@ OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH = (
 """
 .. envvar:: OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH
 """
+
+OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
+"""
+.. envvar:: OTEL_SEMCONV_STABILITY_OPT_IN
+
+Opt-in to stable semantic convention signals.
+Comma-separated list of signals, e.g. ``http``, ``http/dup``.
+"""
