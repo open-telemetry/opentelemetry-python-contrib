@@ -48,8 +48,6 @@ To keep the process lightweight, it's OK to approve the PRs you generate and mer
 
 Creating manual backports of pull request(s) requires the `backport` label to be added in order to have a green CI.
 
-Changelog entries are now managed via towncrier fragment files (see [CONTRIBUTING.md](CONTRIBUTING.md#changelog)), which eliminates the merge conflicts that previously occurred with every `CHANGELOG.md` backport.
-
 To use the workflow to backport pull request(s) to the release branch:
   * Run the [Backport workflow](https://github.com/open-telemetry/opentelemetry-python-contrib/actions/workflows/backport.yml).
   * Press the "Run workflow" button, then select the release branch from the dropdown list,

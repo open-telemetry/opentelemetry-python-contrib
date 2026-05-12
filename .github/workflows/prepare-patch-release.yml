@@ -101,3 +101,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr edit ${{ steps.create_pr.outputs.pr_url }}  --add-label "prepare-release"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use CLA approved github bot
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - name: Backport patch release changelog to main
+        env:
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
+        run: |
+          release_branch="otelbot/prepare-release-${STABLE_VERSION}-${UNSTABLE_VERSION}"
+          message="Backport ${STABLE_VERSION}/${UNSTABLE_VERSION} changelog"
+          body="Backport \`${STABLE_VERSION}/${UNSTABLE_VERSION}\` changelog"
+          branch="otelbot/backport-changelog-from-${STABLE_VERSION}-${UNSTABLE_VERSION}"
+
+          git fetch origin $release_branch
+
+          # Copy the updated CHANGELOG.md from the release branch
+          git checkout $release_branch -- CHANGELOG.md
+          git commit -m "$message"
+
+          git push origin HEAD:$branch
+          gh pr create --title "$message" \
+                       --body "$body" \
+                       --head $branch \
+                       --base main
