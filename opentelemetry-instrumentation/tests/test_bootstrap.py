@@ -5,7 +5,7 @@
 from io import StringIO
 from random import sample
 from unittest import TestCase
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 from opentelemetry.instrumentation import bootstrap
 from opentelemetry.instrumentation.bootstrap_gen import (
@@ -31,7 +31,6 @@ class TestBootstrap(TestCase):
             [lib["instrumentation"] for lib in libraries], 0.6
         )
 
-        # treat 50% of sampled packages as pre-installed
         cls.installed_instrumentations = sample_packages(
             cls.installed_libraries, 0.5
         )
@@ -78,9 +77,8 @@ class TestBootstrap(TestCase):
     def test_run_cmd_install(self):
         self.pkg_patcher.start()
         bootstrap.run()
-        self.mock_pip_install.assert_has_calls(
-            [call(i) for i in self.installed_libraries],
-            any_order=True,
+        self.mock_pip_install.assert_called_once_with(
+            self.installed_libraries,
         )
         self.mock_pip_check.assert_called_once()
         self.pkg_patcher.stop()
@@ -88,9 +86,8 @@ class TestBootstrap(TestCase):
     @patch("sys.argv", ["bootstrap", "-a", "install"])
     def test_can_override_available_libraries(self):
         bootstrap.run(libraries=[])
-        self.mock_pip_install.assert_has_calls(
-            [call(i) for i in default_instrumentations],
-            any_order=True,
+        self.mock_pip_install.assert_called_once_with(
+            list(default_instrumentations),
         )
         self.mock_pip_check.assert_called_once()
 
@@ -101,8 +98,5 @@ class TestBootstrap(TestCase):
             return_value=True,
         ):
             bootstrap.run(default_instrumentations=[])
-        self.mock_pip_install.assert_has_calls(
-            [call(i) for i in self.installed_libraries],
-            any_order=True,
-        )
+        self.mock_pip_install.assert_called_once()
         self.mock_pip_check.assert_called_once()
