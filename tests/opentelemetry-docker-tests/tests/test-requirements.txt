@@ -43,7 +43,7 @@ PyMySQL==1.1.1
 PyNaCl==1.6.2
 # prerequisite: install unixodbc
 pyodbc==5.0.1
-pytest==8.0.2
+pytest==9.0.3
 pytest-celery==0.0.0
 python-dateutil==2.9.0.post0
 pytz==2024.1
