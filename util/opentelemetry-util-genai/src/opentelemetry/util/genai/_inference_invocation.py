@@ -55,7 +55,7 @@ class InferenceInvocation(GenAIInvocation):
     context manager rather than constructing this directly.
     """
 
-    def __init__(  # pylint: disable=too-many-locals
+    def __init__(
         self,
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
@@ -64,25 +64,8 @@ class InferenceInvocation(GenAIInvocation):
         provider: str,
         *,
         request_model: str | None = None,
-        input_messages: list[InputMessage] | None = None,
-        output_messages: list[OutputMessage] | None = None,
-        system_instruction: list[MessagePart] | None = None,
-        response_model_name: str | None = None,
-        response_id: str | None = None,
-        finish_reasons: list[str] | None = None,
-        input_tokens: int | None = None,
-        output_tokens: int | None = None,
-        temperature: float | None = None,
-        top_p: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
-        max_tokens: int | None = None,
-        stop_sequences: list[str] | None = None,
-        seed: int | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
-        attributes: dict[str, Any] | None = None,
-        metric_attributes: dict[str, Any] | None = None,
     ) -> None:
         """Use handler.start_inference(provider) or handler.inference(provider) instead of calling this directly."""
         _operation_name = GenAI.GenAiOperationNameValues.CHAT.value
@@ -96,38 +79,31 @@ class InferenceInvocation(GenAIInvocation):
             if request_model
             else _operation_name,
             span_kind=SpanKind.CLIENT,
-            attributes=attributes,
-            metric_attributes=metric_attributes,
         )
         self.provider = provider
         self.request_model = request_model
-        self.input_messages: list[InputMessage] = (
-            [] if input_messages is None else input_messages
-        )
-        self.output_messages: list[OutputMessage] = (
-            [] if output_messages is None else output_messages
-        )
-        self.system_instruction: list[MessagePart] = (
-            [] if system_instruction is None else system_instruction
-        )
-        self.response_model_name = response_model_name
-        self.response_id = response_id
-        self.finish_reasons = finish_reasons
-        self.input_tokens = input_tokens
-        self.output_tokens = output_tokens
-        self.temperature = temperature
-        self.top_p = top_p
-        self.frequency_penalty = frequency_penalty
-        self.presence_penalty = presence_penalty
-        self.max_tokens = max_tokens
-        self.stop_sequences = stop_sequences
-        self.seed = seed
         self.server_address = server_address
         self.server_port = server_port
+
+        self.input_messages: list[InputMessage] = []
+        self.output_messages: list[OutputMessage] = []
+        self.system_instruction: list[MessagePart] = []
+        self.response_model_name: str | None = None
+        self.response_id: str | None = None
+        self.finish_reasons: list[str] | None = None
+        self.input_tokens: int | None = None
+        self.output_tokens: int | None = None
+        self.temperature: float | None = None
+        self.top_p: float | None = None
+        self.frequency_penalty: float | None = None
+        self.presence_penalty: float | None = None
+        self.max_tokens: int | None = None
+        self.stop_sequences: list[str] | None = None
+        self.seed: int | None = None
         self.cache_creation_input_tokens: int | None = None
         self.cache_read_input_tokens: int | None = None
         self.tool_definitions: list[ToolDefinition] | None = None
-        self._start()
+        self._start(self._get_base_attributes())
 
     def _get_message_attributes(self, *, for_span: bool) -> dict[str, Any]:
         return get_content_attributes(
@@ -288,33 +264,34 @@ class LLMInvocation:
         completion_hook: CompletionHook,
     ) -> None:
         """Create and start an InferenceInvocation from this data container. Called by handler.start_llm()."""
-        self._inference_invocation = InferenceInvocation(
+        inv = InferenceInvocation(
             tracer,
             metrics_recorder,
             logger,
             completion_hook,
             self.provider or "",
             request_model=self.request_model,
-            input_messages=self.input_messages,
-            output_messages=self.output_messages,
-            system_instruction=self.system_instruction,
-            response_model_name=self.response_model_name,
-            response_id=self.response_id,
-            finish_reasons=self.finish_reasons,
-            input_tokens=self.input_tokens,
-            output_tokens=self.output_tokens,
-            temperature=self.temperature,
-            top_p=self.top_p,
-            frequency_penalty=self.frequency_penalty,
-            presence_penalty=self.presence_penalty,
-            max_tokens=self.max_tokens,
-            stop_sequences=self.stop_sequences,
-            seed=self.seed,
             server_address=self.server_address,
             server_port=self.server_port,
-            attributes=self.attributes,
-            metric_attributes=self.metric_attributes,
         )
+        inv.input_messages = self.input_messages
+        inv.output_messages = self.output_messages
+        inv.system_instruction = self.system_instruction
+        inv.response_model_name = self.response_model_name
+        inv.response_id = self.response_id
+        inv.finish_reasons = self.finish_reasons
+        inv.input_tokens = self.input_tokens
+        inv.output_tokens = self.output_tokens
+        inv.temperature = self.temperature
+        inv.top_p = self.top_p
+        inv.frequency_penalty = self.frequency_penalty
+        inv.presence_penalty = self.presence_penalty
+        inv.max_tokens = self.max_tokens
+        inv.stop_sequences = self.stop_sequences
+        inv.seed = self.seed
+        inv.attributes.update(self.attributes)
+        inv.metric_attributes.update(self.metric_attributes)
+        self._inference_invocation = inv
 
     def _sync_to_invocation(self) -> None:
         inv = self._inference_invocation
