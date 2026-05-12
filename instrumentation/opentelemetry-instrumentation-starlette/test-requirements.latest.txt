@@ -60,7 +60,7 @@ pytest==7.4.4
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
-requests==2.32.3
+requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
