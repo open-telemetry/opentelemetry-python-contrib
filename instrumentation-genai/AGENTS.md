@@ -61,6 +61,11 @@ except Exception as exc:
     raise
 ```
 
+Content capture decisions must come from the shared handler, not from instrumentation-local
+environment checks or duplicated helper logic. Evaluate the handler's content-capture API once
+when creating wrappers (for example, `capture_content = handler.should_capture_content()`) and
+pass that value through invocation/request helpers.
+
 ## 4. Semantic conventions
 
 Attributes, spans, events, and metrics follow the

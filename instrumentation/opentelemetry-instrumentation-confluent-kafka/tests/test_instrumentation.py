@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-name-in-module,import-outside-toplevel
 
@@ -29,6 +18,10 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_MESSAGE_ID,
     MESSAGING_OPERATION,
     MESSAGING_SYSTEM,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
@@ -447,3 +440,45 @@ class TestConfluentKafka(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self._assert_span_count(span_list, 1)
         self._assert_topic(span_list[0], "topic-1")
+
+    def test_producer_sets_bootstrap_servers_attributes(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer(
+            [],
+            {
+                "bootstrap.servers": "broker-a:9092,broker-b:9093",
+            },
+        )
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", key="k", value="v")
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "broker-a")
+        self.assertEqual(span.attributes[SERVER_PORT], 9092)
+
+    def test_consumer_sets_bootstrap_servers_attributes(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "broker-1:9092",
+                "group.id": "g",
+                "auto.offset.reset": "earliest",
+            },
+        )
+
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        # Second (empty) poll ends the in-flight `<topic> process` span so it
+        # shows up in the exporter.
+        consumer.poll()
+
+        process_span = next(
+            s
+            for s in self.memory_exporter.get_finished_spans()
+            if s.name == "topic-1 process"
+        )
+        self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
+        self.assertEqual(process_span.attributes[SERVER_PORT], 9092)

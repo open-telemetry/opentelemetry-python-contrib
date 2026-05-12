@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -43,11 +32,13 @@ from opentelemetry.util.genai.environment_variables import (
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
+    FunctionToolDefinition,
     InputMessage,
     OutputMessage,
     Text,
     ToolCallRequest,
     ToolCallResponse,
+    ToolDefinition,
 )
 
 _OpenAIOmit = getattr(openai, "Omit", None)
@@ -408,6 +399,9 @@ def create_chat_invocation(
         invocation.input_messages = _prepare_input_messages(
             kwargs.get("messages", [])
         )
+        invocation.tool_definitions = _prepare_tool_definitions(
+            kwargs.get("tools")
+        )
     return invocation
 
 
@@ -484,6 +478,26 @@ def extract_tool_calls_new(tool_calls) -> list[ToolCallRequest]:
             ToolCallRequest(id=call_id, name=func_name, arguments=arguments)
         )
     return parts
+
+
+def _prepare_tool_definitions(tools) -> list[ToolDefinition] | None:
+    if not tools:
+        return None
+
+    definitions: list[ToolDefinition] = []
+    for tool in tools:
+        tool_type = get_property_value(tool, "type")
+        if tool_type == "function":
+            func = get_property_value(tool, "function")
+            if func:
+                definitions.append(
+                    FunctionToolDefinition(
+                        name=get_property_value(func, "name") or "",
+                        description=get_property_value(func, "description"),
+                        parameters=get_property_value(func, "parameters"),
+                    )
+                )
+    return definitions
 
 
 def _prepare_output_messages(choices) -> List[OutputMessage]:
