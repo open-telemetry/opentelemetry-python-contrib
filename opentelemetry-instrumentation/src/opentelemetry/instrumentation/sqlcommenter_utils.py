@@ -16,7 +16,7 @@ from opentelemetry import context
 from opentelemetry.instrumentation.utils import _url_quote
 
 
-def _add_sql_comment(sql, **meta) -> str:
+def _add_sql_comment(sql, comment_position="end", **meta) -> str:
     """
     Appends comments to the sql statement and returns it
     """
@@ -24,9 +24,14 @@ def _add_sql_comment(sql, **meta) -> str:
     comment = _generate_sql_comment(**meta)
     sql = sql.rstrip()
     if sql.endswith(";"):
-        sql = sql[:-1] + comment + ";"
+        sql = sql[:-1]
+        end = ";"
     else:
-        sql = sql + comment
+        end = ""
+    if comment_position == "start":
+        sql = comment + " " + sql + end
+    else:
+        sql = sql + comment + end
     return sql
 
 

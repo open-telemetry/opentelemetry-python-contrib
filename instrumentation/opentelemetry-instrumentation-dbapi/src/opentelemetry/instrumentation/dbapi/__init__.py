@@ -171,7 +171,7 @@ from __future__ import annotations
 import functools
 import logging
 import re
-from typing import Any, Awaitable, Callable, Generic, TypeVar
+from typing import Any, Awaitable, Callable, Generic, Literal, TypeVar
 
 from wrapt import wrap_function_wrapper
 
@@ -210,13 +210,15 @@ _DB_DRIVER_ALIASES = {
     "MySQLdb": "mysqlclient",
 }
 
+CommentPositionT = Literal["start", "end"]
+
 _logger = logging.getLogger(__name__)
 
 ConnectionT = TypeVar("ConnectionT")
 CursorT = TypeVar("CursorT")
 
 
-def trace_integration(
+def trace_integration(  # pylint: disable=too-many-positional-arguments
     connect_module: Callable[..., Any],
     connect_method_name: str,
     database_system: str,
@@ -227,7 +229,7 @@ def trace_integration(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     enable_attribute_commenter: bool = False,
     commenter_options: dict[str, Any] | None = None,
-    comment_position: str = "end",
+    comment_position: CommentPositionT = "end",
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -265,7 +267,7 @@ def trace_integration(
     )
 
 
-def wrap_connect(
+def wrap_connect(  # pylint: disable=too-many-positional-arguments
     name: str,
     connect_module: Callable[..., Any],
     connect_method_name: str,
@@ -278,7 +280,7 @@ def wrap_connect(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
-    comment_position: str = "end",
+    comment_position: CommentPositionT = "end",
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -347,7 +349,7 @@ def unwrap_connect(
     unwrap(connect_module, connect_method_name)
 
 
-def instrument_connection(
+def instrument_connection(  # pylint: disable=too-many-positional-arguments
     name: str,
     connection: ConnectionT | TracedConnectionProxy[ConnectionT],
     database_system: str,
@@ -360,7 +362,7 @@ def instrument_connection(
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
-    comment_position: str = "end",
+    comment_position: CommentPositionT = "end",
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
 
@@ -430,7 +432,7 @@ def uninstrument_connection(
 
 
 class DatabaseApiIntegration:
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         name: str,
         database_system: str,
@@ -442,7 +444,7 @@ class DatabaseApiIntegration:
         commenter_options: dict[str, Any] | None = None,
         connect_module: Callable[..., Any] | None = None,
         enable_attribute_commenter: bool = False,
-        comment_position: str = "end",
+        comment_position: CommentPositionT = "end",
     ):
         if connection_attributes is None:
             self.connection_attributes = {
@@ -689,7 +691,11 @@ class CursorTracer(Generic[CursorT]):
                 args_list[0] = args_list[0].as_string(cursor.connection)
 
             args_list[0] = str(args_list[0])
-            statement = _add_sql_comment(args_list[0], comment_position=self._db_api_integration.comment_position, **commenter_data)
+            statement = _add_sql_comment(
+                args_list[0],
+                comment_position=self._db_api_integration.comment_position,
+                **commenter_data,
+            )
             args_list[0] = statement
             args = tuple(args_list)
         except Exception as exc:  # pylint: disable=broad-except
