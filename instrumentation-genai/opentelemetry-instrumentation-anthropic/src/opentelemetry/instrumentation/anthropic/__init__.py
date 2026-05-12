@@ -42,13 +42,15 @@ from wrapt import (
     wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
 )
 
-from opentelemetry.instrumentation.anthropic.package import _instruments
-from opentelemetry.instrumentation.anthropic.patch import (
-    messages_create,
-)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.util.genai.handler import TelemetryHandler
+
+from .package import _instruments
+from .patch import (
+    messages_create,
+    messages_stream,
+)
 
 
 class AnthropicInstrumentor(BaseInstrumentor):
@@ -88,11 +90,16 @@ class AnthropicInstrumentor(BaseInstrumentor):
             logger_provider=logger_provider,
         )
 
-        # Patch Messages.create
+        # Patch Messages.create and Messages.stream
         wrap_function_wrapper(
             "anthropic.resources.messages",
             "Messages.create",
             messages_create(handler),
+        )
+        wrap_function_wrapper(
+            "anthropic.resources.messages",
+            "Messages.stream",
+            messages_stream(handler),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -105,4 +112,8 @@ class AnthropicInstrumentor(BaseInstrumentor):
         unwrap(
             anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
             "create",
+        )
+        unwrap(
+            anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
+            "stream",
         )
