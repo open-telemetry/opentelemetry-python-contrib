@@ -2,12 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+<!--
+Do *NOT* add changelog entries here!
+
+This changelog is managed by towncrier and is compiled at release time.
+
+See https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md#changelog for details.
+-->
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 > [!NOTE]
 > The following components are released independently and maintain individual CHANGELOG files.
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
+
+<!-- changelog start -->
 
 ## Unreleased
 
@@ -95,6 +105,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
+- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
+  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
+- `opentelemetry-instrumentation-redis`: implement new semantic convention opt-in migration
+  ([#4370](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4370))
 
 ### Fixed
 
@@ -123,6 +137,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
   ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
+
+### Added
+
+- `opentelemetry-instrumentation-dbapi`: implement new semantic convention opt-in migration
+  ([#4109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4109))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
 

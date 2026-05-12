@@ -390,7 +390,7 @@ def create_chat_invocation(
         extra_body = get_value(kwargs.get("extra_body"))
         if isinstance(extra_body, Mapping):
             service_tier = get_value(extra_body.get("service_tier"))
-    if service_tier is not None:
+    if service_tier is not None and service_tier != "auto":
         invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = (
             service_tier
         )
