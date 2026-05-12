@@ -331,6 +331,16 @@ class TestDBApiIntegration(TestBase):
         cursor = mock_connection.cursor()
         cursor.executemany("Select 1;")
         self.assertRegex(
+            cursor.query,
+            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(
+            span.attributes[DB_STATEMENT],
+            "Select 1;",
+        )
 
     def test_executemany_comment_position_start(self):
         connect_module = mock.MagicMock()
@@ -383,16 +393,6 @@ class TestDBApiIntegration(TestBase):
         self.assertRegex(
             cursor.query,
             r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
-        )
-            cursor.query,
-            r"Select 1 /\*dbapi_threadsafety=123,driver_paramstyle='test',libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
-        )
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        span = spans_list[0]
-        self.assertEqual(
-            span.attributes[DB_STATEMENT],
-            "Select 1;",
         )
 
     def test_executemany_comment_stmt_enabled(self):
