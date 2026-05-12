@@ -56,8 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
 - `opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1) `flask.__version__` attribute; resolve the Flask version via `importlib.metadata`
   ([#4422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4422))
-- `opentelemetry-instrumentation-celery`: Clear completed task ids from `task_id_to_start_time` to prevent task timing state from accumulating across finished tasks
-  ([#4504](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4504))
 - `opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints
   ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
