@@ -31,31 +31,40 @@ logger = logging.getLogger(__name__)
 
 
 def _syscall(func):
-    def wrapper(packages=None, upgrade=True):
+    def wrapper(packages=None):
         try:
-            if packages:
-                return func(packages, upgrade)
-            return func()
+            if packages is None:
+                return func()
+            if not packages:
+                return None
+            return func(packages)
         except SubprocessError as exp:
             cmd = getattr(exp, "cmd", None)
             if cmd:
                 msg = f'Error calling system command "{" ".join(cmd)}"'
             if packages:
-                msg = f'{msg} for package "{packages}"'
+                msg = f'{msg} for packages "{", ".join(packages)}"'
             raise RuntimeError(msg)
 
     return wrapper
 
 
 @_syscall
-def _sys_pip_install(packages, upgrade=True):
+def _sys_pip_install(packages):
     # explicit upgrade strategy to override potential pip config
     try:
-        cmd = [sys.executable, "-m", "pip", "install"]
-        if upgrade:
-            cmd += ["-U", "--upgrade-strategy", "only-if-needed"]
-        cmd += [*packages]
-        check_call(cmd)
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "-U",
+                "--upgrade-strategy",
+                "only-if-needed",
+                *packages,
+            ]
+        )
     except CalledProcessError as error:
         print(error)
 
@@ -115,10 +124,10 @@ def _run_requirements(default_instrumentations, libraries):
     )
 
 
-def _run_install(default_instrumentations, libraries, upgrade=True):
+def _run_install(default_instrumentations, libraries):
     libs = list(_find_installed_libraries(default_instrumentations, libraries))
     if libs:
-        _sys_pip_install(libs, upgrade=upgrade)
+        _sys_pip_install(libs)
     _pip_check(libraries)
 
 
@@ -153,11 +162,6 @@ def run(
                        be piped and appended to a requirements.txt file.
         """,
     )
-    parser.add_argument(
-        "--no-upgrade",
-        action="store_true",
-        help="Do not upgrade packages with -U flag during install",
-    )
     args = parser.parse_args()
 
     if libraries is None:
@@ -167,8 +171,6 @@ def run(
         default_instrumentations = gen_default_instrumentations
 
     if args.action == action_install:
-        _run_install(
-            default_instrumentations, libraries, upgrade=not args.no_upgrade
-        )
+        _run_install(default_instrumentations, libraries)
     else:
         _run_requirements(default_instrumentations, libraries)
