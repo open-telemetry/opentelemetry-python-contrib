@@ -811,7 +811,7 @@ class TestWsgiAttributes(unittest.TestCase):
             HTTP_TARGET: "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing",
         }
         expected_new = {
-            URL_PATH: self.environ["PATH_INFO"],
+            URL_PATH: "/",
             URL_QUERY: "highlight=params",
         }
         self.assertGreaterEqual(
