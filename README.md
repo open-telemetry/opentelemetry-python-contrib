@@ -36,7 +36,7 @@
 
 ---
 
-# OpenTelemetry Python Contrib
+# OpenTelemetry Python Contrib 
 
 The Python auto-instrumentation libraries for [OpenTelemetry](https://opentelemetry.io/) (per [OTEP 0001](https://github.com/open-telemetry/oteps/blob/main/text/0001-telemetry-without-manual-instrumentation.md))
 
