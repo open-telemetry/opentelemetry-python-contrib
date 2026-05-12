@@ -12,14 +12,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
+- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query
+  ([#4561](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4561))
+- Add `BaggageLogProcessor` to `opentelemetry-processor-baggage`
+  ([#4371](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4371))
+- `opentelemetry-instrumentation-system-metrics`: Add support for `process.disk.io` metric in system-metrics instrumentation
+  ([#4397](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4397))
+- Switch to SPDX license headers and add CI enforcement
+  ([#4533](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4533))
 - Bump `pylint` to `4.0.5`
   ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
 - `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
   ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
 - Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
   ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
+- `opentelemetry-instrumentation-logging`: Add `OTEL_PYTHON_LOG_HANDLER_LEVEL` and `OTEL_PYTHON_LOG_FORMAT` environment variables to configure the log level and formatter of the auto-instrumented `LoggingHandler`.
+  ([#4298](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4298))
+- Remove redundant `pylint: disable=attribute-defined-outside-init` comments and add rule to global `.pylintrc` disable list
+  ([#3839](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3839))
+- `opentelemetry-exporter-richconsole`: Add support for suppressing resource information
+  ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
+- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
+  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
 
 ### Fixed
 
@@ -35,17 +50,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
 - `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
   ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
+- `docker-tests`: Don't require sudo, debian based distro and MS SQL ODBC driver to run locally. Instead require docker and unixodbc
+  ([#4478](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4478))
+- Refactor unit tests to allow for population of the random trace id flag in the `traceparent` header
+  ([#4030](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4030))
+- `opentelemetry-instrumentation-fastapi`: Fix `FastAPI` instrumentation to correctly trace `BackgroundTasks` by wrapping their execution in a dedicated span, ensuring proper parent-child relationships and accurate trace timing
+  ([#4368](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4368))
+- `opentelemetry-instrumentation-celery`: Coerce timelimit values to strings in `set_attributes_from_context()` to prevent mixed-type span attribute warning
+  ([#4361](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4361))
 
 ### Breaking changes
 
 - Drop Python 3.9 support
   ([#4412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4412))
+- `opentelemetry-instrumentation-logging`: Use `LogRecord.getMessage()` to format and extract each log record's body text to more closely match the expected usage of the logging system. As a result, all OTel log record bodies are now always strings.
+  Previously, if `LogRecord.msg` (which contains the format string) was set to a non-string object (e.g. `logger.warning(some_dict)`), the object was exported as-is to the OTLP body field. Now, `LogRecord.getMessage()` will convert it to to a string.
+  If you are passing in non-strings as the format string argument and your backend is expecting them as-is, you will need to update accordingly.
+  ([#4372](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4372))
 
 ## Version 1.41.0/0.62b0 (2026-04-09)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
+- Enabled the flake8-tidy-import plugins rules for the ruff linter. These rules throw warnings for relative imports in the modules.
+([#4395](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4395))
 - `opentelemetry-instrumentation-asgi`: Respect `suppress_http_instrumentation` context in ASGI middleware to skip server span creation when HTTP instrumentation is suppressed
   ([#4375](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4375))
 - `opentelemetry-instrumentation-confluent-kafka`: Loosen confluent-kafka upper bound to <3.0.0
@@ -90,7 +118,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.40.0/0.61b0 (2026-03-04)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - Add Python 3.14 support
   ([#4193](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4193))
@@ -221,7 +248,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.39.0/0.60b0 (2025-12-03)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-requests`, `opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi` Detect synthetic sources on requests, ASGI, and WSGI.
   ([#3674](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3674))
@@ -298,7 +324,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3912](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3912))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-botocore`: Add support for AWS Secrets Manager semantic convention attribute
   ([#3765](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3765))
@@ -341,7 +366,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3701](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3701))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.11.0
   ([#3685](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3685))
@@ -368,7 +392,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3357](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3357))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-psycopg2` Utilize instruments-any functionality.
   ([#3610](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3610))
@@ -379,7 +402,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.35.0/0.56b0 (2025-07-11)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-pika` Added instrumentation for All `SelectConnection` adapters
   ([#3584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3584))
@@ -447,7 +469,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3536](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3536))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-aiohttp-client` Add support for HTTP metrics
   ([#3517](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3517))
@@ -466,7 +487,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.33.0/0.54b0 (2025-05-09)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-requests` Support explicit_bucket_boundaries_advisory in duration metrics
   ([#3464](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3464))
@@ -494,7 +514,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.32.0/0.53b0 (2025-04-10)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-asyncclick`: new instrumentation to trace asyncclick commands
   ([#3319](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3319))
@@ -520,7 +539,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.31.0/0.52b0 (2025-03-12)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-openai-v2` Update doc for OpenAI Instrumentation to support OpenAI Compatible Platforms
   ([#3279](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3279))
@@ -562,7 +580,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.30.0/0.51b0 (2025-02-03)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-confluent-kafka` Add support for confluent-kafka <=2.7.0
   ([#3100](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3100))
@@ -630,7 +647,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.29.0/0.50b0 (2024-12-11)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-starlette` Add type hints to the instrumentation
   ([#3045](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3045))
@@ -684,7 +700,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.28.0/0.49b0 (2024-11-05)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-openai-v2` Instrumentation for OpenAI >= 0.27.0
   ([#2759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2759))
@@ -726,7 +741,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.27.0/0.48b0 (2024-08-28)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-kafka-python` Instrument temporary fork, kafka-python-ng inside kafka-python's instrumentation
   ([#2537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2537))
@@ -777,7 +791,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.26.0/0.47b0 (2024-07-23)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-flask` Add `http.route` and `http.target` to metric attributes
   ([#2621](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2621))
@@ -894,7 +907,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ([#2546](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2546))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-sdk-extension-aws` Register AWS resource detectors under the
   `opentelemetry_resource_detector` entry point
@@ -943,7 +955,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.24.0/0.45b0 (2024-03-28)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-psycopg` Async Instrumentation for psycopg 3.x
   ([#2146](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2146))
@@ -968,7 +979,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2367))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-fastapi` Add support for configuring header extraction via runtime constructor parameters
   ([#2241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2241))
@@ -991,7 +1001,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2245](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2245))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-psycopg` Initial release for psycopg 3.x
 - `opentelemetry-instrumentation-asgi` Add support for configuring ASGI middleware header extraction via runtime constructor parameters
@@ -1000,7 +1009,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.22.0/0.43b0 (2023-12-14)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-asyncio` Add support for asyncio
   ([#1919](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1943))
@@ -1027,7 +1035,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.21.0/0.42b0 (2023-11-01)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-aiohttp-server` Add instrumentor and auto instrumentation support for aiohttp-server
   ([#1800](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1800))
@@ -1060,7 +1067,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-instrumentation-celery` Unwrap Celery's `ExceptionInfo` errors and report the actual exception that was raised. ([#1863](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1863))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-resource-detector-azure` Add resource detectors for Azure App Service and VM
   ([#1901](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1901))
@@ -1086,7 +1092,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1952](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1952))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - Add instrumentor support for cassandra and scylla
   ([#1902](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1902))
@@ -1118,7 +1123,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#2912]https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2912)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-kafka-python` Add instrumentation to `consume` method
   ([#1786](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1786))
@@ -1137,7 +1141,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1815](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1815))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - Expand sqlalchemy pool.name to follow the semantic conventions
   ([#1778](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1778))
@@ -1178,7 +1181,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.17.0/0.38b0 (2023-03-22)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - Add connection attributes to sqlalchemy connect span
   ([#1608](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1608))
@@ -1208,7 +1210,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.16.0/0.37b0 (2023-02-17)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - Support `aio_pika` 9.x ([#1670](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1670))
 - `opentelemetry-instrumentation-redis` Add `sanitize_query` config option to allow query sanitization. ([#1572](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1572))
@@ -1263,7 +1264,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1466](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1466))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-resource-detector-container` Add support resource detection of container properties.
   ([#1584](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1584))
@@ -1310,7 +1310,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1250](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1250))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - Capture common HTTP attributes from API Gateway proxy events in `opentelemetry-instrumentation-aws-lambda`
   ([#1233](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1233))
@@ -1358,7 +1357,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1324](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1324))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-grpc` add supports to filter requests to instrument.
   ([#1241](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1241))
@@ -1406,7 +1404,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1203](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1203))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-redis` add support to instrument RedisCluster clients
   ([#1177](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1177))
@@ -1438,7 +1435,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1135](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1135))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-aiohttp-client` Add support for optional custom trace_configs argument.
   ([1079](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1079))
@@ -1479,7 +1475,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `opentelemetry-sdk-extension-aws` change timeout for AWS EC2 and EKS metadata requests from 1000 seconds and 2000 seconds to 1 second
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrument` and `opentelemetry-bootstrap` now include a `--version` flag
   ([#1065](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1065))
@@ -1491,7 +1486,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.11.1/0.30b1 (2022-04-21)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-starlette` Capture custom request/response headers in span attributes
   ([#1046](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1046))
@@ -1517,7 +1511,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#999](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/999))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-fastapi` Capture custom request/response headers in span attributes
   ([#1032](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/1032))
@@ -1550,7 +1543,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#950](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/950))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-aws-lambda` `SpanKind.SERVER` by default, add more cases for `SpanKind.CONSUMER` services. ([#926](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/926))
 - `opentelemetry-instrumentation-sqlalchemy` added experimental sql commenter capability
@@ -1594,7 +1586,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.9.0/0.28b0 (2022-01-26)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-pyramid` Pyramid: Conditionally create SERVER spans
   ([#869](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/869))
@@ -1635,7 +1626,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.8.0/0.27b0 (2021-12-17)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-aws-lambda` Adds support for configurable flush timeout via `OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT` property. ([#825](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/825))
 - `opentelemetry-instrumentation-pika` Adds support for versions between `0.12.0` to `1.0.0`. ([#837](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/837))
@@ -1654,7 +1644,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.7.1/0.26b1 (2021-11-11)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-aws-lambda` Add instrumentation for AWS Lambda Service - pkg metadata files (Part 1/2)
   ([#739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/739))
@@ -1708,7 +1697,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#755](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/755))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-pika` Add `publish_hook` and `consume_hook` callbacks passed as arguments to the instrument method
   ([#763](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/763))
@@ -1732,7 +1720,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.6.0/0.25b0 (2021-10-13)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-sdk-extension-aws` Release AWS Python SDK Extension as 1.0.0
   ([#667](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/667))
@@ -1791,7 +1778,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 1.5.0/0.24b0 (2021-08-26)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-sdk-extension-aws` Add AWS resource detectors to extension package
   ([#586](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/586))
@@ -1864,7 +1850,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#568](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/568))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-httpx` Add `httpx` instrumentation
   ([#461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/461))
@@ -1889,7 +1874,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#488](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/488))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-botocore` now supports
   context propagation for lambda invoke via Payload embedded headers.
@@ -1917,7 +1901,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#492](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/492))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - Move `opentelemetry-instrumentation` from core repository
   ([#465](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/465))
@@ -1947,7 +1930,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#265](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/265))
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-urllib3` Add urllib3 instrumentation
   ([#299](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/299))
@@ -2014,7 +1996,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.18b0 (2021-02-16)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-propagator-ot-trace` Add OT Trace Propagator
   ([#302](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/302))
@@ -2040,7 +2021,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.17b0 (2021-01-20)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-sqlalchemy` Ensure spans have kind set to "CLIENT"
   ([#278](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/278))
@@ -2115,7 +2095,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.16b0 (2020-11-25)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-flask` Add span name callback
   ([#152](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/152))
@@ -2160,7 +2139,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.15b0 (2020-11-02)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-requests` Add support for tracking http metrics
   ([#1230](https://github.com/open-telemetry/opentelemetry-python/pull/1230))
@@ -2187,7 +2165,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.14b0 (2020-10-13)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-exporter-datadog` Add support for span resource labels and service name
 - `opentelemetry-instrumentation-celery` Span operation names now include the task type.
@@ -2215,7 +2192,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.13b0 (2020-09-17)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-falcon` Initial release. Added instrumentation for Falcon 2.0+
 - `opentelemetry-instrumentation-tornado` Initial release. Supports Tornado 6.x on Python 3.5 and newer.
@@ -2308,7 +2284,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.11b0 (2020-07-28)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-instrumentation-aiopg` Initial release
 - `opentelemetry-instrumentation-fastapi` Initial release
@@ -2341,7 +2316,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.10b0 (2020-06-23)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-pymemcache` Initial release
 - `opentelemetry-ext-elasticsearch` Initial release
@@ -2355,7 +2329,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.9b0 (2020-06-10)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-pyramid` Initial release
 - `opentelemetry-ext-boto` Initial release
@@ -2366,7 +2339,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.8b0 (2020-05-27)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-datadog` Add exporter to Datadog
   ([#572](https://github.com/open-telemetry/opentelemetry-python/pull/572))
@@ -2387,7 +2359,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.7b1 (2020-05-12)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-redis` Initial release
 - `opentelemetry-ext-jinja2` Add jinja2 instrumentation
@@ -2419,7 +2390,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.6b0 (2020-03-30)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-flask` Add an entry_point to be usable in auto-instrumentation
   ([#327](https://github.com/open-telemetry/opentelemetry-python/pull/327))
@@ -2431,7 +2401,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.4a0 (2020-02-21)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-psycopg2` Initial release
 - `opentelemetry-ext-dbapi` Initial release
@@ -2449,7 +2418,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.3a0 (2019-12-11)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-flask` Initial release
 - `opentelemetry-ext-pymongo` Initial release
@@ -2473,7 +2441,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version 0.1a0 (2019-09-30)
 
 ### Added
-- `opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 
 - `opentelemetry-ext-wsgi` Initial release
 - `opentelemetry-ext-http-requests` Initial release
