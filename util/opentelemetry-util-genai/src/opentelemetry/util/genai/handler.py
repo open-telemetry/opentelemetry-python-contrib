@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Telemetry handler for GenAI invocations.
@@ -48,6 +37,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 from contextlib import AbstractContextManager
 
 from opentelemetry._logs import (
@@ -62,10 +52,15 @@ from opentelemetry.trace import (
     get_tracer,
 )
 from opentelemetry.util.genai._agent_invocation import AgentInvocation
-from opentelemetry.util.genai._inference_invocation import (
-    LLMInvocation,
-)
+from opentelemetry.util.genai._inference_invocation import LLMInvocation
 from opentelemetry.util.genai._invocation import Error
+from opentelemetry.util.genai.completion_hook import (
+    CompletionHook,
+    _NoOpCompletionHook,
+)
+from opentelemetry.util.genai.environment_variables import (
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+)
 from opentelemetry.util.genai.invocation import (
     EmbeddingInvocation,
     InferenceInvocation,
@@ -73,6 +68,11 @@ from opentelemetry.util.genai.invocation import (
     WorkflowInvocation,
 )
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
+from opentelemetry.util.genai.types import ContentCapturingMode
+from opentelemetry.util.genai.utils import (
+    get_content_capturing_mode,
+    is_experimental_mode,
+)
 from opentelemetry.util.genai.version import __version__
 
 
@@ -87,6 +87,7 @@ class TelemetryHandler:
         tracer_provider: TracerProvider | None = None,
         meter_provider: MeterProvider | None = None,
         logger_provider: LoggerProvider | None = None,
+        completion_hook: CompletionHook | None = None,
     ):
         schema_url = Schemas.V1_37_0.value
         self._tracer = get_tracer(
@@ -105,6 +106,31 @@ class TelemetryHandler:
             logger_provider,
             schema_url=schema_url,
         )
+        self._completion_hook = completion_hook or _NoOpCompletionHook()
+        if is_experimental_mode():
+            content_enabled = (
+                get_content_capturing_mode() != ContentCapturingMode.NO_CONTENT
+            )
+        else:
+            content_enabled = os.environ.get(
+                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
+            ).lower() in (
+                "true",
+                "span_only",
+                "event_only",
+                "span_and_event",
+            )
+        self._capture_content = content_enabled or not isinstance(
+            self._completion_hook, _NoOpCompletionHook
+        )
+
+    def should_capture_content(self) -> bool:
+        """Returns True if content should be captured.
+
+        Content is captured when the content capturing mode requires it, or
+        when a real completion hook is configured (not a no-op).
+        """
+        return self._capture_content
 
     # New-style factory methods: construct + start in one call, handler stored on invocation
 
@@ -115,6 +141,7 @@ class TelemetryHandler:
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
+        operation_name: str | None = None,
     ) -> InferenceInvocation:
         """Create and start an LLM inference invocation.
 
@@ -125,10 +152,12 @@ class TelemetryHandler:
             self._tracer,
             self._metrics_recorder,
             self._logger,
+            self._completion_hook,
             provider,
             request_model=request_model,
             server_address=server_address,
             server_port=server_port,
+            operation_name=operation_name,
         )
 
     def start_llm(self, invocation: LLMInvocation) -> LLMInvocation:
@@ -138,7 +167,10 @@ class TelemetryHandler:
             Use ``handler.start_inference()`` instead.
         """
         invocation._start_with_handler(
-            self._tracer, self._metrics_recorder, self._logger
+            self._tracer,
+            self._metrics_recorder,
+            self._logger,
+            self._completion_hook,
         )
         return invocation
 
@@ -159,6 +191,7 @@ class TelemetryHandler:
             self._tracer,
             self._metrics_recorder,
             self._logger,
+            self._completion_hook,
             provider,
             request_model=request_model,
             server_address=server_address,
@@ -183,6 +216,7 @@ class TelemetryHandler:
             self._tracer,
             self._metrics_recorder,
             self._logger,
+            self._completion_hook,
             name,
             arguments=arguments,
             tool_call_id=tool_call_id,
@@ -201,7 +235,11 @@ class TelemetryHandler:
         invocation.stop() or invocation.fail().
         """
         return WorkflowInvocation(
-            self._tracer, self._metrics_recorder, self._logger, name
+            self._tracer,
+            self._metrics_recorder,
+            self._logger,
+            self._completion_hook,
+            name,
         )
 
     def stop_llm(self, invocation: LLMInvocation) -> LLMInvocation:  # pylint: disable=no-self-use
@@ -306,6 +344,7 @@ class TelemetryHandler:
         provider: str,
         *,
         request_model: str | None = None,
+        agent_name: str | None = None,
     ) -> AgentInvocation:
         """Create and start a local agent invocation (INTERNAL span kind).
 
@@ -318,9 +357,11 @@ class TelemetryHandler:
             self._tracer,
             self._metrics_recorder,
             self._logger,
+            self._completion_hook,
             provider,
             span_kind=SpanKind.INTERNAL,
             request_model=request_model,
+            agent_name=agent_name,
         )
 
     def start_invoke_remote_agent(
@@ -330,6 +371,7 @@ class TelemetryHandler:
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
+        agent_name: str | None = None,
     ) -> AgentInvocation:
         """Create and start a remote agent invocation (CLIENT span kind).
 
@@ -342,9 +384,11 @@ class TelemetryHandler:
             self._tracer,
             self._metrics_recorder,
             self._logger,
+            self._completion_hook,
             provider,
             span_kind=SpanKind.CLIENT,
             request_model=request_model,
+            agent_name=agent_name,
             server_address=server_address,
             server_port=server_port,
         )
@@ -354,6 +398,7 @@ class TelemetryHandler:
         provider: str,
         *,
         request_model: str | None = None,
+        agent_name: str | None = None,
     ) -> AbstractContextManager[AgentInvocation]:
         """Context manager for local agent invocations (INTERNAL span kind).
 
@@ -368,6 +413,7 @@ class TelemetryHandler:
         return self.start_invoke_local_agent(
             provider,
             request_model=request_model,
+            agent_name=agent_name,
         )._managed()
 
     def invoke_remote_agent(
@@ -377,6 +423,7 @@ class TelemetryHandler:
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
+        agent_name: str | None = None,
     ) -> AbstractContextManager[AgentInvocation]:
         """Context manager for remote agent invocations (CLIENT span kind).
 
@@ -391,6 +438,7 @@ class TelemetryHandler:
         return self.start_invoke_remote_agent(
             provider,
             request_model=request_model,
+            agent_name=agent_name,
             server_address=server_address,
             server_port=server_port,
         )._managed()
@@ -414,6 +462,7 @@ def get_telemetry_handler(
     tracer_provider: TracerProvider | None = None,
     meter_provider: MeterProvider | None = None,
     logger_provider: LoggerProvider | None = None,
+    completion_hook: CompletionHook | None = None,
 ) -> TelemetryHandler:
     """
     Returns a singleton TelemetryHandler instance.
@@ -426,6 +475,7 @@ def get_telemetry_handler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             logger_provider=logger_provider,
+            completion_hook=completion_hook,
         )
         setattr(get_telemetry_handler, "_default_handler", handler)
     return handler
