@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3898](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3898))
 - `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
   ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
+- `opentelemetry-instrumentation`: Register `OTEL_SEMCONV_STABILITY_OPT_IN` in `environment_variables.py` so `opentelemetry-instrument` exposes a `--semconv_stability_opt_in` CLI argument
+  ([#4438](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4438))
 
 ### Fixed
 
