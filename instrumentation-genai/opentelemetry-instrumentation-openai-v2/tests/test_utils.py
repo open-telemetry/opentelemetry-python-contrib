@@ -19,6 +19,10 @@ from opentelemetry.semconv._incubating.attributes import (
 
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
+    "gen_ai.usage.cache_creation.input_tokens"
+)
+GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
 USER_ONLY_EXPECTED_INPUT_MESSAGES = [
     {
@@ -173,6 +177,26 @@ def get_current_weather_tool_definition():
     }
 
 
+def get_responses_weather_tool_definition():
+    return {
+        "type": "function",
+        "name": "get_current_weather",
+        "description": "Get the current weather in a given location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "The city and state, e.g. Boston, MA",
+                },
+            },
+            "required": ["location"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    }
+
+
 EXPECTED_TOOL_DEFINITIONS = [
     {
         "type": "function",
@@ -251,6 +275,35 @@ def format_simple_expected_output_message(
             "finish_reason": finish_reason,
         }
     ]
+
+
+def _get_usage_details(usage):
+    return getattr(usage, "input_tokens_details", None) or getattr(
+        usage, "prompt_tokens_details", None
+    )
+
+
+def assert_cache_attributes(span, usage):
+    details = _get_usage_details(usage)
+    assert details is not None
+
+    cached_tokens = getattr(details, "cached_tokens", None)
+    if cached_tokens is None:
+        assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS not in span.attributes
+    else:
+        assert (
+            span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
+            == cached_tokens
+        )
+
+    cache_creation = getattr(details, "cache_creation_input_tokens", None)
+    if cache_creation is None:
+        assert GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS not in span.attributes
+    else:
+        assert (
+            span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
+            == cache_creation
+        )
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):

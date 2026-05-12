@@ -12,6 +12,10 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_SYSTEM,
     MessagingOperationTypeValues,
 )
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.semconv.trace import (
     MessagingDestinationKindValues,
     SpanAttributes,
@@ -24,7 +28,17 @@ _LOG = getLogger(__name__)
 class KafkaPropertiesExtractor:
     @staticmethod
     def extract_bootstrap_servers(instance):
-        return instance.config.get("bootstrap_servers")
+        config = getattr(instance, "config", None)
+        if not isinstance(config, dict):
+            return None
+        # confluent-kafka uses the dotted key "bootstrap.servers"; also accept
+        # the python-style "bootstrap_servers" for robustness.
+        servers = config.get("bootstrap.servers") or config.get(
+            "bootstrap_servers"
+        )
+        if isinstance(servers, (list, tuple)):
+            servers = ",".join(str(s) for s in servers)
+        return servers
 
     @staticmethod
     def _extract_argument(key, position, default_value, args, kwargs):
@@ -118,12 +132,35 @@ def _get_links_from_records(records):
     return links
 
 
+def _set_bootstrap_servers_attributes(span, bootstrap_servers):
+    """Populate server.address and server.port from a bootstrap.servers
+    string (e.g. ``host1:9092,host2:9092``)."""
+    if not bootstrap_servers:
+        return
+
+    first_broker = bootstrap_servers.split(",")[0].strip()
+    if not first_broker:
+        return
+
+    if ":" in first_broker:
+        host, _, port = first_broker.rpartition(":")
+        span.set_attribute(SERVER_ADDRESS, host)
+        try:
+            span.set_attribute(SERVER_PORT, int(port))
+        except ValueError:
+            # Port wasn't numeric; skip rather than emit a bad attribute.
+            _LOG.debug("non-numeric port in bootstrap.servers: %r", port)
+    else:
+        span.set_attribute(SERVER_ADDRESS, first_broker)
+
+
 def _enrich_span(
     span,
     topic,
     partition: Optional[int] = None,
     offset: Optional[int] = None,
     operation: Optional[MessagingOperationTypeValues] = None,
+    bootstrap_servers: Optional[str] = None,
 ):
     if not span.is_recording():
         return
@@ -143,6 +180,8 @@ def _enrich_span(
         span.set_attribute(MESSAGING_OPERATION, operation.value)
     else:
         span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
+
+    _set_bootstrap_servers_attributes(span, bootstrap_servers)
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.
