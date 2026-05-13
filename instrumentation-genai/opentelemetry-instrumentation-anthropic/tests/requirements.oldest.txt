@@ -15,7 +15,6 @@
 # This variant of the requirements aims to test the system using
 # the oldest supported version of external dependencies.
 
--e util/opentelemetry-util-genai # todo: update to 0.4b0 when it's released
 anthropic==0.51.0
 pytest==7.4.4
 pytest-vcr==1.0.2
@@ -23,6 +22,6 @@ pytest-asyncio==0.21.0
 wrapt==1.16.0
 opentelemetry-api==1.40  # when updating, also update in pyproject.toml
 opentelemetry-sdk==1.40  # when updating, also update in pyproject.toml
-opentelemetry-semantic-conventions==0.61b0  # when updating, also update in pyproject.toml
-
+opentelemetry-semantic-conventions==0.61b0  # when updating, also update in pyproject.toml 
+opentelemetry-util-genai==0.4b0  # when updating, also update in pyproject.toml
 -e instrumentation-genai/opentelemetry-instrumentation-anthropic

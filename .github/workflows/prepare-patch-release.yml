@@ -20,11 +20,6 @@ jobs:
             exit 1
           fi
 
-          if ! grep --quiet "^## Unreleased$" CHANGELOG.md; then
-            echo the change log is missing an \"Unreleased\" section
-            exit 1
-          fi
-
       - name: Set environment variables
         run: |
           stable_version=$(./scripts/eachdist.py version --mode stable)
@@ -68,10 +63,11 @@ jobs:
       - name: run tox
         run: tox -e generate
 
-      - name: Update the change log with the approximate release date
-        run: |
-          date=$(date "+%Y-%m-%d")
-          sed -Ei "s/^## Unreleased$/## Version ${STABLE_VERSION}\/${UNSTABLE_VERSION} ($date)/" CHANGELOG.md
+      - name: Install towncrier
+        run: pip install towncrier==25.8.0
+
+      - name: Generate changelog
+        run: towncrier build --yes --version "$STABLE_VERSION/$UNSTABLE_VERSION"
 
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
@@ -105,3 +101,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr edit ${{ steps.create_pr.outputs.pr_url }}  --add-label "prepare-release"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use CLA approved github bot
+        run: .github/scripts/use-cla-approved-github-bot.sh
+
+      - name: Backport patch release changelog to main
+        env:
+          GITHUB_TOKEN: ${{ steps.otelbot-token.outputs.token }}
+        run: |
+          release_branch="otelbot/prepare-release-${STABLE_VERSION}-${UNSTABLE_VERSION}"
+          message="Backport ${STABLE_VERSION}/${UNSTABLE_VERSION} changelog"
+          body="Backport \`${STABLE_VERSION}/${UNSTABLE_VERSION}\` changelog"
+          branch="otelbot/backport-changelog-from-${STABLE_VERSION}-${UNSTABLE_VERSION}"
+
+          git fetch origin $release_branch
+
+          # Copy the updated CHANGELOG.md from the release branch
+          git checkout $release_branch -- CHANGELOG.md
+          git commit -m "$message"
+
+          git push origin HEAD:$branch
+          gh pr create --title "$message" \
+                       --body "$body" \
+                       --head $branch \
+                       --base main
