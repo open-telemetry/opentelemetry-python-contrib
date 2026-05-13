@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Add `GENERATE_CONTENT_EVENT_ONLY_EXTRA_ATTRIBUTES_CONTEXT_KEY` for attaching
+  caller-supplied attributes that are emitted only on the
+  `gen_ai.client.inference.operation.details` log event and never on the
+  `generate_content {model}` span. Use this for attributes (such as end-user
+  identifiers) that should not land on broadly-sampled spans. On key
+  collisions with `GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY`, the
+  event-only value wins on the event.
+  ([#XXXX](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/XXXX))
 -Add `gen_ai.usage.reasoning.output_tokens` attribute to capture thinking tokens on spans/events when the experimental sem conv flag is set. Add thinking tokens to output tokens. ([#4313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4313))
 -Add `gen_ai.usage.cache_read.input_tokens` attribute to capture cached tokens on spans/events when the experimental sem conv flag is set. ([#4313](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4313))
 

@@ -23,6 +23,7 @@ from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
 from opentelemetry.instrumentation.google_genai import (
+    GENERATE_CONTENT_EVENT_ONLY_EXTRA_ATTRIBUTES_CONTEXT_KEY,
     GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
 )
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
@@ -924,6 +925,93 @@ class NonStreamingTestCase(TestCase):
                 )
             finally:
                 context_api.detach(tok)
+
+    def test_event_only_extra_attributes_not_set_on_span(self):
+        """event_only_extra_attributes must never appear on the span attributes."""
+        self.configure_valid_response(text="Yep, it works!")
+        tok = context_api.attach(
+            context_api.set_value(
+                GENERATE_CONTENT_EVENT_ONLY_EXTRA_ATTRIBUTES_CONTEXT_KEY,
+                {"user.id": "user-42"},
+            )
+        )
+        try:
+            self.generate_content(
+                model="gemini-2.0-flash", contents="Does this work?"
+            )
+            span = self.otel.get_span_named(
+                "generate_content gemini-2.0-flash"
+            )
+            self.assertNotIn("user.id", span.attributes)
+        finally:
+            context_api.detach(tok)
+
+    def test_event_only_extra_attributes_set_on_event_only(self):
+        """event_only_extra_attributes land on the operation-details event but not on the span.
+
+        Also verifies the collision-precedence rule: when a key appears in both
+        ``GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY`` and
+        ``GENERATE_CONTENT_EVENT_ONLY_EXTRA_ATTRIBUTES_CONTEXT_KEY``, the
+        event-only value wins on the event, while the span carries the
+        ``extra_attributes`` value (event-only is never on the span).
+        """
+        patched_environ = patch.dict(
+            "os.environ",
+            {
+                "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "EVENT_ONLY",
+                "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
+            },
+        )
+        patched_otel_mapping = patch.dict(
+            _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
+            {
+                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+            },
+        )
+        with patched_environ, patched_otel_mapping:
+            self.configure_valid_response(text="Yep, it works!")
+            tok_extra = context_api.attach(
+                context_api.set_value(
+                    GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY,
+                    {"shared.key": "from_extra"},
+                )
+            )
+            tok_event_only = context_api.attach(
+                context_api.set_value(
+                    GENERATE_CONTENT_EVENT_ONLY_EXTRA_ATTRIBUTES_CONTEXT_KEY,
+                    {
+                        "user.id": "user-42",
+                        "shared.key": "from_event_only",
+                    },
+                )
+            )
+            try:
+                self.generate_content(
+                    model="gemini-2.0-flash",
+                    contents="Does this work?",
+                )
+
+                span = self.otel.get_span_named(
+                    "generate_content gemini-2.0-flash"
+                )
+                self.assertNotIn("user.id", span.attributes)
+                # On the span, only `extra_attributes` contributes the shared key.
+                self.assertEqual(span.attributes["shared.key"], "from_extra")
+
+                self.otel.assert_has_event_named(
+                    "gen_ai.client.inference.operation.details"
+                )
+                event = self.otel.get_event_named(
+                    "gen_ai.client.inference.operation.details"
+                )
+                self.assertEqual(event.attributes["user.id"], "user-42")
+                # On the event, event_only wins on the collision.
+                self.assertEqual(
+                    event.attributes["shared.key"], "from_event_only"
+                )
+            finally:
+                context_api.detach(tok_event_only)
+                context_api.detach(tok_extra)
 
     def test_records_metrics_data(self):
         self.configure_valid_response()

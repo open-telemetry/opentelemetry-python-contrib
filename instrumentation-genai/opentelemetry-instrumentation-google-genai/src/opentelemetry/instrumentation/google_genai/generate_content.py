@@ -101,6 +101,20 @@ GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY = context_api.create_key(
     "generate_content_extra_attributes_context_key"
 )
 
+# Attributes attached under this context key are emitted only on the
+# `gen_ai.client.inference.operation.details` log event; they are NEVER
+# attached to the `generate_content {model}` span. Use this for caller-supplied
+# attributes that must not land on broadly-sampled spans -- for example, an
+# end-user identifier that is acceptable in telemetry log events but
+# undesirable on spans. On key collisions with values supplied via
+# ``GENERATE_CONTENT_EXTRA_ATTRIBUTES_CONTEXT_KEY``, the event-only value wins
+# on the event.
+GENERATE_CONTENT_EVENT_ONLY_EXTRA_ATTRIBUTES_CONTEXT_KEY = (
+    context_api.create_key(
+        "generate_content_event_only_extra_attributes_context_key"
+    )
+)
+
 
 class _MethodsSnapshot:
     def __init__(self):
@@ -495,6 +509,15 @@ def _get_extra_generate_content_attributes() -> dict[str, AttributeValue]:
     return dict(attrs or {})
 
 
+def _get_event_only_extra_generate_content_attributes() -> dict[
+    str, AttributeValue
+]:
+    attrs = context_api.get_value(
+        GENERATE_CONTENT_EVENT_ONLY_EXTRA_ATTRIBUTES_CONTEXT_KEY
+    )
+    return dict(attrs or {})
+
+
 class _GenerateContentInstrumentationHelper:
     def __init__(
         self,
@@ -750,6 +773,9 @@ class _GenerateContentInstrumentationHelper:
         candidates: list[Candidate],
         config: Optional[GenerateContentConfigOrDict] = None,
         tool_definitions: Optional[list[ToolDefinition]] = None,
+        event_only_extra_attributes: Optional[
+            dict[str, AttributeValue]
+        ] = None,
     ):
         if not self.experimental_sem_convs_enabled:
             return
@@ -763,11 +789,15 @@ class _GenerateContentInstrumentationHelper:
         )
         output_messages = to_output_messages(candidates=candidates)
         span = trace.get_current_span()
+        # event_only_extra_attributes win on the event when colliding with
+        # extra_attributes; they are intentionally NOT set on the span
+        # (the caller did not include them in the span.set_attributes() call).
         event = LogRecord(
             event_name="gen_ai.client.inference.operation.details",
             attributes=extra_attributes
             | request_attributes
-            | final_attributes,
+            | final_attributes
+            | (event_only_extra_attributes or {}),
         )
         # New sem conv only gets added here when we've verified that experimental mode is set.
         span.set_attribute(
@@ -1032,6 +1062,10 @@ def _create_instrumented_generate_content(
             model, "google.genai.Models.generate_content"
         ) as span:
             extra_attributes = _get_extra_generate_content_attributes()
+            event_only_extra_attributes = (
+                _get_event_only_extra_generate_content_attributes()
+            )
+            # event_only_extra_attributes are intentionally excluded from the span.
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
                 helper.process_request(contents, config, span)
@@ -1068,6 +1102,7 @@ def _create_instrumented_generate_content(
                     candidates,
                     config,
                     maybe_tool_definitions,
+                    event_only_extra_attributes=event_only_extra_attributes,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -1109,6 +1144,10 @@ def _create_instrumented_generate_content_stream(
             model, "google.genai.Models.generate_content_stream"
         ) as span:
             extra_attributes = _get_extra_generate_content_attributes()
+            event_only_extra_attributes = (
+                _get_event_only_extra_generate_content_attributes()
+            )
+            # event_only_extra_attributes are intentionally excluded from the span.
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
                 helper.process_request(contents, config, span)
@@ -1145,6 +1184,7 @@ def _create_instrumented_generate_content_stream(
                     candidates,
                     config,
                     maybe_tool_definitions,
+                    event_only_extra_attributes=event_only_extra_attributes,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -1186,6 +1226,10 @@ def _create_instrumented_async_generate_content(
             model, "google.genai.AsyncModels.generate_content"
         ) as span:
             extra_attributes = _get_extra_generate_content_attributes()
+            event_only_extra_attributes = (
+                _get_event_only_extra_generate_content_attributes()
+            )
+            # event_only_extra_attributes are intentionally excluded from the span.
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
                 helper.process_request(contents, config, span)
@@ -1221,6 +1265,7 @@ def _create_instrumented_async_generate_content(
                     candidates,
                     config,
                     maybe_tool_definitions,
+                    event_only_extra_attributes=event_only_extra_attributes,
                 )
                 helper._record_token_usage_metric()
                 helper._record_duration_metric()
@@ -1264,6 +1309,10 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
             end_on_exit=False,
         ) as span:
             extra_attributes = _get_extra_generate_content_attributes()
+            event_only_extra_attributes = (
+                _get_event_only_extra_generate_content_attributes()
+            )
+            # event_only_extra_attributes are intentionally excluded from the span.
             span.set_attributes(extra_attributes | request_attributes)
             if not helper.experimental_sem_convs_enabled:
                 helper.process_request(contents, config, span)
@@ -1291,6 +1340,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                     [],
                     config,
                     maybe_tool_definitions,
+                    event_only_extra_attributes=event_only_extra_attributes,
                 )
                 helper._record_duration_metric()
                 with trace.use_span(span, end_on_exit=True):
@@ -1328,6 +1378,7 @@ def _create_instrumented_async_generate_content_stream(  # type: ignore
                             candidates,
                             config,
                             maybe_tool_definitions,
+                            event_only_extra_attributes=event_only_extra_attributes,
                         )
                         helper._record_token_usage_metric()
                         helper._record_duration_metric()
