@@ -46,11 +46,6 @@ jobs:
             exit 1
           fi
 
-          if ! grep --quiet "^## Unreleased$" CHANGELOG.md; then
-            echo the $changelog is missing an \"Unreleased\" section
-            exit 1
-          fi
-
           version=$(./scripts/eachdist.py version --package ${{ inputs.package }})
 
           version_file=$(find $path -type f -path "**/version.py")
@@ -106,11 +101,11 @@ jobs:
       - name: run tox
         run: tox -e generate
 
-      - name: Update the change log with the approximate release date
-        run: |
-          # the actual release date on main will be updated at the end of the release workflow
-          date=$(date "+%Y-%m-%d")
-          sed -Ei "s/^## Unreleased$/## Unreleased\n\n## Version ${NEXT_VERSION} ($date)/" ${CHANGELOG}
+      - name: Install towncrier
+        run: pip install towncrier==25.8.0
+
+      - name: Generate changelog
+        run: towncrier build --yes --version "$NEXT_VERSION" --dir "$(dirname $CHANGELOG)"
 
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh

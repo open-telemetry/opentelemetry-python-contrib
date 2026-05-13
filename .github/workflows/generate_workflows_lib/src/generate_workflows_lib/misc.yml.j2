@@ -68,6 +68,12 @@ jobs:
       - name: Install tox
         run: pip install tox-uv
 
+      {%- if job_data == "docker-tests" %}
+
+      - name: Install Microsoft SQL ODBC driver
+        run: sudo apt update -y && ACCEPT_EULA=Y sudo apt install -y msodbcsql18 unixodbc-dev unixodbc
+      {%- endif %}
+
       - name: Run tests
         run: tox -e {{ job_data }}
       {%- if job_data == "generate-workflows" %}
