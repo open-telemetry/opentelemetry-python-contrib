@@ -13,10 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `opentelemetry-instrumentation-fastapi`: Clarify documentation for zero-code setup, propagation, and logs
-  ([#4555](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4555))
-- `opentelemetry-instrumentation`: Include the package README in the generated documentation
-  ([#4555](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4555))
 - Add `BaggageLogProcessor` to `opentelemetry-processor-baggage`
   ([#4371](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4371))
 - `opentelemetry-instrumentation-system-metrics`: Add support for `process.disk.io` metric in system-metrics instrumentation
