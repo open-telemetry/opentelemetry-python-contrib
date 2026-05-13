@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -27,6 +16,7 @@ from opentelemetry.util.genai._invocation import (
     GenAIInvocation,
     get_content_attributes,
 )
+from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 from opentelemetry.util.genai.types import (
     InputMessage,
@@ -60,14 +50,14 @@ class AgentInvocation(GenAIInvocation):
         tracer: Tracer,
         metrics_recorder: InvocationMetricsRecorder,
         logger: Logger,
+        completion_hook: CompletionHook,
         provider: str,
         *,
         span_kind: SpanKind = SpanKind.INTERNAL,
         request_model: str | None = None,
         server_address: str | None = None,
         server_port: int | None = None,
-        attributes: dict[str, Any] | None = None,
-        metric_attributes: dict[str, Any] | None = None,
+        agent_name: str | None = None,
     ) -> None:
         """Use handler.start_invoke_local_agent() or handler.start_invoke_remote_agent() instead of calling this directly."""
         _operation_name = GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
@@ -75,18 +65,19 @@ class AgentInvocation(GenAIInvocation):
             tracer,
             metrics_recorder,
             logger,
+            completion_hook,
             operation_name=_operation_name,
-            span_name=_operation_name,
+            span_name=f"{_operation_name} {agent_name}"
+            if agent_name
+            else _operation_name,
             span_kind=span_kind,
-            attributes=attributes,
-            metric_attributes=metric_attributes,
         )
         self.provider = provider
         self.request_model = request_model
         self.server_address = server_address
         self.server_port = server_port
 
-        self.agent_name: str | None = None
+        self.agent_name: str | None = agent_name
         self.agent_id: str | None = None
         self.agent_description: str | None = None
         self.agent_version: str | None = None
@@ -116,7 +107,21 @@ class AgentInvocation(GenAIInvocation):
         self.system_instruction: list[MessagePart] = []
         self.tool_definitions: list[ToolDefinition] | None = None
 
-        self._start()
+        self._start(self._get_base_attributes())
+
+    def _get_base_attributes(self) -> dict[str, Any]:
+        """Return sampling-relevant attributes available at span creation time."""
+        optional_attrs = (
+            (GenAI.GEN_AI_REQUEST_MODEL, self.request_model),
+            (GenAI.GEN_AI_AGENT_NAME, self.agent_name),
+            (server_attributes.SERVER_ADDRESS, self.server_address),
+            (server_attributes.SERVER_PORT, self.server_port),
+        )
+        return {
+            GenAI.GEN_AI_OPERATION_NAME: self._operation_name,
+            GenAI.GEN_AI_PROVIDER_NAME: self.provider,
+            **{k: v for k, v in optional_attrs if v is not None},
+        }
 
     def _get_common_attributes(self) -> dict[str, Any]:
         optional_attrs = (
@@ -207,10 +212,6 @@ class AgentInvocation(GenAIInvocation):
         if error is not None:
             self._apply_error_attributes(error)
 
-        # Update span name if agent_name was set after construction
-        if self.agent_name:
-            self.span.update_name(f"{self._operation_name} {self.agent_name}")
-
         attributes: dict[str, Any] = {}
         attributes.update(self._get_common_attributes())
         attributes.update(self._get_request_attributes())
@@ -219,4 +220,10 @@ class AgentInvocation(GenAIInvocation):
         attributes.update(self._get_content_attributes_for_span())
         attributes.update(self.attributes)
         self.span.set_attributes(attributes)
+        self._call_completion_hook(
+            inputs=self.input_messages,
+            outputs=self.output_messages,
+            system_instruction=self.system_instruction,
+            tool_definitions=self.tool_definitions,
+        )
         self._metrics_recorder.record(self)

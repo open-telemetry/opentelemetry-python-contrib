@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-locals,too-many-lines
 
@@ -47,6 +36,7 @@ from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .test_utils import (
     DEFAULT_MODEL,
+    EXPECTED_TOOL_DEFINITIONS,
     USER_ONLY_EXPECTED_INPUT_MESSAGES,
     USER_ONLY_PROMPT,
     WEATHER_TOOL_EXPECTED_INPUT_MESSAGES,
@@ -285,6 +275,17 @@ def test_chat_completion_404(
         ]
         == "NotFoundError"
     )
+
+
+def test_chat_completion_api_exception_propagates(
+    openai_client, instrument_no_content, vcr
+):
+    with vcr.use_cassette("test_chat_completion_404.yaml"):
+        with pytest.raises(NotFoundError):
+            openai_client.chat.completions.create(
+                messages=USER_ONLY_PROMPT,
+                model="this-model-does-not-exist",
+            )
 
 
 def test_chat_completion_extra_params(
@@ -758,6 +759,12 @@ def chat_completion_tool_call(
                 spans[0].attributes["gen_ai.output.messages"], first_output
             )
 
+            assert_messages_attribute(
+                spans[0].attributes["gen_ai.tool.definitions"],
+                EXPECTED_TOOL_DEFINITIONS,
+            )
+            assert "gen_ai.tool.definitions" not in spans[1].attributes
+
             # second call
             del first_output[0]["finish_reason"]
             second_input = []
@@ -995,6 +1002,123 @@ def test_chat_completion_streaming(
         assert_message_in_logs(
             logs[1], "gen_ai.choice", choice_event, spans[0]
         )
+
+
+def test_chat_completion_streaming_user_exception_propagates(
+    span_exporter, openai_client, instrument_with_content, vcr
+):
+    latest_experimental_enabled = is_experimental_mode()
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    response_stream_model = None
+    response_stream_id = None
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+        with pytest.raises(RuntimeError, match="user failure"):
+            with response:
+                for chunk in response:
+                    response_stream_model = chunk.model
+                    response_stream_id = chunk.id
+                    raise RuntimeError("user failure")
+
+    spans = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        spans[0],
+        DEFAULT_MODEL,
+        latest_experimental_enabled,
+        response_stream_id,
+        response_stream_model,
+    )
+    assert "RuntimeError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+def test_chat_completion_streaming_user_exception_wins_over_close_exception(
+    span_exporter, openai_client, instrument_with_content, vcr, monkeypatch
+):
+    if not is_experimental_mode():
+        pytest.skip("new stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+        original_close = response.__wrapped__.close
+
+        def close_raises():
+            original_close()
+            raise RuntimeError("close failure")
+
+        monkeypatch.setattr(response.__wrapped__, "close", close_raises)
+        with pytest.raises(RuntimeError, match="user failure"):
+            with response:
+                raise RuntimeError("user failure")
+
+    spans = span_exporter.get_finished_spans()
+    assert "RuntimeError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+def test_chat_completion_streaming_close_exception_propagates_when_first(
+    span_exporter, openai_client, instrument_with_content, vcr, monkeypatch
+):
+    if not is_experimental_mode():
+        pytest.skip("new stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+        original_close = response.__wrapped__.close
+
+        def close_raises():
+            original_close()
+            raise RuntimeError("close failure")
+
+        monkeypatch.setattr(response.__wrapped__, "close", close_raises)
+        with pytest.raises(RuntimeError, match="close failure"):
+            response.close()
+
+    spans = span_exporter.get_finished_spans()
+    assert "RuntimeError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+def test_chat_completion_streaming_instrumentation_finalize_errors_swallowed(
+    span_exporter, openai_client, instrument_with_content, vcr, monkeypatch
+):
+    if not is_experimental_mode():
+        pytest.skip("new stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+
+    with vcr.use_cassette("test_chat_completion_streaming.yaml"):
+        response = openai_client.chat.completions.create(**kwargs)
+
+        def stop_raises():
+            raise RuntimeError("instrumentation failure")
+
+        monkeypatch.setattr(response, "_on_stream_end", stop_raises)
+        response.close()
+
+    assert span_exporter.get_finished_spans() == ()
 
 
 def test_chat_completion_streaming_not_complete(
@@ -1259,7 +1383,7 @@ def test_chat_completion_with_content_span_unsampled(
 
         assert logs[0].log_record.trace_id is not None
         assert logs[0].log_record.span_id is not None
-        assert logs[0].log_record.trace_flags == 0
+        assert not logs[0].log_record.trace_flags.sampled
 
         assert logs[0].log_record.trace_id == logs[1].log_record.trace_id
         assert logs[0].log_record.span_id == logs[1].log_record.span_id
@@ -1426,6 +1550,10 @@ def chat_completion_multiple_tools_streaming(
             ]
             assert_messages_attribute(
                 spans[0].attributes["gen_ai.output.messages"], first_output
+            )
+            assert_messages_attribute(
+                spans[0].attributes["gen_ai.tool.definitions"],
+                EXPECTED_TOOL_DEFINITIONS,
             )
     else:
         assert len(logs) == 3
