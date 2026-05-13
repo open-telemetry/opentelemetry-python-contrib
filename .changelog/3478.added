@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-valkey`: new instrumentation for Valkey, with a shared `opentelemetry-instrumentation-redis-valkey-base` package extracting common tracing logic for Redis and Valkey

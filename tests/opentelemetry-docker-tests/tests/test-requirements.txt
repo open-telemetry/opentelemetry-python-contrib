@@ -48,7 +48,7 @@ pytest-celery==0.0.0
 python-dateutil==2.9.0.post0
 pytz==2024.1
 redis==5.0.1
-requests==2.31.0
+requests==2.33.1
 six==1.16.0
 SQLAlchemy==1.4.52
 tomli==2.0.1

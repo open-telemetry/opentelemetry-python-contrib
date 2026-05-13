@@ -135,31 +135,56 @@ API
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Collection
+from typing import TYPE_CHECKING, Any, Callable, Collection
 
 import redis
 from wrapt import wrap_function_wrapper
 
-from opentelemetry.instrumentation._redis_valkey import (
-    KVStoreConfig,
-    _async_traced_execute_factory,
-    _async_traced_execute_pipeline_factory,
-    _traced_execute_factory,
-    _traced_execute_pipeline_factory,
+from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _get_semconv_opt_in_modes,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _set_db_statement,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.redis.package import _instruments
-from opentelemetry.instrumentation.redis.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_REDIS_DATABASE_INDEX,
-    DB_SYSTEM,
+from opentelemetry.instrumentation.redis.util import (
+    _add_create_attributes,
+    _add_search_attributes,
+    _build_span_meta_data_for_pipeline,
+    _build_span_name,
+    _format_command_args,
+    _set_connection_attributes,
 )
-from opentelemetry.semconv.trace import DbSystemValues
-from opentelemetry.trace import TracerProvider, get_tracer
+from opentelemetry.instrumentation.redis.version import __version__
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
+from opentelemetry.trace import (
+    StatusCode,
+    Tracer,
+    TracerProvider,
+    get_tracer,
+)
 
 if TYPE_CHECKING:
+    from typing import Awaitable
+
+    import redis.asyncio.client
+    import redis.asyncio.cluster
+    import redis.client
+    import redis.cluster
+    import redis.connection
+
     from opentelemetry.instrumentation.redis.custom_types import (
+        AsyncPipelineInstance,
+        AsyncRedisInstance,
+        PipelineInstance,
+        R,
+        RedisInstance,
         RequestHook,
         ResponseHook,
     )
@@ -170,6 +195,7 @@ _logger = logging.getLogger(__name__)
 _REDIS_ASYNCIO_VERSION = (4, 2, 0)
 _REDIS_CLUSTER_VERSION = (4, 1, 0)
 _REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
+
 
 _CLIENT_ASYNCIO_SUPPORT = redis.VERSION >= _REDIS_ASYNCIO_VERSION
 _CLIENT_ASYNCIO_CLUSTER_SUPPORT = (
@@ -183,28 +209,284 @@ if _CLIENT_ASYNCIO_SUPPORT:
 
 _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 
-_REDIS_CONFIG = KVStoreConfig(
-    backend_name="redis",
-    db_system=DbSystemValues.REDIS.value,
-    db_system_attr=DB_SYSTEM,
-    db_index_attr=DB_REDIS_DATABASE_INDEX,
-    args_length_attr="db.redis.args_length",
-    pipeline_length_attr="db.redis.pipeline_length",
-    watch_error_class=redis.WatchError,
-)
+
+def _traced_execute_factory(
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
+):
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+    )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
+
+    def _traced_execute_command(
+        func: Callable[..., R],
+        instance: RedisInstance,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> R:
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
+        query = _format_command_args(args)
+        name = _build_span_name(instance, args)
+        with tracer.start_as_current_span(
+            name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span_attrs = {}
+                _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
+                span_attrs["db.redis.args_length"] = len(args)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
+                )
+                if span.name == "redis.create_index":
+                    _add_create_attributes(span, args)
+            if callable(request_hook):
+                request_hook(span, instance, args, kwargs)
+            response = func(*args, **kwargs)
+            if span.is_recording():
+                if span.name == "redis.search":
+                    _add_search_attributes(span, response, args)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
+
+    return _traced_execute_command
+
+
+def _traced_execute_pipeline_factory(
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
+):
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+    )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
+
+    def _traced_execute_pipeline(
+        func: Callable[..., R],
+        instance: PipelineInstance,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> R:
+        if not is_instrumentation_enabled():
+            return func(*args, **kwargs)
+
+        (
+            command_stack,
+            resource,
+            span_name,
+        ) = _build_span_meta_data_for_pipeline(instance)
+        exception = None
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span_attrs = {}
+                _set_db_statement(
+                    span_attrs, resource, db_sem_conv_opt_in_mode
+                )
+                span_attrs["db.redis.pipeline_length"] = len(command_stack)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
+                )
+
+            response = None
+            try:
+                response = func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                span.set_status(StatusCode.UNSET)
+                exception = watch_exception
+
+            if callable(response_hook):
+                response_hook(span, instance, response)
+
+        if exception:
+            raise exception
+
+        return response
+
+    return _traced_execute_pipeline
+
+
+def _async_traced_execute_factory(
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
+):
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+    )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
+
+    async def _async_traced_execute_command(
+        func: Callable[..., Awaitable[R]],
+        instance: AsyncRedisInstance,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> Awaitable[R]:
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
+        query = _format_command_args(args)
+        name = _build_span_name(instance, args)
+
+        with tracer.start_as_current_span(
+            name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span_attrs = {}
+                _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
+                span_attrs["db.redis.args_length"] = len(args)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
+                )
+            if callable(request_hook):
+                request_hook(span, instance, args, kwargs)
+            response = await func(*args, **kwargs)
+            if callable(response_hook):
+                response_hook(span, instance, response)
+            return response
+
+    return _async_traced_execute_command
+
+
+def _async_traced_execute_pipeline_factory(
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
+):
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+    )
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.DATABASE
+    ]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
+        _OpenTelemetryStabilitySignalType.HTTP
+    ]
+
+    async def _async_traced_execute_pipeline(
+        func: Callable[..., Awaitable[R]],
+        instance: AsyncPipelineInstance,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> Awaitable[R]:
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
+        (
+            command_stack,
+            resource,
+            span_name,
+        ) = _build_span_meta_data_for_pipeline(instance)
+
+        exception = None
+
+        with tracer.start_as_current_span(
+            span_name, kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span_attrs = {}
+                _set_db_statement(
+                    span_attrs, resource, db_sem_conv_opt_in_mode
+                )
+                span_attrs["db.redis.pipeline_length"] = len(command_stack)
+
+                # Set all DB attributes
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
+
+                _set_connection_attributes(
+                    span,
+                    instance,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
+                )
+
+            response = None
+            try:
+                response = await func(*args, **kwargs)
+            except redis.WatchError as watch_exception:
+                span.set_status(StatusCode.UNSET)
+                exception = watch_exception
+
+            if callable(response_hook):
+                response_hook(span, instance, response)
+
+        if exception:
+            raise exception
+
+        return response
+
+    return _async_traced_execute_pipeline
 
 
 # pylint: disable=R0915
 def _instrument(
-    tracer,
-    request_hook=None,
-    response_hook=None,
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     _traced_execute_command = _traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
     _traced_execute_pipeline = _traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
     pipeline_class = "BasePipeline" if _CLIENT_BEFORE_V3 else "Pipeline"
     redis_class = "StrictRedis" if _CLIENT_BEFORE_V3 else "Redis"
@@ -235,10 +517,10 @@ def _instrument(
         )
 
     _async_traced_execute_command = _async_traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
     _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
     if _CLIENT_ASYNCIO_SUPPORT:
         wrap_function_wrapper(
@@ -271,16 +553,16 @@ def _instrument(
 
 def _instrument_client(
     client,
-    tracer,
-    request_hook=None,
-    response_hook=None,
+    tracer: Tracer,
+    request_hook: RequestHook | None = None,
+    response_hook: ResponseHook | None = None,
 ):
     # first, handle async clients and cluster clients
     _async_traced_execute = _async_traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
     _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
 
     if _CLIENT_ASYNCIO_SUPPORT and isinstance(client, redis.asyncio.Redis):
@@ -318,10 +600,10 @@ def _instrument_client(
     # for redis.client.Redis, redis.Cluster and v3.0.0 redis.client.StrictRedis
     # the wrappers are the same
     _traced_execute = _traced_execute_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
     _traced_execute_pipeline = _traced_execute_pipeline_factory(
-        _REDIS_CONFIG, tracer, request_hook, response_hook
+        tracer, request_hook, response_hook
     )
 
     def _pipeline_wrapper(func, instance, args, kwargs):
@@ -347,12 +629,20 @@ def _instrument_client(
 class RedisInstrumentor(BaseInstrumentor):
     @staticmethod
     def _get_tracer(**kwargs):
+        # Initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        # Redis instrumentation supports both DATABASE and HTTP signal types
+        signal_types = [
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        ]
+
         tracer_provider = kwargs.get("tracer_provider")
         return get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types(signal_types),
         )
 
     def instrument(

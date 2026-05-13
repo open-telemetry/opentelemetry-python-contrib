@@ -20,9 +20,9 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
 )
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
 )
 from opentelemetry.test.test_base import TestBase
 
@@ -42,8 +42,8 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertEqual(span.attributes.get(DB_REDIS_DATABASE_INDEX), 0)
-        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
-        self.assertEqual(span.attributes[SERVER_PORT], 6379)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
 
     def test_long_command_sanitized(self):
         RedisInstrumentor().uninstrument()
@@ -266,8 +266,8 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertEqual(span.attributes.get(DB_REDIS_DATABASE_INDEX), 0)
-        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
-        self.assertEqual(span.attributes[SERVER_PORT], 6379)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
 
     def test_long_command(self):
         async_call(self.redis_client.mget(*range(1000)))
@@ -564,8 +564,8 @@ class TestRedisDBIndexInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
-        self.assertEqual(span.attributes[SERVER_PORT], 6379)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 6379)
         self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 10)
 
     def test_get(self):
