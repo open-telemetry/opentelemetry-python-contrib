@@ -3,3 +3,5 @@
 
 
 _instruments = ("PyMySQL < 2",)
+
+_semconv_status = "migration"
