@@ -1,0 +1,1 @@
+'opentelemetry-instrumentation-pika': pass destination to _enrich_span instead of task_name
