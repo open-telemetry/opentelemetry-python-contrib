@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import inspect
@@ -21,6 +24,7 @@ def find_matched_rule(handler: RequestHandler) -> Rule | None:
     return None if result is _NOT_FOUND else result
 
 
+# pylint: disable=too-many-return-statements
 def _find_rule(
     router: Any,
     request: httputil.HTTPServerRequest,
