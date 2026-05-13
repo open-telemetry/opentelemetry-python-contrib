@@ -36,8 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `opentelemetry-instrumentation-pika`: Fix `messaging.destination` span attribute set to `task_name` instead of `destination` in `_get_span`
-  ([#4563](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4563))
 - `opentelemetry-instrumentation-pika` Use `ObjectProxy` instead of `BaseObjectProxy` for `ReadyMessagesDequeProxy` to restore iterability with wrapt 2.x
   ([#4461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4461))
 - `opentelemetry-instrumentation-dbapi` Use `ObjectProxy` instead of `BaseObjectProxy` for `TracedCursorProxy` to restore iterability with wrapt 2.x
