@@ -317,6 +317,13 @@ def test_update_effective_config_skips_non_serializable_json_content(
         content_type="application/json",
     )
     assert effective_config.config_map.config_map == {}
+    message = "Failed to encode effective config body as JSON"
+    exception_records = [
+        record for record in caplog.records if message in record.getMessage()
+    ]
+    assert len(exception_records) == 1
+    assert exception_records[0].exc_info
+    assert exception_records[0].exc_info[0] is TypeError
     assert "Skipping effective config entry config" in caplog.text
 
 

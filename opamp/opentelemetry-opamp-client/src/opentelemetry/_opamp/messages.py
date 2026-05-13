@@ -151,6 +151,10 @@ def encode_effective_config_body(
         try:
             return json.dumps(value).encode("utf-8")
         except (TypeError, ValueError):
+            _logger.warning(
+                "Failed to encode effective config body as JSON",
+                exc_info=True,
+            )
             return None
     if isinstance(value, str):
         return value.encode("utf-8")
