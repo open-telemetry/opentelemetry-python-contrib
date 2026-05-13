@@ -206,7 +206,13 @@ git commit
 git push fork feature
 ```
 
-Open a pull request against the main `opentelemetry-python-contrib` repo.
+Open a pull request (PR) against the main `opentelemetry-python-contrib` repo.
+
+A descriptive PR title will help the community better triage and review your changes. Make sure to prefix with the name(s) of the package/subdirectory/domain that your PR updates. Following any of these examples will help:
+
+* "opentelemetry-instrumentation-dbapi: add client operation duration metrics"
+* "GenAI Utils: Add _BaseAgent base class and agent creation lifecycle"
+* "docs(google-genai): document config recording environment variables"
 
 ### How to Receive Comments
 
@@ -241,9 +247,45 @@ A PR is considered to be **ready to merge** when:
   reasonable time to review.
 * Trivial change (typo, cosmetic, doc, etc.) doesn't have to wait for one day.
 * Urgent fix can take exception as long as it has been actively communicated.
-* A changelog entry is added to the corresponding changelog for the code base, if there is any impact on behavior. e.g. doc entries are not required, but small bug entries are.
+* A changelog fragment is added (see [Changelog](#changelog) below), if there is any impact on behavior. e.g. doc entries are not required, but small bug entries are.
 
 Any Approver / Maintainer can merge the PR once it is **ready to merge**.
+
+### Changelog
+
+This project uses [towncrier](https://towncrier.readthedocs.io/) to manage changelogs. Instead of editing `CHANGELOG.md` directly, each PR should include a changelog fragment file.
+
+**Where to add fragments:**
+
+- **Coordinated packages** (most instrumentations, exporters, propagators): add to the root `.changelog/` directory
+- **Independently released packages** (`opentelemetry-opamp-client`, `opentelemetry-propagator-aws-xray`, `opentelemetry-resource-detector-azure`, `opentelemetry-sdk-extension-aws`): add to `<package>/.changelog/`
+
+**Creating a changelog fragment:**
+
+Create a file named `.changelog/<PR_NUMBER>.<TYPE>` where `TYPE` is one of: `added`, `changed`, `deprecated`, `removed`, `fixed`.
+
+The file should contain a one-line description of the change. For example, `.changelog/1234.fixed`:
+
+```
+`opentelemetry-instrumentation-flask`: fix request hook not being called for websocket connections
+```
+
+**Writing a good changelog entry:**
+
+- Write in imperative tone, as if completing the phrase "This change will..."
+- Keep entries concise — ideally under 80 characters
+- Prefix with the affected package name (e.g. `` `opentelemetry-instrumentation-flask`: ... ``)
+- Don't include the PR number — towncrier adds it automatically
+
+**Preview the changelog:**
+
+```console
+towncrier build --draft --version Unreleased
+```
+
+The CI will verify that a changelog fragment exists and that `CHANGELOG.md` files are not directly modified.
+
+If your change does not need a changelog entry, add the "Skip Changelog" label to the PR.
 
 ### Stale PRs
 
@@ -299,6 +341,16 @@ CORE_REPO_SHA=c49ad57bfe35cfc69bfa863d74058ca9bec55fc3 tox
 The continuous integration overrides that environment variable with as per the configuration [here](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/workflows/test.yml#L17).
 
 ## Style Guide
+
+* All Python files must include the following SPDX license header as the first
+  two lines (or immediately after a shebang line):
+
+  ```python
+  # Copyright The OpenTelemetry Authors
+  # SPDX-License-Identifier: Apache-2.0
+  ```
+
+  This is enforced by CI via `tox -e lint-license-header-check`.
 
 * docstrings should adhere to the [Google Python Style
   Guide](http://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
@@ -389,6 +441,21 @@ Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/sp
 ## Expectations from contributors
 
 OpenTelemetry is an open source community, and as such, greatly encourages contributions from anyone interested in the project. With that being said, there is a certain level of expectation from contributors even after a pull request is merged, specifically pertaining to instrumentations. The OpenTelemetry Python community expects contributors to maintain a level of support and interest in the instrumentations they contribute. This is to ensure that the instrumentation does not become stale and still functions the way the original contributor intended. Some instrumentations also pertain to libraries that the current members of the community are not so familiar with, so it is necessary to rely on the expertise of the original contributing parties.
+
+### Use of AI coding assistants
+
+AI coding assistants can be valuable tools for contributors. They may help with understanding the codebase, drafting changes, writing tests and improving documentation. Contributors are welcome to use AI tools as a part of their contribution workflow. 
+
+However, contributors remain responsible for the quality and correctness of their contributions. AI generated material must be carefully reviewed, validated and adapted by the contributor before being submitted to the project.
+
+Maintainers reserve the right to close pull requests or other contributions that appear to have been primarily generated by AI with little or no meaningful review from the contributor. This includes, but is not limited to:
+
+- Opening a large number of low quality pull requests in a short period of time.
+- Submitting changes that are incomplete, incorrect, unrelated to the issue or not aligned with project conventions.
+- Posting review replies, issue comments or other responses that appear to be AI generated and/or do not meaningfully address maintainer feedback.
+- Submitting pull requests that require maintainers to spend significant time correcting or explaining basic issues that should have been caught by the contributor before submission.
+
+This policy is intended to reduce unnecessary burden on maintainers and ensure that AI tools are used responsibly in support of high quality contributions.
 
 ### Guidelines for native OpenTelemetry instrumentation
 

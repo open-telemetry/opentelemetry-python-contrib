@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import types
@@ -26,7 +15,6 @@ from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_OPERATION,
 )
-from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.test.test_base import TestBase
 
 
@@ -474,38 +462,6 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(span.name, "ROLLBACK")
         self.assertEqual(span.attributes[DB_OPERATION], "ROLLBACK")
 
-    def test_commit_failed(self):
-        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
-
-        cnx = psycopg.connect(database="test")
-        with self.assertRaises(psycopg.Error):
-            cnx.commit(throw_exception=True)
-
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        span = spans_list[0]
-        self.assertEqual(span.name, "COMMIT")
-        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
-        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
-        self.assertEqual(len(span.events), 1)
-        self.assertEqual(span.events[0].name, "exception")
-
-    def test_rollback_failed(self):
-        PsycopgInstrumentor().instrument(enable_transaction_spans=True)
-
-        cnx = psycopg.connect(database="test")
-        with self.assertRaises(psycopg.Error):
-            cnx.rollback(throw_exception=True)
-
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 1)
-        span = spans_list[0]
-        self.assertEqual(span.name, "ROLLBACK")
-        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
-        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
-        self.assertEqual(len(span.events), 1)
-        self.assertEqual(span.events[0].name, "exception")
-
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     def test_sqlcommenter_enabled(self, event_mocked):
         cnx = psycopg.connect(database="test")
@@ -696,7 +652,6 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
         self.assertEqual(span.name, "COMMIT")
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
-        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
 
@@ -714,7 +669,6 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
         self.assertEqual(span.name, "ROLLBACK")
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
-        self.assertEqual(span.attributes[ERROR_TYPE], "Error")
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
 

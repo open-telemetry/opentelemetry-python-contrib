@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import json
 import typing
@@ -261,16 +250,24 @@ class NonStreamingTestCase(TestCase):
 
     def test_generated_span_counts_tokens(self):
         self.configure_valid_response(
-            input_tokens=123, output_tokens=456, cached_tokens=50
+            input_tokens=123,
+            output_tokens=456,
+            cached_tokens=50,
+            thinking_tokens=17,
         )
         self.generate_content(model="gemini-2.0-flash", contents="Some input")
         self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
         span = self.otel.get_span_named("generate_content gemini-2.0-flash")
         self.assertEqual(span.attributes["gen_ai.usage.input_tokens"], 123)
-        self.assertEqual(span.attributes["gen_ai.usage.output_tokens"], 456)
+        self.assertEqual(
+            span.attributes["gen_ai.usage.output_tokens"], 456 + 17
+        )
         # New sem conv should not appear when flag is not experimental mode..
         self.assertNotIn(
             "gen_ai.usage.cache_read.input_tokens", span.attributes
+        )
+        self.assertNotIn(
+            "gen_ai.usage.reasoning.output_tokens", span.attributes
         )
 
     @patch.dict(
@@ -452,7 +449,9 @@ class NonStreamingTestCase(TestCase):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
                     self.configure_valid_response(
-                        text=output, cached_tokens=50
+                        text=output,
+                        cached_tokens=50,
+                        thinking_tokens=17,
                     )
                     self.generate_content(
                         model="gemini-2.0-flash",
@@ -474,6 +473,16 @@ class NonStreamingTestCase(TestCase):
                             "gen_ai.usage.cache_read.input_tokens"
                         ],
                         50,
+                    )
+                    self.assertEqual(
+                        event.attributes[
+                            "gen_ai.usage.reasoning.output_tokens"
+                        ],
+                        17,
+                    )
+                    self.assertEqual(
+                        event.attributes["gen_ai.usage.output_tokens"],
+                        17,
                     )
                     assert (
                         event.attributes[
@@ -780,7 +789,9 @@ class NonStreamingTestCase(TestCase):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
                     self.configure_valid_response(
-                        text="Some response content", cached_tokens=50
+                        text="Some response content",
+                        cached_tokens=50,
+                        thinking_tokens=19,
                     )
                     self.generate_content(
                         model="gemini-2.0-flash",
@@ -799,6 +810,16 @@ class NonStreamingTestCase(TestCase):
                             "gen_ai.usage.cache_read.input_tokens"
                         ],
                         50,
+                    )
+                    self.assertEqual(
+                        span.attributes[
+                            "gen_ai.usage.reasoning.output_tokens"
+                        ],
+                        19,
+                    )
+                    self.assertEqual(
+                        span.attributes["gen_ai.usage.output_tokens"],
+                        19,
                     )
                     if mode in [
                         ContentCapturingMode.SPAN_ONLY,

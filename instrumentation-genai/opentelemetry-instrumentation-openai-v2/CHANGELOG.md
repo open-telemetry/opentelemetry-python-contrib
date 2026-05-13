@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Refactor chat completion stream wrappers to use shared GenAI stream lifecycle helpers.
+  ([#4500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4500))
+- Pass tool definitions from `tools` kwarg to `InferenceInvocation.tool_definitions`
+  so `gen_ai.tool.definitions` span attribute is populated on chat completion spans
+  ([#4554](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4554))
+
+## Version 2.4b0 (2026-05-01)
+
 
 - Migrate experimental path from deprecated `LLMInvocation` to `InferenceInvocation`,
   using `handler.start_inference()` and `invocation.stop()`/`invocation.fail()` directly
@@ -35,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add strongly typed Responses API extractors with validation and content
   extraction improvements
   ([#4337](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4337))
+- Add instrumentation for OpenAI Responses API `create`
+  ([#4474](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4474))
 - Add completion hook support.
   ([#4315](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4315))
 - Fix `response_format` handling: map `json_object`/`json_schema` to `json` output type.
