@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation`: update auto-instrumentation to re-inject instrumentation path after init
+`opentelemetry-instrumentation-dbapi`: Add Database client operation duration and returned rows metrics
