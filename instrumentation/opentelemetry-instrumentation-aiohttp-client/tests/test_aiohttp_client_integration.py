@@ -1519,9 +1519,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         self._assert_spans(0)
         self._assert_metrics(0)
 
-    @mock.patch.dict(
-        os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "http"}
-    )
+    @mock.patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: "http"})
     def test_response_body_size_not_set_by_default(self):
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
@@ -1547,9 +1545,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         )
         span = self._assert_spans(1)
         self.assertIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
-        self.assertIsInstance(
-            span.attributes[HTTP_RESPONSE_BODY_SIZE], int
-        )
+        self.assertIsInstance(span.attributes[HTTP_RESPONSE_BODY_SIZE], int)
 
     @mock.patch.dict(
         "os.environ",
@@ -1566,13 +1562,9 @@ class TestAioHttpClientInstrumentor(TestBase):
         )
         metrics = self._assert_metrics(2)
         metric_names = {m.name for m in metrics}
-        self.assertIn(
-            "http.client.response.body.size", metric_names
-        )
+        self.assertIn("http.client.response.body.size", metric_names)
         body_size_metric = next(
-            m
-            for m in metrics
-            if m.name == "http.client.response.body.size"
+            m for m in metrics if m.name == "http.client.response.body.size"
         )
         data_point = body_size_metric.data.data_points[0]
         self.assertEqual(data_point.count, 1)

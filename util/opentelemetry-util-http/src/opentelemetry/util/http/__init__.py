@@ -245,6 +245,7 @@ def get_custom_header_attributes(
     sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
     return sanitize.sanitize_header_values(headers, captured_headers, normalize_function)
 
+
 def is_capture_response_body_size_enabled() -> bool:
     return (
         environ.get(
@@ -252,6 +253,7 @@ def is_capture_response_body_size_enabled() -> bool:
         ).lower()
         == "true"
     )
+
 
 def _parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {
