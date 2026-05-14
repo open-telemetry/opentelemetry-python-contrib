@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiohttp-client`: add optional `http.client.response.body.size` span attribute & metric to the aiohttp client instrumentation
