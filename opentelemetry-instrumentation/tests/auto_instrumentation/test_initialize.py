@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # type: ignore
 
+import subprocess
+import sys
 from os import environ
 from os.path import abspath, dirname, pathsep
 from unittest import TestCase
@@ -48,7 +50,7 @@ class TestInitialize(TestCase):
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
     def test_preserves_pythonpath_changes_during_init(
-        self, load_distro_mock, logger_mock
+        self, load_distro_mock, _logger_mock
     ):
         def modify_pythonpath(*_):
             environ["PYTHONPATH"] = (
@@ -63,6 +65,53 @@ class TestInitialize(TestCase):
         paths = environ["PYTHONPATH"].split(pathsep)
         self.assertIn(self.auto_instrumentation_path, paths)
         self.assertIn("added_during_init", paths)
+
+    @patch.dict(
+        "os.environ",
+        {"PYTHONPATH": auto_instrumentation_path + pathsep + "foo"},
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
+    def test_subprocess_sees_pythonpath_changes(
+        self, load_distro_mock, _logger_mock
+    ):
+        during_init_paths: list[str] | None = None
+
+        def capture_pythonpath_in_subprocess(*_):
+            nonlocal during_init_paths
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import os; print(os.environ.get('PYTHONPATH', ''))",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            raw = result.stdout.strip()
+            during_init_paths = raw.split(pathsep) if raw else []
+            distro = MagicMock()
+            distro.configure.return_value = None
+            return distro
+
+        load_distro_mock.side_effect = capture_pythonpath_in_subprocess
+        auto_instrumentation.initialize()
+
+        self.assertIsNotNone(during_init_paths)
+        self.assertNotIn(self.auto_instrumentation_path, during_init_paths)
+
+        result_after = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import os; print(os.environ.get('PYTHONPATH', ''))",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        raw_after = result_after.stdout.strip()
+        after_init_paths = raw_after.split(pathsep) if raw_after else []
+        self.assertIn(self.auto_instrumentation_path, after_init_paths)
 
     @patch("opentelemetry.instrumentation.auto_instrumentation._logger")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load_distro")
