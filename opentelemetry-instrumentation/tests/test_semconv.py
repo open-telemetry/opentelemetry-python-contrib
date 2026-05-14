@@ -10,28 +10,38 @@ from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _get_schema_url_for_signal_types,
     _get_schema_version_for_opt_in_mode,
+    _get_semconv_opt_in_modes,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
     _set_db_operation,
+    _set_db_redis_database_index,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
+    _set_net_transport,
     _set_status,
     _StabilityMode,
 )
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
     DB_OPERATION_NAME,
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_TRANSPORT,
 )
 from opentelemetry.trace.status import StatusCode
 
@@ -135,6 +145,53 @@ class TestOpenTelemetrySemConvStability(TestCase):
                 _OpenTelemetryStabilitySignalType.GEN_AI
             ),
             _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+        )
+
+    @stability_mode("")
+    def test_get_semconv_opt_in_modes_default(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes(
+                (
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                )
+            ),
+            {
+                _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DEFAULT,
+                _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.DEFAULT,
+            },
+        )
+
+    @stability_mode("database,http/dup")
+    def test_get_semconv_opt_in_modes_database_and_http_dup(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes(
+                (
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                )
+            ),
+            {
+                _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DATABASE,
+                _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.HTTP_DUP,
+            },
+        )
+
+    @stability_mode("database,http,gen_ai_latest_experimental")
+    def test_get_semconv_opt_in_modes_database_http_and_gen_ai(self):
+        self.assertEqual(
+            _get_semconv_opt_in_modes(
+                (
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                    _OpenTelemetryStabilitySignalType.GEN_AI,
+                )
+            ),
+            {
+                _OpenTelemetryStabilitySignalType.DATABASE: _StabilityMode.DATABASE,
+                _OpenTelemetryStabilitySignalType.HTTP: _StabilityMode.HTTP,
+                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
+            },
         )
 
     @stability_mode("database,http/dup")
@@ -312,6 +369,54 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
 
 
 class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
+    def test_net_transport_http_default(self):
+        result = {}
+        _set_net_transport(
+            result,
+            "ip_tcp",
+            "tcp",
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertIn(NET_TRANSPORT, result)
+        self.assertEqual(result[NET_TRANSPORT], "ip_tcp")
+        self.assertNotIn(NETWORK_TRANSPORT, result)
+
+    def test_net_transport_http_stable(self):
+        result = {}
+        _set_net_transport(
+            result,
+            "ip_tcp",
+            "tcp",
+            sem_conv_opt_in_mode=_StabilityMode.HTTP,
+        )
+        self.assertNotIn(NET_TRANSPORT, result)
+        self.assertIn(NETWORK_TRANSPORT, result)
+        self.assertEqual(result[NETWORK_TRANSPORT], "tcp")
+
+    def test_net_transport_http_dup(self):
+        result = {}
+        _set_net_transport(
+            result,
+            "ip_tcp",
+            "tcp",
+            sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP,
+        )
+        self.assertIn(NET_TRANSPORT, result)
+        self.assertEqual(result[NET_TRANSPORT], "ip_tcp")
+        self.assertIn(NETWORK_TRANSPORT, result)
+        self.assertEqual(result[NETWORK_TRANSPORT], "tcp")
+
+    def test_net_transport_none_value(self):
+        result = {}
+        _set_net_transport(
+            result,
+            None,
+            None,
+            sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP,
+        )
+        self.assertNotIn(NET_TRANSPORT, result)
+        self.assertNotIn(NETWORK_TRANSPORT, result)
+
     def test_set_status_for_non_http_code_with_recording_span(self):
         span = Mock()
         span.is_recording.return_value = True
@@ -417,6 +522,7 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         self.assertIn("http.response.status_code", metrics_attributes)
 
 
+# pylint: disable=too-many-public-methods
 class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
     def test_db_system_default(self):
         result = {}
@@ -492,6 +598,40 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
             result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
         )
         self.assertNotIn(DB_NAME, result)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_default(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, 0, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertIn(DB_REDIS_DATABASE_INDEX, result)
+        self.assertEqual(result[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_database_stable(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, result)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_database_dup(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        self.assertIn(DB_REDIS_DATABASE_INDEX, result)
+        self.assertEqual(result[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertNotIn(DB_NAMESPACE, result)
+
+    def test_db_redis_database_index_none_value(self):
+        result = {}
+        _set_db_redis_database_index(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, result)
         self.assertNotIn(DB_NAMESPACE, result)
 
     def test_db_statement_default(self):

@@ -232,6 +232,30 @@ def instrument_with_content_unsampled(
     instrumentor.uninstrument()
 
 
+@pytest.fixture(scope="function")
+def instrument_event_only(tracer_provider, logger_provider, meter_provider):
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+    os.environ.update(
+        {
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "event_only",
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+        }
+    )
+
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+    instrumentor.uninstrument()
+
+
 class LiteralBlockScalar(str):
     """Formats the string as a literal block scalar, preserving whitespace and
     without interpreting escape characters"""
