@@ -114,8 +114,12 @@ celery_getter = CeleryGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
-    metrics = None
-    task_id_to_start_time = {}
+    def __init__(self):
+        super().__init__()
+        if not hasattr(self, "metrics"):
+            self.metrics = None
+        if not hasattr(self, "task_id_to_start_time"):
+            self.task_id_to_start_time = {}
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -138,6 +142,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
+        self.task_id_to_start_time = {}
         self.create_celery_metrics(meter)
 
         signals.task_prerun.connect(self._trace_prerun, weak=False)
@@ -158,6 +163,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.after_task_publish.disconnect(self._trace_after_publish)
         signals.task_failure.disconnect(self._trace_failure)
         signals.task_retry.disconnect(self._trace_retry)
+        self.task_id_to_start_time = {}
 
     def _trace_prerun(self, *args, **kwargs):
         task = utils.retrieve_task(kwargs)
@@ -212,6 +218,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         labels = {"task": task.name, "worker": task.request.hostname}
         self._record_histograms(task_id, labels)
+        self.task_id_to_start_time.pop(task_id, None)
         # if the process sending the task is not instrumented
         # there's no incoming context and no token to detach
         if token is not None:
