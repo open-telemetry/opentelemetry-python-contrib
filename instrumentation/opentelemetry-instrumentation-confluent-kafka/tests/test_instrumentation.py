@@ -48,7 +48,8 @@ class TestConfluentKafka(TestBase):
         producer = Producer({"bootstrap.servers": "localhost:29092"})
         producer = instrumentation.instrument_producer(producer)
 
-        self.assertEqual(producer.__class__, ProxiedProducer)
+        self.assertIsInstance(producer, ProxiedProducer)
+        self.assertIsInstance(producer, Producer)
 
         producer = instrumentation.uninstrument_producer(producer)
         self.assertEqual(producer.__class__, Producer)
@@ -62,7 +63,8 @@ class TestConfluentKafka(TestBase):
         )
 
         consumer = instrumentation.instrument_consumer(consumer)
-        self.assertEqual(consumer.__class__, ProxiedConsumer)
+        self.assertIsInstance(consumer, ProxiedConsumer)
+        self.assertIsInstance(consumer, Consumer)
 
         consumer = instrumentation.uninstrument_consumer(consumer)
         self.assertEqual(consumer.__class__, Consumer)
@@ -76,7 +78,7 @@ class TestConfluentKafka(TestBase):
         )
 
         consumer = instrumentation.instrument_consumer(consumer)
-        self.assertEqual(consumer.__class__, ProxiedConsumer)
+        self.assertIsInstance(consumer, ProxiedConsumer)
 
         consumer = instrumentation.uninstrument_consumer(consumer)
         self.assertEqual(consumer.__class__, Consumer)
@@ -123,7 +125,8 @@ class TestConfluentKafka(TestBase):
         )
 
         consumer = instrumentation.instrument_consumer(consumer)
-        self.assertEqual(consumer.__class__, ProxiedConsumer)
+        self.assertIsInstance(consumer, ProxiedConsumer)
+        self.assertIsInstance(consumer, Consumer)
         self.assertTrue(hasattr(consumer, "commit"))
 
     def test_context_setter(self) -> None:
@@ -465,6 +468,7 @@ class TestConfluentKafka(TestBase):
         )
 
         proxied = instrumentation.instrument_producer(producer)
+        self.assertIsInstance(proxied, MockedProducer)
         self.assertEqual(proxied.list_topics(), "producer_topics")
 
     def test_proxied_consumer_delegates_undefined_methods(
@@ -485,5 +489,6 @@ class TestConfluentKafka(TestBase):
         )
 
         proxied = instrumentation.instrument_consumer(consumer)
+        self.assertIsInstance(proxied, MockConsumer)
         self.assertEqual(proxied.list_topics(), "consumer_topics")
         self.assertEqual(proxied.assignment(), [])
