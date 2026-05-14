@@ -87,6 +87,7 @@ class TestInitialize(TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                check=False,
             )
             raw = result.stdout.strip()
             during_init_paths = raw.split(pathsep) if raw else []
@@ -108,6 +109,7 @@ class TestInitialize(TestCase):
             ],
             capture_output=True,
             text=True,
+            check=False,
         )
         raw_after = result_after.stdout.strip()
         after_init_paths = raw_after.split(pathsep) if raw_after else []
