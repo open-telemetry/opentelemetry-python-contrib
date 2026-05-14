@@ -10,3 +10,5 @@ _instruments_any = (
     _instruments_psycopg2,
     _instruments_psycopg2_binary,
 )
+
+_semconv_status = "migration"

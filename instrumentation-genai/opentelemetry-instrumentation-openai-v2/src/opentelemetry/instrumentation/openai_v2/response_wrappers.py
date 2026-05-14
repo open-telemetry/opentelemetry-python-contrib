@@ -10,49 +10,14 @@ from contextlib import AsyncExitStack, ExitStack, contextmanager
 from types import TracebackType
 from typing import TYPE_CHECKING, Callable, Generator, Generic, TypeVar
 
-from opentelemetry.util.genai.handler import TelemetryHandler
-from opentelemetry.util.genai.types import (
-    Error,
-    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
-)
-
-# OpenAI Responses internals are version-gated (added in openai>=1.66.0), so
-# pylint may not resolve them in all lint environments even though we guard
-# runtime usage with ImportError fallbacks below.
-try:
-    from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
-        ResponseCompletedEvent,
-    )
-    from openai.types.responses import (  # pylint: disable=no-name-in-module
-        ResponseCreatedEvent,
-        ResponseErrorEvent,
-        ResponseFailedEvent,
-        ResponseIncompleteEvent,
-        ResponseInProgressEvent,
-    )
-
-    _RESPONSE_EVENTS_WITH_RESPONSE = (
-        ResponseCreatedEvent,
-        ResponseInProgressEvent,
-        ResponseFailedEvent,
-        ResponseIncompleteEvent,
-        ResponseCompletedEvent,
-    )
-except ImportError:
-    ResponseCompletedEvent = None
-    ResponseCreatedEvent = None
-    ResponseErrorEvent = None
-    ResponseFailedEvent = None
-    ResponseIncompleteEvent = None
-    ResponseInProgressEvent = None
-    _RESPONSE_EVENTS_WITH_RESPONSE = ()
+from opentelemetry.util.genai.types import Error
 
 try:
     from opentelemetry.instrumentation.openai_v2.response_extractors import (  # pylint: disable=no-name-in-module
-        _set_invocation_response_attributes,
+        set_invocation_response_attributes,
     )
 except ImportError:
-    _set_invocation_response_attributes = None
+    set_invocation_response_attributes = None
 
 if TYPE_CHECKING:
     from openai.lib.streaming.responses._events import (  # pylint: disable=no-name-in-module
@@ -69,19 +34,21 @@ if TYPE_CHECKING:
         Response,
     )
 
+    from opentelemetry.util.genai._invocation import GenAIInvocation
+
 _logger = logging.getLogger(__name__)
 TextFormatT = TypeVar("TextFormatT")
 ResponseT = TypeVar("ResponseT")
 
 
 def _set_response_attributes(
-    invocation: "LLMInvocation",
+    invocation: "GenAIInvocation",
     result: "ParsedResponse[TextFormatT] | Response | None",
     capture_content: bool,
 ) -> None:
-    if _set_invocation_response_attributes is None:
+    if set_invocation_response_attributes is None:
         return
-    _set_invocation_response_attributes(invocation, result, capture_content)
+    set_invocation_response_attributes(invocation, result, capture_content)
 
 
 def _get_stream_response(stream):
@@ -134,12 +101,10 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         stream: "ResponseStream[TextFormatT]",
-        handler: TelemetryHandler,
-        invocation: "LLMInvocation",
+        invocation: "GenAIInvocation",
         capture_content: bool,
     ):
         self.stream = stream
-        self.handler = handler
         self.invocation = invocation
         self._capture_content = capture_content
         self._finalized = False
@@ -194,9 +159,8 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
         return self
 
     def parse(self) -> "ResponseStreamWrapper":
-        raise NotImplementedError(
-            "ResponseStreamWrapper.parse() is not implemented"
-        )
+        """Called when using with_raw_response with stream=True."""
+        return self
 
     # TODO: Replace __getattr__ passthrough with wrapt.ObjectProxy in a future
     # cleanup once wrapt 2 typing support is available (wrapt PR #3903).
@@ -219,17 +183,15 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             _set_response_attributes(
                 self.invocation, result, self._capture_content
             )
-        with self._safe_instrumentation("stop_llm"):
-            self.handler.stop_llm(self.invocation)
+        with self._safe_instrumentation("inference.stop"):
+            self.invocation.stop()
         self._finalized = True
 
     def _fail(self, message: str, error_type: type[BaseException]) -> None:
         if self._finalized:
             return
-        with self._safe_instrumentation("fail_llm"):
-            self.handler.fail_llm(
-                self.invocation, Error(message=message, type=error_type)
-            )
+        with self._safe_instrumentation("inference.fail"):
+            self.invocation.fail(Error(message=message, type=error_type))
         self._finalized = True
 
     @staticmethod
@@ -247,21 +209,20 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
 
     def process_event(self, event: "ResponseStreamEvent[TextFormatT]") -> None:
         event_type = event.type
-        response: "ParsedResponse[TextFormatT] | Response | None" = None
-
-        if isinstance(event, _RESPONSE_EVENTS_WITH_RESPONSE):
-            response = event.response
+        response: "ParsedResponse[TextFormatT] | Response | None" = getattr(
+            event, "response", None
+        )
 
         if response and not self.invocation.request_model:
             model = response.model
             if model:
                 self.invocation.request_model = model
 
-        if isinstance(event, ResponseCompletedEvent):
+        if event_type == "response.completed":
             self._stop(response)
             return
 
-        if isinstance(event, (ResponseFailedEvent, ResponseIncompleteEvent)):
+        if event_type in {"response.failed", "response.incomplete"}:
             with self._safe_instrumentation("response attribute extraction"):
                 _set_response_attributes(
                     self.invocation, response, self._capture_content
@@ -269,9 +230,9 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             self._fail(event_type, RuntimeError)
             return
 
-        if isinstance(event, ResponseErrorEvent):
-            error_type = event.code or "response.error"
-            message = event.message or error_type
+        if event_type == "response.error":
+            error_type = getattr(event, "code", None) or "response.error"
+            message = getattr(event, "message", None) or error_type
             self._fail(message, RuntimeError)
 
 
@@ -285,12 +246,10 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         manager: "ResponseStreamManager[TextFormatT]",
-        handler: TelemetryHandler,
-        invocation: "LLMInvocation",
+        invocation,
         capture_content: bool,
     ):
         self._manager = manager
-        self._handler = handler
         self._invocation = invocation
         self._capture_content = capture_content
         self._stream_wrapper: ResponseStreamWrapper[TextFormatT] | None = None
@@ -299,7 +258,6 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
         stream = self._manager.__enter__()
         self._stream_wrapper = ResponseStreamWrapper(
             stream,
-            self._handler,
             self._invocation,
             self._capture_content,
         )
@@ -393,9 +351,8 @@ class AsyncResponseStreamWrapper(ResponseStreamWrapper[TextFormatT]):
         return self
 
     def parse(self) -> "AsyncResponseStreamWrapper[TextFormatT]":
-        raise NotImplementedError(
-            "AsyncResponseStreamWrapper.parse() is not implemented"
-        )
+        """Called when using with_raw_response with stream=True."""
+        return self
 
     @property
     def response(self):
@@ -411,12 +368,10 @@ class AsyncResponseStreamManagerWrapper(Generic[TextFormatT]):
     def __init__(
         self,
         manager: "AsyncResponseStreamManager[TextFormatT]",
-        handler: TelemetryHandler,
-        invocation: "LLMInvocation",
+        invocation,
         capture_content: bool,
     ):
         self._manager = manager
-        self._handler = handler
         self._invocation = invocation
         self._capture_content = capture_content
         self._stream_wrapper: (
@@ -427,7 +382,6 @@ class AsyncResponseStreamManagerWrapper(Generic[TextFormatT]):
         stream = await self._manager.__aenter__()
         self._stream_wrapper = AsyncResponseStreamWrapper(
             stream,
-            self._handler,
             self._invocation,
             self._capture_content,
         )

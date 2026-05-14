@@ -128,9 +128,9 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 SQLComment in span attribute
 ****************************
 If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
-the query span ``db.statement`` attribute for your needs. If ``commenter_options``
-have been set, the span attribute comment will also be configured by this
-setting.
+the query span ``db.statement`` and/or ``db.query.text`` attribute for your
+needs. If ``commenter_options`` have been set, the span attribute comment
+will also be configured by this setting.
 
 .. code:: python
 
@@ -140,7 +140,7 @@ setting.
 
 
     # Opts into sqlcomment for MySQL trace integration.
-    # Opts into sqlcomment for `db.statement` span attribute.
+    # Opts into sqlcomment for `db.statement` and/or `db.query.text` span attribute.
     wrap_connect(
         __name__,
         mysql.connector,
@@ -181,6 +181,12 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
+    _set_db_name,
+    _set_db_statement,
+    _set_db_system,
+    _set_db_user,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
 )
 from opentelemetry.instrumentation.dbapi.version import __version__
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
@@ -190,16 +196,6 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.metrics import MeterProvider, get_meter
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_NAME,
-    DB_STATEMENT,
-    DB_SYSTEM,
-    DB_USER,
-)
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
-)
 from opentelemetry.semconv._incubating.metrics.db_metrics import (
     create_db_client_operation_duration,
     create_db_client_response_returned_rows,
@@ -256,7 +252,7 @@ def trace_integration(
         enable_commenter: Flag to enable/disable sqlcommenter.
         db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
             default one is used.
-        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` and/or `db.query.text` span attribute. Only available if enable_commenter=True.
         commenter_options: Configurations for tags to be appended at the sql query.
         meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
@@ -311,7 +307,7 @@ def wrap_connect(
         db_api_integration_factory: The `DatabaseApiIntegration` to use. If none is passed the
             default one is used.
         commenter_options: Configurations for tags to be appended at the sql query.
-        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` and/or `db.query.text` span attribute. Only available if enable_commenter=True.
         meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
 
@@ -394,7 +390,7 @@ def instrument_connection(
         enable_commenter: Flag to enable/disable sqlcommenter.
         commenter_options: Configurations for tags to be appended at the sql query.
         connect_module: Module name where connect method is available.
-        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` span attribute. Only available if enable_commenter=True.
+        enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` and/or `db.query.text` span attribute. Only available if enable_commenter=True.
         db_api_integration_factory: A class or factory function to use as a
             replacement for :class:`DatabaseApiIntegration`. Can be used to
             obtain connection attributes from the connect method instead of
@@ -463,6 +459,15 @@ class DatabaseApiIntegration:
         enable_attribute_commenter: bool = False,
         meter_provider: MeterProvider | None = None,
     ):
+        # Initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        self._sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE,
+        )
+        self._sem_conv_opt_in_mode_http = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+
         if connection_attributes is None:
             self.connection_attributes = {
                 "database": "database",
@@ -474,20 +479,21 @@ class DatabaseApiIntegration:
             self.connection_attributes = connection_attributes
         self._name = name
         self._version = version
-        _OpenTelemetrySemanticConventionStability._initialize()
-        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.DATABASE
-        )
         self._tracer = get_tracer(
             self._name,
             instrumenting_library_version=self._version,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types(
+                [
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                    _OpenTelemetryStabilitySignalType.HTTP,
+                ]
+            ),
         )
         self._meter = None
         self._duration_histogram = None
         self._returned_rows_histogram = None
-        if _report_new(self._sem_conv_opt_in_mode):
+        if _report_new(self._sem_conv_opt_in_mode_db):
             self._meter = get_meter(
                 self._name,
                 self._version,
@@ -615,14 +621,22 @@ class DatabaseApiIntegration:
         if user and isinstance(user, bytes):
             user = user.decode()
         if user is not None:
-            self.span_attributes[DB_USER] = str(user)
+            _set_db_user(
+                self.span_attributes, str(user), self._sem_conv_opt_in_mode_db
+            )
         host = self.connection_props.get("host")
         if host is not None:
-            self.span_attributes[NET_PEER_NAME] = host
+            _set_http_net_peer_name_client(
+                self.span_attributes,
+                host,
+                self._sem_conv_opt_in_mode_http,
+            )
             self._server_address = host
         port = self.connection_props.get("port")
         if port is not None:
-            self.span_attributes[NET_PEER_PORT] = port
+            _set_http_peer_port_client(
+                self.span_attributes, port, self._sem_conv_opt_in_mode_http
+            )
             self._server_port = port
 
 
@@ -751,9 +765,23 @@ class CursorTracer(Generic[CursorT]):
         if not span.is_recording():
             return
         statement = self.get_statement(cursor, args)
-        span.set_attribute(DB_SYSTEM, self._db_api_integration.database_system)
-        span.set_attribute(DB_NAME, self._db_api_integration.database)
-        span.set_attribute(DB_STATEMENT, statement)
+        sem_conv_mode = self._db_api_integration._sem_conv_opt_in_mode_db
+        span_attrs = {}
+
+        _set_db_system(
+            span_attrs,
+            self._db_api_integration.database_system,
+            sem_conv_mode,
+        )
+        _set_db_name(
+            span_attrs,
+            self._db_api_integration.database,
+            sem_conv_mode,
+        )
+        _set_db_statement(span_attrs, statement, sem_conv_mode)
+
+        # Set all collected attributes
+        span.set_attributes(span_attrs)
 
         for (
             attribute_key,
@@ -783,7 +811,7 @@ class CursorTracer(Generic[CursorT]):
     def _get_metric_attributes(
         self,
         operation_name: str,
-        error: BaseException | None,
+        error: Exception | None,
     ) -> dict[str, Any]:
         attributes: dict[str, Any] = {
             DB_SYSTEM_NAME: self._db_api_integration.database_system,
@@ -807,9 +835,9 @@ class CursorTracer(Generic[CursorT]):
         cursor: CursorT,
         operation_name: str,
         start_time: float,
-        error: BaseException | None,
+        error: Exception | None,
     ) -> None:
-        if not _report_new(self._db_api_integration._sem_conv_opt_in_mode):
+        if not _report_new(self._db_api_integration._sem_conv_opt_in_mode_db):
             # DB Metrics are not supported without Database semconv opt-in
             return
         elapsed = time.perf_counter() - start_time
@@ -849,14 +877,14 @@ class CursorTracer(Generic[CursorT]):
             if span.is_recording():
                 if args and self._commenter_enabled:
                     if self._enable_attribute_commenter:
-                        # sqlcomment is added to executed query and db.statement span attribute
+                        # sqlcomment is added to executed query and db.statement and/or db.query.text span attribute
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
                         self._populate_span(span, cursor, *args)
                     else:
                         # sqlcomment is only added to executed query
-                        # so db.statement is set before add_sql_comment
+                        # so db.statement and/or db.query.text are set before add_sql_comment
                         self._populate_span(span, cursor, *args)
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
@@ -865,10 +893,10 @@ class CursorTracer(Generic[CursorT]):
                     # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
             start_time = time.perf_counter()
-            error: BaseException | None = None
+            error: Exception | None = None
             try:
                 return query_method(*args, **kwargs)
-            except BaseException as exc:
+            except Exception as exc:
                 error = exc
                 raise
             finally:
@@ -896,14 +924,14 @@ class CursorTracer(Generic[CursorT]):
             if span.is_recording():
                 if args and self._commenter_enabled:
                     if self._enable_attribute_commenter:
-                        # sqlcomment is added to executed query and db.statement span attribute
+                        # sqlcomment is added to executed query and db.statement and/or db.query.text span attribute
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
                         self._populate_span(span, cursor, *args)
                     else:
                         # sqlcomment is only added to executed query
-                        # so db.statement is set before add_sql_comment
+                        # so db.statement and/or db.query.text are set before add_sql_comment
                         self._populate_span(span, cursor, *args)
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
@@ -912,10 +940,10 @@ class CursorTracer(Generic[CursorT]):
                     # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
             start_time = time.perf_counter()
-            error: BaseException | None = None
+            error: Exception | None = None
             try:
                 return await query_method(*args, **kwargs)
-            except BaseException as exc:
+            except Exception as exc:
                 error = exc
                 raise
             finally:
