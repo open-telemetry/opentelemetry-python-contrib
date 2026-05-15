@@ -1220,6 +1220,10 @@ class TestAioHttpClientInstrumentor(TestBase):
         return aiohttp.web.Response(status=int(200))
 
     @staticmethod
+    async def handler_with_body(request):
+        return aiohttp.web.Response(status=200, body=b"hello")
+
+    @staticmethod
     def get_default_request(url: str = URL):
         async def default_request(server: aiohttp.test_utils.TestServer):
             async with aiohttp.test_utils.TestClient(server) as session:
@@ -1525,7 +1529,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         AioHttpClientInstrumentor().instrument()
 
         run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
+            self.get_default_request(), self.URL, self.handler_with_body
         )
         span = self._assert_spans(1)
         self.assertNotIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
@@ -1541,7 +1545,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
         run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
+            self.get_default_request(), self.URL, self.handler_with_body
         )
         span = self._assert_spans(1)
         self.assertIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
@@ -1557,8 +1561,9 @@ class TestAioHttpClientInstrumentor(TestBase):
     def test_response_body_size_metric_recorded(self):
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
+
         run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
+            self.get_default_request(), self.URL, self.handler_with_body
         )
         metrics = self._assert_metrics(2)
         metric_names = {m.name for m in metrics}
@@ -1580,7 +1585,7 @@ class TestAioHttpClientInstrumentor(TestBase):
         AioHttpClientInstrumentor().uninstrument()
         AioHttpClientInstrumentor().instrument()
         run_with_test_server(
-            self.get_default_request(), self.URL, self.default_handler
+            self.get_default_request(), self.URL, self.handler_with_body
         )
         span = self._assert_spans(1)
         self.assertNotIn(HTTP_RESPONSE_BODY_SIZE, span.attributes)
