@@ -128,6 +128,11 @@ class ParametrizedHandler(tornado.web.RequestHandler):
         self.set_status(200)
 
 
+class NoGroupHandler(tornado.web.RequestHandler):
+    async def get(self):
+        self.set_status(200)
+
+
 class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
     async def on_message(self, message):
         with self.application.tracer.start_as_current_span("audit_message"):
@@ -153,6 +158,7 @@ def make_app(tracer):
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
             (r"/parametrized/(.*)/", ParametrizedHandler),
+            (r"/nogroup/[0-9]/", NoGroupHandler),
         ]
     )
     app.tracer = tracer

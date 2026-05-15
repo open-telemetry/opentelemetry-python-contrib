@@ -66,23 +66,25 @@ def _is_handler_target(target: Any) -> bool:
 def route_from_rule(rule: Rule, handler: RequestHandler) -> str | None:
     """Return a path with the dynamic parts as named parameters to reduce cardinality"""
     route = None
-    if hasattr(rule.matcher, "_find_groups"):
-        format_str, num_params = rule.matcher._find_groups()
-        if num_params is None:
-            return None
+    if not hasattr(rule.matcher, "_find_groups"):
+        return None
 
-        if num_params > 0:
-            method = getattr(handler, handler.request.method.lower())
-            # wrap the parameters with curly brackets so we can distinguish them from the fixed path
-            method_args = tuple(
-                f"{{{param}}}"
-                for param in inspect.signature(method).parameters.keys()
-            )
-            if len(method_args) == num_params:
-                route = format_str % method_args
-            else:
-                route = format_str
-        else:
-            # if we don't have parameters to substitute use the path directly
-            route = handler.request.path
+    format_str, num_params = rule.matcher._find_groups()
+    if num_params is None:
+        return None
+
+    if num_params == 0:
+        # for regex routes without captured parameters, use the matcher format string
+        # to preserve a low-cardinality route value
+        return format_str
+
+    method = getattr(handler, handler.request.method.lower())
+    # wrap the parameters with curly brackets so we can distinguish them from the fixed path
+    method_args = tuple(
+        f"{{{param}}}" for param in inspect.signature(method).parameters.keys()
+    )
+    if len(method_args) == num_params:
+        route = format_str % method_args
+    else:
+        route = format_str
     return route

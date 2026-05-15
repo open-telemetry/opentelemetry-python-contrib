@@ -359,6 +359,40 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
             },
         )
 
+    def test_no_group_url(self):
+        response = self.fetch("/nogroup/0/")
+        self.assertEqual(response.code, 200)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        server, client = spans
+
+        self.assertEqual(server.name, "GET /nogroup/[0-9]/")
+        self.assertEqual(server.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            server,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/nogroup/0/",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 200,
+                "tornado.handler": "tests.tornado_test_app.NoGroupHandler",
+            },
+        )
+
+        self.assertEqual(client.name, "GET")
+        self.assertEqual(client.kind, SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            client,
+            {
+                HTTP_URL: self.get_url("/nogroup/0/"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 200,
+            },
+        )
+
     def test_http_error(self):
         response = self.fetch("/raise_403")
         self.assertEqual(response.code, 403)
