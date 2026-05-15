@@ -1,4 +1,5 @@
 .. include:: ../../../opentelemetry-instrumentation/README.rst
+    :end-before: References
 
 API
 ---
