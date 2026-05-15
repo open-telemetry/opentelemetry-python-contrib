@@ -20,7 +20,7 @@ packaging==24.0
 pluggy==1.6.0
 py-cpuinfo==9.0.0
 pytest==7.4.4
-requests==2.32.3
+requests==2.33.1
 tomli==2.0.1
 typing_extensions==4.12.2
 urllib3==2.2.2

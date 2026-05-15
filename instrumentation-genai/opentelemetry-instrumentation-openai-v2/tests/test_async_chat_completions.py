@@ -188,6 +188,18 @@ async def test_async_chat_completion_404(
 
 
 @pytest.mark.asyncio()
+async def test_async_chat_completion_api_exception_propagates(
+    async_openai_client, instrument_no_content, vcr
+):
+    with vcr.use_cassette("test_async_chat_completion_404.yaml"):
+        with pytest.raises(NotFoundError):
+            await async_openai_client.chat.completions.create(
+                messages=USER_ONLY_PROMPT,
+                model="this-model-does-not-exist",
+            )
+
+
+@pytest.mark.asyncio()
 async def test_async_chat_completion_extra_params(
     span_exporter, async_openai_client, instrument_no_content, vcr
 ):
@@ -880,6 +892,44 @@ async def test_async_chat_completion_streaming(
 
 
 @pytest.mark.asyncio()
+async def test_async_chat_completion_streaming_user_exception_propagates(
+    span_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
+):
+    latest_experimental_enabled = is_experimental_mode()
+    llm_model_value = "gpt-4"
+    kwargs = {
+        "model": llm_model_value,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    response_stream_model = None
+    response_stream_id = None
+
+    with vcr.use_cassette("test_async_chat_completion_streaming.yaml"):
+        response = await async_openai_client.chat.completions.create(**kwargs)
+        with pytest.raises(RuntimeError, match="user failure"):
+            async with response:
+                async for chunk in response:
+                    response_stream_model = chunk.model
+                    response_stream_id = chunk.id
+                    raise RuntimeError("user failure")
+
+    spans = span_exporter.get_finished_spans()
+    assert_all_attributes(
+        spans[0],
+        llm_model_value,
+        latest_experimental_enabled,
+        response_stream_id,
+        response_stream_model,
+    )
+    assert "RuntimeError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
+
+
+@pytest.mark.asyncio()
 async def test_async_chat_completion_streaming_not_complete(
     span_exporter,
     log_exporter,
@@ -917,7 +967,10 @@ async def test_async_chat_completion_streaming_not_complete(
                 response_stream_id = chunk.id
             idx += 1
 
-        response.close()
+        if latest_experimental_enabled:
+            await response.close()
+        else:
+            response.close()
     spans = span_exporter.get_finished_spans()
     assert_all_attributes(
         spans[0],

@@ -1,8 +1,12 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+
+# pylint: disable=too-many-lines
+
 import asyncio
+import os
 from unittest import IsolatedAsyncioTestCase, mock
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import fakeredis
 import pytest
@@ -13,10 +17,15 @@ from redis.exceptions import ConnectionError as redis_ConnectionError
 from redis.exceptions import WatchError
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_REDIS_DATABASE_INDEX,
+    DB_STATEMENT,
     DB_SYSTEM,
     DbSystemValues,
 )
@@ -26,8 +35,33 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_TRANSPORT,
     NetTransportValues,
 )
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_TRANSPORT,
+    NetworkTransportValues,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
+
+
+def stability_mode(mode):
+    def decorator(test_case):
+        @patch.dict(os.environ, {OTEL_SEMCONV_STABILITY_OPT_IN: mode})
+        def wrapper(*args, **kwargs):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            _OpenTelemetrySemanticConventionStability._initialize()
+            return test_case(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 # pylint: disable=too-many-public-methods
@@ -762,3 +796,732 @@ class TestRedisInstance(TestBase):
             self.assertEqual(span.attributes.get("db.statement"), "SET ? ?")
             self.assertEqual(span.kind, SpanKind.CLIENT)
             self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+
+
+class TestRedisSemconvConfiguration(TestBase):
+    """Tests semconv migration for both Redis pipeline and db_statement"""
+
+    def setUp(self):
+        super().setUp()
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+    def tearDown(self):
+        super().tearDown()
+        RedisInstrumentor().uninstrument()
+
+    def re_instrument_and_clear_exporter(self):
+        # Re-instrument to pick up the environment variable change
+        RedisInstrumentor().uninstrument()
+        self.memory_exporter.clear()  # Clear previous spans
+        RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
+
+    @stability_mode("")
+    def test_pipeline_default_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.FakeStrictRedis()
+        pipe = redis_client.pipeline()
+        pipe.get("key1")
+        pipe.set("key2", "value2")
+        pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_STATEMENT])
+        self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+
+    @stability_mode("database")
+    def test_pipeline_database_stable_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.FakeStrictRedis()
+        pipe = redis_client.pipeline()
+        pipe.get("key1")
+        pipe.set("key2", "value2")
+        pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+
+    @stability_mode("database/dup")
+    def test_pipeline_database_dup_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.FakeStrictRedis()
+        pipe = redis_client.pipeline()
+        pipe.get("key1")
+        pipe.set("key2", "value2")
+        pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_STATEMENT])
+        self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+
+    @stability_mode("")
+    def test_db_statement_default_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+
+    @stability_mode("database")
+    def test_db_statement_database_stable_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+
+    @stability_mode("database/dup")
+    def test_db_statement_database_dup_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+
+    @stability_mode("")
+    def test_db_namespace_default_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+
+    @stability_mode("database")
+    def test_db_namespace_database_stable_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+
+    @stability_mode("database/dup")
+    def test_db_namespace_database_dup_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+
+    @stability_mode("http")
+    def test_db_statement_http_stable_mode(self):
+        # HTTP signal type should not affect database attributes; they stay in default behavior
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # HTTP signal type doesn't affect database attributes - they remain in default mode
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        # Network attributes should still be present (HTTP signal type for network attributes)
+        self.assertIn(SERVER_ADDRESS, span.attributes)
+        self.assertIn(SERVER_PORT, span.attributes)
+        self.assertNotIn(NET_TRANSPORT, span.attributes)
+        self.assertIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NETWORK_TRANSPORT],
+            NetworkTransportValues.TCP.value,
+        )
+
+    @stability_mode("http")
+    def test_net_transport_http_stable_mode_unix_socket(self):
+        # HTTP signal type should suppress old net.transport for unix socket connections too
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis.from_url(
+            "unix://foo@/path/to/socket.sock?db=3&password=bar"
+        )
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(NET_TRANSPORT, span.attributes)
+        self.assertIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NETWORK_TRANSPORT],
+            NetworkTransportValues.UNIX.value,
+        )
+
+    @stability_mode("http/dup")
+    def test_db_statement_http_dup_mode(self):
+        # HTTP signal type should not affect database attributes; they stay in default behavior
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # HTTP signal type doesn't affect database attributes - they remain in default mode
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        # Network attributes should still be present (HTTP signal type for network attributes)
+        self.assertIn(SERVER_ADDRESS, span.attributes)
+        self.assertIn(SERVER_PORT, span.attributes)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NETWORK_TRANSPORT],
+            NetworkTransportValues.TCP.value,
+        )
+
+    @stability_mode("http,database")
+    def test_db_statement_combined_http_database_mode(self):
+        # Both HTTP and DATABASE signal types should be active
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # DATABASE signal type should use stable attributes
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+        # Network attributes should still be present (HTTP signal type)
+        self.assertIn(SERVER_ADDRESS, span.attributes)
+        self.assertIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("database,http")
+    def test_db_statement_combined_database_http_mode(self):
+        # Both DATABASE and HTTP signal types should be active (order shouldn't matter)
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # DATABASE signal type should use stable attributes
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+        # Network attributes should still be present (HTTP signal type)
+        self.assertIn(SERVER_ADDRESS, span.attributes)
+        self.assertIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("database/dup,http")
+    def test_db_statement_combined_database_dup_http_mode(self):
+        # Both DATABASE (dup) and HTTP signal types should be active
+        self.re_instrument_and_clear_exporter()
+        redis_client = redis.Redis()
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # DATABASE signal type in dup mode should have both attributes
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+        # Network attributes should still be present (HTTP signal type)
+        self.assertIn(SERVER_ADDRESS, span.attributes)
+        self.assertIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("http")
+    def test_pipeline_http_stable_mode(self):
+        # HTTP signal type should not affect database attributes in pipeline
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.FakeStrictRedis()
+        pipe = redis_client.pipeline()
+        pipe.get("key1")
+        pipe.set("key2", "value2")
+        pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # HTTP signal type doesn't affect database attributes - they remain in default mode
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_STATEMENT])
+        self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+
+    @stability_mode("http,database")
+    def test_pipeline_combined_http_database_mode(self):
+        # Both HTTP and DATABASE signal types should be active in pipeline
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.FakeStrictRedis()
+        pipe = redis_client.pipeline()
+        pipe.get("key1")
+        pipe.set("key2", "value2")
+        pipe.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        # DATABASE signal type should use stable attributes
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+
+    @stability_mode("database")
+    def test_async_db_statement_database_stable_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.aioredis.FakeRedis()
+
+        asyncio.run(redis_client.get("key"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("")
+    def test_async_db_statement_default_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.aioredis.FakeRedis()
+
+        asyncio.run(redis_client.get("key"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("database/dup")
+    def test_async_db_statement_database_dup_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.aioredis.FakeRedis()
+
+        asyncio.run(redis_client.get("key"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(span.attributes[DB_STATEMENT], "GET ?")
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "GET ?")
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("database")
+    def test_async_pipeline_database_stable_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.aioredis.FakeRedis()
+
+        async def _run_pipeline():
+            async with redis_client.pipeline() as pipe:
+                await pipe.get("key1")
+                await pipe.set("key2", "value2")
+                await pipe.execute()
+
+        asyncio.run(_run_pipeline())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("")
+    def test_async_pipeline_default_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.aioredis.FakeRedis()
+
+        async def _run_pipeline():
+            async with redis_client.pipeline() as pipe:
+                await pipe.get("key1")
+                await pipe.set("key2", "value2")
+                await pipe.execute()
+
+        asyncio.run(_run_pipeline())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_STATEMENT])
+        self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("database/dup")
+    def test_async_pipeline_database_dup_mode(self):
+        self.re_instrument_and_clear_exporter()
+        redis_client = fakeredis.aioredis.FakeRedis()
+
+        async def _run_pipeline():
+            async with redis_client.pipeline() as pipe:
+                await pipe.get("key1")
+                await pipe.set("key2", "value2")
+                await pipe.execute()
+
+        asyncio.run(_run_pipeline())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_STATEMENT])
+        self.assertIn("SET ? ?", span.attributes[DB_STATEMENT])
+        self.assertIn(DB_QUERY_TEXT, span.attributes)
+        self.assertIn("GET ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn("SET ? ?", span.attributes[DB_QUERY_TEXT])
+        self.assertIn(DB_SYSTEM, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertEqual(
+            span.attributes[DB_SYSTEM_NAME], DbSystemValues.REDIS.value
+        )
+        self.assertIn(DB_REDIS_DATABASE_INDEX, span.attributes)
+        self.assertEqual(span.attributes[DB_REDIS_DATABASE_INDEX], 0)
+        self.assertIn(NET_TRANSPORT, span.attributes)
+        self.assertEqual(
+            span.attributes[NET_TRANSPORT],
+            NetTransportValues.IP_TCP.value,
+        )
+        self.assertNotIn(NETWORK_TRANSPORT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    @stability_mode("")
+    def test_schema_url_default_mode(self):
+        """Test schema URL assignment in default stability mode."""
+        self.re_instrument_and_clear_exporter()
+        with mock.patch(
+            "opentelemetry.instrumentation.redis.get_tracer"
+        ) as mock_get_tracer:
+            mock_tracer = mock.Mock()
+            mock_get_tracer.return_value = mock_tracer
+            RedisInstrumentor._get_tracer(tracer_provider=self.tracer_provider)
+
+            # Verify get_tracer was called with legacy schema URL in default mode
+            mock_get_tracer.assert_called_once()
+            call_args = mock_get_tracer.call_args
+            self.assertEqual(
+                call_args[1]["schema_url"],
+                "https://opentelemetry.io/schemas/1.11.0",
+            )
+
+    @stability_mode("database")
+    def test_schema_url_database_stable_mode(self):
+        """Test schema URL assignment in database stable mode."""
+        self.re_instrument_and_clear_exporter()
+        with mock.patch(
+            "opentelemetry.instrumentation.redis.get_tracer"
+        ) as mock_get_tracer:
+            mock_tracer = mock.Mock()
+            mock_get_tracer.return_value = mock_tracer
+            RedisInstrumentor._get_tracer(tracer_provider=self.tracer_provider)
+
+            # Verify get_tracer was called with stable schema URL
+            mock_get_tracer.assert_called_once()
+            call_args = mock_get_tracer.call_args
+            self.assertEqual(
+                call_args[1]["schema_url"],
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+
+    @stability_mode("database/dup")
+    def test_schema_url_database_dup_mode(self):
+        """Test schema URL assignment in database duplicate mode."""
+        self.re_instrument_and_clear_exporter()
+        with mock.patch(
+            "opentelemetry.instrumentation.redis.get_tracer"
+        ) as mock_get_tracer:
+            mock_tracer = mock.Mock()
+            mock_get_tracer.return_value = mock_tracer
+            RedisInstrumentor._get_tracer(tracer_provider=self.tracer_provider)
+
+            # Verify get_tracer was called with stable schema URL
+            mock_get_tracer.assert_called_once()
+            call_args = mock_get_tracer.call_args
+            self.assertEqual(
+                call_args[1]["schema_url"],
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+
+    @stability_mode("http")
+    def test_schema_url_http_mode(self):
+        """Test schema URL assignment in HTTP stability mode."""
+        self.re_instrument_and_clear_exporter()
+        with mock.patch(
+            "opentelemetry.instrumentation.redis.get_tracer"
+        ) as mock_get_tracer:
+            mock_tracer = mock.Mock()
+            mock_get_tracer.return_value = mock_tracer
+            RedisInstrumentor._get_tracer(tracer_provider=self.tracer_provider)
+
+            # Verify get_tracer was called with stable schema URL
+            mock_get_tracer.assert_called_once()
+            call_args = mock_get_tracer.call_args
+            self.assertEqual(
+                call_args[1]["schema_url"],
+                "https://opentelemetry.io/schemas/1.21.0",
+            )
+
+    @stability_mode("http,database")
+    def test_schema_url_combined_mode(self):
+        """Test schema URL assignment in combined HTTP and database mode."""
+        self.re_instrument_and_clear_exporter()
+        with mock.patch(
+            "opentelemetry.instrumentation.redis.get_tracer"
+        ) as mock_get_tracer:
+            mock_tracer = mock.Mock()
+            mock_get_tracer.return_value = mock_tracer
+            RedisInstrumentor._get_tracer(tracer_provider=self.tracer_provider)
+
+            # Verify get_tracer was called with stable schema URL
+            mock_get_tracer.assert_called_once()
+            call_args = mock_get_tracer.call_args
+            self.assertEqual(
+                call_args[1]["schema_url"],
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
