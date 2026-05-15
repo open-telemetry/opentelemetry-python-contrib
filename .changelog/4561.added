@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-dbapi`: Add `comment_position` option to `_add_sql_comment()` to support prepending sqlcommenter comment to the beginning of the query
