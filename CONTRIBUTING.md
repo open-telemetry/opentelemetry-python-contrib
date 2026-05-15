@@ -247,9 +247,45 @@ A PR is considered to be **ready to merge** when:
   reasonable time to review.
 * Trivial change (typo, cosmetic, doc, etc.) doesn't have to wait for one day.
 * Urgent fix can take exception as long as it has been actively communicated.
-* A changelog entry is added to the corresponding changelog for the code base, if there is any impact on behavior. e.g. doc entries are not required, but small bug entries are.
+* A changelog fragment is added (see [Changelog](#changelog) below), if there is any impact on behavior. e.g. doc entries are not required, but small bug entries are.
 
 Any Approver / Maintainer can merge the PR once it is **ready to merge**.
+
+### Changelog
+
+This project uses [towncrier](https://towncrier.readthedocs.io/) to manage changelogs. Instead of editing `CHANGELOG.md` directly, each PR should include a changelog fragment file.
+
+**Where to add fragments:**
+
+- **Coordinated packages** (most instrumentations, exporters, propagators): add to the root `.changelog/` directory
+- **Independently released packages** (`opentelemetry-opamp-client`, `opentelemetry-propagator-aws-xray`, `opentelemetry-resource-detector-azure`, `opentelemetry-sdk-extension-aws`): add to `<package>/.changelog/`
+
+**Creating a changelog fragment:**
+
+Create a file named `.changelog/<PR_NUMBER>.<TYPE>` where `TYPE` is one of: `added`, `changed`, `deprecated`, `removed`, `fixed`.
+
+The file should contain a one-line description of the change. For example, `.changelog/1234.fixed`:
+
+```
+`opentelemetry-instrumentation-flask`: fix request hook not being called for websocket connections
+```
+
+**Writing a good changelog entry:**
+
+- Write in imperative tone, as if completing the phrase "This change will..."
+- Keep entries concise — ideally under 80 characters
+- Prefix with the affected package name (e.g. `` `opentelemetry-instrumentation-flask`: ... ``)
+- Don't include the PR number — towncrier adds it automatically
+
+**Preview the changelog:**
+
+```console
+towncrier build --draft --version Unreleased
+```
+
+The CI will verify that a changelog fragment exists and that `CHANGELOG.md` files are not directly modified.
+
+If your change does not need a changelog entry, add the "Skip Changelog" label to the PR.
 
 ### Stale PRs
 

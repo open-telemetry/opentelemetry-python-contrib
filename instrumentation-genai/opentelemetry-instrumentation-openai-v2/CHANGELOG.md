@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Refactor chat completion stream wrappers to use shared GenAI stream lifecycle helpers.
+  ([#4500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4500))
 - Pass tool definitions from `tools` kwarg to `InferenceInvocation.tool_definitions`
   so `gen_ai.tool.definitions` span attribute is populated on chat completion spans
   ([#4554](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4554))

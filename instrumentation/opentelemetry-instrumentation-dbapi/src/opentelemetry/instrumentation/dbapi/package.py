@@ -3,3 +3,5 @@
 
 
 _instruments = tuple()
+
+_semconv_status = "migration"
