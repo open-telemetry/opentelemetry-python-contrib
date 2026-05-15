@@ -1,0 +1,1 @@
+`docker-tests`: Don't require sudo, debian based distro and MS SQL ODBC driver to run locally. Instead require docker and unixodbc

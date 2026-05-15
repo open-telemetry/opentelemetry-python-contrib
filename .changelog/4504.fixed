@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: clear completed task ids from `task_id_to_start_time`

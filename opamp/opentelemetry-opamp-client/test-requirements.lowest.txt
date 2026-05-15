@@ -59,7 +59,7 @@ tomli==1.1.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   pytest
-urllib3==2.5.0
+urllib3==2.7.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   requests
