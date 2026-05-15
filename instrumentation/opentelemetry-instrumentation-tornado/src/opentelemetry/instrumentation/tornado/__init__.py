@@ -727,19 +727,15 @@ def _get_default_span_name(handler):
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
 
     Args:
-        request: Tornado handler object.
+        handler: Tornado handler object.
     Returns:
         Default span name.
     """
 
     method = handler.request.method
-    path = handler.request.path
     rule = find_matched_rule(handler)
-    # if there's no rule it may be a 404 so keep the path
-    if rule:
-        route = route_from_rule(rule, handler)
-    else:
-        route = path
+    # if there's no rule, like for 404 just return the method
+    route = route_from_rule(rule, handler) if rule else None
     if method and route:
         return f"{method} {route}"
     return f"{method}"

@@ -299,7 +299,7 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(len(spans), 2)
         server, client = spans
 
-        self.assertEqual(server.name, "GET /missing-url")
+        self.assertEqual(server.name, "GET")
         self.assertEqual(server.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             server,
@@ -706,7 +706,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         server, client = self.sorted_spans(spans)
-        self.assertEqual(server.name, "GET /some-404")
+        self.assertEqual(server.name, "GET")
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()
@@ -721,7 +721,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         server, client = self.sorted_spans(spans)
-        self.assertEqual(server.name, "GET /some-404")
+        self.assertEqual(server.name, "GET")
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()
