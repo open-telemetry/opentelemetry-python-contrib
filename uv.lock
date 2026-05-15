@@ -3974,7 +3974,6 @@ source = { editable = "instrumentation/opentelemetry-instrumentation-redis" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-instrumentation-redis-valkey-base" },
     { name = "opentelemetry-semantic-conventions" },
     { name = "wrapt" },
 ]
@@ -3988,7 +3987,6 @@ instruments = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-instrumentation-redis-valkey-base", editable = "instrumentation/opentelemetry-instrumentation-redis-valkey-base" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "redis", marker = "extra == 'instruments'", specifier = ">=2.6" },
     { name = "wrapt", specifier = ">=1.12.1" },
