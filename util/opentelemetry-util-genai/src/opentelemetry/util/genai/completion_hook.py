@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from os import environ
-from typing import Any, Protocol, cast, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from opentelemetry._logs import LogRecord
 from opentelemetry.trace import Span
@@ -120,15 +120,15 @@ def load_completion_hook() -> CompletionHook:
     if not hook_name:
         return _NoOpCompletionHook()
 
-    for entry_point in entry_points(  # pyright: ignore[reportUnknownVariableType]
+    for entry_point in entry_points(
         group="opentelemetry_genai_completion_hook"
     ):
-        name = cast(str, entry_point.name)  # pyright: ignore[reportUnknownMemberType]
+        name = entry_point.name
         try:
             if hook_name != name:
                 continue
 
-            hook = entry_point.load()()  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+            hook = entry_point.load()()
             if not isinstance(hook, CompletionHook):
                 _logger.debug(
                     "%s is not a valid CompletionHook. Using noop", name
