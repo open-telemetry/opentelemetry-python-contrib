@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-{urllib,urllib3,requests}`: switch http mock library from abandoned httpretty to mocket

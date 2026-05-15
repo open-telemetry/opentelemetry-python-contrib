@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pyramid`: add missing `http.response.status_code` in duration metrics for stable http semantic conventions
