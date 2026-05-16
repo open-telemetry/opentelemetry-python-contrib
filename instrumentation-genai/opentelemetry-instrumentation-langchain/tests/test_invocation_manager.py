@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # tests/test_invocation_manager.py
 import uuid
 from unittest import mock

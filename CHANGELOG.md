@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+<!--
+Do *NOT* add changelog entries here!
+
+This changelog is managed by towncrier and is compiled at release time.
+
+See https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md#changelog for details.
+-->
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -9,36 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > The following components are released independently and maintain individual CHANGELOG files.
 > Use [this search for a list of all CHANGELOG.md files in this repo](https://github.com/search?q=repo%3Aopen-telemetry%2Fopentelemetry-python-contrib+path%3A**%2FCHANGELOG.md&type=code).
 
-## Unreleased
-
-### Added
-
-- Bump `pylint` to `4.0.5`
-  ([#4244](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4244))
-- `opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests
-  ([#4335](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4335))
-- Expand `AGENTS.md` with instrumentation/GenAI guidance and add PR review instructions.
-  ([#4457](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4457))
-
-### Fixed
-
-- `opentelemetry-instrumentation-pika` Use `ObjectProxy` instead of `BaseObjectProxy` for `ReadyMessagesDequeProxy` to restore iterability with wrapt 2.x
-  ([#4461](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4461))
-- `opentelemetry-instrumentation-dbapi` Use `ObjectProxy` instead of `BaseObjectProxy` for `TracedCursorProxy` to restore iterability with wrapt 2.x
-  ([#4427](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4427))
-- `opentelemetry-instrumentation-flask`: Clean up environ keys in `_teardown_request` to prevent duplicate execution
-  ([#4341](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4341))
-- `opentelemetry-instrumentation-flask`: Stop reading the deprecated (from 3.1) `flask.__version__` attribute; resolve the Flask version via `importlib.metadata`
-  ([#4422](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4422))
-- `opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints
-  ([#4360](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4360))
-- `opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
-  ([#3896](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3896))
-
-### Breaking changes
-
-- Drop Python 3.9 support
-  ([#4412](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4412))
+<!-- changelog start -->
 
 ## Version 1.41.0/0.62b0 (2026-04-09)
 
@@ -58,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#4049](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4049))
 - `opentelemetry-instrumentation-sqlalchemy`: implement new semantic convention opt-in migration
   ([#4110](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4110))
+- `opentelemetry-instrumentation`: Add experimental metrics attributes Labeler utility
+  ([#4288](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4288))
+- `opentelemetry-instrumentation-redis`: implement new semantic convention opt-in migration
+  ([#4370](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4370))
 
 ### Added
 
@@ -95,6 +78,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `opentelemetry-instrumentation-boto`: Remove instrumentation
   ([#4303](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4303))
+
+### Added
+
+- `opentelemetry-instrumentation-dbapi`: implement new semantic convention opt-in migration
+  ([#4109](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4109))
 
 ## Version 1.40.0/0.61b0 (2026-03-04)
 

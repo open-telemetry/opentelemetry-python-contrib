@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # pylint: skip-file
 """Example of instrumenting Claude Agent SDK with manual OpenTelemetry setup.
 

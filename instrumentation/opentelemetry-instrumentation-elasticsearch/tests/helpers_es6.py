@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from elasticsearch_dsl import (  # pylint: disable=unused-import
     Document,
     Keyword,

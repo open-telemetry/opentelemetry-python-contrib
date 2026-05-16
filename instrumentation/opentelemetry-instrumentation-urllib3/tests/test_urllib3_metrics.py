@@ -1,24 +1,14 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import io
 from timeit import default_timer
 from unittest import mock
 
-import httpretty
 import urllib3
 import urllib3.exceptions
+from mocket import Mocketizer
+from mocket.mocks.mockhttp import Entry
 from urllib3 import encode_multipart_formdata
 
 from opentelemetry.instrumentation._semconv import (
@@ -57,9 +47,10 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
         URLLib3Instrumentor().instrument()
-        httpretty.enable(allow_net_connect=False)
-        httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
-        httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(Entry.GET, self.HTTP_URL, body="Hello!")
+        Entry.single_register(Entry.POST, self.HTTP_URL, body="Hello!")
         self.pool = urllib3.PoolManager()
 
     def tearDown(self):
@@ -68,8 +59,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         self.pool.clear()
         URLLib3Instrumentor().uninstrument()
 
-        httpretty.disable()
-        httpretty.reset()
+        self.mocketizer.exit()
 
     def test_basic_metrics(self):
         start_time = default_timer()
@@ -345,9 +335,12 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             ],
         )
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    @mock.patch(
+        "mocket.mocks.mockhttp.Entry.METHODS",
+        Entry.METHODS + ("NONSTANDARD",),
+    )
     def test_basic_metrics_nonstandard_http_method(self):
-        httpretty.register_uri(
+        Entry.single_register(
             "NONSTANDARD", self.HTTP_URL, body="", status=405
         )
 
@@ -419,9 +412,12 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             ],
         )
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    @mock.patch(
+        "mocket.mocks.mockhttp.Entry.METHODS",
+        Entry.METHODS + ("NONSTANDARD",),
+    )
     def test_basic_metrics_nonstandard_http_method_new_semconv(self):
-        httpretty.register_uri(
+        Entry.single_register(
             "NONSTANDARD", self.HTTP_URL, body="", status=405
         )
         start_time = default_timer()
