@@ -805,6 +805,7 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["REQUEST_URI"] = (
             "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
         )
+        self.environ["PATH_INFO"] = "/3/library/urllib.parse.html"
         self.environ["QUERY_STRING"] = "highlight=params"
         expected_old = {
             HTTP_HOST: "127.0.0.1:8080",
