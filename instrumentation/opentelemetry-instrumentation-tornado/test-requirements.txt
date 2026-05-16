@@ -10,11 +10,11 @@ packaging==24.0
 pluggy==1.6.0
 py-cpuinfo==9.0.0
 pytest==7.4.4
-requests==2.32.3
+requests==2.33.1
 tomli==2.0.1
 tornado==6.4.2
 typing_extensions==4.12.2
-urllib3==2.2.2
+urllib3==2.7.0
 wrapt==1.16.0
 zipp==3.19.2
 -e opentelemetry-instrumentation

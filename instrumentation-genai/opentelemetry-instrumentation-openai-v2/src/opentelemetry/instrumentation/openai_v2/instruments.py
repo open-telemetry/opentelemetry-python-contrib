@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.util.genai.instruments import (
     create_duration_histogram,
