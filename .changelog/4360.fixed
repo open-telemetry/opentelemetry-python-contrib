@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: Coerce non-string values to strings in `CeleryGetter.get()` to prevent `TypeError` in `TraceState.from_header()` when Celery request attributes contain ints

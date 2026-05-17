@@ -81,6 +81,31 @@ Message content such as the contents of the prompt and response
 are not captured by default. To capture message content as log events, set the environment variable
 ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` to ``true``.
 
+Configuration recording
+***********************
+
+The instrumentation can optionally record ``GenerateContentConfig`` parameters
+as span and event attributes under the ``gcp.gen_ai.operation.config.*`` namespace.
+
+By default, no config fields are recorded. You can control which fields are
+captured using the following environment variables:
+
+* ``OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES`` — A comma-separated
+  list of config field names to include in the span attributes. For example:
+
+  .. code-block:: bash
+
+      export OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES=temperature,max_output_tokens
+
+* ``OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_EXCLUDES`` — A comma-separated
+  list of config field names to exclude from the span attributes:
+
+  .. code-block:: bash
+
+      export OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_EXCLUDES=stop_sequences
+
+If both variables are set, the includes list is applied first, then the
+excludes list filters the result further.
 
 Uninstrument
 ************
