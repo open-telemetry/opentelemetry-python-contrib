@@ -211,7 +211,7 @@ class TestPyMSSQLIntegration(TestBase):
         """database,http opt-in emits only stable attributes."""
         with use_semconv_opt_in("database,http"):
             PyMSSQLInstrumentor().instrument()
-            cnx = pymssql.connect(
+            cnx = pymssql.connect(  # pylint: disable=no-member
                 server="dbserver.local",
                 port="1433",
                 database="testdb",
