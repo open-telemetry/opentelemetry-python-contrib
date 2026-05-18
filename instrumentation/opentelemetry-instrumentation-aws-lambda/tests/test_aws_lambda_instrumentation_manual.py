@@ -710,6 +710,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         )
 
         set_global_response_propagator(orig)
+        handler_patch.stop()
 
     def test_api_gateway_http_api_proxy_event_response_headers_not_set(self):
         handler_patch = mock.patch.dict(
@@ -730,6 +731,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(response, {"message": "Hello from Lambda!"})
 
         set_global_response_propagator(orig)
+        handler_patch.stop()
 
     def test_api_gateway_http_api_proxy_event_sets_attributes(self):
         AwsLambdaInstrumentor().instrument()
