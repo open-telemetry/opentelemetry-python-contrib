@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- Relax version constraint of `google-genai` to allow v2 of that library to be used with the instrumentation library.
+
 ## Version 0.7b0 (2026-02-20)
 - Fix bug in how tokens are counted when using the streaming `generateContent` method.  ([#4152](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4152)).
 - Add `gen_ai.tool.definitions` attribute to `gen_ai.client.inference.operation.details` log event ([#4142](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4142)).
