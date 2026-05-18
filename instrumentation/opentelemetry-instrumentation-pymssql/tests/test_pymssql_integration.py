@@ -239,7 +239,7 @@ class TestPyMSSQLIntegration(TestBase):
         """database/dup,http/dup emits both legacy and stable."""
         with use_semconv_opt_in("database/dup,http/dup"):
             PyMSSQLInstrumentor().instrument()
-            cnx = pymssql.connect(
+            cnx = pymssql.connect(  # pylint: disable=no-member
                 server="dbserver.local",
                 port="1433",
                 database="testdb",
