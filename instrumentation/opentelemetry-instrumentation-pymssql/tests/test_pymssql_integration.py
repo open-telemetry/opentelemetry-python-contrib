@@ -9,8 +9,8 @@ import pymssql  # type: ignore
 
 import opentelemetry.instrumentation.pymssql
 from opentelemetry.instrumentation._semconv import (
-    _OpenTelemetrySemanticConventionStability,
     OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.pymssql import PyMSSQLInstrumentor
 from opentelemetry.sdk import resources
@@ -223,8 +223,12 @@ class TestPyMSSQLIntegration(TestBase):
 
             self.assertEqual(span.attributes["db.system.name"], "mssql")
             self.assertEqual(span.attributes["db.namespace"], "testdb")
-            self.assertEqual(span.attributes["db.query.text"], "SELECT * FROM test")
-            self.assertEqual(span.attributes["server.address"], "dbserver.local")
+            self.assertEqual(
+                span.attributes["db.query.text"], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes["server.address"], "dbserver.local"
+            )
             self.assertEqual(span.attributes["server.port"], 1433)
             self.assertEqual(span.attributes["db.protocol.tds.version"], "7.1")
             self.assertNotIn("db.system", span.attributes)
@@ -252,10 +256,18 @@ class TestPyMSSQLIntegration(TestBase):
             self.assertEqual(span.attributes["db.system.name"], "mssql")
             self.assertEqual(span.attributes["db.name"], "testdb")
             self.assertEqual(span.attributes["db.namespace"], "testdb")
-            self.assertEqual(span.attributes["db.statement"], "SELECT * FROM test")
-            self.assertEqual(span.attributes["db.query.text"], "SELECT * FROM test")
+            self.assertEqual(
+                span.attributes["db.statement"], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes["db.query.text"], "SELECT * FROM test"
+            )
             self.assertEqual(span.attributes["db.user"], "dbuser")
-            self.assertEqual(span.attributes["net.peer.name"], "dbserver.local")
-            self.assertEqual(span.attributes["server.address"], "dbserver.local")
+            self.assertEqual(
+                span.attributes["net.peer.name"], "dbserver.local"
+            )
+            self.assertEqual(
+                span.attributes["server.address"], "dbserver.local"
+            )
             self.assertEqual(span.attributes["net.peer.port"], 1433)
             self.assertEqual(span.attributes["server.port"], 1433)
