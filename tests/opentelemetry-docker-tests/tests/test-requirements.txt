@@ -24,7 +24,7 @@ grpcio==1.63.2
 idna==3.7
 iniconfig==2.0.0
 kombu==5.3.5
-mysql-connector-python==8.3.0
+mysql-connector-python==9.1.0
 mysqlclient==2.1.1
 packaging==24.0
 paramiko==4.0.0
