@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-wsgi`: use PATH_INFO and QUERY_STRING for URL attributes
+`opentelemetry-instrumentation-wsgi`: use `PATH_INFO` and `QUERY_STRING` for URL attributes instead of parsing `RAW_URI` or `REQUEST_URI`
