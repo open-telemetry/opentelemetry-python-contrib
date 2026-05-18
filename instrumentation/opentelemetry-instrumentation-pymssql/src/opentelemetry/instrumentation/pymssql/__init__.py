@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The integration with pymssql supports the `pymssql`_ library and can be enabled
@@ -75,6 +64,11 @@ from typing import Any, Callable, Collection, NamedTuple
 import pymssql
 
 from opentelemetry.instrumentation import dbapi
+from opentelemetry.instrumentation._semconv import (
+    _set_db_user,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymssql.package import _instruments
 from opentelemetry.instrumentation.pymssql.version import __version__
@@ -115,7 +109,9 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
 
         user = kwargs.get("user") or connect_method_args.user
         if user is not None:
-            self.span_attributes["db.user"] = user
+            _set_db_user(
+                self.span_attributes, user, self._sem_conv_opt_in_mode_db
+            )
 
         port = kwargs.get("port") or connect_method_args.port
         host = kwargs.get("server") or connect_method_args.server
@@ -131,9 +127,13 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
                     if len(tokens) > 1:
                         port = tokens[1]
         if host is not None:
-            self.span_attributes["net.peer.name"] = host
+            _set_http_net_peer_name_client(
+                self.span_attributes, host, self._sem_conv_opt_in_mode_http
+            )
         if port is not None:
-            self.span_attributes["net.peer.port"] = port
+            _set_http_peer_port_client(
+                self.span_attributes, port, self._sem_conv_opt_in_mode_http
+            )
 
         charset = kwargs.get("charset") or connect_method_args.charset
         if charset is not None:

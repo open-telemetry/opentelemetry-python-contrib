@@ -1,22 +1,17 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+from unittest import mock
 from unittest.mock import Mock, patch
 
 import pymssql  # type: ignore
 
 import opentelemetry.instrumentation.pymssql
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.pymssql import PyMSSQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
@@ -30,6 +25,21 @@ def mock_connect(*args, **kwargs):
             return Mock()
 
     return MockConnection()
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class TestPyMSSQLIntegration(TestBase):
@@ -73,7 +83,7 @@ class TestPyMSSQLIntegration(TestBase):
         self.assertEqual(span.attributes["db.statement"], "SELECT * FROM test")
         self.assertEqual(span.attributes["db.user"], "dbuser")
         self.assertEqual(span.attributes["net.peer.name"], "dbserver.local")
-        self.assertEqual(span.attributes["net.peer.port"], "1433")
+        self.assertEqual(span.attributes["net.peer.port"], 1433)
         self.assertEqual(span.attributes["db.charset"], "UTF-8")
         self.assertEqual(span.attributes["db.protocol.tds.version"], "7.1")
 
@@ -98,7 +108,7 @@ class TestPyMSSQLIntegration(TestBase):
         span = self._execute_query_and_get_span(cnx)
 
         self.assertEqual(span.attributes["net.peer.name"], "dbserver.local")
-        self.assertEqual(span.attributes["net.peer.port"], "1433")
+        self.assertEqual(span.attributes["net.peer.port"], 1433)
 
     @patch("pymssql.connect", new=mock_connect)
     # pylint: disable=unused-argument
@@ -112,7 +122,7 @@ class TestPyMSSQLIntegration(TestBase):
         span = self._execute_query_and_get_span(cnx)
 
         self.assertEqual(span.attributes["net.peer.name"], "dbserver.local")
-        self.assertEqual(span.attributes["net.peer.port"], "1433")
+        self.assertEqual(span.attributes["net.peer.port"], 1433)
 
     @patch("pymssql.connect", new=mock_connect)
     # pylint: disable=unused-argument
@@ -195,3 +205,69 @@ class TestPyMSSQLIntegration(TestBase):
             ).load(),
             PyMSSQLInstrumentor,
         )
+
+    @patch("pymssql.connect", new=mock_connect)
+    def test_semconv_stable(self):
+        """database,http opt-in emits only stable attributes."""
+        with use_semconv_opt_in("database,http"):
+            PyMSSQLInstrumentor().instrument()
+            cnx = pymssql.connect(  # pylint: disable=no-member
+                server="dbserver.local",
+                port="1433",
+                database="testdb",
+                user="dbuser",
+                password="dbpassw0rd",
+                tds_version="7.1",
+            )
+            span = self._execute_query_and_get_span(cnx)
+
+            self.assertEqual(span.attributes["db.system.name"], "mssql")
+            self.assertEqual(span.attributes["db.namespace"], "testdb")
+            self.assertEqual(
+                span.attributes["db.query.text"], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes["server.address"], "dbserver.local"
+            )
+            self.assertEqual(span.attributes["server.port"], 1433)
+            self.assertEqual(span.attributes["db.protocol.tds.version"], "7.1")
+            self.assertNotIn("db.system", span.attributes)
+            self.assertNotIn("db.name", span.attributes)
+            self.assertNotIn("db.statement", span.attributes)
+            self.assertNotIn("db.user", span.attributes)
+            self.assertNotIn("net.peer.name", span.attributes)
+            self.assertNotIn("net.peer.port", span.attributes)
+
+    @patch("pymssql.connect", new=mock_connect)
+    def test_semconv_dup(self):
+        """database/dup,http/dup emits both legacy and stable."""
+        with use_semconv_opt_in("database/dup,http/dup"):
+            PyMSSQLInstrumentor().instrument()
+            cnx = pymssql.connect(  # pylint: disable=no-member
+                server="dbserver.local",
+                port="1433",
+                database="testdb",
+                user="dbuser",
+                password="dbpassw0rd",
+            )
+            span = self._execute_query_and_get_span(cnx)
+
+            self.assertEqual(span.attributes["db.system"], "mssql")
+            self.assertEqual(span.attributes["db.system.name"], "mssql")
+            self.assertEqual(span.attributes["db.name"], "testdb")
+            self.assertEqual(span.attributes["db.namespace"], "testdb")
+            self.assertEqual(
+                span.attributes["db.statement"], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes["db.query.text"], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes["db.user"], "dbuser")
+            self.assertEqual(
+                span.attributes["net.peer.name"], "dbserver.local"
+            )
+            self.assertEqual(
+                span.attributes["server.address"], "dbserver.local"
+            )
+            self.assertEqual(span.attributes["net.peer.port"], 1433)
+            self.assertEqual(span.attributes["server.port"], 1433)

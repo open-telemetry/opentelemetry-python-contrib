@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlite3`: Add uninstrument, error status, suppress, and no-op tests

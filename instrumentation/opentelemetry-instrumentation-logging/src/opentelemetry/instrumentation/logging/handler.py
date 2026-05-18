@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -30,7 +19,6 @@ from opentelemetry._logs import (
     get_logger,
     get_logger_provider,
 )
-from opentelemetry.attributes import _VALID_ANY_VALUE_TYPES
 from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
@@ -41,11 +29,23 @@ _internal_logger.propagate = False
 _internal_logger.addHandler(logging.StreamHandler())
 
 
+_OTEL_PYTHON_LOG_HANDLER_LEVEL_BY_NAME = {
+    "notset": logging.NOTSET,
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warn": logging.WARNING,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+}
+
+
 def _setup_logging_handler(
-    logger_provider: LoggerProvider, log_code_attributes: bool = False
+    logger_provider: LoggerProvider,
+    log_code_attributes: bool = False,
+    level: int | None = None,
 ) -> LoggingHandler:
     handler = LoggingHandler(
-        level=logging.NOTSET,
+        level=level or logging.NOTSET,
         logger_provider=logger_provider,
         log_code_attributes=log_code_attributes,
     )
@@ -168,25 +168,7 @@ class LoggingHandler(logging.Handler):
         if self.formatter:
             body = self.format(record)
         else:
-            # `record.getMessage()` uses `record.msg` as a template to format
-            # `record.args` into. There is a special case in `record.getMessage()`
-            # where it will only attempt formatting if args are provided,
-            # otherwise, it just stringifies `record.msg`.
-            #
-            # Since the OTLP body field has a type of 'any' and the logging module
-            # is sometimes used in such a way that objects incorrectly end up
-            # set as record.msg, in those cases we would like to bypass
-            # `record.getMessage()` completely and set the body to the object
-            # itself instead of its string representation.
-            # For more background, see: https://github.com/open-telemetry/opentelemetry-python/pull/4216
-            if not record.args and not isinstance(record.msg, str):
-                #  if record.msg is not a value we can export, cast it to string
-                if not isinstance(record.msg, _VALID_ANY_VALUE_TYPES):
-                    body = str(record.msg)
-                else:
-                    body = record.msg
-            else:
-                body = record.getMessage()
+            body = record.getMessage()
 
         # Map Python log level names to OTel severity text as defined in
         # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
