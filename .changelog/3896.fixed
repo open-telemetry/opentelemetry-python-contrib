@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiohttp-server`: Use `canonical` attribute of the `Resource` as a span name
