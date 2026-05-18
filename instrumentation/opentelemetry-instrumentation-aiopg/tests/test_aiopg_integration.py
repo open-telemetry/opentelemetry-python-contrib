@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import asyncio
 import logging
 from unittest import mock
@@ -42,8 +31,7 @@ from opentelemetry.test.test_base import TestBase
 
 
 def async_call(coro):
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 class TestAiopgInstrumentor(TestBase):
@@ -473,7 +461,7 @@ class TestAiopgIntegration(TestBase):
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
     def test_uninstrument_connection(self):
         connection = mock.Mock()
@@ -483,7 +471,7 @@ class TestAiopgIntegration(TestBase):
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
-        self.assertIs(connection2.__wrapped__, connection)
+        self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
         connection3 = wrappers.uninstrument_connection(connection2)
         self.assertIs(connection3, connection)

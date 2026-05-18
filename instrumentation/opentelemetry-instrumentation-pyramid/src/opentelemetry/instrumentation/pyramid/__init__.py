@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Pyramid instrumentation supporting `pyramid`_, it can be enabled by
@@ -191,7 +180,13 @@ from pyramid.path import caller_package
 from pyramid.settings import aslist
 from wrapt import wrap_function_wrapper as _wrap
 
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.pyramid import callbacks
 from opentelemetry.instrumentation.pyramid.callbacks import (
     SETTING_TRACE_ENABLED,
     TWEEN_NAME,
@@ -248,10 +243,20 @@ class PyramidInstrumentor(BaseInstrumentor):
         """Integrate with Pyramid Python library.
         https://docs.pylonsproject.org/projects/pyramid/en/latest/
         """
+        # Initialize semantic conventions opt-in mode
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+        # Set module-level opt-in mode in callbacks
+        callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+
         _wrap("pyramid.config", "Configurator.__init__", _traced_init)
 
     def _uninstrument(self, **kwargs):
         """ "Disable Pyramid instrumentation"""
+        # Reset module-level opt-in mode to default
+        callbacks._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
         unwrap(Configurator, "__init__")
 
     @staticmethod
@@ -261,8 +266,18 @@ class PyramidInstrumentor(BaseInstrumentor):
         Args:
             config: The Configurator to instrument.
         """
+        # Initialize semantic conventions opt-in mode
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+        # Set module-level opt-in mode in callbacks
+        callbacks._sem_conv_opt_in_mode = sem_conv_opt_in_mode
+
         config.include("opentelemetry.instrumentation.pyramid.callbacks")
 
     @staticmethod
     def uninstrument_config(config):
+        # Reset module-level opt-in mode to default
+        callbacks._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
         config.add_settings({SETTING_TRACE_ENABLED: False})

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument tortoise-orm to report SQL queries.
@@ -48,7 +37,10 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.tortoiseorm.package import _instruments
 from opentelemetry.instrumentation.tortoiseorm.version import __version__
-from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation.utils import (
+    is_instrumentation_enabled,
+    unwrap,
+)
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_STATEMENT,
@@ -105,7 +97,6 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             None
         """
         tracer_provider = kwargs.get("tracer_provider")
-        # pylint: disable=attribute-defined-outside-init
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
@@ -270,6 +261,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return span_attributes
 
     async def _do_execute(self, func, instance, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         name = args[0].split()[0]
 
@@ -297,6 +291,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         return result
 
     async def _from_queryset(self, func, modelcls, args, kwargs):
+        if not is_instrumentation_enabled():
+            return await func(*args, **kwargs)
+
         exception = None
         name = f"pydantic.{func.__name__}"
 

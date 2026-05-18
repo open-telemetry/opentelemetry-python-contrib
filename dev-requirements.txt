@@ -1,5 +1,4 @@
-pylint==3.0.2
-httpretty==1.1.4
+pylint==4.0.5
 pyright==v1.1.404
 sphinx==7.1.2
 sphinx-rtd-theme==2.0.0rc4
@@ -10,9 +9,8 @@ readme-renderer==42.0
 bleach==4.1.0 # transient dependency for readme-renderer
 markupsafe>=2.0.1
 codespell==2.1.0
-requests==2.32.3
+requests==2.33.1
 ruamel.yaml==0.17.21
 flaky==3.7.0
-pre-commit==3.7.0; python_version >= '3.9'
-pre-commit==3.5.0; python_version < '3.9'
+pre-commit==3.7.0
 ruff==0.14.1

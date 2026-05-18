@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import os
 
@@ -19,9 +8,18 @@ import pytest
 from sqlalchemy.exc import ProgrammingError
 
 from opentelemetry import trace
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 
 from .mixins import SQLAlchemyTestMixin
+
+SCOPE = "opentelemetry.instrumentation.sqlalchemy"
 
 POSTGRES_CONFIG = {
     "host": "127.0.0.1",
@@ -47,11 +45,11 @@ class PostgresTestCase(SQLAlchemyTestMixin):
     def check_meta(self, span):
         # check database connection tags
         self.assertEqual(
-            span.attributes.get(SpanAttributes.NET_PEER_NAME),
+            span.attributes.get(NET_PEER_NAME),
             POSTGRES_CONFIG["host"],
         )
         self.assertEqual(
-            span.attributes.get(SpanAttributes.NET_PEER_PORT),
+            span.attributes.get(NET_PEER_PORT),
             POSTGRES_CONFIG["port"],
         )
 
@@ -68,12 +66,10 @@ class PostgresTestCase(SQLAlchemyTestMixin):
         # span fields
         self.assertEqual(span.name, "SELECT opentelemetry-tests")
         self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_STATEMENT),
+            span.attributes.get(DB_STATEMENT),
             "SELECT * FROM a_wrong_table",
         )
-        self.assertEqual(
-            span.attributes.get(SpanAttributes.DB_NAME), self.SQL_DB
-        )
+        self.assertEqual(span.attributes.get(DB_NAME), self.SQL_DB)
         self.check_meta(span)
         self.assertTrue(span.end_time - span.start_time > 0)
         # check the error
@@ -117,7 +113,7 @@ class PostgresMetricsTestCase(PostgresTestCase):
             POSTGRES_CONFIG["port"],
             self.SQL_DB,
         )
-        metrics = self.get_sorted_metrics()
+        metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 1)
         self.assert_metric_expected(
             metrics[0],

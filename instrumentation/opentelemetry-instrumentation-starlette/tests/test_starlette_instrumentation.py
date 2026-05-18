@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import unittest
 from timeit import default_timer
@@ -63,6 +52,8 @@ _recommended_attrs = {
     "http.server.response.size": _duration_attrs,
     "http.server.request.size": _duration_attrs,
 }
+
+SCOPE = "opentelemetry.instrumentation.starlette"
 
 
 class TestStarletteManualInstrumentation(TestBase):
@@ -180,32 +171,22 @@ class TestStarletteManualInstrumentation(TestBase):
         self._client.get("/foobar")
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) == 1)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) == 1)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertEqual(
-                    scope_metric.scope.name,
-                    "opentelemetry.instrumentation.starlette",
-                )
-                self.assertTrue(len(scope_metric.metrics) == 3)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr, _recommended_attrs[metric.name]
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) == 3)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(attr, _recommended_attrs[metric.name])
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_basic_post_request_metric_success(self):
@@ -233,10 +214,8 @@ class TestStarletteManualInstrumentation(TestBase):
         duration = max(round((default_timer() - start) * 1000), 0)
         response_size = int(response.headers.get("content-length"))
         request_size = int(response.request.headers.get("content-length"))
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -262,10 +241,8 @@ class TestStarletteManualInstrumentation(TestBase):
         self._instrumentor.uninstrument_app(self._app)
         self._client.get("/foobar")
         self._client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -283,10 +260,8 @@ class TestStarletteManualInstrumentation(TestBase):
         client.get("/foobar")
         client.get("/foobar")
         client.get("/foobar")
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for metric in (
-            metrics_list.resource_metrics[0].scope_metrics[0].metrics
-        ):
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
             for point in list(metric.data.data_points):
                 if isinstance(point, HistogramDataPoint):
                     self.assertEqual(point.count, 1)
@@ -638,7 +613,7 @@ class TestBaseWithCustomHeaders(TestBase):
         app = applications.Starlette()
 
         @app.route("/foobar")
-        def _(request):
+        def _foobar(request):
             return PlainTextResponse(
                 content="hi",
                 headers={
@@ -651,7 +626,7 @@ class TestBaseWithCustomHeaders(TestBase):
             )
 
         @app.websocket_route("/foobar_web")
-        async def _(websocket: WebSocket) -> None:
+        async def _foobar_web(websocket: WebSocket) -> None:
             message = await websocket.receive()
             if message.get("type") == "websocket.connect":
                 await websocket.send(

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Usage
@@ -229,7 +218,21 @@ class StarletteInstrumentor(BaseInstrumentor):
         meter_provider: MeterProvider | None = None,
         tracer_provider: TracerProvider | None = None,
     ):
-        """Instrument an uninstrumented Starlette application."""
+        """Instrument an uninstrumented Starlette application.
+
+        Args:
+            app: The starlette ASGI application callable to forward requests to.
+            server_request_hook: Optional callback which is called with the server span and ASGI
+                          scope object for every incoming request.
+            client_request_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method receive is called.
+            client_response_hook: Optional callback which is called with the internal span, and ASGI
+                          scope and event which are sent as dictionaries for when the method send is called.
+            meter_provider: The optional meter provider to use. If omitted
+                the current globally configured one is used.
+            tracer_provider: The optional tracer provider to use. If omitted
+                the current globally configured one is used.
+        """
         tracer = get_tracer(
             __name__,
             __version__,

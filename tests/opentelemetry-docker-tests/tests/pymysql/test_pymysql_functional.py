@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import os
 
@@ -18,7 +7,15 @@ import pymysql as pymy
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 MYSQL_USER = os.getenv("MYSQL_USER", "testuser")
@@ -65,19 +62,11 @@ class TestFunctionalPyMysql(TestBase):
         self.assertIsNotNone(db_span.parent)
         self.assertIs(db_span.parent, root_span.get_span_context())
         self.assertIs(db_span.kind, trace_api.SpanKind.CLIENT)
-        self.assertEqual(db_span.attributes[SpanAttributes.DB_SYSTEM], "mysql")
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.DB_NAME], MYSQL_DB_NAME
-        )
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.DB_USER], MYSQL_USER
-        )
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.NET_PEER_NAME], MYSQL_HOST
-        )
-        self.assertEqual(
-            db_span.attributes[SpanAttributes.NET_PEER_PORT], MYSQL_PORT
-        )
+        self.assertEqual(db_span.attributes[DB_SYSTEM], "mysql")
+        self.assertEqual(db_span.attributes[DB_NAME], MYSQL_DB_NAME)
+        self.assertEqual(db_span.attributes[DB_USER], MYSQL_USER)
+        self.assertEqual(db_span.attributes[NET_PEER_NAME], MYSQL_HOST)
+        self.assertEqual(db_span.attributes[NET_PEER_PORT], MYSQL_PORT)
 
     def test_execute(self):
         """Should create a child span for execute"""
@@ -101,6 +90,16 @@ class TestFunctionalPyMysql(TestBase):
             data = (("1",), ("2",), ("3",))
             self._cursor.executemany(stmt, data)
         self.validate_spans("INSERT")
+
+    def test_executemany_with_cursor_iteration(self):
+        """Should create a child span for executemany while iterating over the cursor"""
+        stmt = "SELECT * FROM test"
+        with self._tracer.start_as_current_span("rootSpan"):
+            with self._connection.cursor() as cursor:
+                cursor.execute(stmt)
+                for _row in cursor:
+                    pass
+        self.validate_spans("SELECT")
 
     def test_callproc(self):
         """Should create a child span for callproc"""

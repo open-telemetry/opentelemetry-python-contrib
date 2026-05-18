@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -203,6 +192,8 @@ _recommended_metrics_attrs_both = {
     "http.server.duration": _server_duration_attrs_old,
     "http.server.request.duration": _server_duration_attrs_new,
 }
+
+SCOPE = "opentelemetry.instrumentation.wsgi"
 
 
 class TestWsgiApplication(WsgiTestBase):
@@ -427,30 +418,26 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
 
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_old)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_old[metric.name],
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) > 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_old)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_old[metric.name],
+                    )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_wsgi_metrics_exemplars_expected_old_semconv(self):  # type: ignore[func-returns-value]
@@ -495,79 +482,67 @@ class TestWsgiApplication(WsgiTestBase):
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
 
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            if metric.name == "http.server.request.duration":
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                                )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_new[metric.name],
-                            )
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_new)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    if metric.name == "http.server.request.duration":
+                        self.assertEqual(
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                        )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_new[metric.name],
+                    )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_wsgi_metrics_both_semconv(self):
         # pylint: disable=too-many-nested-blocks
         app = otel_wsgi.OpenTelemetryMiddleware(error_wsgi_unhandled)
         self.assertRaises(ValueError, app, self.environ, self.start_response)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
         number_data_point_seen = False
         histogram_data_point_seen = False
 
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    if metric.unit == "ms":
-                        self.assertEqual(metric.name, "http.server.duration")
-                    elif metric.unit == "s":
+        metrics = self.get_sorted_metrics(SCOPE)
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            if metric.unit == "ms":
+                self.assertEqual(metric.name, "http.server.duration")
+            elif metric.unit == "s":
+                self.assertEqual(metric.name, "http.server.request.duration")
+            else:
+                self.assertEqual(metric.name, "http.server.active_requests")
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 1)
+                    if metric.name == "http.server.request.duration":
                         self.assertEqual(
-                            metric.name, "http.server.request.duration"
+                            point.explicit_bounds,
+                            HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
                         )
-                    else:
-                        self.assertEqual(
-                            metric.name, "http.server.active_requests"
-                        )
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 1)
-                            if metric.name == "http.server.request.duration":
-                                self.assertEqual(
-                                    point.explicit_bounds,
-                                    HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                                )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_both[metric.name],
-                            )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_both[metric.name],
+                    )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_nonstandard_http_method(self):

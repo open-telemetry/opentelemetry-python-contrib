@@ -1,34 +1,23 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
 
 from google.genai import types as genai_types
 
 from opentelemetry.util.genai.types import (
+    Blob,
     FinishReason,
     InputMessage,
     MessagePart,
     OutputMessage,
     Text,
-    ToolCall,
+    ToolCallRequest,
     ToolCallResponse,
+    Uri,
 )
 
 
@@ -37,23 +26,6 @@ class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     TOOL = "tool"
-
-
-@dataclass
-class BlobPart:
-    data: bytes
-    mime_type: str
-    type: Literal["blob"] = "blob"
-
-
-@dataclass
-class FileDataPart:
-    mime_type: str
-    uri: str
-    type: Literal["file_data"] = "file_data"
-
-    class Config:
-        extra = "allow"
 
 
 _logger = logging.getLogger(__name__)
@@ -121,16 +93,26 @@ def _to_part(part: genai_types.Part, idx: int) -> MessagePart | None:
     if (text := part.text) is not None:
         return Text(content=text)
 
-    if data := part.inline_data:
-        return BlobPart(mime_type=data.mime_type or "", data=data.data or b"")
+    if inline_data := part.inline_data:
+        mime_type = inline_data.mime_type or ""
+        modality = mime_type.split("/")[0] if mime_type else ""
+        return Blob(
+            mime_type=mime_type,
+            modality=modality,
+            content=inline_data.data or b"",
+        )
 
-    if data := part.file_data:
-        return FileDataPart(
-            mime_type=data.mime_type or "", uri=data.file_uri or ""
+    if file_data := part.file_data:
+        mime_type = file_data.mime_type or ""
+        modality = mime_type.split("/")[0] if mime_type else ""
+        return Uri(
+            mime_type=mime_type,
+            modality=modality,
+            uri=file_data.file_uri or "",
         )
 
     if call := part.function_call:
-        return ToolCall(
+        return ToolCallRequest(
             id=call.id or tool_call_id(call.name),
             name=call.name or "",
             arguments=call.args,

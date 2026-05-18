@@ -1,22 +1,14 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from unittest.mock import Mock, patch
 
 from pyramid.config import Configurator
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.propagators import (
     TraceResponsePropagator,
     get_global_response_propagator,
@@ -32,6 +24,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_SERVER_NAME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
+    HTTP_URL,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_HOST_NAME,
@@ -56,6 +49,7 @@ def expected_attributes(override_attributes):
         HTTP_TARGET: "/",
         HTTP_FLAVOR: "1.1",
         HTTP_STATUS_CODE: 200,
+        HTTP_URL: "http://localhost/",
     }
     for key, val in override_attributes.items():
         default_attributes[key] = val
@@ -65,6 +59,9 @@ def expected_attributes(override_attributes):
 class TestProgrammatic(InstrumentationTest, WsgiTestBase):
     def setUp(self):
         super().setUp()
+        # Reset semconv stability to ensure clean state
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
         config = Configurator()
         PyramidInstrumentor().instrument_config(config)
 
@@ -112,6 +109,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             {
                 HTTP_TARGET: "/hello/123",
                 HTTP_ROUTE: "/hello/{helloid}",
+                HTTP_URL: "http://localhost/hello/123",
             }
         )
         self.client.get("/hello/123")
@@ -152,6 +150,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 HTTP_METHOD: "POST",
                 HTTP_TARGET: "/bye",
                 HTTP_STATUS_CODE: 404,
+                HTTP_URL: "http://localhost/bye",
             }
         )
 
@@ -171,6 +170,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 HTTP_TARGET: "/hello/500",
                 HTTP_ROUTE: "/hello/{helloid}",
                 HTTP_STATUS_CODE: 500,
+                HTTP_URL: "http://localhost/hello/500",
             }
         )
         resp = self.client.get("/hello/500")
@@ -200,6 +200,7 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
                 HTTP_TARGET: "/hello/900",
                 HTTP_ROUTE: "/hello/{helloid}",
                 HTTP_STATUS_CODE: 500,
+                HTTP_URL: "http://localhost/hello/900",
             }
         )
         with self.assertRaises(NotImplementedError):

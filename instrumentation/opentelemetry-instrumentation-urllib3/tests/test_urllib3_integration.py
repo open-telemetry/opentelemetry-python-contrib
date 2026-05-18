@@ -1,25 +1,14 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 import typing
 from unittest import mock
 
-import httpretty
-import httpretty.core
-import httpretty.http
 import urllib3
 import urllib3.exceptions
+from mocket import Mocket, Mocketizer
+from mocket.mocks.mockhttp import Entry
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -41,7 +30,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import Span
 from opentelemetry.util.http import get_excluded_urls
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods,too-many-lines
 
 
 class TestURLLib3Instrumentor(TestBase):
@@ -78,18 +67,20 @@ class TestURLLib3Instrumentor(TestBase):
 
         URLLib3Instrumentor().instrument()
 
-        httpretty.enable(allow_net_connect=False)
-        httpretty.register_uri(httpretty.GET, self.HTTP_URL, body="Hello!")
-        httpretty.register_uri(httpretty.GET, self.HTTPS_URL, body="Hello!")
-        httpretty.register_uri(httpretty.POST, self.HTTP_URL, body="Hello!")
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(
+            Entry.GET, self.HTTP_URL, body="Hello!", match_querystring=False
+        )
+        Entry.single_register(Entry.GET, self.HTTPS_URL, body="Hello!")
+        Entry.single_register(Entry.POST, self.HTTP_URL, body="Hello!")
 
     def tearDown(self):
         super().tearDown()
         self.env_patch.stop()
         URLLib3Instrumentor().uninstrument()
 
-        httpretty.disable()
-        httpretty.reset()
+        self.mocketizer.exit()
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
@@ -262,7 +253,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_not_found(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(httpretty.GET, url_404, status=404)
+        Entry.single_register(Entry.GET, url_404, status=404)
 
         response = self.perform_request(url_404)
         self.assertEqual(404, response.status)
@@ -273,7 +264,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_not_found_new_semconv(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(httpretty.GET, url_404, status=404)
+        Entry.single_register(Entry.GET, url_404, status=404)
 
         response = self.perform_request(url_404)
         self.assertEqual(404, response.status)
@@ -284,7 +275,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_not_found_both_semconv(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(httpretty.GET, url_404, status=404)
+        Entry.single_register(Entry.GET, url_404, status=404)
 
         response = self.perform_request(url_404)
         self.assertEqual(404, response.status)
@@ -294,9 +285,12 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(404, span.attributes.get("http.status_code"))
         self.assertIs(trace.status.StatusCode.ERROR, span.status.status_code)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    @mock.patch(
+        "mocket.mocks.mockhttp.Entry.METHODS",
+        Entry.METHODS + ("NONSTANDARD",),
+    )
     def test_nonstandard_http_method(self):
-        httpretty.register_uri(
+        Entry.single_register(
             "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
         )
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
@@ -305,9 +299,12 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(span.attributes.get("http.method"), "_OTHER")
         self.assertEqual(span.attributes.get("http.status_code"), 405)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    @mock.patch(
+        "mocket.mocks.mockhttp.Entry.METHODS",
+        Entry.METHODS + ("NONSTANDARD",),
+    )
     def test_nonstandard_http_method_new_semconv(self):
-        httpretty.register_uri(
+        Entry.single_register(
             "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
         )
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
@@ -319,9 +316,12 @@ class TestURLLib3Instrumentor(TestBase):
         )
         self.assertEqual(span.attributes.get("http.response.status_code"), 405)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    @mock.patch(
+        "mocket.mocks.mockhttp.Entry.METHODS",
+        Entry.METHODS + ("NONSTANDARD",),
+    )
     def test_nonstandard_http_method_both_semconv(self):
-        httpretty.register_uri(
+        Entry.single_register(
             "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
         )
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
@@ -337,14 +337,14 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_basic_http_non_default_port(self):
         url = "http://mock:666/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        Entry.single_register(Entry.GET, url, body="Hello!")
 
         response = self.perform_request(url)
         self.assert_success_span(response, url)
 
     def test_basic_http_absolute_url(self):
         url = "http://mock:666/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        Entry.single_register(Entry.GET, url, body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock", port=666)
         response = pool.request("GET", url)
 
@@ -352,7 +352,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_url_open_explicit_arg_parameters(self):
         url = "http://mock:666/status/200"
-        httpretty.register_uri(httpretty.GET, url, body="Hello!")
+        Entry.single_register(Entry.GET, url, body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock", port=666)
         response = pool.urlopen(method="GET", url="/status/200")
 
@@ -360,8 +360,8 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_excluded_urls_explicit(self):
         url_201 = "http://mock/status/201"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_201,
             status=201,
         )
@@ -375,8 +375,8 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_excluded_urls_from_env(self):
         url = "http://localhost/env_excluded_arg/123"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url,
             status=200,
         )
@@ -420,7 +420,7 @@ class TestURLLib3Instrumentor(TestBase):
             self.assertEqual(b"Hello!", response.data)
 
             span = self.assert_span()
-            headers = dict(httpretty.last_request().headers)
+            headers = dict(Mocket.last_request().headers)
 
             self.assertIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
             self.assertEqual(
@@ -609,3 +609,416 @@ class TestURLLib3Instrumentor(TestBase):
         response = self.perform_request(self.HTTP_URL)
         self.assertEqual(b"Hello!", response.data)
         self.assert_span(num_spans=0)
+
+    def test_custom_response_headers_captured(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            captured_response_headers=["X-Custom-Header", "X-Another-Header"]
+        )
+
+        response_headers = {
+            "X-Custom-Header": "custom-value",
+            "X-Another-Header": "another-value",
+        }
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
+        )
+        self.perform_request(url)
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_another_header"],
+            ("another-value",),
+        )
+        self.assertNotIn(
+            "http.response.header.x_excluded_header", span.attributes
+        )
+
+    def test_custom_headers_not_captured_when_not_configured(self):
+        """Test that headers are not captured when env vars are not set."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument()
+
+        self.perform_request(
+            self.HTTP_URL,
+            headers={"X-Request-Header": "request-value"},
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertNotIn(
+            "http.request.header.x_request_header", span.attributes
+        )
+        self.assertNotIn(
+            "http.response.header.x_response_header", span.attributes
+        )
+
+    def test_sensitive_headers_sanitized(self):
+        """Test that sensitive header values are redacted."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            captured_request_headers=["Authorization", "X-Api-Key"],
+            captured_response_headers=["Set-Cookie", "X-Secret"],
+            sensitive_headers=[
+                "Authorization",
+                "X-Api-Key",
+                "Set-Cookie",
+                "X-Secret",
+            ],
+        )
+
+        response_headers = {
+            "Set-Cookie": "session=abc123",
+            "X-Secret": "secret",
+        }
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
+        )
+        self.perform_request(
+            url,
+            headers={
+                "Authorization": "Bearer secret-token",
+                "X-Api-Key": "secret-key",
+            },
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.request.header.authorization"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_api_key"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.set_cookie"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_secret"],
+            ("[REDACTED]",),
+        )
+
+    def test_custom_headers_with_regex(self):
+        """Test that header capture works with regex patterns."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            captured_request_headers=["X-Custom-Request-.*"],
+            captured_response_headers=["X-Custom-Response-.*"],
+        )
+
+        response_headers = {
+            "X-Custom-Response-A": "value-A",
+            "X-Custom-Response-B": "value-B",
+            "X-Other-Response-Header": "other-value",
+        }
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
+        )
+        self.perform_request(
+            url,
+            headers={
+                "X-Custom-Request-One": "value-one",
+                "X-Custom-Request-Two": "value-two",
+                "X-Other-Request-Header": "other-value",
+            },
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_one"],
+            ("value-one",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_custom_request_two"],
+            ("value-two",),
+        )
+        self.assertNotIn(
+            "http.request.header.x_other_request_header", span.attributes
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_a"],
+            ("value-A",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_custom_response_b"],
+            ("value-B",),
+        )
+        self.assertNotIn(
+            "http.response.header.x_other_response_header", span.attributes
+        )
+
+    def test_custom_headers_case_insensitive(self):
+        """Test that header capture is case-insensitive."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            captured_request_headers=["x-request-header"],
+            captured_response_headers=["x-response-header"],
+        )
+
+        response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
+        )
+        self.perform_request(
+            url,
+            headers={"X-ReQuESt-HeaDER": "custom-value"},
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.request.header.x_request_header"],
+            ("custom-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_header"],
+            ("custom-value",),
+        )
+
+    def test_standard_http_headers_captured(self):
+        """Test that standard HTTP headers can be captured."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            captured_request_headers=["Content-Type", "Accept"],
+            captured_response_headers=["Content-Type", "Server"],
+        )
+
+        response_headers = {
+            "Content-Type": "text/plain",
+            "Server": "TestServer/1.0",
+        }
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
+        )
+        self.perform_request(
+            url,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.request.header.content_type"],
+            ("application/json",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.accept"],
+            ("application/json",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.content_type"],
+            ("text/plain",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.server"],
+            ("TestServer/1.0",),
+        )
+
+    def test_capture_all_request_headers(self):
+        """Test that all request headers can be captured with .* pattern."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=[".*"])
+
+        self.perform_request(
+            self.HTTP_URL,
+            headers={
+                "X-Header-One": "value1",
+                "X-Header-Two": "value2",
+                "X-Header-Three": "value3",
+            },
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.request.header.x_header_one"],
+            ("value1",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_header_two"],
+            ("value2",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_header_three"],
+            ("value3",),
+        )
+
+    def test_capture_all_response_headers(self):
+        """Test that all response headers can be captured with .* pattern."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_response_headers=[".*"])
+
+        response_headers = {
+            "X-Response-One": "value1",
+            "X-Response-Two": "value2",
+            "X-Response-Three": "value3",
+        }
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
+        )
+        self.perform_request(url)
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_one"],
+            ("value1",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_two"],
+            ("value2",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_three"],
+            ("value3",),
+        )
+
+    def test_sanitize_with_regex_pattern(self):
+        """Test that sanitization works with regex patterns."""
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(
+            captured_request_headers=["X-Test.*"],
+            sensitive_headers=[".*secret.*"],
+        )
+
+        self.perform_request(
+            self.HTTP_URL,
+            headers={
+                "X-Test": "normal-value",
+                "X-Test-Secret": "secret-value",
+            },
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"],
+            ("normal-value",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_test_secret"],
+            ("[REDACTED]",),
+        )
+
+    @mock.patch.dict(
+        "os.environ",
+        {
+            "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST": "x-request-one,x-request-two",
+            "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE": "x-response-one",
+            "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS": "x-request-two",
+        },
+    )
+    def test_capture_and_sanitize_environment_variables(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument()
+
+        response_headers = {
+            "X-Response-One": "value1",
+            "X-Response-Two": "value2",
+        }
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
+        )
+        self.perform_request(
+            url, headers={"x-request-one": "one", "x-request-two": "two"}
+        )
+
+        span = self.assert_span(num_spans=1)
+        self.assertEqual(
+            span.attributes["http.request.header.x_request_one"],
+            ("one",),
+        )
+        self.assertEqual(
+            span.attributes["http.request.header.x_request_two"],
+            ("[REDACTED]",),
+        )
+        self.assertEqual(
+            span.attributes["http.response.header.x_response_one"],
+            ("value1",),
+        )
+        self.assertNotIn(
+            "http.response.header.x_response_two",
+            span.attributes,
+        )
+
+    def test_urlopen_positional_headers(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
+        url = "http://mock/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+        pool = urllib3.HTTPConnectionPool("mock")
+        headers = {"X-Test": "Value"}
+        response = pool.urlopen("GET", "/status/200", None, headers)
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"], ("Value",)
+        )
+
+    def test_urlopen_all_positional(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
+        url = "http://mock/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+        pool = urllib3.HTTPConnectionPool("mock")
+        response = pool.urlopen(
+            "GET",
+            "/status/200",
+            None,  # body
+            {"X-Test": "Value"},  # headers
+            None,  # retries
+            True,  # redirect
+            True,  # assert_same_host
+            urllib3.util.Timeout(5),  # timeout
+        )
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"], ("Value",)
+        )
+
+    def test_urlopen_mixed_args(self):
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(captured_request_headers=["X-Test"])
+        url = "http://mock/status/200"
+        Entry.single_register(Entry.GET, url, body="Hello!")
+        pool = urllib3.HTTPConnectionPool("mock")
+        response = pool.urlopen(
+            "GET", "/status/200", headers={"X-Test": "Value"}, body=None
+        )
+        self.assertEqual(b"Hello!", response.data)
+        span = self.assert_span()
+        self.assertEqual(
+            span.attributes["http.request.header.x_test"], ("Value",)
+        )

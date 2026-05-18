@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 
@@ -47,7 +36,16 @@ from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv.trace import NetTransportValues, SpanAttributes
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+    NET_TRANSPORT,
+    NetTransportValues,
+)
 from opentelemetry.trace import SpanKind, get_tracer
 
 logger = logging.getLogger(__name__)
@@ -115,7 +113,7 @@ def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
                     vals = _get_query_string(args[0])
 
                 query = f"{cmd}{' ' if vals else ''}{vals}"
-                span.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                span.set_attribute(DB_STATEMENT, query)
 
                 _set_connection_attributes(span, instance)
         except Exception as ex:  # pylint: disable=broad-except
@@ -153,23 +151,19 @@ def _get_query_string(arg):
 def _get_address_attributes(instance):
     """Attempt to get host and port from Client instance."""
     address_attributes = {}
-    address_attributes[SpanAttributes.DB_SYSTEM] = "memcached"
+    address_attributes[DB_SYSTEM] = "memcached"
 
     # client.base.Client contains server attribute which is either a host/port tuple, or unix socket path string
     # https://github.com/pinterest/pymemcache/blob/f02ddf73a28c09256589b8afbb3ee50f1171cac7/pymemcache/client/base.py#L228
     if hasattr(instance, "server"):
         if isinstance(instance.server, tuple):
             host, port = instance.server
-            address_attributes[SpanAttributes.NET_PEER_NAME] = host
-            address_attributes[SpanAttributes.NET_PEER_PORT] = port
-            address_attributes[SpanAttributes.NET_TRANSPORT] = (
-                NetTransportValues.IP_TCP.value
-            )
+            address_attributes[NET_PEER_NAME] = host
+            address_attributes[NET_PEER_PORT] = port
+            address_attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
         elif isinstance(instance.server, str):
-            address_attributes[SpanAttributes.NET_PEER_NAME] = instance.server
-            address_attributes[SpanAttributes.NET_TRANSPORT] = (
-                NetTransportValues.OTHER.value
-            )
+            address_attributes[NET_PEER_NAME] = instance.server
+            address_attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
 
     return address_attributes
 

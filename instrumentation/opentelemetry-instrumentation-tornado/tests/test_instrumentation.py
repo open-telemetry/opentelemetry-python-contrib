@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 
 import asyncio
@@ -71,6 +60,13 @@ class TornadoTest(AsyncHTTPTestCase, TestBase):
 
     def setUp(self):
         super().setUp()
+        # Reset semconv initialization to ensure clean state
+        # pylint: disable=import-outside-toplevel
+        from opentelemetry.instrumentation._semconv import (  # noqa: PLC0415
+            _OpenTelemetrySemanticConventionStability,
+        )
+
+        _OpenTelemetrySemanticConventionStability._initialized = False  # pylint: disable=protected-access
         TornadoInstrumentor().instrument(
             server_request_hook=getattr(self, "server_request_hook", None),
             client_request_hook=getattr(self, "client_request_hook", None),
@@ -303,7 +299,7 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
         self.assertEqual(len(spans), 2)
         server, client = spans
 
-        self.assertEqual(server.name, "GET /missing-url")
+        self.assertEqual(server.name, "GET")
         self.assertEqual(server.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             server,
@@ -326,6 +322,74 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
                 HTTP_URL: self.get_url("/missing-url"),
                 HTTP_METHOD: "GET",
                 HTTP_STATUS_CODE: 404,
+            },
+        )
+
+    def test_parametrized_url(self):
+        response = self.fetch("/parametrized/hello/")
+        self.assertEqual(response.code, 200)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        server, client = spans
+
+        self.assertEqual(server.name, "GET /parametrized/{message}/")
+        self.assertEqual(server.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            server,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/parametrized/hello/",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 200,
+                "tornado.handler": "tests.tornado_test_app.ParametrizedHandler",
+            },
+        )
+
+        self.assertEqual(client.name, "GET")
+        self.assertEqual(client.kind, SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            client,
+            {
+                HTTP_URL: self.get_url("/parametrized/hello/"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 200,
+            },
+        )
+
+    def test_no_group_url(self):
+        response = self.fetch("/nogroup/0/")
+        self.assertEqual(response.code, 200)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+        server, client = spans
+
+        self.assertEqual(server.name, "GET /nogroup/[0-9]/")
+        self.assertEqual(server.kind, SpanKind.SERVER)
+        self.assertSpanHasAttributes(
+            server,
+            {
+                HTTP_METHOD: "GET",
+                HTTP_SCHEME: "http",
+                HTTP_HOST: "127.0.0.1:" + str(self.get_http_port()),
+                HTTP_TARGET: "/nogroup/0/",
+                HTTP_CLIENT_IP: "127.0.0.1",
+                HTTP_STATUS_CODE: 200,
+                "tornado.handler": "tests.tornado_test_app.NoGroupHandler",
+            },
+        )
+
+        self.assertEqual(client.name, "GET")
+        self.assertEqual(client.kind, SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            client,
+            {
+                HTTP_URL: self.get_url("/nogroup/0/"),
+                HTTP_METHOD: "GET",
+                HTTP_STATUS_CODE: 200,
             },
         )
 
@@ -676,7 +740,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         server, client = self.sorted_spans(spans)
-        self.assertEqual(server.name, "GET /some-404")
+        self.assertEqual(server.name, "GET")
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()
@@ -691,7 +755,7 @@ class TestTornadoHTTPClientInstrumentation(TornadoTest, WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
         server, client = self.sorted_spans(spans)
-        self.assertEqual(server.name, "GET /some-404")
+        self.assertEqual(server.name, "GET")
         self.assertEqual(client.name, "GET")
         self.assertEqual(client.status.status_code, StatusCode.ERROR)
         self.memory_exporter.clear()

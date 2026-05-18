@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 This library builds on the OpenTelemetry WSGI middleware to track web requests
@@ -328,36 +317,25 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         if self in _InstrumentedFalconAPI._instrumented_falcon_apps:
             _InstrumentedFalconAPI._instrumented_falcon_apps.remove(self)
 
-    def _handle_exception(self, arg1, arg2, arg3, arg4):  # pylint: disable=C0103
-        # Falcon 3 does not execute middleware within the context of the exception
-        # so we capture the exception here and save it into the env dict
-
-        # Translation layer for handling the changed arg position of "ex" in Falcon > 2 vs
-        # Falcon < 2
+    def _handle_exception(self, *args):
+        # Falcon 3 does not execute middleware within the context
+        # of the exception so we capture the exception here and
+        # save it into the env dict
         if not self._is_instrumented_by_opentelemetry:
-            return super()._handle_exception(arg1, arg2, arg3, arg4)
+            return super()._handle_exception(*args)
 
         if _falcon_version == 1:
-            ex = arg1
-            req = arg2
-            resp = arg3
-            params = arg4
+            _, req, _, _ = args  # ex, req, resp, params
         else:
-            req = arg1
-            resp = arg2
-            ex = arg3
-            params = arg4
+            req, _, _, _ = args  # req, resp, ex, params
 
         _, exc, _ = exc_info()
         req.env[_ENVIRON_EXC] = exc
 
-        if _falcon_version == 1:
-            return super()._handle_exception(ex, req, resp, params)
-
-        return super()._handle_exception(req, resp, ex, params)
+        return super()._handle_exception(*args)
 
     def __call__(self, env, start_response):
-        # pylint: disable=E1101
+        # pylint: disable=unnecessary-dunder-call
         # pylint: disable=too-many-locals
         # pylint: disable=too-many-branches
         if self._otel_excluded_urls.url_disabled(env.get("PATH_INFO", "/")):
@@ -368,15 +346,16 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
 
         start_time = time_ns()
 
+        attributes = otel_wsgi.collect_request_attributes(
+            env, self._sem_conv_opt_in_mode
+        )
         span, token = _start_internal_or_server_span(
             tracer=self._otel_tracer,
             span_name=otel_wsgi.get_default_span_name(env),
             start_time=start_time,
             context_carrier=env,
             context_getter=otel_wsgi.wsgi_getter,
-        )
-        attributes = otel_wsgi.collect_request_attributes(
-            env, self._sem_conv_opt_in_mode
+            attributes=attributes,
         )
         active_requests_count_attrs = (
             otel_wsgi._parse_active_request_count_attrs(
@@ -386,8 +365,6 @@ class _InstrumentedFalconAPI(getattr(falcon, _instrument_app)):
         self.active_requests_counter.add(1, active_requests_count_attrs)
 
         if span.is_recording():
-            for key, value in attributes.items():
-                span.set_attribute(key, value)
             if span.is_recording() and span.kind == trace.SpanKind.SERVER:
                 custom_attributes = (
                     otel_wsgi.collect_custom_request_headers_attributes(env)
@@ -561,7 +538,7 @@ class _TraceMiddleware:
 
 
 class FalconInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for falcon.API
 
     See `BaseInstrumentor`

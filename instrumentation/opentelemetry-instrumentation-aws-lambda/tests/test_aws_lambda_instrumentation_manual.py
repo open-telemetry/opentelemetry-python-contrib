@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import logging
 import os
@@ -85,18 +74,22 @@ from .mocks.sqs_event import MOCK_LAMBDA_SQS_EVENT
 
 
 class MockLambdaContext:
-    def __init__(self, aws_request_id, invoked_function_arn):
+    def __init__(self, function_name, aws_request_id, invoked_function_arn):
+        self.function_name = function_name
         self.invoked_function_arn = invoked_function_arn
         self.aws_request_id = aws_request_id
 
 
 MOCK_LAMBDA_CONTEXT = MockLambdaContext(
+    function_name="myfunction",
     aws_request_id="mock_aws_request_id",
     invoked_function_arn="arn:aws:lambda:us-east-1:123456:function:myfunction:myalias",
 )
 
 MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
-    CLOUD_RESOURCE_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn,
+    CLOUD_RESOURCE_ID: ":".join(
+        MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[:7]
+    ),
     FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
     CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[4],
 }
@@ -126,7 +119,7 @@ MOCK_W3C_BAGGAGE_KEY = "baggage_key"
 MOCK_W3C_BAGGAGE_VALUE = "baggage_value"
 
 
-def mock_execute_lambda(event=None):
+def mock_execute_lambda(event=None, context=None):
     """Mocks the AWS Lambda execution.
 
     NOTE: We don't use `moto`'s `mock_lambda` because we are not instrumenting
@@ -138,11 +131,14 @@ def mock_execute_lambda(event=None):
 
     Args:
         event: The Lambda event which may or may not be used by instrumentation.
+        context: The AWS Lambda context to call the handler with
     """
 
     module_name, handler_name = os.environ[_HANDLER].rsplit(".", 1)
     handler_module = import_module(module_name.replace("/", "."))
-    return getattr(handler_module, handler_name)(event, MOCK_LAMBDA_CONTEXT)
+    return getattr(handler_module, handler_name)(
+        event, context or MOCK_LAMBDA_CONTEXT
+    )
 
 
 class TestAwsLambdaInstrumentorBase(TestBase):
@@ -194,7 +190,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(span.name, os.environ[_HANDLER])
+        self.assertEqual(span.name, MOCK_LAMBDA_CONTEXT.function_name)
         self.assertEqual(span.get_span_context().trace_id, MOCK_XRAY_TRACE_ID)
         self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
@@ -329,6 +325,36 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
                 expected_baggage=MOCK_W3C_BAGGAGE_VALUE,
                 propagators="tracecontext,baggage",
             ),
+            TestCase(
+                name="case_insensitive_headers_uppercase",
+                custom_extractor=None,
+                context={
+                    "headers": {
+                        TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME.upper(): MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+                        TraceContextTextMapPropagator._TRACESTATE_HEADER_NAME.upper(): f"{MOCK_W3C_TRACE_STATE_KEY}={MOCK_W3C_TRACE_STATE_VALUE},foo=1,bar=2",
+                    }
+                },
+                expected_traceid=MOCK_W3C_TRACE_ID,
+                expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
+                expected_trace_state_len=3,
+                expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+            ),
+            TestCase(
+                name="case_insensitive_headers_mixedcase",
+                custom_extractor=None,
+                context={
+                    "headers": {
+                        "TraceParent": MOCK_W3C_TRACE_CONTEXT_SAMPLED,
+                        "tRaCeStAtE": f"{MOCK_W3C_TRACE_STATE_KEY}={MOCK_W3C_TRACE_STATE_VALUE},foo=1,bar=2",
+                    }
+                },
+                expected_traceid=MOCK_W3C_TRACE_ID,
+                expected_parentid=MOCK_W3C_PARENT_SPAN_ID,
+                expected_trace_state_len=3,
+                expected_state_value=MOCK_W3C_TRACE_STATE_VALUE,
+                xray_traceid=MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+            ),
         ]
         for test in tests:
             with self.subTest(test_name=test.name):
@@ -404,6 +430,57 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
         test_env_patch.stop()
 
+    def test_api_gateway_v1_attributes_case_insensitivity(self):
+        AwsLambdaInstrumentor().instrument()
+
+        mock_execute_lambda(
+            {
+                "httpMethod": "GET",
+                "headers": {
+                    "user-agent": "lowercase-agent",
+                    "host": "lowercase-host",
+                    "x-forwarded-proto": "http",
+                },
+                "resource": "/test",
+                "requestContext": {
+                    "version": "1.0",
+                },
+            }
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(
+            span.attributes.get(HTTP_USER_AGENT), "lowercase-agent"
+        )
+        self.assertEqual(span.attributes.get(NET_HOST_NAME), "lowercase-host")
+        self.assertEqual(span.attributes.get(HTTP_SCHEME), "http")
+
+        self.memory_exporter.clear()
+
+        mock_execute_lambda(
+            {
+                "httpMethod": "GET",
+                "headers": {
+                    "uSeR-aGeNt": "mixed-agent",
+                    "hOsT": "mixed-host",
+                    "X-fOrWaRdEd-PrOtO": "https",
+                },
+                "resource": "/test",
+                "requestContext": {
+                    "version": "1.0",
+                },
+            }
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.attributes.get(HTTP_USER_AGENT), "mixed-agent")
+        self.assertEqual(span.attributes.get(NET_HOST_NAME), "mixed-host")
+        self.assertEqual(span.attributes.get(HTTP_SCHEME), "https")
+
     def test_lambda_handles_multiple_consumers(self):
         test_env_patch = mock.patch.dict(
             "os.environ",
@@ -430,7 +507,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         assert len(spans) == 4
 
         for span in spans:
-            assert span.kind == SpanKind.CONSUMER
+            assert span.kind == SpanKind.SERVER
 
         test_env_patch.stop()
 
@@ -733,7 +810,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
@@ -748,7 +825,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
@@ -763,7 +840,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,
@@ -778,7 +855,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(len(spans), 1)
 
         span, *_ = spans
-        self.assertEqual(span.kind, SpanKind.CONSUMER)
+        self.assertEqual(span.kind, SpanKind.SERVER)
         self.assertSpanHasAttributes(
             span,
             MOCK_LAMBDA_CONTEXT_ATTRIBUTES,

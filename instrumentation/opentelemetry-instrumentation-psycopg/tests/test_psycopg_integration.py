@@ -1,22 +1,12 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import types
 from unittest import IsolatedAsyncioTestCase, mock
 
 import psycopg
+from psycopg.sql import SQL, Composed
 
 import opentelemetry.instrumentation.psycopg
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
@@ -33,6 +23,8 @@ class MockCursor:
 
     callproc = mock.MagicMock(spec=types.MethodType)
     callproc.__name__ = "callproc"
+
+    connection = None
 
     rowcount = "SomeRowCount"
 
@@ -347,6 +339,41 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_instrument_connection_typed_sql_query(self):
+        cnx = psycopg.connect(database="test")
+        query = SQL("SELECT * FROM test")
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+
+        self.assertTrue(issubclass(cnx.cursor_factory, MockCursor))
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        self.assertEqual(
+            spans_list[0].attributes["db.statement"], "SELECT * FROM test"
+        )
+
+    def test_instrument_connection_composed_query(self):
+        cnx = psycopg.connect(database="test")
+        query: Composed = SQL("SELECT * FROM test").format()
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+        self.assertTrue(issubclass(cnx.cursor_factory, MockCursor))
+
+        cursor = cnx.cursor()
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(spans_list[0].name, "SELECT")
+        self.assertEqual(
+            spans_list[0].attributes["db.statement"], "SELECT * FROM test"
+        )
 
     # pylint: disable=unused-argument
     def test_instrument_connection_with_instrument(self):

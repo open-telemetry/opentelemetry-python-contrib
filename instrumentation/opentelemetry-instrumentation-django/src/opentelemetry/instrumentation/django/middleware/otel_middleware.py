@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import types
 from logging import getLogger
@@ -79,30 +68,8 @@ try:
 except ImportError:
     from django.urls import Resolver404, resolve
 
-DJANGO_2_0 = django_version >= (2, 0)
 DJANGO_3_0 = django_version >= (3, 0)
 
-if DJANGO_2_0:
-    # Since Django 2.0, only `settings.MIDDLEWARE` is supported, so new-style
-    # middlewares can be used.
-    class MiddlewareMixin:
-        def __init__(self, get_response):
-            self.get_response = get_response
-
-        def __call__(self, request):
-            self.process_request(request)
-            response = self.get_response(request)
-            return self.process_response(request, response)
-
-else:
-    # Django versions 1.x can use `settings.MIDDLEWARE_CLASSES` and expect
-    # old-style middlewares, which are created by inheriting from
-    # `deprecation.MiddlewareMixin` since its creation in Django 1.10 and 1.11,
-    # or from `object` for older versions.
-    try:
-        from django.utils.deprecation import MiddlewareMixin
-    except ImportError:
-        MiddlewareMixin = object
 
 if DJANGO_3_0:
     from django.core.handlers.asgi import ASGIRequest
@@ -137,7 +104,7 @@ def _is_asgi_request(request: HttpRequest) -> bool:
     return ASGIRequest is not None and isinstance(request, ASGIRequest)
 
 
-class _DjangoMiddleware(MiddlewareMixin):
+class _DjangoMiddleware:
     """Django Middleware for OpenTelemetry"""
 
     _environ_activation_key = (
@@ -166,6 +133,14 @@ class _DjangoMiddleware(MiddlewareMixin):
     _otel_response_hook: Callable[[Span, HttpRequest, HttpResponse], None] = (
         None
     )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        self.process_request(request)
+        response = self.get_response(request)
+        return self.process_response(request, response)
 
     @staticmethod
     def _get_span_name(request):
@@ -285,7 +260,7 @@ class _DjangoMiddleware(MiddlewareMixin):
                 span.set_attribute(key, value)
 
         activation = use_span(span, end_on_exit=True)
-        activation.__enter__()  # pylint: disable=E1101
+        activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
         request.META[self._environ_activation_key] = activation

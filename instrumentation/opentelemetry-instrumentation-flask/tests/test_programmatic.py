@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 from timeit import default_timer
@@ -145,6 +134,8 @@ _recommended_metrics_attrs_both = {
     "http.server.duration": _server_duration_attrs_old_copy,
     "http.server.request.duration": _server_duration_attrs_new_copy,
 }
+
+SCOPE = "opentelemetry.instrumentation.flask"
 
 
 # pylint: disable=too-many-public-methods
@@ -497,32 +488,26 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/321")
         self.client.get("/hello/756")
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_old)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=10
-                            )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_old[metric.name],
-                            )
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_old)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    self.assertAlmostEqual(duration, point.sum, delta=10)
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_old[metric.name],
+                    )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_flask_metrics_new_semconv(self):
@@ -531,36 +516,30 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.get("/hello/321")
         self.client.get("/hello/756")
         duration_s = max(default_timer() - start, 0)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        metrics = self.get_sorted_metrics(SCOPE)
         number_data_point_seen = False
         histogram_data_point_seen = False
-        self.assertTrue(len(metrics_list.resource_metrics) != 0)
-        for resource_metric in metrics_list.resource_metrics:
-            self.assertTrue(len(resource_metric.scope_metrics) != 0)
-            for scope_metric in resource_metric.scope_metrics:
-                self.assertTrue(len(scope_metric.metrics) != 0)
-                for metric in scope_metric.metrics:
-                    self.assertIn(metric.name, _expected_metric_names_new)
-                    data_points = list(metric.data.data_points)
-                    self.assertEqual(len(data_points), 1)
-                    for point in data_points:
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            self.assertAlmostEqual(
-                                duration_s, point.sum, places=1
-                            )
-                            self.assertEqual(
-                                point.explicit_bounds,
-                                HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
-                            )
-                            histogram_data_point_seen = True
-                        if isinstance(point, NumberDataPoint):
-                            number_data_point_seen = True
-                        for attr in point.attributes:
-                            self.assertIn(
-                                attr,
-                                _recommended_metrics_attrs_new[metric.name],
-                            )
+        self.assertTrue(len(metrics) != 0)
+        for metric in metrics:
+            self.assertIn(metric.name, _expected_metric_names_new)
+            data_points = list(metric.data.data_points)
+            self.assertEqual(len(data_points), 1)
+            for point in data_points:
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    self.assertAlmostEqual(duration_s, point.sum, places=1)
+                    self.assertEqual(
+                        point.explicit_bounds,
+                        HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
+                    )
+                    histogram_data_point_seen = True
+                if isinstance(point, NumberDataPoint):
+                    number_data_point_seen = True
+                for attr in point.attributes:
+                    self.assertIn(
+                        attr,
+                        _recommended_metrics_attrs_new[metric.name],
+                    )
         self.assertTrue(number_data_point_seen and histogram_data_point_seen)
 
     def test_flask_metric_values(self):
@@ -569,18 +548,14 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         self.client.post("/hello/756")
         self.client.post("/hello/756")
         duration = max(round((default_timer() - start) * 1000), 0)
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metric in resource_metric.scope_metrics:
-                for metric in scope_metric.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertEqual(point.count, 3)
-                            self.assertAlmostEqual(
-                                duration, point.sum, delta=10
-                            )
-                        if isinstance(point, NumberDataPoint):
-                            self.assertEqual(point.value, 0)
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertEqual(point.count, 3)
+                    self.assertAlmostEqual(duration, point.sum, delta=10)
+                if isinstance(point, NumberDataPoint):
+                    self.assertEqual(point.value, 0)
 
     def _assert_basic_metric(
         self,
@@ -589,28 +564,26 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
         expected_histogram_explicit_bounds=None,
     ):
         # pylint: disable=too-many-nested-blocks
-        metrics_list = self.memory_metrics_reader.get_metrics_data()
-        for resource_metric in metrics_list.resource_metrics:
-            for scope_metrics in resource_metric.scope_metrics:
-                for metric in scope_metrics.metrics:
-                    for point in list(metric.data.data_points):
-                        if isinstance(point, HistogramDataPoint):
-                            self.assertDictEqual(
-                                expected_duration_attributes,
-                                dict(point.attributes),
-                            )
-                            if expected_histogram_explicit_bounds is not None:
-                                self.assertEqual(
-                                    expected_histogram_explicit_bounds,
-                                    point.explicit_bounds,
-                                )
-                            self.assertEqual(point.count, 1)
-                        elif isinstance(point, NumberDataPoint):
-                            self.assertDictEqual(
-                                expected_requests_count_attributes,
-                                dict(point.attributes),
-                            )
-                            self.assertEqual(point.value, 0)
+        metrics = self.get_sorted_metrics(SCOPE)
+        for metric in metrics:
+            for point in list(metric.data.data_points):
+                if isinstance(point, HistogramDataPoint):
+                    self.assertDictEqual(
+                        expected_duration_attributes,
+                        dict(point.attributes),
+                    )
+                    if expected_histogram_explicit_bounds is not None:
+                        self.assertEqual(
+                            expected_histogram_explicit_bounds,
+                            point.explicit_bounds,
+                        )
+                    self.assertEqual(point.count, 1)
+                elif isinstance(point, NumberDataPoint):
+                    self.assertDictEqual(
+                        expected_requests_count_attributes,
+                        dict(point.attributes),
+                    )
+                    self.assertEqual(point.value, 0)
 
     def test_basic_metric_success(self):
         self.client.get("/hello/756")

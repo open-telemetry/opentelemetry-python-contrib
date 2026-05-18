@@ -5,12 +5,15 @@ on:
       package:
         type: choice
         options:
+        - opentelemetry-opamp-client
         - opentelemetry-propagator-aws-xray
         - opentelemetry-resource-detector-azure
         - opentelemetry-sdk-extension-aws
         - opentelemetry-instrumentation-openai-v2
         - opentelemetry-instrumentation-openai-agents-v2
         - opentelemetry-instrumentation-vertexai
+        - opentelemetry-instrumentation-anthropic
+        - opentelemetry-instrumentation-claude-agent-sdk
         - opentelemetry-instrumentation-google-genai
         - opentelemetry-util-genai
         description: 'Package to be released'
@@ -31,6 +34,8 @@ jobs:
       next_version: ${{ steps.verify.outputs.next_version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - id: verify
         name: Verify prerequisites
@@ -45,11 +50,6 @@ jobs:
 
           if [ ! -f $changelog ]; then
             echo "missing $changelog file"
-            exit 1
-          fi
-
-          if ! grep --quiet "^## Unreleased$" $changelog; then
-            echo the $changelog is missing an \"Unreleased\" section
             exit 1
           fi
 
@@ -120,19 +120,20 @@ jobs:
           # replace the version in the version file (1.2.3dev -> 1.2.3)
           sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${VERSION}\"/g" $VERSION_FILE
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
       - name: Install tox
         run: pip install tox
       - name: run tox
         run: tox -e generate
 
-      - name: Update the change log with the approximate release date
-        run: |
-          date=$(date "+%Y-%m-%d")
-          sed -Ei "s/^## Unreleased$/## Version ${VERSION} ($date)/" ${CHANGELOG}
+      - name: Install towncrier
+        run: pip install towncrier==25.8.0
+
+      - name: Generate changelog
+        run: towncrier build --yes --version "$VERSION" --dir "$(dirname $CHANGELOG)"
 
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh
@@ -180,20 +181,20 @@ jobs:
           # replace the version in the version file (1.2.3dev -> 1.3.3.dev)
           sed -i -E "s/__version__\s*=\s*\"${VERSION}\.dev\"/__version__ = \"${NEXT_VERSION}.dev\"/g" $VERSION_FILE
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
       - name: Install tox
         run: pip install tox
       - name: run tox
         run: tox -e generate
 
-      - name: Update the change log on main
-        run: |
-          # the actual release date on main will be updated at the end of the release workflow
-          date=$(date "+%Y-%m-%d")
-          sed -Ei "s/^## Unreleased$/## Unreleased\n\n## Version ${VERSION} ($date)/" ${CHANGELOG}
+      - name: Install towncrier
+        run: pip install towncrier==25.8.0
+
+      - name: Generate changelog
+        run: towncrier build --yes --version "$VERSION" --dir "$(dirname $CHANGELOG)"
 
       - name: Use CLA approved github bot
         run: .github/scripts/use-cla-approved-github-bot.sh

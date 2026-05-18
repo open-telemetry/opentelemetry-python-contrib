@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 OpenTelemetry Anthropic Instrumentation
@@ -49,9 +38,19 @@ API
 
 from typing import Any, Collection
 
-from opentelemetry.instrumentation.anthropic.package import _instruments
+from wrapt import (
+    wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
+)
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.semconv.schemas import Schemas
+from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.util.genai.handler import TelemetryHandler
+
+from .package import _instruments
+from .patch import (
+    messages_create,
+    messages_stream,
+)
 
 
 class AnthropicInstrumentor(BaseInstrumentor):
@@ -80,50 +79,41 @@ class AnthropicInstrumentor(BaseInstrumentor):
                 - meter_provider: MeterProvider instance
                 - logger_provider: LoggerProvider instance
         """
-        # pylint: disable=import-outside-toplevel
-        from opentelemetry._logs import get_logger  # noqa: PLC0415
-        from opentelemetry.metrics import get_meter  # noqa: PLC0415
-        from opentelemetry.trace import get_tracer  # noqa: PLC0415
-
         # Get providers from kwargs
         tracer_provider = kwargs.get("tracer_provider")
-        logger_provider = kwargs.get("logger_provider")
         meter_provider = kwargs.get("meter_provider")
+        logger_provider = kwargs.get("logger_provider")
 
-        # Initialize tracer
-        tracer = get_tracer(
-            __name__,
-            "",
-            tracer_provider,
-            schema_url=Schemas.V1_28_0.value,
-        )
-
-        # Initialize logger for events
-        logger = get_logger(
-            __name__,
-            "",
-            schema_url=Schemas.V1_28_0.value,
+        handler = TelemetryHandler(
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
             logger_provider=logger_provider,
         )
 
-        # Initialize meter for metrics
-        meter = get_meter(
-            __name__,
-            "",
-            meter_provider,
-            schema_url=Schemas.V1_28_0.value,
+        # Patch Messages.create and Messages.stream
+        wrap_function_wrapper(
+            "anthropic.resources.messages",
+            "Messages.create",
+            messages_create(handler),
         )
-
-        # Store for later use in _uninstrument
-        self._tracer = tracer
-        self._logger = logger
-        self._meter = meter
-
-        # Patching will be added in Ticket 3
+        wrap_function_wrapper(
+            "anthropic.resources.messages",
+            "Messages.stream",
+            messages_stream(handler),
+        )
 
     def _uninstrument(self, **kwargs: Any) -> None:
         """Disable Anthropic instrumentation.
 
         This removes all patches applied during instrumentation.
         """
-        # Unpatching will be added in Ticket 3
+        import anthropic  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+
+        unwrap(
+            anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
+            "create",
+        )
+        unwrap(
+            anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
+            "stream",
+        )
