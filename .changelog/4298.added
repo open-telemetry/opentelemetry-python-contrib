@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-logging`: Add `OTEL_PYTHON_LOG_HANDLER_LEVEL` and `OTEL_PYTHON_LOG_FORMAT` environment variables to configure the log level and formatter of the auto-instrumented `LoggingHandler`.

@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-dbapi` Use `ObjectProxy` instead of `BaseObjectProxy` for `TracedCursorProxy` to restore iterability with wrapt 2.x
