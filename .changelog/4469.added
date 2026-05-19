@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation`: update auto-instrumentation to re-inject instrumentation path after init
