@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pymssql`: Fix semconv stability migration for connection attributes (host, port, user) set in `wrapped_connection()` to respect `OTEL_SEMCONV_STABILITY_OPT_IN`. Note: `net.peer.port` is now emitted as `int` instead of `string` in default mode, aligning with other DB instrumentations.
