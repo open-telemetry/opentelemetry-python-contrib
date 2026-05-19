@@ -1,0 +1,1 @@
+Declare `opentelemetry-semantic-conventions` as a direct dependency for the aio-pika, logging, pika and system-metrics instrumentations, since each imports `opentelemetry.semconv` directly.
