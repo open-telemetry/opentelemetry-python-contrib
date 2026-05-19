@@ -1,0 +1,1 @@
+aws-xray-propagator: ensure trace state is not overwritten
