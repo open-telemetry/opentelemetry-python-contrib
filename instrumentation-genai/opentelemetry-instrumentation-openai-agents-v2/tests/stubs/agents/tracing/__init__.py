@@ -15,9 +15,14 @@ from .spans import Span
 from .traces import Trace
 
 SPAN_TYPE_AGENT = "agent"
+SPAN_TYPE_CUSTOM = "custom"
 SPAN_TYPE_FUNCTION = "function"
 SPAN_TYPE_GENERATION = "generation"
+SPAN_TYPE_MCP_TOOLS = "mcp_tools"
 SPAN_TYPE_RESPONSE = "response"
+SPAN_TYPE_SPEECH_GROUP = "speech_group"
+SPAN_TYPE_TASK = "task"
+SPAN_TYPE_TURN = "turn"
 
 __all__ = [
     "TraceProvider",
@@ -28,10 +33,20 @@ __all__ = [
     "generation_span",
     "function_span",
     "response_span",
+    "task_span",
+    "turn_span",
+    "custom_span",
+    "mcp_tools_span",
+    "speech_group_span",
     "AgentSpanData",
+    "CustomSpanData",
     "GenerationSpanData",
     "FunctionSpanData",
+    "MCPListToolsSpanData",
     "ResponseSpanData",
+    "SpeechGroupSpanData",
+    "TaskSpanData",
+    "TurnSpanData",
 ]
 
 
@@ -59,6 +74,16 @@ class FunctionSpanData:
 
 
 @dataclass
+class CustomSpanData:
+    name: str
+    data: dict[str, Any] | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_CUSTOM
+
+
+@dataclass
 class GenerationSpanData:
     input: Sequence[Mapping[str, Any]] | None = None
     output: Sequence[Mapping[str, Any]] | None = None
@@ -74,10 +99,51 @@ class GenerationSpanData:
 @dataclass
 class ResponseSpanData:
     response: Any = None
+    input: Any = None
 
     @property
     def type(self) -> str:
         return SPAN_TYPE_RESPONSE
+
+
+@dataclass
+class TaskSpanData:
+    name: str
+    usage: Mapping[str, Any] | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_TASK
+
+
+@dataclass
+class TurnSpanData:
+    turn: int
+    agent_name: str
+    usage: Mapping[str, Any] | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_TURN
+
+
+@dataclass
+class MCPListToolsSpanData:
+    server: str | None = None
+    result: list[str] | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_MCP_TOOLS
+
+
+@dataclass
+class SpeechGroupSpanData:
+    input: str | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_SPEECH_GROUP
 
 
 class _ProcessorFanout(TracingProcessor):
@@ -232,6 +298,61 @@ def function_span(**kwargs: Any):
 @contextmanager
 def response_span(**kwargs: Any):
     data = ResponseSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def task_span(**kwargs: Any):
+    data = TaskSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def turn_span(**kwargs: Any):
+    data = TurnSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def custom_span(**kwargs: Any):
+    data = CustomSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def mcp_tools_span(**kwargs: Any):
+    data = MCPListToolsSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def speech_group_span(**kwargs: Any):
+    data = SpeechGroupSpanData(**kwargs)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:

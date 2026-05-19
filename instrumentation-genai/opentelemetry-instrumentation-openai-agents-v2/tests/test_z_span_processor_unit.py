@@ -188,7 +188,7 @@ def test_operation_and_span_naming(processor_setup):
         pass
 
     unknown = UnknownSpanData()
-    assert processor._get_operation_name(unknown) == "unknown"
+    assert processor._get_operation_name(unknown) is None
 
     assert processor._get_span_kind(GenerationSpanData()) is SpanKind.CLIENT
     assert processor._get_span_kind(FunctionSpanData()) is SpanKind.INTERNAL

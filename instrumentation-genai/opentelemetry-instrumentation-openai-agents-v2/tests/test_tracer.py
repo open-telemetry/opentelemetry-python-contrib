@@ -22,11 +22,16 @@ sys.modules.pop("agents.tracing", None)
 import agents.tracing as agents_tracing  # noqa: E402
 from agents.tracing import (  # noqa: E402
     agent_span,
+    custom_span,
     function_span,
     generation_span,
+    mcp_tools_span,
     response_span,
     set_trace_processors,
+    speech_group_span,
+    task_span,
     trace,
+    turn_span,
 )
 from openai.types.responses import FunctionTool  # noqa: E402
 
@@ -69,6 +74,10 @@ GEN_AI_OUTPUT_MESSAGES = getattr(
 GEN_AI_TOOL_DEFINITIONS = getattr(
     GenAI, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
 )
+GEN_AI_DATA_SOURCE_ID = getattr(
+    GenAI, "GEN_AI_DATA_SOURCE_ID", "gen_ai.data_source.id"
+)
+GEN_AI_TOOL_CALL_RESULT = "gen_ai.tool.call.result"
 
 
 def _instrument_with_provider(**instrument_kwargs):
@@ -556,6 +565,132 @@ def test_response_span_records_response_attributes():
                 },
             }
         ]
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_response_span_string_input_records_single_user_message():
+    instrumentor, exporter = _instrument_with_provider()
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-456"
+            self.model = "gpt-4o-mini"
+            self.output = []
+            self.usage = None
+            self.tools = []
+
+    try:
+        with trace("workflow"):
+            with response_span(
+                input="single user prompt",
+                response=_Response(),
+            ):
+                pass
+
+        spans = exporter.get_finished_spans()
+        response = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_RESPONSE_ID) == "resp-456"
+        )
+
+        prompt = json.loads(response.attributes[GEN_AI_INPUT_MESSAGES])
+        assert prompt == [
+            {
+                "role": "user",
+                "parts": [{"type": "text", "content": "single user prompt"}],
+            }
+        ]
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_current_agents_sdk_span_types_avoid_unknown_operations():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        with trace("workflow"):
+            with task_span(
+                name="Agent workflow",
+                usage={"input_tokens": 20, "output_tokens": 6},
+            ):
+                pass
+            with turn_span(
+                turn=1,
+                agent_name="Support Agent",
+                usage={"input_tokens": 8, "output_tokens": 4},
+            ):
+                pass
+            with mcp_tools_span(
+                server="filesystem",
+                result=["read_file", "write_file"],
+            ):
+                pass
+            with speech_group_span(input="say hello"):
+                pass
+            with custom_span(name="application work", data={"step": "local"}):
+                pass
+
+        spans = exporter.get_finished_spans()
+        assert all(
+            span.attributes.get(GenAI.GEN_AI_OPERATION_NAME) != "unknown"
+            for span in spans
+        )
+
+        task = next(
+            span
+            for span in spans
+            if span.name == "invoke_agent Agent workflow"
+        )
+        assert (
+            task.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+        )
+        assert task.attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 20
+        assert task.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 6
+
+        turn = next(
+            span for span in spans if span.name == "invoke_agent Support Agent"
+        )
+        assert (
+            turn.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+        )
+        assert turn.attributes[GenAI.GEN_AI_AGENT_NAME] == "Support Agent"
+        assert turn.attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 8
+        assert turn.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 4
+
+        mcp = next(
+            span for span in spans if span.name == "execute_tool list_tools"
+        )
+        assert (
+            mcp.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
+        )
+        assert mcp.attributes[GenAI.GEN_AI_TOOL_NAME] == "list_tools"
+        assert mcp.attributes[GenAI.GEN_AI_TOOL_TYPE] == "extension"
+        assert mcp.attributes[GEN_AI_DATA_SOURCE_ID] == "filesystem"
+        assert json.loads(mcp.attributes[GEN_AI_TOOL_CALL_RESULT]) == [
+            "read_file",
+            "write_file",
+        ]
+
+        speech = next(
+            span for span in spans if span.name == "speech_generation"
+        )
+        assert (
+            speech.attributes[GenAI.GEN_AI_OPERATION_NAME]
+            == "speech_generation"
+        )
+        assert speech.attributes[GenAI.GEN_AI_OUTPUT_TYPE] == "speech"
+
+        custom = next(
+            span for span in spans if span.name == "application work"
+        )
+        assert GenAI.GEN_AI_OPERATION_NAME not in custom.attributes
     finally:
         instrumentor.uninstrument()
         exporter.clear()

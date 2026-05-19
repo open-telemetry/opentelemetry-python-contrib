@@ -33,13 +33,18 @@ try:
     from agents.tracing import Span, Trace, TracingProcessor
     from agents.tracing.span_data import (
         AgentSpanData,
+        CustomSpanData,
         FunctionSpanData,
         GenerationSpanData,
         GuardrailSpanData,
         HandoffSpanData,
+        MCPListToolsSpanData,
         ResponseSpanData,
+        SpeechGroupSpanData,
         SpeechSpanData,
+        TaskSpanData,
         TranscriptionSpanData,
+        TurnSpanData,
     )
 except ModuleNotFoundError:  # pragma: no cover - test stubs
     tracing_module = importlib.import_module("agents.tracing")
@@ -47,15 +52,20 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     Trace = getattr(tracing_module, "Trace")
     TracingProcessor = getattr(tracing_module, "TracingProcessor")
     AgentSpanData = getattr(tracing_module, "AgentSpanData", Any)  # type: ignore[assignment]
+    CustomSpanData = getattr(tracing_module, "CustomSpanData")
     FunctionSpanData = getattr(tracing_module, "FunctionSpanData", Any)  # type: ignore[assignment]
     GenerationSpanData = getattr(tracing_module, "GenerationSpanData", Any)  # type: ignore[assignment]
     GuardrailSpanData = getattr(tracing_module, "GuardrailSpanData", Any)  # type: ignore[assignment]
     HandoffSpanData = getattr(tracing_module, "HandoffSpanData", Any)  # type: ignore[assignment]
+    MCPListToolsSpanData = getattr(tracing_module, "MCPListToolsSpanData")
     ResponseSpanData = getattr(tracing_module, "ResponseSpanData", Any)  # type: ignore[assignment]
+    SpeechGroupSpanData = getattr(tracing_module, "SpeechGroupSpanData")
     SpeechSpanData = getattr(tracing_module, "SpeechSpanData", Any)  # type: ignore[assignment]
+    TaskSpanData = getattr(tracing_module, "TaskSpanData")
     TranscriptionSpanData = getattr(
         tracing_module, "TranscriptionSpanData", Any
     )  # type: ignore[assignment]
+    TurnSpanData = getattr(tracing_module, "TurnSpanData")
 
 from opentelemetry.context import attach, detach
 from opentelemetry.metrics import Histogram, get_meter
@@ -647,7 +657,7 @@ class GenAISemanticProcessor(TracingProcessor):
         return
 
     def _collect_system_instructions(
-        self, messages: Sequence[Any] | None
+        self, messages: Sequence[Any] | str | None
     ) -> list[dict[str, str]]:
         """Return system/ai role instructions as typed text objects.
 
@@ -655,7 +665,7 @@ class GenAISemanticProcessor(TracingProcessor):
         Handles message content that may be a string, list of parts,
         or a dict with text/content fields.
         """
-        if not messages:
+        if not messages or isinstance(messages, str):
             return []
         out: list[dict[str, str]] = []
         for m in messages:
@@ -710,7 +720,7 @@ class GenAISemanticProcessor(TracingProcessor):
         return [{"type": "text", "content": "readacted"}]
 
     def _normalize_messages_to_role_parts(
-        self, messages: Sequence[Any] | None
+        self, messages: Sequence[Any] | str | None
     ) -> list[dict[str, Any]]:
         """Normalize input messages to enforced role+parts schema.
 
@@ -720,6 +730,20 @@ class GenAISemanticProcessor(TracingProcessor):
         """
         if not messages:
             return []
+        if isinstance(messages, str):
+            return [
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "type": "text",
+                            "content": "readacted"
+                            if not self.include_sensitive_data
+                            else messages,
+                        }
+                    ],
+                }
+            ]
         normalized: list[dict[str, Any]] = []
         for m in messages:
             if not isinstance(m, dict):
@@ -1160,9 +1184,11 @@ class GenAISemanticProcessor(TracingProcessor):
         if _is_instance_of(span_data, FunctionSpanData):
             # Tool results are typically JSON
             return GenAIOutputType.JSON
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return GenAIOutputType.JSON
         if _is_instance_of(span_data, TranscriptionSpanData):
             return GenAIOutputType.TEXT
-        if _is_instance_of(span_data, SpeechSpanData):
+        if _is_instance_of(span_data, (SpeechGroupSpanData, SpeechSpanData)):
             return GenAIOutputType.SPEECH
         if _is_instance_of(span_data, GuardrailSpanData):
             return GenAIOutputType.TEXT
@@ -1286,9 +1312,64 @@ class GenAISemanticProcessor(TracingProcessor):
             return SpanKind.CLIENT  # API calls to model providers
         if _is_instance_of(span_data, AgentSpanData):
             return SpanKind.CLIENT
-        if _is_instance_of(span_data, (GuardrailSpanData, HandoffSpanData)):
+        if _is_instance_of(
+            span_data,
+            (
+                GuardrailSpanData,
+                HandoffSpanData,
+                MCPListToolsSpanData,
+                SpeechGroupSpanData,
+                TaskSpanData,
+                TurnSpanData,
+            ),
+        ):
             return SpanKind.INTERNAL  # Agent operations are internal
         return SpanKind.INTERNAL
+
+    def _get_agent_name_for_span(self, span_data: Any) -> Optional[str]:
+        """Return the best available agent label for span naming."""
+        if self.agent_name:
+            return self.agent_name
+        if _is_instance_of(span_data, AgentSpanData):
+            return getattr(span_data, "name", None)
+        if _is_instance_of(span_data, TaskSpanData):
+            return getattr(span_data, "name", None)
+        if _is_instance_of(span_data, TurnSpanData):
+            return getattr(span_data, "agent_name", None)
+        return self._agent_name_default
+
+    def _get_tool_name_for_span(self, span_data: Any) -> Optional[str]:
+        """Return the best available tool label for span naming."""
+        if _is_instance_of(span_data, FunctionSpanData):
+            return getattr(span_data, "name", None)
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return "list_tools"
+        return None
+
+    def _get_span_display_name(
+        self,
+        span_data: Any,
+        operation_name: Optional[str],
+        model: Optional[str],
+    ) -> str:
+        """Return the OTel span name for known and custom Agents spans."""
+        if operation_name:
+            return get_span_name(
+                operation_name,
+                model,
+                self._get_agent_name_for_span(span_data),
+                self._get_tool_name_for_span(span_data),
+            )
+
+        name = getattr(span_data, "name", None)
+        if isinstance(name, str) and name:
+            return name
+
+        span_type = getattr(span_data, "type", None)
+        if isinstance(span_type, str) and span_type:
+            return span_type
+
+        return "span"
 
     def on_trace_start(self, trace: Trace) -> None:
         """Create root span when trace starts."""
@@ -1355,27 +1436,17 @@ class GenAISemanticProcessor(TracingProcessor):
             response_obj = getattr(span.span_data, "response", None)
             model = getattr(response_obj, "model", None)
 
-        # Use configured agent name or get from span data
-        agent_name = self.agent_name
-        if not agent_name and _is_instance_of(span.span_data, AgentSpanData):
-            agent_name = getattr(span.span_data, "name", None)
-        if not agent_name:
-            agent_name = self._agent_name_default
-
-        tool_name = (
-            getattr(span.span_data, "name", None)
-            if _is_instance_of(span.span_data, FunctionSpanData)
-            else None
-        )
-
         # Generate spec-compliant span name
-        span_name = get_span_name(operation_name, model, agent_name, tool_name)
+        span_name = self._get_span_display_name(
+            span.span_data, operation_name, model
+        )
 
         attributes = {
             GEN_AI_PROVIDER_NAME: self.system_name,
             GEN_AI_SYSTEM_KEY: self.system_name,
-            GEN_AI_OPERATION_NAME: operation_name,
         }
+        if operation_name:
+            attributes[GEN_AI_OPERATION_NAME] = operation_name
         # Legacy emission removed
 
         # Add configured agent and server attributes
@@ -1520,7 +1591,7 @@ class GenAISemanticProcessor(TracingProcessor):
         """Force flush (no-op for this processor)."""
         pass
 
-    def _get_operation_name(self, span_data: Any) -> str:
+    def _get_operation_name(self, span_data: Any) -> Optional[str]:
         """Determine operation name from span data type."""
         if _is_instance_of(span_data, GenerationSpanData):
             # Check if it's embeddings
@@ -1536,19 +1607,23 @@ class GenAISemanticProcessor(TracingProcessor):
             # The OpenAI Agents SDK AgentSpanData has no "operation" field;
             # agent spans always represent invoke_agent.
             return GenAIOperationName.INVOKE_AGENT
+        if _is_instance_of(span_data, (TaskSpanData, TurnSpanData)):
+            return GenAIOperationName.INVOKE_AGENT
         if _is_instance_of(span_data, FunctionSpanData):
+            return GenAIOperationName.EXECUTE_TOOL
+        if _is_instance_of(span_data, MCPListToolsSpanData):
             return GenAIOperationName.EXECUTE_TOOL
         if _is_instance_of(span_data, ResponseSpanData):
             return GenAIOperationName.CHAT  # Response typically from chat
         if _is_instance_of(span_data, TranscriptionSpanData):
             return GenAIOperationName.TRANSCRIPTION
-        if _is_instance_of(span_data, SpeechSpanData):
+        if _is_instance_of(span_data, (SpeechGroupSpanData, SpeechSpanData)):
             return GenAIOperationName.SPEECH
         if _is_instance_of(span_data, GuardrailSpanData):
             return GenAIOperationName.GUARDRAIL
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
-        return "unknown"
+        return None
 
     def _extract_genai_attributes(
         self,
@@ -1590,10 +1665,18 @@ class GenAISemanticProcessor(TracingProcessor):
             yield from self._get_attributes_from_agent_span_data(
                 span_data, agent_content
             )
+        elif _is_instance_of(span_data, TaskSpanData):
+            yield from self._get_attributes_from_task_span_data(span_data)
+        elif _is_instance_of(span_data, TurnSpanData):
+            yield from self._get_attributes_from_turn_span_data(span_data)
+        elif _is_instance_of(span_data, CustomSpanData):
+            yield from self._get_attributes_from_custom_span_data(span_data)
         elif _is_instance_of(span_data, FunctionSpanData):
             yield from self._get_attributes_from_function_span_data(
                 span_data, payload
             )
+        elif _is_instance_of(span_data, MCPListToolsSpanData):
+            yield from self._get_attributes_from_mcp_tools_span_data(span_data)
         elif _is_instance_of(span_data, ResponseSpanData):
             yield from self._get_attributes_from_response_span_data(
                 span_data, payload
@@ -1608,6 +1691,38 @@ class GenAISemanticProcessor(TracingProcessor):
             yield from self._get_attributes_from_guardrail_span_data(span_data)
         elif _is_instance_of(span_data, HandoffSpanData):
             yield from self._get_attributes_from_handoff_span_data(span_data)
+        elif _is_instance_of(span_data, SpeechGroupSpanData):
+            yield from self._get_attributes_from_speech_group_span_data(
+                span_data
+            )
+
+    def _get_usage_attributes(
+        self, usage: Any
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract token usage attributes from dict or object payloads."""
+        if not usage:
+            return
+
+        self._sanitize_usage_payload(usage)
+        if isinstance(usage, dict):
+            input_tokens = usage.get("prompt_tokens") or usage.get(
+                "input_tokens"
+            )
+            output_tokens = usage.get("completion_tokens") or usage.get(
+                "output_tokens"
+            )
+        else:
+            input_tokens = getattr(usage, "input_tokens", None)
+            if input_tokens is None:
+                input_tokens = getattr(usage, "prompt_tokens", None)
+            output_tokens = getattr(usage, "output_tokens", None)
+            if output_tokens is None:
+                output_tokens = getattr(usage, "completion_tokens", None)
+
+        if input_tokens is not None:
+            yield GEN_AI_USAGE_INPUT_TOKENS, input_tokens
+        if output_tokens is not None:
+            yield GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
 
     def _get_attributes_from_generation_span_data(
         self, span_data: GenerationSpanData, payload: ContentPayload
@@ -1924,6 +2039,44 @@ class GenAISemanticProcessor(TracingProcessor):
             normalize_output_type(self._infer_output_type(span_data)),
         )
 
+    def _get_attributes_from_task_span_data(
+        self, span_data: TaskSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from an Agents SDK task span."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.INVOKE_AGENT
+        yield from self._get_usage_attributes(
+            getattr(span_data, "usage", None)
+        )
+        yield (
+            GEN_AI_OUTPUT_TYPE,
+            normalize_output_type(self._infer_output_type(span_data)),
+        )
+
+    def _get_attributes_from_turn_span_data(
+        self, span_data: TurnSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from an Agents SDK turn span."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.INVOKE_AGENT
+        agent_name = getattr(span_data, "agent_name", None)
+        if agent_name:
+            yield GEN_AI_AGENT_NAME, agent_name
+        yield from self._get_usage_attributes(
+            getattr(span_data, "usage", None)
+        )
+        yield (
+            GEN_AI_OUTPUT_TYPE,
+            normalize_output_type(self._infer_output_type(span_data)),
+        )
+
+    def _get_attributes_from_custom_span_data(
+        self, span_data: CustomSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Keep custom spans as regular OTel spans without GenAI operations."""
+        yield (
+            GEN_AI_OUTPUT_TYPE,
+            normalize_output_type(self._infer_output_type(span_data)),
+        )
+
     def _get_attributes_from_function_span_data(
         self, span_data: FunctionSpanData, payload: ContentPayload
     ) -> Iterator[tuple[str, AttributeValue]]:
@@ -1967,6 +2120,31 @@ class GenAISemanticProcessor(TracingProcessor):
             and payload.tool_result is not None
         ):
             yield GEN_AI_TOOL_CALL_RESULT, payload.tool_result
+
+        yield (
+            GEN_AI_OUTPUT_TYPE,
+            normalize_output_type(self._infer_output_type(span_data)),
+        )
+
+    def _get_attributes_from_mcp_tools_span_data(
+        self, span_data: MCPListToolsSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from MCP list-tools spans."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.EXECUTE_TOOL
+        yield GEN_AI_TOOL_NAME, "list_tools"
+        yield GEN_AI_TOOL_TYPE, GenAIToolType.EXTENSION
+
+        server = getattr(span_data, "server", None)
+        if server:
+            yield GEN_AI_DATA_SOURCE_ID, server
+
+        result = getattr(span_data, "result", None)
+        if (
+            result is not None
+            and self.include_sensitive_data
+            and self._content_mode.capture_in_span
+        ):
+            yield GEN_AI_TOOL_CALL_RESULT, safe_json_dumps(result)
 
         yield (
             GEN_AI_OUTPUT_TYPE,
@@ -2168,6 +2346,16 @@ class GenAISemanticProcessor(TracingProcessor):
         if span_data.to_agent:
             yield GEN_AI_HANDOFF_TO_AGENT, span_data.to_agent
 
+        yield (
+            GEN_AI_OUTPUT_TYPE,
+            normalize_output_type(self._infer_output_type(span_data)),
+        )
+
+    def _get_attributes_from_speech_group_span_data(
+        self, span_data: SpeechGroupSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from a speech group span."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.SPEECH
         yield (
             GEN_AI_OUTPUT_TYPE,
             normalize_output_type(self._infer_output_type(span_data)),

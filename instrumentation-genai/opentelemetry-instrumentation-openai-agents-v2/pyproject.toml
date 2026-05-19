@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 instruments = [
-  "openai-agents >= 0.3.3",
+  "openai-agents >= 0.17.0",
 ]
 
 [project.entry-points.opentelemetry_instrumentor]
