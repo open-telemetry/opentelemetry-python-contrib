@@ -15,17 +15,16 @@ def _add_sql_comment(sql, comment_position="end", **meta) -> str:
     comment = _generate_sql_comment(**meta)
     if not comment:
         return sql
-    sql = sql.strip()
-    if comment_position == "start":
-        if sql.endswith(";"):
-            sql = comment + " " + sql[:-1] + ";"
-        else:
-            sql = comment + " " + sql
+    sql = sql.rstrip()
+    if sql.endswith(";"):
+        sql = sql[:-1]
+        end = ";"
     else:
-        if sql.endswith(";"):
-            sql = sql[:-1] + comment + ";"
-        else:
-            sql = sql + comment
+        end = ""
+    if comment_position == "start":
+        sql = comment + " " + sql + end
+    else:
+        sql = sql + comment + end
     return sql
 
 
