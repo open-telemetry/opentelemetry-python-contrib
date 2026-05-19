@@ -20,3 +20,4 @@ repos:
       - id: rstcheck
         additional_dependencies: ['rstcheck[sphinx]']
         args: ["--report-level", "warning"]
+        exclude: ^_template/

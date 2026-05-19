@@ -25,8 +25,8 @@ env:
   CORE_REPO_SHA: ${{ github.event_name == 'pull_request' && (
        contains(github.event.pull_request.labels.*.name, 'prepare-release') && github.event.pull_request.head.ref ||
        contains(github.event.pull_request.labels.*.name, 'backport') && github.event.pull_request.base.ref ||
-       'main'
-    ) || 'main' }}
+       'f32b684a1ccd6d5eb658ec0b45bf18928ea430e4'
+    ) || 'f32b684a1ccd6d5eb658ec0b45bf18928ea430e4' }}
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
@@ -715,44 +715,6 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-vertexai-latest -- -ra
-
-  py39-test-instrumentation-google-genai-oldest_ubuntu-latest:
-    name: instrumentation-google-genai-oldest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-google-genai-oldest -- -ra
-
-  py39-test-instrumentation-google-genai-latest_ubuntu-latest:
-    name: instrumentation-google-genai-latest 3.9 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py39-test-instrumentation-google-genai-latest -- -ra
 
   py310-test-instrumentation-google-genai-oldest_ubuntu-latest:
     name: instrumentation-google-genai-oldest 3.10 Ubuntu
@@ -4781,3 +4743,41 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-instrumentation-fastapi -- -ra
+
+  pypy3-test-instrumentation-fastapi_ubuntu-latest:
+    name: instrumentation-fastapi pypy-3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-fastapi -- -ra
+
+  py39-test-instrumentation-flask-0_ubuntu-latest:
+    name: instrumentation-flask-0 3.9 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py39-test-instrumentation-flask-0 -- -ra

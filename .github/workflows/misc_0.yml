@@ -25,8 +25,8 @@ env:
   CORE_REPO_SHA: ${{ github.event_name == 'pull_request' && (
        contains(github.event.pull_request.labels.*.name, 'prepare-release') && github.event.pull_request.head.ref ||
        contains(github.event.pull_request.labels.*.name, 'backport') && github.event.pull_request.base.ref ||
-       'main'
-    ) || 'main' }}
+       'f32b684a1ccd6d5eb658ec0b45bf18928ea430e4'
+    ) || 'f32b684a1ccd6d5eb658ec0b45bf18928ea430e4' }}
   CONTRIB_REPO_SHA: main
   PIP_EXISTS_ACTION: w
 
