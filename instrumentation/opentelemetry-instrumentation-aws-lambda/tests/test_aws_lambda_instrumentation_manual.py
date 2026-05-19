@@ -5,6 +5,7 @@
 
 import logging
 import os
+from copy import deepcopy
 from dataclasses import dataclass
 from importlib import import_module, reload
 from typing import Any, Callable, Dict
@@ -774,8 +775,47 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
             {
                 FAAS_TRIGGER: "http",
                 HTTP_METHOD: "GET",
+                HTTP_SCHEME: "https",
+                HTTP_USER_AGENT: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6)",
+                NET_HOST_NAME: "lambda-846800462-us-east-2.elb.amazonaws.com",
             },
         )
+
+    def test_alb_multi_value_header_event_extracts_parent_context(self):
+        test_env_patch = mock.patch.dict(
+            "os.environ",
+            {
+                **os.environ,
+                _X_AMZN_TRACE_ID: MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED,
+                OTEL_PROPAGATORS: "tracecontext",
+            },
+        )
+        test_env_patch.start()
+        reload(propagate)
+
+        AwsLambdaInstrumentor().instrument()
+
+        event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
+        event["multiValueHeaders"][
+            TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME
+        ] = [MOCK_W3C_TRACE_CONTEXT_SAMPLED]
+
+        mock_execute_lambda(event)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span, *_ = spans
+        self.assertEqual(span.get_span_context().trace_id, MOCK_W3C_TRACE_ID)
+
+        parent_context = span.parent
+        self.assertEqual(
+            parent_context.trace_id, span.get_span_context().trace_id
+        )
+        self.assertEqual(parent_context.span_id, MOCK_W3C_PARENT_SPAN_ID)
+        self.assertTrue(parent_context.is_remote)
+
+        test_env_patch.stop()
 
     def test_dynamo_db_event_sets_attributes(self):
         AwsLambdaInstrumentor().instrument()
