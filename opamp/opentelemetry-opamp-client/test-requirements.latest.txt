@@ -62,7 +62,7 @@ typing-extensions==4.14.0
     #   exceptiongroup
     #   multidict
     #   opentelemetry-api
-urllib3==2.5.0
+urllib3==2.7.0
     # via
     #   -r opamp/opentelemetry-opamp-client/test-requirements.in
     #   requests

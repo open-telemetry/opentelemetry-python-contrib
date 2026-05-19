@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Generator, Mapping
+from typing import Any, Generator, Mapping
 
 from uuid_utils import uuid7
 
@@ -98,7 +98,9 @@ class OpAMPClient:
         return data
 
     def update_effective_config(
-        self, effective_config: dict[str, dict[str, str]], content_type: str
+        self,
+        effective_config: Mapping[str, Any],
+        content_type: str,
     ) -> opamp_pb2.EffectiveConfig:
         self._effective_config = messages.build_effective_config_message(
             config=effective_config, content_type=content_type

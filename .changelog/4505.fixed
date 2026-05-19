@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: add null guards and type-safe helper handling around Celery context propagation internals
