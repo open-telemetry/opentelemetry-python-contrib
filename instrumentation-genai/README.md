@@ -1,7 +1,6 @@
 
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |
-| [opentelemetry-instrumentation-anthropic](./opentelemetry-instrumentation-anthropic) | anthropic >= 0.16.0 | No | development
 | [opentelemetry-instrumentation-claude-agent-sdk](./opentelemetry-instrumentation-claude-agent-sdk) | claude-agent-sdk >= 0.1.14 | No | development
 | [opentelemetry-instrumentation-google-genai](./opentelemetry-instrumentation-google-genai) | google-genai >= 1.32.0 | No | development
 | [opentelemetry-instrumentation-langchain](./opentelemetry-instrumentation-langchain) | langchain >= 0.3.21 | No | development
