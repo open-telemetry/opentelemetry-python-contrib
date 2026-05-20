@@ -8,7 +8,8 @@ from unittest.mock import patch
 from urllib import request
 from urllib.parse import urlencode
 
-import httpretty
+from mocket import Mocketizer
+from mocket.mocks.mockhttp import Entry
 from pytest import mark
 
 from opentelemetry.instrumentation._semconv import (
@@ -56,16 +57,15 @@ class TestUrllibMetricsInstrumentation(TestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
         URLLibInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
-        httpretty.register_uri(
-            httpretty.POST, self.URL_POST, body=b"Hello World!"
-        )
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(Entry.GET, self.URL, body=b"Hello!")
+        Entry.single_register(Entry.POST, self.URL_POST, body=b"Hello World!")
 
     def tearDown(self):
         super().tearDown()
         URLLibInstrumentor().uninstrument()
-        httpretty.disable()
+        self.mocketizer.exit()
 
     # Return Sequence with one histogram
     def create_histogram_data_points(

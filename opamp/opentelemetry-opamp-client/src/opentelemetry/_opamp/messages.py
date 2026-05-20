@@ -6,7 +6,8 @@
 from __future__ import annotations
 
 import json
-from typing import Generator, Mapping
+from logging import getLogger
+from typing import Any, Generator, Mapping
 
 from opentelemetry._opamp.exceptions import (
     OpAMPRemoteConfigDecodeException,
@@ -20,6 +21,8 @@ from opentelemetry._opamp.proto.anyvalue_pb2 import (
     KeyValue as PB2KeyValue,
 )
 from opentelemetry.util.types import AnyValue
+
+_logger = getLogger(__name__)
 
 
 def decode_message(data: bytes) -> opamp_pb2.ServerToAgent:
@@ -119,17 +122,45 @@ def build_remote_config_status_response_message(
 
 
 def build_effective_config_message(
-    config: dict[str, dict[str, str]], content_type: str
+    config: Mapping[str, Any], content_type: str
 ):
     agent_config_map = opamp_pb2.AgentConfigMap()
     for filename, value in config.items():
-        if content_type == "application/json":
-            body = json.dumps(value)
-            agent_config_map.config_map[filename].body = body.encode("utf-8")
-            agent_config_map.config_map[filename].content_type = content_type
+        body = encode_effective_config_body(content_type, value)
+        if body is None:
+            _logger.warning(
+                "Skipping effective config entry %s with content type %s "
+                "because the value cannot be encoded",
+                filename,
+                content_type,
+            )
+            continue
+
+        config_entry = agent_config_map.config_map[filename]
+        config_entry.body = body
+        config_entry.content_type = content_type
     return opamp_pb2.EffectiveConfig(
         config_map=agent_config_map,
     )
+
+
+def encode_effective_config_body(
+    content_type: str, value: Any
+) -> bytes | None:
+    if content_type == "application/json":
+        try:
+            return json.dumps(value).encode("utf-8")
+        except (TypeError, ValueError):
+            _logger.warning(
+                "Failed to encode effective config body as JSON",
+                exc_info=True,
+            )
+            return None
+    if isinstance(value, str):
+        return value.encode("utf-8")
+    if isinstance(value, bytes):
+        return value
+    return None
 
 
 def build_full_state_message(
