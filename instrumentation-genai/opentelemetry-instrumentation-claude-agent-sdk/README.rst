@@ -1,6 +1,12 @@
 OpenTelemetry Claude Agent SDK Instrumentation
 ==============================================
 
+.. note::
+
+   This package is being migrated to
+   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-claude-agent-sdk <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-claude-agent-sdk>`_.
+   Future development will happen there.
+
 |pypi|
 
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-claude-agent-sdk.svg

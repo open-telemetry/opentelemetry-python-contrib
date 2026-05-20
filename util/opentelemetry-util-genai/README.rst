@@ -1,6 +1,12 @@
 OpenTelemetry Util for GenAI
 ============================
 
+.. note::
+
+   This package is being migrated to
+   `opentelemetry-python-genai/util/opentelemetry-util-genai <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai>`_.
+   Future development will happen there.
+
 The GenAI Utils package provides boilerplate and helpers to standardize instrumentation for Generative AI.
 It offers APIs to minimize the work needed to instrument GenAI libraries,
 while providing standardization for generating spans, metrics, and events.

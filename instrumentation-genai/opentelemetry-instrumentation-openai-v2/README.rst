@@ -1,6 +1,12 @@
 OpenTelemetry OpenAI Instrumentation
 ====================================
 
+.. note::
+
+   This package is being migrated to
+   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-openai-v2 <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-openai-v2>`_.
+   Future development will happen there.
+
 |pypi|
 
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-openai-v2.svg
@@ -147,4 +153,3 @@ References
 * `OpenTelemetry OpenAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation-genai/openai.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
-

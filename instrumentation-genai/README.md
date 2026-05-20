@@ -1,4 +1,9 @@
 
+> [!NOTE]
+> GenAI instrumentation packages are being migrated to the
+> [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
+> repository. Future GenAI instrumentation development will happen there.
+
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |
 | [opentelemetry-instrumentation-anthropic](./opentelemetry-instrumentation-anthropic) | anthropic >= 0.16.0 | No | development
