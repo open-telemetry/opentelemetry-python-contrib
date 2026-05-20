@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-aws-lambda`: fix improper handling of header casing
