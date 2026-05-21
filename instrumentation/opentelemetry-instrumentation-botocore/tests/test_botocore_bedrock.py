@@ -15,6 +15,7 @@ from botocore.eventstream import EventStream, EventStreamError
 from botocore.response import StreamingBody
 
 from opentelemetry.instrumentation.botocore.extensions.bedrock_utils import (
+    ConverseStreamWrapper,
     InvokeModelWithResponseStreamWrapper,
     _Choice,
 )
@@ -3075,6 +3076,35 @@ def test_converse_stream_with_missing_output_in_response():
     assert choice.finish_reason == "end_turn"
     assert choice.message == {}
     assert choice.index == 0
+
+
+def test_converse_stream_accumulates_cache_tokens():
+    # The ConverseStream metadata event carries prompt cache token usage;
+    # the wrapper should accumulate it alongside input/output tokens.
+    wrapper = ConverseStreamWrapper(
+        stream=mock.MagicMock(),
+        stream_done_callback=lambda *args, **kwargs: None,
+        stream_error_callback=lambda *args, **kwargs: None,
+    )
+
+    wrapper._process_event(
+        {
+            "metadata": {
+                "usage": {
+                    "inputTokens": 8,
+                    "outputTokens": 10,
+                    "cacheReadInputTokens": 1500,
+                    "cacheWriteInputTokens": 25,
+                }
+            }
+        }
+    )
+
+    usage = wrapper._response["usage"]
+    assert usage["inputTokens"] == 8
+    assert usage["outputTokens"] == 10
+    assert usage["cacheReadInputTokens"] == 1500
+    assert usage["cacheWriteInputTokens"] == 25
 
 
 def amazon_nova_messages():

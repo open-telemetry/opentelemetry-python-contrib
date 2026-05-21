@@ -132,6 +132,12 @@ class ConverseStreamWrapper(BaseObjectProxy):
 
                 if output_tokens := usage.get("outputTokens"):
                     self._response["usage"]["outputTokens"] = output_tokens
+
+                if cache_read := usage.get("cacheReadInputTokens"):
+                    self._response["usage"]["cacheReadInputTokens"] = cache_read
+
+                if cache_write := usage.get("cacheWriteInputTokens"):
+                    self._response["usage"]["cacheWriteInputTokens"] = cache_write
             self._complete_stream(self._response)
 
             return

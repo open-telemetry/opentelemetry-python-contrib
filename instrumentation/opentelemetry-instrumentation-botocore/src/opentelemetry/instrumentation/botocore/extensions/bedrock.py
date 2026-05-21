@@ -47,6 +47,8 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import (
     GEN_AI_RESPONSE_FINISH_REASONS,
     GEN_AI_SYSTEM,
     GEN_AI_TOKEN_TYPE,
+    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
     GenAiOperationNameValues,
@@ -462,7 +464,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         # this is used to calculate the operation duration metric, duration may be skewed by request_hook
         self._operation_start = default_timer()
 
-    # pylint: disable=no-self-use,too-many-locals
+    # pylint: disable=no-self-use,too-many-locals,too-many-branches
     def _converse_on_success(
         self,
         span: Span,
@@ -481,6 +483,16 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
                     span.set_attribute(
                         GEN_AI_USAGE_OUTPUT_TOKENS,
                         output_tokens,
+                    )
+                if cache_read := usage.get("cacheReadInputTokens"):
+                    span.set_attribute(
+                        GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+                        cache_read,
+                    )
+                if cache_write := usage.get("cacheWriteInputTokens"):
+                    span.set_attribute(
+                        GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+                        cache_write,
                     )
 
             if stop_reason := result.get("stopReason"):
