@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "opentelemetry-api ~= 1.12",
-  "opentelemetry-instrumentation == 0.63b0",
+  "opentelemetry-instrumentation == 0.63b1",
   "wrapt >= 1.0.0, < 3.0.0",
 ]
 
