@@ -323,9 +323,12 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         self.env_patch.start()
 
+    def tearDown(self):
+        self.env_patch.stop()
+        super().tearDown()
+
     def subTest(self, msg=..., **params):
         sub = super().subTest(msg, **params)
-        # Reinitialize test state to avoid state pollution
         self.setUp()
         return sub
 
