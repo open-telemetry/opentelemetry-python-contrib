@@ -329,7 +329,7 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
     def subTest(self, msg=..., **params):
         sub = super().subTest(msg, **params)
-        self.setUp()
+        self.memory_exporter.clear()
         return sub
 
     # Helper to assert exemplars presence across specified histogram metric names.
