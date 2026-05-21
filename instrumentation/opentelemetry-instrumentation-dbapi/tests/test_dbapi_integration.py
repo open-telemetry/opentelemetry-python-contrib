@@ -1,19 +1,10 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
+import asyncio
+import contextlib
 import logging
 import re
 from unittest import mock
@@ -21,6 +12,10 @@ from unittest import mock
 from opentelemetry import context
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation import dbapi
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes import net_attributes
@@ -34,7 +29,57 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    DB_CLIENT_OPERATION_DURATION,
+    DB_CLIENT_RESPONSE_RETURNED_ROWS,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_OPERATION_NAME,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
+
+
+def _get_default_connection_props():
+    """Returns standard connection properties for testing."""
+    return {
+        "database": "testdatabase",
+        "server_host": "testhost",
+        "server_port": 123,
+        "user": "testuser",
+    }
+
+
+def _get_default_connection_attributes():
+    """Returns standard connection attributes for testing."""
+    return {
+        "database": "database",
+        "port": "server_port",
+        "host": "server_host",
+        "user": "user",
+    }
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 # pylint: disable=too-many-public-methods
@@ -42,20 +87,11 @@ class TestDBApiIntegration(TestBase):
     def setUp(self):
         super().setUp()
         self.tracer = self.tracer_provider.get_tracer(__name__)
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
     def test_span_succeeded(self):
-        connection_props = {
-            "database": "testdatabase",
-            "server_host": "testhost",
-            "server_port": 123,
-            "user": "testuser",
-        }
-        connection_attributes = {
-            "database": "database",
-            "port": "server_port",
-            "host": "server_host",
-            "user": "user",
-        }
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name",
             "testcomponent",
@@ -71,6 +107,10 @@ class TestDBApiIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.name, "Test")
         self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
 
         self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
         self.assertEqual(span.attributes[DB_NAME], "testdatabase")
@@ -80,6 +120,164 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
         self.assertEqual(span.attributes[NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_span_succeeded_new_semconv(self):
+        with use_semconv_opt_in("database,http"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", False))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "Test")
+            self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+
+            # Stable attributes only
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+            self.assertFalse("db.statement.parameters" in span.attributes)
+            # db.user removed in stable - no replacement
+            self.assertFalse(DB_USER in span.attributes)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 123)
+
+            # Old attributes should not be present
+            self.assertFalse(DB_SYSTEM in span.attributes)
+            self.assertFalse(DB_NAME in span.attributes)
+            self.assertFalse(DB_STATEMENT in span.attributes)
+            self.assertFalse(NET_PEER_NAME in span.attributes)
+            self.assertFalse(NET_PEER_PORT in span.attributes)
+
+            self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_span_succeeded_both_semconv(self):
+        with use_semconv_opt_in("database/dup,http/dup"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", False))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "Test")
+            self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+
+            # Both old and new attributes should be present
+            # Old attributes
+            self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+            self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 123)
+
+            # New stable attributes
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 123)
+
+            self.assertFalse("db.statement.parameters" in span.attributes)
+            self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_span_succeeded_database_only_semconv(self):
+        with use_semconv_opt_in("database"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", False))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+
+            # DB attributes should be stable-only
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+            self.assertFalse(DB_SYSTEM in span.attributes)
+            self.assertFalse(DB_NAME in span.attributes)
+            self.assertFalse(DB_STATEMENT in span.attributes)
+
+            # Network attributes should remain old semconv
+            self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 123)
+            self.assertFalse(SERVER_ADDRESS in span.attributes)
+            self.assertFalse(SERVER_PORT in span.attributes)
+
+    def test_span_succeeded_http_only_semconv(self):
+        with use_semconv_opt_in("http"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", False))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.21.0",
+            )
+
+            # DB attributes should remain old semconv
+            self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+            self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
+            self.assertFalse(DB_SYSTEM_NAME in span.attributes)
+            self.assertFalse(DB_NAMESPACE in span.attributes)
+            self.assertFalse(DB_QUERY_TEXT in span.attributes)
+
+            # Network attributes should be stable-only
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 123)
+            self.assertFalse(NET_PEER_NAME in span.attributes)
+            self.assertFalse(NET_PEER_PORT in span.attributes)
 
     def test_span_name(self):
         db_integration = dbapi.DatabaseApiIntegration(
@@ -109,18 +307,8 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(spans_list[5].name, "query")
 
     def test_span_succeeded_with_capture_of_statement_parameters(self):
-        connection_props = {
-            "database": "testdatabase",
-            "server_host": "testhost",
-            "server_port": 123,
-            "user": "testuser",
-        }
-        connection_attributes = {
-            "database": "database",
-            "port": "server_port",
-            "host": "server_host",
-            "user": "user",
-        }
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
         db_integration = dbapi.DatabaseApiIntegration(
             "instrumenting_module_test_name",
             "testcomponent",
@@ -152,19 +340,103 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.attributes[net_attributes.NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
+    def test_span_succeeded_with_capture_of_statement_parameters_new_semconv(
+        self,
+    ):
+        with use_semconv_opt_in("database,http"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+                capture_parameters=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", False))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "Test")
+            self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+
+            # Stable attributes only
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+            self.assertEqual(
+                span.attributes["db.statement.parameters"],
+                "('param1Value', False)",
+            )
+            # db.user removed in stable - no replacement
+            self.assertFalse(DB_USER in span.attributes)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 123)
+
+            # Old attributes should not be present
+            self.assertFalse(DB_SYSTEM in span.attributes)
+            self.assertFalse(DB_NAME in span.attributes)
+            self.assertFalse(DB_STATEMENT in span.attributes)
+            self.assertFalse(NET_PEER_NAME in span.attributes)
+            self.assertFalse(NET_PEER_PORT in span.attributes)
+
+            self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_span_succeeded_with_capture_of_statement_parameters_both_semconv(
+        self,
+    ):
+        with use_semconv_opt_in("database/dup,http/dup"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+                capture_parameters=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.execute("Test query", ("param1Value", False))
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "Test")
+            self.assertIs(span.kind, trace_api.SpanKind.CLIENT)
+
+            # Both old and new attributes should be present
+            # Old attributes
+            self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+            self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
+            self.assertEqual(
+                span.attributes["db.statement.parameters"],
+                "('param1Value', False)",
+            )
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(
+                span.attributes[net_attributes.NET_PEER_NAME], "testhost"
+            )
+            self.assertEqual(
+                span.attributes[net_attributes.NET_PEER_PORT], 123
+            )
+
+            # New stable attributes
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 123)
+
+            self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
     def test_span_not_recording(self):
-        connection_props = {
-            "database": "testdatabase",
-            "server_host": "testhost",
-            "server_port": 123,
-            "user": "testuser",
-        }
-        connection_attributes = {
-            "database": "database",
-            "port": "server_port",
-            "host": "server_host",
-            "user": "user",
-        }
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         db_integration = dbapi.DatabaseApiIntegration(
@@ -252,6 +524,185 @@ class TestDBApiIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
+
+    def _get_metric(self, name):
+        return next(
+            (
+                metric
+                for metric in self.get_sorted_metrics()
+                if metric.name == name
+            ),
+            None,
+        )
+
+    def test_metrics_not_emitted_in_default_mode(self):
+        # Without OTEL_SEMCONV_STABILITY_OPT_IN=database, no metrics are exported
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, (), {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.execute("SELECT 1", rowcount=3)
+
+        self.assertIsNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
+        self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_operation_duration_recorded(self):
+        connection_props = {
+            "database": "testdatabase",
+            "server_host": "testhost",
+            "server_port": 123,
+            "user": "testuser",
+        }
+        connection_attributes = {
+            "database": "database",
+            "port": "server_port",
+            "host": "server_host",
+            "user": "user",
+        }
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, (), connection_props
+        )
+        cursor = mock_connection.cursor()
+        cursor.execute("SELECT * FROM users")
+
+        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+        self.assertIsNotNone(duration_metric)
+        self.assertEqual(duration_metric.unit, "s")
+        points = list(duration_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        attributes = dict(points[0].attributes)
+        self.assertEqual(attributes[DB_SYSTEM_NAME], "testcomponent")
+        self.assertEqual(attributes[DB_NAMESPACE], "testdatabase")
+        self.assertEqual(attributes[DB_OPERATION_NAME], "SELECT")
+        self.assertEqual(attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(attributes[SERVER_PORT], 123)
+        self.assertNotIn(ERROR_TYPE, attributes)
+        self.assertEqual(points[0].count, 1)
+        self.assertGreaterEqual(points[0].sum, 0.0)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_operation_duration_error_type(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, (), {}
+        )
+        cursor = mock_connection.cursor()
+        with self.assertRaises(Exception):
+            cursor.execute("SELECT 1", throw_exception=True)
+
+        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+        self.assertIsNotNone(duration_metric)
+        points = list(duration_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        attributes = dict(points[0].attributes)
+        self.assertEqual(attributes[ERROR_TYPE], "Exception")
+        self.assertEqual(attributes[DB_OPERATION_NAME], "SELECT")
+
+        # returned_rows should NOT be recorded on error
+        rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
+        self.assertIsNone(rows_metric)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_returned_rows_recorded(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, (), {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.execute("SELECT 1", rowcount=3)
+
+        rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
+        self.assertIsNotNone(rows_metric)
+        self.assertEqual(rows_metric.unit, "{row}")
+        points = list(rows_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0].sum, 3)
+        self.assertEqual(points[0].count, 1)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_returned_rows_skipped_when_rowcount_unknown(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, (), {}
+        )
+        cursor = mock_connection.cursor()
+        # default rowcount is -1 on MockCursor
+        cursor.execute("CREATE TABLE t (x INT)")
+
+        rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
+        self.assertIsNone(rows_metric)
+        # duration is still recorded
+        self.assertIsNotNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_custom_meter_provider(self):
+        meter_provider, metrics_reader = self.create_meter_provider()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            meter_provider=meter_provider,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, (), {}
+        )
+        cursor = mock_connection.cursor()
+        cursor.execute("SELECT 1", rowcount=1)
+
+        metrics_data = metrics_reader.get_metrics_data()
+        names = {
+            m.name
+            for rm in metrics_data.resource_metrics
+            for sm in rm.scope_metrics
+            for m in sm.metrics
+        }
+        self.assertIn(DB_CLIENT_OPERATION_DURATION, names)
+        self.assertIn(DB_CLIENT_RESPONSE_RETURNED_ROWS, names)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_async_operation_duration_recorded(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name", "testcomponent"
+        )
+        cursor_tracer = dbapi.CursorTracer(db_integration)
+        mock_cursor = MockCursor()
+
+        async def async_execute(_query, rowcount=-1):
+            mock_cursor.rowcount = rowcount
+            return None
+
+        asyncio.run(
+            cursor_tracer.traced_execution_async(
+                mock_cursor, async_execute, "SELECT 1", rowcount=5
+            )
+        )
+
+        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+        self.assertIsNotNone(duration_metric)
+        points = list(duration_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(
+            dict(points[0].attributes)[DB_OPERATION_NAME], "SELECT"
+        )
+
+        rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
+        self.assertIsNotNone(rows_metric)
+        rows_points = list(rows_metric.data.data_points)
+        self.assertEqual(rows_points[0].sum, 5)
 
     def test_commenter_options_propagation(self):
         db_integration = dbapi.DatabaseApiIntegration(
@@ -1304,6 +1755,7 @@ class MockCursor:
         self.query = ""
         self.params = None
         self.connection = None
+        self.rowcount = -1
         # Mock mysql.connector modules and method
         self._cnx = mock.MagicMock()
         self._cnx._cmysql = mock.MagicMock()
@@ -1313,24 +1765,29 @@ class MockCursor:
         self._items = []
 
     # pylint: disable=unused-argument, no-self-use
-    def execute(self, query, params=None, throw_exception=False):
+    def execute(self, query, params=None, throw_exception=False, rowcount=-1):
         if throw_exception:
             # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
+        self.rowcount = rowcount
 
     def __iter__(self):
         yield from self._items
 
     # pylint: disable=unused-argument, no-self-use
-    def executemany(self, query, params=None, throw_exception=False):
+    def executemany(
+        self, query, params=None, throw_exception=False, rowcount=-1
+    ):
         if throw_exception:
             # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
         self.query = query
         self.params = params
+        self.rowcount = rowcount
 
     # pylint: disable=unused-argument, no-self-use
-    def callproc(self, query, params=None, throw_exception=False):
+    def callproc(self, query, params=None, throw_exception=False, rowcount=-1):
         if throw_exception:
             # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
+        self.rowcount = rowcount

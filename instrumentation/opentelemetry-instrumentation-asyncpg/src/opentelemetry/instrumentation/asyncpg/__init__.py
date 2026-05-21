@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 This library allows tracing PostgreSQL queries made by the
@@ -53,6 +42,7 @@ import re
 from typing import Collection
 
 import asyncpg
+import asyncpg.prepared_stmt
 import wrapt
 
 from opentelemetry import trace
@@ -75,6 +65,14 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 )
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
+
+_PREPARED_STMT_METHODS = (
+    "fetch",
+    "fetchval",
+    "fetchrow",
+    "executemany",
+    "fetchmany",
+)
 
 
 def _hydrate_span_from_args(connection, query, parameters) -> dict:
@@ -153,6 +151,14 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 "asyncpg.cursor", method, self._do_cursor_execute
             )
 
+        for method in _PREPARED_STMT_METHODS:
+            if hasattr(asyncpg.prepared_stmt.PreparedStatement, method):
+                wrapt.wrap_function_wrapper(
+                    "asyncpg.prepared_stmt",
+                    f"PreparedStatement.{method}",
+                    self._do_prepared_execute,
+                )
+
     def _uninstrument(self, **__):
         for cls, methods in [
             (
@@ -164,6 +170,10 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         ]:
             for method_name in methods:
                 unwrap(cls, method_name)
+
+        for method_name in _PREPARED_STMT_METHODS:
+            if hasattr(asyncpg.prepared_stmt.PreparedStatement, method_name):
+                unwrap(asyncpg.prepared_stmt.PreparedStatement, method_name)
 
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
@@ -243,3 +253,32 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         if not stop:
             return result
         raise StopAsyncIteration
+
+    async def _do_prepared_execute(self, func, instance, args, kwargs):
+        exception = None
+        query = instance._query or ""
+
+        try:
+            name = self._leading_comment_remover.sub("", query).split()[0]
+        except IndexError:
+            name = ""
+
+        span_attributes = _hydrate_span_from_args(
+            instance._connection,
+            query,
+            args if self.capture_parameters else None,
+        )
+
+        with self._tracer.start_as_current_span(
+            name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
+            try:
+                result = await func(*args, **kwargs)
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                raise
+            finally:
+                if span.is_recording() and exception is not None:
+                    span.set_status(Status(StatusCode.ERROR))
+
+        return result

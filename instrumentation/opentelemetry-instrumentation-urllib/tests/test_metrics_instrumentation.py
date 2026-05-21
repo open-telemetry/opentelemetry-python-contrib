@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 
 from platform import python_implementation
@@ -19,7 +8,8 @@ from unittest.mock import patch
 from urllib import request
 from urllib.parse import urlencode
 
-import httpretty
+from mocket import Mocketizer
+from mocket.mocks.mockhttp import Entry
 from pytest import mark
 
 from opentelemetry.instrumentation._semconv import (
@@ -67,16 +57,15 @@ class TestUrllibMetricsInstrumentation(TestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
         self.env_patch.start()
         URLLibInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
-        httpretty.register_uri(
-            httpretty.POST, self.URL_POST, body=b"Hello World!"
-        )
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(Entry.GET, self.URL, body=b"Hello!")
+        Entry.single_register(Entry.POST, self.URL_POST, body=b"Hello World!")
 
     def tearDown(self):
         super().tearDown()
         URLLibInstrumentor().uninstrument()
-        httpretty.disable()
+        self.mocketizer.exit()
 
     # Return Sequence with one histogram
     def create_histogram_data_points(

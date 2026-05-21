@@ -60,7 +60,7 @@ pytest==7.4.4
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
-requests==2.32.3
+requests==2.33.1
     # via
     #   -c dev-requirements.txt
     #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
@@ -76,8 +76,10 @@ typing-extensions==4.12.2
     #   asgiref
     #   opentelemetry-api
     #   opentelemetry-semantic-conventions
-urllib3==2.3.0
-    # via requests
+urllib3==2.7.0
+    # via
+    #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
+    #   requests
 wrapt==1.14.1
     # via opentelemetry-instrumentation
 zipp==3.21.0
