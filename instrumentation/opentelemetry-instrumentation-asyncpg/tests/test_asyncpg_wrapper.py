@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 from asyncpg import Connection, Record, cursor
+from asyncpg.prepared_stmt import PreparedStatement
 
 try:
     # wrapt 2.0.0+
@@ -14,11 +15,18 @@ except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
 
 from opentelemetry import trace as trace_api
-from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+from opentelemetry.instrumentation.asyncpg import (
+    _PREPARED_STMT_METHODS,
+    AsyncPGInstrumentor,
+)
 from opentelemetry.test.test_base import TestBase
 
 
 class TestAsyncPGInstrumentation(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        AsyncPGInstrumentor().uninstrument()
+
     def test_duplicated_instrumentation_can_be_uninstrumented(self):
         AsyncPGInstrumentor().instrument()
         AsyncPGInstrumentor().instrument()
@@ -147,3 +155,122 @@ class TestAsyncPGInstrumentation(TestBase):
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 0)
+
+    def test_prepared_statement_instrumentation(self):
+        methods = [
+            m for m in _PREPARED_STMT_METHODS if hasattr(PreparedStatement, m)
+        ]
+
+        for method_name in methods:
+            with self.subTest(method=method_name, phase="before"):
+                self.assertFalse(
+                    isinstance(
+                        getattr(PreparedStatement, method_name),
+                        BaseObjectProxy,
+                    )
+                )
+
+        AsyncPGInstrumentor().instrument()
+
+        for method_name in methods:
+            with self.subTest(method=method_name, phase="instrumented"):
+                self.assertTrue(
+                    isinstance(
+                        getattr(PreparedStatement, method_name),
+                        BaseObjectProxy,
+                    )
+                )
+
+        AsyncPGInstrumentor().uninstrument()
+
+        for method_name in methods:
+            with self.subTest(method=method_name, phase="uninstrumented"):
+                self.assertFalse(
+                    isinstance(
+                        getattr(PreparedStatement, method_name),
+                        BaseObjectProxy,
+                    )
+                )
+
+    @staticmethod
+    def _make_prepared_stmt_conn():
+        async def bind_execute_mock(*args, **kwargs):
+            return [], b"SELECT 1", True
+
+        async def bind_execute_many_mock(*args, **kwargs):
+            return None
+
+        conn = mock.Mock()
+        conn._pool_release_ctr = 0
+        conn.is_closed = lambda: False
+        conn._protocol = mock.Mock()
+        conn._protocol.bind_execute = bind_execute_mock
+        conn._protocol.bind_execute_many = bind_execute_many_mock
+
+        state = mock.Mock()
+        state.closed = False
+        return conn, state
+
+    def test_prepared_statement_span(self):
+        # Per-method: (query, call_args, expected_span_name)
+        method_cases = {
+            "fetch": ("SELECT * FROM users", (), "SELECT"),
+            "fetchval": ("SELECT id FROM users WHERE id=$1", (1,), "SELECT"),
+            "fetchrow": ("SELECT * FROM t WHERE v=$1", ("x",), "SELECT"),
+            "executemany": (
+                "INSERT INTO t (v) VALUES ($1)",
+                ([("a",), ("b",)],),
+                "INSERT",
+            ),
+            "fetchmany": ("SELECT * FROM t", ([],), "SELECT"),
+        }
+
+        for method_name in _PREPARED_STMT_METHODS:
+            if not hasattr(PreparedStatement, method_name):
+                continue
+            query, call_args, expected_name = method_cases[method_name]
+            with self.subTest(method=method_name):
+                self.memory_exporter.clear()
+                conn, state = self._make_prepared_stmt_conn()
+                apg = AsyncPGInstrumentor()
+                apg.instrument(tracer_provider=self.tracer_provider)
+
+                stmt = PreparedStatement(conn, query, state)
+                asyncio.run(getattr(stmt, method_name)(*call_args))
+
+                spans = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans), 1)
+                self.assertEqual(spans[0].name, expected_name)
+                self.assertTrue(spans[0].status.is_ok)
+                self.assertEqual(
+                    spans[0].attributes.get("db.statement"), query
+                )
+                self.assertEqual(
+                    spans[0].attributes.get("db.system"), "postgresql"
+                )
+
+                apg.uninstrument()
+
+    def test_prepared_statement_error_span(self):
+        async def bind_execute_error(*args, **kwargs):
+            raise RuntimeError("db error")
+
+        conn = mock.Mock()
+        conn._pool_release_ctr = 0
+        conn.is_closed = lambda: False
+        conn._protocol = mock.Mock()
+        conn._protocol.bind_execute = bind_execute_error
+
+        state = mock.Mock()
+        state.closed = False
+
+        apg = AsyncPGInstrumentor()
+        apg.instrument(tracer_provider=self.tracer_provider)
+
+        stmt = PreparedStatement(conn, "SELECT 1", state)
+        with self.assertRaises(RuntimeError):
+            asyncio.run(stmt.fetch())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertFalse(spans[0].status.is_ok)

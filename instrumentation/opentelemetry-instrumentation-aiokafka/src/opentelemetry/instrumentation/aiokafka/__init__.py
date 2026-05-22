@@ -39,15 +39,26 @@ Usage
     asyncio.run(produce())
     asyncio.run(consume())
 
-The _instrument() method accepts the following keyword args:
-tracer_provider (TracerProvider) - an optional tracer provider
-async_produce_hook (Callable) - a function with extra user-defined logic to be performed before sending the message
-this function signature is:
-def async_produce_hook(span: Span, args, kwargs)
-async_consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
-this function signature is:
-def async_consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
-for example:
+The ``_instrument()`` method accepts the following keyword args:
+
+- **tracer_provider** (TracerProvider) - an optional tracer provider
+- **async_produce_hook** (Callable) - a function with extra user-defined logic to be performed before sending the message
+
+  Function signature:
+
+  .. code:: python
+
+      async def async_produce_hook(span: Span, args, kwargs): ...
+
+- **async_consume_hook** (Callable) - a function with extra user-defined logic to be performed after consuming a message
+
+  Function signature:
+
+  .. code:: python
+
+      async def async_consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs): ...
+
+For example:
 
 .. code:: python
 
@@ -79,7 +90,7 @@ for example:
     asyncio.run(produce())
 
 API
-___
+---
 """
 
 from __future__ import annotations

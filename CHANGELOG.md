@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+<<<<<<< fix/sqlcommenter-prepend-comment
+=======
+## Version 1.42.1/0.63b1 (2026-05-21)
+
+No significant changes.
+
+>>>>>>> main
 ## Version 1.42.0/0.63b0 (2026-05-19)
 
 ### Added
