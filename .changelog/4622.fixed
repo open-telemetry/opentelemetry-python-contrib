@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-dbapi`: suppress async cursor spans when instrumentation is disabled
