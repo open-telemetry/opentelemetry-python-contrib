@@ -9,11 +9,11 @@ repository. Future GenAI instrumentation development will happen there.
 | --------------- | ------------ |
 | `opentelemetry-instrumentation-anthropic` | [`opentelemetry-instrumentation-genai-anthropic`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-anthropic) |
 | `opentelemetry-instrumentation-claude-agent-sdk` | [`opentelemetry-instrumentation-genai-claude-agent-sdk`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-claude-agent-sdk) |
-| `opentelemetry-instrumentation-google-genai` | [`opentelemetry-instrumentation-genai-google-genai`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-google-genai) |
+| `opentelemetry-instrumentation-google-genai` | [`opentelemetry-instrumentation-google-genai`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai) |
 | `opentelemetry-instrumentation-langchain` | [`opentelemetry-instrumentation-genai-langchain`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-langchain) |
-| `opentelemetry-instrumentation-openai-agents-v2` | [`opentelemetry-instrumentation-genai-openai-agents-v2`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai-agents-v2) |
-| `opentelemetry-instrumentation-openai-v2` | [`opentelemetry-instrumentation-genai-openai-v2`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai-v2) |
-| `opentelemetry-instrumentation-weaviate` | [`opentelemetry-instrumentation-genai-weaviate`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-weaviate) |
+| `opentelemetry-instrumentation-openai-agents-v2` | [`opentelemetry-instrumentation-genai-openai-agents`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai-agents) |
+| `opentelemetry-instrumentation-openai-v2` | [`opentelemetry-instrumentation-genai-openai`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai) |
+| `opentelemetry-instrumentation-weaviate` | [`opentelemetry-instrumentation-genai-weaviate-client`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-weaviate-client) |
 | `opentelemetry-instrumentation-vertexai` | Deprecated with no replacement in `opentelemetry-python-genai` |
 
 The related `opentelemetry-util-genai` package is also being migrated to

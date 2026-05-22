@@ -3,8 +3,8 @@ OpenTelemetry OpenAI Agents Instrumentation
 
 .. note::
 
-   This package is being migrated as ``opentelemetry-instrumentation-genai-openai-agents-v2`` to
-   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-genai-openai-agents-v2 <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai-agents-v2>`_.
+   This package is being migrated as ``opentelemetry-instrumentation-genai-openai-agents`` to
+   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-genai-openai-agents <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai-agents>`_.
    Future development will happen there.
 
 |pypi|
