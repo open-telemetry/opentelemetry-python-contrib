@@ -458,6 +458,8 @@ class GrpcInstrumentorClient(BaseInstrumentor):
     def _instrument(self, **kwargs):
         self._request_hook = kwargs.get("request_hook")
         self._response_hook = kwargs.get("response_hook")
+        self._tracer_provider = kwargs.get("tracer_provider")
+        self._meter_provider = kwargs.get("meter_provider")
         for ctype in self._which_channel(kwargs):
             _wrap(
                 "grpc",
@@ -471,16 +473,16 @@ class GrpcInstrumentorClient(BaseInstrumentor):
 
     def wrapper_fn(self, original_func, instance, args, kwargs):
         channel = original_func(*args, **kwargs)
-        tracer_provider = kwargs.get("tracer_provider")
-        request_hook = self._request_hook
-        response_hook = self._response_hook
+        target = args[0] if args else None
         return intercept_channel(
             channel,
             client_interceptor(
-                tracer_provider=tracer_provider,
+                tracer_provider=self._tracer_provider,
                 filter_=self._filter,
-                request_hook=request_hook,
-                response_hook=response_hook,
+                request_hook=self._request_hook,
+                response_hook=self._response_hook,
+                meter_provider=self._meter_provider,
+                target=target,
             ),
         )
 
@@ -560,7 +562,12 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
 
 
 def client_interceptor(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    meter_provider=None,
+    target=None,
 ):
     """Create a gRPC client channel interceptor.
 
@@ -570,6 +577,10 @@ def client_interceptor(
         filter_: filter function that returns True if gRPC requests
                  matches the condition. Default is None and intercept
                  all requests.
+
+        meter_provider: The meter provider to use for metrics.
+
+        target: The target address of the channel (e.g. "host:port").
 
     Returns:
         An invocation-side interceptor object.
@@ -583,11 +594,19 @@ def client_interceptor(
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+    )
+
     return _client.OpenTelemetryClientInterceptor(
         tracer,
         filter_=filter_,
         request_hook=request_hook,
         response_hook=response_hook,
+        meter=meter,
+        target=target,
     )
 
 
