@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-flask`: `enrich_metric_attributes` with any Labeler-stored attributes in Context
