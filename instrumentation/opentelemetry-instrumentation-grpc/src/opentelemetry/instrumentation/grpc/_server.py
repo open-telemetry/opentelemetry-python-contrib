@@ -11,6 +11,7 @@ Implementation of the service-side open-telemetry interceptor.
 """
 
 import logging
+import time
 from contextlib import contextmanager
 from urllib.parse import unquote
 
@@ -19,6 +20,9 @@ import grpc
 from opentelemetry import trace
 from opentelemetry.context import attach, detach
 from opentelemetry.propagate import extract
+from opentelemetry.semconv._incubating.attributes.error_attributes import (
+    ERROR_TYPE,
+)
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
     NET_PEER_NAME,
@@ -27,13 +31,33 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
     RPC_METHOD,
+    RPC_RESPONSE_STATUS_CODE,
     RPC_SERVICE,
     RPC_SYSTEM,
+    RPC_SYSTEM_NAME,
+    RpcSystemNameValues,
+)
+from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
+    RPC_SERVER_CALL_DURATION,
 )
 
 from ._utilities import _server_status
 
 logger = logging.getLogger(__name__)
+
+_RPC_DURATION_BUCKET_BOUNDARIES = (
+    0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
+    0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10,
+)
+
+
+def _create_duration_histogram(meter):
+    return meter.create_histogram(
+        name=RPC_SERVER_CALL_DURATION,
+        description="Measures the duration of an incoming Remote Procedure Call (RPC).",
+        unit="s",
+        explicit_bucket_boundaries_advisory=_RPC_DURATION_BUCKET_BOUNDARIES,
+    )
 
 
 # wrap an RPC call
@@ -184,9 +208,12 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     """
 
-    def __init__(self, tracer, filter_=None):
+    def __init__(self, tracer, filter_=None, meter=None):
         self._tracer = tracer
         self._filter = filter_
+        self._duration_histogram = (
+            _create_duration_histogram(meter) if meter else None
+        )
 
     @contextmanager
     def _set_remote_context(self, servicer_context):
@@ -267,6 +294,29 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             set_status_on_exception=set_status_on_exception,
         )
 
+    def _build_metric_attributes(self, handler_call_details, status_code):
+        method = handler_call_details.method
+        full_method = method.lstrip("/") if method else "_OTHER"
+        attrs = {
+            RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
+            RPC_METHOD: full_method,
+            RPC_RESPONSE_STATUS_CODE: status_code.name,
+        }
+        if status_code != grpc.StatusCode.OK:
+            attrs[ERROR_TYPE] = status_code.name
+        return attrs
+
+    def _record_duration(
+        self, handler_call_details, start_time, status_code
+    ):
+        if self._duration_histogram is None:
+            return
+        elapsed = time.perf_counter() - start_time
+        attrs = self._build_metric_attributes(
+            handler_call_details, status_code
+        )
+        self._duration_histogram.record(elapsed, attributes=attrs)
+
     def intercept_service(self, continuation, handler_call_details):
         if self._filter is not None and not self._filter(handler_call_details):
             return continuation(handler_call_details)
@@ -281,6 +331,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         request_or_iterator,
                         context,
                     )
+
+                start_time = time.perf_counter()
 
                 with self._set_remote_context(context):
                     with self._start_span(
@@ -304,6 +356,13 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                                 span.record_exception(error)
                             raise error
 
+                        finally:
+                            self._record_duration(
+                                handler_call_details,
+                                start_time,
+                                context._code,
+                            )
+
             return telemetry_interceptor
 
         return _wrap_rpc_behavior(
@@ -316,6 +375,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
     def _intercept_server_stream(
         self, behavior, handler_call_details, request_or_iterator, context
     ):
+        start_time = time.perf_counter()
+
         with self._set_remote_context(context):
             with self._start_span(
                 handler_call_details, context, set_status_on_exception=False
@@ -330,3 +391,10 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                     if type(error) != Exception:  # noqa: E721
                         span.record_exception(error)
                     raise error
+
+                finally:
+                    self._record_duration(
+                        handler_call_details,
+                        start_time,
+                        context._code,
+                    )
