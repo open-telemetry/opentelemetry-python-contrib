@@ -165,6 +165,8 @@ class UnaryUnaryAioClientInterceptor(
 
         start_time = time.perf_counter()
         method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
 
         with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
@@ -193,6 +195,8 @@ class UnaryStreamAioClientInterceptor(
 
         start_time = time.perf_counter()
         method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
 
         with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
@@ -218,6 +222,8 @@ class StreamUnaryAioClientInterceptor(
 
         start_time = time.perf_counter()
         method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
 
         with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
@@ -243,6 +249,8 @@ class StreamStreamAioClientInterceptor(
 
         start_time = time.perf_counter()
         method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
 
         with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)

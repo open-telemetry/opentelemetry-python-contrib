@@ -170,8 +170,6 @@ class OpenTelemetryClientInterceptor(
         return result
 
     def _build_metric_attributes(self, method, status_code):
-        if isinstance(method, bytes):
-            method = method.decode()
         full_method = method.lstrip("/") if method else _DEFAULT_RPC_METHOD
         attrs = {
             RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
