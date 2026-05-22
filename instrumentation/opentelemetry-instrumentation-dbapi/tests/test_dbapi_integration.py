@@ -525,6 +525,33 @@ class TestDBApiIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
 
+    def test_suppress_instrumentation_async(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+        )
+        cursor_tracer = dbapi.CursorTracer(db_integration)
+        mock_cursor = MockCursor()
+        called = False
+
+        async def async_execute(_query, *_args):
+            nonlocal called
+            called = True
+
+        with suppress_instrumentation():
+            asyncio.run(
+                cursor_tracer.traced_execution_async(
+                    mock_cursor,
+                    async_execute,
+                    "Test query",
+                    ("param1Value", False),
+                )
+            )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+        self.assertTrue(called)
+
     def _get_metric(self, name):
         return next(
             (
