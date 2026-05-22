@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import time
+
 import grpc
 import grpc.aio
 
@@ -93,6 +95,8 @@ class OpenTelemetryAioServerInterceptor(
 
     def _intercept_aio_server_unary(self, behavior, handler_call_details):
         async def _unary_interceptor(request_or_iterator, context):
+            start_time = time.perf_counter()
+
             with self._set_remote_context(context):
                 with self._start_span(
                     handler_call_details,
@@ -115,10 +119,19 @@ class OpenTelemetryAioServerInterceptor(
                             span.record_exception(error)
                         raise error
 
+                    finally:
+                        self._record_duration(
+                            handler_call_details,
+                            start_time,
+                            context._self_code,
+                        )
+
         return _unary_interceptor
 
     def _intercept_aio_server_stream(self, behavior, handler_call_details):
         async def _stream_interceptor(request_or_iterator, context):
+            start_time = time.perf_counter()
+
             with self._set_remote_context(context):
                 with self._start_span(
                     handler_call_details,
@@ -138,5 +151,12 @@ class OpenTelemetryAioServerInterceptor(
                         if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                         raise error
+
+                    finally:
+                        self._record_duration(
+                            handler_call_details,
+                            start_time,
+                            context._self_code,
+                        )
 
         return _stream_interceptor

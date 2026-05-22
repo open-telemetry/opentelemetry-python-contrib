@@ -514,25 +514,21 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _add_interceptors(self, tracer_provider, kwargs):
+    def _add_interceptors(self, tracer_provider, meter_provider, target, kwargs):
+        interceptors = aio_client_interceptors(
+            tracer_provider=tracer_provider,
+            filter_=self._filter,
+            request_hook=self._request_hook,
+            response_hook=self._response_hook,
+            meter_provider=meter_provider,
+            target=target,
+        )
         if "interceptors" in kwargs and kwargs["interceptors"]:
-            kwargs["interceptors"] = list(kwargs["interceptors"])
-            kwargs["interceptors"] = (
-                aio_client_interceptors(
-                    tracer_provider=tracer_provider,
-                    filter_=self._filter,
-                    request_hook=self._request_hook,
-                    response_hook=self._response_hook,
-                )
-                + kwargs["interceptors"]
+            kwargs["interceptors"] = interceptors + list(
+                kwargs["interceptors"]
             )
         else:
-            kwargs["interceptors"] = aio_client_interceptors(
-                tracer_provider=tracer_provider,
-                filter_=self._filter,
-                request_hook=self._request_hook,
-                response_hook=self._response_hook,
-            )
+            kwargs["interceptors"] = interceptors
 
         return kwargs
 
@@ -542,15 +538,20 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         self._request_hook = kwargs.get("request_hook")
         self._response_hook = kwargs.get("response_hook")
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         def insecure(*args, **kwargs):
-            kwargs = self._add_interceptors(tracer_provider, kwargs)
-
+            target = args[0] if args else None
+            kwargs = self._add_interceptors(
+                tracer_provider, meter_provider, target, kwargs
+            )
             return self._original_insecure(*args, **kwargs)
 
         def secure(*args, **kwargs):
-            kwargs = self._add_interceptors(tracer_provider, kwargs)
-
+            target = args[0] if args else None
+            kwargs = self._add_interceptors(
+                tracer_provider, meter_provider, target, kwargs
+            )
             return self._original_secure(*args, **kwargs)
 
         grpc.aio.insecure_channel = insecure
@@ -646,12 +647,21 @@ def server_interceptor(tracer_provider=None, filter_=None, meter_provider=None):
 
 
 def aio_client_interceptors(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
+    tracer_provider=None,
+    filter_=None,
+    request_hook=None,
+    response_hook=None,
+    meter_provider=None,
+    target=None,
 ):
     """Create a gRPC client channel interceptor.
 
     Args:
         tracer: The tracer to use to create client-side spans.
+
+        meter_provider: The meter provider to use for metrics.
+
+        target: The target address of the channel (e.g. "host:port").
 
     Returns:
         An invocation-side interceptor object.
@@ -665,39 +675,37 @@ def aio_client_interceptors(
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+    )
+
+    common_kwargs = {
+        "filter_": filter_,
+        "request_hook": request_hook,
+        "response_hook": response_hook,
+        "meter": meter,
+        "target": target,
+    }
+
     return [
-        _aio_client.UnaryUnaryAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-        ),
-        _aio_client.UnaryStreamAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-        ),
-        _aio_client.StreamUnaryAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
-        ),
+        _aio_client.UnaryUnaryAioClientInterceptor(tracer, **common_kwargs),
+        _aio_client.UnaryStreamAioClientInterceptor(tracer, **common_kwargs),
+        _aio_client.StreamUnaryAioClientInterceptor(tracer, **common_kwargs),
         _aio_client.StreamStreamAioClientInterceptor(
-            tracer,
-            filter_=filter_,
-            request_hook=request_hook,
-            response_hook=response_hook,
+            tracer, **common_kwargs
         ),
     ]
 
 
-def aio_server_interceptor(tracer_provider=None, filter_=None):
+def aio_server_interceptor(tracer_provider=None, filter_=None, meter_provider=None):
     """Create a gRPC aio server interceptor.
 
     Args:
         tracer: The tracer to use to create server-side spans.
+
+        meter_provider: The meter provider to use for metrics.
 
     Returns:
         A service-side interceptor object.
@@ -711,8 +719,14 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
+    meter = get_meter(
+        __name__,
+        __version__,
+        meter_provider,
+    )
+
     return _aio_server.OpenTelemetryAioServerInterceptor(
-        tracer, filter_=filter_
+        tracer, filter_=filter_, meter=meter
     )
 
 
