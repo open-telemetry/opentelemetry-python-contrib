@@ -3,7 +3,7 @@ OpenTelemetry Google GenAI SDK Instrumentation
 
 .. note::
 
-   This package is being migrated to
+   This package is being migrated as ``opentelemetry-instrumentation-genai-google-genai`` to
    `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-genai-google-genai <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-google-genai>`_.
    Future development will happen there.
 

@@ -3,7 +3,7 @@ OpenTelemetry Anthropic Instrumentation
 
 .. note::
 
-   This package is being migrated to
+   This package is being migrated as ``opentelemetry-instrumentation-genai-anthropic`` to
    `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-genai-anthropic <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-anthropic>`_.
    Future development will happen there.
 
