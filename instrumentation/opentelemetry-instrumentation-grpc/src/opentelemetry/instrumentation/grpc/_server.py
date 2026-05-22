@@ -45,6 +45,8 @@ from ._utilities import _server_status
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_RPC_METHOD = "_OTHER"
+
 _RPC_DURATION_BUCKET_BOUNDARIES = (
     0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
     0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10,
@@ -296,7 +298,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
     def _build_metric_attributes(self, handler_call_details, status_code):
         method = handler_call_details.method
-        full_method = method.lstrip("/") if method else "_OTHER"
+        full_method = method.lstrip("/") if method else _DEFAULT_RPC_METHOD
         attrs = {
             RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
             RPC_METHOD: full_method,
