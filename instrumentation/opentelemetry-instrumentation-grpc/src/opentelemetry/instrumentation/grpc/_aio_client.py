@@ -94,7 +94,7 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
         )
 
     async def _wrap_unary_response(
-        self, continuation, span, method=None, start_time=None
+        self, continuation, span, method, start_time
     ):
         status_code = grpc.StatusCode.OK
         try:
@@ -121,12 +121,9 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             self.add_error_details_to_span(span, exc)
             raise exc
         finally:
-            if start_time is not None:
-                self._record_duration(method, start_time, status_code)
+            self._record_duration(method, start_time, status_code)
 
-    async def _wrap_stream_response(
-        self, span, call, method=None, start_time=None
-    ):
+    async def _wrap_stream_response(self, span, call, method, start_time):
         status_code = grpc.StatusCode.OK
         try:
             async for response in call:
@@ -140,8 +137,7 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             raise exc
         finally:
             span.end()
-            if start_time is not None:
-                self._record_duration(method, start_time, status_code)
+            self._record_duration(method, start_time, status_code)
 
     def tracing_skipped(self, client_call_details):
         return (
