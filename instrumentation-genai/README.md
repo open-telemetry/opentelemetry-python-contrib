@@ -1,24 +1,4 @@
 
-## GenAI Package Migration
-
-GenAI instrumentation packages are being migrated to the
-[opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
-repository. Future GenAI instrumentation development will happen there.
-
-| Contrib package | New location |
-| --------------- | ------------ |
-| `opentelemetry-instrumentation-anthropic` | [`opentelemetry-instrumentation-genai-anthropic`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-anthropic) |
-| `opentelemetry-instrumentation-claude-agent-sdk` | [`opentelemetry-instrumentation-genai-claude-agent-sdk`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-claude-agent-sdk) |
-| `opentelemetry-instrumentation-google-genai` | [`opentelemetry-instrumentation-google-genai`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai) |
-| `opentelemetry-instrumentation-langchain` | [`opentelemetry-instrumentation-genai-langchain`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-langchain) |
-| `opentelemetry-instrumentation-openai-agents-v2` | [`opentelemetry-instrumentation-genai-openai-agents`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai-agents) |
-| `opentelemetry-instrumentation-openai-v2` | [`opentelemetry-instrumentation-genai-openai`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai) |
-| `opentelemetry-instrumentation-weaviate` | [`opentelemetry-instrumentation-genai-weaviate-client`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-weaviate-client) |
-| `opentelemetry-instrumentation-vertexai` | Deprecated with no replacement in `opentelemetry-python-genai` |
-
-The related `opentelemetry-util-genai` package is also being migrated to
-[`opentelemetry-python-genai/util/opentelemetry-util-genai`](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai).
-
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |
 | [opentelemetry-instrumentation-anthropic](./opentelemetry-instrumentation-anthropic) | anthropic >= 0.16.0 | No | development
