@@ -71,9 +71,10 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         super().__init__()
         self._logger_provider = logger_provider
         self._exception_logger: _ExceptionLogger | None = None
+        self._instrumentation_dependencies = _instruments
 
     def instrumentation_dependencies(self) -> Collection[str]:
-        return _instruments
+        return self._instrumentation_dependencies
 
     def _instrument(self, **kwargs: Any):
         logger_provider = kwargs.get("logger_provider", self._logger_provider)
