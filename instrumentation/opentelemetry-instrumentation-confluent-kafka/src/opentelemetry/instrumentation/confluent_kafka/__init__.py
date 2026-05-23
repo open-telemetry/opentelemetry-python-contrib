@@ -47,19 +47,26 @@ Usage
 
     basic_consume_loop(consumer, ["my-topic"])
 
-The _instrument method accepts the following keyword args:
-  tracer_provider (TracerProvider) - an optional tracer provider
+The ``_instrument()`` method accepts the following keyword args:
 
-  instrument_producer (Callable) - a function with extra user-defined logic to be performed before sending the message
-    this function signature is:
+- **tracer_provider** (TracerProvider) - an optional tracer provider
+- **instrument_producer** (Callable) - a function with extra user-defined logic to be performed before sending the message
 
-  def instrument_producer(producer: Producer, tracer_provider=None)
+  Function signature:
 
-    instrument_consumer (Callable) - a function with extra user-defined logic to be performed after consuming a message
-        this function signature is:
+  .. code:: python
 
-  def instrument_consumer(consumer: Consumer, tracer_provider=None)
-    for example:
+      def instrument_producer(producer: Producer, tracer_provider=None): ...
+
+- **instrument_consumer** (Callable) - a function with extra user-defined logic to be performed after consuming a message
+
+  Function signature:
+
+  .. code:: python
+
+      def instrument_consumer(consumer: Consumer, tracer_provider=None): ...
+
+For example:
 
 .. code:: python
 
