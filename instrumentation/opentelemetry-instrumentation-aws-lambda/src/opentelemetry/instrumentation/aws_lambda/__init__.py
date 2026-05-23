@@ -352,8 +352,8 @@ def _instrument(
     wrapped_function_name,
     flush_timeout,
     event_context_extractor: Callable[[Any], Context],
-    tracer_provider: TracerProvider = None,
-    meter_provider: MeterProvider = None,
+    tracer_provider: TracerProvider | None = None,
+    meter_provider: MeterProvider | None = None,
 ):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
