@@ -227,6 +227,21 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Middleware spans
+****************
+You can optionally enable per-middleware span creation to trace the execution
+of each Django middleware individually:
+
+.. code:: python
+
+    DjangoInstrumentor().instrument(is_middleware_spans_enabled=True)
+
+When enabled, each middleware in ``settings.MIDDLEWARE`` produces an INTERNAL span
+nested under the HTTP server span.
+
+Warning:
+    Middleware added to ``settings.MIDDLEWARE`` after calling ``instrument()`` or before the ``middleware_position`` will not be automatically traced.
+
 SQLCommenter
 ************
 You can optionally enable sqlcommenter which enriches the query with contextual
@@ -305,6 +320,10 @@ from opentelemetry.instrumentation._semconv import (
 )
 from opentelemetry.instrumentation.django.environment_variables import (
     OTEL_PYTHON_DJANGO_INSTRUMENT,
+)
+from opentelemetry.instrumentation.django.instrument_middleware import (
+    instrument_middleware_classes,
+    uninstrument_middleware_classes,
 )
 from opentelemetry.instrumentation.django.middleware.otel_middleware import (
     _DjangoMiddleware,
@@ -460,10 +479,19 @@ class DjangoInstrumentor(BaseInstrumentor):
             settings_middleware = list(settings_middleware)
 
         is_sql_commentor_enabled = kwargs.pop("is_sql_commentor_enabled", None)
+        is_middleware_spans_enabled = kwargs.pop(
+            "is_middleware_spans_enabled", None
+        )
 
         middleware_position = _get_django_otel_middleware_position(
             len(settings_middleware), kwargs.pop("middleware_position", 0)
         )
+
+        if is_middleware_spans_enabled:
+            instrument_middleware_classes(
+                settings_middleware[middleware_position:],
+                tracer,
+            )
 
         if is_sql_commentor_enabled:
             settings_middleware.insert(
@@ -477,6 +505,8 @@ class DjangoInstrumentor(BaseInstrumentor):
         setattr(settings, _django_middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
+        uninstrument_middleware_classes()
+
         settings_middleware = getattr(
             settings, _django_middleware_setting, None
         )
