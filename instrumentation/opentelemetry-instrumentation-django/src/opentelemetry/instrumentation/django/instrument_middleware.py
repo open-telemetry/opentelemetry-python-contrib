@@ -44,9 +44,7 @@ def instrument_middleware_classes(
         try:
             cls_or_func = import_string(mw_path)
         except ImportError:
-            _logger.debug(
-                "Could not import middleware %s, skipping", mw_path
-            )
+            _logger.debug("Could not import middleware %s, skipping", mw_path)
             continue
 
         if not inspect.isclass(cls_or_func):
@@ -89,7 +87,9 @@ def _wrap_middleware_mixin(tracer: Tracer) -> None:
 
 def _make_mixin_call_wrapper(tracer: Tracer):
     def _traced_call(wrapped, instance, args, kwargs):
-        if getattr(instance, "async_mode", False) or getattr(instance, "is_async", False):
+        if getattr(instance, "async_mode", False) or getattr(
+            instance, "is_async", False
+        ):
             return wrapped(*args, **kwargs)
         middleware_name = type(instance).__qualname__
         with tracer.start_as_current_span(
@@ -116,9 +116,7 @@ def _make_mixin_acall_wrapper(tracer: Tracer):
 # -- Category 2: Pure new-style class middleware --
 
 
-def _wrap_newstyle_middleware(
-    mw_path: str, cls: type, tracer: Tracer
-) -> None:
+def _wrap_newstyle_middleware(mw_path: str, cls: type, tracer: Tracer) -> None:
     module_path, class_name = mw_path.rsplit(".", 1)
 
     wrap_function_wrapper(
