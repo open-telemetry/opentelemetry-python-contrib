@@ -5,17 +5,26 @@ from opentelemetry import context
 from opentelemetry.instrumentation.utils import _url_quote
 
 
-def _add_sql_comment(sql, **meta) -> str:
+def _add_sql_comment(sql, comment_position="end", **meta) -> str:
     """
-    Appends comments to the sql statement and returns it
+    Adds comments to the sql statement and returns it.
+    By default, the comment is appended to the end of the query.
+    Set comment_position="start" to prepend the comment instead.
     """
     meta.update(**_add_framework_tags())
     comment = _generate_sql_comment(**meta)
+    if not comment:
+        return sql
     sql = sql.rstrip()
     if sql.endswith(";"):
-        sql = sql[:-1] + comment + ";"
+        sql = sql[:-1]
+        end = ";"
     else:
-        sql = sql + comment
+        end = ""
+    if comment_position == "start":
+        sql = comment + " " + sql + end
+    else:
+        sql = sql + comment + end
     return sql
 
 
@@ -25,10 +34,8 @@ def _generate_sql_comment(**meta) -> str:
     **meta kwargs.
     """
     key_value_delimiter = ","
-
     if not meta:  # No entries added.
         return ""
-
     # Sort the keywords to ensure that caching works and that testing is
     # deterministic. It eases visual inspection as well.
     return (
@@ -46,7 +53,6 @@ def _add_framework_tags() -> dict:
     """
     Returns orm related tags if any set by the context
     """
-
     sqlcommenter_framework_values = (
         context.get_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES")
         if context.get_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES")
