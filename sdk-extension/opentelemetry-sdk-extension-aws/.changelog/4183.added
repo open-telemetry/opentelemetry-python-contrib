@@ -1,0 +1,1 @@
+Read `cloud.account.id` from symlink created by the OTel Lambda Extension in the Lambda resource detector

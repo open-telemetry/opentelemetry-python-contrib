@@ -10,7 +10,6 @@ import pytest
 
 from opentelemetry.sdk.extension.aws.resource._lambda import (  # pylint: disable=no-name-in-module
     AwsLambdaResourceDetector,
-    _ACCOUNT_ID_SYMLINK_PATH,
 )
 from opentelemetry.semconv.resource import (
     CloudPlatformValues,
@@ -29,10 +28,18 @@ MockLambdaResourceAttributes = {
 }
 
 MOCK_LAMBDA_ENV = {
-    "AWS_REGION": MockLambdaResourceAttributes[ResourceAttributes.CLOUD_REGION],
-    "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_NAME],
-    "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[ResourceAttributes.FAAS_VERSION],
-    "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[ResourceAttributes.FAAS_INSTANCE],
+    "AWS_REGION": MockLambdaResourceAttributes[
+        ResourceAttributes.CLOUD_REGION
+    ],
+    "AWS_LAMBDA_FUNCTION_NAME": MockLambdaResourceAttributes[
+        ResourceAttributes.FAAS_NAME
+    ],
+    "AWS_LAMBDA_FUNCTION_VERSION": MockLambdaResourceAttributes[
+        ResourceAttributes.FAAS_VERSION
+    ],
+    "AWS_LAMBDA_LOG_STREAM_NAME": MockLambdaResourceAttributes[
+        ResourceAttributes.FAAS_INSTANCE
+    ],
     "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": f"{MockLambdaResourceAttributes[ResourceAttributes.FAAS_MAX_MEMORY]}",
 }
 
@@ -53,15 +60,17 @@ class AwsLambdaResourceDetectorTest(unittest.TestCase):
 @pytest.fixture
 def account_id_symlink(tmp_path):
     """Create a symlink at a temporary path and patch the detector to use it."""
+
     def _create(account_id):
         symlink_path = tmp_path / ".otel-aws-account-id"
         os.symlink(account_id, symlink_path)
         return str(symlink_path)
+
     return _create
 
 
 @patch.dict("os.environ", MOCK_LAMBDA_ENV, clear=True)
-def test_account_id_from_symlink(account_id_symlink):
+def test_account_id_from_symlink(account_id_symlink):  # pylint: disable=redefined-outer-name
     """When the account ID symlink exists, cloud.account.id is set."""
     symlink_path = account_id_symlink("123456789012")
     with patch(
@@ -69,7 +78,10 @@ def test_account_id_from_symlink(account_id_symlink):
         symlink_path,
     ):
         actual = AwsLambdaResourceDetector().detect()
-    assert actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID] == "123456789012"
+    assert (
+        actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID]
+        == "123456789012"
+    )
 
 
 @patch.dict("os.environ", MOCK_LAMBDA_ENV, clear=True)
@@ -84,7 +96,7 @@ def test_account_id_missing_symlink():
 
 
 @patch.dict("os.environ", MOCK_LAMBDA_ENV, clear=True)
-def test_account_id_preserves_leading_zeros(account_id_symlink):
+def test_account_id_preserves_leading_zeros(account_id_symlink):  # pylint: disable=redefined-outer-name
     """Leading zeros in the account ID are preserved (treated as string)."""
     symlink_path = account_id_symlink("000123456789")
     with patch(
@@ -92,4 +104,7 @@ def test_account_id_preserves_leading_zeros(account_id_symlink):
         symlink_path,
     ):
         actual = AwsLambdaResourceDetector().detect()
-    assert actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID] == "000123456789"
+    assert (
+        actual.attributes[ResourceAttributes.CLOUD_ACCOUNT_ID]
+        == "000123456789"
+    )
