@@ -8,9 +8,9 @@ The OpenTelemetry `logging` instrumentation automatically instruments Python log
 system with an handler to convert log messages into OpenTelemetry logs.
 You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
 
-The OpenTelemetry `logging` integration can inject tracing context into
-log statements, though it is opt-in and must be enabled explicitly by setting the
-environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
+The OpenTelemetry `logging` integration always injects tracing context attributes
+(``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, ``otelServiceName``) into
+every log record, making them available for custom formatters and filters.
 
 .. code-block:: python
 
@@ -22,19 +22,9 @@ environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
 
     logging.warning('OTel test')
 
-When running the above example you will see the following output:
-
-::
-
-    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
-
-The environment variable `OTEL_PYTHON_LOG_CORRELATION` must be set to `true`
-in order to enable trace context injection into logs by calling
-`logging.basicConfig()` and setting a logging format that makes use of the
-injected tracing variables.
-
-Alternatively, `set_logging_format` argument can be set to `True` when
-initializing the `LoggingInstrumentor` class to achieve the same effect:
+Setting the environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true` (or
+passing ``set_logging_format=True``) additionally calls ``logging.basicConfig()``
+with a format string that includes the injected tracing attributes:
 
 .. code-block:: python
 
@@ -45,6 +35,12 @@ initializing the `LoggingInstrumentor` class to achieve the same effect:
     LoggingInstrumentor().instrument(set_logging_format=True)
 
     logging.warning('OTel test')
+
+When running the above example you will see the following output:
+
+::
+
+    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
 
 """
 
@@ -171,38 +167,29 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
 
-            # this factory is a no-op if log correlation or log hook are not set
-            if not set_logging_format and not callable(
-                LoggingInstrumentor._log_hook
-            ):
-                return record
+            record.otelSpanID = "0"
+            record.otelTraceID = "0"
+            record.otelTraceSampled = False
 
-            # out of spec attributes are added to the log record only if log correlation is set
-            if set_logging_format:
-                record.otelSpanID = "0"
-                record.otelTraceID = "0"
-                record.otelTraceSampled = False
+            nonlocal service_name
+            if service_name is None:
+                resource = getattr(provider, "resource", None)
+                if resource:
+                    service_name = (
+                        resource.attributes.get("service.name") or ""
+                    )
+                else:
+                    service_name = ""
 
-                nonlocal service_name
-                if service_name is None:
-                    resource = getattr(provider, "resource", None)
-                    if resource:
-                        service_name = (
-                            resource.attributes.get("service.name") or ""
-                        )
-                    else:
-                        service_name = ""
-
-                record.otelServiceName = service_name
+            record.otelServiceName = service_name
 
             span = get_current_span()
             if span != INVALID_SPAN:
                 ctx = span.get_span_context()
                 if ctx != INVALID_SPAN_CONTEXT:
-                    if set_logging_format:
-                        record.otelSpanID = format(ctx.span_id, "016x")
-                        record.otelTraceID = format(ctx.trace_id, "032x")
-                        record.otelTraceSampled = ctx.trace_flags.sampled
+                    record.otelSpanID = format(ctx.span_id, "016x")
+                    record.otelTraceID = format(ctx.trace_id, "032x")
+                    record.otelTraceSampled = ctx.trace_flags.sampled
 
                     if callable(LoggingInstrumentor._log_hook):
                         try:
