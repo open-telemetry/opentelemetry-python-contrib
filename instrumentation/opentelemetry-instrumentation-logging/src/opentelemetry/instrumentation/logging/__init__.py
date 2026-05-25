@@ -8,9 +8,9 @@ The OpenTelemetry `logging` instrumentation automatically instruments Python log
 system with an handler to convert log messages into OpenTelemetry logs.
 You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
 
-The OpenTelemetry `logging` integration always injects tracing context attributes
-(``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, ``otelServiceName``) into
-every log record, making them available for custom formatters and filters.
+Trace context injection is opt-in. Pass ``inject_trace_context=True`` to add
+``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName``
+to every log record without changing the logging format:
 
 .. code-block:: python
 
@@ -18,13 +18,13 @@ every log record, making them available for custom formatters and filters.
 
     from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
-    LoggingInstrumentor().instrument()
+    LoggingInstrumentor().instrument(inject_trace_context=True)
 
     logging.warning('OTel test')
 
-Setting the environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true` (or
-passing ``set_logging_format=True``) additionally calls ``logging.basicConfig()``
-with a format string that includes the injected tracing attributes:
+Alternatively, set ``set_logging_format=True`` (or the environment variable
+``OTEL_PYTHON_LOG_CORRELATION=true``) to inject those same attributes and
+call ``logging.basicConfig()`` with a format string that includes them:
 
 .. code-block:: python
 
@@ -116,7 +116,10 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     Args:
         tracer_provider: Tracer provider instance that can be used to fetch a tracer.
-        set_logging_format: When set to True, it calls logging.basicConfig() and sets a logging format.
+        set_logging_format: When set to True, injects trace context attributes into log records
+            and calls logging.basicConfig() with a format string that includes those attributes.
+        inject_trace_context: When set to True, injects trace context attributes
+            into every log record without modifying the logging format.
         logging_format: Accepts a string and sets it as the logging format when set_logging_format
             is set to True.
         log_level: Accepts one of the following values and sets the logging level to it.
@@ -152,44 +155,57 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         )
 
         if set_logging_format:
-            log_format = kwargs.get(
-                "logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)
+            log_format = (
+                kwargs.get(
+                    "logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)
+                )
+                or DEFAULT_LOGGING_FORMAT
             )
-            log_format = log_format or DEFAULT_LOGGING_FORMAT
-
-            log_level = kwargs.get(
-                "log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))
+            log_level = (
+                kwargs.get(
+                    "log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))
+                )
+                or logging.INFO
             )
-            log_level = log_level or logging.INFO
-
             logging.basicConfig(format=log_format, level=log_level)
+
+        inject_context = set_logging_format or kwargs.get(
+            "inject_trace_context", False
+        )
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
 
-            record.otelSpanID = "0"
-            record.otelTraceID = "0"
-            record.otelTraceSampled = False
+            if not inject_context and not callable(
+                LoggingInstrumentor._log_hook
+            ):
+                return record
 
-            nonlocal service_name
-            if service_name is None:
-                resource = getattr(provider, "resource", None)
-                if resource:
-                    service_name = (
-                        resource.attributes.get("service.name") or ""
-                    )
-                else:
-                    service_name = ""
+            if inject_context:
+                record.otelSpanID = "0"
+                record.otelTraceID = "0"
+                record.otelTraceSampled = False
 
-            record.otelServiceName = service_name
+                nonlocal service_name
+                if service_name is None:
+                    resource = getattr(provider, "resource", None)
+                    if resource:
+                        service_name = (
+                            resource.attributes.get("service.name") or ""
+                        )
+                    else:
+                        service_name = ""
+
+                record.otelServiceName = service_name
 
             span = get_current_span()
             if span != INVALID_SPAN:
                 ctx = span.get_span_context()
                 if ctx != INVALID_SPAN_CONTEXT:
-                    record.otelSpanID = format(ctx.span_id, "016x")
-                    record.otelTraceID = format(ctx.trace_id, "032x")
-                    record.otelTraceSampled = ctx.trace_flags.sampled
+                    if inject_context:
+                        record.otelSpanID = format(ctx.span_id, "016x")
+                        record.otelTraceID = format(ctx.trace_id, "032x")
+                        record.otelTraceSampled = ctx.trace_flags.sampled
 
                     if callable(LoggingInstrumentor._log_hook):
                         try:

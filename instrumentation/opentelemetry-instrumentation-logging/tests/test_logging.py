@@ -113,21 +113,34 @@ class TestLoggingInstrumentor(TestBase):
                 span_id, trace_id, trace_sampled
             )
 
-    def test_trace_context_injection_by_default(self):
-        with self.tracer.start_as_current_span("s1") as span:
-            span_ctx = span.get_span_context()
-            span_id = format(span_ctx.span_id, "016x")
-            trace_id = format(span_ctx.trace_id, "032x")
-            trace_sampled = span_ctx.trace_flags.sampled
+    def test_no_trace_context_injection_by_default(self):
+        with self.tracer.start_as_current_span("s1"):
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
                 self.assertEqual(len(self.caplog.records), 1)
                 record = self.caplog.records[0]
-                self.assertEqual(record.otelSpanID, span_id)
-                self.assertEqual(record.otelTraceID, trace_id)
-                self.assertEqual(record.otelTraceSampled, trace_sampled)
-                self.assertEqual(record.otelServiceName, "unknown_service")
+                self.assertFalse(hasattr(record, "otelServiceName"))
+                self.assertFalse(hasattr(record, "otelSpanID"))
+                self.assertFalse(hasattr(record, "otelTraceID"))
+                self.assertFalse(hasattr(record, "otelTraceSampled"))
+
+    def test_inject_trace_context_arg(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        with self.tracer.start_as_current_span("s1") as span:
+            span_ctx = span.get_span_context()
+            span_id = format(span_ctx.span_id, "016x")
+            trace_id = format(span_ctx.trace_id, "032x")
+            trace_sampled = span_ctx.trace_flags.sampled
+            self.assert_trace_context_injected(
+                span_id, trace_id, trace_sampled
+            )
+
+    def test_inject_trace_context_arg_without_span(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        self.assert_trace_context_injected("0", "0", False)
 
     def test_trace_context_injection_without_span(self):
         LoggingInstrumentor().uninstrument()
@@ -186,20 +199,16 @@ class TestLoggingInstrumentor(TestBase):
         LoggingInstrumentor().instrument(
             log_hook=log_hook,
         )
-        with self.tracer.start_as_current_span("s1") as span:
-            span_ctx = span.get_span_context()
-            span_id = format(span_ctx.span_id, "016x")
-            trace_id = format(span_ctx.trace_id, "032x")
-            trace_sampled = span_ctx.trace_flags.sampled
+        with self.tracer.start_as_current_span("s1"):
             with self.caplog.at_level(level=logging.INFO):
                 logger = logging.getLogger("test logger")
                 logger.info("hello")
                 self.assertEqual(len(self.caplog.records), 1)
                 record = self.caplog.records[0]
-                self.assertEqual(record.otelSpanID, span_id)
-                self.assertEqual(record.otelTraceID, trace_id)
-                self.assertEqual(record.otelTraceSampled, trace_sampled)
-                self.assertEqual(record.otelServiceName, "unknown_service")
+                self.assertFalse(hasattr(record, "otelServiceName"))
+                self.assertFalse(hasattr(record, "otelSpanID"))
+                self.assertFalse(hasattr(record, "otelTraceID"))
+                self.assertFalse(hasattr(record, "otelTraceSampled"))
                 self.assertEqual(
                     record.custom_user_attribute_from_log_hook, "some-value"
                 )
