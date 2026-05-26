@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-pika` Use `ObjectProxy` instead of `BaseObjectProxy` for `ReadyMessagesDequeProxy` to restore iterability with wrapt 2.x

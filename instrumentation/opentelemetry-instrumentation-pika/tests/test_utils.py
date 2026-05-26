@@ -47,7 +47,13 @@ class TestUtils(TestCase):
         tracer.start_span.assert_called_once_with(
             name=generate_span_name.return_value, kind=span_kind
         )
-        enrich_span.assert_called_once()
+        enrich_span.assert_called_once_with(
+            tracer.start_span.return_value,
+            channel,
+            properties,
+            destination,
+            None,
+        )
 
     @mock.patch("opentelemetry.context.get_value")
     @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
