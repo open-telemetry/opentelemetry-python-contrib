@@ -3,8 +3,9 @@
 
 from unittest import mock
 
-import httpretty
 import requests
+from mocket import Mocketizer
+from mocket.mocks.mockhttp import Entry
 
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
@@ -21,13 +22,14 @@ class TestUserAgentSynthetic(TestBase):
     def setUp(self):
         super().setUp()
         RequestsInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(Entry.GET, self.URL, body="Hello!")
 
     def tearDown(self):
         super().tearDown()
         RequestsInstrumentor().uninstrument()
-        httpretty.disable()
+        self.mocketizer.exit()
 
     def assert_span(self, num_spans=1):
         span_list = self.memory_exporter.get_finished_spans()
