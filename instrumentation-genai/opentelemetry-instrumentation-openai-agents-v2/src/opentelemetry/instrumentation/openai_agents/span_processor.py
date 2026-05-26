@@ -37,6 +37,7 @@ try:
         GenerationSpanData,
         GuardrailSpanData,
         HandoffSpanData,
+        MCPListToolsSpanData,
         ResponseSpanData,
         SpeechSpanData,
         TranscriptionSpanData,
@@ -51,6 +52,7 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     GenerationSpanData = getattr(tracing_module, "GenerationSpanData", Any)  # type: ignore[assignment]
     GuardrailSpanData = getattr(tracing_module, "GuardrailSpanData", Any)  # type: ignore[assignment]
     HandoffSpanData = getattr(tracing_module, "HandoffSpanData", Any)  # type: ignore[assignment]
+    MCPListToolsSpanData = getattr(tracing_module, "MCPListToolsSpanData", Any)  # type: ignore[assignment]
     ResponseSpanData = getattr(tracing_module, "ResponseSpanData", Any)  # type: ignore[assignment]
     SpeechSpanData = getattr(tracing_module, "SpeechSpanData", Any)  # type: ignore[assignment]
     TranscriptionSpanData = getattr(
@@ -123,6 +125,7 @@ class GenAIOperationName:
     SPEECH = "speech_generation"
     GUARDRAIL = "guardrail_check"
     HANDOFF = "agent_handoff"
+    MCP_LIST_TOOLS = "mcp_list_tools"
     RESPONSE = "response"  # internal aggregator in current processor
 
     CLASS_FALLBACK = {
@@ -244,6 +247,8 @@ GEN_AI_HANDOFF_FROM_AGENT = "gen_ai.handoff.from_agent"
 GEN_AI_HANDOFF_TO_AGENT = "gen_ai.handoff.to_agent"
 GEN_AI_EMBEDDINGS_DIMENSION_COUNT = "gen_ai.embeddings.dimension.count"
 GEN_AI_TOKEN_TYPE = _attr("GEN_AI_TOKEN_TYPE", "gen_ai.token.type")
+GEN_AI_MCP_SERVER_NAME = "gen_ai.mcp.server.name"
+GEN_AI_MCP_TOOL_NAMES = "gen_ai.mcp.tool.names"
 
 # ---- Normalization utilities (embedded from utils.py) ----
 
@@ -422,6 +427,9 @@ def get_span_name(
 
     if operation_name == GenAIOperationName.HANDOFF:
         return f"{base_name} {agent_name}" if agent_name else base_name
+
+    if operation_name == GenAIOperationName.MCP_LIST_TOOLS:
+        return f"{base_name} {tool_name}" if tool_name else base_name
 
     return base_name
 
@@ -1286,6 +1294,8 @@ class GenAISemanticProcessor(TracingProcessor):
             return SpanKind.CLIENT  # API calls to model providers
         if _is_instance_of(span_data, AgentSpanData):
             return SpanKind.CLIENT
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return SpanKind.CLIENT  # MCP server call
         if _is_instance_of(span_data, (GuardrailSpanData, HandoffSpanData)):
             return SpanKind.INTERNAL  # Agent operations are internal
         return SpanKind.INTERNAL
@@ -1362,11 +1372,12 @@ class GenAISemanticProcessor(TracingProcessor):
         if not agent_name:
             agent_name = self._agent_name_default
 
-        tool_name = (
-            getattr(span.span_data, "name", None)
-            if _is_instance_of(span.span_data, FunctionSpanData)
-            else None
-        )
+        if _is_instance_of(span.span_data, FunctionSpanData):
+            tool_name = getattr(span.span_data, "name", None)
+        elif _is_instance_of(span.span_data, MCPListToolsSpanData):
+            tool_name = getattr(span.span_data, "server", None)
+        else:
+            tool_name = None
 
         # Generate spec-compliant span name
         span_name = get_span_name(operation_name, model, agent_name, tool_name)
@@ -1548,6 +1559,8 @@ class GenAISemanticProcessor(TracingProcessor):
             return GenAIOperationName.GUARDRAIL
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return GenAIOperationName.MCP_LIST_TOOLS
         return "unknown"
 
     def _extract_genai_attributes(
@@ -1608,6 +1621,10 @@ class GenAISemanticProcessor(TracingProcessor):
             yield from self._get_attributes_from_guardrail_span_data(span_data)
         elif _is_instance_of(span_data, HandoffSpanData):
             yield from self._get_attributes_from_handoff_span_data(span_data)
+        elif _is_instance_of(span_data, MCPListToolsSpanData):
+            yield from self._get_attributes_from_mcp_list_tools_span_data(
+                span_data
+            )
 
     def _get_attributes_from_generation_span_data(
         self, span_data: GenerationSpanData, payload: ContentPayload
@@ -2172,6 +2189,18 @@ class GenAISemanticProcessor(TracingProcessor):
             GEN_AI_OUTPUT_TYPE,
             normalize_output_type(self._infer_output_type(span_data)),
         )
+
+    def _get_attributes_from_mcp_list_tools_span_data(
+        self, span_data: MCPListToolsSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract attributes from MCP list tools span."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.MCP_LIST_TOOLS
+
+        if span_data.server:
+            yield GEN_AI_MCP_SERVER_NAME, span_data.server
+
+        if span_data.result:
+            yield GEN_AI_MCP_TOOL_NAMES, span_data.result
 
     def _cleanup_spans_for_trace(self, trace_id: str) -> None:
         """Clean up spans for a trace to prevent memory leaks."""

@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-agents-v2`: handle MCPListToolsSpanData so MCP list tools spans are no longer reported as "unknown"

@@ -18,6 +18,7 @@ from agents.tracing import (
     AgentSpanData,
     FunctionSpanData,
     GenerationSpanData,
+    MCPListToolsSpanData,
     ResponseSpanData,
 )
 
@@ -212,6 +213,24 @@ def test_operation_and_span_naming(processor_setup):
         == "create_agent"
     )
 
+    # MCPListToolsSpanData maps to mcp_list_tools
+    mcp_data = MCPListToolsSpanData(server="Time")
+    assert (
+        processor._get_operation_name(mcp_data)
+        == sp.GenAIOperationName.MCP_LIST_TOOLS
+    )
+    assert processor._get_span_kind(mcp_data) is SpanKind.CLIENT
+    assert (
+        sp.get_span_name(
+            sp.GenAIOperationName.MCP_LIST_TOOLS, tool_name="Time"
+        )
+        == "mcp_list_tools Time"
+    )
+    assert (
+        sp.get_span_name(sp.GenAIOperationName.MCP_LIST_TOOLS)
+        == "mcp_list_tools"
+    )
+
 
 def test_attribute_builders(processor_setup):
     processor, _ = processor_setup
@@ -360,6 +379,44 @@ def test_attribute_builders(processor_setup):
     assert function_attrs[sp.GEN_AI_TOOL_CALL_ARGUMENTS] == {"city": "seattle"}
     assert function_attrs[sp.GEN_AI_TOOL_CALL_RESULT] == {"temperature": 70}
     assert function_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
+
+    # MCP list tools span
+    mcp_span = MCPListToolsSpanData(
+        server="Time",
+        result=["get_current_time", "convert_timezone"],
+    )
+    mcp_attrs = _collect(
+        processor._get_attributes_from_mcp_list_tools_span_data(mcp_span)
+    )
+    assert mcp_attrs[sp.GEN_AI_OPERATION_NAME] == "mcp_list_tools"
+    assert mcp_attrs[sp.GEN_AI_MCP_SERVER_NAME] == "Time"
+    assert mcp_attrs[sp.GEN_AI_MCP_TOOL_NAMES] == [
+        "get_current_time",
+        "convert_timezone",
+    ]
+
+    # MCP list tools span without result
+    mcp_span_no_result = MCPListToolsSpanData(server="Empty")
+    mcp_attrs_no_result = _collect(
+        processor._get_attributes_from_mcp_list_tools_span_data(
+            mcp_span_no_result
+        )
+    )
+    assert mcp_attrs_no_result[sp.GEN_AI_OPERATION_NAME] == "mcp_list_tools"
+    assert mcp_attrs_no_result[sp.GEN_AI_MCP_SERVER_NAME] == "Empty"
+    assert sp.GEN_AI_MCP_TOOL_NAMES not in mcp_attrs_no_result
+
+    # MCP list tools span without server
+    mcp_span_no_server = MCPListToolsSpanData(
+        result=["tool_a"],
+    )
+    mcp_attrs_no_server = _collect(
+        processor._get_attributes_from_mcp_list_tools_span_data(
+            mcp_span_no_server
+        )
+    )
+    assert sp.GEN_AI_MCP_SERVER_NAME not in mcp_attrs_no_server
+    assert mcp_attrs_no_server[sp.GEN_AI_MCP_TOOL_NAMES] == ["tool_a"]
 
 
 def test_extract_genai_attributes_unknown_type(processor_setup):
@@ -538,3 +595,39 @@ def test_chat_span_renamed_with_model(processor_setup):
 
     span_names = {span.name for span in exporter.get_finished_spans()}
     assert "chat gpt-4o" in span_names
+
+
+def test_mcp_list_tools_span_lifecycle(processor_setup):
+    processor, exporter = processor_setup
+
+    trace = FakeTrace(name="workflow", trace_id="trace-mcp")
+    processor.on_trace_start(trace)
+
+    mcp_data = MCPListToolsSpanData(
+        server="Time",
+        result=["get_current_time", "convert_timezone"],
+    )
+    mcp_span = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-span",
+        span_data=mcp_data,
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:01Z",
+    )
+    processor.on_span_start(mcp_span)
+    processor.on_span_end(mcp_span)
+    processor.on_trace_end(trace)
+
+    finished = exporter.get_finished_spans()
+    mcp_otel_span = next(
+        span for span in finished if span.name == "mcp_list_tools Time"
+    )
+    assert mcp_otel_span.kind is SpanKind.CLIENT
+    assert (
+        mcp_otel_span.attributes[sp.GEN_AI_OPERATION_NAME] == "mcp_list_tools"
+    )
+    assert mcp_otel_span.attributes[sp.GEN_AI_MCP_SERVER_NAME] == "Time"
+    assert mcp_otel_span.attributes[sp.GEN_AI_MCP_TOOL_NAMES] == (
+        "get_current_time",
+        "convert_timezone",
+    )

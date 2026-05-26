@@ -17,6 +17,7 @@ from .traces import Trace
 SPAN_TYPE_AGENT = "agent"
 SPAN_TYPE_FUNCTION = "function"
 SPAN_TYPE_GENERATION = "generation"
+SPAN_TYPE_MCP_TOOLS = "mcp_tools"
 SPAN_TYPE_RESPONSE = "response"
 
 __all__ = [
@@ -27,10 +28,12 @@ __all__ = [
     "agent_span",
     "generation_span",
     "function_span",
+    "mcp_list_tools_span",
     "response_span",
     "AgentSpanData",
     "GenerationSpanData",
     "FunctionSpanData",
+    "MCPListToolsSpanData",
     "ResponseSpanData",
 ]
 
@@ -69,6 +72,16 @@ class GenerationSpanData:
     @property
     def type(self) -> str:
         return SPAN_TYPE_GENERATION
+
+
+@dataclass
+class MCPListToolsSpanData:
+    server: str | None = None
+    result: list[str] | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_MCP_TOOLS
 
 
 @dataclass
@@ -221,6 +234,17 @@ def agent_span(
 @contextmanager
 def function_span(**kwargs: Any):
     data = FunctionSpanData(**kwargs)
+    span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
+    span.start()
+    try:
+        yield span
+    finally:
+        span.finish()
+
+
+@contextmanager
+def mcp_list_tools_span(**kwargs: Any):
+    data = MCPListToolsSpanData(**kwargs)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:

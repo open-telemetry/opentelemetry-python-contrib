@@ -24,6 +24,7 @@ from agents.tracing import (  # noqa: E402
     agent_span,
     function_span,
     generation_span,
+    mcp_list_tools_span,
     response_span,
     set_trace_processors,
     trace,
@@ -556,6 +557,63 @@ def test_response_span_records_response_attributes():
                 },
             }
         ]
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_mcp_list_tools_span_records_attributes():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        with trace("workflow"):
+            with mcp_list_tools_span(
+                server="Time",
+                result=["get_current_time", "convert_timezone"],
+            ):
+                pass
+
+        spans = exporter.get_finished_spans()
+        mcp_span = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME)
+            == "mcp_list_tools"
+        )
+
+        assert mcp_span.kind is SpanKind.CLIENT
+        assert mcp_span.name == "mcp_list_tools Time"
+        assert mcp_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
+        assert mcp_span.attributes["gen_ai.mcp.server.name"] == "Time"
+        assert mcp_span.attributes["gen_ai.mcp.tool.names"] == (
+            "get_current_time",
+            "convert_timezone",
+        )
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_mcp_list_tools_span_without_result():
+    instrumentor, exporter = _instrument_with_provider()
+
+    try:
+        with trace("workflow"):
+            with mcp_list_tools_span(server="Empty"):
+                pass
+
+        spans = exporter.get_finished_spans()
+        mcp_span = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME)
+            == "mcp_list_tools"
+        )
+
+        assert mcp_span.kind is SpanKind.CLIENT
+        assert mcp_span.name == "mcp_list_tools Empty"
+        assert mcp_span.attributes["gen_ai.mcp.server.name"] == "Empty"
+        assert "gen_ai.mcp.tool.names" not in mcp_span.attributes
     finally:
         instrumentor.uninstrument()
         exporter.clear()
