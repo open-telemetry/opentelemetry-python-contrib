@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
 from functools import cached_property
 from logging import (
     DEBUG,
@@ -11,7 +12,6 @@ from logging import (
     getLogger,
 )
 from os import environ
-from sys import stderr
 
 from opentelemetry.instrumentation.dependencies import (
     DependencyConflictError,
@@ -47,6 +47,16 @@ def _format_log_arg(arg: object) -> object:
     return arg
 
 
+def _format_log_message(msg: str, args: tuple[object, ...]) -> str:
+    if not args:
+        return msg
+
+    try:
+        return msg % tuple(_format_log_arg(arg) for arg in args)
+    except Exception:  # pylint: disable=broad-except
+        return msg
+
+
 class _OtelLogLevelLoggerAdapter(LoggerAdapter):
     """Write startup debug messages to stderr when logging would drop them.
 
@@ -65,12 +75,9 @@ class _OtelLogLevelLoggerAdapter(LoggerAdapter):
         ):
             return
 
-        message = msg
-        if args:
-            message = message % tuple(_format_log_arg(arg) for arg in args)
-
-        stderr.write(f"DEBUG:{self.logger.name}:{message}\n")
-        stderr.flush()
+        message = _format_log_message(msg, args)
+        sys.stderr.write(f"DEBUG:{self.logger.name}:{message}\n")
+        sys.stderr.flush()
 
     def _logger_would_emit(self, level: int) -> bool:
         # If the logger itself would reject this level, don't bother walking handlers.
