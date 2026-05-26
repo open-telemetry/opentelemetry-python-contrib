@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-agents-v2`: serialize ResponseFunctionToolCall as structured tool_call parts instead of text in gen_ai.output.messages

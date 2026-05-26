@@ -20,6 +20,7 @@ References:
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -877,6 +878,60 @@ class GenAISemanticProcessor(TracingProcessor):
 
         return normalized
 
+    @staticmethod
+    def _is_tool_call_item(item: Any) -> bool:
+        """Check if an output item represents a function tool call."""
+        return (
+            hasattr(item, "call_id")
+            and hasattr(item, "name")
+            and hasattr(item, "arguments")
+            and getattr(item, "type", None) == "function_call"
+        )
+
+    def _output_item_to_part(self, item: Any) -> dict[str, Any]:
+        """Convert a single response output item to a normalized part dict.
+
+        Recognizes function tool call objects (e.g. ResponseFunctionToolCall)
+        and serializes them as tool_call parts per the GenAI semantic
+        conventions instead of falling back to str().
+        """
+        if self._is_tool_call_item(item):
+            if not self.include_sensitive_data:
+                return {
+                    "type": "tool_call",
+                    "id": getattr(item, "call_id", None),
+                    "name": getattr(item, "name", None),
+                    "arguments": "readacted",
+                }
+            arguments = getattr(item, "arguments", None)
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except (TypeError, ValueError):
+                    pass
+            return {
+                "type": "tool_call",
+                "id": getattr(item, "call_id", None),
+                "name": getattr(item, "name", None),
+                "arguments": arguments,
+            }
+
+        txt = getattr(item, "content", None)
+        if isinstance(txt, str) and txt:
+            return {
+                "type": "text",
+                "content": (
+                    "readacted" if not self.include_sensitive_data else txt
+                ),
+            }
+
+        return {
+            "type": "text",
+            "content": (
+                "readacted" if not self.include_sensitive_data else str(item)
+            ),
+        }
+
     def _normalize_output_messages_to_role_parts(
         self, span_data: Any
     ) -> list[dict[str, Any]]:
@@ -909,35 +964,18 @@ class GenAISemanticProcessor(TracingProcessor):
                 output = getattr(response, "output", None)
                 if isinstance(output, Sequence):
                     for item in output:
-                        # ResponseOutputMessage may have a string representation
-                        txt = getattr(item, "content", None)
-                        if isinstance(txt, str) and txt:
-                            parts.append(
-                                {
-                                    "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else txt
-                                    ),
-                                }
-                            )
-                        else:
-                            # Fallback: stringified
-                            parts.append(
-                                {
-                                    "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else str(item)
-                                    ),
-                                }
-                            )
+                        part = self._output_item_to_part(item)
+                        parts.append(part)
                         # Capture finish_reason from parts when present
-                        fr = getattr(item, "finish_reason", None)
-                        if isinstance(fr, str) and not finish_reason:
-                            finish_reason = fr
+                        if not finish_reason:
+                            if self._is_tool_call_item(item):
+                                status = getattr(item, "status", None)
+                                if status in {"completed", "incomplete"}:
+                                    finish_reason = "tool_calls"
+                            else:
+                                fr = getattr(item, "finish_reason", None)
+                                if isinstance(fr, str):
+                                    finish_reason = fr
 
         # Generation span: use span_data.output
         if not parts:

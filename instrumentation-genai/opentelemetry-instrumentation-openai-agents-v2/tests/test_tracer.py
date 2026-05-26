@@ -559,3 +559,154 @@ def test_response_span_records_response_attributes():
     finally:
         instrumentor.uninstrument()
         exporter.clear()
+
+
+def test_response_span_tool_call_output_serialized_as_tool_call():
+    """ResponseFunctionToolCall objects in response.output are serialized as
+    tool_call parts with id, name, and arguments -- not stringified as text."""
+    instrumentor, exporter = _instrument_with_provider()
+
+    class _Usage:
+        def __init__(self, input_tokens: int, output_tokens: int) -> None:
+            self.input_tokens = input_tokens
+            self.output_tokens = output_tokens
+
+    class _ToolCall:
+        def __init__(self) -> None:
+            self.arguments = '{"city": "Barcelona"}'
+            self.call_id = "call_abc123"
+            self.name = "get_weather"
+            self.type = "function_call"
+            self.id = "fc_def456"
+            self.status = "completed"
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-tool"
+            self.instructions = None
+            self.model = "gpt-4o-mini"
+            self.usage = _Usage(10, 5)
+            self.tools = []
+            self.output = [_ToolCall()]
+            self.output_text = None
+
+    try:
+        with trace("workflow"):
+            with response_span(response=_Response()):
+                pass
+
+        spans = exporter.get_finished_spans()
+        chat_span = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME)
+            == GenAI.GenAiOperationNameValues.CHAT.value
+        )
+
+        output_messages = json.loads(
+            chat_span.attributes[GEN_AI_OUTPUT_MESSAGES]
+        )
+        assert len(output_messages) == 1
+        msg = output_messages[0]
+        assert msg["role"] == "assistant"
+        assert msg.get("finish_reason") == "tool_calls"
+
+        parts = msg["parts"]
+        assert len(parts) == 1
+        part = parts[0]
+        assert part["type"] == "tool_call"
+        assert part["id"] == "call_abc123"
+        assert part["name"] == "get_weather"
+        assert part["arguments"] == {"city": "Barcelona"}
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_response_span_mixed_output_text_and_tool_call():
+    """When response.output contains both message and tool call items,
+    both are serialized correctly."""
+    instrumentor, exporter = _instrument_with_provider()
+
+    class _Usage:
+        def __init__(self) -> None:
+            self.input_tokens = 20
+            self.output_tokens = 15
+
+    class _OutputMessage:
+        def __init__(self) -> None:
+            self.content = "Let me check the weather for you."
+            self.finish_reason = None
+            self.status = "completed"
+
+    class _ToolCall:
+        def __init__(self) -> None:
+            self.arguments = '{"city": "Paris"}'
+            self.call_id = "call_xyz"
+            self.name = "get_weather"
+            self.type = "function_call"
+            self.id = "fc_789"
+            self.status = "completed"
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-mixed"
+            self.instructions = None
+            self.model = "gpt-4o-mini"
+            self.usage = _Usage()
+            self.tools = []
+            self.output = [_OutputMessage(), _ToolCall()]
+            self.output_text = None
+
+    try:
+        with trace("workflow"):
+            with response_span(response=_Response()):
+                pass
+
+        spans = exporter.get_finished_spans()
+        chat_span = next(
+            span
+            for span in spans
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME)
+            == GenAI.GenAiOperationNameValues.CHAT.value
+        )
+
+        output_messages = json.loads(
+            chat_span.attributes[GEN_AI_OUTPUT_MESSAGES]
+        )
+        assert len(output_messages) == 1
+        parts = output_messages[0]["parts"]
+        assert len(parts) == 2
+
+        assert parts[0]["type"] == "text"
+        assert parts[0]["content"] == "Let me check the weather for you."
+
+        assert parts[1]["type"] == "tool_call"
+        assert parts[1]["id"] == "call_xyz"
+        assert parts[1]["name"] == "get_weather"
+        assert parts[1]["arguments"] == {"city": "Paris"}
+    finally:
+        instrumentor.uninstrument()
+        exporter.clear()
+
+
+def test_response_span_tool_call_redacted_when_sensitive_disabled():
+    """Tool call arguments are redacted when sensitive data capture is off."""
+    processor = GenAISemanticProcessor(
+        include_sensitive_data=False, metrics_enabled=False
+    )
+
+    class _ToolCall:
+        def __init__(self) -> None:
+            self.arguments = '{"secret": "value"}'
+            self.call_id = "call_redact"
+            self.name = "secret_tool"
+            self.type = "function_call"
+            self.id = "fc_redact"
+            self.status = "completed"
+
+    part = processor._output_item_to_part(_ToolCall())
+    assert part["type"] == "tool_call"
+    assert part["id"] == "call_redact"
+    assert part["name"] == "secret_tool"
+    assert part["arguments"] == "readacted"
