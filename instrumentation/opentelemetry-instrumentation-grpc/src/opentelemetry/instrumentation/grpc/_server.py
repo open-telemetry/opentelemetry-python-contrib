@@ -346,6 +346,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                         context = _OpenTelemetryServicerContext(context, span)
 
                         # And now we run the actual RPC.
+                        metric_status = None
                         try:
                             return behavior(request_or_iterator, context)
 
@@ -357,14 +358,14 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                             if type(error) != Exception:  # noqa: E721
                                 span.record_exception(error)
                                 if context._code == grpc.StatusCode.OK:
-                                    context._code = grpc.StatusCode.UNKNOWN
+                                    metric_status = grpc.StatusCode.UNKNOWN
                             raise error
 
                         finally:
                             self._record_duration(
                                 handler_call_details,
                                 start_time,
-                                context._code,
+                                metric_status or context._code,
                             )
 
             return telemetry_interceptor
@@ -387,6 +388,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             ) as span:
                 context = _OpenTelemetryServicerContext(context, span)
 
+                metric_status = None
                 try:
                     yield from behavior(request_or_iterator, context)
 
@@ -395,12 +397,12 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                     if type(error) != Exception:  # noqa: E721
                         span.record_exception(error)
                         if context._code == grpc.StatusCode.OK:
-                            context._code = grpc.StatusCode.UNKNOWN
+                            metric_status = grpc.StatusCode.UNKNOWN
                     raise error
 
                 finally:
                     self._record_duration(
                         handler_call_details,
                         start_time,
-                        context._code,
+                        metric_status or context._code,
                     )

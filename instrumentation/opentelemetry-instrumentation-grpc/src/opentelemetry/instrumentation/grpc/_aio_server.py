@@ -107,6 +107,7 @@ class OpenTelemetryAioServerInterceptor(
                     context = _OpenTelemetryAioServicerContext(context, span)
 
                     # And now we run the actual RPC.
+                    metric_status = None
                     try:
                         return await behavior(request_or_iterator, context)
 
@@ -118,14 +119,14 @@ class OpenTelemetryAioServerInterceptor(
                         if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                             if context._self_code == grpc.StatusCode.OK:
-                                context._self_code = grpc.StatusCode.UNKNOWN
+                                metric_status = grpc.StatusCode.UNKNOWN
                         raise error
 
                     finally:
                         self._record_duration(
                             handler_call_details,
                             start_time,
-                            context._self_code,
+                            metric_status or context._self_code,
                         )
 
         return _unary_interceptor
@@ -142,6 +143,7 @@ class OpenTelemetryAioServerInterceptor(
                 ) as span:
                     context = _OpenTelemetryAioServicerContext(context, span)
 
+                    metric_status = None
                     try:
                         async for response in behavior(
                             request_or_iterator, context
@@ -153,14 +155,14 @@ class OpenTelemetryAioServerInterceptor(
                         if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
                             if context._self_code == grpc.StatusCode.OK:
-                                context._self_code = grpc.StatusCode.UNKNOWN
+                                metric_status = grpc.StatusCode.UNKNOWN
                         raise error
 
                     finally:
                         self._record_duration(
                             handler_call_details,
                             start_time,
-                            context._self_code,
+                            metric_status or context._self_code,
                         )
 
         return _stream_interceptor

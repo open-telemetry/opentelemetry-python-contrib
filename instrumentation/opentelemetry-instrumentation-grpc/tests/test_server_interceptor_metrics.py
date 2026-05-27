@@ -125,7 +125,7 @@ class TestServerInterceptorMetrics(TestBase):
             msg = request.SerializeToString()
             try:
                 server.start()
-                with self.assertRaises(Exception):
+                with self.assertRaises(grpc.RpcError):
                     channel.unary_unary(rpc_call)(msg)
             finally:
                 server.stop(None)
@@ -175,7 +175,7 @@ class TestServerInterceptorMetrics(TestBase):
             msg = request.SerializeToString()
             try:
                 server.start()
-                with self.assertRaises(Exception):
+                with self.assertRaises(grpc.RpcError):
                     channel.unary_unary(rpc_call)(msg)
             finally:
                 server.stop(None)

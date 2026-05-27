@@ -12,6 +12,7 @@ import logging
 import time
 from collections import OrderedDict
 from typing import Callable, MutableMapping
+from urllib.parse import urlparse
 
 import grpc
 
@@ -64,13 +65,17 @@ def _create_duration_histogram(meter):
 def _parse_target(target):
     if not target:
         return None, None
-    host, _, port = target.rpartition(":")
-    if host and port:
-        try:
-            return host, int(port)
-        except ValueError:
-            pass
-    return target, None
+    if ":///" in target:
+        target = target.split("///", 1)[1]
+    try:
+        parsed = urlparse(f"//{target}")
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return None, None
+    if not host:
+        return None, None
+    return host, port
 
 
 class _CarrierSetter(Setter):
