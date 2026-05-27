@@ -22,7 +22,7 @@ from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
 )
 from opentelemetry.test.test_base import TestBase
 
-from ._client import server_streaming_method, simple_method
+from ._client import server_streaming_method, simple_method, simple_method_future
 from ._server import create_test_server
 from .protobuf import test_server_pb2_grpc
 
@@ -142,3 +142,27 @@ class TestClientInterceptorMetrics(TestBase):
             attrs[RPC_METHOD], "GRPCTestServer/ServerStreamingMethod"
         )
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "OK")
+
+    def test_future_call_records_correct_status(self):
+        """Future-based call defers metric recording until completion."""
+        future = simple_method_future(self._stub, error=True)
+        with self.assertRaises(grpc.RpcError):
+            future.result()
+
+        metrics = self.get_sorted_metrics()
+        duration_metric = next(
+            (m for m in metrics if m.name == RPC_CLIENT_CALL_DURATION),
+            None,
+        )
+
+        self.assertIsNotNone(duration_metric)
+
+        data_points = list(duration_metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+
+        point = data_points[0]
+        self.assertEqual(point.count, 1)
+
+        attrs = dict(point.attributes)
+        self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "INVALID_ARGUMENT")
+        self.assertEqual(attrs[ERROR_TYPE], "INVALID_ARGUMENT")

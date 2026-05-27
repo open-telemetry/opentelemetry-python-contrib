@@ -356,6 +356,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                             # pylint:disable=unidiomatic-typecheck
                             if type(error) != Exception:  # noqa: E721
                                 span.record_exception(error)
+                                if context._code == grpc.StatusCode.OK:
+                                    context._code = grpc.StatusCode.UNKNOWN
                             raise error
 
                         finally:
@@ -392,6 +394,8 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                     # pylint:disable=unidiomatic-typecheck
                     if type(error) != Exception:  # noqa: E721
                         span.record_exception(error)
+                        if context._code == grpc.StatusCode.OK:
+                            context._code = grpc.StatusCode.UNKNOWN
                     raise error
 
                 finally:

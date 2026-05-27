@@ -142,6 +142,50 @@ class TestAioServerInterceptorMetrics(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "INTERNAL")
         self.assertEqual(attrs[ERROR_TYPE], "INTERNAL")
 
+    async def test_uncaught_exception_records_unknown_status(self):
+        """Uncaught handler exception records UNKNOWN status in metric."""
+
+        class CrashingServicer(GRPCTestServerServicer):
+            async def SimpleMethod(self, request, context):
+                raise RuntimeError("unexpected crash")
+
+        interceptor = aio_server_interceptor(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+
+        server = grpc.aio.server(interceptors=[interceptor])
+        add_GRPCTestServerServicer_to_server(CrashingServicer(), server)
+        port = server.add_insecure_port("[::]:0")
+        channel = grpc.aio.insecure_channel(f"localhost:{port:d}")
+
+        await server.start()
+        try:
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            with self.assertRaises(grpc.aio.AioRpcError):
+                await channel.unary_unary(rpc_call)(msg)
+        finally:
+            await channel.close()
+            await server.stop(None)
+
+        metrics = self.get_sorted_metrics()
+        duration_metric = next(
+            (m for m in metrics if m.name == RPC_SERVER_CALL_DURATION),
+            None,
+        )
+
+        self.assertIsNotNone(duration_metric)
+
+        data_points = list(duration_metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+
+        point = data_points[0]
+        attrs = dict(point.attributes)
+        self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "UNKNOWN")
+        self.assertEqual(attrs[ERROR_TYPE], "UNKNOWN")
+
     async def test_streaming_call_records_duration_metric(self):
         """Aio server interceptor records metric on a streaming RPC."""
         interceptor = aio_server_interceptor(

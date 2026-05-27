@@ -153,6 +153,49 @@ class TestServerInterceptorMetrics(TestBase):
         self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "INTERNAL")
         self.assertEqual(attrs[ERROR_TYPE], "INTERNAL")
 
+    def test_uncaught_exception_records_unknown_status(self):
+        """Uncaught handler exception records UNKNOWN status in metric."""
+
+        class CrashingServicer(GRPCTestServerServicer):
+            def SimpleMethod(self, request, context):
+                raise RuntimeError("unexpected crash")
+
+        interceptor = server_interceptor(
+            tracer_provider=self.tracer_provider,
+            meter_provider=self.meter_provider,
+        )
+
+        with self.server(
+            max_workers=1, interceptors=[interceptor]
+        ) as (server, channel):
+            add_GRPCTestServerServicer_to_server(CrashingServicer(), server)
+
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                with self.assertRaises(Exception):
+                    channel.unary_unary(rpc_call)(msg)
+            finally:
+                server.stop(None)
+
+        metrics = self.get_sorted_metrics()
+        duration_metric = next(
+            (m for m in metrics if m.name == RPC_SERVER_CALL_DURATION),
+            None,
+        )
+
+        self.assertIsNotNone(duration_metric)
+
+        data_points = list(duration_metric.data.data_points)
+        self.assertEqual(len(data_points), 1)
+
+        point = data_points[0]
+        attrs = dict(point.attributes)
+        self.assertEqual(attrs[RPC_RESPONSE_STATUS_CODE], "UNKNOWN")
+        self.assertEqual(attrs[ERROR_TYPE], "UNKNOWN")
+
     def test_streaming_call_records_duration_metric(self):
         """Server interceptor records metric on a streaming RPC."""
 
