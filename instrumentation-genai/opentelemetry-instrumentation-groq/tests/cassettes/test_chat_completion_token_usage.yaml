@@ -1,0 +1,83 @@
+interactions:
+- request:
+    body: |-
+      {
+        "max_tokens": 100,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Count to 5."
+          }
+        ],
+        "model": "llama-3.3-70b-versatile"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_groq_api_key
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      host:
+      - api.groq.com
+      user-agent:
+      - Groq/Python 0.18.0
+    method: POST
+    uri: https://api.groq.com/openai/v1/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "id": "chatcmpl-a1b2c3d4e5f6a7b8c9d0e1f2",
+          "object": "chat.completion",
+          "created": 1748909401,
+          "model": "llama-3.3-70b-versatile",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "1, 2, 3, 4, 5"
+              },
+              "finish_reason": "stop",
+              "logprobs": null
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 12,
+            "completion_tokens": 17,
+            "total_tokens": 29,
+            "prompt_time": 0.001234567,
+            "completion_time": 0.005678901,
+            "total_time": 0.006913468
+          },
+          "system_fingerprint": "fp_a1b2c3d4e5",
+          "x_groq": {
+            "id": "req_02abcdef1234567890abcdef"
+          }
+        }
+    headers:
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 22 May 2026 10:00:01 GMT
+      x-ratelimit-limit-requests:
+      - '30'
+      x-ratelimit-limit-tokens:
+      - '15000'
+      x-ratelimit-remaining-requests:
+      - '29'
+      x-ratelimit-remaining-tokens:
+      - '14971'
+      x-ratelimit-reset-requests:
+      - 2s
+      x-ratelimit-reset-tokens:
+      - 116ms
+    status:
+      code: 200
+      message: OK
+version: 1

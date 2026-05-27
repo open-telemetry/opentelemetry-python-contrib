@@ -179,6 +179,45 @@ class _FakeAsyncResponse:
         self.aclose_calls += 1
 
 
+def test_sync_stream_wrapper_applies_usage_once_when_closed_twice():
+    usage = SimpleNamespace(
+        input_tokens=13,
+        output_tokens=5,
+        cache_creation_input_tokens=1,
+        cache_read_input_tokens=2,
+    )
+    event = SimpleNamespace(type="message_delta", usage=usage)
+    stream = _FakeSyncStream(events=[event])
+    invocation = _make_invocation()
+    stop_calls = []
+
+    def record_stop(invocation):
+        stop_calls.append(invocation)
+
+    handler = SimpleNamespace(
+        stop_llm=record_stop,
+        fail_llm=_noop_fail_llm,
+    )
+
+    wrapper = MessagesStreamWrapper(
+        stream=stream,
+        handler=handler,
+        invocation=invocation,
+        capture_content=False,
+    )
+
+    next(wrapper)
+
+    with pytest.raises(StopIteration):
+        next(wrapper)
+
+    wrapper.close()
+
+    assert len(stop_calls) == 1
+    assert invocation.input_tokens == 16
+    assert invocation.output_tokens == 5
+
+
 def test_sync_stream_wrapper_exit_closes_without_exception():
     stream = _FakeSyncStream()
     wrapper = _make_stream_wrapper(stream)
@@ -211,6 +250,36 @@ def test_sync_stream_wrapper_exit_fails_and_closes_on_exception():
     assert stream.close_calls == 1
     assert stopped == [True]
     assert failures == [("boom", ValueError)]
+
+
+def test_sync_stream_wrapper_extracts_usage_from_message_delta():
+    usage = SimpleNamespace(
+        input_tokens=13,
+        output_tokens=5,
+        cache_creation_input_tokens=0,
+        cache_read_input_tokens=0,
+    )
+    event = SimpleNamespace(type="message_delta", usage=usage)
+    stream = _FakeSyncStream(events=[event])
+    invocation = _make_invocation()
+    wrapper = MessagesStreamWrapper(
+        stream=stream,
+        handler=_make_handler(),
+        invocation=invocation,
+        capture_content=False,
+    )
+
+    next(wrapper)
+
+    with pytest.raises(StopIteration):
+        next(wrapper)
+
+    assert invocation.input_tokens == 13
+    assert invocation.output_tokens == 5
+    assert (
+        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 0
+    )
+    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 0
 
 
 def test_sync_stream_wrapper_processes_events_and_stops_on_completion():
@@ -378,6 +447,37 @@ async def test_async_stream_wrapper_exit_fails_and_closes_on_exception():
     assert stream.close_calls == 1
     assert stopped == [True]
     assert failures == [("boom", ValueError)]
+
+
+@pytest.mark.asyncio
+async def test_async_stream_wrapper_extracts_usage_from_message_delta():
+    usage = SimpleNamespace(
+        input_tokens=13,
+        output_tokens=5,
+        cache_creation_input_tokens=0,
+        cache_read_input_tokens=0,
+    )
+    event = SimpleNamespace(type="message_delta", usage=usage)
+    stream = _FakeAsyncStream(events=[event])
+    invocation = _make_invocation()
+    wrapper = AsyncMessagesStreamWrapper(
+        stream=stream,
+        handler=_make_handler(),
+        invocation=invocation,
+        capture_content=False,
+    )
+
+    await anext(wrapper)
+
+    with pytest.raises(StopAsyncIteration):
+        await anext(wrapper)
+
+    assert invocation.input_tokens == 13
+    assert invocation.output_tokens == 5
+    assert (
+        invocation.attributes["gen_ai.usage.cache_creation.input_tokens"] == 0
+    )
+    assert invocation.attributes["gen_ai.usage.cache_read.input_tokens"] == 0
 
 
 @pytest.mark.asyncio

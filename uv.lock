@@ -41,6 +41,7 @@ members = [
     "opentelemetry-instrumentation-fastapi",
     "opentelemetry-instrumentation-flask",
     "opentelemetry-instrumentation-google-genai",
+    "opentelemetry-instrumentation-groq",
     "opentelemetry-instrumentation-grpc",
     "opentelemetry-instrumentation-httpx",
     "opentelemetry-instrumentation-jinja2",
@@ -1767,6 +1768,23 @@ wheels = [
 ]
 
 [[package]]
+name = "groq"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple/" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/27/51/4728c13611849ff6cf8536740ae78ba3ee5e665d67b572a47c9ead0f9788/groq-1.2.0.tar.gz", hash = "sha256:85459e27c9c17f22404349c785cd08680362cfe85e07cc060be46c4832f108c3", size = 155609, upload-time = "2026-04-18T10:43:50.68Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/82/748639c95c60ad8846c65b167ca611c815d06d5f67a9e73b23486dce4fdf/groq-1.2.0-py3-none-any.whl", hash = "sha256:1002060a743b27c8f86765e1bc9749c98498e961d9fe2e4902bf7804a71c3c84", size = 142334, upload-time = "2026-04-18T10:43:49.125Z" },
+]
+
+[[package]]
 name = "grpc-google-iam-v1"
 version = "0.14.3"
 source = { registry = "https://pypi.org/simple/" }
@@ -3418,6 +3436,31 @@ instruments = [
 [package.metadata]
 requires-dist = [
     { name = "google-genai", marker = "extra == 'instruments'", specifier = ">=1.32.0" },
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
+    { name = "opentelemetry-util-genai", editable = "util/opentelemetry-util-genai" },
+]
+provides-extras = ["instruments"]
+
+[[package]]
+name = "opentelemetry-instrumentation-groq"
+source = { editable = "instrumentation-genai/opentelemetry-instrumentation-groq" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-genai" },
+]
+
+[package.optional-dependencies]
+instruments = [
+    { name = "groq" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "groq", marker = "extra == 'instruments'", specifier = ">=0.9.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },

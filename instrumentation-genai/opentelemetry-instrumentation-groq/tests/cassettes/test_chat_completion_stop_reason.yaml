@@ -1,0 +1,75 @@
+interactions:
+- request:
+    body: |-
+      {
+        "max_tokens": 100,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hi."
+          }
+        ],
+        "model": "llama-3.3-70b-versatile"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_groq_api_key
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      host:
+      - api.groq.com
+      user-agent:
+      - Groq/Python 0.18.0
+    method: POST
+    uri: https://api.groq.com/openai/v1/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "id": "chatcmpl-b2c3d4e5f6a7b8c9d0e1f2a3",
+          "object": "chat.completion",
+          "created": 1748909402,
+          "model": "llama-3.3-70b-versatile",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Hi! How can I help you today?"
+              },
+              "finish_reason": "stop",
+              "logprobs": null
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 11,
+            "completion_tokens": 9,
+            "total_tokens": 20,
+            "prompt_time": 0.001234567,
+            "completion_time": 0.003456789,
+            "total_time": 0.004691356
+          },
+          "system_fingerprint": "fp_a1b2c3d4e5",
+          "x_groq": {
+            "id": "req_03abcdef1234567890abcdef"
+          }
+        }
+    headers:
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 22 May 2026 10:00:02 GMT
+      x-ratelimit-limit-requests:
+      - '30'
+      x-ratelimit-remaining-requests:
+      - '29'
+    status:
+      code: 200
+      message: OK
+version: 1

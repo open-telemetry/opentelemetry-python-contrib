@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `opentelemetry-instrumentation-groq`: New instrumentation package for the Groq Python SDK. Emits `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` histograms alongside traces for `chat.completions.create` (sync and async).
+  ([#4584](https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4584))
+
 ### Breaking changes
 
 - Drop Python 3.9 support

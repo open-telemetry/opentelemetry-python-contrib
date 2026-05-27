@@ -19,8 +19,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Sequence
 
-from anthropic.types import MessageDeltaUsage
-
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
 )
@@ -53,7 +51,6 @@ if TYPE_CHECKING:
         ThinkingConfigParam,
         ToolChoiceParam,
         ToolUnionParam,
-        Usage,
     )
 
 
@@ -84,16 +81,33 @@ class UsageTokens:
     cache_read_input_tokens: int | None = None
 
 
-def extract_usage_tokens(
-    usage: Usage | MessageDeltaUsage | None,
-) -> UsageTokens:
+def _get_int_field(obj: object, field_name: str) -> int | None:
+    value = getattr(obj, field_name, None)
+
+    if value is None and isinstance(obj, dict):
+        value = obj.get(field_name)
+
+    model_extra = getattr(obj, "model_extra", None)
+    if value is None and isinstance(model_extra, dict):
+        value = model_extra.get(field_name)
+
+    obj_dict = getattr(obj, "__dict__", None)
+    if value is None and isinstance(obj_dict, dict):
+        value = obj_dict.get(field_name)
+
+    return value if isinstance(value, int) and value >= 0 else None
+
+
+def extract_usage_tokens(usage: object | None) -> UsageTokens:
     if usage is None:
         return UsageTokens()
 
-    input_tokens = usage.input_tokens
-    output_tokens = usage.output_tokens
-    cache_creation_input_tokens = usage.cache_creation_input_tokens
-    cache_read_input_tokens = usage.cache_read_input_tokens
+    input_tokens = _get_int_field(usage, "input_tokens")
+    output_tokens = _get_int_field(usage, "output_tokens")
+    cache_creation_input_tokens = _get_int_field(
+        usage, "cache_creation_input_tokens"
+    )
+    cache_read_input_tokens = _get_int_field(usage, "cache_read_input_tokens")
 
     if (
         input_tokens is None

@@ -1,0 +1,49 @@
+interactions:
+- request:
+    body: |-
+      {
+        "max_tokens": 100,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello in one word."
+          }
+        ],
+        "model": "llama-3.3-70b-versatile"
+      }
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      authorization:
+      - Bearer test_groq_api_key
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      host:
+      - api.groq.com
+      user-agent:
+      - Groq/Python 0.18.0
+    method: POST
+    uri: https://api.groq.com/openai/v1/chat/completions
+  response:
+    body:
+      string: |-
+        {
+          "error": {
+            "message": "Invalid API Key. Please refer to https://console.groq.com for more details.",
+            "type": "invalid_request_error",
+            "code": "invalid_api_key"
+          }
+        }
+    headers:
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 22 May 2026 10:00:05 GMT
+    status:
+      code: 401
+      message: Unauthorized
+version: 1

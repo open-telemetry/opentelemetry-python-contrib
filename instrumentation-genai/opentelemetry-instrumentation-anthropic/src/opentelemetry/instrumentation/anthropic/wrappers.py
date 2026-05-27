@@ -34,7 +34,11 @@ from opentelemetry.util.genai.types import (
     LLMInvocation,
 )
 
-from .messages_extractors import set_invocation_response_attributes
+from .messages_extractors import (
+    GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS,
+    GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+    set_invocation_response_attributes,
+)
 
 try:
     from anthropic.lib.streaming._messages import (  # pylint: disable=no-name-in-module
@@ -73,6 +77,27 @@ def _set_response_attributes(
     capture_content: bool,
 ) -> None:
     set_invocation_response_attributes(invocation, result, capture_content)
+
+
+def _get_usage_input_tokens(usage: object) -> int | None:
+    input_tokens = getattr(usage, "input_tokens", None)
+    cache_creation_input_tokens = getattr(
+        usage, "cache_creation_input_tokens", None
+    )
+    cache_read_input_tokens = getattr(usage, "cache_read_input_tokens", None)
+
+    if (
+        input_tokens is None
+        and cache_creation_input_tokens is None
+        and cache_read_input_tokens is None
+    ):
+        return None
+
+    return (
+        (input_tokens or 0)
+        + (cache_creation_input_tokens or 0)
+        + (cache_read_input_tokens or 0)
+    )
 
 
 class _ResponseProxy(Generic[ResponseT]):
@@ -145,6 +170,10 @@ class MessagesStreamWrapper(
         self._message: "Message | ParsedMessage[ResponseFormatT] | None" = None
         self._capture_content = capture_content
         self._finalized = False
+        self._stream_input_tokens: int | None = None
+        self._stream_output_tokens: int | None = None
+        self._stream_cache_creation_input_tokens: int | None = None
+        self._stream_cache_read_input_tokens: int | None = None
 
     def __enter__(self) -> "MessagesStreamWrapper[ResponseFormatT]":
         return self
@@ -202,6 +231,7 @@ class MessagesStreamWrapper(
             _set_response_attributes(
                 self.invocation, self._message, self._capture_content
             )
+            self._apply_stream_usage_attributes()
         with self._safe_instrumentation("stop_llm"):
             self.handler.stop_llm(self.invocation)
         self._finalized = True
@@ -229,11 +259,58 @@ class MessagesStreamWrapper(
                 exc_info=True,
             )
 
+    def _record_usage(self, usage: object | None) -> None:
+        if usage is None:
+            return
+
+        input_tokens = _get_usage_input_tokens(usage)
+        output_tokens = getattr(usage, "output_tokens", None)
+        cache_creation_input_tokens = getattr(
+            usage, "cache_creation_input_tokens", None
+        )
+        cache_read_input_tokens = getattr(
+            usage, "cache_read_input_tokens", None
+        )
+
+        if input_tokens is not None:
+            self._stream_input_tokens = input_tokens
+        if output_tokens is not None:
+            self._stream_output_tokens = output_tokens
+        if cache_creation_input_tokens is not None:
+            self._stream_cache_creation_input_tokens = (
+                cache_creation_input_tokens
+            )
+        if cache_read_input_tokens is not None:
+            self._stream_cache_read_input_tokens = cache_read_input_tokens
+
+    def _record_usage_from_chunk(
+        self,
+        chunk: "RawMessageStreamEvent | ParsedMessageStreamEvent[ResponseFormatT]",
+    ) -> None:
+        self._record_usage(getattr(chunk, "usage", None))
+        message = getattr(chunk, "message", None)
+        self._record_usage(getattr(message, "usage", None))
+
+    def _apply_stream_usage_attributes(self) -> None:
+        if self._stream_input_tokens is not None:
+            self.invocation.input_tokens = self._stream_input_tokens
+        if self._stream_output_tokens is not None:
+            self.invocation.output_tokens = self._stream_output_tokens
+        if self._stream_cache_creation_input_tokens is not None:
+            self.invocation.attributes[
+                GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS
+            ] = self._stream_cache_creation_input_tokens
+        if self._stream_cache_read_input_tokens is not None:
+            self.invocation.attributes[
+                GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS
+            ] = self._stream_cache_read_input_tokens
+
     def _process_chunk(
         self,
         chunk: "RawMessageStreamEvent | ParsedMessageStreamEvent[ResponseFormatT]",
     ) -> None:
         """Accumulate a final message snapshot from a streaming chunk."""
+        self._record_usage_from_chunk(chunk)
         snapshot = cast(
             "ParsedMessage[ResponseFormatT] | None",
             getattr(self.stream, "current_message_snapshot", None),
@@ -267,6 +344,10 @@ class AsyncMessagesStreamWrapper(MessagesStreamWrapper[ResponseFormatT]):
         self._message: "Message | ParsedMessage[ResponseFormatT] | None" = None
         self._capture_content = capture_content
         self._finalized = False
+        self._stream_input_tokens: int | None = None
+        self._stream_output_tokens: int | None = None
+        self._stream_cache_creation_input_tokens: int | None = None
+        self._stream_cache_read_input_tokens: int | None = None
 
     async def __aenter__(
         self,

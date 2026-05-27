@@ -144,9 +144,31 @@ def _skip_if_cassette_missing_and_no_real_key(request):
         )
 
 
+GEN_AI_CLIENT_OPERATION_DURATION = "gen_ai.client.operation.duration"
+GEN_AI_CLIENT_TOKEN_USAGE = "gen_ai.client.token.usage"
+GEN_AI_TOKEN_TYPE = "gen_ai.token.type"
+
+
+def _metric_points(metric_reader, metric_name):
+    metrics_data = metric_reader.get_metrics_data()
+    assert metrics_data is not None
+    points = []
+    for resource_metrics in metrics_data.resource_metrics:
+        for scope_metrics in resource_metrics.scope_metrics:
+            for metric in scope_metrics.metrics:
+                if metric.name == metric_name:
+                    points.extend(metric.data.data_points)
+    return points
+
+
+def _token_usage_points_by_type(metric_reader):
+    points = _metric_points(metric_reader, GEN_AI_CLIENT_TOKEN_USAGE)
+    return {point.attributes[GEN_AI_TOKEN_TYPE]: point for point in points}
+
+
 @pytest.mark.vcr()
 def test_sync_messages_create_basic(
-    span_exporter, anthropic_client, instrument_no_content
+    span_exporter, metric_reader, anthropic_client, instrument_no_content
 ):
     """Test basic sync message creation produces correct span."""
     model = "claude-sonnet-4-20250514"
@@ -169,6 +191,20 @@ def test_sync_messages_create_basic(
         input_tokens=expected_input_tokens(response.usage),
         output_tokens=response.usage.output_tokens,
         finish_reasons=[normalize_stop_reason(response.stop_reason)],
+    )
+    duration_points = _metric_points(
+        metric_reader, GEN_AI_CLIENT_OPERATION_DURATION
+    )
+    assert len(duration_points) == 1
+    assert duration_points[0].count == 1
+    assert duration_points[0].sum >= 0
+    assert (
+        duration_points[0].attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        == GenAIAttributes.GenAiOperationNameValues.CHAT.value
+    )
+    assert (
+        duration_points[0].attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+        == model
     )
 
 
@@ -236,21 +272,18 @@ def test_sync_messages_create_with_all_params(
 
 @pytest.mark.vcr()
 def test_sync_messages_create_token_usage(
-    span_exporter, anthropic_client, instrument_no_content
+    span_exporter, metric_reader, anthropic_client, instrument_no_content
 ):
     """Test that token usage is captured correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Count to 5."}]
-
     response = anthropic_client.messages.create(
         model=model,
         max_tokens=100,
         messages=messages,
     )
-
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-
     span = spans[0]
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
@@ -261,6 +294,20 @@ def test_sync_messages_create_token_usage(
         span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
         == response.usage.output_tokens
     )
+    token_points = _token_usage_points_by_type(metric_reader)
+    assert set(token_points) == {"input", "output"}
+    input_point = token_points["input"]
+    output_point = token_points["output"]
+    assert input_point.count == 1
+    assert output_point.count == 1
+    assert input_point.sum == expected_input_tokens(response.usage)
+    assert output_point.sum == response.usage.output_tokens
+    for point in (input_point, output_point):
+        assert (
+            point.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+            == GenAIAttributes.GenAiOperationNameValues.CHAT.value
+        )
+        assert point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
 
 
 @pytest.mark.vcr()
@@ -392,12 +439,11 @@ def test_multiple_instrument_uninstrument_cycles(
 
 @pytest.mark.vcr()
 def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
-    span_exporter, anthropic_client, instrument_no_content
+    span_exporter, metric_reader, anthropic_client, instrument_no_content
 ):
     """Test streaming message creation produces correct span."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
-
     # Collect response data from stream
     response_text = ""
     response_id = None
@@ -405,7 +451,6 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
     stop_reason = None
     input_tokens = None
     output_tokens = None
-
     with anthropic_client.messages.create(
         model=model,
         max_tokens=100,
@@ -433,10 +478,8 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
                 usage = getattr(chunk, "usage", None)
                 if usage:
                     output_tokens = getattr(usage, "output_tokens", None)
-
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-
     assert_span_attributes(
         spans[0],
         request_model=model,
@@ -448,6 +491,34 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
         if stop_reason
         else None,
     )
+    duration_points = _metric_points(
+        metric_reader, GEN_AI_CLIENT_OPERATION_DURATION
+    )
+    assert len(duration_points) == 1
+    assert duration_points[0].count == 1
+    assert duration_points[0].sum >= 0
+    assert (
+        duration_points[0].attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        == GenAIAttributes.GenAiOperationNameValues.CHAT.value
+    )
+    assert (
+        duration_points[0].attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
+        == model
+    )
+    token_points = _token_usage_points_by_type(metric_reader)
+    assert set(token_points) == {"input", "output"}
+    input_point = token_points["input"]
+    output_point = token_points["output"]
+    assert input_point.count == 1
+    assert output_point.count == 1
+    assert input_point.sum == input_tokens
+    assert output_point.sum == output_tokens
+    for point in (input_point, output_point):
+        assert (
+            point.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+            == GenAIAttributes.GenAiOperationNameValues.CHAT.value
+        )
+        assert point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
 
 
 @pytest.mark.vcr()
@@ -489,7 +560,6 @@ def test_sync_messages_create_streaming_iteration(
     """Test streaming with direct iteration (without context manager)."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
-
     stream = anthropic_client.messages.create(
         model=model,
         max_tokens=100,
@@ -500,10 +570,8 @@ def test_sync_messages_create_streaming_iteration(
     # Consume the stream by iterating
     chunks = list(stream)
     assert len(chunks) > 0
-
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-
     span = spans[0]
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
     # Verify span has response attributes from streaming
@@ -541,7 +609,6 @@ def test_sync_messages_create_streaming_connection_error(
 
     # Create client with invalid endpoint
     client = Anthropic(base_url="http://localhost:9999")
-
     with pytest.raises(APIConnectionError):
         client.messages.create(
             model=model,
@@ -553,7 +620,6 @@ def test_sync_messages_create_streaming_connection_error(
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
-
     span = spans[0]
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
     assert ErrorAttributes.ERROR_TYPE in span.attributes
@@ -572,7 +638,6 @@ def test_sync_messages_create_captures_tool_use_content(
     _skip_if_cassette_missing_and_no_real_key(request)
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "What is the weather in SF?"}]
-
     anthropic_client.messages.create(
         model=model,
         max_tokens=256,
@@ -590,14 +655,12 @@ def test_sync_messages_create_captures_tool_use_content(
         ],
         tool_choice={"type": "tool", "name": "get_weather"},
     )
-
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span = spans[0]
     output_messages = _load_span_messages(
         span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
     )
-
     assert any(
         part.get("type") == "tool_call"
         for message in output_messages
@@ -624,14 +687,12 @@ def test_sync_messages_create_captures_thinking_content(
         messages=messages,
         thinking={"type": "enabled", "budget_tokens": 10000},
     )
-
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span = spans[0]
     output_messages = _load_span_messages(
         span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
     )
-
     assert any(
         part.get("type") == "reasoning"
         for message in output_messages
@@ -680,7 +741,6 @@ def test_stream_wrapper_finalize_idempotent(  # pylint: disable=too-many-locals
             if usage:
                 output_tokens = getattr(usage, "output_tokens", None)
                 input_tokens = expected_input_tokens(usage)
-
     stream.close()
 
     spans = span_exporter.get_finished_spans()
@@ -892,7 +952,6 @@ def test_sync_messages_create_instrumentation_error_swallowed(
         chunks = list(stream)
 
     assert len(chunks) > 0
-
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span = spans[0]
