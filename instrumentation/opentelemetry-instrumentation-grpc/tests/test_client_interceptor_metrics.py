@@ -22,7 +22,11 @@ from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
 )
 from opentelemetry.test.test_base import TestBase
 
-from ._client import server_streaming_method, simple_method, simple_method_future
+from ._client import (
+    server_streaming_method,
+    simple_method,
+    simple_method_future,
+)
 from ._server import create_test_server
 from .protobuf import test_server_pb2_grpc
 
