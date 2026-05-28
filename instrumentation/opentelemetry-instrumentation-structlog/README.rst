@@ -17,6 +17,6 @@ Installation
 References
 ----------
 
-* `OpenTelemetry structlog integration <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/structlog/structlog.html>`_
+* `OpenTelemetry Python Contrib documentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
