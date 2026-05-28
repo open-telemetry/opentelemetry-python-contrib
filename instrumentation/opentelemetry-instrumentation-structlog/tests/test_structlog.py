@@ -341,62 +341,6 @@ class TestStructlogProcessor(TestBase):
         self.assertEqual(attrs["duration"], 1.5)
         self.assertEqual(attrs["success"], True)
 
-    def test_timestamp_from_unix_float(self):
-        """Test UNIX float timestamp parsing."""
-        log_record = self.processor._translate(
-            {
-                "event": "test",
-                "level": "info",
-                "timestamp": 1713806404.5,
-            }
-        )
-
-        self.assertEqual(log_record.timestamp, 1713806404500000000)
-
-    def test_timestamp_from_utc_z_iso_string(self):
-        """Test UTC ISO timestamp parsing with Z suffix."""
-        log_record = self.processor._translate(
-            {
-                "event": "test",
-                "level": "info",
-                "timestamp": "2024-04-22T17:20:04Z",
-            }
-        )
-
-        expected = int(
-            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
-            * 1e9
-        )
-        self.assertEqual(log_record.timestamp, expected)
-
-    def test_timestamp_from_offset_iso_string(self):
-        """Test offset-aware ISO timestamp parsing."""
-        log_record = self.processor._translate(
-            {
-                "event": "test",
-                "level": "info",
-                "timestamp": "2024-04-22T10:20:04-07:00",
-            }
-        )
-
-        expected = int(
-            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
-            * 1e9
-        )
-        self.assertEqual(log_record.timestamp, expected)
-
-    def test_timestamp_from_naive_iso_string(self):
-        """Test naive ISO timestamps are ignored."""
-        log_record = self.processor._translate(
-            {
-                "event": "test",
-                "level": "info",
-                "timestamp": "2024-04-22T17:20:04",
-            }
-        )
-
-        self.assertIsNone(log_record.timestamp)
-
     @staticmethod
     def test_flush():
         """Test that flush calls force_flush on the provider."""
@@ -412,6 +356,66 @@ class TestStructlogProcessor(TestBase):
 
         # Verify force_flush was called
         mock_provider.force_flush.assert_called_once()
+
+
+class TestStructlogProcessorTimestamps(TestBase):
+    """Tests for StructlogProcessor timestamp handling."""
+
+    def test_timestamp_from_unix_float(self):
+        """Test UNIX float timestamp parsing."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": 1713806404.5,
+            }
+        )
+
+        self.assertEqual(log_record.timestamp, 1713806404500000000)
+
+    def test_timestamp_from_utc_z_iso_string(self):
+        """Test UTC ISO timestamp parsing with Z suffix."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T17:20:04Z",
+            }
+        )
+
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
+        self.assertEqual(log_record.timestamp, expected)
+
+    def test_timestamp_from_offset_iso_string(self):
+        """Test offset-aware ISO timestamp parsing."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T10:20:04-07:00",
+            }
+        )
+
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
+        self.assertEqual(log_record.timestamp, expected)
+
+    def test_timestamp_from_naive_iso_string(self):
+        """Test naive ISO timestamps are ignored."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T17:20:04",
+            }
+        )
+
+        self.assertIsNone(log_record.timestamp)
 
 
 class TestStructlogInstrumentor(TestBase):
