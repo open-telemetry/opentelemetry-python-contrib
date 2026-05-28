@@ -32,7 +32,7 @@ context including trace context, custom attributes, and exception information.
 
 import sys
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime
 from time import time_ns
 from typing import Any, Callable, Collection, Optional
 
@@ -41,6 +41,7 @@ import structlog
 from opentelemetry._logs import (
     LogRecord,
     NoOpLogger,
+    SeverityNumber,
     get_logger,
     get_logger_provider,
 )
@@ -91,29 +92,33 @@ def _parse_structlog_timestamp(value: Any) -> Optional[int]:
 
     structlog's TimeStamper emits either a float (UNIX seconds, the default)
     or a string (ISO 8601 when fmt="iso", or a strftime pattern otherwise).
-    We handle float and ISO 8601; anything else returns None so the SDK can
-    fill in the observed time.
+    We handle float and timezone-aware ISO 8601; anything else returns None so
+    the SDK can fill in the observed time.
     """
     if value is None:
         return None
     if isinstance(value, (int, float)):
         return int(value * 1e9)
     if isinstance(value, str):
+        timestamp = value
+        if timestamp.endswith("Z"):
+            timestamp = timestamp[:-1] + "+00:00"
         try:
-            dt = datetime.fromisoformat(value)
+            dt = datetime.fromisoformat(timestamp)
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                return None
             return int(dt.timestamp() * 1e9)
         except ValueError:
             return None
     return None
 
 
-class StructlogHandler:
+class StructlogProcessor:
     """
-    A structlog handler that translates structlog events into OpenTelemetry LogRecords.
+    A structlog processor that translates structlog events into OpenTelemetry
+    LogRecords.
 
-    This handler should be added to the structlog processor chain to emit logs
+    This processor should be added to the structlog processor chain to emit logs
     to OpenTelemetry. It translates structlog's event dictionary format into the
     OpenTelemetry Logs data model.
 
@@ -122,29 +127,32 @@ class StructlogHandler:
     """
 
     def __init__(self, logger_provider=None):
-        """Initialize the handler with an optional logger provider."""
+        """Initialize the processor with an optional logger provider."""
         self._logger_provider = logger_provider or get_logger_provider()
 
-    def __call__(self, logger, name: str, event_dict: dict) -> dict:
+    def __call__(self, logger, method_name: str, event_dict: dict) -> dict:
         """
         Process a structlog event and emit it as an OpenTelemetry log.
 
-        This method implements the structlog handler interface. It receives
+        This method implements the structlog processor interface. It receives
         the event dictionary, translates it to an OTel LogRecord, and emits it.
 
         Args:
-            logger: The structlog logger instance (unused).
-            name: The logger name.
+            logger: The wrapped structlog logger.
+            method_name: The logger method name.
             event_dict: The structlog event dictionary.
 
         Returns:
             The unmodified event_dict (passthrough for other processors).
         """
-        otel_logger = get_logger(name, logger_provider=self._logger_provider)
+        logger_name = getattr(logger, "name", __name__)
+        otel_logger = get_logger(
+            logger_name, logger_provider=self._logger_provider
+        )
 
         # Skip emission if we have a no-op logger
         if not isinstance(otel_logger, NoOpLogger):
-            log_record = self._translate(event_dict)
+            log_record = self._translate(event_dict, method_name)
             otel_logger.emit(log_record)
 
         return event_dict
@@ -173,6 +181,8 @@ class StructlogHandler:
         # Handle exception information
         exc_info = event_dict.get("exc_info")
 
+        # Match True explicitly because exception tuples and exception instances
+        # are also truthy and are handled separately below.
         if exc_info is True:
             # exc_info=True means "get current exception"
             exc_info = sys.exc_info()
@@ -206,7 +216,9 @@ class StructlogHandler:
 
         return attributes
 
-    def _translate(self, event_dict: dict) -> LogRecord:
+    def _translate(
+        self, event_dict: dict, method_name: Optional[str] = None
+    ) -> LogRecord:
         """
         Translate a structlog event dictionary into an OpenTelemetry LogRecord.
 
@@ -223,16 +235,32 @@ class StructlogHandler:
         observed_timestamp = time_ns()
         timestamp = _parse_structlog_timestamp(event_dict.get("timestamp"))
 
-        # Get the log level and map to OTel severity
-        level_str = event_dict.get("level", "info")
-        levelno = _STRUCTLOG_LEVEL_TO_LEVELNO.get(level_str.lower(), 20)
-        severity_number = std_to_otel(levelno)
+        # Get the log level and map to OTel severity. structlog passes the
+        # logger method name to processors, so use it as a fallback when no
+        # prior processor added a level to the event dict.
+        level_str = event_dict.get("level")
+        if not isinstance(level_str, str) or not level_str:
+            level_str = method_name
 
-        # Normalize severity text to OTel canonical names where structlog
-        # level names differ: "warning" -> "WARN", "critical"/"fatal" -> "FATAL"
-        severity_text = _STRUCTLOG_TO_OTEL_SEVERITY_TEXT.get(
-            level_str.lower(), level_str.upper()
+        level_name = level_str.lower() if isinstance(level_str, str) else None
+        levelno = (
+            _STRUCTLOG_LEVEL_TO_LEVELNO.get(level_name)
+            if level_name is not None
+            else None
         )
+
+        if levelno is None:
+            severity_number = SeverityNumber.UNSPECIFIED
+            severity_text = (
+                level_str.upper() if isinstance(level_str, str) else None
+            )
+        else:
+            severity_number = std_to_otel(levelno)
+            # Normalize severity text to OTel canonical names where structlog
+            # level names differ: "warning" -> "WARN", "critical"/"fatal" -> "FATAL"
+            severity_text = _STRUCTLOG_TO_OTEL_SEVERITY_TEXT.get(
+                level_name, level_str.upper()
+            )
 
         # Get the message body
         body = event_dict.get("event")
@@ -267,7 +295,7 @@ class StructlogInstrumentor(BaseInstrumentor):
     """
     An instrumentor for the structlog logging library.
 
-    This instrumentor adds a StructlogHandler to the structlog processor
+    This instrumentor adds a StructlogProcessor to the structlog processor
     chain, enabling automatic emission of structlog events as OpenTelemetry logs.
 
     Example:
@@ -278,8 +306,8 @@ class StructlogInstrumentor(BaseInstrumentor):
         >>> logger.info("hello", user="alice")
     """
 
-    _processor: Optional["StructlogHandler"] = None
-    _original_configure: Optional[Callable] = None
+    _processor: Optional["StructlogProcessor"] = None
+    _original_configure: Callable[..., None] = structlog.configure
 
     def instrumentation_dependencies(self) -> Collection[str]:
         """Return the required instrumentation dependencies."""
@@ -287,11 +315,11 @@ class StructlogInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         """
-        Add the StructlogHandler to structlog's processor chain.
+        Add the StructlogProcessor to structlog's processor chain.
 
-        The handler is inserted before the last processor in the current chain.
+        The processor is inserted before the last processor in the current chain.
         This assumes the last processor is a renderer (e.g. ConsoleRenderer,
-        JSONRenderer). The handler must run before rendering so it receives the
+        JSONRenderer). The processor must run before rendering so it receives the
         raw event dict rather than a formatted string.
 
         If your chain does not end with a renderer, or has post-processing steps
@@ -300,7 +328,7 @@ class StructlogInstrumentor(BaseInstrumentor):
 
             structlog.configure(processors=[
                 structlog.stdlib.add_log_level,
-                StructlogHandler(logger_provider=provider),
+                StructlogProcessor(logger_provider=provider),
                 structlog.dev.ConsoleRenderer(),
             ])
 
@@ -309,7 +337,7 @@ class StructlogInstrumentor(BaseInstrumentor):
         """
         # Create the OTel processor
         logger_provider = kwargs.get("logger_provider")
-        processor = StructlogHandler(logger_provider=logger_provider)
+        processor = StructlogProcessor(logger_provider=logger_provider)
 
         # Get current structlog configuration
         config = structlog.get_config()
@@ -330,54 +358,51 @@ class StructlogInstrumentor(BaseInstrumentor):
         StructlogInstrumentor._processor = processor
 
         # Wrap structlog.configure so that if user code calls it after
-        # instrumentation, the handler is re-inserted into the new chain.
+        # instrumentation, the processor is re-inserted into the new chain.
         StructlogInstrumentor._original_configure = structlog.configure
 
-        def _patched_configure(**kwargs):
-            # If the user is supplying a processors list, ensure our handler
-            # is included before passing it to the original configure.
-            if "processors" in kwargs:
-                processors = list(kwargs["processors"])
-                if not any(
-                    isinstance(p, StructlogHandler) for p in processors
-                ):
-                    insert_position = max(len(processors) - 1, 0)
-                    processors.insert(
-                        insert_position, StructlogInstrumentor._processor
-                    )
-                    kwargs["processors"] = processors
-            original = StructlogInstrumentor._original_configure
-            if original is not None:
-                return original(**kwargs)
-            return None
+        def ensure_processor(processors):
+            processors = list(processors)
+            if not any(isinstance(p, StructlogProcessor) for p in processors):
+                insert_position = max(len(processors) - 1, 0)
+                processors.insert(
+                    insert_position, StructlogInstrumentor._processor
+                )
+            return processors
 
-        structlog.configure = _patched_configure
+        def patched_configure(*args, **kwargs):
+            # If the user is supplying a processors list, ensure our processor
+            # is included before passing it to the original configure.
+            if args and "processors" not in kwargs:
+                processors = args[0]
+                if processors is not None:
+                    args = (ensure_processor(processors), *args[1:])
+            elif kwargs.get("processors") is not None:
+                kwargs["processors"] = ensure_processor(kwargs["processors"])
+            return StructlogInstrumentor._original_configure(*args, **kwargs)
+
+        structlog.configure = patched_configure
 
     def _uninstrument(self, **kwargs):
         """
-        Remove the StructlogHandler from structlog's processor chain.
+        Remove the StructlogProcessor from structlog's processor chain.
         """
-        if StructlogInstrumentor._processor is None:
-            return
-
         # Get current structlog configuration
         config = structlog.get_config()
         current_processors = list(config.get("processors", []))
 
-        # Remove all StructlogHandler instances
+        # Remove all StructlogProcessor instances
         new_processors = [
             p
             for p in current_processors
-            if not isinstance(p, StructlogHandler)
+            if not isinstance(p, StructlogProcessor)
         ]
 
         # Restore the original structlog.configure before reconfiguring so
-        # the patched version does not re-insert the handler.
-        if StructlogInstrumentor._original_configure is not None:
-            structlog.configure = StructlogInstrumentor._original_configure
-            StructlogInstrumentor._original_configure = None
+        # the patched version does not re-insert the processor.
+        structlog.configure = StructlogInstrumentor._original_configure
 
-        # Reconfigure structlog without the handler
+        # Reconfigure structlog without the processor
         structlog.configure(processors=new_processors)
 
         # Clear reference

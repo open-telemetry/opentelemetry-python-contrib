@@ -14,14 +14,15 @@
 
 import sys
 import time
+from datetime import datetime, timezone
 from unittest.mock import Mock
 
 import structlog
 
 from opentelemetry._logs import SeverityNumber
 from opentelemetry.instrumentation.structlog import (
-    StructlogHandler,
     StructlogInstrumentor,
+    StructlogProcessor,
 )
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import (
@@ -33,8 +34,8 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import TraceFlags
 
 
-class TestStructlogHandler(TestBase):
-    """Tests for the StructlogHandler class."""
+class TestStructlogProcessor(TestBase):
+    """Tests for the StructlogProcessor class."""
 
     def setUp(self):
         super().setUp()
@@ -45,8 +46,10 @@ class TestStructlogHandler(TestBase):
             SimpleLogRecordProcessor(self.exporter)
         )
 
-        # Configure structlog with OTel handler
-        self.processor = StructlogHandler(logger_provider=self.logger_provider)
+        # Configure structlog with OTel processor
+        self.processor = StructlogProcessor(
+            logger_provider=self.logger_provider
+        )
         structlog.configure(
             processors=[
                 structlog.stdlib.add_log_level,
@@ -123,6 +126,43 @@ class TestStructlogHandler(TestBase):
         log = logs[0]
         self.assertEqual(log.log_record.severity_text, "ERROR")
         self.assertEqual(log.log_record.severity_number, SeverityNumber.ERROR)
+
+    def test_error_level_without_add_log_level(self):
+        """Test level mapping from structlog method name."""
+        structlog.configure(
+            processors=[
+                self.processor,
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+        self.logger.error("error message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        self.assertEqual(log.log_record.severity_text, "ERROR")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.ERROR)
+
+    def test_unknown_level(self):
+        """Test unknown level mapping."""
+        log_record = self.processor._translate(
+            {"event": "message", "level": "notice"}
+        )
+
+        self.assertEqual(log_record.severity_text, "NOTICE")
+        self.assertEqual(
+            log_record.severity_number, SeverityNumber.UNSPECIFIED
+        )
+
+    def test_missing_level_without_method_name(self):
+        """Test missing level mapping without structlog method fallback."""
+        log_record = self.processor._translate({"event": "message"})
+
+        self.assertIsNone(log_record.severity_text)
+        self.assertEqual(
+            log_record.severity_number, SeverityNumber.UNSPECIFIED
+        )
 
     def test_critical_level(self):
         """Test critical level mapping."""
@@ -312,13 +352,69 @@ class TestStructlogHandler(TestBase):
         self.assertEqual(attrs["duration"], 1.5)
         self.assertEqual(attrs["success"], True)
 
+    def test_timestamp_from_unix_float(self):
+        """Test UNIX float timestamp parsing."""
+        log_record = self.processor._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": 1713806404.5,
+            }
+        )
+
+        self.assertEqual(log_record.timestamp, 1713806404500000000)
+
+    def test_timestamp_from_utc_z_iso_string(self):
+        """Test UTC ISO timestamp parsing with Z suffix."""
+        log_record = self.processor._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T17:20:04Z",
+            }
+        )
+
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
+        self.assertEqual(log_record.timestamp, expected)
+
+    def test_timestamp_from_offset_iso_string(self):
+        """Test offset-aware ISO timestamp parsing."""
+        log_record = self.processor._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T10:20:04-07:00",
+            }
+        )
+
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
+        self.assertEqual(log_record.timestamp, expected)
+
+    def test_timestamp_from_naive_iso_string(self):
+        """Test naive ISO timestamps are ignored."""
+        log_record = self.processor._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T17:20:04",
+            }
+        )
+
+        self.assertIsNone(log_record.timestamp)
+
     @staticmethod
     def test_flush():
         """Test that flush calls force_flush on the provider."""
         # Create a mock provider to verify flush is called
         mock_provider = Mock()
         mock_provider.force_flush = Mock()
-        processor = StructlogHandler(logger_provider=mock_provider)
+        processor = StructlogProcessor(logger_provider=mock_provider)
 
         processor.flush()
 
@@ -353,7 +449,7 @@ class TestStructlogInstrumentor(TestBase):
         self.exporter.clear()
 
     def test_instrument_adds_processor(self):
-        """Test that instrument() adds the OTel handler to the chain."""
+        """Test that instrument() adds the OTel processor to the chain."""
         # Configure structlog with a simple processor chain
         structlog.configure(
             processors=[
@@ -374,14 +470,14 @@ class TestStructlogInstrumentor(TestBase):
         new_processors = structlog.get_config()["processors"]
         self.assertEqual(len(new_processors), initial_count + 1)
 
-        # Check that a StructlogHandler is in the chain
-        has_otel_handler = any(
-            isinstance(p, StructlogHandler) for p in new_processors
+        # Check that a StructlogProcessor is in the chain
+        has_otel_processor = any(
+            isinstance(p, StructlogProcessor) for p in new_processors
         )
-        self.assertTrue(has_otel_handler)
+        self.assertTrue(has_otel_processor)
 
     def test_uninstrument_removes_processor(self):
-        """Test that uninstrument() removes the OTel handler."""
+        """Test that uninstrument() removes the OTel processor."""
         # Configure structlog
         structlog.configure(
             processors=[
@@ -394,20 +490,21 @@ class TestStructlogInstrumentor(TestBase):
             logger_provider=self.logger_provider
         )
 
-        # Verify handler was added
+        # Verify processor was added
         config_after_instrument = structlog.get_config()["processors"]
         has_otel = any(
-            isinstance(p, StructlogHandler) for p in config_after_instrument
+            isinstance(p, StructlogProcessor) for p in config_after_instrument
         )
         self.assertTrue(has_otel)
 
         # Uninstrument
         StructlogInstrumentor().uninstrument()
 
-        # Verify handler was removed
+        # Verify processor was removed
         config_after_uninstrument = structlog.get_config()["processors"]
         has_otel = any(
-            isinstance(p, StructlogHandler) for p in config_after_uninstrument
+            isinstance(p, StructlogProcessor)
+            for p in config_after_uninstrument
         )
         self.assertFalse(has_otel)
 
@@ -462,8 +559,8 @@ class TestStructlogInstrumentor(TestBase):
         self.assertEqual(len(logs), 1)
         self.assertEqual(logs[0].log_record.body, "test message")
 
-    def test_configure_after_instrument_preserves_handler(self):
-        """Test that calling structlog.configure() after instrumentation preserves the handler."""
+    def test_configure_after_instrument_preserves_processor(self):
+        """Test that calling structlog.configure() after instrumentation preserves the processor."""
         StructlogInstrumentor().instrument(
             logger_provider=self.logger_provider
         )
@@ -476,10 +573,41 @@ class TestStructlogInstrumentor(TestBase):
         )
 
         processors = structlog.get_config()["processors"]
-        has_otel_handler = any(
-            isinstance(p, StructlogHandler) for p in processors
+        has_otel_processor = any(
+            isinstance(p, StructlogProcessor) for p in processors
         )
-        self.assertTrue(has_otel_handler)
+        self.assertTrue(has_otel_processor)
+
+    def test_configure_after_instrument_accepts_positional_processors(self):
+        """Test that patched configure accepts positional processors."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        structlog.configure([structlog.dev.ConsoleRenderer()])
+
+        processors = structlog.get_config()["processors"]
+        self.assertIsInstance(processors[0], StructlogProcessor)
+
+    def test_configure_after_instrument_accepts_none_processors(self):
+        """Test that patched configure accepts processors=None."""
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        processors_before = structlog.get_config()["processors"]
+
+        structlog.configure(processors=None)
+
+        processors = structlog.get_config()["processors"]
+        self.assertEqual(processors, processors_before)
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
 
     def test_uninstrument_restores_configure(self):
         """Test that uninstrument() restores the original structlog.configure."""
