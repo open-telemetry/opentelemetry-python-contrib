@@ -283,9 +283,7 @@ class TestUtils(TestCase):
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(exporter))
         tracer = provider.get_tracer(__name__)
-        record = SimpleNamespace(
-            topic="test_topic", partition=0, headers=[]
-        )
+        record = SimpleNamespace(topic="test_topic", partition=0, headers=[])
 
         _create_consumer_span(
             tracer,

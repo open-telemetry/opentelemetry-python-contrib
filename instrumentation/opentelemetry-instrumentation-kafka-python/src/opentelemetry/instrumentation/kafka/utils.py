@@ -233,8 +233,8 @@ def _wrap_next(
             extracted_context = propagate.extract(
                 record.headers, getter=_kafka_getter
             )
-            consumer_group = (
-                KafkaPropertiesExtractor.extract_consumer_group(instance)
+            consumer_group = KafkaPropertiesExtractor.extract_consumer_group(
+                instance
             )
             _create_consumer_span(
                 tracer,
