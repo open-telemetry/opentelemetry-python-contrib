@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=unnecessary-dunder-call
 
+from types import SimpleNamespace
 from unittest import TestCase, mock
 
 from opentelemetry.instrumentation.kafka.utils import (
@@ -13,6 +14,12 @@ from opentelemetry.instrumentation.kafka.utils import (
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.trace import SpanKind
 
 
@@ -129,11 +136,15 @@ class TestUtils(TestCase):
         "opentelemetry.instrumentation.kafka.utils._create_consumer_span"
     )
     @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_consumer_group"
+    )
+    @mock.patch(
         "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
     )
     def test_wrap_next(
         self,
         extract_bootstrap_servers: mock.MagicMock,
+        extract_consumer_group: mock.MagicMock,
         _create_consumer_span: mock.MagicMock,
         extract: mock.MagicMock,
     ) -> None:
@@ -150,6 +161,9 @@ class TestUtils(TestCase):
         extract_bootstrap_servers.assert_called_once_with(kafka_consumer)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
+        extract_consumer_group.assert_called_once_with(kafka_consumer)
+        consumer_group = extract_consumer_group.return_value
+
         original_next_callback.assert_called_once_with(
             *self.args, **self.kwargs
         )
@@ -164,6 +178,7 @@ class TestUtils(TestCase):
             record,
             context,
             bootstrap_servers,
+            consumer_group,
             self.args,
             self.kwargs,
         )
@@ -184,6 +199,7 @@ class TestUtils(TestCase):
         bootstrap_servers = mock.MagicMock()
         extracted_context = mock.MagicMock()
         record = mock.MagicMock()
+        consumer_group = "test-consumer-group"
 
         _create_consumer_span(
             tracer,
@@ -191,6 +207,7 @@ class TestUtils(TestCase):
             record,
             extracted_context,
             bootstrap_servers,
+            consumer_group,
             self.args,
             self.kwargs,
         )
@@ -208,6 +225,10 @@ class TestUtils(TestCase):
 
         enrich_span.assert_called_once_with(
             span, bootstrap_servers, record.topic, record.partition
+        )
+        span.set_attribute.assert_called_once_with(
+            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME,
+            consumer_group,
         )
         consume_hook.assert_called_once_with(
             span, record, self.args, self.kwargs
@@ -237,4 +258,60 @@ class TestUtils(TestCase):
                 kafka_properties_extractor, self.args, self.kwargs
             )
             is None
+        )
+
+    def test_extract_consumer_group(self) -> None:
+        consumer = SimpleNamespace(config={"group_id": "billing-service"})
+        self.assertEqual(
+            KafkaPropertiesExtractor.extract_consumer_group(consumer),
+            "billing-service",
+        )
+
+        # group_id not configured (manual partition assignment)
+        consumer = SimpleNamespace(config={})
+        self.assertIsNone(
+            KafkaPropertiesExtractor.extract_consumer_group(consumer)
+        )
+
+        # instance without a config attribute must not raise
+        self.assertIsNone(
+            KafkaPropertiesExtractor.extract_consumer_group(object())
+        )
+
+    def _finished_consumer_span(self, consumer_group):
+        exporter = InMemorySpanExporter()
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer(__name__)
+        record = SimpleNamespace(
+            topic="test_topic", partition=0, headers=[]
+        )
+
+        _create_consumer_span(
+            tracer,
+            None,
+            record,
+            None,
+            ["localhost:9092"],
+            consumer_group,
+            self.args,
+            self.kwargs,
+        )
+
+        spans = exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        return spans[0]
+
+    def test_consumer_group_attribute_recorded(self) -> None:
+        span = self._finished_consumer_span("billing-service")
+        key = messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME
+        self.assertEqual(key, "messaging.consumer.group.name")
+        self.assertEqual(span.attributes[key], "billing-service")
+        self.assertIsInstance(span.attributes[key], str)
+
+    def test_consumer_group_attribute_absent_when_none(self) -> None:
+        span = self._finished_consumer_span(None)
+        self.assertNotIn(
+            messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME,
+            span.attributes,
         )

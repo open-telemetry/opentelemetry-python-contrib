@@ -9,6 +9,7 @@ from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
@@ -54,6 +55,14 @@ class KafkaPropertiesExtractor:
         return KafkaPropertiesExtractor._extract_argument(
             "headers", 3, None, args, kwargs
         )
+
+    @staticmethod
+    def extract_consumer_group(instance) -> Optional[str]:
+        """extract the configured consumer group from a KafkaConsumer instance"""
+        try:
+            return instance.config.get("group_id")
+        except AttributeError:
+            return None
 
     @staticmethod
     def extract_send_partition(instance, args, kwargs):
@@ -182,6 +191,7 @@ def _create_consumer_span(
     record,
     extracted_context,
     bootstrap_servers,
+    consumer_group: Optional[str],
     args,
     kwargs,
 ):
@@ -194,6 +204,11 @@ def _create_consumer_span(
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
         _enrich_span(span, bootstrap_servers, record.topic, record.partition)
+        if consumer_group is not None and span.is_recording():
+            span.set_attribute(
+                messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME,
+                consumer_group,
+            )
         try:
             if callable(consume_hook):
                 consume_hook(span, record, args, kwargs)
@@ -218,12 +233,16 @@ def _wrap_next(
             extracted_context = propagate.extract(
                 record.headers, getter=_kafka_getter
             )
+            consumer_group = (
+                KafkaPropertiesExtractor.extract_consumer_group(instance)
+            )
             _create_consumer_span(
                 tracer,
                 consume_hook,
                 record,
                 extracted_context,
                 bootstrap_servers,
+                consumer_group,
                 args,
                 kwargs,
             )
