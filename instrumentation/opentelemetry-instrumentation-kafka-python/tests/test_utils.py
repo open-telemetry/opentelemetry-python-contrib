@@ -36,12 +36,8 @@ class TestUtils(TestCase):
         self.headers = []
         self.kwargs = {"partition": 0, "headers": self.headers}
 
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition"
-    )
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -61,12 +57,8 @@ class TestUtils(TestCase):
             extract_bootstrap_servers,
         )
 
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition"
-    )
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -103,19 +95,13 @@ class TestUtils(TestCase):
         expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
-        retval = wrapped_send(
-            original_send_callback, kafka_producer, self.args, self.kwargs
-        )
+        retval = wrapped_send(original_send_callback, kafka_producer, self.args, self.kwargs)
 
         extract_bootstrap_servers.assert_called_once_with(kafka_producer)
         # The partition is read back from the future returned by send(), not
         # estimated from the call arguments.
-        extract_send_partition.assert_called_once_with(
-            original_send_callback.return_value
-        )
-        tracer.start_as_current_span.assert_called_once_with(
-            expected_span_name, kind=SpanKind.PRODUCER
-        )
+        extract_send_partition.assert_called_once_with(original_send_callback.return_value)
+        tracer.start_as_current_span.assert_called_once_with(expected_span_name, kind=SpanKind.PRODUCER)
 
         span = tracer.start_as_current_span().__enter__.return_value
         enrich_span.assert_called_once_with(
@@ -127,27 +113,17 @@ class TestUtils(TestCase):
 
         set_span_in_context.assert_called_once_with(span)
         context = set_span_in_context.return_value
-        inject.assert_called_once_with(
-            self.headers, context=context, setter=_kafka_setter
-        )
+        inject.assert_called_once_with(self.headers, context=context, setter=_kafka_setter)
 
         produce_hook.assert_called_once_with(span, self.args, self.kwargs)
 
-        original_send_callback.assert_called_once_with(
-            *self.args, **self.kwargs
-        )
+        original_send_callback.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(retval, original_send_callback.return_value)
 
     @mock.patch("opentelemetry.propagate.extract")
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils._create_consumer_span"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_consumer_group"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
-    )
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_consumer_group")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     def test_wrap_next(
         self,
         extract_bootstrap_servers: mock.MagicMock,
@@ -161,9 +137,7 @@ class TestUtils(TestCase):
         kafka_consumer = mock.MagicMock()
 
         wrapped_next = _wrap_next(tracer, consume_hook)
-        record = wrapped_next(
-            original_next_callback, kafka_consumer, self.args, self.kwargs
-        )
+        record = wrapped_next(original_next_callback, kafka_consumer, self.args, self.kwargs)
 
         extract_bootstrap_servers.assert_called_once_with(kafka_consumer)
         bootstrap_servers = extract_bootstrap_servers.return_value
@@ -171,9 +145,7 @@ class TestUtils(TestCase):
         extract_consumer_group.assert_called_once_with(kafka_consumer)
         consumer_group = extract_consumer_group.return_value
 
-        original_next_callback.assert_called_once_with(
-            *self.args, **self.kwargs
-        )
+        original_next_callback.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(record, original_next_callback.return_value)
 
         extract.assert_called_once_with(record.headers, getter=_kafka_getter)
@@ -230,16 +202,12 @@ class TestUtils(TestCase):
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        enrich_span.assert_called_once_with(
-            span, bootstrap_servers, record.topic, record.partition
-        )
+        enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition)
         span.set_attribute.assert_called_once_with(
             messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME,
             consumer_group,
         )
-        consume_hook.assert_called_once_with(
-            span, record, self.args, self.kwargs
-        )
+        consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
     def test_extract_send_partition_reads_actual_partition_from_future(
@@ -271,9 +239,7 @@ class TestUtils(TestCase):
         """Guards against kafka-python changing the internal attribute the
         extractor relies on."""
         produce_future = FutureProduceResult(("test_topic", 4))
-        future = FutureRecordMetadata(
-            produce_future, 0, None, None, -1, -1, -1
-        )
+        future = FutureRecordMetadata(produce_future, 0, None, None, -1, -1, -1)
 
         partition = KafkaPropertiesExtractor.extract_send_partition(future)
 
@@ -286,9 +252,7 @@ class TestUtils(TestCase):
         class _NoInternals:
             pass
 
-        partition = KafkaPropertiesExtractor.extract_send_partition(
-            _NoInternals()
-        )
+        partition = KafkaPropertiesExtractor.extract_send_partition(_NoInternals())
 
         self.assertIsNone(partition)
 
@@ -298,9 +262,7 @@ class TestUtils(TestCase):
 
         _enrich_span(span, ["localhost:9092"], self.topic_name, 2)
 
-        span.set_attribute.assert_any_call(
-            SpanAttributes.MESSAGING_KAFKA_PARTITION, 2
-        )
+        span.set_attribute.assert_any_call(SpanAttributes.MESSAGING_KAFKA_PARTITION, 2)
 
     def test_enrich_span_omits_partition_when_none(self) -> None:
         span = mock.MagicMock()
@@ -308,12 +270,8 @@ class TestUtils(TestCase):
 
         _enrich_span(span, ["localhost:9092"], self.topic_name, None)
 
-        recorded_attributes = {
-            call.args[0] for call in span.set_attribute.call_args_list
-        }
-        self.assertNotIn(
-            SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes
-        )
+        recorded_attributes = {call.args[0] for call in span.set_attribute.call_args_list}
+        self.assertNotIn(SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes)
 
     def test_extract_consumer_group(self) -> None:
         consumer = SimpleNamespace(config={"group_id": "billing-service"})
@@ -323,13 +281,9 @@ class TestUtils(TestCase):
         )
 
         consumer = SimpleNamespace(config={})
-        self.assertIsNone(
-            KafkaPropertiesExtractor.extract_consumer_group(consumer)
-        )
+        self.assertIsNone(KafkaPropertiesExtractor.extract_consumer_group(consumer))
 
-        self.assertIsNone(
-            KafkaPropertiesExtractor.extract_consumer_group(object())
-        )
+        self.assertIsNone(KafkaPropertiesExtractor.extract_consumer_group(object()))
 
     def _finished_consumer_span(self, consumer_group: str | None):
         exporter = InMemorySpanExporter()
@@ -385,9 +339,7 @@ class TestWrapSendSpanLifetime(TestBase):
         self.producer = mock.MagicMock()
         self.producer.config = {"bootstrap_servers": ["localhost:9092"]}
 
-    def test_wrap_send_records_exception_raised_by_send(
-        self, _extract_send_partition: mock.MagicMock
-    ) -> None:
+    def test_wrap_send_records_exception_raised_by_send(self, _extract_send_partition: mock.MagicMock) -> None:
         error = ConnectionError("broker unavailable")
 
         def failing_send(*args, **kwargs):
@@ -408,19 +360,13 @@ class TestWrapSendSpanLifetime(TestBase):
         self.assertIs(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
-        self.assertEqual(
-            span.events[0].attributes["exception.type"], "ConnectionError"
-        )
+        self.assertEqual(span.events[0].attributes["exception.type"], "ConnectionError")
 
-    def test_wrap_send_leaves_successful_send_unchanged(
-        self, _extract_send_partition: mock.MagicMock
-    ) -> None:
+    def test_wrap_send_leaves_successful_send_unchanged(self, _extract_send_partition: mock.MagicMock) -> None:
         original_send = mock.MagicMock()
 
         wrapped_send = _wrap_send(self.tracer, None)
-        retval = wrapped_send(
-            original_send, self.producer, self.args, self.kwargs
-        )
+        retval = wrapped_send(original_send, self.producer, self.args, self.kwargs)
 
         original_send.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(retval, original_send.return_value)
