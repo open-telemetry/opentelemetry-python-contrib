@@ -1,5 +1,7 @@
 .. include:: ../../../instrumentation/opentelemetry-instrumentation-starlette/README.rst
 
+.. include:: ../../_includes/http-semconv-stability.rst
+
 API
 ---
 
