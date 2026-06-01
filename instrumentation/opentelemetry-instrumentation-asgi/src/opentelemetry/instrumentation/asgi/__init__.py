@@ -193,6 +193,23 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Semantic Convention Stability
+*****************************
+
+This instrumentation supports the ``OTEL_SEMCONV_STABILITY_OPT_IN`` environment
+variable, which controls which version of the HTTP semantic conventions is emitted:
+
+* ``http`` — emit the new, stable HTTP and networking conventions only, and stop
+  emitting the old experimental HTTP and networking conventions that the
+  instrumentation emitted previously.
+* ``http/dup`` — emit both the old and the stable HTTP and networking conventions,
+  allowing for a seamless transition.
+* Default (unset) — emit only the old experimental HTTP and networking conventions.
+
+For example, to opt in to the stable conventions::
+
+    export OTEL_SEMCONV_STABILITY_OPT_IN=http
+
 API
 ---
 """

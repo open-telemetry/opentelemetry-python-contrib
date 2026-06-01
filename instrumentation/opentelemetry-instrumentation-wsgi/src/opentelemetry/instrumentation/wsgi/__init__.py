@@ -200,6 +200,23 @@ In order to prevent unbound cardinality for HTTP methods by default nonstandard 
 To record all of the names set the environment variable  ``OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS``
 to a value that evaluates to true, e.g. ``1``.
 
+Semantic Convention Stability
+*****************************
+
+This instrumentation supports the ``OTEL_SEMCONV_STABILITY_OPT_IN`` environment
+variable, which controls which version of the HTTP semantic conventions is emitted:
+
+* ``http`` — emit the new, stable HTTP and networking conventions only, and stop
+  emitting the old experimental HTTP and networking conventions that the
+  instrumentation emitted previously.
+* ``http/dup`` — emit both the old and the stable HTTP and networking conventions,
+  allowing for a seamless transition.
+* Default (unset) — emit only the old experimental HTTP and networking conventions.
+
+For example, to opt in to the stable conventions::
+
+    export OTEL_SEMCONV_STABILITY_OPT_IN=http
+
 API
 ---
 """

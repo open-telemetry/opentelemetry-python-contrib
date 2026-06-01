@@ -1,0 +1,4 @@
+Document ``OTEL_SEMCONV_STABILITY_OPT_IN`` environment variable in all HTTP
+instrumentations (aiohttp-client, ASGI, Django, FastAPI, Flask, HTTPX, Requests,
+WSGI), explaining the ``http``, ``http/dup``, and default (old experimental)
+behaviour.
