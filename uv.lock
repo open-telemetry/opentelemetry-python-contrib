@@ -2919,6 +2919,7 @@ source = { editable = "instrumentation/opentelemetry-instrumentation-aio-pika" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
     { name = "wrapt" },
 ]
 
@@ -2932,6 +2933,7 @@ requires-dist = [
     { name = "aio-pika", marker = "extra == 'instruments'", specifier = ">=7.2.0,<10.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
@@ -3339,6 +3341,7 @@ source = { editable = "instrumentation/opentelemetry-instrumentation-confluent-k
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
     { name = "wrapt" },
 ]
 
@@ -3352,6 +3355,7 @@ requires-dist = [
     { name = "confluent-kafka", marker = "extra == 'instruments'", specifier = ">=1.8.2,<3.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
 ]
 provides-extras = ["instruments"]
@@ -3667,12 +3671,14 @@ source = { editable = "instrumentation/opentelemetry-instrumentation-logging" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
 provides-extras = ["instruments"]
 
@@ -3778,6 +3784,7 @@ source = { editable = "instrumentation/opentelemetry-instrumentation-pika" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
     { name = "packaging" },
     { name = "wrapt" },
 ]
@@ -3791,6 +3798,7 @@ instruments = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "packaging", specifier = ">=20.0" },
     { name = "pika", marker = "extra == 'instruments'", specifier = ">=0.12.0" },
     { name = "wrapt", specifier = ">=1.0.0,<3.0.0" },
@@ -4138,6 +4146,7 @@ source = { editable = "instrumentation/opentelemetry-instrumentation-system-metr
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
     { name = "psutil" },
 ]
 
@@ -4150,6 +4159,7 @@ instruments = [
 requires-dist = [
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "psutil", specifier = ">=5.9.0,<8" },
     { name = "psutil", marker = "extra == 'instruments'", specifier = ">=5" },
 ]

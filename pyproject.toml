@@ -252,6 +252,7 @@ issue_format = "[#{issue}](https://github.com/open-telemetry/opentelemetry-pytho
 wrap = true
 issue_pattern = "^(\\d+)"
 
+# NOTE: remember to update the changelog workflow if these types change 
 [[tool.towncrier.type]]
 directory = "added"
 name = "Added"
