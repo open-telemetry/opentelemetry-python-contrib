@@ -9,7 +9,7 @@ import threading
 import traceback
 from contextvars import ContextVar
 from time import time_ns
-from typing import Callable
+from typing import Callable, Mapping
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -132,7 +132,7 @@ class LoggingHandler(logging.Handler):
 
     def _get_attributes(
         self, record: logging.LogRecord
-    ) ->  Mapping[str, AnyValue]:
+    ) -> Mapping[str, AnyValue]:
         attributes = {
             k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS
         }
