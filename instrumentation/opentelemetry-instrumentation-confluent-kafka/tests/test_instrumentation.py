@@ -482,3 +482,36 @@ class TestConfluentKafka(TestBase):
         )
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
+
+    def test_proxied_producer_delegates_unproxied_methods(self) -> None:
+        """ProxiedProducer.__getattr__ must forward methods not explicitly
+        defined on the proxy to the underlying producer, preventing
+        AttributeError or segfaults (see #4278)."""
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:9092"})
+        # Add a sentinel method that is *not* explicitly defined on ProxiedProducer
+        producer.custom_metadata = lambda: {"clusters": 1}
+        proxied = instrumentation.instrument_producer(producer)
+        self.assertIsInstance(proxied, ProxiedProducer)
+        # Must be forwarded via __getattr__, not raise AttributeError
+        self.assertEqual(proxied.custom_metadata(), {"clusters": 1})
+
+    def test_proxied_consumer_delegates_unproxied_methods(self) -> None:
+        """ProxiedConsumer.__getattr__ must forward methods not explicitly
+        defined on the proxy to the underlying consumer, preventing
+        AttributeError or segfaults (see #4278)."""
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [],
+            {
+                "bootstrap.servers": "localhost:9092",
+                "group.id": "test-group",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        # Add a sentinel method that is *not* explicitly defined on ProxiedConsumer
+        consumer.custom_assignment = lambda: []
+        proxied = instrumentation.instrument_consumer(consumer)
+        self.assertIsInstance(proxied, ProxiedConsumer)
+        # Must be forwarded via __getattr__, not raise AttributeError
+        self.assertEqual(proxied.custom_assignment(), [])

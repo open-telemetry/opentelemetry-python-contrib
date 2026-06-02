@@ -195,6 +195,13 @@ class ProxiedProducer(Producer):
             self._producer.produce, self, self._tracer, args, new_kwargs
         )
 
+    def __getattr__(self, name: str):
+        # Delegate any attribute or method not explicitly proxied to the
+        # underlying producer (e.g. list_topics(), set_sasl_credentials()).
+        # Without this, callers get AttributeError or — for confluent-kafka
+        # C-extension objects — a segmentation fault.
+        return getattr(self._producer, name)
+
     def original_producer(self):
         return self._producer
 
@@ -243,6 +250,13 @@ class ProxiedConsumer(Consumer):
 
     def subscribe(self, topics, on_assign=lambda *args: None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         self._consumer.subscribe(topics, on_assign, *args, **kwargs)
+
+    def __getattr__(self, name: str):
+        # Delegate any attribute or method not explicitly proxied to the
+        # underlying consumer (e.g. assignment(), list_topics(),
+        # memberid()). Without this, callers get AttributeError or — for
+        # confluent-kafka C-extension objects — a segmentation fault.
+        return getattr(self._consumer, name)
 
     def original_consumer(self):
         return self._consumer
