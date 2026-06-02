@@ -135,6 +135,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     """
 
     _old_factory = None
+    _our_factory = None
     _log_hook = None
     _logging_handler = None
 
@@ -214,6 +215,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
             return record
 
+        LoggingInstrumentor._our_factory = record_factory
         logging.setLogRecordFactory(record_factory)
 
         # Here we need to handle 3 scenarios:
@@ -262,9 +264,22 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             LoggingInstrumentor._logging_handler = handler
 
     def _uninstrument(self, **kwargs):
-        if LoggingInstrumentor._old_factory:
-            logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
-            LoggingInstrumentor._old_factory = None
+        if LoggingInstrumentor._our_factory is not None:
+            current = logging.getLogRecordFactory()
+            if current is LoggingInstrumentor._our_factory:
+                # We are still at the head of the factory chain — safe to
+                # restore the previous factory without dropping any other
+                # custom factories that may have been registered before us.
+                logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
+            # If current is NOT our factory another library installed its own
+            # factory on top of ours after we instrumented.  Blindly restoring
+            # _old_factory would cut that library's factory out of the chain
+            # (the bug described in #3808).  In that case we leave the chain
+            # intact and accept that our factory remains in it; removing a
+            # node from the middle of the linked list is not safely possible
+            # without cooperation from the other factories.
+        LoggingInstrumentor._old_factory = None
+        LoggingInstrumentor._our_factory = None
 
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(
