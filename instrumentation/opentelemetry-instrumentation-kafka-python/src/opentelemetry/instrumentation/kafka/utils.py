@@ -57,37 +57,24 @@ class KafkaPropertiesExtractor:
 
     @staticmethod
     def extract_send_partition(instance, args, kwargs):
-        """extract partition `send` method arguments, using the `_partition` method in KafkaProducer class"""
-        try:
-            topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
-            key = KafkaPropertiesExtractor.extract_send_key(args, kwargs)
-            value = KafkaPropertiesExtractor.extract_send_value(args, kwargs)
-            partition = KafkaPropertiesExtractor._extract_argument(
-                "partition", 4, None, args, kwargs
-            )
-            key_bytes = instance._serialize(
-                instance.config["key_serializer"], topic, key
-            )
-            value_bytes = instance._serialize(
-                instance.config["value_serializer"], topic, value
-            )
-            valid_types = (bytes, bytearray, memoryview, type(None))
-            if (
-                type(key_bytes) not in valid_types
-                or type(value_bytes) not in valid_types
-            ):
-                return None
+        """Return the partition only when explicitly provided by the caller.
 
-            instance._wait_on_metadata(
-                topic, instance.config["max_block_ms"] / 1000.0
-            )
+        The previous implementation called ``instance._partition()`` to
+        estimate the destination partition before ``send()`` was called.
+        However, ``_partition()`` runs the partitioner function (typically
+        the default round-robin/random partitioner) and produces a *new*
+        random candidate each time it is called.  The Kafka producer then
+        calls it **again** internally inside ``send()``, which may yield a
+        different value, so the span attribute frequently does not match the
+        partition where the message actually lands.
 
-            return instance._partition(
-                topic, partition, key, value, key_bytes, value_bytes
-            )
-        except Exception as exception:  # pylint: disable=W0703
-            _LOG.debug("Unable to extract partition: %s", exception)
-            return None
+        We now only record the partition when the caller has pinned it
+        explicitly via the ``partition`` argument.  When no partition is
+        supplied the attribute is omitted rather than recording a wrong value.
+        """
+        return KafkaPropertiesExtractor._extract_argument(
+            "partition", 4, None, args, kwargs
+        )
 
 
 ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
