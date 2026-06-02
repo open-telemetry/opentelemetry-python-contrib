@@ -48,6 +48,8 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 
 from .package import _instruments
 from .patch import (
+    async_messages_create,
+    async_messages_stream,
     messages_create,
     messages_stream,
 )
@@ -90,7 +92,7 @@ class AnthropicInstrumentor(BaseInstrumentor):
             logger_provider=logger_provider,
         )
 
-        # Patch Messages.create and Messages.stream
+        # Patch sync Messages.create / Messages.stream
         wrap_function_wrapper(
             "anthropic.resources.messages",
             "Messages.create",
@@ -100,6 +102,17 @@ class AnthropicInstrumentor(BaseInstrumentor):
             "anthropic.resources.messages",
             "Messages.stream",
             messages_stream(handler),
+        )
+        # Patch async AsyncMessages.create / AsyncMessages.stream
+        wrap_function_wrapper(
+            "anthropic.resources.messages",
+            "AsyncMessages.create",
+            async_messages_create(handler),
+        )
+        wrap_function_wrapper(
+            "anthropic.resources.messages",
+            "AsyncMessages.stream",
+            async_messages_stream(handler),
         )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -115,5 +128,13 @@ class AnthropicInstrumentor(BaseInstrumentor):
         )
         unwrap(
             anthropic.resources.messages.Messages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
+            "stream",
+        )
+        unwrap(
+            anthropic.resources.messages.AsyncMessages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
+            "create",
+        )
+        unwrap(
+            anthropic.resources.messages.AsyncMessages,  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownArgumentType]
             "stream",
         )

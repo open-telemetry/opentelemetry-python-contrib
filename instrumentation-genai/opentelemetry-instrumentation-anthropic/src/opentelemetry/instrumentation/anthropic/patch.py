@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Union, cast
 
+from anthropic._streaming import AsyncStream as AnthropicAsyncStream
 from anthropic._streaming import Stream as AnthropicStream
 from anthropic.types import Message as AnthropicMessage
 
@@ -25,6 +26,8 @@ from .messages_extractors import (
     get_system_instruction,
 )
 from .wrappers import (
+    AsyncMessagesStreamManagerWrapper,
+    AsyncMessagesStreamWrapper,
     MessagesStreamManagerWrapper,
     MessagesStreamWrapper,
     MessageWrapper,
@@ -32,9 +35,10 @@ from .wrappers import (
 
 if TYPE_CHECKING:
     from anthropic.lib.streaming._messages import (  # pylint: disable=no-name-in-module
+        AsyncMessageStreamManager,
         MessageStreamManager,
     )
-    from anthropic.resources.messages import Messages
+    from anthropic.resources.messages import AsyncMessages, Messages
     from anthropic.types import RawMessageStreamEvent
 
 
@@ -152,4 +156,62 @@ def messages_stream(
 
     return cast(
         "Callable[..., MessagesStreamManagerWrapper[Any]]", traced_method
+    )
+
+
+def async_messages_create(
+    handler: TelemetryHandler,
+) -> Callable[..., Any]:
+    """Wrap the async ``create`` method of ``AsyncMessages`` to trace it."""
+    capture_content = handler.should_capture_content()
+
+    async def traced_method(
+        wrapped: Callable[..., Any],
+        instance: AsyncMessages,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> Any:
+        invocation = _create_invocation(
+            handler, instance, args, kwargs, capture_content
+        )
+        try:
+            result = await wrapped(*args, **kwargs)
+            if isinstance(result, AnthropicAsyncStream):
+                return AsyncMessagesStreamWrapper(
+                    result, invocation, capture_content
+                )
+
+            wrapper = MessageWrapper(result, capture_content)
+            wrapper.extract_into(invocation)
+            invocation.stop()
+            return wrapper.message
+        except Exception as exc:
+            invocation.fail(exc)
+            raise
+
+    return cast("Callable[..., Any]", traced_method)
+
+
+def async_messages_stream(
+    handler: TelemetryHandler,
+) -> Callable[..., AsyncMessagesStreamManagerWrapper[Any]]:
+    """Wrap the async ``stream`` method of ``AsyncMessages`` to trace it."""
+    capture_content = handler.should_capture_content()
+
+    def traced_method(
+        wrapped: Callable[..., AsyncMessageStreamManager],
+        instance: AsyncMessages,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> AsyncMessagesStreamManagerWrapper[Any]:
+        return AsyncMessagesStreamManagerWrapper(
+            wrapped(*args, **kwargs),
+            lambda: _create_invocation(
+                handler, instance, args, kwargs, capture_content
+            ),
+            capture_content,
+        )
+
+    return cast(
+        "Callable[..., AsyncMessagesStreamManagerWrapper[Any]]", traced_method
     )
