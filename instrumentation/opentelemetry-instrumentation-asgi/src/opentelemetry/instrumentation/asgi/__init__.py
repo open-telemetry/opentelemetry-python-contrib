@@ -795,12 +795,14 @@ class OpenTelemetryMiddleware:
                     span_name, scope, receive
                 )
 
+                response_complete_time: list[float] = []
                 otel_send = self._get_otel_send(
                     current_span,
                     span_name,
                     scope,
                     send,
                     attributes,
+                    response_complete_time,
                 )
 
                 await self.app(scope, otel_receive, otel_send)
@@ -816,7 +818,11 @@ class OpenTelemetryMiddleware:
                         query,
                         self._sem_conv_opt_in_mode,
                     )
-                duration_s = default_timer() - start
+                duration_s = (
+                    response_complete_time[0] - start
+                    if response_complete_time
+                    else default_timer() - start
+                )
                 duration_attrs_old = _parse_duration_attrs(
                     attributes, _StabilityMode.DEFAULT
                 )
@@ -974,6 +980,7 @@ class OpenTelemetryMiddleware:
         scope,
         send,
         duration_attrs,
+        response_complete_time: list[float],
     ):
         expecting_trailers = False
 
@@ -1030,6 +1037,7 @@ class OpenTelemetryMiddleware:
                 and message["type"] == "http.response.trailers"
                 and not message.get("more_trailers", False)
             ):
+                response_complete_time.append(default_timer())
                 server_span.end()
 
         return otel_send

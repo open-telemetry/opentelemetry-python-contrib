@@ -702,6 +702,78 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
+    async def test_background_execution_metrics_duration(self):
+        """Test that http.server.duration excludes background task time."""
+        app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        duration_found = False
+        for metric in metrics:
+            if metric.name == "http.server.duration":
+                data_points = list(metric.data.data_points)
+                for point in data_points:
+                    if isinstance(point, HistogramDataPoint):
+                        duration_found = True
+                        self.assertLess(
+                            point.sum,
+                            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
+                        )
+        self.assertTrue(
+            duration_found, "http.server.duration metric not found"
+        )
+
+    async def test_background_execution_metrics_duration_new_semconv(self):
+        """Test that http.server.request.duration excludes background task time."""
+        app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        duration_found = False
+        for metric in metrics:
+            if metric.name == "http.server.request.duration":
+                data_points = list(metric.data.data_points)
+                for point in data_points:
+                    if isinstance(point, HistogramDataPoint):
+                        duration_found = True
+                        self.assertLess(
+                            point.sum,
+                            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S,
+                        )
+        self.assertTrue(
+            duration_found,
+            "http.server.request.duration metric not found",
+        )
+
+    async def test_trailers_background_execution_metrics_duration(self):
+        """Test that http.server.duration excludes background task time for trailer responses."""
+        app = otel_asgi.OpenTelemetryMiddleware(
+            background_execution_trailers_asgi
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        metrics = self.get_sorted_metrics(SCOPE)
+        duration_found = False
+        for metric in metrics:
+            if metric.name == "http.server.duration":
+                data_points = list(metric.data.data_points)
+                for point in data_points:
+                    if isinstance(point, HistogramDataPoint):
+                        duration_found = True
+                        self.assertLess(
+                            point.sum,
+                            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
+                        )
+        self.assertTrue(
+            duration_found, "http.server.duration metric not found"
+        )
+
     async def test_override_span_name(self):
         """Test that default span_names can be overwritten by our callback function."""
         span_name = "Dymaxion"
