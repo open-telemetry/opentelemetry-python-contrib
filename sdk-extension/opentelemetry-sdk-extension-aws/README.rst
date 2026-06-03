@@ -74,6 +74,64 @@ populate `resource` attributes by creating a `TraceProvider` using the `AwsEc2Re
 Refer to each detectors' docstring to determine any possible requirements for that
 detector.
 
+AWS EKS resource detector prerequisites
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``AwsEksResourceDetector`` is intended to run inside an EKS workload. It
+checks the mounted Kubernetes service account token to confirm that the workload
+is running on EKS, then reads the ``cluster-info`` ConfigMap from the
+``amazon-cloudwatch`` namespace to populate ``k8s.cluster.name``.
+
+Make sure the workload has a mounted service account token and CA certificate.
+For example, do not disable ``automountServiceAccountToken`` for the Pod or its
+service account.
+
+The detector needs read access to the ``cluster-info`` ConfigMap:
+
+.. code-block:: yaml
+
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: otel-awseksresourcedetector
+      namespace: amazon-cloudwatch
+    rules:
+      - apiGroups:
+          - ""
+        resources:
+          - configmaps
+        resourceNames:
+          - cluster-info
+        verbs:
+          - get
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: otel-awseksresourcedetector
+      namespace: amazon-cloudwatch
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: otel-awseksresourcedetector
+    subjects:
+      - kind: ServiceAccount
+        name: your-service-account
+        namespace: your-application-namespace
+
+The ConfigMap must exist in the ``amazon-cloudwatch`` namespace. The detector
+uses ``data.cluster.name``:
+
+.. code-block:: yaml
+
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: cluster-info
+      namespace: amazon-cloudwatch
+    data:
+      cluster.name: your-cluster-name
+
 
 Usage (AWS X-Ray Remote Sampler)
 --------------------------------
