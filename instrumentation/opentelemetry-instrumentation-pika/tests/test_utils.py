@@ -12,13 +12,21 @@ from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from opentelemetry.instrumentation.pika import utils
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_DESTINATION_TEMPORARY,
+    MESSAGING_MESSAGE_CONVERSATION_ID,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION_TYPE,
+    MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY,
+    MESSAGING_RABBITMQ_MESSAGE_DELIVERY_TAG,
+    MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+    MessagingSystemValues,
 )
-from opentelemetry.semconv.trace import (
-    MessagingOperationValues,
-    SpanAttributes,
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.trace import Span, SpanKind, Tracer
 
@@ -52,6 +60,8 @@ class TestUtils(TestCase):
             channel,
             properties,
             destination,
+            None,
+            None,
             None,
         )
 
@@ -101,26 +111,18 @@ class TestUtils(TestCase):
         span.set_attribute.assert_has_calls(
             any_order=True,
             calls=[
-                mock.call(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq"),
-                mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True),
                 mock.call(
-                    SpanAttributes.MESSAGING_DESTINATION, task_destination
+                    MESSAGING_SYSTEM, MessagingSystemValues.RABBITMQ.value
                 ),
+                mock.call(MESSAGING_DESTINATION_TEMPORARY, True),
+                mock.call(MESSAGING_DESTINATION_NAME, task_destination),
+                mock.call(MESSAGING_MESSAGE_ID, properties.message_id),
                 mock.call(
-                    SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id
-                ),
-                mock.call(
-                    SpanAttributes.MESSAGING_CONVERSATION_ID,
+                    MESSAGING_MESSAGE_CONVERSATION_ID,
                     properties.correlation_id,
                 ),
-                mock.call(
-                    NET_PEER_NAME,
-                    channel.connection.params.host,
-                ),
-                mock.call(
-                    NET_PEER_PORT,
-                    channel.connection.params.port,
-                ),
+                mock.call(SERVER_ADDRESS, channel.connection.params.host),
+                mock.call(SERVER_PORT, channel.connection.params.port),
             ],
         )
 
@@ -136,9 +138,7 @@ class TestUtils(TestCase):
         )
         span.set_attribute.assert_has_calls(
             any_order=True,
-            calls=[
-                mock.call(SpanAttributes.MESSAGING_OPERATION, operation.value)
-            ],
+            calls=[mock.call(MESSAGING_OPERATION_TYPE, operation.value)],
         )
 
     @staticmethod
@@ -150,7 +150,43 @@ class TestUtils(TestCase):
         utils._enrich_span(span, channel, properties, task_destination)
         span.set_attribute.assert_has_calls(
             any_order=True,
-            calls=[mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)],
+            calls=[mock.call(MESSAGING_DESTINATION_TEMPORARY, True)],
+        )
+
+    @staticmethod
+    def test_enrich_span_with_routing_key() -> None:
+        channel = mock.MagicMock()
+        properties = mock.MagicMock()
+        task_destination = "test.test"
+        routing_key = "my-routing-key"
+        span = mock.MagicMock(spec=Span)
+        utils._enrich_span(
+            span,
+            channel,
+            properties,
+            task_destination,
+            routing_key=routing_key,
+        )
+        span.set_attribute.assert_any_call(
+            MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY, routing_key
+        )
+
+    @staticmethod
+    def test_enrich_span_with_delivery_tag() -> None:
+        channel = mock.MagicMock()
+        properties = mock.MagicMock()
+        task_destination = "test.test"
+        delivery_tag = 42
+        span = mock.MagicMock(spec=Span)
+        utils._enrich_span(
+            span,
+            channel,
+            properties,
+            task_destination,
+            delivery_tag=delivery_tag,
+        )
+        span.set_attribute.assert_any_call(
+            MESSAGING_RABBITMQ_MESSAGE_DELIVERY_TAG, delivery_tag
         )
 
     @staticmethod
@@ -166,13 +202,9 @@ class TestUtils(TestCase):
             any_order=True,
             calls=[
                 mock.call(
-                    NET_PEER_NAME,
-                    channel.connection._impl.params.host,
+                    SERVER_ADDRESS, channel.connection._impl.params.host
                 ),
-                mock.call(
-                    NET_PEER_PORT,
-                    channel.connection._impl.params.port,
-                ),
+                mock.call(SERVER_PORT, channel.connection._impl.params.port),
             ],
         )
 
@@ -191,6 +223,8 @@ class TestUtils(TestCase):
         channel = mock.MagicMock(spec=Channel)
         method = mock.MagicMock(spec=Basic.Deliver)
         method.exchange = "test_exchange"
+        method.routing_key = "test-routing-key"
+        method.delivery_tag = 1
         properties = mock.MagicMock()
         mock_body = b"mock_body"
         decorated_callback = utils._decorate_callback(
@@ -207,7 +241,9 @@ class TestUtils(TestCase):
             destination=method.exchange,
             span_kind=SpanKind.CONSUMER,
             task_name=mock_task_name,
-            operation=MessagingOperationValues.RECEIVE,
+            operation=MessagingOperationTypeValues.RECEIVE,
+            routing_key=method.routing_key,
+            delivery_tag=method.delivery_tag,
         )
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
@@ -232,6 +268,8 @@ class TestUtils(TestCase):
         channel = mock.MagicMock(spec=Channel)
         method = mock.MagicMock(spec=Basic.Deliver)
         method.exchange = "test_exchange"
+        method.routing_key = "test-routing-key"
+        method.delivery_tag = 1
         properties = mock.MagicMock()
         mock_body = b"mock_body"
         consume_hook = mock.MagicMock()
@@ -250,7 +288,9 @@ class TestUtils(TestCase):
             destination=method.exchange,
             span_kind=SpanKind.CONSUMER,
             task_name=mock_task_name,
-            operation=MessagingOperationValues.RECEIVE,
+            operation=MessagingOperationTypeValues.RECEIVE,
+            routing_key=method.routing_key,
+            delivery_tag=method.delivery_tag,
         )
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
@@ -293,6 +333,7 @@ class TestUtils(TestCase):
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
+            routing_key=routing_key,
         )
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
@@ -358,6 +399,7 @@ class TestUtils(TestCase):
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
+            routing_key=routing_key,
         )
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
@@ -392,6 +434,7 @@ class TestUtils(TestCase):
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
+            routing_key=routing_key,
         )
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
@@ -441,6 +484,7 @@ class TestUtils(TestCase):
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
+            routing_key=routing_key,
         )
         use_span.assert_called_once_with(
             get_span.return_value, end_on_exit=True
@@ -479,6 +523,8 @@ class TestUtils(TestCase):
         )
         method = mock.MagicMock(spec=Basic.Deliver)
         method.exchange = "test_exchange"
+        method.routing_key = "test-routing-key"
+        method.delivery_tag = 1
         properties = mock.MagicMock()
         evt = _ConsumerDeliveryEvt(method, properties, b"mock_body")
         generator_info.pending_events.popleft.return_value = evt
@@ -503,7 +549,9 @@ class TestUtils(TestCase):
             destination=method.exchange,
             span_kind=SpanKind.CONSUMER,
             task_name=generator_info.consumer_tag,
-            operation=MessagingOperationValues.RECEIVE,
+            operation=MessagingOperationTypeValues.RECEIVE,
+            routing_key=method.routing_key,
+            delivery_tag=method.delivery_tag,
         )
         consume_hook.assert_called_once()
         returned_span.end.assert_called_once()
@@ -534,7 +582,9 @@ class TestUtils(TestCase):
             destination=method.exchange,
             span_kind=SpanKind.CONSUMER,
             task_name=generator_info.consumer_tag,
-            operation=MessagingOperationValues.RECEIVE,
+            operation=MessagingOperationTypeValues.RECEIVE,
+            routing_key=method.routing_key,
+            delivery_tag=method.delivery_tag,
         )
         consume_hook.assert_called_once()
         returned_span.end.assert_called_once()
