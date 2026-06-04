@@ -80,13 +80,11 @@ class TestMiddlewareSpans(WsgiTestBase):
     def setUp(self):
         super().setUp()
         setup_test_environment()
-        self._original_middleware = list(
-            getattr(settings, "MIDDLEWARE", [])
-        )
-        self._original_root_urlconf = getattr(
-            settings, "ROOT_URLCONF", None
-        )
-        settings.MIDDLEWARE = list(_TEST_MIDDLEWARE)
+        middleware = getattr(settings, "MIDDLEWARE", [])
+        self._original_middleware = list(middleware)
+        self._original_root_urlconf = getattr(settings, "ROOT_URLCONF", None)
+        middleware.clear()
+        middleware.extend(_TEST_MIDDLEWARE)
         settings.ROOT_URLCONF = modules[__name__]
         self.env_patch = patch.dict(
             "os.environ",
@@ -101,7 +99,9 @@ class TestMiddlewareSpans(WsgiTestBase):
         self.env_patch.stop()
         teardown_test_environment()
         _django_instrumentor.uninstrument()
-        settings.MIDDLEWARE = self._original_middleware
+        middleware = getattr(settings, "MIDDLEWARE", [])
+        middleware.clear()
+        middleware.extend(self._original_middleware)
         if self._original_root_urlconf is not None:
             settings.ROOT_URLCONF = self._original_root_urlconf
 
@@ -156,7 +156,7 @@ class TestMiddlewareSpans(WsgiTestBase):
         ]
         self.assertEqual(len(func_spans), 1)
 
-    # -- Span properties --
+    # Span properties
 
     def test_span_kind_is_internal(self):
         Client().get("/traced/")
@@ -188,7 +188,7 @@ class TestMiddlewareSpans(WsgiTestBase):
                 f"Span name '{span.name}' does not match expected format",
             )
 
-    # -- Edge cases --
+    # Edge cases
 
     def test_disabled_by_default(self):
         _django_instrumentor.uninstrument()
@@ -208,14 +208,14 @@ class TestMiddlewareSpans(WsgiTestBase):
 
     def _reinstrument_with_middleware(self, middleware_list, **kwargs):
         _django_instrumentor.uninstrument()
-        settings.MIDDLEWARE = middleware_list
+        middleware = getattr(settings, "MIDDLEWARE", [])
+        middleware.clear()
+        middleware.extend(middleware_list)
         kwargs.setdefault("is_middleware_spans_enabled", True)
         _django_instrumentor.instrument(**kwargs)
 
     def test_middleware_error_creates_span(self):
-        self._reinstrument_with_middleware(
-            [f"{_THIS_MODULE}.ErrorMiddleware"]
-        )
+        self._reinstrument_with_middleware([f"{_THIS_MODULE}.ErrorMiddleware"])
 
         try:
             Client().get("/traced/")
@@ -225,9 +225,7 @@ class TestMiddlewareSpans(WsgiTestBase):
         spans = self.memory_exporter.get_finished_spans()
         mw_spans = [s for s in spans if s.kind == SpanKind.INTERNAL]
         self.assertEqual(len(mw_spans), 1)
-        self.assertEqual(
-            mw_spans[0].name, "django.middleware ErrorMiddleware"
-        )
+        self.assertEqual(mw_spans[0].name, "django.middleware ErrorMiddleware")
 
     def test_respects_middleware_position(self):
         self._reinstrument_with_middleware(
