@@ -297,6 +297,8 @@ class StructlogInstrumentor(BaseInstrumentor):
 
     _processor: Optional["StructlogProcessor"] = None
     _original_configure: Callable[..., None] = structlog.configure
+    _original_configure_once: Callable[..., None] = structlog.configure_once
+    _is_configured_by_app: bool = False
 
     def instrumentation_dependencies(self) -> Collection[str]:
         """Return the required instrumentation dependencies."""
@@ -328,6 +330,13 @@ class StructlogInstrumentor(BaseInstrumentor):
         logger_provider = kwargs.get("logger_provider")
         processor = StructlogProcessor(logger_provider=logger_provider)
 
+        # Store original configuration functions for later restoration.
+        StructlogInstrumentor._original_configure = structlog.configure
+        StructlogInstrumentor._original_configure_once = (
+            structlog.configure_once
+        )
+        StructlogInstrumentor._is_configured_by_app = structlog.is_configured()
+
         # Get current structlog configuration
         config = structlog.get_config()
         current_processors = list(config.get("processors", []))
@@ -341,14 +350,12 @@ class StructlogInstrumentor(BaseInstrumentor):
         current_processors.insert(insert_position, processor)
 
         # Reconfigure structlog with the new processor chain
-        structlog.configure(processors=current_processors)
+        StructlogInstrumentor._original_configure(
+            processors=current_processors
+        )
 
         # Store reference for uninstrumentation
         StructlogInstrumentor._processor = processor
-
-        # Wrap structlog.configure so that if user code calls it after
-        # instrumentation, the processor is re-inserted into the new chain.
-        StructlogInstrumentor._original_configure = structlog.configure
 
         def ensure_processor(processors):
             processors = list(processors)
@@ -362,6 +369,26 @@ class StructlogInstrumentor(BaseInstrumentor):
         def patched_configure(*args, **kwargs):
             # If the user is supplying a processors list, ensure our processor
             # is included before passing it to the original configure.
+            StructlogInstrumentor._is_configured_by_app = True
+            if args and "processors" not in kwargs:
+                processors = args[0]
+                if processors is not None:
+                    args = (ensure_processor(processors), *args[1:])
+            elif kwargs.get("processors") is not None:
+                kwargs["processors"] = ensure_processor(kwargs["processors"])
+            return StructlogInstrumentor._original_configure(*args, **kwargs)
+
+        def patched_configure_once(*args, **kwargs):
+            # structlog.configure_once() treats the instrumentor's internal
+            # configure() call as prior configuration. If the app had not
+            # configured structlog yet, allow its first configure_once() call
+            # and inject the OTel processor into that chain.
+            if StructlogInstrumentor._is_configured_by_app:
+                return StructlogInstrumentor._original_configure_once(
+                    *args, **kwargs
+                )
+
+            StructlogInstrumentor._is_configured_by_app = True
             if args and "processors" not in kwargs:
                 processors = args[0]
                 if processors is not None:
@@ -371,6 +398,7 @@ class StructlogInstrumentor(BaseInstrumentor):
             return StructlogInstrumentor._original_configure(*args, **kwargs)
 
         structlog.configure = patched_configure
+        structlog.configure_once = patched_configure_once
 
     def _uninstrument(self, **kwargs):
         """
@@ -390,9 +418,13 @@ class StructlogInstrumentor(BaseInstrumentor):
         # Restore the original structlog.configure before reconfiguring so
         # the patched version does not re-insert the processor.
         structlog.configure = StructlogInstrumentor._original_configure
+        structlog.configure_once = (
+            StructlogInstrumentor._original_configure_once
+        )
 
         # Reconfigure structlog without the processor
         structlog.configure(processors=new_processors)
 
         # Clear reference
         StructlogInstrumentor._processor = None
+        StructlogInstrumentor._is_configured_by_app = False

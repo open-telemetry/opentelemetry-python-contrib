@@ -3,6 +3,7 @@
 
 import sys
 import time
+import warnings
 from datetime import datetime, timezone
 from unittest.mock import Mock
 
@@ -602,17 +603,122 @@ class TestStructlogInstrumentor(TestBase):
             any(isinstance(p, StructlogProcessor) for p in processors)
         )
 
+    def test_configure_once_after_instrument_allows_app_configuration(self):
+        """Test configure_once works after instrumentation configures structlog."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.stdlib.add_log_level,
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(captured_warnings, [])
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+
+    def test_configure_once_after_instrument_warns_on_repeat(self):
+        """Test configure_once still warns after app configuration."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        structlog.configure_once(
+            processors=[
+                structlog.processors.JSONRenderer(),
+            ]
+        )
+
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.dev.ConsoleRenderer(),
+                ]
+            )
+
+        self.assertEqual(len(captured_warnings), 1)
+        self.assertEqual(captured_warnings[0].category, RuntimeWarning)
+        self.assertEqual(
+            str(captured_warnings[0].message),
+            "Repeated configuration attempted.",
+        )
+        processors = structlog.get_config()["processors"]
+        self.assertFalse(
+            any(
+                isinstance(p, structlog.dev.ConsoleRenderer)
+                for p in processors
+            )
+        )
+
+    def test_configure_once_after_preconfigured_instrument_warns(self):
+        """Test preconfigured structlog keeps configure_once warning behavior."""
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(len(captured_warnings), 1)
+        self.assertEqual(captured_warnings[0].category, RuntimeWarning)
+        self.assertEqual(
+            str(captured_warnings[0].message),
+            "Repeated configuration attempted.",
+        )
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.dev.ConsoleRenderer)
+                for p in processors
+            )
+        )
+        self.assertFalse(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+
     def test_uninstrument_restores_configure(self):
-        """Test that uninstrument() restores the original structlog.configure."""
+        """Test that uninstrument() restores structlog configuration APIs."""
         original_configure = structlog.configure
+        original_configure_once = structlog.configure_once
 
         StructlogInstrumentor().instrument(
             logger_provider=self.logger_provider
         )
         self.assertIsNot(structlog.configure, original_configure)
+        self.assertIsNot(structlog.configure_once, original_configure_once)
 
         StructlogInstrumentor().uninstrument()
         self.assertIs(structlog.configure, original_configure)
+        self.assertIs(structlog.configure_once, original_configure_once)
 
     def test_instrumentation_dependencies(self):
         """Test that instrumentation_dependencies returns the correct value."""
