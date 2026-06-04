@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-flask`: wrap wsgi_app call in try/except to prevent active_requests gauge leak

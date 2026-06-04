@@ -1,6 +1,12 @@
 OpenTelemetry Anthropic Instrumentation
 =======================================
 
+.. note::
+
+   This package is being migrated as ``opentelemetry-instrumentation-genai-anthropic`` to
+   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-genai-anthropic <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-anthropic>`_.
+   Future development will happen there.
+
 |pypi|
 
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-anthropic.svg
@@ -65,4 +71,3 @@ References
 
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `Anthropic Documentation <https://docs.anthropic.com/>`_
-
