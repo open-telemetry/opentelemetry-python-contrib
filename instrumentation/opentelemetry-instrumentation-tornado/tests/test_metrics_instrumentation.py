@@ -3,6 +3,7 @@
 
 
 import asyncio
+import platform
 from timeit import default_timer
 from unittest.mock import patch
 
@@ -238,13 +239,16 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         )
 
         # Server and client durations should be similar (adjusting for msecs vs secs)
+        req1_duration_delta = (
+            0.05 if platform.python_implementation() == "PyPy" else 0.01
+        )
         self.assertAlmostEqual(
             abs(
                 req1_server_duration_data_point.sum / 1000.0
                 - req1_client_duration_data_point.sum
             ),
             0.0,
-            delta=0.01,
+            delta=req1_duration_delta,
         )
         self.assertAlmostEqual(
             abs(
