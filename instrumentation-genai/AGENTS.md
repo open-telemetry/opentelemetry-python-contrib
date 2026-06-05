@@ -19,6 +19,13 @@ This layer is responsible only for:
 Everything else (span creation, metric recording, event emission, context propagation)
 belongs in `util/opentelemetry-util-genai`.
 
+For GenAI streaming wrappers, prefer the shared `SyncStreamWrapper` and `AsyncStreamWrapper`
+helpers from `opentelemetry.util.genai.stream` instead of reimplementing iteration,
+close/context-manager, and finalization behavior in provider packages.
+
+Put provider-specific chunk parsing and telemetry finalization in private hook methods or a
+narrow mixin. Do not make async stream wrappers inherit from sync stream wrappers.
+
 ## 2. TelemetryHandler Initialization
 
 Construct `TelemetryHandler` once inside `_instrument()`, passing all OTel providers and the
@@ -60,6 +67,11 @@ except Exception as exc:
     invocation.fail(exc)
     raise
 ```
+
+Content capture decisions must come from the shared handler, not from instrumentation-local
+environment checks or duplicated helper logic. Evaluate the handler's content-capture API once
+when creating wrappers (for example, `capture_content = handler.should_capture_content()`) and
+pass that value through invocation/request helpers.
 
 ## 4. Semantic conventions
 

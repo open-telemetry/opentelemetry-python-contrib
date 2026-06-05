@@ -28,15 +28,26 @@ Usage
         # process message
         process_msg(message)
 
-The _instrument() method accepts the following keyword args:
-tracer_provider (TracerProvider) - an optional tracer provider
-produce_hook (Callable) - a function with extra user-defined logic to be performed before sending the message
-this function signature is:
-def produce_hook(span: Span, args, kwargs)
-consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
-this function signature is:
-def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
-for example:
+The ``_instrument()`` method accepts the following keyword args:
+
+- **tracer_provider** (TracerProvider) - an optional tracer provider
+- **produce_hook** (Callable) - a function with extra user-defined logic to be performed before sending the message
+
+  Function signature:
+
+  .. code:: python
+
+      def produce_hook(span: Span, args, kwargs): ...
+
+- **consume_hook** (Callable) - a function with extra user-defined logic to be performed after consuming a message
+
+  Function signature:
+
+  .. code:: python
+
+      def consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs): ...
+
+For example:
 
 .. code:: python
 
@@ -68,7 +79,7 @@ for example:
         process_msg(message)
 
 API
-___
+---
 """
 
 from importlib.metadata import PackageNotFoundError, distribution

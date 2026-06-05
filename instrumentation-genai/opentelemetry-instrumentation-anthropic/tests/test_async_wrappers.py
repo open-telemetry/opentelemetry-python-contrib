@@ -13,48 +13,36 @@ from opentelemetry.instrumentation.anthropic.wrappers import (
 )
 
 
-def _noop_stop_llm(invocation):
-    del invocation
-
-
-def _noop_fail_llm(invocation, error):
-    del invocation
-    del error
-
-
-def _make_handler():
+def _make_invocation():
     return SimpleNamespace(
-        stop_llm=_noop_stop_llm,
-        fail_llm=_noop_fail_llm,
+        attributes={},
+        request_model=None,
+        stop=lambda: None,
+        fail=lambda error: None,
     )
 
 
-def _make_invocation():
-    return SimpleNamespace(attributes={}, request_model=None)
-
-
-def _make_stream_wrapper(stream, handler=None):
+def _make_stream_wrapper(stream):
     return MessagesStreamWrapper(
         stream=stream,
-        handler=handler or _make_handler(),
         invocation=_make_invocation(),
         capture_content=False,
     )
 
 
-def _make_async_stream_wrapper(stream, handler=None):
+def _make_async_stream_wrapper(stream):
     return AsyncMessagesStreamWrapper(
         stream=stream,
-        handler=handler or _make_handler(),
         invocation=_make_invocation(),
         capture_content=False,
     )
 
 
 class _FakeSyncStream:
-    def __init__(self, *, events=None, error=None):
+    def __init__(self, *, events=None, error=None, close_error=None):
         self._events = list(events or [])
         self._error = error
+        self._close_error = close_error
         self.close_calls = 0
         self.response = _FakeSyncResponse()
 
@@ -70,12 +58,15 @@ class _FakeSyncStream:
 
     def close(self):
         self.close_calls += 1
+        if self._close_error is not None:
+            raise self._close_error
 
 
 class _FakeAsyncStream:
-    def __init__(self, *, events=None, error=None):
+    def __init__(self, *, events=None, error=None, close_error=None):
         self._events = list(events or [])
         self._error = error
+        self._close_error = close_error
         self.close_calls = 0
         self.final_message = SimpleNamespace(id="msg_final")
         self.response = _FakeAsyncResponse()
@@ -89,19 +80,26 @@ class _FakeAsyncStream:
 
     async def close(self):
         self.close_calls += 1
+        if self._close_error is not None:
+            raise self._close_error
 
     async def get_final_message(self):
         return self.final_message
 
 
 class _FakeSyncManager:
-    def __init__(self, stream, suppressed=False, exit_error=None):
+    def __init__(
+        self, stream, suppressed=False, enter_error=None, exit_error=None
+    ):
         self._stream = stream
         self._suppressed = suppressed
+        self._enter_error = enter_error
         self._exit_error = exit_error
         self.exit_args = None
 
     def __enter__(self):
+        if self._enter_error is not None:
+            raise self._enter_error
         return self._stream
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -112,13 +110,18 @@ class _FakeSyncManager:
 
 
 class _FakeAsyncManager:
-    def __init__(self, stream, suppressed=False, exit_error=None):
+    def __init__(
+        self, stream, suppressed=False, enter_error=None, exit_error=None
+    ):
         self._stream = stream
         self._suppressed = suppressed
+        self._enter_error = enter_error
         self._exit_error = exit_error
         self.exit_args = None
 
     async def __aenter__(self):
+        if self._enter_error is not None:
+            raise self._enter_error
         return self._stream
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -189,9 +192,7 @@ def test_sync_stream_wrapper_exit_fails_and_closes_on_exception():
     failures = []
 
     wrapper._stop = lambda: stopped.append(True)
-    wrapper._fail = lambda message, error_type: failures.append(
-        (message, error_type)
-    )
+    wrapper._fail = failures.append
 
     error = ValueError("boom")
     result = wrapper.__exit__(ValueError, error, None)
@@ -199,7 +200,25 @@ def test_sync_stream_wrapper_exit_fails_and_closes_on_exception():
     assert result is False
     assert stream.close_calls == 1
     assert stopped == [True]
-    assert failures == [("boom", ValueError)]
+    assert failures == [error]
+
+
+def test_sync_stream_wrapper_close_failure_fails_and_reraises():
+    error = RuntimeError("close failed")
+    stream = _FakeSyncStream(close_error=error)
+    wrapper = _make_stream_wrapper(stream)
+    stopped = []
+    failures = []
+
+    wrapper._stop = lambda: stopped.append(True)
+    wrapper._fail = failures.append
+
+    with pytest.raises(RuntimeError, match="close failed"):
+        wrapper.close()
+
+    assert stream.close_calls == 1
+    assert failures == [error]
+    assert not stopped
 
 
 def test_sync_stream_wrapper_processes_events_and_stops_on_completion():
@@ -229,14 +248,12 @@ def test_sync_stream_wrapper_fails_and_reraises_stream_errors():
     wrapper = _make_stream_wrapper(stream)
     failures = []
 
-    wrapper._fail = lambda message, error_type: failures.append(
-        (message, error_type)
-    )
+    wrapper._fail = failures.append
 
     with pytest.raises(ValueError, match="boom"):
         next(wrapper)
 
-    assert failures == [("boom", ValueError)]
+    assert failures == [error]
 
 
 def test_sync_stream_wrapper_getattr_passthrough():
@@ -263,8 +280,7 @@ def test_sync_manager_enter_constructs_stream_wrapper():
     stream = _FakeSyncStream()
     wrapper = MessagesStreamManagerWrapper(
         manager=_FakeSyncManager(stream=stream),
-        handler=_make_handler(),
-        invocation=_make_invocation(),
+        invocation_factory=_make_invocation,
         capture_content=False,
     )
 
@@ -274,11 +290,49 @@ def test_sync_manager_enter_constructs_stream_wrapper():
         assert wrapper._stream_wrapper is result
 
 
+def test_sync_manager_does_not_create_invocation_until_enter():
+    stream = _FakeSyncStream()
+    factory_calls = []
+    wrapper = MessagesStreamManagerWrapper(
+        manager=_FakeSyncManager(stream=stream),
+        invocation_factory=lambda: factory_calls.append(True)
+        or _make_invocation(),
+        capture_content=False,
+    )
+
+    assert not factory_calls
+
+    with wrapper:
+        pass
+
+    assert factory_calls == [True]
+
+
+def test_sync_manager_enter_fails_invocation_when_manager_raises():
+    error = RuntimeError("manager enter failure")
+    failures = []
+    invocation = _make_invocation()
+    invocation.fail = failures.append
+    wrapper = MessagesStreamManagerWrapper(
+        manager=_FakeSyncManager(
+            stream=SimpleNamespace(),
+            enter_error=error,
+        ),
+        invocation_factory=lambda: invocation,
+        capture_content=False,
+    )
+
+    with pytest.raises(RuntimeError, match="manager enter failure"):
+        with wrapper:
+            pass
+
+    assert failures == [error]
+
+
 def test_sync_manager_exit_forwards_exception_to_stream_wrapper():
     wrapper = MessagesStreamManagerWrapper(
         manager=_FakeSyncManager(stream=SimpleNamespace(), suppressed=False),
-        handler=SimpleNamespace(),
-        invocation=_make_invocation(),
+        invocation_factory=_make_invocation,
         capture_content=False,
     )
     stream_wrapper = _FakeStreamWrapper()
@@ -295,8 +349,7 @@ def test_sync_manager_exit_forwards_exception_to_stream_wrapper():
 def test_sync_manager_exit_uses_none_exception_when_manager_suppresses():
     wrapper = MessagesStreamManagerWrapper(
         manager=_FakeSyncManager(stream=SimpleNamespace(), suppressed=True),
-        handler=SimpleNamespace(),
-        invocation=_make_invocation(),
+        invocation_factory=_make_invocation,
         capture_content=False,
     )
     stream_wrapper = _FakeStreamWrapper()
@@ -318,8 +371,7 @@ def test_sync_manager_exit_still_finalizes_stream_wrapper_when_manager_raises():
             suppressed=False,
             exit_error=manager_error,
         ),
-        handler=SimpleNamespace(),
-        invocation=_make_invocation(),
+        invocation_factory=_make_invocation,
         capture_content=False,
     )
     stream_wrapper = _FakeStreamWrapper()
@@ -330,7 +382,8 @@ def test_sync_manager_exit_still_finalizes_stream_wrapper_when_manager_raises():
         wrapper.__exit__(ValueError, error, None)
 
     assert wrapper._manager.exit_args == (ValueError, error, None)
-    assert stream_wrapper.exit_args == (ValueError, error, None)
+    assert stream_wrapper.exit_args[:2] == (RuntimeError, manager_error)
+    assert stream_wrapper.exit_args[2] is not None
 
 
 @pytest.mark.asyncio
@@ -356,9 +409,7 @@ async def test_async_stream_wrapper_exit_fails_and_closes_on_exception():
     failures = []
 
     wrapper._stop = lambda: stopped.append(True)
-    wrapper._fail = lambda message, error_type: failures.append(
-        (message, error_type)
-    )
+    wrapper._fail = failures.append
 
     error = ValueError("boom")
     result = await wrapper.__aexit__(ValueError, error, None)
@@ -366,7 +417,7 @@ async def test_async_stream_wrapper_exit_fails_and_closes_on_exception():
     assert result is False
     assert stream.close_calls == 1
     assert stopped == [True]
-    assert failures == [("boom", ValueError)]
+    assert failures == [error]
 
 
 @pytest.mark.asyncio
@@ -381,6 +432,25 @@ async def test_async_stream_wrapper_close_uses_close_and_stops():
 
     assert stream.close_calls == 1
     assert stopped == [True]
+
+
+@pytest.mark.asyncio
+async def test_async_stream_wrapper_close_failure_fails_and_reraises():
+    error = RuntimeError("close failed")
+    stream = _FakeAsyncStream(close_error=error)
+    wrapper = _make_async_stream_wrapper(stream)
+    stopped = []
+    failures = []
+
+    wrapper._stop = lambda: stopped.append(True)
+    wrapper._fail = failures.append
+
+    with pytest.raises(RuntimeError, match="close failed"):
+        await wrapper.close()
+
+    assert stream.close_calls == 1
+    assert failures == [error]
+    assert not stopped
 
 
 @pytest.mark.asyncio
@@ -412,14 +482,12 @@ async def test_async_stream_wrapper_fails_and_reraises_stream_errors():
     wrapper = _make_async_stream_wrapper(stream)
     failures = []
 
-    wrapper._fail = lambda message, error_type: failures.append(
-        (message, error_type)
-    )
+    wrapper._fail = failures.append
 
     with pytest.raises(ValueError, match="boom"):
         await anext(wrapper)
 
-    assert failures == [("boom", ValueError)]
+    assert failures == [error]
 
 
 @pytest.mark.asyncio
@@ -452,7 +520,6 @@ async def test_async_manager_enter_constructs_async_stream_wrapper():
     stream = _FakeAsyncStream()
     wrapper = AsyncMessagesStreamManagerWrapper(
         manager=_FakeAsyncManager(stream=stream),
-        handler=_make_handler(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -464,10 +531,31 @@ async def test_async_manager_enter_constructs_async_stream_wrapper():
 
 
 @pytest.mark.asyncio
+async def test_async_manager_enter_fails_invocation_when_manager_raises():
+    error = RuntimeError("manager enter failure")
+    failures = []
+    invocation = _make_invocation()
+    invocation.fail = failures.append
+    wrapper = AsyncMessagesStreamManagerWrapper(
+        manager=_FakeAsyncManager(
+            stream=SimpleNamespace(),
+            enter_error=error,
+        ),
+        invocation=invocation,
+        capture_content=False,
+    )
+
+    with pytest.raises(RuntimeError, match="manager enter failure"):
+        async with wrapper:
+            pass
+
+    assert failures == [error]
+
+
+@pytest.mark.asyncio
 async def test_async_manager_exit_forwards_exception_to_stream_wrapper():
     wrapper = AsyncMessagesStreamManagerWrapper(
         manager=_FakeAsyncManager(stream=SimpleNamespace(), suppressed=False),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -486,7 +574,6 @@ async def test_async_manager_exit_forwards_exception_to_stream_wrapper():
 async def test_async_manager_exit_uses_none_exception_when_manager_suppresses():
     wrapper = AsyncMessagesStreamManagerWrapper(
         manager=_FakeAsyncManager(stream=SimpleNamespace(), suppressed=True),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -510,7 +597,6 @@ async def test_async_manager_exit_still_finalizes_stream_wrapper_when_manager_ra
             suppressed=False,
             exit_error=manager_error,
         ),
-        handler=SimpleNamespace(),
         invocation=_make_invocation(),
         capture_content=False,
     )
@@ -522,4 +608,5 @@ async def test_async_manager_exit_still_finalizes_stream_wrapper_when_manager_ra
         await wrapper.__aexit__(ValueError, error, None)
 
     assert wrapper._manager.exit_args == (ValueError, error, None)
-    assert stream_wrapper.exit_args == (ValueError, error, None)
+    assert stream_wrapper.exit_args[:2] == (RuntimeError, manager_error)
+    assert stream_wrapper.exit_args[2] is not None
