@@ -100,9 +100,9 @@ def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
     httpx_response = response.response
     if httpx_response is not None:
         assert isinstance(httpx_response, httpx.Response)
-        content = httpx_response.read()
+        content = httpx_response.read().decode()
     else:
-        content = b"".join(response[2])
+        content = b"".join(response[2]).decode()
 
     span.set_attribute(
         HTTP_RESPONSE_BODY,
@@ -117,9 +117,9 @@ async def _async_response_hook(
     httpx_response = response.response
     if httpx_response is not None:
         assert isinstance(httpx_response, httpx.Response)
-        content = await httpx_response.aread()
+        content = (await httpx_response.aread()).decode()
     else:
-        content = b"".join([part async for part in response[2]])
+        content = b"".join([part async for part in response[2]]).decode()
 
     span.set_attribute(
         HTTP_RESPONSE_BODY,
