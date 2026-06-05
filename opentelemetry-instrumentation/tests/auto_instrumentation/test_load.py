@@ -554,15 +554,15 @@ class TestOtelLogLevelLogger(TestCase):
 
     @staticmethod
     def _expected_message(
-        message, name=_AUTO_INSTRUMENTATION_LOAD_LOGGER_NAME
+        message, name=_AUTO_INSTRUMENTATION_LOAD_LOGGER_NAME, level="DEBUG"
     ):
-        return "DEBUG:" + name + ":" + message + "\n"
+        return level + ":" + name + ":" + message + "\n"
 
     @staticmethod
     def _stderr_from_debug(logger):
         stderr = StringIO()
         with redirect_stderr(stderr):
-            logger.debug("Instrumented %s", "requests")
+            logger.debug("Instrumented '%s'", "requests")
         return stderr.getvalue()
 
     def _save_logger_state(self, logger):
@@ -599,7 +599,41 @@ class TestOtelLogLevelLogger(TestCase):
                 )
 
                 logger_mock.log.assert_called_once_with(
-                    DEBUG, "Instrumented %s", "requests", extra={}
+                    DEBUG,
+                    "Instrumented '%s'",
+                    "requests",
+                    extra={},
+                    stacklevel=2,
+                )
+
+    def test_writes_otel_log_level_output_for_enabled_info_records(self):
+        for log_level in ("debug", "info"):
+            with (
+                self.subTest(log_level=log_level),
+                patch.dict(
+                    "os.environ", {"OTEL_LOG_LEVEL": log_level}, clear=True
+                ),
+            ):
+                logger_mock = self._logger_mock()
+                logger = _load._OtelLogLevelLoggerAdapter(logger_mock, {})
+                stderr = StringIO()
+
+                with redirect_stderr(stderr):
+                    logger.info("Configured '%s'", "requests")
+
+                self.assertEqual(
+                    stderr.getvalue(),
+                    self._expected_message(
+                        "Configured 'requests'", level="INFO"
+                    ),
+                )
+
+                logger_mock.log.assert_called_once_with(
+                    INFO,
+                    "Configured '%s'",
+                    "requests",
+                    extra={},
+                    stacklevel=2,
                 )
 
     def test_writes_otel_log_level_output_to_current_sys_stderr(self):
@@ -608,7 +642,7 @@ class TestOtelLogLevelLogger(TestCase):
             stderr = StringIO()
 
             with redirect_stderr(stderr):
-                logger.debug("Instrumented %s", "requests")
+                logger.debug("Instrumented '%s'", "requests")
 
             self.assertEqual(
                 stderr.getvalue(),
@@ -618,7 +652,7 @@ class TestOtelLogLevelLogger(TestCase):
     @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debug"}, clear=True)
     def test_otel_log_level_output_does_not_crash_on_format_error(self):
         logger = _load._OtelLogLevelLoggerAdapter(self._logger_mock(), {})
-        msg = "Instrumented %s %s"
+        msg = "Instrumented '%s' '%s'"
         stderr = StringIO()
 
         with redirect_stderr(stderr):
@@ -626,10 +660,12 @@ class TestOtelLogLevelLogger(TestCase):
 
         self.assertEqual(
             stderr.getvalue(),
-            self._expected_message("Instrumented %s %s"),
+            self._expected_message("Instrumented '%s' '%s'"),
         )
 
-    def test_does_not_write_otel_log_level_output(self):
+    def test_does_not_write_fallback_when_level_disabled_or_logging_configured(
+        self,
+    ):
         cases = (
             ("debug", DEBUG),
             ("info", False),
@@ -655,22 +691,27 @@ class TestOtelLogLevelLogger(TestCase):
                 self.assertEqual(self._stderr_from_debug(logger), "")
 
                 logger_mock.log.assert_called_once_with(
-                    DEBUG, "Instrumented %s", "requests", extra={}
+                    DEBUG,
+                    "Instrumented '%s'",
+                    "requests",
+                    extra={},
+                    stacklevel=2,
                 )
 
     @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debug"}, clear=True)
-    def test_otel_log_level_output_uses_logger_hierarchy_handlers(self):
+    def test_otel_log_level_output_stops_after_application_logging_configured(
+        self,
+    ):
         parent_logger = getLogger("opentelemetry.test.auto_instrumentation")
         logger = getLogger("opentelemetry.test.auto_instrumentation.loader")
-        self._save_logger_state(parent_logger)
-        self._save_logger_state(logger)
-
-        parent_logger.handlers = []
-        parent_logger.setLevel(DEBUG)
-        parent_logger.propagate = False
-        logger.handlers = []
-        logger.setLevel(DEBUG)
-        logger.propagate = True
+        current = logger
+        while current:
+            self._save_logger_state(current)
+            current.handlers = []
+            current.setLevel(DEBUG)
+            current.propagate = True
+            current.disabled = False
+            current = current.parent
 
         otel_log_level_logger = _load._OtelLogLevelLoggerAdapter(logger, {})
         expected_message = self._expected_message(
@@ -691,17 +732,19 @@ class TestOtelLogLevelLogger(TestCase):
             expected_message,
         )
 
+        parent_logger.propagate = False
+
+        # A propagation stop is application logging configuration even without a
+        # handler. Do not write fallback output over that configuration.
+        self.assertEqual(self._stderr_from_debug(otel_log_level_logger), "")
+
+        parent_logger.propagate = True
         stream_handler = StreamHandler(StringIO())
         stream_handler.setLevel(INFO)
         parent_logger.addHandler(stream_handler)
 
-        self.assertEqual(
-            self._stderr_from_debug(otel_log_level_logger),
-            expected_message,
-        )
-
-        stream_handler.setLevel(DEBUG)
-
+        # Any non-NullHandler means the application configured logging. Handler
+        # levels are then their output policy, so do not write fallback output.
         self.assertEqual(self._stderr_from_debug(otel_log_level_logger), "")
 
     @patch.dict("os.environ", {"OTEL_LOG_LEVEL": "debug"}, clear=True)
@@ -711,16 +754,18 @@ class TestOtelLogLevelLogger(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_instrumentors_writes_debug_to_stderr_without_logging_handler(
+    def test_load_instrumentors_writes_debug_without_application_logging_config(
         self, iter_mock, mock_dep
     ):
         logger = _load._logger.logger
-        self._save_logger_state(logger)
-
-        logger.handlers = []
-        logger.setLevel(DEBUG)
-        logger.propagate = False
-        logger.disabled = False
+        current = logger
+        while current:
+            self._save_logger_state(current)
+            current.handlers = []
+            current.setLevel(DEBUG)
+            current.propagate = True
+            current.disabled = False
+            current = current.parent
 
         ep_mock = Mock()
         ep_mock.name = "requests"
@@ -734,7 +779,7 @@ class TestOtelLogLevelLogger(TestCase):
 
         self.assertEqual(
             stderr.getvalue(),
-            self._expected_message("Instrumented 'requests'"),
+            self._expected_message("Instrumented requests"),
         )
         distro_mock.load_instrumentor.assert_called_once_with(
             ep_mock, skip_dep_check=True
@@ -747,7 +792,7 @@ class TestOtelLogLevelLogger(TestCase):
     @patch(
         "opentelemetry.instrumentation.auto_instrumentation._load.entry_points"
     )
-    def test_load_instrumentors_uses_existing_root_logging_handler(
+    def test_load_instrumentors_defers_to_configured_root_logging_handler(
         self, iter_mock, mock_dep
     ):
         logger = _load._logger.logger

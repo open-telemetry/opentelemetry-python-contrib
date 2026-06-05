@@ -4,11 +4,15 @@
 import sys
 from functools import cached_property
 from logging import (
+    CRITICAL,
     DEBUG,
-    NOTSET,
+    ERROR,
+    INFO,
+    WARNING,
     Logger,
     LoggerAdapter,
     NullHandler,
+    getLevelName,
     getLogger,
 )
 from os import environ
@@ -32,71 +36,91 @@ from opentelemetry.util._importlib_metadata import (
 
 SKIPPED_INSTRUMENTATIONS_WILDCARD = "*"
 OTEL_LOG_LEVEL = "OTEL_LOG_LEVEL"
-_DEBUG_LOG_LEVELS = frozenset(("trace", "debug"))
+_OTEL_LOG_LEVELS = {
+    "trace": DEBUG,
+    "debug": DEBUG,
+    "info": INFO,
+    "warn": WARNING,
+    "warning": WARNING,
+    "error": ERROR,
+    "fatal": CRITICAL,
+    "critical": CRITICAL,
+}
 
 
-def _otel_log_level_allows_debug() -> bool:
+def _otel_log_level() -> int | None:
     log_level = environ.get(OTEL_LOG_LEVEL, "").strip().lower()
-    return log_level in _DEBUG_LOG_LEVELS
+    return _OTEL_LOG_LEVELS.get(log_level)
 
 
-def _format_log_arg(arg: object) -> object:
-    if isinstance(arg, str):
-        return repr(arg)
-
-    return arg
-
-
-def _format_log_message(msg: str, args: tuple[object, ...]) -> str:
+def _format_log_message(msg: object, args: tuple[object, ...]) -> str:
+    message = str(msg)
     if not args:
-        return msg
+        return message
 
     try:
-        return msg % tuple(_format_log_arg(arg) for arg in args)
+        return message % args
     except Exception:  # pylint: disable=broad-except
-        return msg
+        return message
 
 
 class _OtelLogLevelLoggerAdapter(LoggerAdapter):
-    """Write startup debug messages to stderr when logging would drop them.
+    """Write startup log messages to stderr before logging is configured.
 
     Auto-instrumentation usually runs from sitecustomize before the
-    application configures logging, so normal logger.debug calls are often
-    not visible even when OTEL_LOG_LEVEL=debug. This adapter keeps normal
-    logging behavior, but also writes the same startup messages to stderr when
-    OTEL_LOG_LEVEL asks for debug output and Python logging would not emit them.
+    application configures logging, so normal log calls are often not visible
+    even when OTEL_LOG_LEVEL requests them. This adapter keeps normal logging
+    behavior, but also writes startup messages to stderr when OTEL_LOG_LEVEL
+    asks for that level and no application logging configuration is detected on
+    the logger path. Once the application configures logging, its logger and
+    handler settings determine what gets emitted. Warning and higher records
+    are left to stdlib logging's lastResort handler so normal warning/error
+    output is not duplicated.
     """
 
-    def debug(self, msg: str, *args: object, **kwargs: object) -> None:
-        super().debug(msg, *args, **kwargs)
+    def log(
+        self, level: int, msg: object, *args: object, **kwargs: object
+    ) -> None:
+        # If application logging is already configured, make normal logging
+        # report the _logger caller instead of this helper. e.g.:
+        # DEBUG:_load.py:131:_load_instrumentors:Instrumented my_instrumentor
+        # instead of:
+        # DEBUG:_load.py:234:log:Instrumented my_instrumentor
+        kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
 
-        if not _otel_log_level_allows_debug() or self._logger_would_emit(
-            DEBUG
-        ):
+        super().log(level, msg, *args, **kwargs)
+
+        otel_log_level = _otel_log_level()
+        if otel_log_level is None or level < otel_log_level:
+            return
+
+        if self._has_application_logging_configuration():
+            return
+
+        if self._handled_by_logging_last_resort(level):
             return
 
         message = _format_log_message(msg, args)
-        sys.stderr.write(f"DEBUG:{self.logger.name}:{message}\n")
+        sys.stderr.write(
+            f"{getLevelName(level)}:{self.logger.name}:{message}\n"
+        )
         sys.stderr.flush()
 
-    def _logger_would_emit(self, level: int) -> bool:
-        # If the logger itself would reject this level, don't bother walking handlers.
-        if not self.logger.isEnabledFor(level):
-            return False
+    @staticmethod
+    def _handled_by_logging_last_resort(level: int) -> bool:
+        return level >= WARNING
 
+    def _has_application_logging_configuration(self) -> bool:
         logger: Logger | None = self.logger
         while logger:
             for handler in logger.handlers:
-                if isinstance(handler, NullHandler):
-                    continue
-
-                if handler.level == NOTSET or level >= handler.level:
+                if not isinstance(handler, NullHandler):
                     return True
 
-            # If we get here, this logger's handlers would not emit the record.
-            # If propagation is disabled, parent handlers will not see it either.
+            # Respect application logging configuration even if it prevents this
+            # record from reaching a handler.
             if not logger.propagate:
-                break
+                return True
 
             logger = logger.parent
 
