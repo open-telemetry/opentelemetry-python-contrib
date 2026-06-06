@@ -99,7 +99,7 @@ def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        b"".join(response[2]),
+        "".join([part.decode() for part in response[2]]),
     )
 
 
@@ -109,7 +109,7 @@ async def _async_response_hook(
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        b"".join([part async for part in response[2]]),
+        "".join([part.decode() async for part in response[2]]),
     )
 
 
