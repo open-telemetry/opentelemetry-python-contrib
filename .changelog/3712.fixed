@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: Implement new messaging semantic convention opt-in in celery instrumentation and add corresponding tests ([#3712](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/3712))
