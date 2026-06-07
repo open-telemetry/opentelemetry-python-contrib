@@ -80,7 +80,7 @@ MOCK_LAMBDA_SQS_EVENT_UPPERCASE_ATTRS = {
     ]
 }
 
-# SQS event where messageAttributes is explicitly None (null).
+# SQS event where messageAttributes is explicitly None.
 MOCK_LAMBDA_SQS_EVENT_NULL_MESSAGE_ATTRS = {
     "Records": [
         {
@@ -123,7 +123,7 @@ MOCK_LAMBDA_SQS_EVENT_ABSENT_MESSAGE_ATTRS = {
     ]
 }
 
-# Three-record batch: record 1 has no context, record 2 uses a title-case key, record 3 lowercase.
+# Three record batch: record 1 has no context, record 2 uses a title case key, record 3 lowercase.
 # Exactly two span links should be extracted (records 2 and 3).
 MOCK_LAMBDA_SQS_BATCH_EVENT_PARTIAL_CONTEXT = {
     "Records": [
@@ -188,13 +188,13 @@ MOCK_LAMBDA_SQS_BATCH_EVENT_PARTIAL_CONTEXT = {
     ]
 }
 
-# Malformed: Records list is empty — _is_sqs_event should return False.
+# Malformed: Records list is empty, _is_sqs_event should return False.
 MOCK_MALFORMED_SQS_EVENT_EMPTY_RECORDS = {"Records": []}
 
-# Malformed: Records is a string, not a list — _is_sqs_event should return False.
+# Malformed: Records is a string, not a list, _is_sqs_event should return False.
 MOCK_MALFORMED_SQS_EVENT_RECORDS_NOT_LIST = {"Records": "not-a-list"}
 
-# Malformed: eventSource is "aws:s3", not "aws:sqs" — _is_sqs_event should return False.
+# Malformed: eventSource is "aws:s3", not "aws:sqs", _is_sqs_event should return False.
 MOCK_MALFORMED_SQS_EVENT_WRONG_SOURCE = {
     "Records": [
         {
@@ -211,11 +211,11 @@ MOCK_MALFORMED_SQS_EVENT_WRONG_SOURCE = {
     ]
 }
 
-# Malformed: no Records key at all — _is_sqs_event should return False.
+# Malformed: no Records key at all, _is_sqs_event should return False.
 MOCK_MALFORMED_SQS_EVENT_NO_RECORDS_KEY = {"body": "oops, no Records key"}
 
 # SQS event with a traceparent whose StringValue is not a valid W3C traceparent.
-# The propagator will parse it as an invalid context; no span link should be extracted.
+# The propagator will parse it as an invalid context, no span link should be extracted.
 MOCK_LAMBDA_SQS_EVENT_INVALID_TRACEPARENT = {
     "Records": [
         {
@@ -268,7 +268,7 @@ MOCK_LAMBDA_SQS_EVENT_ATTR_NOT_DICT = {
 }
 
 # SQS event where the attribute dict has DataType but no StringValue key.
-# The getter returns None for missing StringValue; no link is extracted.
+# The getter returns None for missing StringValue, no link is extracted.
 MOCK_LAMBDA_SQS_EVENT_MISSING_STRING_VALUE = {
     "Records": [
         {
@@ -292,8 +292,8 @@ MOCK_LAMBDA_SQS_EVENT_MISSING_STRING_VALUE = {
     ]
 }
 
-# SQS event with no eventSourceARN key; _extract_sqs_queue_name falls back to "".
-# The CONSUMER span name becomes "process ".
+# SQS event with no eventSourceARN key, _extract_sqs_queue_name falls back to "".
+# The CONSUMER span name becomes "process".
 MOCK_LAMBDA_SQS_EVENT_MISSING_ARN = {
     "Records": [
         {
@@ -315,7 +315,7 @@ MOCK_LAMBDA_SQS_EVENT_MISSING_ARN = {
 }
 
 # SQS event with a malformed ARN (no colons, fewer than 6 parts).
-# _extract_sqs_queue_name returns the full string; CONSUMER span name becomes "process bad-arn".
+# _extract_sqs_queue_name returns the full string, CONSUMER span name becomes "process bad-arn".
 MOCK_LAMBDA_SQS_EVENT_SHORT_ARN = {
     "Records": [
         {
