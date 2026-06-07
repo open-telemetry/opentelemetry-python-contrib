@@ -26,6 +26,7 @@ If you are using AI agents to assist with contributions, please read [AGENTS.md]
   - [Find a Buddy and get Started Quickly](#find-a-buddy-and-get-started-quickly)
   - [Development](#development)
     - [Virtual Environment](#virtual-environment)
+      - [Virtual Environment Including Local Core Repository](#virtual-environment-including-local-core-repository)
     - [Troubleshooting](#troubleshooting)
     - [Benchmarks](#benchmarks)
   - [Pull Requests](#pull-requests)
@@ -119,6 +120,24 @@ uv sync
 ```
 
 This will create a virtual environment in the `.venv` directory and install all the necessary dependencies.
+
+#### Virtual Environment Including Local Core Repository
+
+If you want to utilize a local version of the [OpenTelemetry Python Core Repository](https://github.com/open-telemetry/opentelemetry-python) in addition to your local clone of this repository, you have to replace the core `git` dependencies from the [`pyproject.toml`](./pyproject.toml) with [uv path dependencies](https://docs.astral.sh/uv/concepts/projects/dependencies/#path).
+
+You can also utilize [`scripts/generate_pyproject_for_local_core_dependency.py`](./scripts/generate_pyproject_for_local_core_dependency.py). Simply point it at the `pyproject.toml` file of your local contrib and core repository and replace the `tool.uv.sources` section in 
+the contrib [`pyproject.toml`](./pyproject.toml) with the output of the script.
+
+```console
+$ python3 scripts/generate_pyproject_for_local_core_dependency.py -icontrib ./pyproject.toml -icore ../opentelemetry-python/pyproject.toml
+[tool.uv.sources]
+opentelemetry-api = { path = "../opentelemetry-python/opentelemetry-sdk", editable = true }
+...
+opentelemetry-instrumentation = { workspace = true }
+...
+```
+
+> Note: The output will use absolute paths instead of relative ones
 
 ### Troubleshooting
 
