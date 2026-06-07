@@ -1,0 +1,110 @@
+interactions:
+- request:
+    body: |-
+      {
+        "max_tokens": 100,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Hello"
+          }
+        ],
+        "model": "invalid-model-name",
+        "stream": true
+      }
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '108'
+      Content-Type:
+      - application/json
+      Host:
+      - api.anthropic.com
+      User-Agent:
+      - Anthropic/Python 0.96.0
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Helper-Method:
+      - stream
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 0.96.0
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.13.9
+      X-Stainless-Stream-Helper:
+      - messages
+      anthropic-version:
+      - '2023-06-01'
+      x-api-key:
+      - test_anthropic_api_key
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+      x-stainless-timeout:
+      - NOT_GIVEN
+    method: POST
+    uri: https://api.anthropic.com/v1/messages
+  response:
+    body:
+      string: |-
+        {
+          "type": "error",
+          "error": {
+            "type": "not_found_error",
+            "message": "model: invalid-model-name"
+          },
+          "request_id": "req_011CaStaVbvatZBsVSEdCNup"
+        }
+    headers:
+      CF-RAY:
+      - 9f27cba32ab3e8a3-EWR
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Sun, 26 Apr 2026 18:54:20 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      X-Robots-Tag:
+      - none
+      cf-cache-status:
+      - DYNAMIC
+      content-length:
+      - '133'
+      request-id:
+      - req_011CaStaVbvatZBsVSEdCNup
+      server-timing:
+      - x-originResponse;dur=24
+      set-cookie:
+      - _cfuvid=8TQIv3k3c.VCQiwMFKLGgBJhj79YyFhu9LbIIlsvbQA-1777229660.661682-1.0.1.1-uptE0mJmjr5xQDBoWJKx3DLKES6.BVQIhMDo9KANFKM;
+        HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains; preload
+      vary:
+      - Accept-Encoding
+      x-envoy-upstream-service-time:
+      - '22'
+      x-should-retry:
+      - 'false'
+    status:
+      code: 404
+      message: Not Found
+version: 1

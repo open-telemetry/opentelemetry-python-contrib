@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 OpenAI client instrumentation supporting `openai`, it can be enabled by
@@ -36,10 +25,46 @@ Usage
         ],
     )
 
+Configuration
+-------------
+
+By default, the instrumentation aligns with `Semantic Conventions v1.30.0
+<https://github.com/open-telemetry/semantic-conventions/tree/v1.30.0/docs/gen-ai>`_
+and does not capture prompt or completion content. Behavior is controlled
+via environment variables:
+
+- ``OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`` - opt into the
+  latest GenAI semantic conventions. Required to access the newer attributes
+  and the ``span_only`` / ``event_only`` / ``span_and_event`` content modes.
+  Without this flag, the instrumentation stays on v1.30.0 conventions.
+- ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` - enable capture of
+  prompts, completions, tool arguments, and return values. Set to ``true``
+  on the legacy path, or one of ``span_only``, ``event_only``,
+  ``span_and_event`` when experimental conventions are enabled.
+- ``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK=upload`` together with
+  ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH=<fsspec-uri>`` - upload
+  prompts and completions to an ``fsspec``-compatible destination
+  (local filesystem, ``gs://``, ``s3://``, etc.) and record reference URIs as
+  ``gen_ai.input.messages.ref`` / ``gen_ai.output.messages.ref`` attributes.
+  Inline content is not captured unless
+  ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`` is also set.
+
+See the `opentelemetry-util-genai README
+<https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/util/opentelemetry-util-genai/README.rst>`_
+for the full list of GenAI configuration variables.
+
+A custom ``CompletionHook`` implementation can also be passed programmatically::
+
+    OpenAIInstrumentor().instrument(completion_hook=my_hook)
+
+When provided, this takes precedence over the hook resolved from
+``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK``.
+
 API
 ---
 """
 
+from importlib import import_module
 from typing import Collection
 
 from wrapt import wrap_function_wrapper
@@ -52,14 +77,11 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.metrics import get_meter
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.completion_hook import load_completion_hook
 from opentelemetry.util.genai.handler import (
     TelemetryHandler,
 )
-from opentelemetry.util.genai.types import ContentCapturingMode
-from opentelemetry.util.genai.utils import (
-    get_content_capturing_mode,
-    is_experimental_mode,
-)
+from opentelemetry.util.genai.utils import is_experimental_mode
 
 from .instruments import Instruments
 from .patch import (
@@ -69,6 +91,9 @@ from .patch import (
     chat_completions_create_v_new,
     chat_completions_create_v_old,
     embeddings_create,
+)
+from .patch_responses import (
+    responses_create,
 )
 
 
@@ -107,22 +132,19 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         instruments = Instruments(self._meter)
 
-        content_mode = (
-            get_content_capturing_mode()
-            if latest_experimental_enabled
-            else ContentCapturingMode.NO_CONTENT
-        )
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             logger_provider=logger_provider,
+            completion_hook=kwargs.get("completion_hook")
+            or load_completion_hook(),
         )
 
         wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="Completions.create",
-            wrapper=(
-                chat_completions_create_v_new(handler, content_mode)
+            "openai.resources.chat.completions",
+            "Completions.create",
+            (
+                chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
                 else chat_completions_create_v_old(
                     tracer, logger, instruments, is_content_enabled()
@@ -131,10 +153,10 @@ class OpenAIInstrumentor(BaseInstrumentor):
         )
 
         wrap_function_wrapper(
-            module="openai.resources.chat.completions",
-            name="AsyncCompletions.create",
-            wrapper=(
-                async_chat_completions_create_v_new(handler, content_mode)
+            "openai.resources.chat.completions",
+            "AsyncCompletions.create",
+            (
+                async_chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
                 else async_chat_completions_create_v_old(
                     tracer, logger, instruments, is_content_enabled()
@@ -144,20 +166,33 @@ class OpenAIInstrumentor(BaseInstrumentor):
 
         # Add instrumentation for the embeddings API
         wrap_function_wrapper(
-            module="openai.resources.embeddings",
-            name="Embeddings.create",
-            wrapper=embeddings_create(
+            "openai.resources.embeddings",
+            "Embeddings.create",
+            embeddings_create(
                 tracer, instruments, latest_experimental_enabled
             ),
         )
 
         wrap_function_wrapper(
-            module="openai.resources.embeddings",
-            name="AsyncEmbeddings.create",
-            wrapper=async_embeddings_create(
+            "openai.resources.embeddings",
+            "AsyncEmbeddings.create",
+            async_embeddings_create(
                 tracer, instruments, latest_experimental_enabled
             ),
         )
+
+        responses_module = _get_responses_module()
+        # Responses instrumentation is intentionally limited to the latest
+        # experimental semconv path. Unlike chat completions, we do not carry
+        # a second legacy wrapper here; the current implementation is built on
+        # the inference handler lifecycle and would need a separate old-path
+        # implementation to support legacy semconv mode.
+        if responses_module is not None and latest_experimental_enabled:
+            wrap_function_wrapper(
+                "openai.resources.responses.responses",
+                "Responses.create",
+                responses_create(handler),
+            )
 
     def _uninstrument(self, **kwargs):
         import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
@@ -166,3 +201,13 @@ class OpenAIInstrumentor(BaseInstrumentor):
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")
         unwrap(openai.resources.embeddings.Embeddings, "create")
         unwrap(openai.resources.embeddings.AsyncEmbeddings, "create")
+        responses_module = _get_responses_module()
+        if responses_module is not None:
+            unwrap(responses_module.Responses, "create")
+
+
+def _get_responses_module():
+    try:
+        return import_module("openai.resources.responses.responses")
+    except ImportError:
+        return None

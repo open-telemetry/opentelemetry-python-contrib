@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 """
 Instrument `celery`_ to trace Celery applications.
 
@@ -59,13 +48,16 @@ API
 ---
 """
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection, Iterable
 from timeit import default_timer
-from typing import Collection, Iterable
 
 from billiard import VERSION
 from billiard.einfo import ExceptionInfo
 from celery import signals  # pylint: disable=no-name-in-module
+from celery.worker.request import Request  # pylint: disable=no-name-in-module
 
 from opentelemetry import context as context_api
 from opentelemetry import trace
@@ -106,16 +98,22 @@ _TASK_REVOKED_TERMINATED_SIGNAL_KEY = "celery.terminated.signal"
 _TASK_NAME_KEY = "celery.task_name"
 
 
-class CeleryGetter(Getter):
-    def get(self, carrier, key):
+class CeleryGetter(Getter[Request]):
+    def get(self, carrier: Request, key: str) -> list[str] | None:
         value = getattr(carrier, key, None)
         if value is None:
             return None
-        if isinstance(value, str) or not isinstance(value, Iterable):
-            value = (value,)
-        return value
+        # Celery's Context copies all message properties as instance
+        # attributes, including non-string values like timelimit (tuple
+        # of ints).  The TextMapPropagator contract requires string
+        # values, so coerce anything that isn't already a string.
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, Iterable):
+            return [str(v) if not isinstance(v, str) else v for v in value]
+        return [str(value)]
 
-    def keys(self, carrier):
+    def keys(self, carrier: Request) -> list[str]:
         return []
 
 
@@ -123,9 +121,15 @@ celery_getter = CeleryGetter()
 
 
 class CeleryInstrumentor(BaseInstrumentor):
-    metrics = None
-    task_id_to_start_time = {}
-    _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
+    
+    def __init__(self):
+        super().__init__()
+        if not hasattr(self, "metrics"):
+            self.metrics = None
+        if not hasattr(self, "task_id_to_start_time"):
+            self.task_id_to_start_time = {}
+        if not hasattr(self, "_sem_conv_opt_in_mode"):
+            self._sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -153,6 +157,7 @@ class CeleryInstrumentor(BaseInstrumentor):
             schema_url=_get_schema_url(self._sem_conv_opt_in_mode),
         )
 
+        self.task_id_to_start_time = {}
         self.create_celery_metrics(meter)
 
         signals.task_prerun.connect(self._trace_prerun, weak=False)
@@ -173,6 +178,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         signals.after_task_publish.disconnect(self._trace_after_publish)
         signals.task_failure.disconnect(self._trace_failure)
         signals.task_retry.disconnect(self._trace_retry)
+        self.task_id_to_start_time = {}
 
     def _trace_prerun(self, *args, **kwargs):
         task = utils.retrieve_task(kwargs)
@@ -231,6 +237,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         self.update_task_duration_time(task_id)
         labels = {"task": task.name, "worker": task.request.hostname}
         self._record_histograms(task_id, labels)
+        self.task_id_to_start_time.pop(task_id, None)
         # if the process sending the task is not instrumented
         # there's no incoming context and no token to detach
         if token is not None:

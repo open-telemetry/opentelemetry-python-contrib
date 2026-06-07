@@ -1,6 +1,12 @@
 OpenTelemetry OpenAI Instrumentation
 ====================================
 
+.. note::
+
+   This package is being migrated as ``opentelemetry-instrumentation-genai-openai`` to
+   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-genai-openai <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai>`_.
+   Future development will happen there.
+
 |pypi|
 
 .. |pypi| image:: https://badge.fury.io/py/opentelemetry-instrumentation-openai-v2.svg
@@ -98,6 +104,23 @@ are not captured by default. To capture message content as log events, set the e
 - ``span_and_event`` - Used to enable content capturing on both *span* and *event* attributes when
   `latest experimental features <#enabling-the-latest-experimental-features>`_ are enabled.
 
+Uploading prompts and completions
+*********************************
+
+To enable the built-in upload hook, set:
+
+- ``OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK=upload``
+- ``OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH`` to an ``fsspec``-compatible URI/path
+  (e.g. ``/path/to/prompts`` or ``gs://my_bucket``).
+
+Install the ``upload`` extra to pull in ``fsspec``::
+
+    pip install opentelemetry-util-genai[upload]
+
+See the `opentelemetry-util-genai
+<https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/util/opentelemetry-util-genai/README.rst>`_
+for additional options.
+
 Enabling the latest experimental features
 ***********************************************
 
@@ -130,4 +153,3 @@ References
 * `OpenTelemetry OpenAI Instrumentation <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation-genai/openai.html>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
 * `OpenTelemetry Python Examples <https://github.com/open-telemetry/opentelemetry-python/tree/main/docs/examples>`_
-

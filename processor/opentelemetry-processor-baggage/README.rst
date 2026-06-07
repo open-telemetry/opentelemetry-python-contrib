@@ -65,6 +65,51 @@ For example, to only copy baggage entries that match the regex `^key.+`:
     regex_predicate = lambda baggage_key: baggage_key.startswith("^key.+")
     tracer_provider.add_span_processor(BaggageSpanProcessor(regex_predicate))
 
+BaggageLogProcessor
+-------------------
+
+The BaggageLogProcessor reads entries stored in Baggage
+from the current context and adds the baggage entries' keys and
+values to the log record as attributes on emit.
+
+Add this log processor to a logger provider.
+
+To configure the log processor to copy all baggage entries:
+
+::
+
+    from opentelemetry.processor.baggage import BaggageLogProcessor, ALLOW_ALL_BAGGAGE_KEYS
+
+    logger_provider = LoggerProvider()
+    logger_provider.add_log_record_processor(BaggageLogProcessor(ALLOW_ALL_BAGGAGE_KEYS))
+
+
+Alternatively, you can provide a custom baggage key predicate to select which baggage keys you want to copy.
+
+For example, to only copy baggage entries that start with `my-key`:
+
+::
+
+    starts_with_predicate = lambda baggage_key: baggage_key.startswith("my-key")
+    logger_provider.add_log_record_processor(BaggageLogProcessor(starts_with_predicate))
+
+
+For example, to only copy baggage entries that match the regex `^key.+`:
+
+::
+
+    regex_predicate = lambda baggage_key: re.match(r"^key.+", baggage_key) is not None
+    logger_provider.add_log_record_processor(BaggageLogProcessor(regex_predicate))
+
+For example, to copy baggage entries matching multiple predicates:
+
+::
+
+    multiple_predicates = [
+        lambda baggage_key: baggage_key.startswith("my-key"),
+        lambda baggage_key: baggage_key.startswith("other-key"),
+    ]
+    logger_provider.add_log_record_processor(BaggageLogProcessor(multiple_predicates))
 
 References
 ----------

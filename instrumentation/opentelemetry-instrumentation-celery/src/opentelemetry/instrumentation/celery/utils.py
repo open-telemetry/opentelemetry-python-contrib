@@ -1,21 +1,11 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Tuple
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
@@ -31,6 +21,15 @@ from opentelemetry.trace import Span
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
+
+ContextKey = tuple[str, bool]
+ContextTuple = tuple[Span, "AbstractContextManager[Span]", object | None]
+ContextDict = dict[ContextKey, ContextTuple]
+
+
+class ContextCarrier(Protocol):
+    def get(self, key: str, default: Any = None) -> Any: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +62,10 @@ CELERY_CONTEXT_ATTRIBUTES = (
 
 # pylint:disable=too-many-branches
 def set_attributes_from_context(
-    span,
-    context,
+    span: Span,
+    context: ContextCarrier,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-):
+) -> None:
     """Helper to extract meta values from a Celery Context"""
     if not span.is_recording():
         return
@@ -83,7 +82,7 @@ def set_attributes_from_context(
             if value in [(None, None), [None, None]]:
                 continue
             if None in value:
-                value = ["" if tl is None else tl for tl in value]
+                value = ["" if tl is None else str(tl) for tl in value]
 
         # Skip `retries` if it's value is `0`
         if key == "retries" and value == 0:
@@ -183,7 +182,7 @@ def attach_context(
     if task is None:
         return
 
-    ctx_dict = getattr(task, CTX_KEY, None)
+    ctx_dict = cast(Optional[ContextDict], getattr(task, CTX_KEY, None))
 
     if ctx_dict is None:
         ctx_dict = {}
@@ -192,12 +191,17 @@ def attach_context(
     ctx_dict[(task_id, is_publish)] = (span, activation, token)
 
 
-def detach_context(task, task_id, is_publish=False) -> None:
+def detach_context(
+    task: Optional[Task], task_id: str, is_publish: bool = False
+) -> None:
     """Helper to remove  `Span`, `ContextManager` and context token in a
     Celery task when it's propagated.
     This function handles tasks where no values are attached to the `Task`.
     """
-    span_dict = getattr(task, CTX_KEY, None)
+    if task is None:
+        return
+
+    span_dict = cast(Optional[ContextDict], getattr(task, CTX_KEY, None))
     if span_dict is None:
         return
 
@@ -206,12 +210,15 @@ def detach_context(task, task_id, is_publish=False) -> None:
 
 
 def retrieve_context(
-    task, task_id, is_publish=False
-) -> Optional[Tuple[Span, AbstractContextManager[Span], Optional[object]]]:
+    task: Optional[Task], task_id: str, is_publish: bool = False
+) -> Optional[ContextTuple]:
     """Helper to retrieve an active `Span`, `ContextManager` and context token
     stored in a `Task` instance
     """
-    span_dict = getattr(task, CTX_KEY, None)
+    if task is None:
+        return None
+
+    span_dict = cast(Optional[ContextDict], getattr(task, CTX_KEY, None))
     if span_dict is None:
         return None
 
@@ -219,14 +226,14 @@ def retrieve_context(
     return span_dict.get((task_id, is_publish), None)
 
 
-def retrieve_task(kwargs):
+def retrieve_task(kwargs: Mapping[str, Any]) -> Optional[Task]:
     task = kwargs.get("task")
     if task is None:
         logger.debug("Unable to retrieve task from signal arguments")
-    return task
+    return cast(Optional[Task], task)
 
 
-def retrieve_task_from_sender(kwargs):
+def retrieve_task_from_sender(kwargs: Mapping[str, Any]) -> Optional[Task]:
     sender = kwargs.get("sender")
     if sender is None:
         logger.debug("Unable to retrieve the sender from signal arguments")
@@ -238,30 +245,31 @@ def retrieve_task_from_sender(kwargs):
         if sender is None:
             logger.debug("Unable to retrieve the task from sender=%s", sender)
 
-    return sender
+    return cast(Optional[Task], sender)
 
 
-def retrieve_task_id(kwargs):
+def retrieve_task_id(kwargs: Mapping[str, Any]) -> Optional[str]:
     task_id = kwargs.get("task_id")
     if task_id is None:
         logger.debug("Unable to retrieve task_id from signal arguments")
-    return task_id
+    return cast(Optional[str], task_id)
 
 
-def retrieve_task_id_from_request(kwargs):
+def retrieve_task_id_from_request(kwargs: Mapping[str, Any]) -> Optional[str]:
     # retry signal does not include task_id as argument so use request argument
     request = kwargs.get("request")
     if request is None:
         logger.debug("Unable to retrieve the request from signal arguments")
+        return None
 
-    task_id = getattr(request, "id")
+    task_id = cast(Optional[str], getattr(request, "id", None))
     if task_id is None:
         logger.debug("Unable to retrieve the task_id from the request")
 
     return task_id
 
 
-def retrieve_task_id_from_message(kwargs):
+def retrieve_task_id_from_message(kwargs: Mapping[str, Any]) -> Optional[str]:
     """Helper to retrieve the `Task` identifier from the message `body`.
     This helper supports Protocol Version 1 and 2. The Protocol is well
     detailed in the official documentation:
@@ -271,12 +279,14 @@ def retrieve_task_id_from_message(kwargs):
     body = kwargs.get("body")
     if headers is not None and len(headers) > 0:
         # Protocol Version 2 (default from Celery 4.0)
-        return headers.get("id")
+        return cast(Optional[str], headers.get("id"))
     # Protocol Version 1
-    return body.get("id")
+    if body is None:
+        return None
+    return cast(Optional[str], body.get("id"))
 
 
-def retrieve_reason(kwargs):
+def retrieve_reason(kwargs: Mapping[str, Any]) -> Optional[object]:
     reason = kwargs.get("reason")
     if not reason:
         logger.debug("Unable to retrieve the retry reason")

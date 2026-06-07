@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from types import SimpleNamespace
 
@@ -58,62 +47,63 @@ class _FakeAsyncManager:
         return self._suppressed
 
 
-def _noop_stop_llm(invocation):
-    del invocation
+def _noop_stop():
+    return None
 
 
-def _noop_fail_llm(invocation, error):
-    del invocation
+def _noop_fail(error):
     del error
 
 
 def _make_wrapper(manager):
-    handler = SimpleNamespace()
-    invocation = SimpleNamespace(request_model=None)
+    invocation = SimpleNamespace(
+        request_model=None,
+        stop=_noop_stop,
+        fail=_noop_fail,
+    )
     return ResponseStreamManagerWrapper(
         manager=manager,
-        handler=handler,
         invocation=invocation,
         capture_content=False,
     )
 
 
-def _make_stream_wrapper(stream, handler=None):
-    if handler is None:
-        handler = SimpleNamespace(
-            stop_llm=_noop_stop_llm,
-            fail_llm=_noop_fail_llm,
+def _make_stream_wrapper(stream, invocation=None):
+    if invocation is None:
+        invocation = SimpleNamespace(
+            request_model=None,
+            stop=_noop_stop,
+            fail=_noop_fail,
         )
-    invocation = SimpleNamespace(request_model=None)
     return ResponseStreamWrapper(
         stream=stream,
-        handler=handler,
         invocation=invocation,
         capture_content=False,
     )
 
 
 def _make_async_manager_wrapper(manager):
-    handler = SimpleNamespace()
-    invocation = SimpleNamespace(request_model=None)
+    invocation = SimpleNamespace(
+        request_model=None,
+        stop=_noop_stop,
+        fail=_noop_fail,
+    )
     return AsyncResponseStreamManagerWrapper(
         manager=manager,
-        handler=handler,
         invocation=invocation,
         capture_content=False,
     )
 
 
-def _make_async_stream_wrapper(stream, handler=None):
-    if handler is None:
-        handler = SimpleNamespace(
-            stop_llm=_noop_stop_llm,
-            fail_llm=_noop_fail_llm,
+def _make_async_stream_wrapper(stream, invocation=None):
+    if invocation is None:
+        invocation = SimpleNamespace(
+            request_model=None,
+            stop=_noop_stop,
+            fail=_noop_fail,
         )
-    invocation = SimpleNamespace(request_model=None)
     return AsyncResponseStreamWrapper(
         stream=stream,
-        handler=handler,
         invocation=invocation,
         capture_content=False,
     )
@@ -371,13 +361,13 @@ async def test_async_stream_wrapper_processes_events_and_stops_on_completion():
     wrapper.process_event = processed.append
     wrapper._stop = stopped.append
 
-    result = await wrapper.__anext__()
+    result = await anext(wrapper)
 
     assert result is event
     assert processed == [event]
 
     with pytest.raises(StopAsyncIteration):
-        await wrapper.__anext__()
+        await anext(wrapper)
 
     assert stopped == [None]
 
@@ -416,7 +406,7 @@ async def test_async_stream_wrapper_fails_and_reraises_stream_errors():
     wrapper._fail = record_failure
 
     with pytest.raises(ValueError, match="boom"):
-        await wrapper.__anext__()
+        await anext(wrapper)
 
     assert failures == [("boom", ValueError)]
 

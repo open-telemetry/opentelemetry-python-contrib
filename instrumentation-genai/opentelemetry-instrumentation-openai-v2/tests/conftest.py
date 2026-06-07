@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """Unit tests configuration module."""
 
 import json
@@ -130,7 +133,10 @@ def fixture_content_mode(request):
 
 @pytest.fixture(scope="function")
 def instrument_no_content(
-    tracer_provider, logger_provider, meter_provider, content_mode
+    tracer_provider,
+    logger_provider,
+    meter_provider,
+    content_mode,
 ):
     _OpenTelemetrySemanticConventionStability._initialized = False
     latest_experimental_enabled, _ = content_mode
@@ -212,6 +218,30 @@ def instrument_with_content_unsampled(
 
     tracer_provider = TracerProvider(sampler=ALWAYS_OFF)
     tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+
+    instrumentor = OpenAIInstrumentor()
+    instrumentor.instrument(
+        tracer_provider=tracer_provider,
+        logger_provider=logger_provider,
+        meter_provider=meter_provider,
+    )
+
+    yield instrumentor
+    os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
+    os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
+    instrumentor.uninstrument()
+
+
+@pytest.fixture(scope="function")
+def instrument_event_only(tracer_provider, logger_provider, meter_provider):
+    _OpenTelemetrySemanticConventionStability._initialized = False
+
+    os.environ.update(
+        {
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "event_only",
+            OTEL_SEMCONV_STABILITY_OPT_IN: "gen_ai_latest_experimental",
+        }
+    )
 
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
