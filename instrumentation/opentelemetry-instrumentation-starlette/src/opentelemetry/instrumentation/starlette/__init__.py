@@ -166,7 +166,7 @@ API
 from __future__ import annotations
 
 import logging
-from typing import Any, Collection, Literal, cast
+from typing import TYPE_CHECKING, Any, Collection, Literal, cast
 from weakref import WeakSet
 
 from starlette import applications
@@ -187,6 +187,22 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 )
 from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
+
+if TYPE_CHECKING:
+    from typing import TypedDict, Unpack
+
+    class InstrumentKwargs(TypedDict, total=False):
+        tracer_provider: TracerProvider
+        meter_provider: MeterProvider
+        server_request_hook: ServerRequestHook
+        client_request_hook: ClientRequestHook
+        client_response_hook: ClientResponseHook
+        excluded_urls: str
+        http_capture_headers_server_request: list[str]
+        http_capture_headers_server_response: list[str]
+        http_capture_headers_sanitize_fields: list[str]
+        exclude_spans: list[Literal["receive", "send"]]
+
 
 _excluded_urls_from_env = get_excluded_urls("STARLETTE")
 _logger = logging.getLogger(__name__)
@@ -292,7 +308,7 @@ class StarletteInstrumentor(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _instrument(self, **kwargs: Any):
+    def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         self._original_starlette = applications.Starlette
         _InstrumentedStarlette._instrument_kwargs = kwargs
         applications.Starlette = _InstrumentedStarlette
