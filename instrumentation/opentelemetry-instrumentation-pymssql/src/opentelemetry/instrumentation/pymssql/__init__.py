@@ -64,11 +64,6 @@ from typing import Any, Callable, Collection, NamedTuple
 import pymssql
 
 from opentelemetry.instrumentation import dbapi
-from opentelemetry.instrumentation._semconv import (
-    _set_db_user,
-    _set_http_net_peer_name_client,
-    _set_http_peer_port_client,
-)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymssql.package import _instruments
 from opentelemetry.instrumentation.pymssql.version import __version__
@@ -109,9 +104,7 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
 
         user = kwargs.get("user") or connect_method_args.user
         if user is not None:
-            _set_db_user(
-                self.span_attributes, user, self._sem_conv_opt_in_mode_db
-            )
+            self.span_attributes["db.user"] = user
 
         port = kwargs.get("port") or connect_method_args.port
         host = kwargs.get("server") or connect_method_args.server
@@ -127,13 +120,9 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
                     if len(tokens) > 1:
                         port = tokens[1]
         if host is not None:
-            _set_http_net_peer_name_client(
-                self.span_attributes, host, self._sem_conv_opt_in_mode_http
-            )
+            self.span_attributes["net.peer.name"] = host
         if port is not None:
-            _set_http_peer_port_client(
-                self.span_attributes, port, self._sem_conv_opt_in_mode_http
-            )
+            self.span_attributes["net.peer.port"] = port
 
         charset = kwargs.get("charset") or connect_method_args.charset
         if charset is not None:
@@ -157,6 +146,9 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         https://github.com/pymssql/pymssql/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        enable_transaction_spans = kwargs.get(
+            "enable_transaction_spans", False
+        )
 
         dbapi.wrap_connect(
             __name__,
@@ -169,6 +161,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             # instead, we get the attributes from the connect method (which is done
             # via PyMSSQLDatabaseApiIntegration.wrapped_connection)
             db_api_integration_factory=_PyMSSQLDatabaseApiIntegration,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     def _uninstrument(self, **kwargs):
@@ -176,13 +169,17 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(pymssql, "connect")
 
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(
+        connection, tracer_provider=None, enable_transaction_spans=False
+    ):
         """Enable instrumentation in a pymssql connection.
 
         Args:
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            enable_transaction_spans: Experimental flag to enable transaction
+                (commit/rollback) spans. Defaults to False.
 
         Returns:
             An instrumented connection.
@@ -195,6 +192,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             version=__version__,
             tracer_provider=tracer_provider,
             db_api_integration_factory=_PyMSSQLDatabaseApiIntegration,
+            enable_transaction_spans=enable_transaction_spans,
         )
 
     @staticmethod
