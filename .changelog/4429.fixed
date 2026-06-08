@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-grpc`: Fix `NotImplementedError` when `grpc.aio` call object does not implement `add_done_callback` ([#4429](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4429))
