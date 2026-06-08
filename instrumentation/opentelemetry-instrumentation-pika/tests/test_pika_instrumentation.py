@@ -155,6 +155,31 @@ class TestPika(TestCase):
             for callback in self.channel._consumers.values()
         )
 
+    def test_instrument_consumers_does_not_redecorate_callback(
+        self,
+    ) -> None:
+        tracer = mock.MagicMock(spec=Tracer)
+        callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
+        consumer_info = self.blocking_channel._consumer_infos["consumer-tag"]
+        original_callback = getattr(consumer_info, callback_attr)
+
+        PikaInstrumentor._instrument_channel_consumers(
+            self.blocking_channel, tracer
+        )
+        decorated_callback = getattr(consumer_info, callback_attr)
+
+        PikaInstrumentor._instrument_channel_consumers(
+            self.blocking_channel, tracer
+        )
+
+        self.assertIs(
+            getattr(consumer_info, callback_attr), decorated_callback
+        )
+        self.assertIs(
+            decorated_callback._original_callback,
+            original_callback,
+        )
+
     @mock.patch(
         "opentelemetry.instrumentation.pika.utils._decorate_basic_publish"
     )
