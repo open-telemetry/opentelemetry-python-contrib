@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from timeit import default_timer
+from unittest import TestCase
 from unittest.mock import patch
 
 from pyramid.config import Configurator
+from pyramid.config.adapters import AdaptersConfiguratorMixin
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -15,6 +17,7 @@ from opentelemetry.instrumentation._semconv import (
     _StabilityMode,
 )
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
+from opentelemetry.instrumentation.pyramid.callbacks import _before_traversal
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
     NumberDataPoint,
@@ -82,6 +85,41 @@ _recommended_attrs = {
 }
 
 SCOPE = "opentelemetry.instrumentation.pyramid.callbacks"
+
+
+class TestAutomaticConfiguration(TestCase):
+    def tearDown(self):
+        PyramidInstrumentor().uninstrument()
+
+    def test_before_traversal_subscriber_registered_once_after_commit(self):
+        registrations = []
+        original_add_subscriber = AdaptersConfiguratorMixin.add_subscriber
+
+        def counting_add_subscriber(self, subscriber, iface=None, **kwargs):
+            if subscriber is _before_traversal:
+                registrations.append(subscriber)
+            return original_add_subscriber(
+                self, subscriber, iface=iface, **kwargs
+            )
+
+        def library_that_commits(config):
+            config.add_route("example", "/example")
+            config.commit()
+
+        def another_library(config):
+            pass
+
+        with patch.object(
+            AdaptersConfiguratorMixin,
+            "add_subscriber",
+            counting_add_subscriber,
+        ):
+            PyramidInstrumentor().instrument()
+            config = Configurator(settings={})
+            config.include(library_that_commits)
+            config.include(another_library)
+
+        self.assertEqual(len(registrations), 1)
 
 
 class TestAutomatic(InstrumentationTest, WsgiTestBase):
