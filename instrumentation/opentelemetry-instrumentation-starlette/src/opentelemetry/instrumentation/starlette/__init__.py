@@ -166,7 +166,7 @@ API
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Collection, Literal, cast
+from typing import Any, Collection, Literal, cast
 from weakref import WeakSet
 
 from starlette import applications
@@ -187,17 +187,6 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
 )
 from opentelemetry.trace import TracerProvider, get_tracer
 from opentelemetry.util.http import get_excluded_urls, parse_excluded_urls
-
-if TYPE_CHECKING:
-    from typing import TypedDict
-
-    class InstrumentKwargs(TypedDict, total=False):
-        tracer_provider: TracerProvider
-        meter_provider: MeterProvider
-        server_request_hook: ServerRequestHook
-        client_request_hook: ClientRequestHook
-        client_response_hook: ClientResponseHook
-
 
 _excluded_urls_from_env = get_excluded_urls("STARLETTE")
 _logger = logging.getLogger(__name__)
@@ -330,8 +319,6 @@ class _InstrumentedStarlette(applications.Starlette):
         StarletteInstrumentor.instrument_app(
             self, **_InstrumentedStarlette._instrument_kwargs
         )
-        # adding apps to set for uninstrumenting
-        _InstrumentedStarlette._instrumented_starlette_apps.add(self)
 
 
 def _get_route_details(scope: dict[str, Any]) -> str | None:
