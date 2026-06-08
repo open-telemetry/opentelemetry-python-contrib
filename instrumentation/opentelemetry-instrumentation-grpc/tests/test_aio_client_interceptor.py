@@ -334,8 +334,6 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
     async def test_unary_unary_add_done_callback_not_implemented(self):
         """Span should still be finished when add_done_callback raises NotImplementedError."""
 
-        original_method = grpc.aio.UnaryUnaryCall.add_done_callback
-
         def _raise_not_implemented(self_call, callback):
             raise NotImplementedError
 
