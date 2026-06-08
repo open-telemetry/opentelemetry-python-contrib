@@ -114,7 +114,7 @@ def _create_invocation(
     )
 
     server_address, server_port = get_server_address_and_port(instance)
-    invocation = handler.start_inference(
+    invocation = handler.inference(
         provider=ANTHROPIC,
         request_model=request_model,
         server_address=server_address,

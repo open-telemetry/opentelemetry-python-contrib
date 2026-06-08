@@ -320,7 +320,7 @@ class TestTelemetryHandler(unittest.TestCase):
         message = _create_input_message("hi")
         chat_generation = _create_output_message("ok")
 
-        invocation = self.telemetry_handler.start_inference(
+        invocation = self.telemetry_handler.inference(
             "test-provider", request_model="manual-model"
         )
         invocation.input_messages = [message]
@@ -380,7 +380,7 @@ class TestTelemetryHandler(unittest.TestCase):
 
         handler = TelemetryHandler(tracer_provider=sampler_provider)
 
-        invocation = handler.start_inference(
+        invocation = handler.inference(
             "test-provider",
             request_model="sampler-model",
             server_address="api.example.com",
@@ -437,13 +437,13 @@ class TestTelemetryHandler(unittest.TestCase):
         handler = TelemetryHandler(tracer_provider=sampler_provider)
 
         # This invocation should be dropped
-        invocation = handler.start_inference(
+        invocation = handler.inference(
             "test-provider", request_model="rejected-model"
         )
         invocation.stop()
 
         # This invocation should be recorded
-        invocation = handler.start_inference(
+        invocation = handler.inference(
             "test-provider", request_model="accepted-model"
         )
         invocation.stop()
@@ -478,7 +478,7 @@ class TestTelemetryHandler(unittest.TestCase):
         )
         handler = TelemetryHandler(tracer_provider=sampler_provider)
 
-        invocation = handler.start_embedding(
+        invocation = handler.embedding(
             "test-provider",
             request_model="embed-model",
             server_address="embed.example.com",
@@ -498,7 +498,7 @@ class TestTelemetryHandler(unittest.TestCase):
         assert captured_attributes[server_attributes.SERVER_PORT] == 443
 
     def test_llm_span_finish_reasons_without_output_messages(self):
-        invocation = self.telemetry_handler.start_inference(
+        invocation = self.telemetry_handler.inference(
             "test-provider", request_model="model-without-output"
         )
         invocation.finish_reasons = ["length"]
@@ -527,7 +527,7 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
     def test_llm_span_finish_reasons_from_invocation(self):
-        invocation = self.telemetry_handler.start_inference(
+        invocation = self.telemetry_handler.inference(
             "test-provider", request_model="model-reasons"
         )
         invocation.finish_reasons = ["stop", "length", "stop"]
@@ -542,7 +542,7 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
     def test_llm_span_finish_reasons_from_output_messages(self):
-        invocation = self.telemetry_handler.start_inference(
+        invocation = self.telemetry_handler.inference(
             "test-provider", request_model="model-output-reasons"
         )
         assert invocation.span is not None
@@ -561,7 +561,7 @@ class TestTelemetryHandler(unittest.TestCase):
         )
 
     def test_llm_span_uses_expected_schema_url(self):
-        invocation = self.telemetry_handler.start_inference(
+        invocation = self.telemetry_handler.inference(
             "schema-provider", request_model="schema-model"
         )
         assert invocation.span is not None
@@ -584,7 +584,7 @@ class TestTelemetryHandler(unittest.TestCase):
         emit_event="true",
     )
     def test_llm_log_uses_expected_schema_url(self):
-        invocation = self.telemetry_handler.start_inference(
+        invocation = self.telemetry_handler.inference(
             "schema-provider", request_model="schema-model"
         )
         invocation.output_messages = [_create_output_message()]
@@ -639,12 +639,12 @@ class TestTelemetryHandler(unittest.TestCase):
         emit_event="",
     )
     def test_embedding_parent_child_span_relationship(self):
-        parent_invocation = self.telemetry_handler.start_embedding(
+        parent_invocation = self.telemetry_handler.embedding(
             "test-provider", request_model="embed-parent-model"
         )
         parent_invocation.input_tokens = 10
         assert parent_invocation.span is not None
-        child_invocation = self.telemetry_handler.start_embedding(
+        child_invocation = self.telemetry_handler.embedding(
             "test-provider", request_model="embed-child-model"
         )
         child_invocation.input_tokens = 5
@@ -679,7 +679,7 @@ class TestTelemetryHandler(unittest.TestCase):
             "test-provider", request_model="parent-model"
         ) as parent_invocation:
             parent_invocation.input_messages = [message]
-            child_invocation = self.telemetry_handler.start_embedding(
+            child_invocation = self.telemetry_handler.embedding(
                 "test-provider", request_model="embed-child-model"
             )
             child_invocation.input_tokens = 3
@@ -790,7 +790,7 @@ class TestTelemetryHandler(unittest.TestCase):
         emit_event="",
     )
     def test_embedding_manual_start_and_stop_creates_span(self):
-        invocation = self.telemetry_handler.start_embedding(
+        invocation = self.telemetry_handler.embedding(
             "test-provider",
             request_model="embed-model",
             server_address="custom.server.com",
@@ -831,7 +831,7 @@ class TestTelemetryHandler(unittest.TestCase):
         class BoomError(RuntimeError):
             pass
 
-        invocation = self.telemetry_handler.start_inference(
+        invocation = self.telemetry_handler.inference(
             "test-provider", request_model="test-model"
         )
         invocation.fail(BoomError("boom"))

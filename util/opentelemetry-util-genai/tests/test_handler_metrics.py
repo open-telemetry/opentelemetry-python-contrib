@@ -27,7 +27,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            invocation = handler.start_inference("prov", request_model="model")
+            invocation = handler.inference("prov", request_model="model")
         invocation.input_tokens = 5
         invocation.output_tokens = 7
 
@@ -82,7 +82,7 @@ class TelemetryHandlerMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
 
-        invocation = handler.start_inference(
+        invocation = handler.inference(
             "prov",
             request_model="model",
             server_address="custom.server.com",
@@ -121,7 +121,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=2000.0):
-            invocation = handler.start_inference("", request_model="err-model")
+            invocation = handler.inference("", request_model="err-model")
         invocation.input_tokens = 11
 
         error = Error(message="boom", type=ValueError)
@@ -193,7 +193,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            invocation = handler.start_embedding(
+            invocation = handler.embedding(
                 "embed-prov", request_model="embed-model"
             )
         invocation.input_tokens = 100
@@ -242,7 +242,7 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = handler.start_embedding(
+        invocation = handler.embedding(
             "embed-prov",
             request_model="embed-model",
             server_address="embed.server.com",
@@ -279,7 +279,7 @@ class TelemetryHandlerMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=3000.0):
-            invocation = handler.start_embedding(
+            invocation = handler.embedding(
                 "embed-prov", request_model="embed-err-model"
             )
 
@@ -313,7 +313,7 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = handler.start_embedding(
+        invocation = handler.embedding(
             "embed-prov", request_model="embed-model"
         )
         # input_tokens is not set
@@ -343,7 +343,7 @@ class TelemetryHandlerToolMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=1000.0):
-            invocation = handler.start_tool("get_weather")
+            invocation = handler.tool("get_weather")
         invocation.metric_attributes = {"custom.key": "custom_value"}
 
         with patch("timeit.default_timer", return_value=1002.5):
@@ -371,7 +371,7 @@ class TelemetryHandlerToolMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=500.0):
-            invocation = handler.start_tool("failing_tool")
+            invocation = handler.tool("failing_tool")
 
         error = Error(message="Tool execution failed", type=RuntimeError)
         with patch("timeit.default_timer", return_value=501.5):

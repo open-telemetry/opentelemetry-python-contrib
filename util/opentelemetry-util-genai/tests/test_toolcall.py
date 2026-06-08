@@ -40,7 +40,7 @@ def test_toolcallrequest_is_message_part():
 def test_toolcall_inherits_from_genaiinvocation():
     """ToolInvocation inherits from GenAIInvocation for lifecycle management"""
     handler = _make_handler()
-    tc = handler.start_tool("get_weather", arguments={"city": "Paris"})
+    tc = handler.tool("get_weather", arguments={"city": "Paris"})
     assert isinstance(tc, GenAIInvocation)
     assert not isinstance(tc, ToolCallRequest)
     tc.stop()
@@ -49,7 +49,7 @@ def test_toolcall_inherits_from_genaiinvocation():
 def test_toolcall_has_attributes_dict():
     """ToolInvocation inherits attributes dict from GenAIInvocation"""
     handler = _make_handler()
-    tc = handler.start_tool("test")
+    tc = handler.tool("test")
     tc.attributes["custom.key"] = "value"
     assert tc.attributes["custom.key"] == "value"
     tc.stop()
@@ -69,7 +69,7 @@ def test_toolcallrequest_in_message_part_union():
 def test_toolcall_operation_name():
     """ToolInvocation operation_name is fixed to execute_tool"""
     handler = _make_handler()
-    tc = handler.start_tool("my_tool")
+    tc = handler.tool("my_tool")
     assert tc._operation_name == "execute_tool"
     tc.stop()
 
@@ -160,7 +160,7 @@ def test_start_tool_passes_sampling_attributes_at_span_creation():
     sampler_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
     handler = TelemetryHandler(tracer_provider=sampler_provider)
 
-    invocation = handler.start_tool(
+    invocation = handler.tool(
         "get_weather",
         tool_call_id="call_123",
         tool_type="function",

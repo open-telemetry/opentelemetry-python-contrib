@@ -13,6 +13,7 @@ from opentelemetry.trace import Tracer
 from opentelemetry.util.genai._invocation import Error, GenAIInvocation
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
+from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 
 class ToolInvocation(GenAIInvocation):
@@ -47,6 +48,7 @@ class ToolInvocation(GenAIInvocation):
         tool_call_id: str | None = None,
         tool_type: str | None = None,
         tool_description: str | None = None,
+        tool_result: Any = None,
     ) -> None:
         """Use handler.start_tool(name) or handler.tool(name) instead of calling this directly."""
         _operation_name = GenAI.GenAiOperationNameValues.EXECUTE_TOOL.value
@@ -63,7 +65,7 @@ class ToolInvocation(GenAIInvocation):
         self.tool_call_id = tool_call_id
         self.tool_type = tool_type
         self.tool_description = tool_description
-        self.tool_result: Any = None
+        self.tool_result: Any = tool_result
         self._start(self._get_base_attributes())
 
     def _get_base_attributes(self) -> dict[str, Any]:
@@ -94,7 +96,18 @@ class ToolInvocation(GenAIInvocation):
             (GenAI.GEN_AI_TOOL_CALL_ID, self.tool_call_id),
             (GenAI.GEN_AI_TOOL_TYPE, self.tool_type),
             (GenAI.GEN_AI_TOOL_DESCRIPTION, self.tool_description),
-            (GenAI.GEN_AI_TOOL_CALL_ARGUMENTS, self.arguments),
+            (
+                GenAI.GEN_AI_TOOL_CALL_ARGUMENTS,
+                gen_ai_json_dumps(self.arguments)
+                if self.arguments is not None
+                else None,
+            ),
+            (
+                GenAI.GEN_AI_TOOL_CALL_RESULT,
+                gen_ai_json_dumps(self.tool_result)
+                if self.tool_result is not None
+                else None,
+            ),
         )
         attributes: dict[str, Any] = {
             GenAI.GEN_AI_OPERATION_NAME: self._operation_name,

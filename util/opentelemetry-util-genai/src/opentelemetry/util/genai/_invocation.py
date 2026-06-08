@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import timeit
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from contextvars import Token
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Any, Iterator, Sequence
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Sequence
 
-from typing_extensions import Self, TypeAlias
+from typing_extensions import TypeAlias
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import Context, attach, detach
@@ -138,6 +138,20 @@ class GenAIInvocation(ABC):
             log_record=log_record,
         )
 
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        type_: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        if value:
+            self.fail(value)
+            raise
+        self.stop()
+
     @abstractmethod
     def _apply_finish(self, error: Error | None = None) -> None:
         """Apply finish telemetry (attributes, metrics, events)."""
@@ -164,16 +178,6 @@ class GenAIInvocation(ABC):
         if isinstance(error, BaseException):
             error = Error(type=type(error), message=str(error))
         self._finish(error)
-
-    @contextmanager
-    def _managed(self) -> Iterator[Self]:
-        """Context manager that calls stop() on success or fail() on exception."""
-        try:
-            yield self
-        except Exception as exc:
-            self.fail(exc)
-            raise
-        self.stop()
 
 
 def get_content_attributes(

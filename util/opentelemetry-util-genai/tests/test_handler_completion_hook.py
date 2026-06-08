@@ -79,7 +79,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
 
-        invocation = handler.start_inference("openai", request_model="gpt-4o")
+        invocation = handler.inference("openai", request_model="gpt-4o")
         invocation.input_messages = input_messages
         invocation.output_messages = output_messages
         invocation.system_instruction = system_instruction
@@ -102,7 +102,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             InputMessage(role="user", parts=[Text(content="hello")])
         ]
 
-        invocation = handler.start_inference("openai", request_model="gpt-4o")
+        invocation = handler.inference("openai", request_model="gpt-4o")
         invocation.input_messages = input_messages
         invocation.fail(ValueError("boom"))
 
@@ -114,7 +114,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
     def test_hook_not_called_when_not_set(self):
         # No hook — stop should not raise
         handler = self._make_handler()
-        handler.start_inference("openai", request_model="gpt-4o").stop()
+        handler.inference("openai", request_model="gpt-4o").stop()
 
     def test_log_record_is_none_when_events_disabled(self):
         # Default env: no experimental mode, so log_record should be None.
@@ -123,7 +123,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        handler.start_inference("openai", request_model="gpt-4o").stop()
+        handler.inference("openai", request_model="gpt-4o").stop()
 
         kwargs = hook.on_completion.call_args.kwargs
         self.assertIsNone(kwargs["log_record"])
@@ -137,7 +137,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        handler.start_inference("openai", request_model="gpt-4o").stop()
+        handler.inference("openai", request_model="gpt-4o").stop()
 
         kwargs = hook.on_completion.call_args.kwargs
         self.assertIsNotNone(kwargs["log_record"])
@@ -162,7 +162,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock(on_completion=stamp_ref)
         handler = self._make_handler(hook)
 
-        handler.start_inference("openai", request_model="gpt-4o").stop()
+        handler.inference("openai", request_model="gpt-4o").stop()
 
         # The record the hook stamped is the same one that would be emitted
         self.assertIsNotNone(stamped_record)
@@ -281,7 +281,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
 
-        invocation = handler.start_workflow(name="my-workflow")
+        invocation = handler.workflow(name="my-workflow")
         invocation.input_messages = input_messages
         invocation.output_messages = output_messages
         invocation.stop()
@@ -300,7 +300,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        invocation = handler.start_workflow(name="my-workflow")
+        invocation = handler.workflow(name="my-workflow")
         invocation.input_messages = [
             InputMessage(role="user", parts=[Text(content="hello")])
         ]
@@ -314,7 +314,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        handler.start_workflow(name="my-workflow").stop()
+        handler.workflow(name="my-workflow").stop()
 
         hook.on_completion.assert_called_once()
         kwargs = hook.on_completion.call_args.kwargs
@@ -344,7 +344,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
 
-        invocation = handler.start_invoke_local_agent(
+        invocation = handler.invoke_local_agent(
             "openai", request_model="gpt-4"
         )
         invocation.agent_name = "Math Tutor"
@@ -367,7 +367,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        invocation = handler.start_invoke_local_agent(
+        invocation = handler.invoke_local_agent(
             "openai", request_model="gpt-4"
         )
         invocation.input_messages = [
@@ -402,7 +402,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
             )
         ]
 
-        invocation = handler.start_invoke_remote_agent(
+        invocation = handler.invoke_remote_agent(
             "openai",
             request_model="gpt-4",
             server_address="api.openai.com",
@@ -425,7 +425,7 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        invocation = handler.start_invoke_remote_agent("openai")
+        invocation = handler.invoke_remote_agent("openai")
         invocation.fail(RuntimeError("remote agent crashed"))
 
         hook.on_completion.assert_called_once()
@@ -436,8 +436,8 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
         hook = MagicMock()
         handler = self._make_handler(hook)
 
-        handler.start_invoke_local_agent("openai").stop()
-        handler.start_invoke_remote_agent("openai").stop()
+        handler.invoke_local_agent("openai").stop()
+        handler.invoke_remote_agent("openai").stop()
 
         for call in hook.on_completion.call_args_list:
             self.assertEqual(call.kwargs["inputs"], [])
@@ -448,5 +448,5 @@ class TestHandlerCompletionHook(TestCase):  # pylint: disable=too-many-public-me
     def test_agent_hook_not_called_when_not_set(self):
         # No hook — stop should not raise
         handler = self._make_handler()
-        handler.start_invoke_local_agent("openai").stop()
-        handler.start_invoke_remote_agent("openai").stop()
+        handler.invoke_local_agent("openai").stop()
+        handler.invoke_remote_agent("openai").stop()
