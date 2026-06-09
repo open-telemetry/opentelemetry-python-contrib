@@ -9,6 +9,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     branches:
       - main
+  merge_group:
 
 permissions:
   contents: read
@@ -17,6 +18,7 @@ jobs:
   changelog:
     runs-on: ubuntu-latest
     if: |
+      github.event_name != 'merge_group' &&
       !contains(github.event.pull_request.labels.*.name, 'Skip Changelog')
       && github.actor != 'otelbot[bot]'
 
@@ -30,7 +32,7 @@ jobs:
 
       - name: Ensure no direct changes to CHANGELOG.md
         run: |
-          if [[ $(git diff --name-only FETCH_HEAD -- '**/CHANGELOG.md') ]]
+          if [[ $(git diff --name-only FETCH_HEAD -- 'CHANGELOG.md' '**/CHANGELOG.md') ]]
           then
             echo "CHANGELOG.md files should not be directly modified."
             echo "Please add a changelog fragment file to the appropriate .changelog/ directory instead."
@@ -41,13 +43,15 @@ jobs:
           fi
 
       - name: Check for changelog fragment
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # Check for any new fragment files in any .changelog/ directory
           fragments=$(git diff --diff-filter=A --name-only FETCH_HEAD -- '**/.changelog/*' '.changelog/*' | grep -v '.gitignore' || true)
           if [[ -z "$fragments" ]]; then
             echo "No changelog fragment found for this PR."
             echo ""
-            echo "Add a file named .changelog/${{ github.event.pull_request.number }}.<type>"
+            echo "Add a file named .changelog/${PR_NUMBER}.<type>"
             echo "where <type> is one of: added, changed, deprecated, removed, fixed"
             echo ""
             echo "For coordinated packages, add to the root .changelog/ directory."
@@ -55,6 +59,24 @@ jobs:
             echo "See CONTRIBUTING.md for details."
             echo ""
             echo "Or add the \"Skip Changelog\" label if this job should be skipped."
+            exit 1
+          fi
+          invalid=()
+          while IFS= read -r f; do
+            base=$(basename "$f")
+            if [[ ! "$base" =~ ^([0-9]+)\.(added|changed|deprecated|removed|fixed)$ ]]; then
+              invalid+=("$f (expected <PR_NUMBER>.<type>; type one of added, changed, deprecated, removed, fixed)")
+              continue
+            fi
+            if [[ "${BASH_REMATCH[1]}" != "${PR_NUMBER}" ]]; then
+              invalid+=("$f (PR number ${BASH_REMATCH[1]} does not match this PR's number ${PR_NUMBER})")
+            fi
+          done <<< "$fragments"
+          if (( ${#invalid[@]} > 0 )); then
+            echo "Invalid changelog fragment(s):"
+            for msg in "${invalid[@]}"; do
+              echo "  $msg"
+            done
             exit 1
           fi
           echo "Found changelog fragment(s):"

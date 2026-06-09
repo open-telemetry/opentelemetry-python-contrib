@@ -74,8 +74,10 @@ typing-extensions==4.12.2
     #   asgiref
     #   opentelemetry-api
     #   opentelemetry-semantic-conventions
-urllib3==2.3.0
-    # via requests
+urllib3==2.7.0
+    # via
+    #   -r instrumentation/opentelemetry-instrumentation-starlette/test-requirements.in
+    #   requests
 wrapt==1.16.0
     # via opentelemetry-instrumentation
 zipp==3.21.0

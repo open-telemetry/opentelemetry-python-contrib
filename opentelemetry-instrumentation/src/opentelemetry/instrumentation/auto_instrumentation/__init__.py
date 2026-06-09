@@ -112,18 +112,7 @@ def run() -> None:
     execl(executable, executable, *args.command_args)
 
 
-def initialize(*, swallow_exceptions: bool = True) -> None:
-    """
-    Setup auto-instrumentation, called by the sitecustomize module
-
-    :param swallow_exceptions: Whether or not to propagate instrumentation exceptions to the caller. Exceptions are logged and swallowed by default.
-    """
-    # prevents auto-instrumentation of subprocesses if code execs another python process
-    if "PYTHONPATH" in environ:
-        environ["PYTHONPATH"] = _python_path_without_directory(
-            environ["PYTHONPATH"], dirname(abspath(__file__)), pathsep
-        )
-
+def _initialize(*, swallow_exceptions: bool = True) -> None:
     # handle optional gevent monkey patching. This is done via environment variables so it may be used from the
     # opentelemetry operator
     gevent_patch: str | None = environ.get(
@@ -157,3 +146,37 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
         _logger.exception("Failed to auto initialize OpenTelemetry")
         if not swallow_exceptions:
             raise exc
+
+
+def initialize(*, swallow_exceptions: bool = True) -> None:
+    """
+    Setup auto-instrumentation, called by the sitecustomize module
+
+    :param swallow_exceptions: Whether or not to propagate instrumentation exceptions to the caller. Exceptions are logged and swallowed by default.
+    """
+    filedir = dirname(abspath(__file__))
+
+    python_path = environ.get("PYTHONPATH")
+    auto_instrumentation_path_was_present = (
+        python_path is not None and filedir in python_path.split(pathsep)
+    )
+
+    # Remove the auto-instrumentation path during initialization to prevent
+    # auto-instrumentation from executing in subprocesses spawned during this phase.
+    # This suppression is performed to avoid creating a recursive loop scenario
+    # where subprocesses spawned in the initialization phase execute the
+    # initialization phase again, spawning more subprocesses.
+    if python_path is not None:
+        environ["PYTHONPATH"] = _python_path_without_directory(
+            python_path, filedir, pathsep
+        )
+
+    try:
+        _initialize(swallow_exceptions=swallow_exceptions)
+    finally:
+        if auto_instrumentation_path_was_present:
+            current = environ.get("PYTHONPATH", "")
+            if filedir not in current.split(pathsep):
+                environ["PYTHONPATH"] = (
+                    filedir + pathsep + current if current else filedir
+                )

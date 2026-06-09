@@ -1,9 +1,11 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import json
 import logging
 import os
+import re
 import ssl
 from urllib.request import Request, urlopen
 
@@ -21,6 +23,10 @@ _GET_METHOD = "GET"
 
 _TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 _CERT_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+_EKS_OIDC_RE = re.compile(
+    r"^https://oidc\.eks\.[^.]+\.amazonaws\.com(?:\.cn)?/id/[A-F0-9]{32}$",
+    re.ASCII,
+)
 
 
 def _aws_http_request(method, path, cred_value):
@@ -49,11 +55,18 @@ def _get_k8s_cred_value():
 
 
 def _is_eks(cred_value):
-    return _aws_http_request(
-        _GET_METHOD,
-        "/api/v1/namespaces/kube-system/configmaps/aws-auth",
-        cred_value,
-    )
+    parts = cred_value.removeprefix("Bearer ").split(".")
+    if len(parts) != 3:
+        return False
+    try:
+        seg = parts[1]
+        payload = json.loads(
+            base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4))
+        )
+    except ValueError as exception:
+        logger.error("Failed to parse JWT for EKS detection: %s", exception)
+        return False
+    return bool(_EKS_OIDC_RE.match(payload.get("iss", "")))
 
 
 def _get_cluster_info(cred_value):

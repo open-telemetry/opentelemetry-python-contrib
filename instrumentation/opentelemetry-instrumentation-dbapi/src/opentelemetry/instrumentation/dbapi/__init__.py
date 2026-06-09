@@ -161,6 +161,7 @@ from __future__ import annotations
 import functools
 import logging
 import re
+import time
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
 from wrapt import wrap_function_wrapper
@@ -196,7 +197,21 @@ from opentelemetry.instrumentation.utils import (
     is_instrumentation_enabled,
     unwrap,
 )
+from opentelemetry.metrics import MeterProvider, get_meter
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    create_db_client_operation_duration,
+    create_db_client_response_returned_rows,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_OPERATION_NAME,
+    DB_SYSTEM_NAME,
+)
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
 
@@ -221,6 +236,7 @@ def trace_integration(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     enable_attribute_commenter: bool = False,
     commenter_options: dict[str, Any] | None = None,
+    meter_provider: MeterProvider | None = None,
     enable_transaction_spans: bool = False,
 ):
     """Integrate with DB API library.
@@ -241,6 +257,8 @@ def trace_integration(
             default one is used.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` and/or `db.query.text` span attribute. Only available if enable_commenter=True.
         commenter_options: Configurations for tags to be appended at the sql query.
+        meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
+            use. If omitted the current configured one is used.
         enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
     """
     wrap_connect(
@@ -256,10 +274,12 @@ def trace_integration(
         db_api_integration_factory=db_api_integration_factory,
         enable_attribute_commenter=enable_attribute_commenter,
         commenter_options=commenter_options,
+        meter_provider=meter_provider,
         enable_transaction_spans=enable_transaction_spans,
     )
 
 
+# pylint: disable-next=too-many-positional-arguments,too-many-locals
 def wrap_connect(
     name: str,
     connect_module: Callable[..., Any],
@@ -273,7 +293,7 @@ def wrap_connect(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
-    *,
+    meter_provider: MeterProvider | None = None,
     enable_transaction_spans: bool = False,
 ):
     """Integrate with DB API library.
@@ -294,6 +314,8 @@ def wrap_connect(
             default one is used.
         commenter_options: Configurations for tags to be appended at the sql query.
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` and/or `db.query.text` span attribute. Only available if enable_commenter=True.
+        meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
+            use. If omitted the current configured one is used.
         enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
 
     """
@@ -319,6 +341,7 @@ def wrap_connect(
             commenter_options=commenter_options,
             connect_module=connect_module,
             enable_attribute_commenter=enable_attribute_commenter,
+            meter_provider=meter_provider,
             enable_transaction_spans=enable_transaction_spans,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
@@ -344,6 +367,7 @@ def unwrap_connect(
     unwrap(connect_module, connect_method_name)
 
 
+# pylint: disable-next=too-many-positional-arguments
 def instrument_connection(
     name: str,
     connection: ConnectionT | TracedConnectionProxy[ConnectionT],
@@ -357,7 +381,7 @@ def instrument_connection(
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
-    *,
+    meter_provider: MeterProvider | None = None,
     enable_transaction_spans: bool = False,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
@@ -380,6 +404,8 @@ def instrument_connection(
             replacement for :class:`DatabaseApiIntegration`. Can be used to
             obtain connection attributes from the connect method instead of
             from the connection itself (as done by the pymssql intrumentor).
+        meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
+            use. If omitted the current configured one is used.
         enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
 
     Returns:
@@ -404,6 +430,7 @@ def instrument_connection(
         commenter_options=commenter_options,
         connect_module=connect_module,
         enable_attribute_commenter=enable_attribute_commenter,
+        meter_provider=meter_provider,
         enable_transaction_spans=enable_transaction_spans,
     )
     db_integration.get_connection_attributes(connection)
@@ -429,6 +456,7 @@ def uninstrument_connection(
 
 
 class DatabaseApiIntegration:
+    # pylint: disable-next=too-many-positional-arguments
     def __init__(
         self,
         name: str,
@@ -441,6 +469,7 @@ class DatabaseApiIntegration:
         commenter_options: dict[str, Any] | None = None,
         connect_module: Callable[..., Any] | None = None,
         enable_attribute_commenter: bool = False,
+        meter_provider: MeterProvider | None = None,
         enable_transaction_spans: bool = False,
     ):
         # Initialize semantic conventions opt-in if needed
@@ -474,6 +503,24 @@ class DatabaseApiIntegration:
                 ]
             ),
         )
+        self._meter = None
+        self._duration_histogram = None
+        self._returned_rows_histogram = None
+        if _report_new(self._sem_conv_opt_in_mode_db):
+            self._meter = get_meter(
+                self._name,
+                self._version,
+                meter_provider,
+                schema_url=_get_schema_url_for_signal_types(
+                    [_OpenTelemetryStabilitySignalType.DATABASE]
+                ),
+            )
+            self._duration_histogram = create_db_client_operation_duration(
+                self._meter
+            )
+            self._returned_rows_histogram = (
+                create_db_client_response_returned_rows(self._meter)
+            )
         self.capture_parameters = capture_parameters
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
@@ -484,6 +531,8 @@ class DatabaseApiIntegration:
         self.span_attributes: dict[str, Any] = {}
         self.name = ""
         self.database = ""
+        self._server_address: str | None = None
+        self._server_port: int | None = None
         self.connect_module = connect_module
         self.commenter_data = self.calculate_commenter_data()
 
@@ -596,11 +645,13 @@ class DatabaseApiIntegration:
                 host,
                 self._sem_conv_opt_in_mode_http,
             )
+            self._server_address = host
         port = self.connection_props.get("port")
         if port is not None:
             _set_http_peer_port_client(
                 self.span_attributes, port, self._sem_conv_opt_in_mode_http
             )
+            self._server_port = port
 
     def common_span_attributes(self) -> dict[str, Any]:
         """Build common database connection attributes for a client span."""
@@ -896,6 +947,50 @@ class CursorTracer(Generic[CursorT]):
             return statement.decode("utf8", "replace")
         return statement
 
+    def _get_metric_attributes(
+        self,
+        operation_name: str,
+        error: Exception | None,
+    ) -> dict[str, Any]:
+        attributes: dict[str, Any] = {
+            DB_SYSTEM_NAME: self._db_api_integration.database_system,
+        }
+        if self._db_api_integration.database:
+            attributes[DB_NAMESPACE] = self._db_api_integration.database
+        if operation_name:
+            attributes[DB_OPERATION_NAME] = operation_name
+        if self._db_api_integration._server_address is not None:
+            attributes[SERVER_ADDRESS] = (
+                self._db_api_integration._server_address
+            )
+        if self._db_api_integration._server_port is not None:
+            attributes[SERVER_PORT] = self._db_api_integration._server_port
+        if error is not None:
+            attributes[ERROR_TYPE] = type(error).__qualname__
+        return attributes
+
+    def _record_metrics(
+        self,
+        cursor: CursorT,
+        operation_name: str,
+        start_time: float,
+        error: Exception | None,
+    ) -> None:
+        if not _report_new(self._db_api_integration._sem_conv_opt_in_mode_db):
+            # DB Metrics are not supported without Database semconv opt-in
+            return
+        elapsed = time.perf_counter() - start_time
+        attributes = self._get_metric_attributes(operation_name, error)
+        self._db_api_integration._duration_histogram.record(
+            elapsed, attributes=attributes
+        )
+        if error is None:
+            rowcount = getattr(cursor, "rowcount", None)
+            if isinstance(rowcount, int) and rowcount >= 0:
+                self._db_api_integration._returned_rows_histogram.record(
+                    rowcount, attributes=attributes
+                )
+
     def traced_execution(
         self,
         cursor: CursorT,
@@ -906,7 +1001,8 @@ class CursorTracer(Generic[CursorT]):
         if not is_instrumentation_enabled():
             return query_method(*args, **kwargs)
 
-        name = self.get_operation_name(cursor, args)
+        operation_name = self.get_operation_name(cursor, args)
+        name = operation_name
         if not name:
             name = (
                 self._db_api_integration.database
@@ -935,7 +1031,15 @@ class CursorTracer(Generic[CursorT]):
                 else:
                     # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
-            return query_method(*args, **kwargs)
+            start_time = time.perf_counter()
+            error: Exception | None = None
+            try:
+                return query_method(*args, **kwargs)
+            except Exception as exc:
+                error = exc
+                raise
+            finally:
+                self._record_metrics(cursor, operation_name, start_time, error)
 
     async def traced_execution_async(
         self,
@@ -944,7 +1048,8 @@ class CursorTracer(Generic[CursorT]):
         *args: tuple[Any, ...],
         **kwargs: dict[Any, Any],
     ):
-        name = self.get_operation_name(cursor, args)
+        operation_name = self.get_operation_name(cursor, args)
+        name = operation_name
         if not name:
             name = (
                 self._db_api_integration.database
@@ -973,7 +1078,15 @@ class CursorTracer(Generic[CursorT]):
                 else:
                     # no sqlcomment anywhere
                     self._populate_span(span, cursor, *args)
-            return await query_method(*args, **kwargs)
+            start_time = time.perf_counter()
+            error: Exception | None = None
+            try:
+                return await query_method(*args, **kwargs)
+            except Exception as exc:
+                error = exc
+                raise
+            finally:
+                self._record_metrics(cursor, operation_name, start_time, error)
 
 
 # pylint: disable=abstract-method,no-member
