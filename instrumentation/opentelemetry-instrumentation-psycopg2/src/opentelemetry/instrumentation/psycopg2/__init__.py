@@ -314,7 +314,9 @@ class DatabaseApiIntegration(dbapi.DatabaseApiIntegration):
         connection = connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
         # psycopg2 uses cursor_factory for cursor tracing, so disable cursor wrapping
-        return dbapi.get_traced_connection_proxy(connection, self, wrap_cursors=False)
+        return dbapi.get_traced_connection_proxy(
+            connection, self, wrap_cursors=False
+        )
 
 
 class CursorTracer(dbapi.CursorTracer):

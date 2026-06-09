@@ -1,5 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=too-many-lines
 
 """
 The trace integration with Database API supports libraries that follow the
@@ -272,6 +273,7 @@ def wrap_connect(
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
+    *,
     enable_transaction_spans: bool = False,
 ):
     """Integrate with DB API library.
@@ -355,6 +357,7 @@ def instrument_connection(
     connect_module: Callable[..., Any] | None = None,
     enable_attribute_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
+    *,
     enable_transaction_spans: bool = False,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
@@ -748,8 +751,8 @@ class AsyncTracedConnectionProxy(TracedConnectionProxy[ConnectionT]):
 def get_traced_connection_proxy(
     connection: ConnectionT,
     db_api_integration: DatabaseApiIntegration | None,
-    wrap_cursors: bool = True,
     *args: Any,
+    wrap_cursors: bool = True,
     **kwargs: Any,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Get a traced connection proxy for sync connections.
@@ -767,8 +770,8 @@ def get_traced_connection_proxy(
 def get_traced_async_connection_proxy(
     connection: ConnectionT,
     db_api_integration: DatabaseApiIntegration | None,
-    wrap_cursors: bool = True,
     *args: Any,
+    wrap_cursors: bool = True,
     **kwargs: Any,
 ) -> AsyncTracedConnectionProxy[ConnectionT]:
     """Get a traced connection proxy for async connections.
@@ -780,7 +783,9 @@ def get_traced_async_connection_proxy(
             Set to False for databases like psycopg/psycopg2 that handle cursor
             tracing via cursor_factory. Defaults to True.
     """
-    return AsyncTracedConnectionProxy(connection, db_api_integration, wrap_cursors)
+    return AsyncTracedConnectionProxy(
+        connection, db_api_integration, wrap_cursors
+    )
 
 
 class CursorTracer(Generic[CursorT]):

@@ -1747,11 +1747,13 @@ class MockConnection:
     # pylint: disable=no-self-use
     def commit(self, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
 
     # pylint: disable=no-self-use
     def rollback(self, throw_exception=False):
         if throw_exception:
+            # pylint: disable=broad-exception-raised
             raise Exception("Test Exception")
 
 
