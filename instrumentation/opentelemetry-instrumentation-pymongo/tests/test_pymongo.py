@@ -1,9 +1,15 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=protected-access
+
 from unittest import mock
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.pymongo import (
     CommandTracer,
     PymongoInstrumentor,
@@ -19,16 +25,32 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
 from opentelemetry.test.test_base import TestBase
 
 
 class TestPymongo(TestBase):
     def setUp(self):
         super().setUp()
+        with self.disable_logging():
+            PymongoInstrumentor().uninstrument()
+        PymongoInstrumentor()._commandtracer_instance = None
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.tracer = self.tracer_provider.get_tracer(__name__)
         self.start_callback = mock.MagicMock()
         self.success_callback = mock.MagicMock()
         self.failed_callback = mock.MagicMock()
+
+    def tearDown(self):
+        with self.disable_logging():
+            PymongoInstrumentor().uninstrument()
+        PymongoInstrumentor()._commandtracer_instance = None
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        super().tearDown()
 
     def test_pymongo_instrumentor(self):
         mock_register = mock.Mock()
@@ -62,6 +84,74 @@ class TestPymongo(TestBase):
         self.assertEqual(span.attributes[NET_PEER_NAME], "test.com")
         self.assertEqual(span.attributes[NET_PEER_PORT], "1234")
         self.start_callback.assert_called_once_with(span, mock_event)
+
+    def test_started_new_database_semconv(self):
+        command_attrs = {
+            "command_name": "find",
+        }
+        with mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"}
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            command_tracer = CommandTracer(
+                self.tracer, request_hook=self.start_callback
+            )
+        mock_event = MockEvent(
+            command_attrs, ("test.com", "1234"), "test_request_id"
+        )
+        command_tracer.started(event=mock_event)
+        # pylint: disable=protected-access
+        span = command_tracer._pop_span(mock_event)
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mongodb")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "database_name")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "find")
+        self.assertFalse(DB_SYSTEM in span.attributes)
+        self.assertFalse(DB_NAME in span.attributes)
+        self.assertFalse(DB_STATEMENT in span.attributes)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "test.com")
+        self.assertEqual(span.attributes[NET_PEER_PORT], "1234")
+
+    def test_started_dup_database_semconv(self):
+        command_attrs = {
+            "command_name": "find",
+        }
+        with mock.patch.dict(
+            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            command_tracer = CommandTracer(
+                self.tracer, request_hook=self.start_callback
+            )
+        mock_event = MockEvent(
+            command_attrs, ("test.com", "1234"), "test_request_id"
+        )
+        command_tracer.started(event=mock_event)
+        # pylint: disable=protected-access
+        span = command_tracer._pop_span(mock_event)
+        self.assertEqual(span.attributes[DB_SYSTEM], "mongodb")
+        self.assertEqual(span.attributes[DB_NAME], "database_name")
+        self.assertEqual(span.attributes[DB_STATEMENT], "find")
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mongodb")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "database_name")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "find")
+
+    def test_instrumentor_uses_database_semconv_schema_url(self):
+        with (
+            mock.patch("pymongo.monitoring.register"),
+            mock.patch(
+                "opentelemetry.instrumentation.pymongo.get_tracer"
+            ) as mock_get_tracer,
+            mock.patch.dict(
+                "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"}
+            ),
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            PymongoInstrumentor().instrument()
+
+        self.assertEqual(
+            mock_get_tracer.call_args.kwargs["schema_url"],
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
 
     def test_succeeded(self):
         mock_event = MockEvent({})

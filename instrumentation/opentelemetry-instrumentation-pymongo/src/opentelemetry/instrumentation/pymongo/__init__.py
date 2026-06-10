@@ -68,6 +68,15 @@ from typing import Any, Callable, Collection, TypeVar
 
 from pymongo import monitoring
 
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _set_db_name,
+    _set_db_statement,
+    _set_db_system,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymongo.package import _instruments
 from opentelemetry.instrumentation.pymongo.utils import (
@@ -77,9 +86,6 @@ from opentelemetry.instrumentation.pymongo.version import __version__
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_MONGODB_COLLECTION,
-    DB_NAME,
-    DB_STATEMENT,
-    DB_SYSTEM,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
@@ -115,6 +121,7 @@ class CommandTracer(monitoring.CommandListener):
         response_hook: ResponseHookT = dummy_callback,
         failed_hook: FailedHookT = dummy_callback,
         capture_statement: bool = False,
+        sem_conv_opt_in_mode_db: _StabilityMode | None = None,
     ):
         self._tracer = tracer
         self._span_dict = {}
@@ -123,6 +130,12 @@ class CommandTracer(monitoring.CommandListener):
         self.success_hook = response_hook
         self.failed_hook = failed_hook
         self.capture_statement = capture_statement
+        if sem_conv_opt_in_mode_db is None:
+            _OpenTelemetrySemanticConventionStability._initialize()
+            sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.DATABASE
+            )
+        self._sem_conv_opt_in_mode_db = sem_conv_opt_in_mode_db
 
     def started(self, event: monitoring.CommandStartedEvent):
         """Method to handle a pymongo CommandStartedEvent"""
@@ -133,17 +146,32 @@ class CommandTracer(monitoring.CommandListener):
         statement = self._get_statement_by_command_name(command_name, event)
         collection = _get_command_collection_name(event)
 
+        span = None
         try:
             span = self._tracer.start_span(span_name, kind=SpanKind.CLIENT)
             if span.is_recording():
-                span.set_attribute(DB_SYSTEM, DbSystemValues.MONGODB.value)
-                span.set_attribute(DB_NAME, event.database_name)
-                span.set_attribute(DB_STATEMENT, statement)
+                span_attrs: dict[str, Any] = {}
+                _set_db_system(
+                    span_attrs,
+                    DbSystemValues.MONGODB.value,
+                    self._sem_conv_opt_in_mode_db,
+                )
+                _set_db_name(
+                    span_attrs,
+                    event.database_name,
+                    self._sem_conv_opt_in_mode_db,
+                )
+                _set_db_statement(
+                    span_attrs,
+                    statement,
+                    self._sem_conv_opt_in_mode_db,
+                )
                 if collection:
-                    span.set_attribute(DB_MONGODB_COLLECTION, collection)
+                    span_attrs[DB_MONGODB_COLLECTION] = collection
                 if event.connection_id is not None:
-                    span.set_attribute(NET_PEER_NAME, event.connection_id[0])
-                    span.set_attribute(NET_PEER_PORT, event.connection_id[1])
+                    span_attrs[NET_PEER_NAME] = event.connection_id[0]
+                    span_attrs[NET_PEER_PORT] = event.connection_id[1]
+                span.set_attributes(span_attrs)
             try:
                 self.start_hook(span, event)
             except (
@@ -254,11 +282,17 @@ class PymongoInstrumentor(BaseInstrumentor):
         capture_statement = kwargs.get("capture_statement")
         # Create and register a CommandTracer only the first time
         if self._commandtracer_instance is None:
+            _OpenTelemetrySemanticConventionStability._initialize()
+            sem_conv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+                _OpenTelemetryStabilitySignalType.DATABASE
+            )
             tracer = get_tracer(
                 __name__,
                 __version__,
                 tracer_provider,
-                schema_url="https://opentelemetry.io/schemas/1.11.0",
+                schema_url=_get_schema_url_for_signal_types(
+                    [_OpenTelemetryStabilitySignalType.DATABASE]
+                ),
             )
 
             self._commandtracer_instance = CommandTracer(
@@ -267,6 +301,7 @@ class PymongoInstrumentor(BaseInstrumentor):
                 response_hook=response_hook,
                 failed_hook=failed_hook,
                 capture_statement=capture_statement,
+                sem_conv_opt_in_mode_db=sem_conv_opt_in_mode_db,
             )
             monitoring.register(self._commandtracer_instance)
         # If already created, just enable it
