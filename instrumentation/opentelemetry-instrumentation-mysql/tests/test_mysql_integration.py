@@ -1,16 +1,37 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 from unittest import mock
 
 import mysql.connector
 
 import opentelemetry.instrumentation.mysql
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
     DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.test.test_base import TestBase
 
@@ -29,6 +50,7 @@ def make_mysql_connection_mock():
     cnx.database = "test"
     cnx.server_host = "localhost"
     cnx.server_port = 3306
+    cnx.user = "testuser"
 
     cursor = mock.MagicMock()
     cursor._cnx = cnx
@@ -68,11 +90,101 @@ def make_mysql_commenter_mocks(client_version="foobaz"):
     return mock_connect_module, mock_connection, mock_cursor
 
 
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+
 class TestMysqlIntegration(TestBase):
+    def setUp(self):
+        super().setUp()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
     def tearDown(self):
         super().tearDown()
         with self.disable_logging():
             MySQLInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def _instrument_connection_and_get_span(self, query="SELECT * FROM test"):
+        cnx = MySQLInstrumentor().instrument_connection(
+            make_mysql_connection_mock()
+        )
+        cnx.cursor().execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        return spans_list[0]
+
+    def test_semconv_default_attributes(self):
+        span = self._instrument_connection_and_get_span()
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
+        self.assertEqual(span.attributes[DB_SYSTEM], "mysql")
+        self.assertEqual(span.attributes[DB_NAME], "test")
+        self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+        self.assertEqual(span.attributes[DB_USER], "testuser")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 3306)
+
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertNotIn(DB_NAMESPACE, span.attributes)
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_semconv_stable_attributes(self):
+        with use_semconv_opt_in("database,http"):
+            span = self._instrument_connection_and_get_span()
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 3306)
+
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(DB_NAME, span.attributes)
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertNotIn(DB_USER, span.attributes)
+        self.assertNotIn(NET_PEER_NAME, span.attributes)
+        self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    def test_semconv_duplicate_attributes(self):
+        with use_semconv_opt_in("database/dup,http/dup"):
+            span = self._instrument_connection_and_get_span()
+
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
+        self.assertEqual(span.attributes[DB_SYSTEM], "mysql")
+        self.assertEqual(span.attributes[DB_NAME], "test")
+        self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+        self.assertEqual(span.attributes[DB_USER], "testuser")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 3306)
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 3306)
 
     @mock.patch("mysql.connector.connect")
     # pylint: disable=unused-argument
