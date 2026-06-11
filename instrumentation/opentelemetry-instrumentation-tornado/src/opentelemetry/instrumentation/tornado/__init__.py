@@ -929,8 +929,7 @@ def _create_active_requests_attributes_old(handler):
         HTTP_HOST: request.host,
     }
 
-    rule = find_matched_rule(handler)
-    if rule:
+    if rule := find_matched_rule(handler):
         route = route_from_rule(rule, handler)
 
         if route is not None:
