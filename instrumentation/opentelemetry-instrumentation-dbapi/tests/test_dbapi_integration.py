@@ -7,7 +7,10 @@ import asyncio
 import contextlib
 import logging
 import re
+import sys
 from unittest import mock
+
+import pytest
 
 from opentelemetry import context
 from opentelemetry import trace as trace_api
@@ -80,6 +83,26 @@ def use_semconv_opt_in(sem_conv_mode):
     finally:
         env_patch.stop()
         _OpenTelemetrySemanticConventionStability._initialized = False
+
+
+class _MockInterpolation:
+    def __init__(self, expression: str) -> None:
+        self.expression = expression
+
+
+class _MockTemplate:
+    """Mock for string.templatelib.Template"""
+
+    def __init__(self, *args: str | _MockInterpolation) -> None:
+        strings: list[str] = []
+        interpolations: list[_MockInterpolation] = []
+        for arg in args:
+            if isinstance(arg, str):
+                strings.append(arg)
+            else:
+                interpolations.append(arg)
+        self.strings = tuple(strings)
+        self.interpolations = interpolations
 
 
 # pylint: disable=too-many-public-methods
@@ -1726,6 +1749,153 @@ class TestDBApiIntegration(TestBase):
         mock_logger.debug.assert_called_once()
         self.assertEqual(
             db_integration.commenter_data["mysql_client_version"], "unknown"
+        )
+
+    @mock.patch("opentelemetry.instrumentation.dbapi._Template", _MockTemplate)
+    def test_t_string_span_attributes(self):
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, connection_props
+        )
+        cursor = mock_connection.cursor()
+        template = _MockTemplate(
+            "SELECT ", _MockInterpolation("value"), " FROM foo"
+        )
+        cursor.execute(template)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes[DB_STATEMENT], "SELECT {value} FROM foo"
+        )
+
+    @mock.patch(
+        "opentelemetry.instrumentation.sqlcommenter_utils._Template",
+        _MockTemplate,
+    )
+    @mock.patch("opentelemetry.instrumentation.dbapi._Template", _MockTemplate)
+    def test_t_string_commenter(self):
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.pq.version.return_value = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        template = _MockTemplate(
+            "SELECT ", _MockInterpolation("value"), " FROM foo"
+        )
+        cursor.executemany(template)
+        self.assertIsInstance(cursor.query, _MockTemplate)
+        self.assertRegex(
+            cursor.query.strings[-1],
+            r" FROM foo /\*dbapi_threadsafety=123,driver_paramstyle='test',"
+            r"libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes[DB_STATEMENT], "SELECT {value} FROM foo"
+        )
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_real_t_string_span_attributes(self):
+        # pylint: disable-next=import-outside-toplevel
+        from string.templatelib import (  # noqa: PLC0415
+            Interpolation,
+            Template,
+        )
+
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            connection_attributes,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, connection_props
+        )
+        cursor = mock_connection.cursor()
+        value = 42
+        template = Template(
+            "SELECT ", Interpolation(value, "value"), " FROM foo"
+        )
+        cursor.execute(template)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes[DB_STATEMENT], "SELECT {value} FROM foo"
+        )
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_real_t_string_commenter(self):
+        # pylint: disable-next=import-outside-toplevel
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        connect_module = mock.MagicMock()
+        connect_module.__name__ = "test"
+        connect_module.__version__ = mock.MagicMock()
+        connect_module.pq.version.return_value = 123
+        connect_module.apilevel = 123
+        connect_module.threadsafety = 123
+        connect_module.paramstyle = "test"
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "postgresql",
+            enable_commenter=True,
+            commenter_options={"db_driver": False, "dbapi_level": False},
+            connect_module=connect_module,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        cursor = mock_connection.cursor()
+        value = 42
+        template = Template(
+            "SELECT ", Interpolation(value, "value"), " FROM foo"
+        )
+        cursor.executemany(template)
+        self.assertIsInstance(cursor.query, Template)
+        self.assertRegex(
+            cursor.query.strings[-1],
+            r" FROM foo /\*dbapi_threadsafety=123,driver_paramstyle='test',"
+            r"libpq_version=123,traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes[DB_STATEMENT], "SELECT {value} FROM foo"
         )
 
 
