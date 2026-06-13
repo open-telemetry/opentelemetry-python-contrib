@@ -16,7 +16,12 @@ else:
     _Template = ()
 
 if TYPE_CHECKING:
-    from string.templatelib import Template
+    if sys.version_info >= (3, 14):
+        from string.templatelib import Template
+    else:
+        from typing import Never
+
+        Template = Never
     from typing import overload
 
     @overload
