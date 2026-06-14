@@ -1,3 +1,23 @@
+## HTTP Semantic Convention Migration
+
+Several HTTP instrumentations (those with `migration` in the Semconv status
+column) support the `OTEL_SEMCONV_STABILITY_OPT_IN` environment variable to
+control which HTTP semantic conventions are emitted during the transition period.
+
+Set `OTEL_SEMCONV_STABILITY_OPT_IN` to one of the following values:
+
+- `http` — emit the new, stable HTTP and networking conventions and stop emitting
+  the old experimental conventions that the instrumentation emitted previously.
+- `http/dup` — emit both the old experimental and the new stable HTTP and
+  networking conventions simultaneously, allowing for a seamless transition.
+
+By default (when the variable is unset), the old experimental HTTP and networking
+conventions are emitted to preserve backward compatibility.
+
+For more information, see the
+[HTTP semantic conventions stability migration guide](https://opentelemetry.io/docs/specs/semconv/http/migration-guide/).
+
+## Instrumentations
 
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |
