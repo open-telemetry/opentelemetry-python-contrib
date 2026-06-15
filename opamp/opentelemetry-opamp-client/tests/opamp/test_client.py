@@ -1,20 +1,10 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-name-in-module
 
 import json
+import logging
 from unittest import mock
 
 import pytest
@@ -316,6 +306,68 @@ def test_update_effective_config_json_content_type(client):
         decoded_config[file_name] = json.loads(body)
 
     assert config == decoded_config
+
+
+def test_update_effective_config_skips_non_serializable_json_content(
+    client, caplog
+):
+    caplog.set_level(logging.WARNING, logger="opentelemetry._opamp.messages")
+    effective_config = client.update_effective_config(
+        {"config": {"a": object()}},
+        content_type="application/json",
+    )
+    assert effective_config.config_map.config_map == {}
+    message = "Failed to encode effective config body as JSON"
+    exception_records = [
+        record for record in caplog.records if message in record.getMessage()
+    ]
+    assert len(exception_records) == 1
+    assert exception_records[0].exc_info
+    assert exception_records[0].exc_info[0] is TypeError
+    assert "Skipping effective config entry config" in caplog.text
+
+
+def test_update_effective_config_text_content_type(client):
+    config = {"config": "FEATURE_ENABLED=false\n"}
+    effective_config = client.update_effective_config(
+        config,
+        content_type="text/plain",
+    )
+    config_entry = effective_config.config_map.config_map["config"]
+    assert config_entry.content_type == "text/plain"
+    assert config_entry.body == b"FEATURE_ENABLED=false\n"
+
+
+def test_update_effective_config_bytes_content(client):
+    config = {"config": b"FEATURE_ENABLED=false\n"}
+    effective_config = client.update_effective_config(
+        config,
+        content_type="text/plain",
+    )
+    config_entry = effective_config.config_map.config_map["config"]
+    assert config_entry.content_type == "text/plain"
+    assert config_entry.body == b"FEATURE_ENABLED=false\n"
+
+
+def test_update_effective_config_skips_unencodable_content(client, caplog):
+    caplog.set_level(logging.WARNING, logger="opentelemetry._opamp.messages")
+    effective_config = client.update_effective_config(
+        {"config": {"a": "config"}},
+        content_type="text/plain",
+    )
+    assert effective_config.config_map.config_map == {}
+    assert "Skipping effective config entry config" in caplog.text
+
+
+def test_build_full_state_message_text_effective_config(client):
+    config = {"config": "FEATURE_ENABLED=false\n"}
+    client.update_effective_config(config, content_type="text/plain")
+    data = client.build_full_state_message()
+    message = opamp_pb2.AgentToServer()
+    message.ParseFromString(data)
+    config_entry = message.effective_config.config_map.config_map["config"]
+    assert config_entry.content_type == "text/plain"
+    assert config_entry.body == b"FEATURE_ENABLED=false\n"
 
 
 def test_build_full_state_message(client):

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # Note: This package is not named "flask" because of
 # https://github.com/PyCQA/pylint/issues/2648
@@ -301,10 +290,6 @@ from opentelemetry.util.http import (
 )
 
 _logger = getLogger(__name__)
-# Global constants for Flask 3.1+ streaming context cleanup
-_IS_FLASK_31_PLUS = hasattr(flask, "__version__") and package_version.parse(
-    flask.__version__
-) >= package_version.parse("3.1.0")
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-flask.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-flask.span_key"
@@ -315,6 +300,11 @@ _ENVIRON_TOKEN = "opentelemetry-flask.token"
 _excluded_urls_from_env = get_excluded_urls("FLASK")
 
 flask_version = version("flask")
+
+# Global constant for Flask 3.1+ streaming context cleanup
+_IS_FLASK_31_PLUS = package_version.parse(
+    flask_version
+) >= package_version.parse("3.1.0")
 
 if package_version.parse(flask_version) >= package_version.parse("2.2.0"):
 
@@ -415,48 +405,50 @@ def _rewrapped_app(
                     response_hook(span, status, response_headers)
             return start_response(status, response_headers, *args, **kwargs)
 
-        result = wsgi_app(wrapped_app_environ, _start_response)
+        try:
+            result = wsgi_app(wrapped_app_environ, _start_response)
 
-        # Note: Streaming response context cleanup is now handled in the Flask teardown function
-        # (_wrapped_teardown_request) to ensure proper cleanup following Logfire's recommendations
-        # for OpenTelemetry generator context management
+            # Note: Streaming response context cleanup is now handled in the Flask teardown function
+            # (_wrapped_teardown_request) to ensure proper cleanup following Logfire's recommendations
+            # for OpenTelemetry generator context management
 
-        if should_trace:
-            duration_s = default_timer() - start
-            # Get the span from wrapped_app_environ and re-create context manually
-            # to pass to histogram for exemplars generation
-            span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
-            metrics_context = trace.set_span_in_context(span)
+            if should_trace:
+                duration_s = default_timer() - start
+                # Get the span from wrapped_app_environ and re-create context manually
+                # to pass to histogram for exemplars generation
+                span = wrapped_app_environ.get(_ENVIRON_SPAN_KEY)
+                metrics_context = trace.set_span_in_context(span)
 
-            if duration_histogram_old:
-                duration_attrs_old = otel_wsgi._parse_duration_attrs(
-                    attributes, _StabilityMode.DEFAULT
-                )
+                if duration_histogram_old:
+                    duration_attrs_old = otel_wsgi._parse_duration_attrs(
+                        attributes, _StabilityMode.DEFAULT
+                    )
 
-                if request_route:
-                    # http.target to be included in old semantic conventions
-                    duration_attrs_old[HTTP_TARGET] = str(request_route)
-                duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0),
-                    duration_attrs_old,
-                    context=metrics_context,
-                )
-            if duration_histogram_new:
-                duration_attrs_new = otel_wsgi._parse_duration_attrs(
-                    attributes, _StabilityMode.HTTP
-                )
+                    if request_route:
+                        # http.target to be included in old semantic conventions
+                        duration_attrs_old[HTTP_TARGET] = str(request_route)
+                    duration_histogram_old.record(
+                        max(round(duration_s * 1000), 0),
+                        duration_attrs_old,
+                        context=metrics_context,
+                    )
+                if duration_histogram_new:
+                    duration_attrs_new = otel_wsgi._parse_duration_attrs(
+                        attributes, _StabilityMode.HTTP
+                    )
 
-                if request_route:
-                    duration_attrs_new[HTTP_ROUTE] = str(request_route)
+                    if request_route:
+                        duration_attrs_new[HTTP_ROUTE] = str(request_route)
 
-                duration_histogram_new.record(
-                    max(duration_s, 0),
-                    duration_attrs_new,
-                    context=metrics_context,
-                )
+                    duration_histogram_new.record(
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                        context=metrics_context,
+                    )
 
-        active_requests_counter.add(-1, active_requests_count_attrs)
-        return result
+            return result
+        finally:
+            active_requests_counter.add(-1, active_requests_count_attrs)
 
     def _should_trace(excluded_urls) -> bool:
         return bool(
@@ -736,7 +728,7 @@ class _InstrumentedFlask(flask.Flask):
 
 
 class FlaskInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for flask.Flask
 
     See `BaseInstrumentor`

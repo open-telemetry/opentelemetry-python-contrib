@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument aiokafka to report instrumentation-kafka produced and consumed messages
@@ -50,15 +39,26 @@ Usage
     asyncio.run(produce())
     asyncio.run(consume())
 
-The _instrument() method accepts the following keyword args:
-tracer_provider (TracerProvider) - an optional tracer provider
-async_produce_hook (Callable) - a function with extra user-defined logic to be performed before sending the message
-this function signature is:
-def async_produce_hook(span: Span, args, kwargs)
-async_consume_hook (Callable) - a function with extra user-defined logic to be performed after consuming a message
-this function signature is:
-def async_consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs)
-for example:
+The ``_instrument()`` method accepts the following keyword args:
+
+- **tracer_provider** (TracerProvider) - an optional tracer provider
+- **async_produce_hook** (Callable) - a function with extra user-defined logic to be performed before sending the message
+
+  Function signature:
+
+  .. code:: python
+
+      async def async_produce_hook(span: Span, args, kwargs): ...
+
+- **async_consume_hook** (Callable) - a function with extra user-defined logic to be performed after consuming a message
+
+  Function signature:
+
+  .. code:: python
+
+      async def async_consume_hook(span: Span, record: kafka.record.ABCRecord, args, kwargs): ...
+
+For example:
 
 .. code:: python
 
@@ -90,7 +90,7 @@ for example:
     asyncio.run(produce())
 
 API
-___
+---
 """
 
 from __future__ import annotations

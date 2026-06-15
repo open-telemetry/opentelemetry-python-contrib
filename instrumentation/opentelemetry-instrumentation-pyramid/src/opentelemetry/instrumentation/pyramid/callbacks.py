@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import wsgiref.util as wsgiref_util
 from logging import getLogger
@@ -42,6 +31,7 @@ from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_RESPONSE_STATUS_CODE,
     HTTP_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
@@ -265,9 +255,8 @@ def trace_tween_factory(handler, registry):
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
-                duration_attrs[HTTP_STATUS_CODE] = (
-                    otel_wsgi._parse_status_code(status)
-                )
+                duration_attrs[HTTP_STATUS_CODE] = status_code
+                duration_attrs[HTTP_RESPONSE_STATUS_CODE] = status_code
 
             # Record metrics for old semconv (milliseconds)
             if duration_histogram_old:

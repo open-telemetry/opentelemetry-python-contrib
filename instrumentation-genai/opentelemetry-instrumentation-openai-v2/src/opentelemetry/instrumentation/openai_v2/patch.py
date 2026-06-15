@@ -1,19 +1,7 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 
-import json
 from timeit import default_timer
 from typing import Any, Optional
 
@@ -33,15 +21,13 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.trace import Span, SpanKind, Tracer
 from opentelemetry.trace.propagation import set_span_in_context
 from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.invocation import InferenceInvocation
 from opentelemetry.util.genai.types import (
-    ContentCapturingMode,
     Error,
-    LLMInvocation,  # pylint: disable=no-name-in-module  # TODO: migrate to InferenceInvocation
-    OutputMessage,
-    Text,
-    ToolCallRequest,
 )
 
+from .chat_buffers import ChoiceBuffer
+from .chat_wrappers import AsyncChatStreamWrapper, ChatStreamWrapper
 from .instruments import Instruments
 from .utils import (
     _prepare_output_messages,
@@ -68,7 +54,9 @@ def chat_completions_create_v_old(
             **get_llm_request_attributes(kwargs, instance, False)
         }
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+        span_name = f"{operation_name} {model}" if model else operation_name
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
@@ -121,17 +109,13 @@ def chat_completions_create_v_old(
 
 def chat_completions_create_v_new(
     handler: TelemetryHandler,
-    content_capturing_mode: ContentCapturingMode,
 ):
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
-
-    capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
+    capture_content = handler.should_capture_content()
 
     def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = handler.start_llm(
-            create_chat_invocation(
-                kwargs, instance, capture_content=capture_content
-            )
+        chat_invocation = create_chat_invocation(
+            handler, kwargs, instance, capture_content=capture_content
         )
 
         try:
@@ -143,18 +127,16 @@ def chat_completions_create_v_new(
                 parsed_result = result
             if is_streaming(kwargs):
                 return ChatStreamWrapper(
-                    parsed_result, handler, chat_invocation, capture_content
+                    parsed_result, chat_invocation, capture_content
                 )
 
             _set_response_properties(
                 chat_invocation, parsed_result, capture_content
             )
-            handler.stop_llm(chat_invocation)
+            chat_invocation.stop()
             return result
         except Exception as error:
-            handler.fail_llm(
-                chat_invocation, Error(type=type(error), message=str(error))
-            )
+            chat_invocation.fail(Error(type=type(error), message=str(error)))
             raise
 
     return traced_method
@@ -173,7 +155,9 @@ def async_chat_completions_create_v_old(
             **get_llm_request_attributes(kwargs, instance, False)
         }
 
-        span_name = f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+        operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+        model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+        span_name = f"{operation_name} {model}" if model else operation_name
         with tracer.start_as_current_span(
             name=span_name,
             kind=SpanKind.CLIENT,
@@ -226,16 +210,13 @@ def async_chat_completions_create_v_old(
 
 def async_chat_completions_create_v_new(
     handler: TelemetryHandler,
-    content_capturing_mode: ContentCapturingMode,
 ):
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
-    capture_content = content_capturing_mode != ContentCapturingMode.NO_CONTENT
+    capture_content = handler.should_capture_content()
 
     async def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = handler.start_llm(
-            create_chat_invocation(
-                kwargs, instance, capture_content=capture_content
-            )
+        chat_invocation = create_chat_invocation(
+            handler, kwargs, instance, capture_content=capture_content
         )
 
         try:
@@ -246,20 +227,18 @@ def async_chat_completions_create_v_new(
             else:
                 parsed_result = result
             if is_streaming(kwargs):
-                return ChatStreamWrapper(
-                    parsed_result, handler, chat_invocation, capture_content
+                return AsyncChatStreamWrapper(
+                    parsed_result, chat_invocation, capture_content
                 )
 
             _set_response_properties(
                 chat_invocation, parsed_result, capture_content
             )
-            handler.stop_llm(chat_invocation)
+            chat_invocation.stop()
             return result
 
         except Exception as error:
-            handler.fail_llm(
-                chat_invocation, Error(type=type(error), message=str(error))
-            )
+            chat_invocation.fail(Error(type=type(error), message=str(error)))
             raise
 
     return traced_method
@@ -373,7 +352,9 @@ def async_embeddings_create(
 
 def _get_embeddings_span_name(span_attributes):
     """Get span name for embeddings operations."""
-    return f"{span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]} {span_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]}"
+    operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+    model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+    return f"{operation_name} {model}" if model else operation_name
 
 
 def _record_metrics(
@@ -495,8 +476,8 @@ def _set_response_attributes(span, result):
 
 
 def _set_response_properties(
-    chat_invocation: LLMInvocation, result, capture_content: bool
-) -> LLMInvocation:
+    chat_invocation: InferenceInvocation, result, capture_content: bool
+) -> InferenceInvocation:
     if getattr(result, "model", None):
         chat_invocation.response_model_name = result.model
 
@@ -572,46 +553,6 @@ def _set_embeddings_response_attributes(
             result.usage.prompt_tokens,
         )
         # Don't set output tokens for embeddings as all tokens are input tokens
-
-
-class ToolCallBuffer:
-    def __init__(self, index, tool_call_id, function_name):
-        self.index = index
-        self.function_name = function_name
-        self.tool_call_id = tool_call_id
-        self.arguments = []
-
-    def append_arguments(self, arguments):
-        if arguments is not None:
-            self.arguments.append(arguments)
-
-
-class ChoiceBuffer:
-    def __init__(self, index):
-        self.index = index
-        self.finish_reason = None
-        self.text_content = []
-        self.tool_calls_buffers = []
-
-    def append_text_content(self, content):
-        self.text_content.append(content)
-
-    def append_tool_call(self, tool_call):
-        idx = tool_call.index
-        # make sure we have enough tool call buffers
-        for _ in range(len(self.tool_calls_buffers), idx + 1):
-            self.tool_calls_buffers.append(None)
-
-        function = tool_call.function
-        if not self.tool_calls_buffers[idx]:
-            self.tool_calls_buffers[idx] = ToolCallBuffer(
-                idx,
-                tool_call.id,
-                function.name if function else None,
-            )
-
-        if function:
-            self.tool_calls_buffers[idx].append_arguments(function.arguments)
 
 
 class BaseStreamWrapper:
@@ -829,7 +770,7 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
                 message["content"] = "".join(choice.text_content)
             if choice.tool_calls_buffers:
                 tool_calls = []
-                for tool_call in choice.tool_calls_buffers:
+                for tool_call in filter(None, choice.tool_calls_buffers):
                     function = {"name": tool_call.function_name}
                     if self.capture_content:
                         function["arguments"] = "".join(tool_call.arguments)
@@ -864,89 +805,4 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
             handle_span_exception(self.span, error)
         else:
             self.span.end()
-        self._started = False
-
-
-class ChatStreamWrapper(BaseStreamWrapper):
-    handler: TelemetryHandler
-    invocation: LLMInvocation
-    response_id: Optional[str] = None
-    response_model: Optional[str] = None
-    service_tier: Optional[str] = None
-    finish_reasons: list = []
-    prompt_tokens: Optional[int] = None
-    completion_tokens: Optional[int] = None
-
-    def __init__(
-        self,
-        stream: Stream,
-        handler: TelemetryHandler,
-        invocation: LLMInvocation,
-        capture_content: bool,
-    ):
-        super().__init__(stream, capture_content=capture_content)
-        self.stream = stream
-        self.handler = handler
-        self.invocation = invocation
-        self.choice_buffers = []
-
-    def _set_output_messages(self):
-        if not self.capture_content:  # optimization
-            return
-        output_messages = []
-        for choice in self.choice_buffers:
-            message = OutputMessage(
-                role="assistant",
-                finish_reason=choice.finish_reason or "error",
-                parts=[],
-            )
-            if choice.text_content:
-                message.parts.append(
-                    Text(content="".join(choice.text_content))
-                )
-            if choice.tool_calls_buffers:
-                tool_calls = []
-                for tool_call in choice.tool_calls_buffers:
-                    arguments = None
-                    arguments_str = "".join(tool_call.arguments)
-                    if arguments_str:
-                        try:
-                            arguments = json.loads(arguments_str)
-                        except json.JSONDecodeError:
-                            arguments = arguments_str
-                    tool_call_part = ToolCallRequest(
-                        name=tool_call.function_name,
-                        id=tool_call.tool_call_id,
-                        arguments=arguments,
-                    )
-                    tool_calls.append(tool_call_part)
-                message.parts.extend(tool_calls)
-            output_messages.append(message)
-
-        self.invocation.output_messages = output_messages
-
-    def cleanup(self, error: Optional[BaseException] = None):
-        if not self._started:
-            return
-
-        self.invocation.response_model_name = self.response_model
-        self.invocation.response_id = self.response_id
-        self.invocation.input_tokens = self.prompt_tokens
-        self.invocation.output_tokens = self.completion_tokens
-        self.invocation.finish_reasons = self.finish_reasons
-        if self.service_tier:
-            self.invocation.attributes.update(
-                {
-                    OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self.service_tier
-                },
-            )
-
-        self._set_output_messages()
-
-        if error:
-            self.handler.fail_llm(
-                self.invocation, Error(type=type(error), message=str(error))
-            )
-        else:
-            self.handler.stop_llm(self.invocation)
         self._started = False
