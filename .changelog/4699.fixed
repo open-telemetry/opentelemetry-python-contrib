@@ -1,0 +1,1 @@
+Fix ``AttributeError`` in ``opentelemetry-instrumentation-fastapi`` when using FastAPI >= 0.137.0, which changed ``router.routes`` from a flat list to a tree structure containing ``_IncludedRouter`` objects.

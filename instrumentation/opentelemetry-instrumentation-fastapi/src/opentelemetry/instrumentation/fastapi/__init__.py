@@ -479,6 +479,19 @@ def _get_route_details(scope):
     route = None
 
     for starlette_route in app.routes:
+        # FastAPI >= 0.137.0 introduced _IncludedRouter, a tree node with
+        # no .path attribute. Use effective_route_contexts() to recursively
+        # flatten it into matchable route contexts.
+        if hasattr(starlette_route, "effective_route_contexts"):
+            for route_context in starlette_route.effective_route_contexts():
+                match, _ = route_context.matches(scope)
+                if match == Match.FULL:
+                    route = route_context.path
+                    return route
+                if match == Match.PARTIAL:
+                    route = route_context.path
+            continue
+
         match, _ = (
             Route.matches(starlette_route, scope)
             if isinstance(starlette_route, Route)
