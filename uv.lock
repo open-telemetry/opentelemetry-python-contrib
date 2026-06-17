@@ -3149,7 +3149,7 @@ instruments-any = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiobotocore", marker = "extra == 'instruments-any'", specifier = "~=2.0" },
+    { name = "aiobotocore", marker = "extra == 'instruments-any'", specifier = ">=2.0,<4.0" },
     { name = "botocore", marker = "extra == 'instruments-any'", specifier = "~=1.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
