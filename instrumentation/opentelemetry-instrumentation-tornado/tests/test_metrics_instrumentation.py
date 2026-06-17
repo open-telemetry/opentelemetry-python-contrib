@@ -3,6 +3,7 @@
 
 
 import asyncio
+import platform
 from timeit import default_timer
 from unittest.mock import patch
 
@@ -238,13 +239,20 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         )
 
         # Server and client durations should be similar (adjusting for msecs vs secs)
+
+        # Give bigger delta for PyPy coarse timers
+        def metrics_delta(delta):
+            return (
+                0.05 if platform.python_implementation() == "PyPy" else delta
+            )
+
         self.assertAlmostEqual(
             abs(
                 req1_server_duration_data_point.sum / 1000.0
                 - req1_client_duration_data_point.sum
             ),
             0.0,
-            delta=0.01,
+            delta=metrics_delta(0.01),
         )
         self.assertAlmostEqual(
             abs(
@@ -252,20 +260,20 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
                 - req2_client_duration_data_point.sum
             ),
             0.0,
-            delta=0.02,
+            delta=metrics_delta(0.02),
         )
 
         # Make sure duration is roughly equivalent to expected (req1/slow) should be around 1 second
         self.assertAlmostEqual(
             req1_server_duration_data_point.sum / 1000.0,
             1.0,
-            delta=0.1,
+            delta=metrics_delta(0.1),
             msg="Should have been about 1 second",
         )
         self.assertAlmostEqual(
             req2_server_duration_data_point.sum / 1000.0,
             0.0,
-            delta=0.1,
+            delta=metrics_delta(0.1),
             msg="Should have been really short",
         )
 
@@ -373,8 +381,8 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
 
     def test_server_metrics_old_semconv(self):
         """Test that server metrics use old semantic conventions by default."""
-        response = self.fetch("/")
-        self.assertEqual(response.code, 201)
+        response = self.fetch("/parametrized/hello/?foo=bar")
+        self.assertEqual(response.code, 200)
         metrics = self.get_sorted_metrics(SCOPE)
 
         # Find old semconv metrics
@@ -390,6 +398,15 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
                 self.assertEqual(metric.unit, "ms")
             elif metric.name == "http.server.request.duration":
                 new_duration_found = True
+
+            for data_point in metric.data.data_points:
+                attributes = dict(data_point.attributes)
+
+                self.assertIn(HTTP_TARGET, attributes)
+                self.assertEqual(
+                    attributes[HTTP_TARGET], "/parametrized/{message}/"
+                )
+
         self.assertTrue(old_duration_found, "Old semconv metric not found")
         self.assertFalse(
             new_duration_found, "New semconv metric should not be present"
