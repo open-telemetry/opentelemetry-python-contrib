@@ -55,8 +55,10 @@ class _ExceptionLogger:
         *,
         severity_text: str,
         severity_number: SeverityNumber,
+        event_name: str,
     ) -> None:
         self._logger.emit(
+            event_name=event_name,
             body=str(exc),
             severity_text=severity_text,
             severity_number=severity_number,
@@ -128,7 +130,9 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         *,
         severity_text: str,
         severity_number: SeverityNumber,
+        event_name: str,
     ) -> None:
+        # BaseException includes process-control signals like KeyboardInterrupt.
         if not isinstance(exc, Exception) or self._exception_logger is None:
             return
 
@@ -137,6 +141,7 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
                 exc,
                 severity_text=severity_text,
                 severity_number=severity_number,
+                event_name=event_name,
             )
         # Logging must never replace the original unhandled exception path.
         # pylint: disable-next=broad-exception-caught
@@ -155,6 +160,7 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
             exc,
             severity_text="FATAL",
             severity_number=SeverityNumber.FATAL,
+            event_name=type(exc).__name__,
         )
         wrapped(*args, **kwargs)
 
@@ -170,6 +176,7 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
             hook_args.exc_value,
             severity_text="ERROR",
             severity_number=SeverityNumber.ERROR,
+            event_name=hook_args.exc_type.__name__,
         )
         wrapped(*args, **kwargs)
 
@@ -187,6 +194,7 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
                 exc,
                 severity_text="ERROR",
                 severity_number=SeverityNumber.ERROR,
+                event_name=context.get("message", type(exc).__name__),
             )
         wrapped(*args, **kwargs)
 

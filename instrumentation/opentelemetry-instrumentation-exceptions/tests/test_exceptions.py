@@ -20,19 +20,12 @@ from opentelemetry.instrumentation.exceptions import (
     UnhandledExceptionInstrumentor,
 )
 from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogRecordExporter,
+    SimpleLogRecordProcessor,
+)
 from opentelemetry.semconv.attributes import exception_attributes
 from opentelemetry.util._once import Once
-
-try:
-    from opentelemetry.sdk._logs.export import (
-        InMemoryLogRecordExporter,
-        SimpleLogRecordProcessor,
-    )
-except ImportError:
-    from opentelemetry.sdk._logs.export import (
-        InMemoryLogExporter as InMemoryLogRecordExporter,
-    )
-    from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
 
 # pylint: disable=redefined-outer-name
 
@@ -93,6 +86,7 @@ def test_sys_excepthook_emits_log(
     log_record = _finished_log(log_exporter)
     assert log_record.severity_text == "FATAL"
     assert log_record.severity_number == SeverityNumber.FATAL
+    assert log_record.event_name == "ValueError"
     assert log_record.body == "boom"
     assert called["value"] is True
 
@@ -132,6 +126,7 @@ def test_threading_excepthook_emits_log(
     log_record = _finished_log(log_exporter)
     assert log_record.severity_text == "ERROR"
     assert log_record.severity_number == SeverityNumber.ERROR
+    assert log_record.event_name == "ValueError"
     assert log_record.body == "boom"
     assert called["value"] is True
 
@@ -168,13 +163,14 @@ def test_asyncio_unhandled_exception_emits_log(
     loop.set_exception_handler(lambda _loop, _context: None)
     try:
         exc = _raised_value_error()
-        loop.call_exception_handler({"exception": exc, "message": "boom"})
+        loop.call_exception_handler({"exception": exc, "message": "task boom"})
     finally:
         loop.close()
 
     log_record = _finished_log(log_exporter)
     assert log_record.severity_text == "ERROR"
     assert log_record.severity_number == SeverityNumber.ERROR
+    assert log_record.event_name == "task boom"
     assert log_record.body == "boom"
     assert called["value"] is True
 
