@@ -462,6 +462,23 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
 
+def _flatten_routes(routes):
+    """
+    Yield the matchable routes from an app's route list.
+
+    FastAPI >= 0.137 nests routes added via include_router() under
+    _IncludedRouter tree nodes, which expose no ``path`` attribute. Expand
+    them into their effective route contexts, each of which provides
+    matches() and the full templated path. Matching these directly avoids
+    _IncludedRouter.matches() re-deriving the scope.
+    """
+    for starlette_route in routes:
+        if hasattr(starlette_route, "effective_route_contexts"):
+            yield from starlette_route.effective_route_contexts()
+        else:
+            yield starlette_route
+
+
 def _get_route_details(scope):
     """
     Function to retrieve Starlette route from scope.
@@ -478,21 +495,7 @@ def _get_route_details(scope):
     app = scope["app"]
     route = None
 
-    for starlette_route in app.routes:
-        # FastAPI >= 0.137 nests routes added via include_router() under
-        # _IncludedRouter tree nodes, which expose no ``path`` attribute.
-        # Flatten them into their effective route contexts, each of which
-        # provides matches() and the full templated path. Matching these
-        # directly avoids _IncludedRouter.matches() re-deriving the scope.
-        if hasattr(starlette_route, "effective_route_contexts"):
-            for route_context in starlette_route.effective_route_contexts():
-                match, _ = route_context.matches(scope)
-                if match == Match.FULL:
-                    return route_context.path
-                if match == Match.PARTIAL:
-                    route = route_context.path
-            continue
-
+    for starlette_route in _flatten_routes(app.routes):
         match, _ = (
             Route.matches(starlette_route, scope)
             if isinstance(starlette_route, Route)
