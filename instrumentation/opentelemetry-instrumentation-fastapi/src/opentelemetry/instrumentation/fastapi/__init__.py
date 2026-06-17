@@ -479,6 +479,20 @@ def _get_route_details(scope):
     route = None
 
     for starlette_route in app.routes:
+        # FastAPI >= 0.137 nests routes added via include_router() under
+        # _IncludedRouter tree nodes, which expose no ``path`` attribute.
+        # Flatten them into their effective route contexts, each of which
+        # provides matches() and the full templated path. Matching these
+        # directly avoids _IncludedRouter.matches() re-deriving the scope.
+        if hasattr(starlette_route, "effective_route_contexts"):
+            for route_context in starlette_route.effective_route_contexts():
+                match, _ = route_context.matches(scope)
+                if match == Match.FULL:
+                    return route_context.path
+                if match == Match.PARTIAL:
+                    route = route_context.path
+            continue
+
         match, _ = (
             Route.matches(starlette_route, scope)
             if isinstance(starlette_route, Route)
