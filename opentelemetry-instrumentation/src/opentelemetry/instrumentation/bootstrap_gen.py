@@ -54,7 +54,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-botocore==0.64b0.dev",
     },
     {
-        "library": "aiobotocore ~= 2.0",
+        "library": "aiobotocore >= 2.0, < 4.0",
         "instrumentation": "opentelemetry-instrumentation-botocore==0.64b0.dev",
     },
     {
