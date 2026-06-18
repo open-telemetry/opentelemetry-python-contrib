@@ -30,8 +30,8 @@ class _FakeAdapter(BaseAdapter):
         pass
 
 
-@pytest.fixture
-def instrumented_session():
+@pytest.fixture(name="http_session")
+def _http_session_fixture():
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -42,5 +42,5 @@ def instrumented_session():
     RequestsInstrumentor().uninstrument()
 
 
-def test_instrumented_send(benchmark, instrumented_session):
-    benchmark(instrumented_session.get, _URL)
+def test_instrumented_send(benchmark, http_session: requests.Session):
+    benchmark(http_session.get, _URL)
