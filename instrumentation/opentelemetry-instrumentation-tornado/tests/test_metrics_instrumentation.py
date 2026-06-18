@@ -381,8 +381,8 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
 
     def test_server_metrics_old_semconv(self):
         """Test that server metrics use old semantic conventions by default."""
-        response = self.fetch("/")
-        self.assertEqual(response.code, 201)
+        response = self.fetch("/parametrized/hello/?foo=bar")
+        self.assertEqual(response.code, 200)
         metrics = self.get_sorted_metrics(SCOPE)
 
         # Find old semconv metrics
@@ -398,6 +398,15 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
                 self.assertEqual(metric.unit, "ms")
             elif metric.name == "http.server.request.duration":
                 new_duration_found = True
+
+            for data_point in metric.data.data_points:
+                attributes = dict(data_point.attributes)
+
+                self.assertIn(HTTP_TARGET, attributes)
+                self.assertEqual(
+                    attributes[HTTP_TARGET], "/parametrized/{message}/"
+                )
+
         self.assertTrue(old_duration_found, "Old semconv metric not found")
         self.assertFalse(
             new_duration_found, "New semconv metric should not be present"
