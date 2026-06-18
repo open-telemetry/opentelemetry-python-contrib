@@ -705,20 +705,76 @@ class TestStructlogInstrumentor(TestBase):
             )
         )
 
+        structlog.reset_defaults()
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(captured_warnings, [])
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+
     def test_uninstrument_restores_configure(self):
         """Test that uninstrument() restores structlog configuration APIs."""
         original_configure = structlog.configure
         original_configure_once = structlog.configure_once
+        original_reset_defaults = structlog.reset_defaults
 
         StructlogInstrumentor().instrument(
             logger_provider=self.logger_provider
         )
         self.assertIsNot(structlog.configure, original_configure)
         self.assertIsNot(structlog.configure_once, original_configure_once)
+        self.assertIsNot(structlog.reset_defaults, original_reset_defaults)
 
         StructlogInstrumentor().uninstrument()
         self.assertIs(structlog.configure, original_configure)
         self.assertIs(structlog.configure_once, original_configure_once)
+        self.assertIs(structlog.reset_defaults, original_reset_defaults)
+
+    def test_uninstrument_restores_unconfigured_state(self):
+        """Test uninstrument restores configure_once for unconfigured apps."""
+        self.assertFalse(structlog.is_configured())
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        self.assertTrue(structlog.is_configured())
+
+        StructlogInstrumentor().uninstrument()
+
+        self.assertFalse(structlog.is_configured())
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(captured_warnings, [])
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+        self.assertFalse(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
 
     def test_instrumentation_dependencies(self):
         """Test that instrumentation_dependencies returns the correct value."""

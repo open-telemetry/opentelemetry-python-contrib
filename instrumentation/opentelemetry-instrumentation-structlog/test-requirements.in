@@ -1,0 +1,5 @@
+# Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
+pytest~=7.4
+wrapt>=1.16.0,<3.0.0
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-structlog[instruments]
