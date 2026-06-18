@@ -157,6 +157,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SYSTEM,
 )
 from opentelemetry.trace.span import Span
+from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
 
@@ -291,9 +292,15 @@ class BotocoreInstrumentor(BaseInstrumentor):
                     except ClientError as error:
                         result = getattr(error, "response", None)
                         _apply_response_attributes(span, result)
-                        _safe_invoke(
-                            extension.on_error, span, error, instrumentor_ctx
-                        )
+                        http_status = (result or {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+                        if http_status is not None and http_status < 400:
+                            # 3xx responses (e.g. 304 Not Modified) are raised as
+                            # ClientError by botocore but are not actual errors.
+                            span.set_status(Status(StatusCode.OK))
+                        else:
+                            _safe_invoke(
+                                extension.on_error, span, error, instrumentor_ctx
+                            )
                         raise
                     _apply_response_attributes(span, result)
                     _safe_invoke(
@@ -451,9 +458,15 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
                     except ClientError as error:
                         result = getattr(error, "response", None)
                         _apply_response_attributes(span, result)
-                        _safe_invoke(
-                            extension.on_error, span, error, instrumentor_ctx
-                        )
+                        http_status = (result or {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+                        if http_status is not None and http_status < 400:
+                            # 3xx responses (e.g. 304 Not Modified) are raised as
+                            # ClientError by botocore but are not actual errors.
+                            span.set_status(Status(StatusCode.OK))
+                        else:
+                            _safe_invoke(
+                                extension.on_error, span, error, instrumentor_ctx
+                            )
                         raise
                     _apply_response_attributes(span, result)
                     _safe_invoke(
