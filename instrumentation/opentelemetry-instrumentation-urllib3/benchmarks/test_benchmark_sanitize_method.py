@@ -16,8 +16,8 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 _URL = "http://mock/status/200"
 
 
-@pytest.fixture
-def instrumented_pool():
+@pytest.fixture(name="connection_pool")
+def _connection_pool_fixture():
     exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
@@ -31,11 +31,13 @@ def instrumented_pool():
     URLLib3Instrumentor().uninstrument()
 
 
-def test_instrumented_urlopen(benchmark, instrumented_pool):
+def test_instrumented_urlopen(
+    benchmark, connection_pool: urllib3.HTTPConnectionPool
+):
     def run():
         Entry.single_register(
             Entry.GET, _URL, body="Hello!", match_querystring=False
         )
-        instrumented_pool.urlopen("GET", "/status/200")
+        connection_pool.urlopen("GET", "/status/200")
 
     benchmark(run)
