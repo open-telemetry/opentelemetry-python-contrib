@@ -1798,7 +1798,7 @@ jobs:
         run: tox -e py310-test-instrumentation-starlette-latest -- -ra
 
   py310-test-instrumentation-structlog-oldest:
-    name: instrumentation-structlog-oldest
+    name: instrumentation-structlog-oldest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1828,7 +1828,7 @@ jobs:
         run: tox -e py310-test-instrumentation-structlog-oldest -- -ra
 
   py310-test-instrumentation-structlog-latest:
-    name: instrumentation-structlog-latest
+    name: instrumentation-structlog-latest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
