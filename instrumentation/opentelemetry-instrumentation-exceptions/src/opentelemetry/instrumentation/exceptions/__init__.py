@@ -32,7 +32,7 @@ from wrapt import (
     wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
 )
 
-from opentelemetry._logs import LoggerProvider, SeverityNumber, get_logger
+from opentelemetry._logs import Logger, SeverityNumber, get_logger
 from opentelemetry.instrumentation.exceptions.package import _instruments
 from opentelemetry.instrumentation.exceptions.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -40,47 +40,24 @@ from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv.schemas import Schemas
 
 
-class _ExceptionLogger:
-    def __init__(self, logger_provider: LoggerProvider | None = None):
-        self._logger = get_logger(
-            __name__,
-            __version__,
-            logger_provider,
-            schema_url=Schemas.V1_37_0.value,
-        )
-
-    def emit(
-        self,
-        exc: Exception,
-        *,
-        severity_text: str,
-        severity_number: SeverityNumber,
-        event_name: str,
-    ) -> None:
-        self._logger.emit(
-            event_name=event_name,
-            body=str(exc),
-            severity_text=severity_text,
-            severity_number=severity_number,
-            exception=exc,
-        )
-
-
 class UnhandledExceptionInstrumentor(BaseInstrumentor):
     """Emit logs for uncaught exceptions and unhandled asyncio exceptions."""
 
-    def __init__(self, logger_provider: LoggerProvider | None = None):
+    def __init__(self):
         super().__init__()
-        self._logger_provider = logger_provider
-        self._exception_logger: _ExceptionLogger | None = None
-        self._instrumentation_dependencies = _instruments
+        self._logger: Logger | None = None
 
+    # pylint: disable-next=no-self-use
     def instrumentation_dependencies(self) -> Collection[str]:
-        return self._instrumentation_dependencies
+        return _instruments
 
     def _instrument(self, **kwargs: Any):
-        logger_provider = kwargs.get("logger_provider", self._logger_provider)
-        self._exception_logger = _ExceptionLogger(logger_provider)
+        self._logger = get_logger(
+            __name__,
+            __version__,
+            kwargs.get("logger_provider"),
+            schema_url=Schemas.V1_37_0.value,
+        )
         self._install_sys_hook()
         self._install_threading_hook()
         self._install_asyncio_hook()
@@ -89,7 +66,7 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         self._restore_sys_hook()
         self._restore_threading_hook()
         self._restore_asyncio_hook()
-        self._exception_logger = None
+        self._logger = None
 
     def _install_sys_hook(self) -> None:
         wrap_function_wrapper(
@@ -133,15 +110,16 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         event_name: str,
     ) -> None:
         # BaseException includes process-control signals like KeyboardInterrupt.
-        if not isinstance(exc, Exception) or self._exception_logger is None:
+        if not isinstance(exc, Exception) or self._logger is None:
             return
 
         try:
-            self._exception_logger.emit(
-                exc,
+            self._logger.emit(
+                event_name=event_name,
+                body=str(exc),
                 severity_text=severity_text,
                 severity_number=severity_number,
-                event_name=event_name,
+                exception=exc,
             )
         # Logging must never replace the original unhandled exception path.
         # pylint: disable-next=broad-exception-caught
@@ -190,11 +168,12 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         (context,) = args
         exc = context.get("exception")
         if isinstance(exc, BaseException):
+            message = context.get("message")
             self._emit_exception(
                 exc,
                 severity_text="ERROR",
                 severity_number=SeverityNumber.ERROR,
-                event_name=context.get("message", type(exc).__name__),
+                event_name=str(message) if message else type(exc).__name__,
             )
         wrapped(*args, **kwargs)
 

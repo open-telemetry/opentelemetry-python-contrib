@@ -183,6 +183,35 @@ def test_asyncio_unhandled_exception_emits_log(
     )
 
 
+@pytest.mark.parametrize(
+    ("message", "expected_event_name"),
+    ((None, "ValueError"), (42, "42")),
+)
+def test_asyncio_event_name_falls_back_or_coerces(
+    log_exporter: InMemoryLogRecordExporter,
+    monkeypatch: pytest.MonkeyPatch,
+    instrumentor: UnhandledExceptionInstrumentor,
+    message: object,
+    expected_event_name: str,
+) -> None:
+    monkeypatch.setattr(
+        asyncio.BaseEventLoop,
+        "call_exception_handler",
+        lambda _loop, _context: None,
+    )
+    instrumentor.instrument()
+
+    loop = asyncio.new_event_loop()
+    loop.set_exception_handler(lambda _loop, _context: None)
+    try:
+        exc = _raised_value_error()
+        loop.call_exception_handler({"exception": exc, "message": message})
+    finally:
+        loop.close()
+
+    assert _finished_log(log_exporter).event_name == expected_event_name
+
+
 def test_base_exceptions_are_not_emitted(
     log_exporter: InMemoryLogRecordExporter,
     monkeypatch: pytest.MonkeyPatch,
@@ -201,6 +230,22 @@ def test_base_exceptions_are_not_emitted(
 
     assert not log_exporter.get_finished_logs()
     assert called["value"] is True
+
+
+def test_double_instrument_does_not_emit_duplicate_logs(
+    log_exporter: InMemoryLogRecordExporter,
+    monkeypatch: pytest.MonkeyPatch,
+    instrumentor: UnhandledExceptionInstrumentor,
+) -> None:
+    monkeypatch.setattr(sys, "excepthook", lambda _exc_type, _exc, _tb: None)
+
+    instrumentor.instrument()
+    instrumentor.instrument()
+
+    exc = _raised_value_error()
+    sys.excepthook(type(exc), exc, exc.__traceback__)
+
+    assert len(log_exporter.get_finished_logs()) == 1
 
 
 def test_uninstrument_restores_hooks(
