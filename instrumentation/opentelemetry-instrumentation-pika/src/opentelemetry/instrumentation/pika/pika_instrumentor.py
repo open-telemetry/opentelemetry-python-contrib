@@ -58,6 +58,10 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             consumer_callback = getattr(consumer_info, callback_attr, None)
             if consumer_callback is None:
                 continue
+            if "_original_callback" in getattr(
+                consumer_callback, "__dict__", {}
+            ):
+                continue
             decorated_callback = utils._decorate_callback(
                 consumer_callback,
                 tracer,
