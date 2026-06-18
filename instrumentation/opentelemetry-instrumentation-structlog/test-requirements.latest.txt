@@ -14,6 +14,7 @@ iniconfig==2.3.0
     # via pytest
 packaging==26.2
     # via
+    #   -r instrumentation/opentelemetry-instrumentation-structlog/test-requirements.in
     #   opentelemetry-instrumentation
     #   pytest
 pluggy==1.6.0
