@@ -524,7 +524,9 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
-    def _add_interceptors(self, tracer_provider, meter_provider, target, kwargs):
+    def _add_interceptors(
+        self, tracer_provider, meter_provider, target, kwargs
+    ):
         interceptors = aio_client_interceptors(
             tracer_provider=tracer_provider,
             filter_=self._filter,
@@ -621,7 +623,9 @@ def client_interceptor(
     )
 
 
-def server_interceptor(tracer_provider=None, filter_=None, meter_provider=None):
+def server_interceptor(
+    tracer_provider=None, filter_=None, meter_provider=None
+):
     """Create a gRPC server interceptor.
 
     Args:
@@ -703,13 +707,13 @@ def aio_client_interceptors(
         _aio_client.UnaryUnaryAioClientInterceptor(tracer, **common_kwargs),
         _aio_client.UnaryStreamAioClientInterceptor(tracer, **common_kwargs),
         _aio_client.StreamUnaryAioClientInterceptor(tracer, **common_kwargs),
-        _aio_client.StreamStreamAioClientInterceptor(
-            tracer, **common_kwargs
-        ),
+        _aio_client.StreamStreamAioClientInterceptor(tracer, **common_kwargs),
     ]
 
 
-def aio_server_interceptor(tracer_provider=None, filter_=None, meter_provider=None):
+def aio_server_interceptor(
+    tracer_provider=None, filter_=None, meter_provider=None
+):
     """Create a gRPC aio server interceptor.
 
     Args:

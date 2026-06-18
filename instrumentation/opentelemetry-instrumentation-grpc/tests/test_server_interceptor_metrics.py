@@ -37,8 +37,9 @@ class Servicer(GRPCTestServerServicer):
 
 
 class TestServerInterceptorMetrics(TestBase):
+    @staticmethod
     @contextlib.contextmanager
-    def server(self, max_workers=1, interceptors=None):
+    def server(max_workers=1, interceptors=None):
         with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             server = grpc.server(
                 executor,
@@ -57,9 +58,10 @@ class TestServerInterceptorMetrics(TestBase):
             meter_provider=self.meter_provider,
         )
 
-        with self.server(
-            max_workers=1, interceptors=[interceptor]
-        ) as (server, channel):
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
             add_GRPCTestServerServicer_to_server(Servicer(), server)
 
             rpc_call = "/GRPCTestServer/SimpleMethod"
@@ -92,7 +94,22 @@ class TestServerInterceptorMetrics(TestBase):
         self.assertGreater(point.sum, 0)
         self.assertEqual(
             point.explicit_bounds,
-            (0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10),
+            (
+                0.005,
+                0.01,
+                0.025,
+                0.05,
+                0.075,
+                0.1,
+                0.25,
+                0.5,
+                0.75,
+                1,
+                2.5,
+                5,
+                7.5,
+                10,
+            ),
         )
 
         attrs = dict(point.attributes)
@@ -115,9 +132,10 @@ class TestServerInterceptorMetrics(TestBase):
             meter_provider=self.meter_provider,
         )
 
-        with self.server(
-            max_workers=1, interceptors=[interceptor]
-        ) as (server, channel):
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
             add_GRPCTestServerServicer_to_server(ErrorServicer(), server)
 
             rpc_call = "/GRPCTestServer/SimpleMethod"
@@ -165,9 +183,10 @@ class TestServerInterceptorMetrics(TestBase):
             meter_provider=self.meter_provider,
         )
 
-        with self.server(
-            max_workers=1, interceptors=[interceptor]
-        ) as (server, channel):
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
             add_GRPCTestServerServicer_to_server(CrashingServicer(), server)
 
             rpc_call = "/GRPCTestServer/SimpleMethod"
@@ -212,12 +231,11 @@ class TestServerInterceptorMetrics(TestBase):
             meter_provider=self.meter_provider,
         )
 
-        with self.server(
-            max_workers=1, interceptors=[interceptor]
-        ) as (server, channel):
-            add_GRPCTestServerServicer_to_server(
-                StreamingServicer(), server
-            )
+        with self.server(max_workers=1, interceptors=[interceptor]) as (
+            server,
+            channel,
+        ):
+            add_GRPCTestServerServicer_to_server(StreamingServicer(), server)
 
             rpc_call = "/GRPCTestServer/ServerStreamingMethod"
             request = Request(client_id=1, request_data="test")

@@ -174,8 +174,10 @@ class UnaryUnaryAioClientInterceptor(
                 continuation, new_details, request
             )
             return await self._wrap_unary_response(
-                continuation_with_args, span,
-                method=method, start_time=start_time,
+                continuation_with_args,
+                span,
+                method=method,
+                start_time=start_time,
             )
 
 
@@ -201,8 +203,10 @@ class UnaryStreamAioClientInterceptor(
             if self._request_hook:
                 self._call_request_hook(span, request)
             return self._wrap_stream_response(
-                span, resp,
-                method=method, start_time=start_time,
+                span,
+                resp,
+                method=method,
+                start_time=start_time,
             )
 
 
@@ -228,8 +232,10 @@ class StreamUnaryAioClientInterceptor(
                 continuation, new_details, request_iterator
             )
             return await self._wrap_unary_response(
-                continuation_with_args, span,
-                method=method, start_time=start_time,
+                continuation_with_args,
+                span,
+                method=method,
+                start_time=start_time,
             )
 
 
@@ -254,6 +260,8 @@ class StreamStreamAioClientInterceptor(
             resp = await continuation(new_details, request_iterator)
 
             return self._wrap_stream_response(
-                span, resp,
-                method=method, start_time=start_time,
+                span,
+                resp,
+                method=method,
+                start_time=start_time,
             )

@@ -48,8 +48,20 @@ logger = logging.getLogger(__name__)
 _DEFAULT_RPC_METHOD = "_OTHER"
 
 _RPC_DURATION_BUCKET_BOUNDARIES = (
-    0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
-    0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1,
+    2.5,
+    5,
+    7.5,
+    10,
 )
 
 
@@ -308,9 +320,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
             attrs[ERROR_TYPE] = status_code.name
         return attrs
 
-    def _record_duration(
-        self, handler_call_details, start_time, status_code
-    ):
+    def _record_duration(self, handler_call_details, start_time, status_code):
         if self._duration_histogram is None:
             return
         elapsed = time.perf_counter() - start_time

@@ -48,8 +48,20 @@ logger = logging.getLogger(__name__)
 _DEFAULT_RPC_METHOD = "_OTHER"
 
 _RPC_DURATION_BUCKET_BOUNDARIES = (
-    0.005, 0.01, 0.025, 0.05, 0.075, 0.1,
-    0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1,
+    2.5,
+    5,
+    7.5,
+    10,
 )
 
 
@@ -124,8 +136,13 @@ class OpenTelemetryClientInterceptor(
     grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
 ):
     def __init__(
-        self, tracer, filter_=None, request_hook=None, response_hook=None,
-        meter=None, target=None,
+        self,
+        tracer,
+        filter_=None,
+        request_hook=None,
+        response_hook=None,
+        meter=None,
+        target=None,
     ):
         self._tracer = tracer
         self._filter = filter_
@@ -263,8 +280,11 @@ class OpenTelemetryClientInterceptor(
                 if result is None:
                     span.end()
         return self._trace_result(
-            span, rpc_info, result,
-            client_info.full_method, start_time,
+            span,
+            rpc_info,
+            result,
+            client_info.full_method,
+            start_time,
         )
 
     def _call_request_hook(self, span, request):
