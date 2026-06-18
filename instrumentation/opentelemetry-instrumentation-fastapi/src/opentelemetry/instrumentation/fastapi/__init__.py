@@ -184,6 +184,14 @@ from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+try:
+    # FastAPI >= 0.137.2 exposes a public helper that flattens routes added via
+    # include_router() (nested under _IncludedRouter in 0.137) into matchable
+    # RouteContext objects. Older versions don't have it; see _flatten_routes.
+    from fastapi.routing import iter_route_contexts
+except ImportError:
+    iter_route_contexts = None
+
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
@@ -466,12 +474,19 @@ def _flatten_routes(routes):
     """
     Yield the matchable routes from an app's route list.
 
-    FastAPI >= 0.137 nests routes added via include_router() under
-    _IncludedRouter tree nodes, which expose no ``path`` attribute. Expand
-    them into their effective route contexts, each of which provides
-    matches() and the full templated path. Matching these directly avoids
-    _IncludedRouter.matches() re-deriving the scope.
+    FastAPI 0.137 nests routes added via include_router() under _IncludedRouter
+    tree nodes, which expose no ``path`` attribute. They have to be flattened
+    into their effective route contexts (each providing matches() and the full
+    templated path) before they can be matched against a scope.
+
+    FastAPI >= 0.137.2 provides the public iter_route_contexts() for this, which
+    also wraps plain routes uniformly. On older versions fall back to the
+    private _IncludedRouter.effective_route_contexts(), and on FastAPI < 0.137
+    (no _IncludedRouter) the routes are already matchable as-is.
     """
+    if iter_route_contexts is not None:
+        yield from iter_route_contexts(routes)
+        return
     for starlette_route in routes:
         if hasattr(starlette_route, "effective_route_contexts"):
             yield from starlette_route.effective_route_contexts()

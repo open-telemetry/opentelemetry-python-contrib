@@ -5,7 +5,7 @@ certifi==2024.7.4
 charset-normalizer==3.3.2
 Deprecated==1.2.14
 exceptiongroup==1.2.0
-fastapi==0.137.1
+fastapi==0.137.2
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
