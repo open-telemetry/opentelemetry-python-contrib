@@ -9,7 +9,7 @@ import threading
 import traceback
 from contextvars import ContextVar
 from time import time_ns
-from typing import Callable
+from typing import Callable, Mapping
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -22,7 +22,7 @@ from opentelemetry._logs import (
 from opentelemetry.context import get_current
 from opentelemetry.semconv._incubating.attributes import code_attributes
 from opentelemetry.semconv.attributes import exception_attributes
-from opentelemetry.util.types import _ExtendedAttributes
+from opentelemetry.util.types import AnyValue
 
 _internal_logger = logging.getLogger(__name__ + ".internal")
 _internal_logger.propagate = False
@@ -132,7 +132,7 @@ class LoggingHandler(logging.Handler):
 
     def _get_attributes(
         self, record: logging.LogRecord
-    ) -> _ExtendedAttributes:
+    ) -> Mapping[str, AnyValue]:
         attributes = {
             k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS
         }

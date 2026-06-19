@@ -4,6 +4,7 @@ import json
 import os
 from importlib.metadata import EntryPoint
 from unittest.mock import ANY, Mock, call, patch
+from urllib.parse import urlparse
 
 import botocore.session
 from botocore.exceptions import ParamValidationError
@@ -342,7 +343,7 @@ class TestBotocoreInstrumentor(TestBase):
         span = self.assert_only_span()
         expected = self._default_span_attributes("STS", "GetCallerIdentity")
         expected["aws.request_id"] = ANY
-        expected[SERVER_ADDRESS] = "sts.amazonaws.com"
+        expected[SERVER_ADDRESS] = urlparse(sts.meta.endpoint_url).hostname
         # check for exact attribute set to make sure not to leak any sts secrets
         self.assertEqual(expected, dict(span.attributes))
 
