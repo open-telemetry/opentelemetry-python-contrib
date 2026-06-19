@@ -60,10 +60,12 @@ packaging==18.0
     #   pytest
 pluggy==1.6.0
     # via pytest
-pydantic==2.13.4
+pydantic==2.12.5
     # via fastapi
-pydantic-core==2.46.4
-    # via pydantic
+pydantic-core==2.41.5
+    # via
+    #   -r instrumentation/opentelemetry-instrumentation-fastapi/test-requirements.in
+    #   pydantic
 pyparsing==3.3.2
     # via packaging
 pytest==7.4.4
