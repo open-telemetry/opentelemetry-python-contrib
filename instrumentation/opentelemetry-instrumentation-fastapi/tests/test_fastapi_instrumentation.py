@@ -25,7 +25,9 @@ from starlette.routing import Match
 from starlette.types import Receive, Scope, Send
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
+from opentelemetry import context as otel_context
 from opentelemetry import trace
+from opentelemetry.context import set_value
 from opentelemetry.instrumentation._semconv import (
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
@@ -508,6 +510,106 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         spans = self.memory_exporter.get_finished_spans()
         request_span = next(
             span for span in spans if span.name == "POST /checkout"
+        )
+        background_span = next(
+            span
+            for span in spans
+            if span.name == "BackgroundTask background_notify"
+        )
+        inner_span = next(
+            span for span in spans if span.name == "inside-background-task"
+        )
+        self.assertIsNotNone(background_span.parent)
+        self.assertEqual(
+            background_span.parent.span_id,
+            request_span.context.span_id,
+        )
+        self.assertIsNotNone(inner_span.parent)
+        self.assertEqual(
+            inner_span.parent.span_id,
+            background_span.context.span_id,
+        )
+        otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
+
+    def test_background_task_inherits_sync_route_context(self):
+        """Regression test for #3586: context values attached inside a
+        *sync* route handler must be visible to background tasks scheduled
+        from that handler, matching the behavior already seen for async
+        route handlers.
+
+        Sync routes run inside a worker thread (via
+        anyio.to_thread.run_sync), which copies context into the thread but
+        does not propagate mutations made there back out once the thread
+        returns. Without explicitly preserving it, any context attached
+        during the sync route handler is lost by the time its background
+        tasks run.
+        """
+        self.memory_exporter.clear()
+        app = fastapi.FastAPI()
+        self._instrumentor.instrument_app(app)
+
+        results = {}
+
+        def record_context(label):
+            results[label] = dict(otel_context.get_current())
+
+        def attach_test_value():
+            ctx = set_value("test_key", "test_value")
+            otel_context.attach(ctx)
+
+        @app.get("/sync-endpoint")
+        def sync_endpoint(background_tasks: BackgroundTasks):
+            attach_test_value()
+            background_tasks.add_task(record_context, "sync")
+            return "Hello, World!"
+
+        @app.get("/async-endpoint")
+        async def async_endpoint(background_tasks: BackgroundTasks):
+            attach_test_value()
+            background_tasks.add_task(record_context, "async")
+            return "Hello, World!"
+
+        with TestClient(app) as client:
+            sync_response = client.get("/sync-endpoint")
+            async_response = client.get("/async-endpoint")
+
+        self.assertEqual(200, sync_response.status_code)
+        self.assertEqual(200, async_response.status_code)
+        self.assertIn("test_key", results["sync"])
+        self.assertEqual(results["sync"]["test_key"], "test_value")
+        self.assertIn("test_key", results["async"])
+        self.assertEqual(results["async"]["test_key"], "test_value")
+        otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
+
+    def test_background_task_context_does_not_clobber_span_parenting(self):
+        """A background task's preserved route-handler context must not
+        override the dedicated BackgroundTask span (see #4251) that this
+        instrumentation starts around the task's execution."""
+        self.memory_exporter.clear()
+        app = fastapi.FastAPI()
+        self._instrumentor.instrument_app(app)
+        tracer = self.tracer_provider.get_tracer(__name__)
+
+        def attach_test_value():
+            ctx = set_value("test_key", "test_value")
+            otel_context.attach(ctx)
+
+        def background_notify():
+            with tracer.start_as_current_span("inside-background-task"):
+                pass
+
+        @app.get("/sync-checkout")
+        def sync_checkout(background_tasks: BackgroundTasks):
+            attach_test_value()
+            background_tasks.add_task(background_notify)
+            return {"status": "processing"}
+
+        with TestClient(app) as client:
+            response = client.get("/sync-checkout")
+        self.assertEqual(200, response.status_code)
+        spans = self.memory_exporter.get_finished_spans()
+        request_span = next(
+            span for span in spans if span.name == "GET /sync-checkout"
         )
         background_span = next(
             span
