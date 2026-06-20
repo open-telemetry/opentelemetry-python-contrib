@@ -19,6 +19,11 @@ from opentelemetry.instrumentation.asyncpg import (
     _PREPARED_STMT_METHODS,
     AsyncPGInstrumentor,
 )
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+    DbSystemNameValues,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -243,10 +248,11 @@ class TestAsyncPGInstrumentation(TestBase):
                 self.assertEqual(spans[0].name, expected_name)
                 self.assertTrue(spans[0].status.is_ok)
                 self.assertEqual(
-                    spans[0].attributes.get("db.statement"), query
+                    spans[0].attributes.get(DB_QUERY_TEXT), query
                 )
                 self.assertEqual(
-                    spans[0].attributes.get("db.system"), "postgresql"
+                    spans[0].attributes.get(DB_SYSTEM_NAME),
+                    DbSystemNameValues.POSTGRESQL.value,
                 )
 
                 apg.uninstrument()
