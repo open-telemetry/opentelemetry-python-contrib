@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-fastapi`: Fix OpenTelemetry context (e.g. values set via `context.attach`) not propagating from a synchronous route handler to its `BackgroundTasks`, since sync handlers run in a worker thread and the resulting context mutation was previously lost once the thread returned.

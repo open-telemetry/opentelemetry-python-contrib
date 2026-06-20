@@ -172,6 +172,7 @@ API
 from __future__ import annotations
 
 import functools
+import inspect
 import logging
 import types
 from typing import Any, Collection, Literal
@@ -179,11 +180,13 @@ from weakref import WeakSet as _WeakSet
 
 import fastapi
 from starlette.applications import Starlette
-from starlette.background import BackgroundTask
+from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from opentelemetry import context as otel_context
+from opentelemetry.context import set_value
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
     _OpenTelemetrySemanticConventionStability,
@@ -398,6 +401,83 @@ class FastAPIInstrumentor(BaseInstrumentor):
                         return await BackgroundTask._otel_original_call(self)
 
                 BackgroundTask.__call__ = traced_call
+                if not hasattr(BackgroundTasks, "_otel_original_add_task"):
+                    BackgroundTasks._otel_original_add_task = (
+                        BackgroundTasks.add_task
+                    )
+
+                    def context_preserving_add_task(
+                        self, func, *args, **kwargs
+                    ):
+                        """Snapshot the OpenTelemetry context at the moment a
+                        background task is scheduled and merge it into the
+                        context active when the task actually executes.
+
+                        This matters specifically for sync route handlers: they
+                        run inside a worker thread via anyio.to_thread.run_sync,
+                        which copies context into the thread but does not
+                        propagate any mutations (e.g. context.attach calls) back
+                        out once the thread returns. By the time the background
+                        task executes, any OTel context set during the route
+                        handler (such as baggage or values attached via
+                        context.attach) is already gone from the ambient
+                        context. Capturing it here -- inside the same thread
+                        where the mutation happened, at add_task() time --
+                        preserves it for the background task.
+
+                        The captured context is merged into the ambient context
+                        at execution time rather than replacing it outright, so
+                        this does not clobber context set up afterwards, such as
+                        the BackgroundTask span this instrumentation starts
+                        around each task's execution: keys already present in
+                        the ambient context (e.g. the current span) take
+                        precedence over the captured ones.
+                        """
+                        captured_otel_context = otel_context.get_current()
+
+                        def _merge_and_attach():
+                            ambient_otel_context = otel_context.get_current()
+                            merged_otel_context = ambient_otel_context
+                            for (
+                                key,
+                                value,
+                            ) in captured_otel_context.items():
+                                if key not in ambient_otel_context:
+                                    merged_otel_context = set_value(
+                                        key, value, context=merged_otel_context
+                                    )
+                            return otel_context.attach(merged_otel_context)
+
+                        if inspect.iscoroutinefunction(func):
+
+                            @functools.wraps(func)
+                            async def context_preserving_wrapper(
+                                *call_args, **call_kwargs
+                            ):
+                                token = _merge_and_attach()
+                                try:
+                                    return await func(
+                                        *call_args, **call_kwargs
+                                    )
+                                finally:
+                                    otel_context.detach(token)
+                        else:
+
+                            @functools.wraps(func)
+                            def context_preserving_wrapper(
+                                *call_args, **call_kwargs
+                            ):
+                                token = _merge_and_attach()
+                                try:
+                                    return func(*call_args, **call_kwargs)
+                                finally:
+                                    otel_context.detach(token)
+
+                        return BackgroundTasks._otel_original_add_task(
+                            self, context_preserving_wrapper, *args, **kwargs
+                        )
+
+                    BackgroundTasks.add_task = context_preserving_add_task
 
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
@@ -420,6 +500,10 @@ class FastAPIInstrumentor(BaseInstrumentor):
         if hasattr(BackgroundTask, "_otel_original_call"):
             BackgroundTask.__call__ = BackgroundTask._otel_original_call
             del BackgroundTask._otel_original_call
+
+        if hasattr(BackgroundTasks, "_otel_original_add_task"):
+            BackgroundTasks.add_task = BackgroundTasks._otel_original_add_task
+            del BackgroundTasks._otel_original_add_task
 
         app._is_instrumented_by_opentelemetry = False
 
