@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-fastapi`: fix ``AttributeError`` for ``_IncludedRouter`` in FastAPI v0.137.0+

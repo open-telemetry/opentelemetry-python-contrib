@@ -358,6 +358,41 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
                 span.attributes[HTTP_URL],
             )
 
+    def test_included_router_route_attribute(self):
+        """Ensure that routes from included routers resolve the correct HTTP_ROUTE.
+
+        FastAPI v0.137.0+ wraps included routers in _IncludedRouter objects
+        that do not have a path attribute. The instrumentation must recurse
+        into the sub-routes to find the actual route path.
+        See: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4699
+        """
+        from fastapi import APIRouter
+
+        app = fastapi.FastAPI()
+        router = APIRouter(prefix="/items")
+
+        @router.get("/{item_id}")
+        async def get_item(item_id: int):
+            return {"item_id": item_id}
+
+        app.include_router(router)
+        otel_fastapi.FastAPIInstrumentor.instrument_app(app)
+
+        client = TestClient(app)
+        resp = client.get("/items/42")
+        self.assertEqual(resp.status_code, 200)
+
+        spans = self.memory_exporter.get_finished_spans()
+        server_spans = [
+            span
+            for span in spans
+            if HTTP_ROUTE in span.attributes
+        ]
+        self.assertTrue(len(server_spans) > 0)
+        self.assertEqual(
+            server_spans[-1].attributes[HTTP_ROUTE], "/items/{item_id}"
+        )
+
     def test_host_fastapi_call(self):
         client = TestClient(self._app, base_url="https://testserver2:443")
         client.get("/")

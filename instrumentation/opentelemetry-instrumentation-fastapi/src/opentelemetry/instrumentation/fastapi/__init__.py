@@ -488,11 +488,38 @@ def _get_route_details(scope):
             try:
                 route = starlette_route.path
             except AttributeError:
-                # routes added via host routing won't have a path attribute
-                route = scope.get("path")
+                # FastAPI v0.137.0+ wraps included routers in
+                # _IncludedRouter objects that lack a path attribute.
+                # Recurse into the sub-routes to find the actual route.
+                sub_routes = getattr(starlette_route, "routes", None)
+                if sub_routes is None and hasattr(
+                    starlette_route, "original_router"
+                ):
+                    sub_routes = getattr(
+                        starlette_route.original_router, "routes", []
+                    )
+                if sub_routes:
+                    for sub in sub_routes:
+                        sub_match, _ = (
+                            Route.matches(sub, scope)
+                            if isinstance(sub, Route)
+                            else sub.matches(scope)
+                        )
+                        if sub_match == Match.FULL:
+                            try:
+                                route = sub.path
+                            except AttributeError:
+                                route = scope.get("path")
+                            break
+                else:
+                    # routes added via host routing won't have a path attribute
+                    route = scope.get("path")
             break
         if match == Match.PARTIAL:
-            route = starlette_route.path
+            try:
+                route = starlette_route.path
+            except AttributeError:
+                route = scope.get("path")
     return route
 
 
