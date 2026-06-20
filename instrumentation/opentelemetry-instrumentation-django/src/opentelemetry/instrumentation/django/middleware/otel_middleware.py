@@ -419,7 +419,17 @@ class _DjangoMiddleware:
         self._active_request_counter.add(-1, active_requests_count_attrs)
 
         if activation and span:
-            if exception:
+            if response.streaming and not exception:
+                original_close = response.close
+
+                def _end_span_on_close(*args, **kwargs):
+                    try:
+                        original_close(*args, **kwargs)
+                    finally:
+                        activation.__exit__(None, None, None)
+
+                response.close = _end_span_on_close
+            elif exception:
                 activation.__exit__(
                     type(exception),
                     exception,
