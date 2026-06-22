@@ -22,6 +22,9 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.redis.util import (
+    _build_span_meta_data_for_pipeline,
+)
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_REDIS_DATABASE_INDEX,
@@ -1613,3 +1616,67 @@ class TestRedisSemconvConfiguration(TestBase):
                 call_args[1]["schema_url"],
                 "https://opentelemetry.io/schemas/1.25.0",
             )
+
+
+class _FakeCommand:
+    def __init__(self, *args):
+        self.args = args
+
+
+class _FakeExecutionStrategy:
+    def __init__(self, commands):
+        self.command_queue = commands
+
+
+class _FakeClusterPipeline:
+    """Mimics redis-py 6+ ClusterPipeline: queued commands live on
+    ``_execution_strategy.command_queue`` while ``command_stack`` stays empty."""
+
+    def __init__(self, commands):
+        self.command_stack = []
+        self._execution_strategy = _FakeExecutionStrategy(commands)
+
+
+class _FakeLegacyPipeline:
+    def __init__(self, commands):
+        self.command_stack = commands
+
+
+class TestBuildSpanMetaDataForPipeline(TestBase):
+    def test_cluster_pipeline_reads_execution_strategy(self):
+        # Regression test for issue #4084: redis-py 6+ ClusterPipeline no
+        # longer populates command_stack, so commands must be read from
+        # _execution_strategy.command_queue.
+        commands = [_FakeCommand("SET", "k1", "v1"), _FakeCommand("GET", "k1")]
+        instance = _FakeClusterPipeline(commands)
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(len(command_stack), 2)
+        self.assertEqual(resource, "SET ? ?\nGET ?")
+        self.assertEqual(span_name, "SET GET")
+
+    def test_legacy_pipeline_still_reads_command_stack(self):
+        commands = [_FakeCommand("SET", "k1", "v1")]
+        instance = _FakeLegacyPipeline(commands)
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(len(command_stack), 1)
+        self.assertEqual(resource, "SET ? ?")
+        self.assertEqual(span_name, "SET")
+
+    def test_empty_cluster_pipeline_falls_back_to_redis_span_name(self):
+        instance = _FakeClusterPipeline([])
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(command_stack, [])
+        self.assertEqual(resource, "")
+        self.assertEqual(span_name, "redis")
