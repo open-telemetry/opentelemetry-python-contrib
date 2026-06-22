@@ -1649,8 +1649,11 @@ class TestInstrumentNonFastAPIApp(TestBase):
         async def plain_asgi(scope, receive, send):
             pass
 
-        # should not raise
+        # should not raise and should leave the object untouched
         otel_fastapi.FastAPIInstrumentor().uninstrument_app(plain_asgi)
+        self.assertFalse(
+            hasattr(plain_asgi, "_original_build_middleware_stack")
+        )
 
 
 class TestFastAPIGarbageCollection(unittest.TestCase):
