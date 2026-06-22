@@ -183,6 +183,85 @@ def test_asyncio_unhandled_exception_emits_log(
     )
 
 
+def test_asyncio_unhandled_exception_called_with_kwarg_emits_log(
+    log_exporter: InMemoryLogRecordExporter,
+    monkeypatch: pytest.MonkeyPatch,
+    instrumentor: UnhandledExceptionInstrumentor,
+) -> None:
+    called = {"value": False}
+
+    original_handler = asyncio.BaseEventLoop.call_exception_handler
+
+    def stub_call_exception_handler(loop, context) -> None:
+        called["value"] = True
+        original_handler(loop, context)
+
+    monkeypatch.setattr(
+        asyncio.BaseEventLoop,
+        "call_exception_handler",
+        stub_call_exception_handler,
+    )
+    instrumentor.instrument()
+
+    loop = asyncio.new_event_loop()
+    loop.set_exception_handler(lambda _loop, _context: None)
+    try:
+        exc = _raised_value_error()
+        loop.call_exception_handler(
+            context={"exception": exc, "message": "task boom"}
+        )
+    finally:
+        loop.close()
+
+    log_record = _finished_log(log_exporter)
+    assert log_record.severity_text == "ERROR"
+    assert log_record.severity_number == SeverityNumber.ERROR
+    assert log_record.event_name == "task boom"
+    assert log_record.body == "boom"
+    assert called["value"] is True
+
+    attributes = log_record.attributes
+    assert attributes[exception_attributes.EXCEPTION_TYPE] == "ValueError"
+    assert attributes[exception_attributes.EXCEPTION_MESSAGE] == "boom"
+    assert (
+        "ValueError: boom"
+        in attributes[exception_attributes.EXCEPTION_STACKTRACE]
+    )
+
+
+def test_asyncio_unhandled_exception_invalid_call(
+    log_exporter: InMemoryLogRecordExporter,
+    monkeypatch: pytest.MonkeyPatch,
+    instrumentor: UnhandledExceptionInstrumentor,
+) -> None:
+    called = {"value": False}
+
+    original_handler = asyncio.BaseEventLoop.call_exception_handler
+
+    def stub_call_exception_handler(loop, context) -> None:
+        called["value"] = True
+        original_handler(loop, context)
+
+    monkeypatch.setattr(
+        asyncio.BaseEventLoop,
+        "call_exception_handler",
+        stub_call_exception_handler,
+    )
+    instrumentor.instrument()
+
+    loop = asyncio.new_event_loop()
+    loop.set_exception_handler(lambda _loop, _context: None)
+    try:
+        _raised_value_error()
+        with pytest.raises(TypeError):
+            loop.call_exception_handler()
+    finally:
+        loop.close()
+
+    logs = log_exporter.get_finished_logs()
+    assert not logs
+
+
 @pytest.mark.parametrize(
     ("message", "expected_event_name"),
     ((None, "ValueError"), (42, "42")),

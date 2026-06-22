@@ -165,16 +165,17 @@ class UnhandledExceptionInstrumentor(BaseInstrumentor):
         args: tuple[dict[str, Any]],
         kwargs: dict[str, Any],
     ) -> None:
-        (context,) = args
-        exc = context.get("exception")
-        if isinstance(exc, BaseException):
-            message = context.get("message")
-            self._emit_exception(
-                exc,
-                severity_text="ERROR",
-                severity_number=SeverityNumber.ERROR,
-                event_name=str(message) if message else type(exc).__name__,
-            )
+        context = args[0] if args else kwargs.get("context")
+        if context:
+            exc = context.get("exception")
+            if isinstance(exc, BaseException):
+                message = context.get("message")
+                self._emit_exception(
+                    exc,
+                    severity_text="ERROR",
+                    severity_number=SeverityNumber.ERROR,
+                    event_name=str(message) if message else type(exc).__name__,
+                )
         wrapped(*args, **kwargs)
 
 
