@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-fastapi`: fix `AttributeError` when resolving routes added via `include_router` on FastAPI 0.137+
