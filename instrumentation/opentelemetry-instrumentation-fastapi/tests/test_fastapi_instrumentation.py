@@ -16,6 +16,7 @@ import fastapi
 import pytest
 from fastapi.background import BackgroundTasks
 from fastapi.middleware.asyncexitstack import AsyncExitStackMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
@@ -1549,6 +1550,107 @@ class TestWrappedApplication(TestBase):
         self.assertEqual(
             parent_span.context.span_id, span_list[3].context.span_id
         )
+
+
+class TestMiddlewareWrappedApplication(TestBase):
+    """`instrument_app` should accept a FastAPI app wrapped in ASGI middleware."""
+
+    def setUp(self):
+        super().setUp()
+        self.fastapi_app = fastapi.FastAPI()
+
+        @self.fastapi_app.get("/foobar")
+        async def _():
+            return {"message": "hello world"}
+
+        # The user passes the middleware-wrapped app, not the FastAPI instance.
+        self.app = CORSMiddleware(self.fastapi_app, allow_origins=["*"])
+        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+        self.client = TestClient(self.app)
+
+    def tearDown(self) -> None:
+        super().tearDown()
+        with self.disable_logging():
+            otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+
+    def test_instrumentation_unwraps_middleware(self):
+        self.assertTrue(
+            self.fastapi_app._is_instrumented_by_opentelemetry,
+            "the wrapped FastAPI app should have been instrumented",
+        )
+
+        resp = self.client.get("/foobar")
+        self.assertEqual(200, resp.status_code)
+
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertTrue(span_list, "expected spans to be emitted")
+
+        server_spans = [
+            span for span in span_list if span.kind == trace.SpanKind.SERVER
+        ]
+        self.assertEqual(len(server_spans), 1)
+        server_span = server_spans[0]
+        self.assertEqual(server_span.name, "GET /foobar")
+        # exact attribute name and value/type, per semconv
+        self.assertEqual(server_span.attributes[HTTP_ROUTE], "/foobar")
+        self.assertIsInstance(server_span.attributes[HTTP_ROUTE], str)
+
+    def test_uninstrument_unwraps_middleware(self):
+        otel_fastapi.FastAPIInstrumentor().uninstrument_app(self.app)
+        self.assertFalse(
+            self.fastapi_app._is_instrumented_by_opentelemetry,
+            "uninstrument should reach the wrapped FastAPI app",
+        )
+        # re-instrument so tearDown's uninstrument has a symmetric state
+        otel_fastapi.FastAPIInstrumentor().instrument_app(self.app)
+
+
+class TestUnwrapMiddleware(unittest.TestCase):
+    def test_returns_bare_fastapi_app(self):
+        app = fastapi.FastAPI()
+        self.assertIs(otel_fastapi._unwrap_middleware(app), app)
+
+    def test_unwraps_single_middleware(self):
+        app = fastapi.FastAPI()
+        wrapped = CORSMiddleware(app, allow_origins=["*"])
+        self.assertIs(otel_fastapi._unwrap_middleware(wrapped), app)
+
+    def test_unwraps_nested_middleware(self):
+        app = fastapi.FastAPI()
+        wrapped = HTTPSRedirectMiddleware(
+            CORSMiddleware(app, allow_origins=["*"])
+        )
+        self.assertIs(otel_fastapi._unwrap_middleware(wrapped), app)
+
+    def test_stops_at_fastapi_even_with_app_attribute(self):
+        # a FastAPI instance is returned as-is even if it has an `app` attr
+        app = fastapi.FastAPI()
+        app.app = "should not be unwrapped"
+        self.assertIs(otel_fastapi._unwrap_middleware(app), app)
+
+    def test_returns_original_when_no_fastapi_found(self):
+        async def plain_asgi(scope, receive, send):
+            pass
+
+        self.assertIs(otel_fastapi._unwrap_middleware(plain_asgi), plain_asgi)
+
+
+class TestInstrumentNonFastAPIApp(TestBase):
+    def test_instrument_app_skips_when_no_fastapi_found(self):
+        async def plain_asgi(scope, receive, send):
+            pass
+
+        with self.assertLogs(level="WARNING") as cm:
+            otel_fastapi.FastAPIInstrumentor().instrument_app(plain_asgi)
+        self.assertIn("no FastAPI application found", "".join(cm.output))
+        self.assertFalse(self.memory_exporter.get_finished_spans())
+
+    def test_uninstrument_app_is_noop_when_no_fastapi_found(self):
+        async def plain_asgi(scope, receive, send):
+            pass
+
+        # should not raise
+        otel_fastapi.FastAPIInstrumentor().uninstrument_app(plain_asgi)
 
 
 class TestFastAPIGarbageCollection(unittest.TestCase):
