@@ -821,9 +821,7 @@ class CursorTracer(Generic[CursorT]):
         if self._db_api_integration.capture_parameters and len(args) > 1:
             span.set_attribute("db.statement.parameters", str(args[1]))
 
-    def get_operation_name(
-        self, cursor: CursorT, args: tuple[Any, ...]
-    ) -> str:  # pylint: disable=no-self-use
+    def get_operation_name(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
         if not args:
             return ""
         query = args[0]
@@ -833,12 +831,14 @@ class CursorTracer(Generic[CursorT]):
                 "", first_literal
             ).split()
             return tokens[0] if tokens else ""
-        if isinstance(query, str):
+
+        # `query` can be an empty string. See #2643
+        if query and isinstance(query, str):
             # Strip leading comments so we get the operation name.
             return self._leading_comment_remover.sub("", query).split()[0]
         return ""
 
-    def get_statement(self, cursor: CursorT, args: Sequence[T]) -> T:  # pylint: disable=no-self-use
+    def get_statement(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
         if not args:
             return ""
         statement = args[0]
@@ -846,7 +846,9 @@ class CursorTracer(Generic[CursorT]):
             return _t_string_to_str(statement)
         if isinstance(statement, bytes):
             return statement.decode("utf8", "replace")
-        return statement
+        if isinstance(statement, str):
+            return statement
+        return ""
 
     def _get_metric_attributes(
         self,

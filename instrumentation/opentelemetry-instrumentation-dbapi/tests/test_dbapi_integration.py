@@ -1735,8 +1735,8 @@ class TestDBApiIntegration(TestBase):
         sys.version_info < (3, 14),
         reason="requires Python 3.14+ for t-strings",
     )
-    def test_real_t_string_span_attributes(self):
-        # pylint: disable-next=import-outside-toplevel
+    def test_t_string_span_attributes(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module
         from string.templatelib import (  # noqa: PLC0415
             Interpolation,
             Template,
@@ -1770,8 +1770,8 @@ class TestDBApiIntegration(TestBase):
         sys.version_info < (3, 14),
         reason="requires Python 3.14+ for t-strings",
     )
-    def test_real_t_string_commenter(self):
-        # pylint: disable-next=import-outside-toplevel
+    def test_t_string_commenter(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module
         from string.templatelib import Interpolation, Template  # noqa: PLC0415
 
         connect_module = mock.MagicMock()
