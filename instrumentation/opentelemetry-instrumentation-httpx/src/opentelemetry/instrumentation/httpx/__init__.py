@@ -1206,7 +1206,7 @@ if _httpx2_module is not None:
 
 class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
     # pylint: disable=protected-access
-    """Base instrumentor for httpx-compatible Client and AsyncClient classes.
+    """Base instrumentor for httpx API-compatible clients.
 
     See `BaseInstrumentor`
     """
@@ -1220,18 +1220,22 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
     # pylint: disable=too-many-locals
     def _instrument(self, **kwargs: typing.Any):
-        """Instrument the configured httpx-compatible Client and AsyncClient.
+        """Instrument the configured httpx API-compatible clients.
 
         Args:
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global
                 ``meter_provider``: a MeterProvider, defaults to global
-                ``request_hook``: A ``httpx.Client`` hook that receives the span and request
-                    that is called right after the span is created
-                ``response_hook``: A ``httpx.Client`` hook that receives the span, request,
-                    and response that is called right before the span ends
-                ``async_request_hook``: Async ``request_hook`` for ``httpx.AsyncClient``
-                ``async_response_hook``: Async``response_hook`` for ``httpx.AsyncClient``
+                ``request_hook``: A ``httpx.Client`` or ``httpx2.Client`` hook
+                    that receives the span and request that is called right
+                    after the span is created.
+                ``response_hook``: A ``httpx.Client`` or ``httpx2.Client`` hook
+                    that receives the span, request, and response that is
+                    called right before the span ends.
+                ``async_request_hook``: Async request hook for
+                    ``httpx.AsyncClient`` or ``httpx2.AsyncClient``.
+                ``async_response_hook``: Async response hook for
+                    ``httpx.AsyncClient`` or ``httpx2.AsyncClient``.
         """
         module = self._module
         if module is None:
@@ -1621,7 +1625,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         request_hook: RequestHook | AsyncRequestHook | None = None,
         response_hook: ResponseHook | AsyncResponseHook | None = None,
     ) -> None:
-        """Instrument an httpx-compatible Client or AsyncClient.
+        """Instrument an httpx API-compatible Client or AsyncClient.
 
         Args:
             client: The Client or AsyncClient instance
