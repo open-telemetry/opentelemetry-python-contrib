@@ -953,16 +953,6 @@ class _SyncOpenTelemetryTransportBase:
         self._transport.close()
 
 
-if _httpx_module is not None:
-
-    class SyncOpenTelemetryTransport(
-        _SyncOpenTelemetryTransportBase, _httpx_module.BaseTransport
-    ):
-        """Sync transport class that traces requests made with httpx."""
-
-        _module = _httpx_module
-
-
 class _AsyncOpenTelemetryTransportBase:
     """Async transport class that will trace all requests made with a client.
 
@@ -1182,33 +1172,6 @@ class _AsyncOpenTelemetryTransportBase:
 
     async def aclose(self) -> None:
         await self._transport.aclose()
-
-
-if _httpx_module is not None:
-
-    class AsyncOpenTelemetryTransport(
-        _AsyncOpenTelemetryTransportBase, _httpx_module.AsyncBaseTransport
-    ):
-        """Async transport class that traces requests made with httpx."""
-
-        _module = _httpx_module
-
-
-if _httpx2_module is not None:
-
-    class SyncOpenTelemetryTransportHttpx2(
-        _SyncOpenTelemetryTransportBase, _httpx2_module.BaseTransport
-    ):
-        """Sync transport class that traces requests made with httpx2."""
-
-        _module = _httpx2_module
-
-    class AsyncOpenTelemetryTransportHttpx2(
-        _AsyncOpenTelemetryTransportBase, _httpx2_module.AsyncBaseTransport
-    ):
-        """Async transport class that traces requests made with httpx2."""
-
-        _module = _httpx2_module
 
 
 class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
@@ -1813,17 +1776,49 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             client._is_instrumented_by_opentelemetry = False
 
 
-class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor):
-    """An instrumentor for httpx Client and AsyncClient."""
+if _httpx_module is not None:
 
-    _module = _httpx_module
-    _module_name = "httpx"
-    _instrumentation_dependencies = _instruments_httpx
+    class SyncOpenTelemetryTransport(
+        _SyncOpenTelemetryTransportBase, _httpx_module.BaseTransport
+    ):
+        """Sync transport class that traces requests made with httpx."""
+
+        _module = _httpx_module
+
+    class AsyncOpenTelemetryTransport(
+        _AsyncOpenTelemetryTransportBase, _httpx_module.AsyncBaseTransport
+    ):
+        """Async transport class that traces requests made with httpx."""
+
+        _module = _httpx_module
+
+    class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor):
+        """An instrumentor for httpx Client and AsyncClient."""
+
+        _module = _httpx_module
+        _module_name = "httpx"
+        _instrumentation_dependencies = _instruments_httpx
 
 
-class HTTPX2ClientInstrumentor(_BaseHTTPXClientInstrumentor):
-    """An instrumentor for httpx2 Client and AsyncClient."""
+if _httpx2_module is not None:
 
-    _module = _httpx2_module
-    _module_name = "httpx2"
-    _instrumentation_dependencies = _instruments_httpx2
+    class SyncOpenTelemetryTransportHttpx2(
+        _SyncOpenTelemetryTransportBase, _httpx2_module.BaseTransport
+    ):
+        """Sync transport class that traces requests made with httpx2."""
+
+        _module = _httpx2_module
+
+    class AsyncOpenTelemetryTransportHttpx2(
+        _AsyncOpenTelemetryTransportBase, _httpx2_module.AsyncBaseTransport
+    ):
+        """Async transport class that traces requests made with httpx2."""
+
+        _module = _httpx2_module
+
+    class HTTPX2ClientInstrumentor(_BaseHTTPXClientInstrumentor):
+        """An instrumentor for httpx2 Client and AsyncClient."""
+
+        _module = _httpx2_module
+        _module_name = "httpx2"
+        _instrumentation_dependencies = _instruments_httpx2

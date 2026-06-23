@@ -3088,7 +3088,7 @@ jobs:
         run: tox -e py310-test-instrumentation-httpx-2-wrapt2 -- -ra
 
   py310-test-instrumentation-httpx-3-wrapt1:
-    name: instrumentation-httpx-3-wrapt1
+    name: instrumentation-httpx-3-wrapt1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -3118,7 +3118,7 @@ jobs:
         run: tox -e py310-test-instrumentation-httpx-3-wrapt1 -- -ra
 
   py310-test-instrumentation-httpx-3-wrapt2:
-    name: instrumentation-httpx-3-wrapt2
+    name: instrumentation-httpx-3-wrapt2 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
