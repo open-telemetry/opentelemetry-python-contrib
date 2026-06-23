@@ -426,23 +426,23 @@ if typing.TYPE_CHECKING:
     except ImportError:
         import httpx2 as httpx
 
+    class _HTTPXModule(typing.Protocol):
+        Request: type[httpx.Request]
+        Response: type[httpx.Response]
+        Headers: type[httpx.Headers]
+        URL: type[httpx.URL]
+        BaseTransport: type[httpx.BaseTransport]
+        AsyncBaseTransport: type[httpx.AsyncBaseTransport]
+        HTTPTransport: type[httpx.HTTPTransport]
+        AsyncHTTPTransport: type[httpx.AsyncHTTPTransport]
+
+
 _logger = logging.getLogger(__name__)
-
-
-class _HTTPXModule(typing.Protocol):
-    Request: type[httpx.Request]
-    Response: type[httpx.Response]
-    Headers: type[httpx.Headers]
-    URL: type[httpx.URL]
-    BaseTransport: type[httpx.BaseTransport]
-    AsyncBaseTransport: type[httpx.AsyncBaseTransport]
-    HTTPTransport: type[httpx.HTTPTransport]
-    AsyncHTTPTransport: type[httpx.AsyncHTTPTransport]
 
 
 def _try_import(name: str) -> _HTTPXModule | None:
     try:
-        return typing.cast(_HTTPXModule, import_module(name))
+        return typing.cast("_HTTPXModule", import_module(name))
     except ImportError:
         return None
 
