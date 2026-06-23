@@ -357,10 +357,6 @@ from inspect import iscoroutinefunction
 from timeit import default_timer
 from types import TracebackType
 
-try:
-    import httpx
-except ImportError:
-    import httpx2 as httpx
 from wrapt import wrap_function_wrapper
 
 from opentelemetry.instrumentation._semconv import (
@@ -423,6 +419,12 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+
+if typing.TYPE_CHECKING:
+    try:
+        import httpx
+    except ImportError:
+        import httpx2 as httpx
 
 _logger = logging.getLogger(__name__)
 
@@ -487,7 +489,7 @@ def _get_default_span_name(method: str) -> str:
 def _prepare_headers(
     headers: httpx.Headers | None, module: _HTTPXModule
 ) -> httpx.Headers:
-    return typing.cast(httpx.Headers, module.Headers(headers))
+    return typing.cast("httpx.Headers", module.Headers(headers))
 
 
 def _extract_parameters(
@@ -503,9 +505,9 @@ def _extract_parameters(
 ]:
     if isinstance(args[0], module.Request):
         # In httpx >= 0.20.0, handle_request receives a Request object
-        request = typing.cast(httpx.Request, args[0])
+        request = typing.cast("httpx.Request", args[0])
         method = request.method.encode()
-        url = typing.cast(httpx.URL, module.URL(str(request.url)))
+        url = typing.cast("httpx.URL", module.URL(str(request.url)))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions
@@ -542,7 +544,7 @@ def _inject_propagation_headers(headers, args, kwargs, module: _HTTPXModule):
     _headers = _prepare_headers(headers, module)
     inject(_headers)
     if isinstance(args[0], module.Request):
-        request = typing.cast(httpx.Request, args[0])
+        request = typing.cast("httpx.Request", args[0])
         request.headers = _headers
     else:
         kwargs["headers"] = _headers.raw
@@ -587,7 +589,7 @@ def _extract_response(
     str,
 ]:
     if isinstance(response, module.Response):
-        http_response = typing.cast(httpx.Response, response)
+        http_response = typing.cast("httpx.Response", response)
         status_code = http_response.status_code
         headers = http_response.headers
         stream = http_response.stream
@@ -613,7 +615,7 @@ def _apply_request_client_attributes_to_span(
     captured_headers: list[str] | None = None,
     sensitive_headers: list[str] | None = None,
 ):
-    url = typing.cast(httpx.URL, module.URL(url))
+    url = typing.cast("httpx.URL", module.URL(url))
     # http semconv transition: http.method -> http.request.method
     _set_http_method(
         span_attributes,
@@ -750,7 +752,7 @@ class _SyncOpenTelemetryTransportBase:
             that is called right before the span ends
     """
 
-    _module: _HTTPXModule = typing.cast(_HTTPXModule, httpx)
+    _module: _HTTPXModule
 
     def __init__(
         self,
@@ -954,10 +956,14 @@ class _SyncOpenTelemetryTransportBase:
         self._transport.close()
 
 
-class SyncOpenTelemetryTransport(
-    _SyncOpenTelemetryTransportBase, httpx.BaseTransport
-):
-    """Sync transport class that will trace all requests made with a client."""
+if _httpx_module is not None:
+
+    class SyncOpenTelemetryTransport(
+        _SyncOpenTelemetryTransportBase, _httpx_module.BaseTransport
+    ):
+        """Sync transport class that traces requests made with httpx."""
+
+        _module = _httpx_module
 
 
 class _AsyncOpenTelemetryTransportBase:
@@ -973,7 +979,7 @@ class _AsyncOpenTelemetryTransportBase:
             that is called right before the span ends
     """
 
-    _module: _HTTPXModule = typing.cast(_HTTPXModule, httpx)
+    _module: _HTTPXModule
 
     def __init__(
         self,
@@ -1181,10 +1187,14 @@ class _AsyncOpenTelemetryTransportBase:
         await self._transport.aclose()
 
 
-class AsyncOpenTelemetryTransport(
-    _AsyncOpenTelemetryTransportBase, httpx.AsyncBaseTransport
-):
-    """Async transport class that will trace all requests made with a client."""
+if _httpx_module is not None:
+
+    class AsyncOpenTelemetryTransport(
+        _AsyncOpenTelemetryTransportBase, _httpx_module.AsyncBaseTransport
+    ):
+        """Async transport class that traces requests made with httpx."""
+
+        _module = _httpx_module
 
 
 if _httpx2_module is not None:
