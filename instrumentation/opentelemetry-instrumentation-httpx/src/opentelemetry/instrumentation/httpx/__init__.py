@@ -450,9 +450,6 @@ def _try_import(name: str) -> _HTTPXModule | None:
 _httpx_module = _try_import("httpx")
 _httpx2_module = _try_import("httpx2")
 
-if _httpx_module is None and _httpx2_module is None:
-    raise ModuleNotFoundError("Either httpx or httpx2 must be installed")
-
 RequestHook = typing.Callable[[Span, "RequestInfo"], None]
 ResponseHook = typing.Callable[[Span, "RequestInfo", "ResponseInfo"], None]
 AsyncRequestHook = typing.Callable[
@@ -811,7 +808,7 @@ class _SyncOpenTelemetryTransportBase:
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
         )
 
-    def __enter__(self) -> "_SyncOpenTelemetryTransportBase":
+    def __enter__(self) -> _SyncOpenTelemetryTransportBase:
         self._transport.__enter__()
         return self
 
@@ -1040,7 +1037,7 @@ class _AsyncOpenTelemetryTransportBase:
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
         )
 
-    async def __aenter__(self) -> "_AsyncOpenTelemetryTransportBase":
+    async def __aenter__(self) -> _AsyncOpenTelemetryTransportBase:
         await self._transport.__aenter__()
         return self
 
