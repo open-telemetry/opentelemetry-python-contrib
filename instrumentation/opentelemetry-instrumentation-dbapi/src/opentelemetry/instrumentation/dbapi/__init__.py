@@ -238,7 +238,6 @@ _logger = logging.getLogger(__name__)
 
 ConnectionT = TypeVar("ConnectionT")
 CursorT = TypeVar("CursorT")
-T = TypeVar("T")
 
 
 def trace_integration(
