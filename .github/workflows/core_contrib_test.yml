@@ -3027,6 +3027,126 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-httpx-1-wrapt2 -- -ra
 
+  py310-test-instrumentation-httpx-2-wrapt1:
+    name: instrumentation-httpx-2-wrapt1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-2-wrapt1 -- -ra
+
+  py310-test-instrumentation-httpx-2-wrapt2:
+    name: instrumentation-httpx-2-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-2-wrapt2 -- -ra
+
+  py310-test-instrumentation-httpx-3-wrapt1:
+    name: instrumentation-httpx-3-wrapt1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-3-wrapt1 -- -ra
+
+  py310-test-instrumentation-httpx-3-wrapt2:
+    name: instrumentation-httpx-3-wrapt2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-3-wrapt2 -- -ra
+
   py310-test-util-http:
     name: util-http 
     runs-on: ubuntu-latest

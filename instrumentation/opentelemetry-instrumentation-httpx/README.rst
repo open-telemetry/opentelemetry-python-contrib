@@ -7,7 +7,8 @@ OpenTelemetry HTTPX Instrumentation
    :target: https://pypi.org/project/opentelemetry-instrumentation-httpx/
 
 This library allows tracing HTTP requests made by the
-`httpx <https://www.python-httpx.org/>`_ library.
+`httpx <https://www.python-httpx.org/>`_ and
+`httpx2 <https://httpx2.pydantic.dev/>`_ libraries.
 
 Installation
 ------------
@@ -43,6 +44,27 @@ When using the instrumentor, all clients will automatically trace requests.
 
     asyncio.run(get(url))
 
+The same package also supports `httpx2 <https://httpx2.pydantic.dev/>`_ using
+the ``HTTPX2ClientInstrumentor``:
+
+.. code-block:: python
+
+    import httpx2
+    import asyncio
+    from opentelemetry.instrumentation.httpx import HTTPX2ClientInstrumentor
+
+    url = "https://example.com"
+    HTTPX2ClientInstrumentor().instrument()
+
+    with httpx2.Client() as client:
+        response = client.get(url)
+
+    async def get(url):
+        async with httpx2.AsyncClient() as client:
+            response = await client.get(url)
+
+    asyncio.run(get(url))
+
 
 Instrumenting single clients
 ****************************
@@ -69,6 +91,17 @@ use the `HTTPXClientInstrumentor.instrument_client` method.
             response = await client.get(url)
 
     asyncio.run(get(url))
+
+For ``httpx2`` clients, use ``HTTPX2ClientInstrumentor.instrument_client``:
+
+.. code-block:: python
+
+    import httpx2
+    from opentelemetry.instrumentation.httpx import HTTPX2ClientInstrumentor
+
+    with httpx2.Client() as client:
+        HTTPX2ClientInstrumentor.instrument_client(client)
+        response = client.get("https://example.com")
 
 Uninstrument
 ************
@@ -120,6 +153,20 @@ If you don't want to use the instrumentor class, you can use the transport class
             response = await client.get(url)
 
     asyncio.run(get(url))
+
+For ``httpx2`` transports, use ``SyncOpenTelemetryTransportHttpx2`` and
+``AsyncOpenTelemetryTransportHttpx2``:
+
+.. code-block:: python
+
+    import httpx2
+    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransportHttpx2
+
+    transport = httpx2.HTTPTransport()
+    telemetry_transport = SyncOpenTelemetryTransportHttpx2(transport)
+
+    with httpx2.Client(transport=telemetry_transport) as client:
+        response = client.get("https://example.com")
 
 
 Request and response hooks
