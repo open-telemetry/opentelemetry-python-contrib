@@ -210,6 +210,14 @@ if _CLIENT_ASYNCIO_SUPPORT:
 _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 
 
+def _execute_hook(hook: Callable[..., None], *args: Any) -> None:
+    try:
+        hook(*args)
+    # pylint: disable-next=broad-exception-caught
+    except Exception:
+        _logger.warning("Exception raised by hook %r", hook, exc_info=True)
+
+
 def _traced_execute_factory(
     tracer: Tracer,
     request_hook: RequestHook | None = None,
@@ -260,13 +268,13 @@ def _traced_execute_factory(
                 if span.name == "redis.create_index":
                     _add_create_attributes(span, args)
             if callable(request_hook):
-                request_hook(span, instance, args, kwargs)
+                _execute_hook(request_hook, span, instance, args, kwargs)
             response = func(*args, **kwargs)
             if span.is_recording():
                 if span.name == "redis.search":
                     _add_search_attributes(span, response, args)
             if callable(response_hook):
-                response_hook(span, instance, response)
+                _execute_hook(response_hook, span, instance, response)
             return response
 
     return _traced_execute_command
@@ -334,7 +342,7 @@ def _traced_execute_pipeline_factory(
                 exception = watch_exception
 
             if callable(response_hook):
-                response_hook(span, instance, response)
+                _execute_hook(response_hook, span, instance, response)
 
         if exception:
             raise exception
@@ -393,10 +401,10 @@ def _async_traced_execute_factory(
                     http_sem_conv_opt_in_mode,
                 )
             if callable(request_hook):
-                request_hook(span, instance, args, kwargs)
+                _execute_hook(request_hook, span, instance, args, kwargs)
             response = await func(*args, **kwargs)
             if callable(response_hook):
-                response_hook(span, instance, response)
+                _execute_hook(response_hook, span, instance, response)
             return response
 
     return _async_traced_execute_command
@@ -466,7 +474,7 @@ def _async_traced_execute_pipeline_factory(
                 exception = watch_exception
 
             if callable(response_hook):
-                response_hook(span, instance, response)
+                _execute_hook(response_hook, span, instance, response)
 
         if exception:
             raise exception
