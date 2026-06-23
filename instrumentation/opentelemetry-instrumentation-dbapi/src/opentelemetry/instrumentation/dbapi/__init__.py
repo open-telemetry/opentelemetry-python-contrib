@@ -1,5 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=too-many-lines
 
 """
 The trace integration with Database API supports libraries that follow the
@@ -160,8 +161,10 @@ from __future__ import annotations
 import functools
 import logging
 import re
+import sys
 import time
-from typing import Any, Awaitable, Callable, Generic, TypeVar
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Generic, TypeVar
 
 from wrapt import wrap_function_wrapper
 
@@ -212,6 +215,20 @@ from opentelemetry.semconv.attributes.server_attributes import (
 )
 from opentelemetry.trace import SpanKind, TracerProvider, get_tracer
 from opentelemetry.util._importlib_metadata import version as util_version
+
+if sys.version_info >= (3, 14):
+    from string.templatelib import Template as _Template
+else:
+    _Template = ()
+
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 14):
+        from string.templatelib import Template
+    else:
+        from typing import Never
+
+        Template = Never
+
 
 _DB_DRIVER_ALIASES = {
     "MySQLdb": "mysqlclient",
@@ -682,6 +699,16 @@ def get_traced_connection_proxy(
     return TracedConnectionProxy(connection, db_api_integration)
 
 
+def _t_string_to_str(template: Template) -> str:
+    """Render a PEP 750 Template as a string with expression placeholders."""
+    parts: list[str] = []
+    for idx, literal in enumerate(template.strings):
+        parts.append(literal)
+        if idx < len(template.interpolations):
+            parts.append(f"{{{template.interpolations[idx].expression}}}")
+    return "".join(parts)
+
+
 class CursorTracer(Generic[CursorT]):
     def __init__(self, db_api_integration: DatabaseApiIntegration) -> None:
         self._db_api_integration = db_api_integration
@@ -742,13 +769,14 @@ class CursorTracer(Generic[CursorT]):
             args_list = list(args)
             self._capture_mysql_version(cursor)
             commenter_data = self._get_commenter_data()
-            # Convert sql statement to string, handling  psycopg2.sql.Composable object
-            if hasattr(args_list[0], "as_string"):
-                args_list[0] = args_list[0].as_string(cursor.connection)
-
-            args_list[0] = str(args_list[0])
-            statement = _add_sql_comment(args_list[0], **commenter_data)
-            args_list[0] = statement
+            if not isinstance(args_list[0], str) and not isinstance(
+                args_list[0], _Template
+            ):
+                # Convert sql statement to string, handling psycopg2.sql.Composable object
+                if hasattr(args_list[0], "as_string"):
+                    args_list[0] = args_list[0].as_string(cursor.connection)
+                args_list[0] = str(args_list[0])
+            args_list[0] = _add_sql_comment(args_list[0], **commenter_data)
             args = tuple(args_list)
         except Exception as exc:  # pylint: disable=broad-except
             _logger.exception(
@@ -792,21 +820,34 @@ class CursorTracer(Generic[CursorT]):
         if self._db_api_integration.capture_parameters and len(args) > 1:
             span.set_attribute("db.statement.parameters", str(args[1]))
 
-    def get_operation_name(
-        self, cursor: CursorT, args: tuple[Any, ...]
-    ) -> str:  # pylint: disable=no-self-use
-        if args and isinstance(args[0], str):
+    def get_operation_name(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
+        if not args:
+            return ""
+        query = args[0]
+        if isinstance(query, _Template):
+            first_literal = query.strings[0] if query.strings else ""
+            tokens = self._leading_comment_remover.sub(
+                "", first_literal
+            ).split()
+            return tokens[0] if tokens else ""
+
+        # `query` can be an empty string. See #2643
+        if query and isinstance(query, str):
             # Strip leading comments so we get the operation name.
-            return self._leading_comment_remover.sub("", args[0]).split()[0]
+            return self._leading_comment_remover.sub("", query).split()[0]
         return ""
 
-    def get_statement(self, cursor: CursorT, args: tuple[Any, ...]):  # pylint: disable=no-self-use
+    def get_statement(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
         if not args:
             return ""
         statement = args[0]
+        if isinstance(statement, _Template):
+            return _t_string_to_str(statement)
         if isinstance(statement, bytes):
             return statement.decode("utf8", "replace")
-        return statement
+        if isinstance(statement, str):
+            return statement
+        return ""
 
     def _get_metric_attributes(
         self,
