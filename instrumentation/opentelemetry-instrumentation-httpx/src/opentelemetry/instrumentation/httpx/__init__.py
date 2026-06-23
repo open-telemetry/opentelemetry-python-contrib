@@ -1792,12 +1792,13 @@ if _httpx_module is not None:
 
         _module = _httpx_module
 
-    class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor):
-        """An instrumentor for httpx Client and AsyncClient."""
 
-        _module = _httpx_module
-        _module_name = "httpx"
-        _instrumentation_dependencies = _instruments_httpx
+class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor):
+    """An instrumentor for httpx Client and AsyncClient."""
+
+    _module = _httpx_module
+    _module_name = "httpx"
+    _instrumentation_dependencies = _instruments_httpx
 
 
 if _httpx2_module is not None:
@@ -1816,9 +1817,10 @@ if _httpx2_module is not None:
 
         _module = _httpx2_module
 
-    class HTTPX2ClientInstrumentor(_BaseHTTPXClientInstrumentor):
-        """An instrumentor for httpx2 Client and AsyncClient."""
 
-        _module = _httpx2_module
-        _module_name = "httpx2"
-        _instrumentation_dependencies = _instruments_httpx2
+class HTTPX2ClientInstrumentor(_BaseHTTPXClientInstrumentor):
+    """An instrumentor for httpx2 Client and AsyncClient."""
+
+    _module = _httpx2_module
+    _module_name = "httpx2"
+    _instrumentation_dependencies = _instruments_httpx2
