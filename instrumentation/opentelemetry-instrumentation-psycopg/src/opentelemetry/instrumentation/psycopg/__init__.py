@@ -343,8 +343,8 @@ class CursorTracer(dbapi.CursorTracer):
 
         statement = args[0]
         if isinstance(statement, Composable):
-            statement = statement.as_string(cursor)
-        return statement
+            return statement.as_string(cursor)
+        return super().get_statement(cursor, args)
 
 
 def _new_cursor_factory(

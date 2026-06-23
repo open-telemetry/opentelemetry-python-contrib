@@ -163,6 +163,7 @@ import logging
 import re
 import sys
 import time
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Generic, TypeVar
 
 from wrapt import wrap_function_wrapper
@@ -237,6 +238,7 @@ _logger = logging.getLogger(__name__)
 
 ConnectionT = TypeVar("ConnectionT")
 CursorT = TypeVar("CursorT")
+T = TypeVar("T")
 
 
 def trace_integration(
@@ -836,7 +838,7 @@ class CursorTracer(Generic[CursorT]):
             return self._leading_comment_remover.sub("", query).split()[0]
         return ""
 
-    def get_statement(self, cursor: CursorT, args: tuple[Any, ...]):  # pylint: disable=no-self-use
+    def get_statement(self, cursor: CursorT, args: Sequence[T]) -> T:  # pylint: disable=no-self-use
         if not args:
             return ""
         statement = args[0]
