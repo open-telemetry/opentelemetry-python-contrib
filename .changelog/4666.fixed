@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-tornado`: reduce cardinality of `http.target` metrics attribute with old semantic conventions

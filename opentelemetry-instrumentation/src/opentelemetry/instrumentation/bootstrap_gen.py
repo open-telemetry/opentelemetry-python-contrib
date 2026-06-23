@@ -54,7 +54,7 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-botocore==0.64b0.dev",
     },
     {
-        "library": "aiobotocore ~= 2.0",
+        "library": "aiobotocore >= 2.0, < 4.0",
         "instrumentation": "opentelemetry-instrumentation-botocore==0.64b0.dev",
     },
     {
@@ -205,6 +205,7 @@ libraries = [
 default_instrumentations = [
     "opentelemetry-instrumentation-asyncio==0.64b0.dev",
     "opentelemetry-instrumentation-dbapi==0.64b0.dev",
+    "opentelemetry-instrumentation-exceptions==0.64b0.dev",
     "opentelemetry-instrumentation-logging==0.64b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.64b0.dev",
     "opentelemetry-instrumentation-threading==0.64b0.dev",
