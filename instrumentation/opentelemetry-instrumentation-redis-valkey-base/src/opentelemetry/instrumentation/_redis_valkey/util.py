@@ -9,9 +9,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
+from opentelemetry.instrumentation._semconv import (
+    _set_db_redis_database_index,
+    _set_db_system,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+    _set_net_transport,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NetTransportValues,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NetworkTransportValues,
 )
 from opentelemetry.trace import Span
 
@@ -21,27 +30,42 @@ _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 def _extract_conn_attributes(
     conn_kwargs: dict[str, Any],
     db_system: str,
-    db_system_attr: str,
-    db_index_attr: str,
+    db_sem_conv_opt_in_mode,
+    http_sem_conv_opt_in_mode,
 ) -> dict[str, Any]:
-    """Transform connection info into a dict of span attributes.
+    """Transform connection info into a dict of span attributes."""
+    attributes: dict[str, Any] = {}
+    _set_db_system(attributes, db_system, db_sem_conv_opt_in_mode)
 
-    Args:
-        conn_kwargs: Connection keyword arguments from the client's connection pool.
-        db_system: The database system name (e.g., "redis" or "valkey").
-        db_system_attr: The attribute key for DB_SYSTEM.
-        db_index_attr: The attribute key for the database index.
-    """
-    attributes: dict[str, Any] = {
-        db_system_attr: db_system,
-    }
     db = conn_kwargs.get("db", 0)
-    attributes[db_index_attr] = db
+    _set_db_redis_database_index(attributes, db, db_sem_conv_opt_in_mode)
     if "path" in conn_kwargs:
-        attributes[SERVER_ADDRESS] = conn_kwargs.get("path", "")
+        _set_http_net_peer_name_client(
+            attributes, conn_kwargs.get("path", ""), http_sem_conv_opt_in_mode
+        )
+        _set_net_transport(
+            attributes,
+            NetTransportValues.OTHER.value,
+            NetworkTransportValues.UNIX.value,
+            http_sem_conv_opt_in_mode,
+        )
     else:
-        attributes[SERVER_ADDRESS] = conn_kwargs.get("host", "localhost")
-        attributes[SERVER_PORT] = conn_kwargs.get("port", 6379)
+        _set_http_net_peer_name_client(
+            attributes,
+            conn_kwargs.get("host", "localhost"),
+            http_sem_conv_opt_in_mode,
+        )
+        _set_http_peer_port_client(
+            attributes,
+            conn_kwargs.get("port", 6379),
+            http_sem_conv_opt_in_mode,
+        )
+        _set_net_transport(
+            attributes,
+            NetTransportValues.IP_TCP.value,
+            NetworkTransportValues.TCP.value,
+            http_sem_conv_opt_in_mode,
+        )
 
     return attributes
 
@@ -84,8 +108,8 @@ def _set_connection_attributes(
     span: Span,
     conn: Any,
     db_system: str,
-    db_system_attr: str,
-    db_index_attr: str,
+    db_sem_conv_opt_in_mode,
+    http_sem_conv_opt_in_mode,
 ) -> None:
     """Set connection attributes on a span from a client instance."""
     if not span.is_recording() or not hasattr(conn, "connection_pool"):
@@ -93,8 +117,8 @@ def _set_connection_attributes(
     for key, value in _extract_conn_attributes(
         conn.connection_pool.connection_kwargs,
         db_system,
-        db_system_attr,
-        db_index_attr,
+        db_sem_conv_opt_in_mode,
+        http_sem_conv_opt_in_mode,
     ).items():
         span.set_attribute(key, value)
 

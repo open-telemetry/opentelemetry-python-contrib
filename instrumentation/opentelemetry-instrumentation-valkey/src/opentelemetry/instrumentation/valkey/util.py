@@ -21,15 +21,9 @@ from opentelemetry.instrumentation._redis_valkey.util import (
     _set_span_attribute_if_value,
     _value_or_none,
 )
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_REDIS_DATABASE_INDEX,
-    DB_SYSTEM,
-)
 
 _BACKEND_NAME = "valkey"
 _DB_SYSTEM = "valkey"
-_DB_SYSTEM_ATTR = DB_SYSTEM
-_DB_INDEX_ATTR = DB_REDIS_DATABASE_INDEX
 
 __all__ = [
     "_extract_conn_attributes",
@@ -39,8 +33,15 @@ __all__ = [
 ]
 
 
-def _extract_conn_attributes(conn_kwargs: dict[str, Any]) -> dict[str, Any]:
+def _extract_conn_attributes(
+    conn_kwargs: dict[str, Any],
+    db_sem_conv_opt_in_mode,
+    http_sem_conv_opt_in_mode,
+) -> dict[str, Any]:
     """Transform valkey conn info into dict."""
     return _base_extract_conn_attributes(
-        conn_kwargs, _DB_SYSTEM, _DB_SYSTEM_ATTR, _DB_INDEX_ATTR
+        conn_kwargs,
+        _DB_SYSTEM,
+        db_sem_conv_opt_in_mode,
+        http_sem_conv_opt_in_mode,
     )

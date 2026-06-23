@@ -148,14 +148,15 @@ from opentelemetry.instrumentation._redis_valkey import (
     _traced_execute_factory,
     _traced_execute_pipeline_factory,
 )
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation.valkey.package import _instruments
 from opentelemetry.instrumentation.valkey.version import __version__
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_REDIS_DATABASE_INDEX,
-    DB_SYSTEM,
-)
 from opentelemetry.trace import TracerProvider, get_tracer
 
 if TYPE_CHECKING:
@@ -173,10 +174,6 @@ _INSTRUMENTATION_ATTR = "_is_instrumented_by_opentelemetry"
 _VALKEY_CONFIG = KVStoreConfig(
     backend_name="valkey",
     db_system="valkey",
-    db_system_attr=DB_SYSTEM,
-    db_index_attr=DB_REDIS_DATABASE_INDEX,
-    args_length_attr="db.redis.args_length",
-    pipeline_length_attr="db.redis.pipeline_length",
     watch_error_class=valkey.WatchError,
 )
 
@@ -331,12 +328,20 @@ class ValkeyInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def _get_tracer(**kwargs):
+        # Initialize semantic conventions opt-in if needed
+        _OpenTelemetrySemanticConventionStability._initialize()
+        # Valkey instrumentation supports both DATABASE and HTTP signal types
+        signal_types = [
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        ]
+
         tracer_provider = kwargs.get("tracer_provider")
         return get_tracer(
             __name__,
             __version__,
             tracer_provider=tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types(signal_types),
         )
 
     def instrument(

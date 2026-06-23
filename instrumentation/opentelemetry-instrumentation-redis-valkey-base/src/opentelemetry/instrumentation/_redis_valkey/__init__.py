@@ -23,10 +23,12 @@ from opentelemetry.instrumentation._redis_valkey.util import (
     _format_command_args,
     _set_connection_attributes,
 )
-from opentelemetry.instrumentation.utils import is_instrumentation_enabled
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_STATEMENT,
+from opentelemetry.instrumentation._semconv import (
+    _get_semconv_opt_in_modes,
+    _OpenTelemetryStabilitySignalType,
+    _set_db_statement,
 )
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.trace import StatusCode, Tracer
 
 
@@ -42,16 +44,21 @@ class KVStoreConfig:
     backend_name: str  # "redis" or "valkey"
     db_system: str  # "redis" or "valkey"
 
-    # Span attribute keys
-    db_system_attr: str  # DB_SYSTEM semconv key
-    db_index_attr: str  # DB_REDIS_DATABASE_INDEX or "db.valkey.database_index"
-    args_length_attr: str  # "db.redis.args_length" or "db.valkey.args_length"
-    pipeline_length_attr: (
-        str  # "db.redis.pipeline_length" or "db.valkey.pipeline_length"
-    )
-
     # WatchError class from the backend library
     watch_error_class: type
+
+
+def _get_db_and_http_modes():
+    sem_conv_opt_in_modes = _get_semconv_opt_in_modes(
+        (
+            _OpenTelemetryStabilitySignalType.DATABASE,
+            _OpenTelemetryStabilitySignalType.HTTP,
+        )
+    )
+    return (
+        sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.DATABASE],
+        sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.HTTP],
+    )
 
 
 def _traced_execute_factory(
@@ -61,6 +68,9 @@ def _traced_execute_factory(
     response_hook: Callable | None = None,
 ):
     """Create a wrapper for execute_command that creates spans."""
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_db_and_http_modes()
+    )
 
     def _traced_execute_command(func, instance, args, kwargs):
         if not is_instrumentation_enabled():
@@ -72,15 +82,18 @@ def _traced_execute_factory(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, query)
+                span_attrs: dict = {}
+                _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
+                span_attrs[f"db.{config.backend_name}.args_length"] = len(args)
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
                 _set_connection_attributes(
                     span,
                     instance,
                     config.db_system,
-                    config.db_system_attr,
-                    config.db_index_attr,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
                 )
-                span.set_attribute(config.args_length_attr, len(args))
                 if span.name == f"{config.backend_name}.create_index":
                     _add_create_attributes(span, args, config.backend_name)
             if callable(request_hook):
@@ -105,6 +118,9 @@ def _traced_execute_pipeline_factory(
     response_hook: Callable | None = None,
 ):
     """Create a wrapper for pipeline execute that creates spans."""
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_db_and_http_modes()
+    )
 
     def _traced_execute_pipeline(func, instance, args, kwargs):
         if not is_instrumentation_enabled():
@@ -120,16 +136,21 @@ def _traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, resource)
+                span_attrs: dict = {}
+                _set_db_statement(
+                    span_attrs, resource, db_sem_conv_opt_in_mode
+                )
+                span_attrs[f"db.{config.backend_name}.pipeline_length"] = len(
+                    command_stack
+                )
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
                 _set_connection_attributes(
                     span,
                     instance,
                     config.db_system,
-                    config.db_system_attr,
-                    config.db_index_attr,
-                )
-                span.set_attribute(
-                    config.pipeline_length_attr, len(command_stack)
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
                 )
 
             response = None
@@ -157,6 +178,9 @@ def _async_traced_execute_factory(
     response_hook: Callable | None = None,
 ):
     """Create an async wrapper for execute_command that creates spans."""
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_db_and_http_modes()
+    )
 
     async def _async_traced_execute_command(func, instance, args, kwargs):
         if not is_instrumentation_enabled():
@@ -169,15 +193,18 @@ def _async_traced_execute_factory(
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, query)
+                span_attrs: dict = {}
+                _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
+                span_attrs[f"db.{config.backend_name}.args_length"] = len(args)
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
                 _set_connection_attributes(
                     span,
                     instance,
                     config.db_system,
-                    config.db_system_attr,
-                    config.db_index_attr,
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
                 )
-                span.set_attribute(config.args_length_attr, len(args))
             if callable(request_hook):
                 request_hook(span, instance, args, kwargs)
             response = await func(*args, **kwargs)
@@ -195,6 +222,9 @@ def _async_traced_execute_pipeline_factory(
     response_hook: Callable | None = None,
 ):
     """Create an async wrapper for pipeline execute that creates spans."""
+    db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode = (
+        _get_db_and_http_modes()
+    )
 
     async def _async_traced_execute_pipeline(func, instance, args, kwargs):
         if not is_instrumentation_enabled():
@@ -212,16 +242,21 @@ def _async_traced_execute_pipeline_factory(
             span_name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_STATEMENT, resource)
+                span_attrs: dict = {}
+                _set_db_statement(
+                    span_attrs, resource, db_sem_conv_opt_in_mode
+                )
+                span_attrs[f"db.{config.backend_name}.pipeline_length"] = len(
+                    command_stack
+                )
+                for key, value in span_attrs.items():
+                    span.set_attribute(key, value)
                 _set_connection_attributes(
                     span,
                     instance,
                     config.db_system,
-                    config.db_system_attr,
-                    config.db_index_attr,
-                )
-                span.set_attribute(
-                    config.pipeline_length_attr, len(command_stack)
+                    db_sem_conv_opt_in_mode,
+                    http_sem_conv_opt_in_mode,
                 )
 
             response = None

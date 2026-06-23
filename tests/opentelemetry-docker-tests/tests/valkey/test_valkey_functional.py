@@ -9,9 +9,9 @@ import valkey.asyncio
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.valkey import ValkeyInstrumentor
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
 )
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
@@ -32,8 +32,8 @@ class TestValkeyInstrument(TestBase):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertEqual(span.attributes.get("db.redis.database_index"), 0)
-        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
-        self.assertEqual(span.attributes[SERVER_PORT], 16379)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 16379)
 
     def test_long_command_sanitized(self):
         ValkeyInstrumentor().uninstrument()
@@ -274,8 +274,8 @@ class TestAsyncValkeyInstrument(TestBase):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
         self.assertEqual(span.attributes.get("db.redis.database_index"), 0)
-        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
-        self.assertEqual(span.attributes[SERVER_PORT], 16379)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 16379)
 
     def test_long_command(self):
         async_call(self.valkey_client.mget(*range(1000)))
@@ -582,8 +582,8 @@ class TestValkeyDBIndexInstrument(TestBase):
     def _check_span(self, span, name):
         self.assertEqual(span.name, name)
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
-        self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
-        self.assertEqual(span.attributes[SERVER_PORT], 16379)
+        self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 16379)
         self.assertEqual(span.attributes["db.redis.database_index"], 10)
 
     def test_get(self):
