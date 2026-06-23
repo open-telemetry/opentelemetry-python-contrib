@@ -10,6 +10,10 @@ This library allows tracing HTTP requests made by the
 `httpx <https://www.python-httpx.org/>`_ and
 `httpx2 <https://httpx2.pydantic.dev/>`_ libraries.
 
+If both libraries are installed, use ``HTTPXClientInstrumentor`` for
+``httpx`` clients and ``HTTPX2ClientInstrumentor`` for ``httpx2`` clients.
+The instrumentors can be enabled independently.
+
 Installation
 ------------
 
