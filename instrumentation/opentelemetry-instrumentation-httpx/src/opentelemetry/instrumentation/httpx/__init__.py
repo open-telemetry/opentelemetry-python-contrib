@@ -28,6 +28,26 @@ When using the instrumentor, all clients will automatically trace requests.
 
     asyncio.run(get(url))
 
+When instrumenting ``httpx2`` clients, use ``HTTPX2ClientInstrumentor``:
+
+.. code-block:: python
+
+    import httpx2
+    import asyncio
+    from opentelemetry.instrumentation.httpx import HTTPX2ClientInstrumentor
+
+    url = "https://example.com"
+    HTTPX2ClientInstrumentor().instrument()
+
+    with httpx2.Client() as client:
+        response = client.get(url)
+
+    async def get(url):
+        async with httpx2.AsyncClient() as client:
+            response = await client.get(url)
+
+    asyncio.run(get(url))
+
 Instrumenting single clients
 ****************************
 
@@ -53,6 +73,17 @@ use the `instrument_client` method.
             response = await client.get(url)
 
     asyncio.run(get(url))
+
+For ``httpx2`` clients, use ``HTTPX2ClientInstrumentor.instrument_client``:
+
+.. code-block:: python
+
+    import httpx2
+    from opentelemetry.instrumentation.httpx import HTTPX2ClientInstrumentor
+
+    with httpx2.Client() as client:
+        HTTPX2ClientInstrumentor.instrument_client(client)
+        response = client.get("https://example.com")
 
 Uninstrument
 ************
@@ -104,6 +135,20 @@ If you don't want to use the instrumentor class, you can use the transport class
             response = await client.get(url)
 
     asyncio.run(get(url))
+
+For ``httpx2`` transports, use ``SyncOpenTelemetryTransportHttpx2`` and
+``AsyncOpenTelemetryTransportHttpx2``:
+
+.. code-block:: python
+
+    import httpx2
+    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransportHttpx2
+
+    transport = httpx2.HTTPTransport()
+    telemetry_transport = SyncOpenTelemetryTransportHttpx2(transport)
+
+    with httpx2.Client(transport=telemetry_transport) as client:
+        response = client.get("https://example.com")
 
 Request and response hooks
 ***************************
@@ -1161,7 +1206,7 @@ if _httpx2_module is not None:
 
 class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
     # pylint: disable=protected-access
-    """An instrumentor for httpx Client and AsyncClient
+    """Base instrumentor for httpx-compatible Client and AsyncClient classes.
 
     See `BaseInstrumentor`
     """
@@ -1175,7 +1220,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
     # pylint: disable=too-many-locals
     def _instrument(self, **kwargs: typing.Any):
-        """Instruments httpx Client and AsyncClient
+        """Instrument the configured httpx-compatible Client and AsyncClient.
 
         Args:
             **kwargs: Optional arguments
@@ -1576,10 +1621,10 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         request_hook: RequestHook | AsyncRequestHook | None = None,
         response_hook: ResponseHook | AsyncResponseHook | None = None,
     ) -> None:
-        """Instrument httpx Client or AsyncClient
+        """Instrument an httpx-compatible Client or AsyncClient.
 
         Args:
-            client: The httpx Client or AsyncClient instance
+            client: The Client or AsyncClient instance
             tracer_provider: A TracerProvider, defaults to global
             meter_provider: A MeterProvider, defaults to global
             request_hook: A hook that receives the span and request that is called
@@ -1743,7 +1788,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         """Disables instrumentation for the given client instance
 
         Args:
-            client: The httpx Client or AsyncClient instance
+            client: The Client or AsyncClient instance
         """
         if hasattr(client._transport, "handle_request"):
             unwrap(client._transport, "handle_request")
