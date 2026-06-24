@@ -1,0 +1,1 @@
+opentelemetry-instrumentation-asyncpg: add semantic convention stability support through `OTEL_SEMCONV_STABILITY_OPT_IN`
