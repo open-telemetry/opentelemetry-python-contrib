@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-exceptions`: add instrumentation to emit OpenTelemetry logs for uncaught process, thread, and asyncio exceptions.
