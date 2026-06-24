@@ -19,6 +19,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 1.43.0/0.64b0 (2026-06-24)
+
+### Added
+
+- `opentelemetry-instrumentation-exceptions`: add instrumentation to emit
+  OpenTelemetry logs for uncaught process, thread, and asyncio exceptions.
+  ([#4503](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4503))
+- `opentelemetry-instrumentation-botocore`: loosen aiobotocore version
+  constraints to allow for 3.x
+  ([#4601](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4601))
+- `opentelemetry-instrumentation-logging`: add optional `inject_trace_context`
+  argument for injecting trace context attributes
+  ([#4626](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4626))
+- `opentelemetry-instrumentation-redis`: gracefully handle hook exceptions
+  ([#4696](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4696))
+
+### Changed
+
+- opentelemetry-instrumentation-requests: remove multiple calls to
+  sanitize_method
+  ([#4719](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4719))
+
+### Fixed
+
+- `opentelemetry-instrumentation-django`: Remove duplicate query logging in
+  SQLCommenter middleware that broke Django's `assertNumQueries`
+  ([#4367](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4367))
+- `opentelemetry-instrumentation-flask`: wrap wsgi_app call in try/except to
+  prevent active_requests gauge leak
+  ([#4433](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4433))
+- `opentelemetry-instrumentation-asyncpg`: instrument prepared statements
+  ([#4529](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4529))
+- `opentelemetry-instrumentation-aiokafka`,
+  `opentelemetry-instrumentation-confluent-kafka`,
+  `opentelemetry-instrumentation-kafka-python`: fix malformed RST formatting in
+  module docstrings
+  ([#4613](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4613))
+- `opentelemetry-instrumentation-dbapi`: Fix pyodbc DB-API instrumentation
+  examples to wrap `connect`.
+  ([#4657](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4657))
+- `opentelemetry-instrumentation-tornado`: reduce cardinality of `http.target`
+  metrics attribute with old semantic conventions
+  ([#4666](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4666))
+- `opentelemetry-instrumentation-dbapi`: implement proper handling of t-string
+  queries
+  ([#4697](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4697))
+- `opentelemetry-instrumentation-fastapi`: fix `AttributeError` when resolving
+  routes added via `include_router` on FastAPI 0.137+
+  ([#4700](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4700))
+- `opentelemetry-instrumentation-tornado`: sanitize the request http method in
+  server and client spans and metrics
+  ([#4735](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4735))
+
 ## Version 1.42.1/0.63b1 (2026-05-21)
 
 No significant changes.
