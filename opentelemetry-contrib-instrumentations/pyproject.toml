@@ -68,6 +68,7 @@ dependencies = [
     "opentelemetry-instrumentation-pymysql==0.64b0.dev",
     "opentelemetry-instrumentation-pyramid==0.64b0.dev",
     "opentelemetry-instrumentation-redis==0.64b0.dev",
+    "opentelemetry-instrumentation-redis-valkey-base==0.64b0.dev",
     "opentelemetry-instrumentation-remoulade==0.64b0.dev",
     "opentelemetry-instrumentation-requests==0.64b0.dev",
     "opentelemetry-instrumentation-sqlalchemy==0.64b0.dev",
@@ -79,6 +80,7 @@ dependencies = [
     "opentelemetry-instrumentation-tortoiseorm==0.64b0.dev",
     "opentelemetry-instrumentation-urllib==0.64b0.dev",
     "opentelemetry-instrumentation-urllib3==0.64b0.dev",
+    "opentelemetry-instrumentation-valkey==0.64b0.dev",
     "opentelemetry-instrumentation-wsgi==0.64b0.dev",
 ]
 

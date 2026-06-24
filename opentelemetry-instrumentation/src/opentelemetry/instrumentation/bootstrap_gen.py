@@ -201,12 +201,17 @@ libraries = [
         "library": "urllib3 >= 1.0.0, < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-urllib3==0.64b0.dev",
     },
+    {
+        "library": "valkey[libvalkey] >= 6.1.0",
+        "instrumentation": "opentelemetry-instrumentation-valkey==0.64b0.dev",
+    },
 ]
 default_instrumentations = [
     "opentelemetry-instrumentation-asyncio==0.64b0.dev",
     "opentelemetry-instrumentation-dbapi==0.64b0.dev",
     "opentelemetry-instrumentation-exceptions==0.64b0.dev",
     "opentelemetry-instrumentation-logging==0.64b0.dev",
+    "opentelemetry-instrumentation-redis-valkey-base==0.64b0.dev",
     "opentelemetry-instrumentation-sqlite3==0.64b0.dev",
     "opentelemetry-instrumentation-threading==0.64b0.dev",
     "opentelemetry-instrumentation-urllib==0.64b0.dev",

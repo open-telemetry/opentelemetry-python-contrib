@@ -49,6 +49,7 @@ tomli==2.0.1
 typing_extensions==4.13.2
 tzdata==2024.1
 urllib3==2.7.0
+valkey[libvalkey]==6.1.0
 vine==5.1.0
 wcwidth==0.2.13
 wrapt==1.16.0
