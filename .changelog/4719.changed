@@ -1,0 +1,1 @@
+opentelemetry-instrumentation-requests: remove multiple calls to sanitize_method

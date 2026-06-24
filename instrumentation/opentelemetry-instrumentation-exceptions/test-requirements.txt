@@ -3,7 +3,6 @@ Deprecated==1.2.14
 iniconfig==2.0.0
 packaging==24.0
 pluggy==1.6.0
-psycopg==3.3.4
 py-cpuinfo==9.0.0
 pytest==7.4.4
 tomli==2.0.1
@@ -11,5 +10,4 @@ typing_extensions==4.12.2
 wrapt==1.16.0
 zipp==3.19.2
 -e opentelemetry-instrumentation
--e instrumentation/opentelemetry-instrumentation-dbapi
--e instrumentation/opentelemetry-instrumentation-psycopg
+-e instrumentation/opentelemetry-instrumentation-exceptions
