@@ -90,14 +90,13 @@ def _hydrate_span_from_args(
     connection,
     query,
     parameters,
-    sem_conv_opt_in_mode_db=_StabilityMode.DEFAULT,
-    sem_conv_opt_in_mode_http=_StabilityMode.DEFAULT,
+    semconv_opt_in_mode=_StabilityMode.DEFAULT,
 ) -> dict:
     span_attributes: dict = {}
     _set_db_system(
         span_attributes,
         DbSystemValues.POSTGRESQL.value,
-        sem_conv_opt_in_mode_db,
+        semconv_opt_in_mode,
     )
 
     # connection contains _params attribute which is a namedtuple ConnectionParameters.
@@ -106,40 +105,40 @@ def _hydrate_span_from_args(
     params = getattr(connection, "_params", None)
     dbname = getattr(params, "database", None)
     if dbname:
-        _set_db_name(span_attributes, dbname, sem_conv_opt_in_mode_db)
+        _set_db_name(span_attributes, dbname, semconv_opt_in_mode)
     user = getattr(params, "user", None)
     if user:
-        _set_db_user(span_attributes, user, sem_conv_opt_in_mode_db)
+        _set_db_user(span_attributes, user, semconv_opt_in_mode)
 
     # connection contains _addr attribute which is either a host/port tuple, or unix socket string
     # https://magicstack.github.io/asyncpg/current/_modules/asyncpg/connection.html
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
         _set_http_net_peer_name_client(
-            span_attributes, addr[0], sem_conv_opt_in_mode_http
+            span_attributes, addr[0], semconv_opt_in_mode
         )
         _set_http_peer_port_client(
-            span_attributes, addr[1], sem_conv_opt_in_mode_http
+            span_attributes, addr[1], semconv_opt_in_mode
         )
         _set_net_transport(
             span_attributes,
             NetTransportValues.IP_TCP.value,
             NetworkTransportValues.TCP.value,
-            sem_conv_opt_in_mode_http,
+            semconv_opt_in_mode,
         )
     elif isinstance(addr, str):
         _set_http_net_peer_name_client(
-            span_attributes, addr, sem_conv_opt_in_mode_http
+            span_attributes, addr, semconv_opt_in_mode
         )
         _set_net_transport(
             span_attributes,
             NetTransportValues.OTHER.value,
             NetworkTransportValues.PIPE.value,
-            sem_conv_opt_in_mode_http,
+            semconv_opt_in_mode,
         )
 
     if query is not None:
-        _set_db_statement(span_attributes, query, sem_conv_opt_in_mode_db)
+        _set_db_statement(span_attributes, query, semconv_opt_in_mode)
 
     if parameters is not None and len(parameters) > 0:
         span_attributes["db.statement.parameters"] = str(parameters)
@@ -161,11 +160,8 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
         _OpenTelemetrySemanticConventionStability._initialize()
-        self._semconv_opt_in_mode_db = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+        self._semconv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
             _OpenTelemetryStabilitySignalType.DATABASE,
-        )
-        self._semconv_opt_in_mode_http = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.HTTP,
         )
         self._tracer = trace.get_tracer(
             __name__,
@@ -174,7 +170,6 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             schema_url=_get_schema_url_for_signal_types(
                 [
                     _OpenTelemetryStabilitySignalType.DATABASE,
-                    _OpenTelemetryStabilitySignalType.HTTP,
                 ]
             ),
         )
@@ -242,8 +237,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             instance,
             args[0],
             args[1:] if self.capture_parameters else None,
-            sem_conv_opt_in_mode_db=self._semconv_opt_in_mode_db,
-            sem_conv_opt_in_mode_http=self._semconv_opt_in_mode_http,
+            semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
         with self._tracer.start_as_current_span(
@@ -257,9 +251,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             finally:
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
-                    if _report_new(
-                        self._semconv_opt_in_mode_db
-                    ) or _report_new(self._semconv_opt_in_mode_http):
+                    if _report_new(self._semconv_opt_in_mode):
                         span.set_attribute(
                             ERROR_TYPE, type(exception).__qualname__
                         )
@@ -287,8 +279,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             instance._connection,
             instance._query,
             instance._args if self.capture_parameters else None,
-            sem_conv_opt_in_mode_db=self._semconv_opt_in_mode_db,
-            sem_conv_opt_in_mode_http=self._semconv_opt_in_mode_http,
+            semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
         stop = False
@@ -308,9 +299,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             finally:
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
-                    if _report_new(
-                        self._semconv_opt_in_mode_db
-                    ) or _report_new(self._semconv_opt_in_mode_http):
+                    if _report_new(self._semconv_opt_in_mode):
                         span.set_attribute(
                             ERROR_TYPE, type(exception).__qualname__
                         )
@@ -332,8 +321,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             instance._connection,
             query,
             args if self.capture_parameters else None,
-            sem_conv_opt_in_mode_db=self._semconv_opt_in_mode_db,
-            sem_conv_opt_in_mode_http=self._semconv_opt_in_mode_http,
+            semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
         with self._tracer.start_as_current_span(
@@ -347,9 +335,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             finally:
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
-                    if _report_new(
-                        self._semconv_opt_in_mode_db
-                    ) or _report_new(self._semconv_opt_in_mode_http):
+                    if _report_new(self._semconv_opt_in_mode):
                         span.set_attribute(
                             ERROR_TYPE, type(exception).__qualname__
                         )

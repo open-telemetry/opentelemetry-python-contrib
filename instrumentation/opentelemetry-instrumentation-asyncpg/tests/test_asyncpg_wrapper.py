@@ -407,8 +407,10 @@ class TestAsyncPGSemconvMigration(TestBase):
         self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
         self.assertEqual(span.attributes[DB_NAMESPACE], "testdb")
         self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT 1")
-        self.assertIn(NET_PEER_NAME, span.attributes)
-        self.assertIn(NET_PEER_PORT, span.attributes)
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 5432)
+        self.assertNotIn(NET_PEER_NAME, span.attributes)
+        self.assertNotIn(NET_PEER_PORT, span.attributes)
 
     def test_span_both_semconv(self):
         with use_semconv_opt_in("database/dup,http/dup"):
@@ -518,13 +520,6 @@ class TestAsyncPGSemconvMigration(TestBase):
 
     def test_error_type_set_on_new_db_semconv(self):
         spans = self._run_execute_error("database")
-        self.assertEqual(len(spans), 1)
-        span = spans[0]
-        self.assertFalse(span.status.is_ok)
-        self.assertEqual(span.attributes[ERROR_TYPE], "RuntimeError")
-
-    def test_error_type_set_on_new_http_semconv(self):
-        spans = self._run_execute_error("http")
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertFalse(span.status.is_ok)
