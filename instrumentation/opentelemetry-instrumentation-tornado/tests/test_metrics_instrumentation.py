@@ -634,6 +634,66 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
         self.assertTrue(old_duration_found, "Old semconv metric not found")
         self.assertTrue(new_duration_found, "New semconv metric not found")
 
+    def test_server_metrics_method_is_sanitized(self):
+        response = self.fetch(
+            "/", method="UKNOWN", allow_nonstandard_methods=True
+        )
+        self.assertEqual(response.code, 405)
+        metrics = self.get_sorted_metrics(SCOPE)
+
+        old_server_found = False
+        new_server_found = False
+        old_client_found = False
+        new_client_found = False
+        for metric in metrics:
+            if metric.name not in (
+                "http.server.active_requests",
+                "http.client.duration",
+                "http.client.request.duration",
+            ):
+                continue
+
+            for data_point in metric.data.data_points:
+                attributes = dict(data_point.attributes)
+                print(metric.name, attributes)
+                if old_attribute := attributes.get("http.method"):
+                    self.assertEqual(old_attribute, "_OTHER")
+                    old_server_found = (
+                        True
+                        if metric.name == "http.server.active_requests"
+                        else old_server_found
+                    )
+                    old_client_found = (
+                        True
+                        if metric.name == "http.client.duration"
+                        else old_client_found
+                    )
+                if new_attribute := attributes.get("http.request.method"):
+                    self.assertEqual(new_attribute, "_OTHER")
+                    new_server_found = (
+                        True
+                        if metric.name == "http.server.active_requests"
+                        else new_server_found
+                    )
+                    new_client_found = (
+                        True
+                        if metric.name == "http.client.request.duration"
+                        else new_client_found
+                    )
+
+        self.assertTrue(
+            old_server_found, "Old semconv server metric not found"
+        )
+        self.assertTrue(
+            new_server_found, "New semconv server metric not found"
+        )
+        self.assertTrue(
+            old_client_found, "Old semconv client metric not found"
+        )
+        self.assertTrue(
+            new_client_found, "New semconv client metric not found"
+        )
+
     def test_url_query_attribute_both_semconv(self):
         """Test that URL_QUERY is set in dup mode when request has query string."""
         response = self.fetch("/?test=value&another=param")
