@@ -655,7 +655,6 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
 
             for data_point in metric.data.data_points:
                 attributes = dict(data_point.attributes)
-                print(metric.name, attributes)
                 if old_attribute := attributes.get("http.method"):
                     self.assertEqual(old_attribute, "_OTHER")
                     old_server_found = (

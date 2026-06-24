@@ -849,10 +849,9 @@ def _record_prepare_metrics(server_histograms, handler, sem_conv_opt_in_mode):
             active_requests_attributes_new = (
                 _create_active_requests_attributes_new(handler.request)
             )
-            active_requests_attributes_old_or_dup = {
-                **active_requests_attributes_old,
-                **active_requests_attributes_new,
-            }
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old | active_requests_attributes_new
+            )
         else:
             active_requests_attributes_old_or_dup = (
                 active_requests_attributes_old
@@ -914,10 +913,9 @@ def _record_on_finish_metrics(
             active_requests_attributes_new = (
                 _create_active_requests_attributes_new(handler.request)
             )
-            active_requests_attributes_old_or_dup = {
-                **active_requests_attributes_old,
-                **active_requests_attributes_new,
-            }
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old | active_requests_attributes_new
+            )
         else:
             active_requests_attributes_old_or_dup = (
                 active_requests_attributes_old
