@@ -590,9 +590,9 @@ def _set_db_statement(
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
     if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, DB_STATEMENT, statement)
+        result[DB_STATEMENT] = statement
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, DB_QUERY_TEXT, statement)
+        result[DB_QUERY_TEXT] = statement
 
 
 def _set_db_user(
