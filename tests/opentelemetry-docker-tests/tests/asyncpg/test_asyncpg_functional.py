@@ -37,10 +37,6 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
-)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -147,8 +143,8 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertEqual(spans[0].attributes[DB_SYSTEM_NAME], "postgresql")
         self.assertEqual(spans[0].attributes[DB_NAMESPACE], POSTGRES_DB_NAME)
         self.assertEqual(spans[0].attributes[DB_QUERY_TEXT], "SELECT 42;")
-        self.assertEqual(spans[0].attributes[SERVER_ADDRESS], POSTGRES_HOST)
-        self.assertEqual(spans[0].attributes[SERVER_PORT], POSTGRES_PORT)
+        self.assertEqual(spans[0].attributes[NET_PEER_NAME], POSTGRES_HOST)
+        self.assertEqual(spans[0].attributes[NET_PEER_PORT], POSTGRES_PORT)
         self.assertNotIn(DB_STATEMENT, spans[0].attributes)
         self.assertNotIn(DB_SYSTEM, spans[0].attributes)
         self.assertNotIn(DB_NAME, spans[0].attributes)

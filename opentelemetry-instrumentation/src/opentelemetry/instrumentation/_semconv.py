@@ -589,6 +589,9 @@ def _set_db_statement(
     statement: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
+    if statement is None:
+        return
+
     if _report_old(sem_conv_opt_in_mode):
         result[DB_STATEMENT] = statement
     if _report_new(sem_conv_opt_in_mode):
