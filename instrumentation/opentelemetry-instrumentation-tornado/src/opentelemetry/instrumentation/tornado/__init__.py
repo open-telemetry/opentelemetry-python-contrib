@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=too-many-lines
+
 """
 This library uses OpenTelemetry to track web requests in Tornado applications.
 

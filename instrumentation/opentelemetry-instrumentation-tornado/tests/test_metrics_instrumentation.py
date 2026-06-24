@@ -636,7 +636,7 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
 
     def test_server_metrics_method_is_sanitized(self):
         response = self.fetch(
-            "/", method="UKNOWN", allow_nonstandard_methods=True
+            "/", method="UNKNOWN", allow_nonstandard_methods=True
         )
         self.assertEqual(response.code, 405)
         metrics = self.get_sorted_metrics(SCOPE)
