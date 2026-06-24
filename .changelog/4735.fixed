@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-tornado`: sanitize the request http method in server and client spans and metrics

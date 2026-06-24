@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-logging`: add optional `inject_trace_context` argument for injecting trace context attributes
