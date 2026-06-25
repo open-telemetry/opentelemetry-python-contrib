@@ -42,7 +42,8 @@ Usage
 The ``_instrument()`` method accepts the following keyword args:
 
 - **tracer_provider** (TracerProvider) - an optional tracer provider
-- **async_produce_hook** (Callable) - a function with extra user-defined logic to be performed before sending the message
+- **async_produce_hook** (Callable) - a function with extra user-defined logic to be performed before sending
+  the message
 
   Function signature:
 

@@ -155,7 +155,7 @@ members = [
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
 target-version = "py310"
-line-length = 79
+line-length = 120
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
 
@@ -173,9 +173,7 @@ select = [
   "A",   # flake8-builtins
   "TID", # flake8-tidy-imports
 ]
-ignore = [
-  "E501", # line-too-long
-]
+ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "docs/**/*.*" = ["A001"]

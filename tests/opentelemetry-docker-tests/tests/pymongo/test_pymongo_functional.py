@@ -32,9 +32,7 @@ class TestFunctionalPymongo(TestBase):
         self.instrumentor.instrument()
         self.instrumentor._commandtracer_instance._tracer = self._tracer
         self.instrumentor._commandtracer_instance.capture_statement = True
-        client = MongoClient(
-            MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
-        )
+        client = MongoClient(MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000)
         db = client[MONGODB_DB_NAME]
         self._collection = db[MONGODB_COLLECTION_NAME]
 
@@ -72,23 +70,18 @@ class TestFunctionalPymongo(TestBase):
     def test_insert(self):
         """Should create a child span for insert"""
         with self._tracer.start_as_current_span("rootSpan"):
-            insert_result = self._collection.insert_one(
-                {"name": "testName", "value": "testValue"}
-            )
+            insert_result = self._collection.insert_one({"name": "testName", "value": "testValue"})
             insert_result_id = insert_result.inserted_id
 
         expected_db_statement = (
-            f"insert [{{'name': 'testName', 'value': 'testValue', '_id': "
-            f"ObjectId('{insert_result_id}')}}]"
+            f"insert [{{'name': 'testName', 'value': 'testValue', '_id': ObjectId('{insert_result_id}')}}]"
         )
         self.validate_spans(expected_db_statement)
 
     def test_update(self):
         """Should create a child span for update"""
         with self._tracer.start_as_current_span("rootSpan"):
-            self._collection.update_one(
-                {"name": "testName"}, {"$set": {"value": "someOtherValue"}}
-            )
+            self._collection.update_one({"name": "testName"}, {"$set": {"value": "someOtherValue"}})
 
         expected_db_statement = (
             "update [SON([('q', {'name': 'testName'}), ('u', "
@@ -109,9 +102,7 @@ class TestFunctionalPymongo(TestBase):
         with self._tracer.start_as_current_span("rootSpan"):
             self._collection.delete_one({"name": "testName"})
 
-        expected_db_statement = (
-            "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
-        )
+        expected_db_statement = "delete [SON([('q', {'name': 'testName'}), ('limit', 1)])]"
         self.validate_spans(expected_db_statement)
 
     def test_find_without_capture_statement(self):

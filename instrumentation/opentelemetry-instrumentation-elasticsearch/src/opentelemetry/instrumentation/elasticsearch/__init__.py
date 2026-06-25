@@ -179,11 +179,7 @@ class ElasticsearchInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         # pylint: disable=no-member
-        transport_class = (
-            elastic_transport.Transport
-            if es_transport_split
-            else elasticsearch.Transport
-        )
+        transport_class = elastic_transport.Transport if es_transport_split else elasticsearch.Transport
         unwrap(transport_class, "perform_request")
 
 
@@ -217,8 +213,7 @@ def _wrap_perform_request(
             method, url, *_ = args
         except IndexError:
             logger.warning(
-                "expected perform_request to receive two positional arguments. "
-                "Got %d",
+                "expected perform_request to receive two positional arguments. Got %d",
                 len(args),
             )
 
@@ -228,19 +223,16 @@ def _wrap_perform_request(
         search_target = None
 
         if url:
-            # TODO: This regex-based solution avoids creating an unbounded number of span names, but should be replaced by instrumenting individual Elasticsearch methods instead of Transport.perform_request()
-            # A limitation of the regex is that only the '_doc' mapping type is supported. Mapping types are deprecated since Elasticsearch 7
+            # TODO: This regex-based solution avoids creating an unbounded number of span names, but should be
+            # replaced by instrumenting individual Elasticsearch methods instead of Transport.perform_request()
+            # A limitation of the regex is that only the '_doc' mapping type is supported. Mapping types are
+            # deprecated since Elasticsearch 7
             # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/708
             match = _regex_doc_url.search(url)
             if match is not None:
                 # Remove the full document ID from the URL
                 doc_span = match.span()
-                op_name = (
-                    span_name_prefix
-                    + url[: doc_span[0]]
-                    + "/_doc/:id"
-                    + url[doc_span[1] :]
-                )
+                op_name = span_name_prefix + url[: doc_span[0]] + "/_doc/:id" + url[doc_span[1] :]
                 # Put the document ID in attributes
                 doc_id = match.group(1)
             match = _regex_search_url.search(url)
@@ -264,16 +256,12 @@ def _wrap_perform_request(
                             v = str(v)
                         elif isinstance(v, elastic_transport.HttpHeaders):
                             v = dict(v)
-                        elif isinstance(
-                            v, elastic_transport.OpenTelemetrySpan
-                        ):
+                        elif isinstance(v, elastic_transport.OpenTelemetrySpan):
                             # the transport Span is always a dummy one
                             v = None
                         return (k, v)
 
-                    hook_kwargs = dict(
-                        normalize_kwargs(k, v) for k, v in kwargs.items()
-                    )
+                    hook_kwargs = dict(normalize_kwargs(k, v) for k, v in kwargs.items())
                 else:
                     hook_kwargs = kwargs
                 request_hook(span, method, url, hook_kwargs)
@@ -313,9 +301,7 @@ def _wrap_perform_request(
             # since the transport split the raising of exceptions that set the error status
             # are called after this code so need to set error status manually
             if es_transport_split and span.is_recording():
-                if not (method == "HEAD" and rv.meta.status == 404) and (
-                    not 200 <= rv.meta.status < 299
-                ):
+                if not (method == "HEAD" and rv.meta.status == 404) and (not 200 <= rv.meta.status < 299):
                     exception = elasticsearch.exceptions.HTTP_EXCEPTIONS.get(
                         rv.meta.status, elasticsearch.exceptions.ApiError
                     )

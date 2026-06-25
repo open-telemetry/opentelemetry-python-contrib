@@ -44,7 +44,8 @@ For example,
 
     export OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS='path_info,content_type'
 
-will extract the ``path_info`` and ``content_type`` attributes from every traced request and add them as span attributes.
+will extract the ``path_info`` and ``content_type`` attributes from every traced request and add them as span
+attributes.
 
 * `Django Request object reference <https://docs.djangoproject.com/en/5.2/ref/request-response/#attributes>`_
 
@@ -140,7 +141,8 @@ to ensure complete and accurate span data.
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
+`semantic conventions
+<https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -169,8 +171,9 @@ To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a
 single item list containing all the header values.
 
 For example:
@@ -203,8 +206,9 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a
 single item list containing all the header values.
 
 For example:
@@ -237,7 +241,8 @@ enabled will have configurable key-value pairs appended to them, e.g.
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans
+  <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -267,21 +272,28 @@ Available settings.py commenter options
 We can configure the tags to be appended to the sqlquery log by adding below variables to
 ``settings.py``, e.g. ``SQLCOMMENTER_WITH_FRAMEWORK = False``
 
-+-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``settings.py`` variable            | Description                                               | Example                                                                   |
-+=====================================+===========================================================+===========================================================================+
-| ``SQLCOMMENTER_WITH_FRAMEWORK``     | Django framework name with version (URL encoded).         | ``framework='django%%%%3A4.2.0'``                                         |
-+-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``SQLCOMMENTER_WITH_CONTROLLER``    | Django controller/view name that handles the request.     | ``controller='index'``                                                    |
-+-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``SQLCOMMENTER_WITH_ROUTE``         | URL path pattern that handles the request.                | ``route='polls/'``                                                        |
-+-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``SQLCOMMENTER_WITH_APP_NAME``      | Django app name that handles the request.                 | ``app_name='polls'``                                                      |
-+-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``SQLCOMMENTER_WITH_OPENTELEMETRY`` | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-fd720cffceba94bbf75940ff3caaf3cc-4fd1a2bdacf56388-01'`` |
-+-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``SQLCOMMENTER_WITH_DB_DRIVER``     | Database driver name used by Django.                      | ``db_driver='django.db.backends.postgresql'``                             |
-+-------------------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
++-------------------------------------+-------------------------------------------+----------------------------------+
+| ``settings.py`` variable            | Description                               | Example                          |
++=====================================+===========================================+==================================+
+| ``SQLCOMMENTER_WITH_FRAMEWORK``     | Django framework name with version (URL   | ``framework='django%%%%3A4.2.0'``|
+|                                     | encoded).                                 |                                  |
++-------------------------------------+-------------------------------------------+----------------------------------+
+| ``SQLCOMMENTER_WITH_CONTROLLER``    | Django controller/view name that          | ``controller='index'``           |
+|                                     | handles the request.                      |                                  |
++-------------------------------------+-------------------------------------------+----------------------------------+
+| ``SQLCOMMENTER_WITH_ROUTE``         | URL path pattern that handles the         | ``route='polls/'``               |
+|                                     | request.                                  |                                  |
++-------------------------------------+-------------------------------------------+----------------------------------+
+| ``SQLCOMMENTER_WITH_APP_NAME``      | Django app name that handles the          | ``app_name='polls'``             |
+|                                     | request.                                  |                                  |
++-------------------------------------+-------------------------------------------+----------------------------------+
+| ``SQLCOMMENTER_WITH_OPENTELEMETRY`` | OpenTelemetry context as traceparent      | ``traceparent='00-fd720cffceba   |
+|                                     | at time of query.                         | 94bbf75940ff3caaf3cc-            |
+|                                     |                                           | 4fd1a2bdacf56388-01'``           |
++-------------------------------------+-------------------------------------------+----------------------------------+
+| ``SQLCOMMENTER_WITH_DB_DRIVER``     | Database driver name used by Django.      | ``db_driver='django.db.backends. |
+|                                     |                                           | postgresql'``                    |
++-------------------------------------+-------------------------------------------+----------------------------------+
 
 API
 ---
@@ -328,9 +340,7 @@ _django_middleware_setting = "MIDDLEWARE"
 _logger = getLogger(__name__)
 
 
-def _get_django_otel_middleware_position(
-    middleware_length, default_middleware_position=0
-):
+def _get_django_otel_middleware_position(middleware_length, default_middleware_position=0):
     otel_position = environ.get("OTEL_PYTHON_DJANGO_MIDDLEWARE_POSITION")
     try:
         middleware_position = int(otel_position)
@@ -358,9 +368,7 @@ class DjangoInstrumentor(BaseInstrumentor):
     See `BaseInstrumentor`
     """
 
-    _opentelemetry_middleware = ".".join(
-        [_DjangoMiddleware.__module__, _DjangoMiddleware.__qualname__]
-    )
+    _opentelemetry_middleware = ".".join([_DjangoMiddleware.__module__, _DjangoMiddleware.__qualname__])
 
     _sql_commenter_middleware = "opentelemetry.instrumentation.django.middleware.sqlcommenter_middleware.SqlCommenter"
 
@@ -398,14 +406,10 @@ class DjangoInstrumentor(BaseInstrumentor):
         _DjangoMiddleware._tracer = tracer
         _DjangoMiddleware._meter = meter
         _DjangoMiddleware._excluded_urls = (
-            _excluded_urls_from_env
-            if _excluded_urls is None
-            else parse_excluded_urls(_excluded_urls)
+            _excluded_urls_from_env if _excluded_urls is None else parse_excluded_urls(_excluded_urls)
         )
         _DjangoMiddleware._otel_request_hook = kwargs.pop("request_hook", None)
-        _DjangoMiddleware._otel_response_hook = kwargs.pop(
-            "response_hook", None
-        )
+        _DjangoMiddleware._otel_response_hook = kwargs.pop("response_hook", None)
         _DjangoMiddleware._duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
             _DjangoMiddleware._duration_histogram_old = meter.create_histogram(
@@ -421,9 +425,7 @@ class DjangoInstrumentor(BaseInstrumentor):
                 unit="s",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
-        _DjangoMiddleware._active_request_counter = (
-            create_http_server_active_requests(meter)
-        )
+        _DjangoMiddleware._active_request_counter = create_http_server_active_requests(meter)
         # This can not be solved, but is an inherent problem of this approach:
         # the order of middleware entries matters, and here you have no control
         # on that:
@@ -432,27 +434,21 @@ class DjangoInstrumentor(BaseInstrumentor):
 
         settings_middleware = []
         try:
-            settings_middleware = getattr(
-                settings, _django_middleware_setting, []
-            )
+            settings_middleware = getattr(settings, _django_middleware_setting, [])
         except ImproperlyConfigured as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE environment variable not configured. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(
-                settings, _django_middleware_setting, []
-            )
+            settings_middleware = getattr(settings, _django_middleware_setting, [])
         except ModuleNotFoundError as exception:
             _logger.debug(
                 "DJANGO_SETTINGS_MODULE points to a non-existent module. Defaulting to empty settings: %s",
                 exception,
             )
             settings.configure()
-            settings_middleware = getattr(
-                settings, _django_middleware_setting, []
-            )
+            settings_middleware = getattr(settings, _django_middleware_setting, [])
 
         # Django allows to specify middlewares as a tuple, so we convert this tuple to a
         # list, otherwise we wouldn't be able to call append/remove
@@ -466,29 +462,21 @@ class DjangoInstrumentor(BaseInstrumentor):
         )
 
         if is_sql_commentor_enabled:
-            settings_middleware.insert(
-                middleware_position, self._sql_commenter_middleware
-            )
+            settings_middleware.insert(middleware_position, self._sql_commenter_middleware)
 
-        settings_middleware.insert(
-            middleware_position, self._opentelemetry_middleware
-        )
+        settings_middleware.insert(middleware_position, self._opentelemetry_middleware)
 
         setattr(settings, _django_middleware_setting, settings_middleware)
 
     def _uninstrument(self, **kwargs):
-        settings_middleware = getattr(
-            settings, _django_middleware_setting, None
-        )
+        settings_middleware = getattr(settings, _django_middleware_setting, None)
 
         # FIXME This is starting to smell like trouble. We have 2 mechanisms
         # that may make this condition be True, one implemented in
         # BaseInstrumentor and another one implemented in _instrument. Both
         # stop _instrument from running and thus, settings_middleware not being
         # set.
-        if settings_middleware is None or (
-            self._opentelemetry_middleware not in settings_middleware
-        ):
+        if settings_middleware is None or (self._opentelemetry_middleware not in settings_middleware):
             return
 
         settings_middleware.remove(self._opentelemetry_middleware)

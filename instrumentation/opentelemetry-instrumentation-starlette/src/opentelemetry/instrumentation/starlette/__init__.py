@@ -44,8 +44,10 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 
 - The server request hook is passed a server span and ASGI scope object for every incoming request.
-- The client request hook is called with the internal span, and ASGI scope and event when the method ``receive`` is called.
-- The client response hook is called with the internal span, and ASGI scope and event when the method ``send`` is called.
+- The client request hook is called with the internal span, and ASGI scope and event when the method
+  ``receive`` is called.
+- The client response hook is called with the internal span, and ASGI scope and event when the method
+  ``send`` is called.
 
 For example,
 
@@ -67,7 +69,11 @@ For example,
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    StarletteInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+    StarletteInstrumentor().instrument(
+        server_request_hook=server_request_hook,
+        client_request_hook=client_request_hook,
+        client_response_hook=client_response_hook,
+    )
 
 Capture HTTP request and response headers
 *****************************************
@@ -101,8 +107,9 @@ Additionally, the special keyword ``all`` can be used to capture all request hea
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST="all"
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a
 list containing the header values.
 
 For example:
@@ -135,8 +142,9 @@ Additionally, the special keyword ``all`` can be used to capture all response he
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE="all"
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a
 list containing the header values.
 
 For example:
@@ -264,11 +272,7 @@ class StarletteInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def uninstrument_app(app: applications.Starlette):
-        app.user_middleware = [
-            x
-            for x in app.user_middleware
-            if x.cls is not OpenTelemetryMiddleware
-        ]
+        app.user_middleware = [x for x in app.user_middleware if x.cls is not OpenTelemetryMiddleware]
         app.middleware_stack = app.build_middleware_stack()
         app._is_instrumented_by_opentelemetry = False
 
@@ -278,15 +282,9 @@ class StarletteInstrumentor(BaseInstrumentor):
     def _instrument(self, **kwargs: Unpack[InstrumentKwargs]):
         self._original_starlette = applications.Starlette
         _InstrumentedStarlette._tracer_provider = kwargs.get("tracer_provider")
-        _InstrumentedStarlette._server_request_hook = kwargs.get(
-            "server_request_hook"
-        )
-        _InstrumentedStarlette._client_request_hook = kwargs.get(
-            "client_request_hook"
-        )
-        _InstrumentedStarlette._client_response_hook = kwargs.get(
-            "client_response_hook"
-        )
+        _InstrumentedStarlette._server_request_hook = kwargs.get("server_request_hook")
+        _InstrumentedStarlette._client_request_hook = kwargs.get("client_request_hook")
+        _InstrumentedStarlette._client_response_hook = kwargs.get("client_response_hook")
         _InstrumentedStarlette._meter_provider = kwargs.get("meter_provider")
 
         applications.Starlette = _InstrumentedStarlette

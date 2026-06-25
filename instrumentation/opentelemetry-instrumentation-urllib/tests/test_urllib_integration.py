@@ -151,9 +151,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.urllib
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.urllib)
 
     def test_basic_new_semconv(self):
         result = self.perform_request(self.URL)
@@ -175,9 +173,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.urllib
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.urllib)
 
     def test_basic_both_semconv(self):
         result = self.perform_request(self.URL)
@@ -202,9 +198,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.urllib
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.urllib)
 
     def test_excluded_urls_explicit(self):
         url_201 = "http://mock/status/201"
@@ -333,9 +327,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
         self.assertIs(span.status.status_code, trace.StatusCode.UNSET)
 
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.urllib
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.urllib)
 
     def test_uninstrument(self):
         URLLibInstrumentor().uninstrument()
@@ -383,9 +375,7 @@ class URLLibIntegrationTestBase(abc.ABC):
     def test_not_recording(self):
         with mock.patch("opentelemetry.trace.INVALID_SPAN") as mock_span:
             URLLibInstrumentor().uninstrument()
-            URLLibInstrumentor().instrument(
-                tracer_provider=trace.NoOpTracerProvider()
-            )
+            URLLibInstrumentor().instrument(tracer_provider=trace.NoOpTracerProvider())
             mock_span.is_recording.return_value = False
             result = self.perform_request(self.URL)
             self.assertEqual(result.read(), b"Hello!")
@@ -523,9 +513,7 @@ class URLLibIntegrationTestBase(abc.ABC):
             span.set_attribute("response_hook_attr", "value")
 
         URLLibInstrumentor().uninstrument()
-        URLLibInstrumentor().instrument(
-            request_hook=request_hook, response_hook=response_hook
-        )
+        URLLibInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
         result = self.perform_request(self.URL)
 
         self.assertEqual(result.read(), b"Hello!")
@@ -546,9 +534,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_custom_response_headers_captured(self):
         URLLibInstrumentor().uninstrument()
-        URLLibInstrumentor().instrument(
-            captured_response_headers=["X-Custom-Header", "X-Another-Header"]
-        )
+        URLLibInstrumentor().instrument(captured_response_headers=["X-Custom-Header", "X-Another-Header"])
 
         response_headers = {
             "X-Custom-Header": "custom-value",
@@ -572,9 +558,7 @@ class URLLibIntegrationTestBase(abc.ABC):
             span.attributes["http.response.header.x_another_header"],
             ("another-value",),
         )
-        self.assertNotIn(
-            "http.response.header.x_excluded_header", span.attributes
-        )
+        self.assertNotIn("http.response.header.x_excluded_header", span.attributes)
 
     def test_custom_headers_not_captured_when_not_configured(self):
         """Test that headers are not captured when env vars are not set."""
@@ -587,12 +571,8 @@ class URLLibIntegrationTestBase(abc.ABC):
         )
 
         span = self.assert_span(num_spans=1)
-        self.assertNotIn(
-            "http.request.header.x_request_header", span.attributes
-        )
-        self.assertNotIn(
-            "http.response.header.x_response_header", span.attributes
-        )
+        self.assertNotIn("http.request.header.x_request_header", span.attributes)
+        self.assertNotIn("http.response.header.x_response_header", span.attributes)
 
     def test_sensitive_headers_sanitized(self):
         """Test that sensitive header values are redacted."""
@@ -683,9 +663,7 @@ class URLLibIntegrationTestBase(abc.ABC):
             span.attributes["http.request.header.x_custom_request_two"],
             ("value-two",),
         )
-        self.assertNotIn(
-            "http.request.header.x_other_request_header", span.attributes
-        )
+        self.assertNotIn("http.request.header.x_other_request_header", span.attributes)
         self.assertEqual(
             span.attributes["http.response.header.x_custom_response_a"],
             ("value-A",),
@@ -694,9 +672,7 @@ class URLLibIntegrationTestBase(abc.ABC):
             span.attributes["http.response.header.x_custom_response_b"],
             ("value-B",),
         )
-        self.assertNotIn(
-            "http.response.header.x_other_response_header", span.attributes
-        )
+        self.assertNotIn("http.response.header.x_other_response_header", span.attributes)
 
     def test_custom_headers_case_insensitive(self):
         """Test that header capture is case-insensitive."""
@@ -884,9 +860,7 @@ class URLLibIntegrationTestBase(abc.ABC):
             body="Hello!",
             headers=response_headers,
         )
-        self.perform_request(
-            url, headers=[("x-request-one", "one"), ("x-request-two", "two")]
-        )
+        self.perform_request(url, headers=[("x-request-one", "one"), ("x-request-two", "two")])
 
         span = self.assert_span(num_spans=1)
         self.assertEqual(
@@ -911,9 +885,7 @@ class URLLibIntegrationTestBase(abc.ABC):
         URLLibInstrumentor().instrument(
             captured_request_headers=["X-foo"],
         )
-        result = self.perform_request(
-            self.URL, headers=[("X-foo", "foo"), ("X-foo", "bar")]
-        )
+        result = self.perform_request(self.URL, headers=[("X-foo", "foo"), ("X-foo", "bar")])
         self.assertEqual(result.read(), b"Hello!")
 
         span = self.assert_span()

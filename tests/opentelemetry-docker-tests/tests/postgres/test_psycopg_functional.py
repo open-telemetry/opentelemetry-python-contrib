@@ -114,9 +114,7 @@ class TestFunctionalPsycopg(TestBase):
             self.validate_spans("test")
 
     def test_register_types(self):
-        psycopg2.extras.register_default_jsonb(
-            conn_or_curs=self._cursor, loads=lambda x: x
-        )
+        psycopg2.extras.register_default_jsonb(conn_or_curs=self._cursor, loads=lambda x: x)
 
     def test_composed_queries(self):
         stmt = "CREATE TABLE IF NOT EXISTS users (id integer, name varchar)"

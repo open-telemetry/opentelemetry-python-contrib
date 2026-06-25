@@ -50,9 +50,7 @@ except ImportError:
     _has_reasoning_param = False
 
 
-pytestmark = pytest.mark.skipif(
-    not HAS_RESPONSES_API, reason="Responses API requires a newer openai SDK"
-)
+pytestmark = pytest.mark.skipif(not HAS_RESPONSES_API, reason="Responses API requires a newer openai SDK")
 
 SYSTEM_INSTRUCTIONS = "You are a helpful assistant."
 EXPECTED_SYSTEM_INSTRUCTIONS = [
@@ -71,9 +69,7 @@ format '[1,2],[3,4],[5,6]' and prints the transpose in the same format.
 
 def _skip_if_not_latest():
     if not is_experimental_mode():
-        pytest.skip(
-            "Responses create instrumentation only supports the latest experimental semconv path"
-        )
+        pytest.skip("Responses create instrumentation only supports the latest experimental semconv path")
 
 
 def _load_span_messages(span, attribute):
@@ -87,10 +83,7 @@ def _assert_response_content(span, response, log_exporter):
         span.attributes[GenAIAttributes.GEN_AI_INPUT_MESSAGES],
         USER_ONLY_EXPECTED_INPUT_MESSAGES,
     )
-    assert (
-        json.loads(span.attributes[GenAIAttributes.GEN_AI_SYSTEM_INSTRUCTIONS])
-        == EXPECTED_SYSTEM_INSTRUCTIONS
-    )
+    assert json.loads(span.attributes[GenAIAttributes.GEN_AI_SYSTEM_INSTRUCTIONS]) == EXPECTED_SYSTEM_INSTRUCTIONS
     assert_messages_attribute(
         span.attributes[GenAIAttributes.GEN_AI_OUTPUT_MESSAGES],
         format_simple_expected_output_message(response.output_text),
@@ -107,21 +100,13 @@ def _assert_request_attrs(
     output_type=None,
 ):
     if temperature is not None:
-        assert (
-            span.attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE]
-            == temperature
-        )
+        assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] == temperature
     if top_p is not None:
         assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] == top_p
     if max_tokens is not None:
-        assert (
-            span.attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS]
-            == max_tokens
-        )
+        assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] == max_tokens
     if output_type is not None:
-        assert (
-            span.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] == output_type
-        )
+        assert span.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] == output_type
 
 
 def _collect_completed_response(stream):
@@ -133,9 +118,7 @@ def _collect_completed_response(stream):
     return response
 
 
-def test_responses_uninstrument_removes_patching(
-    span_exporter, tracer_provider, logger_provider, meter_provider
-):
+def test_responses_uninstrument_removes_patching(span_exporter, tracer_provider, logger_provider, meter_provider):
     instrumentor = OpenAIInstrumentor()
     instrumentor.instrument(
         tracer_provider=tracer_provider,
@@ -147,9 +130,7 @@ def test_responses_uninstrument_removes_patching(
     assert len(span_exporter.get_finished_spans()) == 0
 
 
-def test_responses_multiple_instrument_uninstrument_cycles(
-    tracer_provider, logger_provider, meter_provider
-):
+def test_responses_multiple_instrument_uninstrument_cycles(tracer_provider, logger_provider, meter_provider):
     instrumentor = OpenAIInstrumentor()
 
     instrumentor.instrument(
@@ -175,9 +156,7 @@ def test_responses_multiple_instrument_uninstrument_cycles(
 
 
 @pytest.mark.vcr()
-def test_responses_create_basic(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_basic(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     response = openai_client.responses.create(
@@ -198,9 +177,7 @@ def test_responses_create_basic(
         response.usage.output_tokens,
         response_service_tier=getattr(response, "service_tier", None),
     )
-    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
-        "stop",
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == ("stop",)
     assert GenAIAttributes.GEN_AI_INPUT_MESSAGES not in span.attributes
     assert GenAIAttributes.GEN_AI_OUTPUT_MESSAGES not in span.attributes
 
@@ -238,9 +215,7 @@ def test_responses_create_captures_content(
 
 
 @pytest.mark.vcr()
-def test_responses_create_with_all_params(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_with_all_params(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     response = openai_client.responses.create(
@@ -276,9 +251,7 @@ def test_responses_create_with_all_params(
 
 
 @pytest.mark.vcr()
-def test_responses_create_token_usage(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_token_usage(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     response = openai_client.responses.create(
@@ -288,20 +261,12 @@ def test_responses_create_token_usage(
     )
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == response.usage.input_tokens
-    )
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        == response.usage.output_tokens
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS] == response.usage.input_tokens
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS] == response.usage.output_tokens
 
 
 @pytest.mark.vcr()
-def test_responses_create_aggregates_cache_tokens(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_aggregates_cache_tokens(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     response = openai_client.responses.create(
@@ -315,9 +280,7 @@ def test_responses_create_aggregates_cache_tokens(
 
 
 @pytest.mark.vcr()
-def test_responses_create_stop_reason(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_stop_reason(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     openai_client.responses.create(
@@ -327,14 +290,10 @@ def test_responses_create_stop_reason(
     )
 
     (span,) = span_exporter.get_finished_spans()
-    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
-        "stop",
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == ("stop",)
 
 
-def test_responses_create_connection_error(
-    span_exporter, instrument_no_content
-):
+def test_responses_create_connection_error(span_exporter, instrument_no_content):
     _skip_if_not_latest()
 
     client = OpenAI(base_url="http://localhost:4242")
@@ -347,18 +306,14 @@ def test_responses_create_connection_error(
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
     assert span.attributes[ServerAttributes.SERVER_ADDRESS] == "localhost"
     assert span.attributes[ServerAttributes.SERVER_PORT] == 4242
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "APIConnectionError"
 
 
 @pytest.mark.vcr()
-def test_responses_create_api_error(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_api_error(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     with pytest.raises((BadRequestError, NotFoundError)) as exc_info:
@@ -368,19 +323,12 @@ def test_responses_create_api_error(
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == INVALID_MODEL
-    )
-    assert (
-        span.attributes[ErrorAttributes.ERROR_TYPE]
-        == type(exc_info.value).__name__
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == INVALID_MODEL
+    assert span.attributes[ErrorAttributes.ERROR_TYPE] == type(exc_info.value).__name__
 
 
 @pytest.mark.vcr()
-def test_responses_create_streaming(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_streaming(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     with openai_client.responses.create(
@@ -457,9 +405,7 @@ def test_responses_create_streaming_captures_content(
 
 
 @pytest.mark.vcr()
-def test_responses_create_streaming_iteration(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_streaming_iteration(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     stream = openai_client.responses.create(
@@ -473,22 +419,16 @@ def test_responses_create_streaming_iteration(
     assert len(events) > 0
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
     assert GenAIAttributes.GEN_AI_RESPONSE_ID in span.attributes
     assert GenAIAttributes.GEN_AI_RESPONSE_MODEL in span.attributes
-    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
-        "stop",
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == ("stop",)
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
 
 
 @pytest.mark.vcr()
-def test_responses_create_streaming_delegates_response_attribute(
-    request, openai_client, instrument_no_content
-):
+def test_responses_create_streaming_delegates_response_attribute(request, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     stream = openai_client.responses.create(
@@ -504,9 +444,7 @@ def test_responses_create_streaming_delegates_response_attribute(
     stream.close()
 
 
-def test_responses_create_streaming_connection_error(
-    span_exporter, instrument_no_content
-):
+def test_responses_create_streaming_connection_error(span_exporter, instrument_no_content):
     _skip_if_not_latest()
 
     client = OpenAI(base_url="http://localhost:4242")
@@ -520,16 +458,12 @@ def test_responses_create_streaming_connection_error(
         )
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "APIConnectionError"
 
 
 @pytest.mark.vcr()
-def test_responses_stream_wrapper_finalize_idempotent(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_stream_wrapper_finalize_idempotent(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     stream = openai_client.responses.create(
@@ -589,28 +523,20 @@ def test_responses_create_stream_propagation_error(
         def __getattr__(self, name):
             return getattr(self._inner, name)
 
-    monkeypatch.setattr(
-        stream, "stream", ErrorInjectingStreamDelegate(stream.stream)
-    )
+    monkeypatch.setattr(stream, "stream", ErrorInjectingStreamDelegate(stream.stream))
 
-    with pytest.raises(
-        ConnectionError, match="connection reset during stream"
-    ):
+    with pytest.raises(ConnectionError, match="connection reset during stream"):
         with stream:
             for _ in stream:
                 pass
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "ConnectionError"
 
 
 @pytest.mark.vcr()
-def test_responses_create_streaming_user_exception(
-    request, span_exporter, openai_client, instrument_no_content
-):
+def test_responses_create_streaming_user_exception(request, span_exporter, openai_client, instrument_no_content):
     _skip_if_not_latest()
 
     with pytest.raises(ValueError, match="User raised exception"):
@@ -624,9 +550,7 @@ def test_responses_create_streaming_user_exception(
                 raise ValueError("User raised exception")
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
     assert span.attributes[ErrorAttributes.ERROR_TYPE] == "ValueError"
 
 
@@ -641,9 +565,7 @@ def test_responses_create_instrumentation_error_swallowed(
         del event
         raise RuntimeError("instrumentation bug")
 
-    monkeypatch.setattr(
-        ResponseStreamWrapper, "process_event", exploding_process_event
-    )
+    monkeypatch.setattr(ResponseStreamWrapper, "process_event", exploding_process_event)
 
     with openai_client.responses.create(
         model=DEFAULT_MODEL,
@@ -656,9 +578,7 @@ def test_responses_create_instrumentation_error_swallowed(
     assert len(events) > 0
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
     assert ErrorAttributes.ERROR_TYPE not in span.attributes
 
 
@@ -667,9 +587,7 @@ def test_responses_create_instrumentation_error_swallowed(
     not _has_tools_param,
     reason="openai SDK too old to support 'tools' parameter on Responses.create",
 )
-def test_responses_create_captures_tool_call_content(
-    request, span_exporter, openai_client, instrument_with_content
-):
+def test_responses_create_captures_tool_call_content(request, span_exporter, openai_client, instrument_with_content):
     _skip_if_not_latest()
 
     openai_client.responses.create(
@@ -680,26 +598,15 @@ def test_responses_create_captures_tool_call_content(
     )
 
     (span,) = span_exporter.get_finished_spans()
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
-    )
-    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
-        "tool_calls",
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == DEFAULT_MODEL
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == ("tool_calls",)
 
-    input_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
-    )
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
     assert input_messages[0]["role"] == "user"
 
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
     tool_call_parts = [
-        part
-        for message in output_messages
-        for part in message.get("parts", [])
-        if part.get("type") == "tool_call"
+        part for message in output_messages for part in message.get("parts", []) if part.get("type") == "tool_call"
     ]
     assert len(tool_call_parts) > 0
     assert tool_call_parts[0]["name"] == "get_current_weather"
@@ -709,13 +616,9 @@ def test_responses_create_captures_tool_call_content(
 @pytest.mark.vcr()
 @pytest.mark.skipif(
     not _has_reasoning_param,
-    reason=(
-        "openai SDK too old to support 'reasoning' parameter on Responses.create"
-    ),
+    reason=("openai SDK too old to support 'reasoning' parameter on Responses.create"),
 )
-def test_responses_create_reports_reasoning_tokens(
-    request, span_exporter, openai_client, instrument_with_content
-):
+def test_responses_create_reports_reasoning_tokens(request, span_exporter, openai_client, instrument_with_content):
     _skip_if_not_latest()
 
     response = openai_client.responses.create(
@@ -743,24 +646,12 @@ def test_responses_create_reports_reasoning_tokens(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     (span,) = spans
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == (
-        REASONING_MODEL
-    )
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == response.usage.input_tokens
-    )
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        == response.usage.output_tokens
-    )
-    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == (
-        "stop",
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == (REASONING_MODEL)
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS] == response.usage.input_tokens
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS] == response.usage.output_tokens
+    assert span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS] == ("stop",)
 
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
     assert len(output_messages) > 0
 
 
@@ -803,12 +694,8 @@ def test_responses_create_with_content_shapes(
     )
 
     (span,) = span_exporter.get_finished_spans()
-    input_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
-    )
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
 
     assert input_messages[0]["role"] == "user"
     assert input_messages[0]["parts"][0]["type"] == "text"
@@ -837,7 +724,4 @@ def test_responses_create_event_only_no_content_in_span(
 
     logs = log_exporter.get_finished_logs()
     assert len(logs) == 1
-    assert (
-        logs[0].log_record.event_name
-        == "gen_ai.client.inference.operation.details"
-    )
+    assert logs[0].log_record.event_name == "gen_ai.client.inference.operation.details"

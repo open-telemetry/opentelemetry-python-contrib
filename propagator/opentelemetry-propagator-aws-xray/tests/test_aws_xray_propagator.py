@@ -45,11 +45,7 @@ def build_test_current_context(
     trace_state=DEFAULT_TRACE_STATE,
 ):
     return set_span_in_context(
-        trace_api.NonRecordingSpan(
-            build_test_span_context(
-                trace_id, span_id, is_remote, trace_flags, trace_state
-            )
-        )
+        trace_api.NonRecordingSpan(build_test_span_context(trace_id, span_id, is_remote, trace_flags, trace_state))
     )
 
 
@@ -95,9 +91,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         injected_items = set(carrier.items())
         expected_items = set(
             CaseInsensitiveDict(
-                {
-                    TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0"
-                }
+                {TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0"}
             ).items()
         )
 
@@ -108,17 +102,13 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
             carrier,
-            build_test_current_context(
-                trace_flags=TraceFlags(TraceFlags.SAMPLED)
-            ),
+            build_test_current_context(trace_flags=TraceFlags(TraceFlags.SAMPLED)),
         )
 
         injected_items = set(carrier.items())
         expected_items = set(
             CaseInsensitiveDict(
-                {
-                    TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=1"
-                }
+                {TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=1"}
             ).items()
         )
 
@@ -129,18 +119,14 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
         AwsXRayPropagatorTest.XRAY_PROPAGATOR.inject(
             carrier,
-            build_test_current_context(
-                trace_state=TraceState([("foo", "bar")])
-            ),
+            build_test_current_context(trace_state=TraceState([("foo", "bar")])),
         )
 
         # TODO: (NathanielRN) Assert trace state when the propagator supports it
         injected_items = set(carrier.items())
         expected_items = set(
             CaseInsensitiveDict(
-                {
-                    TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0"
-                }
+                {TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0"}
             ).items()
         )
 
@@ -156,31 +142,23 @@ class AwsXRayPropagatorTest(unittest.TestCase):
 
         injected_keys = set(carrier.keys())
 
-        self.assertEqual(
-            injected_keys, AwsXRayPropagatorTest.XRAY_PROPAGATOR.fields
-        )
+        self.assertEqual(injected_keys, AwsXRayPropagatorTest.XRAY_PROPAGATOR.fields)
 
     # Extract Tests
 
     def test_extract_empty_carrier_to_explicit_ctx(self):
         orig_ctx = Context({"k1": "v1"})
-        context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            CaseInsensitiveDict(), orig_ctx
-        )
+        context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(CaseInsensitiveDict(), orig_ctx)
         self.assertDictEqual(orig_ctx, context_with_extracted)
 
     def test_extract_empty_carrier_to_implicit_ctx(self):
-        context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
-            CaseInsensitiveDict()
-        )
+        context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(CaseInsensitiveDict())
         self.assertDictEqual(Context(), context_with_extracted)
 
     def test_extract_not_sampled_context(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
             CaseInsensitiveDict(
-                {
-                    TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0"
-                }
+                {TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0"}
             ),
         )
 
@@ -192,25 +170,19 @@ class AwsXRayPropagatorTest(unittest.TestCase):
     def test_extract_sampled_context(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
             CaseInsensitiveDict(
-                {
-                    TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=1"
-                }
+                {TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=1"}
             ),
         )
 
         self.assertEqual(
             get_nested_span_context(context_with_extracted),
-            build_test_span_context(
-                trace_flags=TraceFlags(TraceFlags.SAMPLED)
-            ),
+            build_test_span_context(trace_flags=TraceFlags(TraceFlags.SAMPLED)),
         )
 
     def test_extract_different_order(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
             CaseInsensitiveDict(
-                {
-                    TRACE_HEADER_KEY: "Sampled=0;Parent=53995c3f42cd8ad8;Root=1-8a3c60f7-d188f8fa79d48a391a778fa6"
-                }
+                {TRACE_HEADER_KEY: "Sampled=0;Parent=53995c3f42cd8ad8;Root=1-8a3c60f7-d188f8fa79d48a391a778fa6"}
             ),
         )
 
@@ -222,9 +194,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
     def test_extract_with_additional_fields(self):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
             CaseInsensitiveDict(
-                {
-                    TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0;Foo=Bar"
-                }
+                {TRACE_HEADER_KEY: "Root=1-8a3c60f7-d188f8fa79d48a391a778fa6;Parent=53995c3f42cd8ad8;Sampled=0;Foo=Bar"}
             ),
         )
 
@@ -237,7 +207,10 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         context_with_extracted = AwsXRayPropagatorTest.XRAY_PROPAGATOR.extract(
             CaseInsensitiveDict(
                 {
-                    TRACE_HEADER_KEY: "  Root  =  1-8a3c60f7-d188f8fa79d48a391a778fa6  ;  Parent  =  53995c3f42cd8ad8  ;  Sampled  =  0   "
+                    TRACE_HEADER_KEY: (
+                        "  Root  =  1-8a3c60f7-d188f8fa79d48a391a778fa6  ;  "
+                        "Parent  =  53995c3f42cd8ad8  ;  Sampled  =  0   "
+                    )
                 }
             ),
         )
@@ -303,11 +276,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         mock_trace.configure_mock(
             **{
                 "get_current_span.return_value": Mock(
-                    **{
-                        "get_span_context.return_value": Mock(
-                            **{"is_valid": True, "trace_id": 1, "span_id": 1}
-                        )
-                    }
+                    **{"get_span_context.return_value": Mock(**{"is_valid": True, "trace_id": 1, "span_id": 1})}
                 )
             }
         )
@@ -321,9 +290,7 @@ class AwsXRayPropagatorTest(unittest.TestCase):
         for call in mock_setter.mock_calls:
             inject_fields.add(call[1][1])
 
-        self.assertEqual(
-            AwsXRayPropagatorTest.XRAY_PROPAGATOR.fields, inject_fields
-        )
+        self.assertEqual(AwsXRayPropagatorTest.XRAY_PROPAGATOR.fields, inject_fields)
 
     def test_extract_trace_state_from_context(self):
         """Test that extract properly propagates the trace state extracted by other propagators."""
@@ -346,14 +313,10 @@ class AwsXRayPropagatorTest(unittest.TestCase):
             ),
         )
 
-        extracted_span_context = get_nested_span_context(
-            context_with_extracted
-        )
+        extracted_span_context = get_nested_span_context(context_with_extracted)
         expected_trace_state = TraceState([("foo", "bar"), ("baz", "qux")])
 
-        self.assertEqual(
-            extracted_span_context.trace_state, expected_trace_state
-        )
+        self.assertEqual(extracted_span_context.trace_state, expected_trace_state)
 
     def test_extract_no_trace_state_from_context(self):
         """Test that extract defaults to an empty trace state correctly."""
@@ -365,7 +328,5 @@ class AwsXRayPropagatorTest(unittest.TestCase):
             )
         )
 
-        extracted_span_context = get_nested_span_context(
-            context_with_extracted
-        )
+        extracted_span_context = get_nested_span_context(context_with_extracted)
         self.assertEqual(extracted_span_context.trace_state, TraceState([]))

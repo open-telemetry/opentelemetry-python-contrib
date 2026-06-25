@@ -71,9 +71,7 @@ class SpanBuilder:
         if properties.message_id:
             self._attributes[MESSAGING_MESSAGE_ID] = properties.message_id
         if properties.correlation_id:
-            self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = (
-                properties.correlation_id
-            )
+            self._attributes[SpanAttributes.MESSAGING_CONVERSATION_ID] = properties.correlation_id
 
     def build(self) -> Optional[Span]:
         if not is_instrumentation_enabled():

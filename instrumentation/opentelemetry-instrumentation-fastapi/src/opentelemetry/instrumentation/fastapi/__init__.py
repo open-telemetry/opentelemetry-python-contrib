@@ -48,8 +48,10 @@ This instrumentation supports request and response hooks. These are functions th
 right after a span is created for a request and right before the span is finished for the response.
 
 - The server request hook is passed a server span and ASGI scope object for every incoming request.
-- The client request hook is called with the internal span, and ASGI scope and event when the method ``receive`` is called.
-- The client response hook is called with the internal span, and ASGI scope and event when the method ``send`` is called.
+- The client request hook is called with the internal span, and ASGI scope and event when the method
+  ``receive`` is called.
+- The client response hook is called with the internal span, and ASGI scope and event when the method
+  ``send`` is called.
 
 .. code-block:: python
 
@@ -69,12 +71,17 @@ right after a span is created for a request and right before the span is finishe
         if span and span.is_recording():
             span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-    FastAPIInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+    FastAPIInstrumentor().instrument(
+        server_request_hook=server_request_hook,
+        client_request_hook=client_request_hook,
+        client_response_hook=client_response_hook,
+    )
 
 Capture HTTP request and response headers
 *****************************************
 You can configure the agent to capture specified HTTP headers as span attributes, according to the
-`semantic conventions <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
+`semantic conventions
+<https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-server-span>`_.
 
 Request headers
 ***************
@@ -104,9 +111,9 @@ To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a single item list containing all the header values.
 
 For example:
 ``http.request.header.custom_request_header = ["<value1>", "<value2>"]``
@@ -124,8 +131,8 @@ For example using the environment variable,
 
 will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
 
-Response header names in FastAPI are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
-variable will capture the header named ``custom-header``.
+Response header names in FastAPI are case-insensitive. So, giving the header name as ``CUStom-Header`` in the
+environment variable will capture the header named ``custom-header``.
 
 Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
 ::
@@ -139,9 +146,9 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-list containing the header values.
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a list containing the header values.
 
 For example:
 ``http.response.header.custom_response_header = ["<value1>", "<value2>"]``
@@ -298,9 +305,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     def __init__(self, app):
                         self.app = app
 
-                    async def __call__(
-                        self, scope: Scope, receive: Receive, send: Send
-                    ) -> None:
+                    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
                         try:
                             await self.app(scope, receive, send)
                         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -327,9 +332,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                     self._original_build_middleware_stack()  # type: ignore
                 )
 
-                if not isinstance(
-                    inner_server_error_middleware, ServerErrorMiddleware
-                ):
+                if not isinstance(inner_server_error_middleware, ServerErrorMiddleware):
                     # Oops, something changed about how Starlette creates middleware stacks
                     _logger.error(
                         "Skipping FastAPI instrumentation due to unexpected middleware stack: expected %s, got %s",
@@ -341,9 +344,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 # We take [user defined middlewares] -> `ExceptionHandlerMiddleware`
                 # out of the outermost `ServerErrorMiddleware` and instead pass
                 # it to our own `ExceptionHandlerMiddleware`
-                exception_middleware = ExceptionHandlerMiddleware(
-                    inner_server_error_middleware.app
-                )
+                exception_middleware = ExceptionHandlerMiddleware(inner_server_error_middleware.app)
 
                 # Now, we create a new `ServerErrorMiddleware` that wraps
                 # `ExceptionHandlerMiddleware` but otherwise uses the same
@@ -391,9 +392,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
             app._original_build_middleware_stack = app.build_middleware_stack
             app.build_middleware_stack = types.MethodType(
-                functools.wraps(app.build_middleware_stack)(
-                    build_middleware_stack
-                ),
+                functools.wraps(app.build_middleware_stack)(build_middleware_stack),
                 app,
             )
 
@@ -411,15 +410,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
         else:
-            _logger.warning(
-                "Attempting to instrument FastAPI app while already instrumented"
-            )
+            _logger.warning("Attempting to instrument FastAPI app while already instrumented")
 
     @staticmethod
     def uninstrument_app(app: fastapi.FastAPI):
-        original_build_middleware_stack = getattr(
-            app, "_original_build_middleware_stack", None
-        )
+        original_build_middleware_stack = getattr(app, "_original_build_middleware_stack", None)
         if original_build_middleware_stack:
             app.build_middleware_stack = original_build_middleware_stack
             del app._original_build_middleware_stack
@@ -446,9 +441,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         # Create a copy of the set to avoid RuntimeError during iteration
-        instances_to_uninstrument = list(
-            _InstrumentedFastAPI._instrumented_fastapi_apps
-        )
+        instances_to_uninstrument = list(_InstrumentedFastAPI._instrumented_fastapi_apps)
         for instance in instances_to_uninstrument:
             self.uninstrument_app(instance)
         _InstrumentedFastAPI._instrumented_fastapi_apps.clear()
@@ -464,9 +457,7 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
-        FastAPIInstrumentor.instrument_app(
-            self, **_InstrumentedFastAPI._instrument_kwargs
-        )
+        FastAPIInstrumentor.instrument_app(self, **_InstrumentedFastAPI._instrument_kwargs)
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
 

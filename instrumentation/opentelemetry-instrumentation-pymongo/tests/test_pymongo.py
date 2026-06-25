@@ -32,9 +32,7 @@ class TestPymongo(TestBase):
 
     def test_pymongo_instrumentor(self):
         mock_register = mock.Mock()
-        patch = mock.patch(
-            "pymongo.monitoring.register", side_effect=mock_register
-        )
+        patch = mock.patch("pymongo.monitoring.register", side_effect=mock_register)
         with patch:
             PymongoInstrumentor().instrument()
         self.assertTrue(mock_register.called)
@@ -43,12 +41,8 @@ class TestPymongo(TestBase):
         command_attrs = {
             "command_name": "find",
         }
-        command_tracer = CommandTracer(
-            self.tracer, request_hook=self.start_callback
-        )
-        mock_event = MockEvent(
-            command_attrs, ("test.com", "1234"), "test_request_id"
-        )
+        command_tracer = CommandTracer(self.tracer, request_hook=self.start_callback)
+        mock_event = MockEvent(command_attrs, ("test.com", "1234"), "test_request_id")
         command_tracer.started(event=mock_event)
         # the memory exporter can't be used here because the span isn't ended
         # yet
@@ -282,9 +276,7 @@ class TestPymongo(TestBase):
             with self.subTest(command_attrs=command_attrs, expected=expected):
                 mock_event = MockEvent(command_attrs)
 
-                command_tracer = CommandTracer(
-                    self.tracer, capture_statement=True
-                )
+                command_tracer = CommandTracer(self.tracer, capture_statement=True)
                 command_tracer.started(event=mock_event)
                 command_tracer.succeeded(event=mock_event)
 

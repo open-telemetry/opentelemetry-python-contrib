@@ -23,9 +23,7 @@ class _StepFunctionsExtension(_AwsSdkExtension):
 
         state_machine_arn = source.get("stateMachineArn")
         if state_machine_arn:
-            setter_func(
-                target, AWS_STEP_FUNCTIONS_STATE_MACHINE_ARN, state_machine_arn
-            )
+            setter_func(target, AWS_STEP_FUNCTIONS_STATE_MACHINE_ARN, state_machine_arn)
 
     def extract_attributes(self, attributes: _AttributeMapT):
         self._set_arn_attributes(

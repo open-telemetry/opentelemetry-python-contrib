@@ -166,35 +166,23 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
 
     def _uninstrument(self, **kwargs):
         if TORTOISE_SQLITE_SUPPORT:
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_query"
-            )
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_many"
-            )
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_insert"
-            )
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_query")
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_many")
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_insert")
             unwrap(
                 tortoise.backends.sqlite.client.SqliteClient,
                 "execute_query_dict",
             )
-            unwrap(
-                tortoise.backends.sqlite.client.SqliteClient, "execute_script"
-            )
+            unwrap(tortoise.backends.sqlite.client.SqliteClient, "execute_script")
         if TORTOISE_MYSQL_SUPPORT:
             unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_query")
             unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_many")
-            unwrap(
-                tortoise.backends.mysql.client.MySQLClient, "execute_insert"
-            )
+            unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_insert")
             unwrap(
                 tortoise.backends.mysql.client.MySQLClient,
                 "execute_query_dict",
             )
-            unwrap(
-                tortoise.backends.mysql.client.MySQLClient, "execute_script"
-            )
+            unwrap(tortoise.backends.mysql.client.MySQLClient, "execute_script")
         if TORTOISE_POSTGRES_SUPPORT:
             unwrap(
                 tortoise.backends.asyncpg.client.AsyncpgDBClient,
@@ -221,9 +209,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             tortoise.contrib.pydantic.base.PydanticModel,
             "from_queryset_single",
         )
-        unwrap(
-            tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset"
-        )
+        unwrap(tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset")
 
     def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
         """Get network and database attributes from connection."""
@@ -267,9 +253,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         exception = None
         name = args[0].split()[0]
 
-        with self._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
-        ) as span:
+        with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
                 span_attributes = self._hydrate_span_from_args(
                     instance,

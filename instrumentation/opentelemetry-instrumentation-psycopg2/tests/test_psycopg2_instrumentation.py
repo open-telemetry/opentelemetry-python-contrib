@@ -35,9 +35,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
     """
 
     @patch("opentelemetry.instrumentation.psycopg2.distribution")
-    def test_instrumentation_dependencies_psycopg2_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_psycopg2_installed(self, mock_distribution) -> None:
         instrumentation = Psycopg2Instrumentor()
 
         def _distribution(name):
@@ -58,9 +56,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
         self.assertEqual(package_to_instrument, (_instruments_psycopg2,))
 
     @patch("opentelemetry.instrumentation.psycopg2.distribution")
-    def test_instrumentation_dependencies_psycopg2_binary_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_psycopg2_binary_installed(self, mock_distribution) -> None:
         instrumentation = Psycopg2Instrumentor()
 
         def _distribution(name):
@@ -79,14 +75,10 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
                 call("psycopg2-binary"),
             ],
         )
-        self.assertEqual(
-            package_to_instrument, (_instruments_psycopg2_binary,)
-        )
+        self.assertEqual(package_to_instrument, (_instruments_psycopg2_binary,))
 
     @patch("opentelemetry.instrumentation.psycopg2.distribution")
-    def test_instrumentation_dependencies_both_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_both_installed(self, mock_distribution) -> None:
         instrumentation = Psycopg2Instrumentor()
 
         def _distribution(name):
@@ -102,9 +94,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
         self.assertEqual(package_to_instrument, (_instruments_psycopg2,))
 
     @patch("opentelemetry.instrumentation.psycopg2.distribution")
-    def test_instrumentation_dependencies_none_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_none_installed(self, mock_distribution) -> None:
         instrumentation = Psycopg2Instrumentor()
 
         def _distribution(name):
@@ -138,9 +128,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
     # Note there is only one test here but it is run twice in tox
     # once with the psycopg2 package installed and once with
     # psycopg2-binary installed.
-    @patch(
-        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
-    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
     def test_instruments_with_psycopg2_installed(self, mock_logger, mock_dep):
         def _instrumentation_loaded_successfully_call():
@@ -153,9 +141,7 @@ class TestPsycopg2InstrumentationDependencies(TestCase):
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 1)
         (ep,) = mock_distro.load_instrumentor.call_args.args
         self.assertEqual(ep.name, "psycopg2")
-        mock_logger.debug.assert_has_calls(
-            [_instrumentation_loaded_successfully_call()]
-        )
+        mock_logger.debug.assert_has_calls([_instrumentation_loaded_successfully_call()])
 
 
 @patch("opentelemetry.instrumentation.psycopg2.dbapi")
@@ -191,6 +177,4 @@ class TestPsycopg2InstrumentorParameters(TestBase):
     def test_instrument_capture_parameters(self, mock_dbapi):
         Psycopg2Instrumentor().instrument(capture_parameters=True)
 
-        self.assertTrue(
-            mock_dbapi.wrap_connect.call_args.kwargs["capture_parameters"]
-        )
+        self.assertTrue(mock_dbapi.wrap_connect.call_args.kwargs["capture_parameters"])

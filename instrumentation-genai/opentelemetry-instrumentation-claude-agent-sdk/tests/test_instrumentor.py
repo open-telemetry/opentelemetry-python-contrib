@@ -25,9 +25,7 @@ def test_instrumentation_dependencies():
     assert "claude-agent-sdk >= 0.1.14" in dependencies
 
 
-def test_instrument_uninstrument_cycle(
-    tracer_provider, logger_provider, meter_provider
-):
+def test_instrument_uninstrument_cycle(tracer_provider, logger_provider, meter_provider):
     """Test that instrument() and uninstrument() can be called multiple times."""
     instrumentor = ClaudeAgentSDKInstrumentor()
 
@@ -52,9 +50,7 @@ def test_instrument_uninstrument_cycle(
     instrumentor.uninstrument()
 
 
-def test_multiple_instrumentation_calls(
-    tracer_provider, logger_provider, meter_provider
-):
+def test_multiple_instrumentation_calls(tracer_provider, logger_provider, meter_provider):
     """Test that multiple instrument() calls don't cause issues."""
     instrumentor = ClaudeAgentSDKInstrumentor()
 

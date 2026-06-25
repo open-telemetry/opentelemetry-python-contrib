@@ -127,9 +127,7 @@ def instrument_no_content(tracer_provider, logger_provider, meter_provider):
     try:
         yield instrumentor
     finally:
-        os.environ.pop(
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
-        )
+        os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
         os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
         instrumentor.uninstrument()
         _OpenTelemetrySemanticConventionStability._initialized = False
@@ -155,9 +153,7 @@ def instrument_with_content(tracer_provider, logger_provider, meter_provider):
     try:
         yield instrumentor
     finally:
-        os.environ.pop(
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
-        )
+        os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
         os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
         instrumentor.uninstrument()
         _OpenTelemetrySemanticConventionStability._initialized = False
@@ -184,9 +180,7 @@ def instrument_event_only(tracer_provider, logger_provider, meter_provider):
     try:
         yield instrumentor
     finally:
-        os.environ.pop(
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None
-        )
+        os.environ.pop(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, None)
         os.environ.pop(OTEL_SEMCONV_STABILITY_OPT_IN, None)
         os.environ.pop(OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT, None)
         instrumentor.uninstrument()
@@ -258,9 +252,7 @@ class PrettyPrintJSONBody:
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = convert_body_to_literal(cassette_dict)
-        return yaml.dump(
-            cassette_dict, default_flow_style=False, allow_unicode=True
-        )
+        return yaml.dump(cassette_dict, default_flow_style=False, allow_unicode=True)
 
     @staticmethod
     def deserialize(cassette_string):

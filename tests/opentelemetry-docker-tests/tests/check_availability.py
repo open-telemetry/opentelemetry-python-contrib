@@ -62,9 +62,7 @@ def retryable(func):
 
 @retryable
 def check_pymongo_connection():
-    client = pymongo.MongoClient(
-        MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
-    )
+    client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000)
     db = client[MONGODB_DB_NAME]
     collection = db[MONGODB_COLLECTION_NAME]
     collection.find_one()

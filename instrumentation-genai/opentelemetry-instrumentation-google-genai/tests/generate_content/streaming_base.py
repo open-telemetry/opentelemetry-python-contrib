@@ -35,9 +35,7 @@ class StreamingTestCase(TestCase):
 
     def test_instrumentation_does_not_break_core_functionality(self):
         self.configure_valid_response(text="Yep, it works!")
-        responses = self.generate_content(
-            model="gemini-2.0-flash", contents="Does this work?"
-        )
+        responses = self.generate_content(model="gemini-2.0-flash", contents="Does this work?")
         self.assertEqual(len(responses), 1)
         response = responses[0]
         self.assertEqual(response.text, "Yep, it works!")
@@ -51,27 +49,17 @@ class StreamingTestCase(TestCase):
             )
         )
         try:
-            self.generate_content(
-                model="gemini-2.0-flash", contents="Does this work?"
-            )
-            self.otel.assert_has_span_named(
-                "generate_content gemini-2.0-flash"
-            )
-            span = self.otel.get_span_named(
-                "generate_content gemini-2.0-flash"
-            )
-            self.assertEqual(
-                span.attributes["extra_attribute_key"], "extra_attribute_value"
-            )
+            self.generate_content(model="gemini-2.0-flash", contents="Does this work?")
+            self.otel.assert_has_span_named("generate_content gemini-2.0-flash")
+            span = self.otel.get_span_named("generate_content gemini-2.0-flash")
+            self.assertEqual(span.attributes["extra_attribute_key"], "extra_attribute_value")
         finally:
             context_api.detach(tok)
 
     def test_handles_multiple_ressponses(self):
         self.configure_valid_response(text="First response")
         self.configure_valid_response(text="Second response")
-        responses = self.generate_content(
-            model="gemini-2.0-flash", contents="Does this work?"
-        )
+        responses = self.generate_content(model="gemini-2.0-flash", contents="Does this work?")
         self.assertEqual(len(responses), 2)
         self.assertEqual(responses[0].text, "First response")
         self.assertEqual(responses[1].text, "Second response")
@@ -101,9 +89,7 @@ class StreamingTestCase(TestCase):
         )
         patched_otel_mapping = patch.dict(
             _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
-            {
-                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-            },
+            {_OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL},
         )
         with patched_environ, patched_otel_mapping:
             self.configure_valid_response(text="Yep, it works!")
@@ -118,15 +104,8 @@ class StreamingTestCase(TestCase):
                     model="gemini-2.0-flash",
                     contents="Does this work?",
                 )
-                self.otel.assert_has_event_named(
-                    "gen_ai.client.inference.operation.details"
-                )
-                event = self.otel.get_event_named(
-                    "gen_ai.client.inference.operation.details"
-                )
-                assert (
-                    event.attributes["extra_attribute_key"]
-                    == "extra_attribute_value"
-                )
+                self.otel.assert_has_event_named("gen_ai.client.inference.operation.details")
+                event = self.otel.get_event_named("gen_ai.client.inference.operation.details")
+                assert event.attributes["extra_attribute_key"] == "extra_attribute_value"
             finally:
                 context_api.detach(tok)

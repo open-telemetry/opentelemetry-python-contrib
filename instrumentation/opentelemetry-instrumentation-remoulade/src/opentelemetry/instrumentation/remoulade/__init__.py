@@ -66,9 +66,7 @@ class _InstrumentationMiddleware(Middleware):
 
         trace_ctx = extract(message.options["trace_ctx"])
         retry_count = message.options.get("retries", 0)
-        operation_name = utils.get_operation_name(
-            "before_process_message", retry_count
-        )
+        operation_name = utils.get_operation_name("before_process_message", retry_count)
         span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
 
         span = self._tracer.start_span(
@@ -81,16 +79,10 @@ class _InstrumentationMiddleware(Middleware):
         activation = trace.use_span(span, end_on_exit=True)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
 
-        utils.attach_span(
-            self._span_registry, message.message_id, (span, activation)
-        )
+        utils.attach_span(self._span_registry, message.message_id, (span, activation))
 
-    def after_process_message(
-        self, _broker, message, *, result=None, exception=None
-    ):
-        span, activation = utils.retrieve_span(
-            self._span_registry, message.message_id
-        )
+    def after_process_message(self, _broker, message, *, result=None, exception=None):
+        span, activation = utils.retrieve_span(self._span_registry, message.message_id)
 
         if span is None:
             # no existing span found for message_id
@@ -110,9 +102,7 @@ class _InstrumentationMiddleware(Middleware):
 
     def before_enqueue(self, _broker, message, delay):
         retry_count = message.options.get("retries", 0)
-        operation_name = utils.get_operation_name(
-            "before_enqueue", retry_count
-        )
+        operation_name = utils.get_operation_name("before_enqueue", retry_count)
         span_attributes = {_REMOULADE_MESSAGE_RETRY_COUNT_KEY: retry_count}
 
         span = self._tracer.start_span(
@@ -145,18 +135,14 @@ class _InstrumentationMiddleware(Middleware):
         inject(message.options["trace_ctx"])
 
     def after_enqueue(self, _broker, message, delay, exception=None):
-        _, activation = utils.retrieve_span(
-            self._span_registry, message.message_id, is_publish=True
-        )
+        _, activation = utils.retrieve_span(self._span_registry, message.message_id, is_publish=True)
 
         if activation is None:
             # no existing span found for message_id
             return
 
         activation.__exit__(None, None, None)
-        utils.detach_span(
-            self._span_registry, message.message_id, is_publish=True
-        )
+        utils.detach_span(self._span_registry, message.message_id, is_publish=True)
 
 
 class RemouladeInstrumentor(BaseInstrumentor):

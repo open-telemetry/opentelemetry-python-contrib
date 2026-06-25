@@ -46,11 +46,7 @@ Article = helpers.Article
 
 def normalize_arguments(doc_type, body=None):
     if major_version < 7:
-        return (
-            {"body": body, "doc_type": doc_type}
-            if body
-            else {"doc_type": doc_type}
-        )
+        return {"body": body, "doc_type": doc_type} if body else {"doc_type": doc_type}
     return {"document": body} if body else {}
 
 
@@ -64,18 +60,14 @@ def get_elasticsearch_client(*args, **kwargs):
 
 
 @mock.patch(helpers.perform_request_mock_path)
-@mock.patch.dict(
-    os.environ, {"OTEL_PYTHON_INSTRUMENTATION_ELASTICSEARCH_ENABLED": "false"}
-)
+@mock.patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_ELASTICSEARCH_ENABLED": "false"})
 class TestElasticsearchIntegration(TestBase):
     search_attributes = {
         DB_SYSTEM: "elasticsearch",
         "elasticsearch.url": "/test-index/_search",
         "elasticsearch.method": helpers.dsl_search_method,
         "elasticsearch.target": "test-index",
-        DB_STATEMENT: str(
-            {"query": {"bool": {"filter": [{"term": {"author": "?"}}]}}}
-        ),
+        DB_STATEMENT: str({"query": {"bool": {"filter": [{"term": {"author": "?"}}]}}}),
     }
 
     create_attributes = {
@@ -109,9 +101,7 @@ class TestElasticsearchIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.elasticsearch
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.elasticsearch)
 
         # check that no spans are generated after uninstrument
         ElasticsearchInstrumentor().uninstrument()
@@ -172,22 +162,16 @@ class TestElasticsearchIntegration(TestBase):
         self.assertTrue(span.name.startswith(prefix))
 
     def test_result_values(self, request_mock):
-        request_mock.return_value = helpers.mock_response(
-            '{"found": false, "timed_out": true, "took": 7}'
-        )
+        request_mock.return_value = helpers.mock_response('{"found": false, "timed_out": true, "took": 7}')
         es = get_elasticsearch_client(hosts=["http://localhost:9200"])
-        es.get(
-            index="test-index", **normalize_arguments(doc_type="_doc"), id=1
-        )
+        es.get(index="test-index", **normalize_arguments(doc_type="_doc"), id=1)
 
         spans = self.get_finished_spans()
 
         self.assertEqual(1, len(spans))
         self.assertEqual(spans[0].name, "Elasticsearch/test-index/_doc/:id")
         self.assertEqual("False", spans[0].attributes["elasticsearch.found"])
-        self.assertEqual(
-            "True", spans[0].attributes["elasticsearch.timed_out"]
-        )
+        self.assertEqual("True", spans[0].attributes["elasticsearch.timed_out"])
         self.assertEqual("7", spans[0].attributes["elasticsearch.took"])
 
     def test_trace_error_unknown(self, request_mock):
@@ -199,13 +183,9 @@ class TestElasticsearchIntegration(TestBase):
         msg = "record not found"
         if major_version == 8:
             error = {"error": msg}
-            response = helpers.mock_response(
-                json.dumps(error), status_code=404
-            )
+            response = helpers.mock_response(json.dumps(error), status_code=404)
             request_mock.return_value = response
-            exc = elasticsearch.exceptions.NotFoundError(
-                msg, meta=response.meta, body=None
-            )
+            exc = elasticsearch.exceptions.NotFoundError(msg, meta=response.meta, body=None)
         else:
             exc = elasticsearch.exceptions.NotFoundError(404, msg)
             request_mock.side_effect = exc
@@ -228,9 +208,7 @@ class TestElasticsearchIntegration(TestBase):
         self.assertFalse(span.status.is_ok)
         self.assertEqual(span.status.status_code, code)
         message = getattr(exc, "message", str(exc))
-        self.assertEqual(
-            span.status.description, f"{type(exc).__name__}: {message}"
-        )
+        self.assertEqual(span.status.description, f"{type(exc).__name__}: {message}")
 
     def test_parent(self, request_mock):
         request_mock.return_value = helpers.mock_response("{}")
@@ -298,14 +276,10 @@ class TestElasticsearchIntegration(TestBase):
         self.assertIsNone(s3.parent)
 
     def test_dsl_search(self, request_mock):
-        request_mock.return_value = helpers.mock_response(
-            '{"hits": {"hits": []}}'
-        )
+        request_mock.return_value = helpers.mock_response('{"hits": {"hits": []}}')
 
         client = get_elasticsearch_client(hosts=["http://localhost:9200"])
-        search = Search(using=client, index="test-index").filter(
-            "term", author="testing"
-        )
+        search = Search(using=client, index="test-index").filter("term", author="testing")
         search.execute()
         spans = self.get_finished_spans()
         span = spans[0]
@@ -318,13 +292,9 @@ class TestElasticsearchIntegration(TestBase):
         )
 
     def test_dsl_search_sanitized(self, request_mock):
-        request_mock.return_value = helpers.mock_response(
-            '{"hits": {"hits": []}}'
-        )
+        request_mock.return_value = helpers.mock_response('{"hits": {"hits": []}}')
         client = get_elasticsearch_client(hosts=["http://localhost:9200"])
-        search = Search(using=client, index="test-index").filter(
-            "term", author="testing"
-        )
+        search = Search(using=client, index="test-index").filter("term", author="testing")
         search.execute()
         spans = self.get_finished_spans()
         span = spans[0]
@@ -386,9 +356,7 @@ class TestElasticsearchIntegration(TestBase):
         )
 
     def test_dsl_index(self, request_mock):
-        request_mock.return_value = helpers.mock_response(
-            helpers.dsl_index_result[2]
-        )
+        request_mock.return_value = helpers.mock_response(helpers.dsl_index_result[2])
 
         client = get_elasticsearch_client(hosts=["http://localhost:9200"])
         article = Article(
@@ -434,9 +402,7 @@ class TestElasticsearchIntegration(TestBase):
         ElasticsearchInstrumentor().uninstrument()
         ElasticsearchInstrumentor().instrument(request_hook=request_hook)
 
-        request_mock.return_value = helpers.mock_response(
-            '{"found": false, "timed_out": true, "took": 7}'
-        )
+        request_mock.return_value = helpers.mock_response('{"found": false, "timed_out": true, "took": 7}')
         es = get_elasticsearch_client(hosts=["http://localhost:9200"])
         index = "test-index"
         doc_id = 1
@@ -451,9 +417,7 @@ class TestElasticsearchIntegration(TestBase):
         spans = self.get_finished_spans()
 
         self.assertEqual(1, len(spans))
-        self.assertEqual(
-            "GET", spans[0].attributes[request_hook_method_attribute]
-        )
+        self.assertEqual("GET", spans[0].attributes[request_hook_method_attribute])
         expected_url = f"/{index}/_doc/{doc_id}"
         if major_version == 8:
             expected_url += "?realtime=true&refresh=true"
@@ -470,9 +434,7 @@ class TestElasticsearchIntegration(TestBase):
                 "retry_on_status": "<DEFAULT>",
                 "retry_on_timeout": "<DEFAULT>",
                 "client_meta": "<DEFAULT>",
-                "headers": {
-                    "accept": "application/vnd.elasticsearch+json; compatible-with=8"
-                },
+                "headers": {"accept": "application/vnd.elasticsearch+json; compatible-with=8"},
                 "otel_span": None,
             }
         elif major_version == 7:
@@ -492,9 +454,7 @@ class TestElasticsearchIntegration(TestBase):
 
         def response_hook(span, response):
             if span and span.is_recording():
-                span.set_attribute(
-                    response_attribute_name, json.dumps(response)
-                )
+                span.set_attribute(response_attribute_name, json.dumps(response))
 
         ElasticsearchInstrumentor().uninstrument()
         ElasticsearchInstrumentor().instrument(response_hook=response_hook)
@@ -523,13 +483,9 @@ class TestElasticsearchIntegration(TestBase):
             },
         }
 
-        request_mock.return_value = helpers.mock_response(
-            json.dumps(response_payload)
-        )
+        request_mock.return_value = helpers.mock_response(json.dumps(response_payload))
         es = get_elasticsearch_client(hosts=["http://localhost:9200"])
-        es.get(
-            index="test-index", **normalize_arguments(doc_type="_doc"), id=1
-        )
+        es.get(index="test-index", **normalize_arguments(doc_type="_doc"), id=1)
 
         spans = self.get_finished_spans()
 
@@ -541,18 +497,12 @@ class TestElasticsearchIntegration(TestBase):
 
     def test_no_op_tracer_provider(self, request_mock):
         ElasticsearchInstrumentor().uninstrument()
-        ElasticsearchInstrumentor().instrument(
-            tracer_provider=trace.NoOpTracerProvider()
-        )
+        ElasticsearchInstrumentor().instrument(tracer_provider=trace.NoOpTracerProvider())
         response_payload = '{"found": false, "timed_out": true, "took": 7}'
         request_mock.return_value = helpers.mock_response(response_payload)
         es = get_elasticsearch_client(hosts=["http://localhost:9200"])
-        res = es.get(
-            index="test-index", **normalize_arguments(doc_type="_doc"), id=1
-        )
-        self.assertEqual(
-            res.get("found"), json.loads(response_payload).get("found")
-        )
+        res = es.get(index="test-index", **normalize_arguments(doc_type="_doc"), id=1)
+        self.assertEqual(res.get("found"), json.loads(response_payload).get("found"))
 
         spans_list = self.get_finished_spans()
         self.assertEqual(len(spans_list), 0)
@@ -615,9 +565,7 @@ class TestElasticsearchIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.elasticsearch
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.elasticsearch)
 
     @mark.skipif(
         (major_version, minor_version) < (8, 13),
@@ -627,9 +575,7 @@ class TestElasticsearchIntegration(TestBase):
         os.environ,
         {"OTEL_PYTHON_INSTRUMENTATION_ELASTICSEARCH_ENABLED": "true"},
     )
-    def test_instrumentation_is_disabled_if_native_support_enabled(
-        self, request_mock
-    ):
+    def test_instrumentation_is_disabled_if_native_support_enabled(self, request_mock):
         request_mock.return_value = helpers.mock_response("{}")
 
         es = get_elasticsearch_client(hosts=["http://localhost:9200"])

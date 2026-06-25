@@ -23,9 +23,7 @@ def test_instrumentation_dependencies():
     assert "anthropic >= 0.16.0" in dependencies
 
 
-def test_instrument_uninstrument_cycle(
-    tracer_provider, logger_provider, meter_provider
-):
+def test_instrument_uninstrument_cycle(tracer_provider, logger_provider, meter_provider):
     """Test that instrument() and uninstrument() can be called multiple times."""
     instrumentor = AnthropicInstrumentor()
 
@@ -50,9 +48,7 @@ def test_instrument_uninstrument_cycle(
     instrumentor.uninstrument()
 
 
-def test_multiple_instrumentation_calls(
-    tracer_provider, logger_provider, meter_provider
-):
+def test_multiple_instrumentation_calls(tracer_provider, logger_provider, meter_provider):
     """Test that multiple instrument() calls don't cause issues."""
     instrumentor = AnthropicInstrumentor()
 
@@ -82,9 +78,7 @@ def test_uninstrument_without_instrument():
     instrumentor.uninstrument()
 
 
-def test_instrument_with_no_providers(
-    tracer_provider, logger_provider, meter_provider
-):
+def test_instrument_with_no_providers(tracer_provider, logger_provider, meter_provider):
     """Test that instrument() works without explicit providers.
 
     Note: We still pass providers to ensure a clean test environment,

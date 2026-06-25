@@ -64,9 +64,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.aiopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.aiopg)
 
         # check that no spans are generated after uninstrument
         AiopgInstrumentor().uninstrument()
@@ -93,9 +91,7 @@ class TestAiopgInstrumentor(TestBase):
                     span = spans_list[0]
 
                     # Check version and name in span's instrumentation info
-                    self.assertEqualSpanInstrumentationScope(
-                        span, opentelemetry.instrumentation.aiopg
-                    )
+                    self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.aiopg)
 
         async_call(_ctx_manager_connect())
 
@@ -114,9 +110,7 @@ class TestAiopgInstrumentor(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.aiopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.aiopg)
 
         # check that no spans are generated after uninstrument
         AiopgInstrumentor().uninstrument()
@@ -145,9 +139,7 @@ class TestAiopgInstrumentor(TestBase):
                         span = spans_list[0]
 
                         # Check version and name in span's instrumentation info
-                        self.assertEqualSpanInstrumentationScope(
-                            span, opentelemetry.instrumentation.aiopg
-                        )
+                        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.aiopg)
 
         async_call(_ctx_manager_pool())
 
@@ -222,9 +214,7 @@ class TestAiopgInstrumentor(TestBase):
 
     def test_no_op_tracer_provider(self):
         cnx = async_call(aiopg.connect(database="test"))
-        AiopgInstrumentor().instrument_connection(
-            cnx, tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        AiopgInstrumentor().instrument_connection(cnx, tracer_provider=trace_api.NoOpTracerProvider())
 
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
@@ -234,17 +224,13 @@ class TestAiopgInstrumentor(TestBase):
         self.assertEqual(len(spans_list), 0)
 
     def test_custom_tracer_provider_instrument_connection(self):
-        resource = resources.Resource.create(
-            {"service.name": "db-test-service"}
-        )
+        resource = resources.Resource.create({"service.name": "db-test-service"})
         result = self.create_tracer_provider(resource=resource)
         tracer_provider, exporter = result
 
         cnx = async_call(aiopg.connect(database="test"))
 
-        cnx = AiopgInstrumentor().instrument_connection(
-            cnx, tracer_provider=tracer_provider
-        )
+        cnx = AiopgInstrumentor().instrument_connection(cnx, tracer_provider=tracer_provider)
 
         cursor = async_call(cnx.cursor())
         query = "SELECT * FROM test"
@@ -254,9 +240,7 @@ class TestAiopgInstrumentor(TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
 
-        self.assertEqual(
-            span.resource.attributes["service.name"], "db-test-service"
-        )
+        self.assertEqual(span.resource.attributes["service.name"], "db-test-service")
         self.assertIs(span.resource, resource)
 
     def test_uninstrument_connection(self):
@@ -301,11 +285,7 @@ class TestAiopgIntegration(TestBase):
             connection_attributes,
             capture_parameters=True,
         )
-        mock_connection = async_call(
-            db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
-        )
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, connection_props))
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.execute("Test query", ("param1Value", False)))
         spans_list = self.memory_exporter.get_finished_spans()
@@ -343,14 +323,8 @@ class TestAiopgIntegration(TestBase):
         mock_span = mock.Mock()
         mock_span.is_recording.return_value = False
         mock_tracer.start_span.return_value = mock_span
-        db_integration = AiopgIntegration(
-            mock_tracer, "testcomponent", connection_attributes
-        )
-        mock_connection = async_call(
-            db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
-        )
+        db_integration = AiopgIntegration(mock_tracer, "testcomponent", connection_attributes)
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, connection_props))
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.execute("Test query", ("param1Value", False)))
         self.assertFalse(mock_span.is_recording())
@@ -360,9 +334,7 @@ class TestAiopgIntegration(TestBase):
 
     def test_span_failed(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
-        mock_connection = async_call(
-            db_integration.wrapped_connection(mock_connect, {}, {})
-        )
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, {}))
         cursor = async_call(mock_connection.cursor())
         with self.assertRaises(Exception):
             async_call(cursor.execute("Test query", throw_exception=True))
@@ -372,15 +344,11 @@ class TestAiopgIntegration(TestBase):
         span = spans_list[0]
         self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
         self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
-        self.assertEqual(
-            span.status.description, "ProgrammingError: Test Exception"
-        )
+        self.assertEqual(span.status.description, "ProgrammingError: Test Exception")
 
     def test_executemany(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
-        mock_connection = async_call(
-            db_integration.wrapped_connection(mock_connect, {}, {})
-        )
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, {}))
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.executemany("Test query"))
         spans_list = self.memory_exporter.get_finished_spans()
@@ -391,9 +359,7 @@ class TestAiopgIntegration(TestBase):
 
     def test_callproc(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
-        mock_connection = async_call(
-            db_integration.wrapped_connection(mock_connect, {}, {})
-        )
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, {}))
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.callproc("Test stored procedure"))
         spans_list = self.memory_exporter.get_finished_spans()
@@ -428,9 +394,7 @@ class TestAiopgIntegration(TestBase):
         async def check_connection(pool):
             async with pool.acquire() as connection:
                 self.assertEqual(aiopg_mock.create_pool_call_count, 1)
-                self.assertIsInstance(
-                    connection.__wrapped__, AiopgConnectionMock
-                )
+                self.assertIsInstance(connection.__wrapped__, AiopgConnectionMock)
 
         aiopg_mock = AiopgMock()
         with mock.patch("aiopg.create_pool", aiopg_mock.create_pool):
@@ -458,9 +422,7 @@ class TestAiopgIntegration(TestBase):
         connection = mock.Mock()
         # Avoid get_attributes failing because can't concatenate mock
         connection.database = "-"
-        connection2 = wrappers.instrument_connection(
-            self.tracer, connection, "-"
-        )
+        connection2 = wrappers.instrument_connection(self.tracer, connection, "-")
         self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
     def test_uninstrument_connection(self):
@@ -468,9 +430,7 @@ class TestAiopgIntegration(TestBase):
         # Set connection.database to avoid a failure because mock can't
         # be concatenated
         connection.database = "-"
-        connection2 = wrappers.instrument_connection(
-            self.tracer, connection, "-"
-        )
+        connection2 = wrappers.instrument_connection(self.tracer, connection, "-")
         self.assertIs(connection2.__wrapped__, connection)  # pylint: disable=no-member
 
         connection3 = wrappers.uninstrument_connection(connection2)
@@ -516,9 +476,7 @@ class MockPool:
         return _PoolAcquireContextManager(coro, self)
 
     async def _acquire(self):
-        connect = await mock_connect(
-            self.database, self.server_port, self.server_host, self.user
-        )
+        connect = await mock_connect(self.database, self.server_port, self.server_host, self.user)
         return connect
 
     def close(self):
@@ -538,9 +496,7 @@ class MockPsycopg2Connection:
 
 class MockConnection:
     def __init__(self, database, server_port, server_host, user):
-        self._conn = MockPsycopg2Connection(
-            database, server_port, server_host, user
-        )
+        self._conn = MockPsycopg2Connection(database, server_port, server_host, user)
 
     def cursor(self):
         coro = self._cursor()

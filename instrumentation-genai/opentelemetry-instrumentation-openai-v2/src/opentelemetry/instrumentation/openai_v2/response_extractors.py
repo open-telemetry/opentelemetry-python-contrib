@@ -100,9 +100,7 @@ def _get_field(value: object, field_name: str) -> object | None:
 
 
 def _get_sequence(value: object) -> Sequence[object]:
-    if isinstance(value, Sequence) and not isinstance(
-        value, (str, bytes, bytearray)
-    ):
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return value
     return ()
 
@@ -151,18 +149,11 @@ def extract_params(
         input=(
             input_items
             if isinstance(input_items, str)
-            or (
-                isinstance(input_items, Sequence)
-                and not isinstance(input_items, (str, bytes, bytearray))
-            )
+            or (isinstance(input_items, Sequence) and not isinstance(input_items, (str, bytes, bytearray)))
             else None
         ),
         max_output_tokens=_get_int(max_output_tokens),
-        service_tier=(
-            service_tier
-            if isinstance(service_tier, str) and service_tier != "auto"
-            else None
-        ),
+        service_tier=(service_tier if isinstance(service_tier, str) and service_tier != "auto" else None),
         temperature=_get_float(temperature),
         output_type=_extract_output_type_from_value(text),
         top_p=_get_float(top_p),
@@ -192,9 +183,7 @@ def get_input_messages(
 
         content = _get_field(item, "content")
         if isinstance(content, str):
-            messages.append(
-                InputMessage(role=role, parts=[Text(content=content)])
-            )
+            messages.append(InputMessage(role=role, parts=[Text(content=content)]))
             continue
 
         parts = []
@@ -209,11 +198,7 @@ def get_input_messages(
 
 
 def _extract_output_parts(content_blocks: Sequence[object]) -> list["Text"]:
-    if (
-        Text is None
-        or ResponseOutputText is None
-        or ResponseOutputRefusal is None
-    ):
+    if Text is None or ResponseOutputText is None or ResponseOutputRefusal is None:
         return []
 
     parts: list[Text] = []
@@ -246,9 +231,7 @@ def _extract_reasoning_parts(
         if isinstance(block.text, str):
             parts.append(Reasoning(content=block.text))
     for block in item.content or []:
-        if getattr(block, "type", None) == "reasoning_text" and isinstance(
-            getattr(block, "text", None), str
-        ):
+        if getattr(block, "type", None) == "reasoning_text" and isinstance(getattr(block, "text", None), str):
             parts.append(Reasoning(content=block.text))
     return parts
 
@@ -273,12 +256,7 @@ def _response_types_available() -> bool:
 def get_output_messages_from_response(
     response: "Response | None",
 ) -> list["OutputMessage"]:
-    if (
-        not _response_types_available()
-        or not isinstance(response, Response)
-        or OutputMessage is None
-        or Text is None
-    ):
+    if not _response_types_available() or not isinstance(response, Response) or OutputMessage is None or Text is None:
         return []
 
     messages: list[OutputMessage] = []
@@ -311,9 +289,7 @@ def get_output_messages_from_response(
                         ToolCall(
                             id=item.call_id if item.call_id else item.id,
                             name=item.name,
-                            arguments=_parse_tool_call_arguments(
-                                item.arguments
-                            ),
+                            arguments=_parse_tool_call_arguments(item.arguments),
                         )
                     ],
                     finish_reason="tool_calls",
@@ -393,28 +369,18 @@ def apply_request_attributes(
     invocation.max_tokens = params.max_output_tokens
 
     if params.service_tier is not None:
-        invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = (
-            params.service_tier
-        )
+        invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = params.service_tier
 
     if params.output_type is not None:
-        invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
-            params.output_type
-        )
+        invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = params.output_type
 
     if capture_content:
-        invocation.system_instruction = get_system_instruction(
-            params.instructions
-        )
+        invocation.system_instruction = get_system_instruction(params.instructions)
         invocation.input_messages = get_input_messages(params.input)
 
 
 def extract_usage_tokens(usage: "ResponseUsage | None") -> UsageTokens:
-    if (
-        ResponseUsage is None
-        or usage is None
-        or not isinstance(usage, ResponseUsage)
-    ):
+    if ResponseUsage is None or usage is None or not isinstance(usage, ResponseUsage):
         return UsageTokens()
 
     details = usage.input_tokens_details
@@ -426,13 +392,10 @@ def extract_usage_tokens(usage: "ResponseUsage | None") -> UsageTokens:
         # compatibility across the supported OpenAI range.
         cache_creation_input_tokens=(
             details.cache_creation_input_tokens
-            if details is not None
-            and hasattr(details, "cache_creation_input_tokens")
+            if details is not None and hasattr(details, "cache_creation_input_tokens")
             else None
         ),
-        cache_read_input_tokens=(
-            details.cached_tokens if details is not None else None
-        ),
+        cache_read_input_tokens=(details.cached_tokens if details is not None else None),
     )
 
 
@@ -448,9 +411,7 @@ def set_invocation_response_attributes(
     invocation.response_id = response.id
 
     if response.service_tier is not None:
-        invocation.attributes[
-            OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER
-        ] = response.service_tier
+        invocation.attributes[OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER] = response.service_tier
 
     tokens = extract_usage_tokens(response.usage)
     invocation.input_tokens = tokens.input_tokens

@@ -194,9 +194,7 @@ def wrap_create_pool(
             version=version,
             tracer_provider=tracer_provider,
         )
-        return _PoolContextManager(
-            db_integration.wrapped_pool(wrapped, args, kwargs)
-        )
+        return _PoolContextManager(db_integration.wrapped_pool(wrapped, args, kwargs))
 
     try:
         wrapt.wrap_function_wrapper(aiopg, "create_pool", wrap_create_pool_)

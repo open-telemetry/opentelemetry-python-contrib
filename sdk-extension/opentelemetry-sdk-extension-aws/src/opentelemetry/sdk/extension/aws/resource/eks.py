@@ -60,9 +60,7 @@ def _is_eks(cred_value):
         return False
     try:
         seg = parts[1]
-        payload = json.loads(
-            base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4))
-        )
+        payload = json.loads(base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4)))
     except ValueError as exception:
         logger.error("Failed to parse JWT for EKS detection: %s", exception)
         return False
@@ -120,17 +118,13 @@ class AwsEksResourceDetector(ResourceDetector):
             cred_value = _get_k8s_cred_value()
 
             if not _is_eks(cred_value):
-                raise RuntimeError(
-                    "Could not confirm process is running on EKS."
-                )
+                raise RuntimeError("Could not confirm process is running on EKS.")
 
             cluster_name = _get_cluster_name(cred_value)
             container_id = _get_container_id()
 
             if not container_id and not cluster_name:
-                raise RuntimeError(
-                    "Neither cluster name nor container ID found on EKS process."
-                )
+                raise RuntimeError("Neither cluster name nor container ID found on EKS process.")
 
             return Resource(
                 {

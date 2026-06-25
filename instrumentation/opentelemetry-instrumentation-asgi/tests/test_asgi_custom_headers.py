@@ -142,16 +142,10 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.non_utf8_header": ("Moto Z²",),
             "http.request.header.moto_z²_non_utf8_header_key": ("Moto Z²",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
@@ -191,14 +185,10 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
         }
         not_expected = {
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -217,18 +207,10 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
             "http.response.header.non_utf8_header": ("Moto Z²",),
             "http.response.header.moto_z²_non_utf8_header_key": ("Moto Z²",),
@@ -267,9 +249,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -301,16 +281,10 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         for span in span_list:
@@ -341,9 +315,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.request.header.custom_test_header_3": ("test-header-value-3",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -373,18 +345,10 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_1": (
-                "my-custom-regex-value-1,my-custom-regex-value-2",
-            ),
-            "http.response.header.my_custom_regex_header_2": (
-                "my-custom-regex-value-3,my-custom-regex-value-4",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
+            "http.response.header.my_custom_regex_header_1": ("my-custom-regex-value-1,my-custom-regex-value-2",),
+            "http.response.header.my_custom_regex_header_2": ("my-custom-regex-value-3,my-custom-regex-value-4",),
             "http.response.header.my_secret_header": ("[REDACTED]",),
         }
         for span in span_list:
@@ -416,9 +380,7 @@ class TestCustomHeaders(AsyncAsgiTestBase):
         await self.get_all_output()
         span_list = self.exporter.get_finished_spans()
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         for span in span_list:
             if span.kind == SpanKind.SERVER:
@@ -427,8 +389,14 @@ class TestCustomHeaders(AsyncAsgiTestBase):
 
 
 SANITIZE_FIELDS_TEST_VALUE = ".*my-secret.*"
-SERVER_REQUEST_TEST_VALUE = "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,.*my-secret.*,non-utf8-header,Moto-Z²-non-utf8-header-key"
-SERVER_RESPONSE_TEST_VALUE = "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,.*my-secret.*,non-utf8-header,Moto-Z²-non-utf8-header-key"
+SERVER_REQUEST_TEST_VALUE = (
+    "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,Regex-Test-Header-.*,Regex-Invalid-Test-Header-.*,"
+    ".*my-secret.*,non-utf8-header,Moto-Z²-non-utf8-header-key"
+)
+SERVER_RESPONSE_TEST_VALUE = (
+    "Custom-Test-Header-1,Custom-Test-Header-2,Custom-Test-Header-3,my-custom-regex-header-.*,invalid-regex-header-.*,"
+    ".*my-secret.*,non-utf8-header,Moto-Z²-non-utf8-header-key"
+)
 
 
 class TestCustomHeadersEnv(TestCustomHeaders):
@@ -443,27 +411,15 @@ class TestCustomHeadersEnv(TestCustomHeaders):
         super().setUp()
 
     def tearDown(self):
-        os.environ.pop(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS, None
-        )
-        os.environ.pop(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST, None
-        )
-        os.environ.pop(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE, None
-        )
+        os.environ.pop(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS, None)
+        os.environ.pop(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST, None)
+        os.environ.pop(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE, None)
         super().tearDown()
 
 
 class TestCustomHeadersConstructor(TestCustomHeaders):
     constructor_params = {
-        "http_capture_headers_sanitize_fields": SANITIZE_FIELDS_TEST_VALUE.split(
-            ","
-        ),
-        "http_capture_headers_server_request": SERVER_REQUEST_TEST_VALUE.split(
-            ","
-        ),
-        "http_capture_headers_server_response": SERVER_RESPONSE_TEST_VALUE.split(
-            ","
-        ),
+        "http_capture_headers_sanitize_fields": SANITIZE_FIELDS_TEST_VALUE.split(","),
+        "http_capture_headers_server_request": SERVER_REQUEST_TEST_VALUE.split(","),
+        "http_capture_headers_server_response": SERVER_RESPONSE_TEST_VALUE.split(","),
     }

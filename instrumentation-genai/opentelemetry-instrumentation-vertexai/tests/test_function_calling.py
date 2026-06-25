@@ -56,9 +56,7 @@ def test_function_call_choice(
     assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
     assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {
-        "content": [
-            {"text": "Get weather details in New Delhi and San Francisco?"}
-        ],
+        "content": [{"text": "Get weather details in New Delhi and San Francisco?"}],
         "role": "user",
     }
 
@@ -171,15 +169,11 @@ def test_tool_events(
     logs = log_exporter.get_finished_logs()
     # Emits user, assistant, two tool, and choice events
     assert len(logs) == 5
-    user_log, assistant_log, tool_log1, tool_log2, choice_log = [
-        log_data.log_record for log_data in logs
-    ]
+    user_log, assistant_log, tool_log1, tool_log2, choice_log = [log_data.log_record for log_data in logs]
     assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
     assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {
-        "content": [
-            {"text": "Get weather details in New Delhi and San Francisco?"}
-        ],
+        "content": [{"text": "Get weather details in New Delhi and San Francisco?"}],
         "role": "user",
     }
 
@@ -226,11 +220,7 @@ def test_tool_events(
         "finish_reason": "stop",
         "index": 0,
         "message": {
-            "content": [
-                {
-                    "text": "The current temperature in New Delhi is 35°C, and in San Francisco, it is 25°C."
-                }
-            ],
+            "content": [{"text": "The current temperature in New Delhi is 35°C, and in San Francisco, it is 25°C."}],
             "role": "model",
         },
     }
@@ -263,9 +253,7 @@ def test_tool_events_no_content(
     logs = log_exporter.get_finished_logs()
     # Emits user, assistant, two tool, and choice events
     assert len(logs) == 5
-    user_log, assistant_log, tool_log1, tool_log2, choice_log = [
-        log_data.log_record for log_data in logs
-    ]
+    user_log, assistant_log, tool_log1, tool_log2, choice_log = [log_data.log_record for log_data in logs]
     assert user_log.attributes == {"gen_ai.system": "vertex_ai"}
     assert user_log.event_name == "gen_ai.user.message"
     assert user_log.body == {"role": "user"}

@@ -54,9 +54,7 @@ class InferenceInvocation(GenAIInvocation):
         server_port: int | None = None,
         operation_name: str | None = None,
     ) -> None:
-        operation_name = (
-            operation_name or GenAI.GenAiOperationNameValues.CHAT.value
-        )
+        operation_name = operation_name or GenAI.GenAiOperationNameValues.CHAT.value
         """Use handler.start_inference(provider) or handler.inference(provider) instead of calling this directly."""
         super().__init__(
             tracer,
@@ -64,9 +62,7 @@ class InferenceInvocation(GenAIInvocation):
             logger,
             completion_hook,
             operation_name=operation_name,
-            span_name=f"{operation_name} {request_model}"
-            if request_model
-            else operation_name,
+            span_name=f"{operation_name} {request_model}" if request_model else operation_name,
             span_kind=SpanKind.CLIENT,
         )
         self.provider = provider
@@ -109,11 +105,7 @@ class InferenceInvocation(GenAIInvocation):
         if self.finish_reasons is not None:
             return self.finish_reasons or None
         if self.output_messages:
-            reasons = [
-                msg.finish_reason
-                for msg in self.output_messages
-                if msg.finish_reason
-            ]
+            reasons = [msg.finish_reason for msg in self.output_messages if msg.finish_reason]
             return reasons or None
         return None
 
@@ -134,9 +126,7 @@ class InferenceInvocation(GenAIInvocation):
         if self.output_tokens is None and self.thinking_tokens is None:
             output_tokens = None
         else:
-            output_tokens = (self.output_tokens or 0) + (
-                self.thinking_tokens or 0
-            )
+            output_tokens = (self.output_tokens or 0) + (self.thinking_tokens or 0)
         optional_attrs = (
             (GenAI.GEN_AI_REQUEST_TEMPERATURE, self.temperature),
             (GenAI.GEN_AI_REQUEST_TOP_P, self.top_p),
@@ -178,9 +168,7 @@ class InferenceInvocation(GenAIInvocation):
         if self.input_tokens is not None:
             counts[GenAI.GenAiTokenTypeValues.INPUT.value] = self.input_tokens
         if self.output_tokens is not None:
-            counts[GenAI.GenAiTokenTypeValues.OUTPUT.value] = (
-                self.output_tokens
-            )
+            counts[GenAI.GenAiTokenTypeValues.OUTPUT.value] = self.output_tokens
         return counts
 
     def _apply_finish(self, error: Error | None = None) -> None:
@@ -253,9 +241,7 @@ class LLMInvocation:
     server_address: str | None = None
     server_port: int | None = None
 
-    _inference_invocation: InferenceInvocation | None = field(
-        default=None, init=False, repr=False
-    )
+    _inference_invocation: InferenceInvocation | None = field(default=None, init=False, repr=False)
 
     def _start_with_handler(
         self,
@@ -323,8 +309,4 @@ class LLMInvocation:
     @property
     def span(self) -> Span:
         """The underlying span, for back-compat with code that checks span.is_recording()."""
-        return (
-            self._inference_invocation.span
-            if self._inference_invocation is not None
-            else INVALID_SPAN
-        )
+        return self._inference_invocation.span if self._inference_invocation is not None else INVALID_SPAN

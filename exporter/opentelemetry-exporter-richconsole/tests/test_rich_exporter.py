@@ -44,9 +44,7 @@ def test_span_exporter(tracer_provider, span_processor, capsys):
 
 def walk_tree(root: Tree) -> int:
     # counts the amount of spans in a tree that contains a span
-    return sum(walk_tree(child) for child in root.children) + int(
-        "span" in root.label
-    )
+    return sum(walk_tree(child) for child in root.children) + int("span" in root.label)
 
 
 def test_multiple_traces(tracer_provider):
@@ -66,27 +64,16 @@ def test_multiple_traces(tracer_provider):
 
     assert traceid_1 in trees
 
-    assert (
-        opentelemetry.trace.format_trace_id(parent_2.context.trace_id) in trees
-    )
+    assert opentelemetry.trace.format_trace_id(parent_2.context.trace_id) in trees
 
     # asserts that we have exactly the number of spans we exported
     assert sum(walk_tree(tree) for tree in trees.values()) == 3
 
     # assert that the relationship is correct
     assert parent_1.name in trees[traceid_1].children[0].label
-    assert any(
-        child_1.name in child.label
-        for child in trees[traceid_1].children[0].children
-    )
-    assert not any(
-        parent_1.name in child.label
-        for child in trees[traceid_1].children[0].children
-    )
-    assert not any(
-        parent_2.name in child.label
-        for child in trees[traceid_1].children[0].children
-    )
+    assert any(child_1.name in child.label for child in trees[traceid_1].children[0].children)
+    assert not any(parent_1.name in child.label for child in trees[traceid_1].children[0].children)
+    assert not any(parent_2.name in child.label for child in trees[traceid_1].children[0].children)
 
 
 @pytest.mark.timeout(30)
@@ -112,9 +99,7 @@ def test_suppress_resource(span_processor):
         with tracer.start_as_current_span("child") as child:
             pass
 
-    trees = RichConsoleSpanExporter.spans_to_tree(
-        (parent, child), suppress_resource=True
-    )
+    trees = RichConsoleSpanExporter.spans_to_tree((parent, child), suppress_resource=True)
     assert len(trees) == 1
 
     nodes = [next(t for t in trees.values())]

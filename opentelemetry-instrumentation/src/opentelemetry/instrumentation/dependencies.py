@@ -55,7 +55,10 @@ class DependencyConflict:
 
     def __str__(self):
         if not self.required and (self.required_any or self.found_any):
-            return f'DependencyConflict: requested any of the following: "{self.required_any}" but found: "{self.found_any}"'
+            return (
+                f'DependencyConflict: requested any of the following: "{self.required_any}" '
+                f'but found: "{self.found_any}"'
+            )
         return f'DependencyConflict: requested: "{self.required}" but found: "{self.found}"'
 
 
@@ -91,17 +94,12 @@ def get_dist_dependency_conflicts(
                 instrumentation_deps.append(req)  # type: ignore
             if req.marker.evaluate(instruments_any_marker):  # type: ignore
                 instrumentation_any_deps.append(req)  # type: ignore
-    return get_dependency_conflicts(
-        instrumentation_deps, instrumentation_any_deps
-    )  # type: ignore
+    return get_dependency_conflicts(instrumentation_deps, instrumentation_any_deps)  # type: ignore
 
 
 def get_dependency_conflicts(
-    deps: Collection[
-        str | Requirement
-    ],  # Dependencies all of which are required
-    deps_any: Collection[str | Requirement]
-    | None = None,  # Dependencies any of which are required
+    deps: Collection[str | Requirement],  # Dependencies all of which are required
+    deps_any: Collection[str | Requirement] | None = None,  # Dependencies any of which are required
 ) -> DependencyConflict | None:
     for dep in deps:
         if isinstance(dep, Requirement):

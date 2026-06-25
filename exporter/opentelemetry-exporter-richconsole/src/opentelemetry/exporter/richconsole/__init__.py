@@ -59,85 +59,45 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
 
 
 def _ns_to_time(nanoseconds):
-    ts = datetime.datetime.fromtimestamp(
-        nanoseconds / 1e9, datetime.timezone.utc
-    )
+    ts = datetime.datetime.fromtimestamp(nanoseconds / 1e9, datetime.timezone.utc)
     return ts.strftime("%H:%M:%S.%f")
 
 
-def _child_to_tree(
-    child: Tree, span: ReadableSpan, *, suppress_resource: bool
-):
-    child.add(
-        Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}")
-    )
+def _child_to_tree(child: Tree, span: ReadableSpan, *, suppress_resource: bool):
+    child.add(Text.from_markup(f"[bold cyan]Kind :[/bold cyan] {span.kind.name}"))
     _add_status(child, span)
-    _child_add_optional_attributes(
-        child, span, suppress_resource=suppress_resource
-    )
+    _child_add_optional_attributes(child, span, suppress_resource=suppress_resource)
 
 
 def _add_status(child: Tree, span: ReadableSpan):
     if not span.status.is_unset:
         if not span.status.is_ok:
-            child.add(
-                Text.from_markup(
-                    f"[bold cyan]Status :[/bold cyan] [red]{span.status.status_code}[/red]"
-                )
-            )
+            child.add(Text.from_markup(f"[bold cyan]Status :[/bold cyan] [red]{span.status.status_code}[/red]"))
         else:
-            child.add(
-                Text.from_markup(
-                    f"[bold cyan]Status :[/bold cyan] {span.status.status_code}"
-                )
-            )
+            child.add(Text.from_markup(f"[bold cyan]Status :[/bold cyan] {span.status.status_code}"))
     if span.status.description:
-        child.add(
-            Text.from_markup(
-                f"[bold cyan]Description :[/bold cyan] {span.status.description}"
-            )
-        )
+        child.add(Text.from_markup(f"[bold cyan]Description :[/bold cyan] {span.status.description}"))
 
 
-def _child_add_optional_attributes(
-    child: Tree, span: ReadableSpan, *, suppress_resource: bool
-):
+def _child_add_optional_attributes(child: Tree, span: ReadableSpan, *, suppress_resource: bool):
     if span.events:
-        events = child.add(
-            label=Text.from_markup("[bold cyan]Events :[/bold cyan] ")
-        )
+        events = child.add(label=Text.from_markup("[bold cyan]Events :[/bold cyan] "))
         for event in span.events:
             event_node = events.add(Text(event.name))
             for key, val in event.attributes.items():
-                event_node.add(
-                    Text.from_markup(f"[bold cyan]{key} :[/bold cyan] {val}")
-                )
+                event_node.add(Text.from_markup(f"[bold cyan]{key} :[/bold cyan] {val}"))
     if span.attributes:
-        attributes = child.add(
-            label=Text.from_markup("[bold cyan]Attributes :[/bold cyan] ")
-        )
+        attributes = child.add(label=Text.from_markup("[bold cyan]Attributes :[/bold cyan] "))
         for attribute in span.attributes:
             if attribute == DB_STATEMENT:
-                attributes.add(
-                    Text.from_markup(f"[bold cyan]{attribute} :[/bold cyan] ")
-                )
+                attributes.add(Text.from_markup(f"[bold cyan]{attribute} :[/bold cyan] "))
                 attributes.add(Syntax(span.attributes[attribute], "sql"))
             else:
-                attributes.add(
-                    Text.from_markup(
-                        f"[bold cyan]{attribute} :[/bold cyan] {span.attributes[attribute]}"
-                    )
-                )
+                attributes.add(Text.from_markup(f"[bold cyan]{attribute} :[/bold cyan] {span.attributes[attribute]}"))
     if span.resource and not suppress_resource:
-        resources = child.add(
-            label=Text.from_markup("[bold cyan]Resources :[/bold cyan] ")
-        )
+        resources = child.add(label=Text.from_markup("[bold cyan]Resources :[/bold cyan] "))
         for resource in span.resource.attributes:
-            resources.add(
-                Text.from_markup(
-                    f"[bold cyan]{resource} :[/bold cyan] {span.resource.attributes[resource]}"
-                )
-            )
+            resources.add(Text.from_markup(f"[bold cyan]{resource} :[/bold cyan] {span.resource.attributes[resource]}"))
 
 
 class RichConsoleSpanExporter(SpanExporter):
@@ -160,9 +120,7 @@ class RichConsoleSpanExporter(SpanExporter):
         if not spans:
             return SpanExportResult.SUCCESS
 
-        for tree in self.spans_to_tree(
-            spans, suppress_resource=self.suppress_resource
-        ).values():
+        for tree in self.spans_to_tree(spans, suppress_resource=self.suppress_resource).values():
             self.console.print(tree)
 
         return SpanExportResult.SUCCESS
@@ -180,31 +138,25 @@ class RichConsoleSpanExporter(SpanExporter):
         while spans:
             for span in spans:
                 if not span.parent or span.parent.span_id not in span_ids:
-                    trace_id = opentelemetry.trace.format_trace_id(
-                        span.context.trace_id
-                    )
-                    tree = trees.setdefault(
-                        trace_id, Tree(label=f"Trace {trace_id}")
-                    )
+                    trace_id = opentelemetry.trace.format_trace_id(span.context.trace_id)
+                    tree = trees.setdefault(trace_id, Tree(label=f"Trace {trace_id}"))
                     child = tree.add(
                         label=Text.from_markup(
-                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span "
+                            f"{opentelemetry.trace.format_span_id(span.context.span_id)}"
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(
-                        child, span, suppress_resource=suppress_resource
-                    )
+                    _child_to_tree(child, span, suppress_resource=suppress_resource)
                     spans.remove(span)
                 elif span.parent and span.parent.span_id in parents:
                     child = parents[span.parent.span_id].add(
                         label=Text.from_markup(
-                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span {opentelemetry.trace.format_span_id(span.context.span_id)}"
+                            f"[blue][{_ns_to_time(span.start_time)}][/blue] [bold]{span.name}[/bold], span "
+                            f"{opentelemetry.trace.format_span_id(span.context.span_id)}"
                         )
                     )
                     parents[span.context.span_id] = child
-                    _child_to_tree(
-                        child, span, suppress_resource=suppress_resource
-                    )
+                    _child_to_tree(child, span, suppress_resource=suppress_resource)
                     spans.remove(span)
         return trees

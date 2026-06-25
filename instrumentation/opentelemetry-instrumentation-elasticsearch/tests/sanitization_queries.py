@@ -131,9 +131,7 @@ aggregation_query = {
             }
         },
         "avg_price": {"avg": {"field": "price"}},
-        "top_tags": {
-            "terms": {"field": "tags", "size": 10, "order": {"_count": "desc"}}
-        },
+        "top_tags": {"terms": {"field": "tags", "size": 10, "order": {"_count": "desc"}}},
     },
 }
 
@@ -151,9 +149,7 @@ aggregation_query_sanitized = {
             }
         },
         "avg_price": {"avg": {"field": "?"}},
-        "top_tags": {
-            "terms": {"field": "?", "size": "?", "order": {"_count": "?"}}
-        },
+        "top_tags": {"terms": {"field": "?", "size": "?", "order": {"_count": "?"}}},
     },
 }
 
@@ -187,9 +183,5 @@ script_query_sanitized = {
             }
         }
     },
-    "script_fields": {
-        "discounted_price": {
-            "script": {"source": "?", "params": {"discount": "?"}}
-        }
-    },
+    "script_fields": {"discounted_price": {"script": {"source": "?", "params": {"discount": "?"}}}},
 }

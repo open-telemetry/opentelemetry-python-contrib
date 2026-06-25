@@ -33,19 +33,14 @@ def get_future_trace_enabled() -> bool:
     Function to get the future active enabled flag from the environment variable
     default value is False
     """
-    return (
-        os.getenv(OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED, "False").lower()
-        == "true"
-    )
+    return os.getenv(OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED, "False").lower() == "true"
 
 
 def get_to_thread_to_trace() -> set:
     """
     Function to get the functions to be traced from the environment variable
     """
-    func_names = os.getenv(
-        OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE
-    )
+    func_names = os.getenv(OTEL_PYTHON_ASYNCIO_TO_THREAD_FUNCTION_NAMES_TO_TRACE)
     return separate_coro_names_by_comma(func_names)
 
 

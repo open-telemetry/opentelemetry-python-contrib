@@ -4,13 +4,16 @@
 """
 https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html#multi-value-headers
 
-When an ALB is configured to send multi-value headers, the headers are sent as a list of values under the key in the multiValueHeaders object.
+When an ALB is configured to send multi-value headers, the headers are sent as a list of values under the key in the
+multiValueHeaders object.
 """
 
 MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT = {
     "requestContext": {
         "elb": {
-            "targetGroupArn": "arn:aws:elasticloadbalancing:region:123456789012:targetgroup/my-target-group/6d0ecf831eec9f09"
+            "targetGroupArn": (
+                "arn:aws:elasticloadbalancing:region:123456789012:targetgroup/my-target-group/6d0ecf831eec9f09"
+            )
         }
     },
     "httpMethod": "GET",

@@ -72,20 +72,14 @@ class _ChatStreamMixin:
                 self._self_choice_buffers.append(ChoiceBuffer(idx))
 
             if choice.finish_reason:
-                self._self_choice_buffers[
-                    choice.index
-                ].finish_reason = choice.finish_reason
+                self._self_choice_buffers[choice.index].finish_reason = choice.finish_reason
 
             if choice.delta.content is not None:
-                self._self_choice_buffers[choice.index].append_text_content(
-                    choice.delta.content
-                )
+                self._self_choice_buffers[choice.index].append_text_content(choice.delta.content)
 
             if choice.delta.tool_calls is not None:
                 for tool_call in choice.delta.tool_calls:
-                    self._self_choice_buffers[choice.index].append_tool_call(
-                        tool_call
-                    )
+                    self._self_choice_buffers[choice.index].append_tool_call(tool_call)
 
     def _set_usage(self, chunk: ChatCompletionChunk) -> None:
         usage = getattr(chunk, "usage", None)
@@ -111,9 +105,7 @@ class _ChatStreamMixin:
                 parts=[],
             )
             if choice.text_content:
-                message.parts.append(
-                    Text(content="".join(choice.text_content))
-                )
+                message.parts.append(Text(content="".join(choice.text_content)))
             if choice.tool_calls_buffers:
                 tool_calls = []
                 for tool_call in filter(None, choice.tool_calls_buffers):
@@ -150,18 +142,12 @@ class _ChatStreamMixin:
         self._self_invocation.response_id = self._self_response_id
         self._self_invocation.input_tokens = self._self_prompt_tokens
         self._self_invocation.output_tokens = self._self_completion_tokens
-        finish_reasons = [
-            choice.finish_reason
-            for choice in self._self_choice_buffers
-            if choice.finish_reason
-        ]
+        finish_reasons = [choice.finish_reason for choice in self._self_choice_buffers if choice.finish_reason]
         if finish_reasons:
             self._self_invocation.finish_reasons = finish_reasons
         if self._self_service_tier:
             self._self_invocation.attributes.update(
-                {
-                    OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self._self_service_tier
-                },
+                {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: self._self_service_tier},
             )
 
         self._set_output_messages()

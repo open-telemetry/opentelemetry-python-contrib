@@ -65,9 +65,7 @@ def _instrument(tracer_provider, include_db_statement=False):
     name = "Cassandra"
 
     def _traced_execute_async(func, instance, args, kwargs):
-        with tracer.start_as_current_span(
-            name, kind=trace.SpanKind.CLIENT
-        ) as span:
+        with tracer.start_as_current_span(name, kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
                 span.set_attribute(DB_NAME, instance.keyspace)
                 span.set_attribute(DB_SYSTEM, "cassandra")
@@ -83,9 +81,7 @@ def _instrument(tracer_provider, include_db_statement=False):
             response = func(*args, **kwargs)
             return response
 
-    wrap_function_wrapper(
-        "cassandra.cluster", "Session.execute_async", _traced_execute_async
-    )
+    wrap_function_wrapper("cassandra.cluster", "Session.execute_async", _traced_execute_async)
 
 
 class CassandraInstrumentor(BaseInstrumentor):

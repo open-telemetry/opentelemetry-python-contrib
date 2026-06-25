@@ -51,7 +51,8 @@ enabled will have configurable key-value pairs appended to them, e.g.
 supports context propagation between database client and server when database log
 records are enabled. For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans
+  <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -68,7 +69,12 @@ records are enabled. For more information, see:
     cnx.close()
 
 Warning:
-    sqlcommenter for mysql-connector instrumentation should NOT be used if your application initializes cursors with ``prepared=True``, which will natively prepare and execute MySQL statements. Adding sqlcommenting will introduce a severe performance penalty by repeating ``Prepare`` of statements by mysql-connector that are made unique by traceparent in sqlcomment. The penalty does not happen if cursor ``prepared=False`` (default) and instrumentor ``enable_commenter=True``.
+    sqlcommenter for mysql-connector instrumentation should NOT be used if your application
+    initializes cursors with ``prepared=True``, which will natively prepare and execute MySQL
+    statements. Adding sqlcommenting will introduce a severe performance penalty by repeating
+    ``Prepare`` of statements by mysql-connector that are made unique by traceparent in sqlcomment.
+    The penalty does not happen if cursor ``prepared=False`` (default) and instrumentor
+    ``enable_commenter=True``.
 
 SQLCommenter with commenter_options
 ***********************************
@@ -97,21 +103,23 @@ Available commenter_options
 
 The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| Commenter Option          | Description                                               | Example                                                                   |
-+===========================+===========================================================+===========================================================================+
-| ``db_driver``             | Database driver name with version (URL encoded).          | ``mysql.connector%%%%3A2.2.9``                                            |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``mysql_client_version``  | MySQL client version.                                     | ``mysql_client_version='123'``                                            |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
++---------------------------+-------------------------------------------------+------------------------------------+
+| Commenter Option          | Description                                      | Example                            |
++===========================+=================================================+====================================+
+| ``db_driver``             | Database driver name with version (URL encoded).| ``mysql.connector%%%%3A2.2.9``     |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.      | ``dbapi_threadsafety=2``           |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.         | ``dbapi_level='2.0'``              |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.  | ``driver_paramstyle='pyformat'``   |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``mysql_client_version``  | MySQL client version.                           | ``mysql_client_version='123'``     |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of | ``traceparent='00-03afa25236b8cd9  |
+|                           | query.                                          | 48fa853d67038ac79-405ff022e8247c46 |
+|                           |                                                 | -01'``                             |
++---------------------------+-------------------------------------------------+------------------------------------+
 
 SQLComment in span attribute
 ****************************
@@ -132,7 +140,10 @@ will also be configured by this setting.
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without
+    platform normalization. See `Semantic Conventions for database spans
+    <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_
+    for more information.
 
 API
 ---
@@ -168,9 +179,7 @@ class MySQLInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -213,7 +222,8 @@ class MySQLInstrumentor(BaseInstrumentor):
             commenter_options:
                 Optional configurations for tags to be appended at the sql query.
             enable_attribute_commenter:
-                Optional flag to enable/disable addition of sqlcomment to span attribute (default False). Requires enable_commenter=True.
+                Optional flag to enable/disable addition of sqlcomment to span attribute
+                (default False). Requires enable_commenter=True.
 
         Returns:
             An instrumented MySQL connection with OpenTelemetry tracing enabled.

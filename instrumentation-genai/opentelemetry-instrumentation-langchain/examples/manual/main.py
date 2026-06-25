@@ -29,9 +29,7 @@ trace.get_tracer_provider().add_span_processor(span_processor)
 
 # configure logging
 _logs.set_logger_provider(LoggerProvider())
-_logs.get_logger_provider().add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter())
-)
+_logs.get_logger_provider().add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
 
 # configure metrics
 metrics.set_meter_provider(

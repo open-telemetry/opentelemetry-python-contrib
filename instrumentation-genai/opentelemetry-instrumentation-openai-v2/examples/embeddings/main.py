@@ -19,13 +19,12 @@ def main():
     print(f"Model: {embedding_response.model}")
     print(f"Dimensions: {len(embedding_response.data[0].embedding)}")
     print(
-        f"Token usage - Prompt: {embedding_response.usage.prompt_tokens}, Total: {embedding_response.usage.total_tokens}"
+        f"Token usage - Prompt: {embedding_response.usage.prompt_tokens}, "
+        f"Total: {embedding_response.usage.total_tokens}"
     )
 
     # Print a sample of the embedding vector (first 5 dimensions)
-    print(
-        f"Embedding sample (first 5 dimensions): {embedding_response.data[0].embedding[:5]}"
-    )
+    print(f"Embedding sample (first 5 dimensions): {embedding_response.data[0].embedding[:5]}")
 
 
 if __name__ == "__main__":

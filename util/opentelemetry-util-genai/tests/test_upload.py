@@ -42,11 +42,7 @@ FAKE_INPUTS = [
     ),
     types.InputMessage(
         role="user",
-        parts=[
-            types.ToolCallResponse(
-                id="get_capital_0", response={"capital": "Paris"}
-            )
-        ],
+        parts=[types.ToolCallResponse(id="get_capital_0", response={"capital": "Paris"})],
     ),
 ]
 FAKE_OUTPUTS = [
@@ -80,17 +76,13 @@ class ThreadSafeMagicMock(MagicMock):
 
 class TestUploadCompletionHook(TestCase):
     def setUp(self):
-        self._fsspec_patcher = patch(
-            "opentelemetry.util.genai._upload.completion_hook.fsspec"
-        )
+        self._fsspec_patcher = patch("opentelemetry.util.genai._upload.completion_hook.fsspec")
         mock_fsspec = self._fsspec_patcher.start()
         self.mock_fs = ThreadSafeMagicMock()
         mock_fsspec.url_to_fs.return_value = self.mock_fs, ""
         self.mock_fs.exists.return_value = False
 
-        self.hook = UploadCompletionHook(
-            base_path=BASE_PATH, max_queue_size=MAXSIZE, lru_cache_max_size=5
-        )
+        self.hook = UploadCompletionHook(base_path=BASE_PATH, max_queue_size=MAXSIZE, lru_cache_max_size=5)
         # 1 upload is done when creating the UploadHook to ensure upload works. Reset mock.
         self.mock_fs.reset_mock()
 
@@ -128,7 +120,8 @@ class TestUploadCompletionHook(TestCase):
         )
         # all items should be consumed
         self.hook.shutdown()
-        # TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812 fix flaky test that requires sleep.
+        # TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3812
+        # fix flaky test that requires sleep.
         time.sleep(0.5)
         self.assertEqual(
             self.mock_fs.open.call_count,
@@ -160,17 +153,10 @@ class TestUploadCompletionHook(TestCase):
         # Wait a bit for file upload to finish..
         time.sleep(0.5)
         self.assertIsNotNone(record.attributes)
-        self.assertTrue(
-            self.hook._file_exists(
-                record.attributes["gen_ai.system_instructions_ref"]
-            )
-        )
+        self.assertTrue(self.hook._file_exists(record.attributes["gen_ai.system_instructions_ref"]))
         # LRU cache has a size of 5. So only AFTER 5 uploads should the original file be removed from the cache.
         for iteration in range(5):
-            self.assertTrue(
-                record.attributes["gen_ai.system_instructions_ref"]
-                in self.hook.lru_dict
-            )
+            self.assertTrue(record.attributes["gen_ai.system_instructions_ref"] in self.hook.lru_dict)
             self.hook.on_completion(
                 inputs=[],
                 outputs=[],
@@ -178,10 +164,7 @@ class TestUploadCompletionHook(TestCase):
                 tool_definitions=[],
             )
         self.hook.shutdown()
-        self.assertFalse(
-            record.attributes["gen_ai.system_instructions_ref"]
-            in self.hook.lru_dict
-        )
+        self.assertFalse(record.attributes["gen_ai.system_instructions_ref"] in self.hook.lru_dict)
 
     def test_upload_when_inputs_outputs_empty(self):
         record = LogRecord()
@@ -236,9 +219,7 @@ class TestUploadCompletionHook(TestCase):
                     tool_definitions=FAKE_TOOL_DEFINITIONS,
                 )
 
-            self.assertIn(
-                "upload queue is full, dropping upload", logs.output[0]
-            )
+            self.assertIn("upload queue is full, dropping upload", logs.output[0])
 
     def test_shutdown_timeout(self):
         with self.block_upload():
@@ -275,9 +256,7 @@ class TestUploadCompletionHook(TestCase):
             ("json", "application/json"),
             ("jsonl", "application/jsonl"),
         ):
-            hook = UploadCompletionHook(
-                base_path=BASE_PATH, upload_format=upload_format
-            )
+            hook = UploadCompletionHook(base_path=BASE_PATH, upload_format=upload_format)
             self.addCleanup(hook.shutdown)
 
             hook.on_completion(
@@ -288,9 +267,7 @@ class TestUploadCompletionHook(TestCase):
             )
             hook.shutdown()
 
-            self.mock_fs.open.assert_called_with(
-                ANY, "w", content_type=expect_content_type
-            )
+            self.mock_fs.open.assert_called_with(ANY, "w", content_type=expect_content_type)
 
     def test_upload_after_shutdown_logs(self):
         self.hook.shutdown()
@@ -309,16 +286,10 @@ class TestUploadCompletionHook(TestCase):
 
     def test_threadpool_max_workers(self):
         for max_queue_size, expect_threadpool_workers in ((10, 10), (100, 64)):
-            with patch(
-                "opentelemetry.util.genai._upload.completion_hook.ThreadPoolExecutor"
-            ) as mock:
-                hook = UploadCompletionHook(
-                    base_path=BASE_PATH, max_queue_size=max_queue_size
-                )
+            with patch("opentelemetry.util.genai._upload.completion_hook.ThreadPoolExecutor") as mock:
+                hook = UploadCompletionHook(base_path=BASE_PATH, max_queue_size=max_queue_size)
                 self.addCleanup(hook.shutdown)
-                mock.assert_called_once_with(
-                    max_workers=expect_threadpool_workers
-                )
+                mock.assert_called_once_with(max_workers=expect_threadpool_workers)
 
 
 class TestUploadCompletionHookIntegration(TestBase):
@@ -339,13 +310,9 @@ class TestUploadCompletionHookIntegration(TestBase):
             self.assertEqual(file.read(), value)
 
     def test_system_insruction_is_hashed_to_avoid_reupload(self):
-        expected_hash = (
-            "7e35acac4feca03ab47929d4cc6cfef1df2190ae1ee1752196a05ffc2a6cb360"
-        )
+        expected_hash = "7e35acac4feca03ab47929d4cc6cfef1df2190ae1ee1752196a05ffc2a6cb360"
         # Create the file before upload..
-        expected_file_name = (
-            f"memory://{expected_hash}_system_instruction.json"
-        )
+        expected_file_name = f"memory://{expected_hash}_system_instruction.json"
         with fsspec.open(expected_file_name, "wb") as file:
             file.write(b"asg")
         # FIle should exist.
@@ -373,9 +340,7 @@ class TestUploadCompletionHookIntegration(TestBase):
         self.assert_fsspec_equal(expected_file_name, "asg")
 
     def test_tool_definitions_is_hashed_to_avoid_reupload(self):
-        expected_hash = (
-            "1f559d0102f8c440a667fd5ed587beeed488ec9f3ce0828d39c424bed6546cf5"
-        )
+        expected_hash = "1f559d0102f8c440a667fd5ed587beeed488ec9f3ce0828d39c424bed6546cf5"
         # Create the file before upload..
         expected_file_name = f"memory://{expected_hash}_tool.definitions.json"
         with fsspec.open(expected_file_name, "wb") as file:
@@ -442,7 +407,11 @@ class TestUploadCompletionHookIntegration(TestBase):
 
         self.assert_fsspec_equal(
             span.attributes["gen_ai.input.messages_ref"],
-            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]},{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}]},{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}]}]\n',
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]},'
+            '{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0",'
+            '"type":"tool_call"}]},'
+            '{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0",'
+            '"type":"tool_call_response"}]}]\n',
         )
         self.assert_fsspec_equal(
             span.attributes["gen_ai.output.messages_ref"],
@@ -494,7 +463,8 @@ class TestUploadCompletionHookIntegration(TestBase):
 
         self.assert_fsspec_equal(
             log_record.attributes["gen_ai.input.messages_ref"],
-            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"},{"type":"generic_bytes","bytes":"aGVsbG8="}]}]\n',
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"},'
+            '{"type":"generic_bytes","bytes":"aGVsbG8="}]}]\n',
         )
 
     def test_upload_json(self) -> None:
@@ -512,13 +482,15 @@ class TestUploadCompletionHookIntegration(TestBase):
         hook.shutdown()
 
         ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
-        self.assertTrue(
-            ref_uri.endswith(".json"), f"{ref_uri=} does not end with .json"
-        )
+        self.assertTrue(ref_uri.endswith(".json"), f"{ref_uri=} does not end with .json")
 
         self.assert_fsspec_equal(
             ref_uri,
-            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]},{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}]},{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}]}]\n',
+            '[{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}]},'
+            '{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0",'
+            '"type":"tool_call"}]},'
+            '{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0",'
+            '"type":"tool_call_response"}]}]\n',
         )
 
     def test_upload_jsonlines(self) -> None:
@@ -536,17 +508,15 @@ class TestUploadCompletionHookIntegration(TestBase):
         hook.shutdown()
 
         ref_uri: str = log_record.attributes["gen_ai.input.messages_ref"]
-        self.assertTrue(
-            ref_uri.endswith(".jsonl"), f"{ref_uri=} does not end with .jsonl"
-        )
+        self.assertTrue(ref_uri.endswith(".jsonl"), f"{ref_uri=} does not end with .jsonl")
 
         self.assert_fsspec_equal(
             ref_uri,
-            """\
-{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}],"index":0}
-{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0","type":"tool_call"}],"index":1}
-{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0","type":"tool_call_response"}],"index":2}
-""",
+            '{"role":"user","parts":[{"content":"What is the capital of France?","type":"text"}],"index":0}\n'
+            '{"role":"assistant","parts":[{"arguments":{"city":"Paris"},"name":"get_capital","id":"get_capital_0",'
+            '"type":"tool_call"}],"index":1}\n'
+            '{"role":"user","parts":[{"response":{"capital":"Paris"},"id":"get_capital_0",'
+            '"type":"tool_call_response"}],"index":2}\n',
         )
 
     def test_upload_chained_filesystem_ref(self) -> None:

@@ -31,15 +31,9 @@ from opentelemetry.util.genai import types
 from opentelemetry.util.genai.completion_hook import CompletionHook
 from opentelemetry.util.genai.utils import gen_ai_json_dump
 
-GEN_AI_INPUT_MESSAGES_REF: Final = (
-    gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
-)
-GEN_AI_OUTPUT_MESSAGES_REF: Final = (
-    gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES + "_ref"
-)
-GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = (
-    gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS + "_ref"
-)
+GEN_AI_INPUT_MESSAGES_REF: Final = gen_ai_attributes.GEN_AI_INPUT_MESSAGES + "_ref"
+GEN_AI_OUTPUT_MESSAGES_REF: Final = gen_ai_attributes.GEN_AI_OUTPUT_MESSAGES + "_ref"
+GEN_AI_SYSTEM_INSTRUCTIONS_REF: Final = gen_ai_attributes.GEN_AI_SYSTEM_INSTRUCTIONS + "_ref"
 
 # TODO: Migrate to gen_ai_attributes constant once available in semconv package
 GEN_AI_TOOL_DEFINITIONS = "gen_ai.tool.definitions"
@@ -81,9 +75,7 @@ UploadData = dict[tuple[str, bool], Callable[[], JsonEncodeable]]
 def is_message_part_list_hashable(
     message_parts: list[types.MessagePart] | None,
 ) -> bool:
-    return bool(message_parts) and all(
-        isinstance(x, types.Text) for x in message_parts
-    )
+    return bool(message_parts) and all(isinstance(x, types.Text) for x in message_parts)
 
 
 def hash_tool_definitions(
@@ -92,10 +84,7 @@ def hash_tool_definitions(
     if not tool_definitions:
         return None
     try:
-        tool_dicts = [
-            {k: v for k, v in dataclasses.asdict(t).items() if v is not None}
-            for t in tool_definitions
-        ]
+        tool_dicts = [{k: v for k, v in dataclasses.asdict(t).items() if v is not None} for t in tool_definitions]
 
         encoded_tools = json.dumps(
             tool_dicts,
@@ -140,27 +129,20 @@ class UploadCompletionHook(CompletionHook):
         self.lru_cache_max_size = lru_cache_max_size
 
         if upload_format not in _FORMATS:
-            raise ValueError(
-                f"Invalid {upload_format=}. Must be one of {_FORMATS}"
-            )
+            raise ValueError(f"Invalid {upload_format=}. Must be one of {_FORMATS}")
         self._format = upload_format
-        self._content_type = (
-            "application/json"
-            if self._format == "json"
-            else "application/jsonl"
-        )
+        self._content_type = "application/json" if self._format == "json" else "application/jsonl"
         test_path = posixpath.join(
             self._base_path,
             f".one_off_test_to_see_if_upload_works.{self._format}",
         )
         try:
-            with self._fs.open(
-                test_path, "w", content_type=self._content_type
-            ) as file:
+            with self._fs.open(test_path, "w", content_type=self._content_type) as file:
                 file.write("\n")
         except Exception as exception:  # pylint: disable=broad-exception-caught
             raise ValueError(
-                f"Failed to write file to the following path, upload is not working: {test_path}.\n Got error: {exception}"
+                f"Failed to write file to the following path, upload is not working: {test_path}.\n "
+                f"Got error: {exception}"
             )
         # Try to delete the file.. But we don't explicitly ask people to grant the GCS delete IAM permission in our
         # docs, so if delete fails just leave the file..
@@ -171,9 +153,7 @@ class UploadCompletionHook(CompletionHook):
 
         # Use a ThreadPoolExecutor for its queueing and thread management. The semaphore
         # limits the number of queued tasks. If the queue is full, data will be dropped.
-        self._executor = ThreadPoolExecutor(
-            max_workers=min(self._max_queue_size, 64)
-        )
+        self._executor = ThreadPoolExecutor(max_workers=min(self._max_queue_size, 64))
         self._semaphore = threading.BoundedSemaphore(self._max_queue_size)
 
     def _submit_all(self, upload_data: UploadData) -> None:
@@ -209,9 +189,7 @@ class UploadCompletionHook(CompletionHook):
                 )
                 fut.add_done_callback(done)
             except RuntimeError:
-                _logger.info(
-                    "attempting to upload file after UploadCompletionHook.shutdown() was already called"
-                )
+                _logger.info("attempting to upload file after UploadCompletionHook.shutdown() was already called")
                 self._semaphore.release()
 
     def _calculate_ref_path(
@@ -235,12 +213,8 @@ class UploadCompletionHook(CompletionHook):
 
         uuid_str = str(uuid4())
         return CompletionRefs(
-            inputs_ref=posixpath.join(
-                self._base_path, f"{uuid_str}_inputs.{self._format}"
-            ),
-            outputs_ref=posixpath.join(
-                self._base_path, f"{uuid_str}_outputs.{self._format}"
-            ),
+            inputs_ref=posixpath.join(self._base_path, f"{uuid_str}_inputs.{self._format}"),
+            outputs_ref=posixpath.join(self._base_path, f"{uuid_str}_outputs.{self._format}"),
             system_instruction_ref=posixpath.join(
                 self._base_path,
                 f"{system_instruction_hash or uuid_str}_system_instruction.{self._format}",
@@ -314,9 +288,7 @@ class UploadCompletionHook(CompletionHook):
             tool_definitions=tool_definitions or None,
         )
         # generate the paths to upload to
-        ref_names = self._calculate_ref_path(
-            system_instruction, tool_definitions
-        )
+        ref_names = self._calculate_ref_path(system_instruction, tool_definitions)
 
         def to_dict(
             dataclass_list: list[types.InputMessage]
@@ -345,9 +317,7 @@ class UploadCompletionHook(CompletionHook):
                     ref_names.system_instruction_ref,
                     completion.system_instruction,
                     GEN_AI_SYSTEM_INSTRUCTIONS_REF,
-                    is_message_part_list_hashable(
-                        completion.system_instruction
-                    ),
+                    is_message_part_list_hashable(completion.system_instruction),
                 ),
                 (
                     ref_names.tool_definitions_ref,

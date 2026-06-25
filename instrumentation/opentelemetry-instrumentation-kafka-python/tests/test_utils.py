@@ -24,12 +24,8 @@ class TestUtils(TestCase):
         self.headers = []
         self.kwargs = {"partition": 0, "headers": self.headers}
 
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition"
-    )
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -49,12 +45,8 @@ class TestUtils(TestCase):
             extract_bootstrap_servers,
         )
 
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition"
-    )
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition")
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -91,17 +83,11 @@ class TestUtils(TestCase):
         expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
-        retval = wrapped_send(
-            original_send_callback, kafka_producer, self.args, self.kwargs
-        )
+        retval = wrapped_send(original_send_callback, kafka_producer, self.args, self.kwargs)
 
         extract_bootstrap_servers.assert_called_once_with(kafka_producer)
-        extract_send_partition.assert_called_once_with(
-            kafka_producer, self.args, self.kwargs
-        )
-        tracer.start_as_current_span.assert_called_once_with(
-            expected_span_name, kind=SpanKind.PRODUCER
-        )
+        extract_send_partition.assert_called_once_with(kafka_producer, self.args, self.kwargs)
+        tracer.start_as_current_span.assert_called_once_with(expected_span_name, kind=SpanKind.PRODUCER)
 
         span = tracer.start_as_current_span().__enter__.return_value
         enrich_span.assert_called_once_with(
@@ -113,24 +99,16 @@ class TestUtils(TestCase):
 
         set_span_in_context.assert_called_once_with(span)
         context = set_span_in_context.return_value
-        inject.assert_called_once_with(
-            self.headers, context=context, setter=_kafka_setter
-        )
+        inject.assert_called_once_with(self.headers, context=context, setter=_kafka_setter)
 
         produce_hook.assert_called_once_with(span, self.args, self.kwargs)
 
-        original_send_callback.assert_called_once_with(
-            *self.args, **self.kwargs
-        )
+        original_send_callback.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(retval, original_send_callback.return_value)
 
     @mock.patch("opentelemetry.propagate.extract")
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils._create_consumer_span"
-    )
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers"
-    )
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._create_consumer_span")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers")
     def test_wrap_next(
         self,
         extract_bootstrap_servers: mock.MagicMock,
@@ -143,16 +121,12 @@ class TestUtils(TestCase):
         kafka_consumer = mock.MagicMock()
 
         wrapped_next = _wrap_next(tracer, consume_hook)
-        record = wrapped_next(
-            original_next_callback, kafka_consumer, self.args, self.kwargs
-        )
+        record = wrapped_next(original_next_callback, kafka_consumer, self.args, self.kwargs)
 
         extract_bootstrap_servers.assert_called_once_with(kafka_consumer)
         bootstrap_servers = extract_bootstrap_servers.return_value
 
-        original_next_callback.assert_called_once_with(
-            *self.args, **self.kwargs
-        )
+        original_next_callback.assert_called_once_with(*self.args, **self.kwargs)
         self.assertEqual(record, original_next_callback.return_value)
 
         extract.assert_called_once_with(record.headers, getter=_kafka_getter)
@@ -206,17 +180,11 @@ class TestUtils(TestCase):
         set_span_in_context.assert_called_once_with(span, extracted_context)
         attach.assert_called_once_with(set_span_in_context.return_value)
 
-        enrich_span.assert_called_once_with(
-            span, bootstrap_servers, record.topic, record.partition
-        )
-        consume_hook.assert_called_once_with(
-            span, record, self.args, self.kwargs
-        )
+        enrich_span.assert_called_once_with(span, bootstrap_servers, record.topic, record.partition)
+        consume_hook.assert_called_once_with(span, record, self.args, self.kwargs)
         detach.assert_called_once_with(attach.return_value)
 
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor"
-    )
+    @mock.patch("opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor")
     def test_kafka_properties_extractor(
         self,
         kafka_properties_extractor: mock.MagicMock,
@@ -224,17 +192,10 @@ class TestUtils(TestCase):
         kafka_properties_extractor._serialize.return_value = None
         kafka_properties_extractor._partition.return_value = "partition"
         assert (
-            KafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
-            )
+            KafkaPropertiesExtractor.extract_send_partition(kafka_properties_extractor, self.args, self.kwargs)
             == "partition"
         )
-        kafka_properties_extractor._wait_on_metadata.side_effect = Exception(
-            "mocked error"
-        )
+        kafka_properties_extractor._wait_on_metadata.side_effect = Exception("mocked error")
         assert (
-            KafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
-            )
-            is None
+            KafkaPropertiesExtractor.extract_send_partition(kafka_properties_extractor, self.args, self.kwargs) is None
         )

@@ -20,15 +20,11 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 # configure tracing
 trace.set_tracer_provider(TracerProvider())
-trace.get_tracer_provider().add_span_processor(
-    BatchSpanProcessor(OTLPSpanExporter())
-)
+trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
 # configure logging and events
 _logs.set_logger_provider(LoggerProvider())
-_logs.get_logger_provider().add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter())
-)
+_logs.get_logger_provider().add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
 
 # instrument Anthropic
 AnthropicInstrumentor().instrument()
@@ -39,9 +35,7 @@ def main():
     message = client.messages.create(
         model="claude-3-5-sonnet-20241022",
         max_tokens=1024,
-        messages=[
-            {"role": "user", "content": "Write a short poem on OpenTelemetry."}
-        ],
+        messages=[{"role": "user", "content": "Write a short poem on OpenTelemetry."}],
     )
     print(message.content[0].text)
 

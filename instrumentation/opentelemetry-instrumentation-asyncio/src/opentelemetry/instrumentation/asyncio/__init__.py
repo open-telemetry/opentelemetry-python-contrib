@@ -120,12 +120,8 @@ class AsyncioInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
-        self._tracer = get_tracer(
-            __name__, __version__, kwargs.get("tracer_provider")
-        )
-        self._meter = get_meter(
-            __name__, __version__, kwargs.get("meter_provider")
-        )
+        self._tracer = get_tracer(__name__, __version__, kwargs.get("tracer_provider"))
+        self._meter = get_meter(__name__, __version__, kwargs.get("meter_provider"))
 
         self._coros_name_to_trace = get_coros_to_trace()
         self._future_active_enabled = get_future_trace_enabled()
@@ -167,15 +163,11 @@ class AsyncioInstrumentor(BaseInstrumentor):
             if args and len(args) > 0:
                 first_arg = args[0]
                 # Check if it's a coroutine or future and wrap it
-                if asyncio.iscoroutine(first_arg) or futures.isfuture(
-                    first_arg
-                ):
+                if asyncio.iscoroutine(first_arg) or futures.isfuture(first_arg):
                     args = (self.trace_item(first_arg),) + args[1:]
                 # Check if it's a list and wrap each item
                 elif isinstance(first_arg, list):
-                    args = (
-                        [self.trace_item(item) for item in first_arg],
-                    ) + args[1:]
+                    args = ([self.trace_item(item) for item in first_arg],) + args[1:]
             return method(*args, **kwargs)
 
         _wrap(asyncio, method_name, wrap_coro_or_future)
@@ -308,31 +300,19 @@ class AsyncioInstrumentor(BaseInstrumentor):
             return future
 
         start = default_timer()
-        span = (
-            self._tracer.start_span(f"{ASYNCIO_PREFIX} future")
-            if self._future_active_enabled
-            else None
-        )
+        span = self._tracer.start_span(f"{ASYNCIO_PREFIX} future") if self._future_active_enabled else None
 
         def callback(f):
             attr = {
                 "type": "future",
-                "state": (
-                    "cancelled"
-                    if f.cancelled()
-                    else determine_state(f.exception())
-                ),
+                "state": ("cancelled" if f.cancelled() else determine_state(f.exception())),
             }
-            self.record_process(
-                start, attr, span, None if f.cancelled() else f.exception()
-            )
+            self.record_process(start, attr, span, None if f.cancelled() else f.exception())
 
         future.add_done_callback(callback)
         return future
 
-    def record_process(
-        self, start: float, attr: dict, span=None, exception=None
-    ) -> None:
+    def record_process(self, start: float, attr: dict, span=None, exception=None) -> None:
         """
         Record the processing time, update histogram and counter, and handle span.
 

@@ -333,16 +333,10 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
-                    server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
-                    ),
+                    server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
                 )
             else:
-                kwargs["interceptors"] = [
-                    server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
-                    )
-                ]
+                kwargs["interceptors"] = [server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
 
             return self._original_func(*args, **kwargs)
 
@@ -387,16 +381,10 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
-                    aio_server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
-                    ),
+                    aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
                 )
             else:
-                kwargs["interceptors"] = [
-                    aio_server_interceptor(
-                        tracer_provider=tracer_provider, filter_=self._filter
-                    )
-                ]
+                kwargs["interceptors"] = [aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
             return self._original_func(*args, **kwargs)
 
         grpc.aio.server = server
@@ -558,9 +546,7 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         grpc.aio.secure_channel = self._original_secure
 
 
-def client_interceptor(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
-):
+def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -615,9 +601,7 @@ def server_interceptor(tracer_provider=None, filter_=None):
     return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
 
 
-def aio_client_interceptors(
-    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
-):
+def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -681,15 +665,11 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
-    return _aio_server.OpenTelemetryAioServerInterceptor(
-        tracer, filter_=filter_
-    )
+    return _aio_server.OpenTelemetryAioServerInterceptor(tracer, filter_=filter_)
 
 
 def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
-    services = _parse_services(
-        os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", "")
-    )
+    services = _parse_services(os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", ""))
     if len(services) == 0:
         return None
     filters = (service_name(srv) for srv in services)
@@ -698,9 +678,7 @@ def _excluded_service_filter() -> Union[Callable[[object], bool], None]:
 
 def _parse_services(excluded_services: str) -> List[str]:
     if excluded_services != "":
-        excluded_service_list = [
-            s.strip() for s in excluded_services.split(",")
-        ]
+        excluded_service_list = [s.strip() for s in excluded_services.split(",")]
     else:
         excluded_service_list = []
     return excluded_service_list

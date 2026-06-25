@@ -45,25 +45,15 @@ class TestCassandraIntegration(TestBase):
     def test_instrument_uninstrument(self):
         instrumentation = CassandraInstrumentor()
         instrumentation.instrument()
-        self.assertTrue(
-            isinstance(
-                cassandra.cluster.Session.execute_async, BoundFunctionWrapper
-            )
-        )
+        self.assertTrue(isinstance(cassandra.cluster.Session.execute_async, BoundFunctionWrapper))
 
         instrumentation.uninstrument()
-        self.assertFalse(
-            isinstance(
-                cassandra.cluster.Session.execute_async, BoundFunctionWrapper
-            )
-        )
+        self.assertFalse(isinstance(cassandra.cluster.Session.execute_async, BoundFunctionWrapper))
 
     @mock.patch("cassandra.cluster.Cluster.connect")
     @mock.patch("cassandra.cluster.Session.__init__")
     @mock.patch("cassandra.cluster.Session._create_response_future")
-    def test_instrumentor(
-        self, mock_create_response_future, mock_session_init, mock_connect
-    ):
+    def test_instrumentor(self, mock_create_response_future, mock_session_init, mock_connect):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
         mock_connect.return_value = self._mocked_session
@@ -77,9 +67,7 @@ class TestCassandraIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.cassandra
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.cassandra)
         self.assertEqual(span.name, "Cassandra")
         self.assertEqual(span.kind, SpanKind.CLIENT)
 
@@ -94,9 +82,7 @@ class TestCassandraIntegration(TestBase):
     @mock.patch("cassandra.cluster.Cluster.connect")
     @mock.patch("cassandra.cluster.Session.__init__")
     @mock.patch("cassandra.cluster.Session._create_response_future")
-    def test_custom_tracer_provider(
-        self, mock_create_response_future, mock_session_init, mock_connect
-    ):
+    def test_custom_tracer_provider(self, mock_create_response_future, mock_session_init, mock_connect):
         mock_create_response_future.return_value = mock.Mock()
         mock_session_init.return_value = None
         mock_connect.return_value = self._mocked_session
@@ -143,9 +129,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
     """
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_cassandra_driver_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_cassandra_driver_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):
@@ -163,14 +147,10 @@ class TestCassandraInstrumentationDependencies(TestCase):
                 call("cassandra-driver"),
             ],
         )
-        self.assertEqual(
-            package_to_instrument, (_instruments_cassandra_driver,)
-        )
+        self.assertEqual(package_to_instrument, (_instruments_cassandra_driver,))
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_scylla_driver_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_scylla_driver_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):
@@ -192,9 +172,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
         self.assertEqual(package_to_instrument, (_instruments_scylla_driver,))
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_both_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_both_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):
@@ -206,17 +184,11 @@ class TestCassandraInstrumentationDependencies(TestCase):
         package_to_instrument = instrumentation.instrumentation_dependencies()
 
         self.assertEqual(mock_distribution.call_count, 1)
-        self.assertEqual(
-            mock_distribution.mock_calls, [call("cassandra-driver")]
-        )
-        self.assertEqual(
-            package_to_instrument, (_instruments_cassandra_driver,)
-        )
+        self.assertEqual(mock_distribution.mock_calls, [call("cassandra-driver")])
+        self.assertEqual(package_to_instrument, (_instruments_cassandra_driver,))
 
     @patch("opentelemetry.instrumentation.cassandra.distribution")
-    def test_instrumentation_dependencies_none_installed(
-        self, mock_distribution
-    ) -> None:
+    def test_instrumentation_dependencies_none_installed(self, mock_distribution) -> None:
         instrumentation = CassandraInstrumentor()
 
         def _distribution(name):

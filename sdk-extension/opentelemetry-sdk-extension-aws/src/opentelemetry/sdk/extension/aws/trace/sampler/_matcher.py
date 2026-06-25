@@ -25,9 +25,7 @@ cloud_platform_mapping = {
 
 class _Matcher:
     @staticmethod
-    def wild_card_match(
-        text: AttributeValue | None = None, pattern: str | None = None
-    ) -> bool:
+    def wild_card_match(text: AttributeValue | None = None, pattern: str | None = None) -> bool:
         if pattern == "*":
             return True
         if not isinstance(text, str) or pattern is None:
@@ -36,10 +34,7 @@ class _Matcher:
             return len(text) == 0
         for char in pattern:
             if char in ("*", "?"):
-                return (
-                    re.fullmatch(_Matcher.to_regex_pattern(pattern), text)
-                    is not None
-                )
+                return re.fullmatch(_Matcher.to_regex_pattern(pattern), text) is not None
         return pattern == text
 
     @staticmethod
@@ -70,11 +65,7 @@ class _Matcher:
     ) -> bool:
         if rule_attributes is None or len(rule_attributes) == 0:
             return True
-        if (
-            attributes is None
-            or len(attributes) == 0
-            or len(rule_attributes) > len(attributes)
-        ):
+        if attributes is None or len(attributes) == 0 or len(rule_attributes) > len(attributes):
             return False
 
         matched_count = 0

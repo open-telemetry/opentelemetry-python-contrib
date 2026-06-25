@@ -70,12 +70,8 @@ class CIDict(MutableMapping[KT, VT]):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, CIDict):
-            return dict(self.normalized_items()) == dict(
-                other.normalized_items()
-            )
+            return dict(self.normalized_items()) == dict(other.normalized_items())
         if not isinstance(other, Mapping):
             return False
         ciother: CIDict[Any, Any] = CIDict(other)
-        return dict(self.normalized_items()) == dict(
-            ciother.normalized_items()
-        )
+        return dict(self.normalized_items()) == dict(ciother.normalized_items())

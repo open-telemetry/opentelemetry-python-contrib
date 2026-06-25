@@ -38,9 +38,7 @@ def upload_completion_hook() -> CompletionHook:
             UploadCompletionHook,
         )
     except ImportError:
-        _logger.exception(
-            "Failed to import `fsspec`. Falling back to `NoOpCompletionHook`."
-        )
+        _logger.exception("Failed to import `fsspec`. Falling back to `NoOpCompletionHook`.")
         return _NoOpCompletionHook()
 
     environ_max_queue_size = environ.get(
@@ -58,9 +56,7 @@ def upload_completion_hook() -> CompletionHook:
         )
         environ_max_queue_size = _DEFAULT_MAX_QUEUE_SIZE
 
-    environ_format = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT, _DEFAULT_FORMAT
-    ).lower()
+    environ_format = environ.get(OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT, _DEFAULT_FORMAT).lower()
 
     if environ_format not in _FORMATS:
         _logger.warning(

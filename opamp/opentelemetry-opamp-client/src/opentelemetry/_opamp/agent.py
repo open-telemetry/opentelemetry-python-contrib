@@ -23,9 +23,7 @@ def _safe_invoke(function: Callable[..., Any], *args: Any) -> None:
         function_name = function.__name__
         function(*args)
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.error(
-            "Error when invoking function '%s'", function_name, exc_info=exc
-        )
+        logger.error("Error when invoking function '%s'", function_name, exc_info=exc)
 
 
 class _Job:
@@ -54,11 +52,7 @@ class _Job:
     def delay(self) -> float:
         """Calculate the delay before next retry"""
         assert self.attempt > 0
-        return (
-            self.initial_backoff
-            * (2 ** (self.attempt - 1))
-            * random.uniform(0.8, 1.2)
-        )
+        return self.initial_backoff * (2 ** (self.attempt - 1)) * random.uniform(0.8, 1.2)
 
 
 class OpAMPAgent:
@@ -97,12 +91,8 @@ class OpAMPAgent:
         self._queue: queue.Queue[_Job] = queue.Queue()
         self._stop = threading.Event()
 
-        self._worker = threading.Thread(
-            name="OpAMPAgentWorker", target=self._run_worker, daemon=True
-        )
-        self._scheduler = threading.Thread(
-            name="OpAMPAgentScheduler", target=self._run_scheduler, daemon=True
-        )
+        self._worker = threading.Thread(name="OpAMPAgentWorker", target=self._run_worker, daemon=True)
+        self._scheduler = threading.Thread(name="OpAMPAgentScheduler", target=self._run_scheduler, daemon=True)
         # start scheduling only after connection with server has been established
         self._schedule = False
 
@@ -140,9 +130,7 @@ class OpAMPAgent:
         Enqueue an on-demand request.
         """
         if not self._worker.is_alive():
-            logger.warning(
-                "Called send() but worker thread is not alive. Worker threads is started with start()"
-            )
+            logger.warning("Called send() but worker thread is not alive. Worker threads is started with start()")
 
         if max_retries is None:
             max_retries = self._max_retries
@@ -185,9 +173,7 @@ class OpAMPAgent:
             while job.should_retry() and not self._stop.is_set():
                 try:
                     message = self._client.send(job.payload)
-                    _safe_invoke(
-                        self._callbacks.on_connect, self, self._client
-                    )
+                    _safe_invoke(self._callbacks.on_connect, self, self._client)
                     logger.debug("Job succeeded: %r", job.payload)
                     break
                 except Exception as exc:
@@ -207,9 +193,7 @@ class OpAMPAgent:
                     )
 
                     if not job.should_retry():
-                        logger.error(
-                            "Job %r dropped after max retries", job.payload
-                        )
+                        logger.error("Job %r dropped after max retries", job.payload)
                         break
 
                     # exponential backoff with +/- 20% jitter, interruptible by stop event
@@ -217,9 +201,7 @@ class OpAMPAgent:
                     logger.debug("Retrying in %.1fs", delay)
                     if self._stop.wait(delay):
                         # stop requested during backoff: abandon job
-                        logger.debug(
-                            "Stop signaled, abandoning job %r", job.payload
-                        )
+                        logger.debug("Stop signaled, abandoning job %r", job.payload)
                         break
 
             if message is not None:
@@ -270,9 +252,7 @@ class OpAMPAgent:
         try:
             self._client.send(payload)
         except Exception:  # pylint: disable=broad-exception-caught
-            logger.debug(
-                "Stopping OpAMPAgent: failed to send AgentDisconnect message"
-            )
+            logger.debug("Stopping OpAMPAgent: failed to send AgentDisconnect message")
 
         logger.debug("Stopping OpAMPAgent: signaling threads")
         # Signal threads to exit
@@ -281,13 +261,9 @@ class OpAMPAgent:
         try:
             self._worker.join(timeout=timeout)
         except RuntimeError as exc:
-            logger.warning(
-                "Stopping OpAMPAgent: worker thread failed to join %s", exc
-            )
+            logger.warning("Stopping OpAMPAgent: worker thread failed to join %s", exc)
         try:
             self._scheduler.join(timeout=timeout)
         except RuntimeError as exc:
-            logger.warning(
-                "Stopping OpAMPAgent: scheduler thread failed to join %s", exc
-            )
+            logger.warning("Stopping OpAMPAgent: scheduler thread failed to join %s", exc)
         logger.debug("OpAMPAgent stopped")

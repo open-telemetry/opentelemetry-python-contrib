@@ -43,12 +43,7 @@ class TestAsyncioToThread(TestBase):
 
         self.assertEqual(len(spans), 2)
         assert spans[0].name == "asyncio to_thread-multiply"
-        for metric in (
-            self.memory_metrics_reader.get_metrics_data()
-            .resource_metrics[0]
-            .scope_metrics[0]
-            .metrics
-        ):
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["type"], "to_thread")
@@ -74,12 +69,7 @@ class TestAsyncioToThread(TestBase):
 
         self.assertEqual(len(spans), 2)
         assert spans[0].name == "asyncio to_thread-multiply"
-        for metric in (
-            self.memory_metrics_reader.get_metrics_data()
-            .resource_metrics[0]
-            .scope_metrics[0]
-            .metrics
-        ):
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["type"], "to_thread")

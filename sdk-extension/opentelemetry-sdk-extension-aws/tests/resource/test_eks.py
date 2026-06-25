@@ -19,11 +19,7 @@ from opentelemetry.semconv.resource import (
 
 def _bearer_jwt(payload: dict) -> str:
     header = base64.urlsafe_b64encode(b'{"alg":"RS256"}').rstrip(b"=").decode()
-    body = (
-        base64.urlsafe_b64encode(json.dumps(payload).encode())
-        .rstrip(b"=")
-        .decode()
-    )
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
     return f"Bearer {header}.{body}.fakesig"
 
 
@@ -50,26 +46,32 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
     )
     @patch(
         "opentelemetry.sdk.extension.aws.resource.eks._get_cluster_info",
-        return_value=f"""{{
-  "kind": "ConfigMap",
-  "apiVersion": "v1",
-  "metadata": {{
-    "name": "cluster-info",
-    "namespace": "amazon-cloudwatch",
-    "selfLink": "/api/v1/namespaces/amazon-cloudwatch/configmaps/cluster-info",
-    "uid": "0734438c-48f4-45c3-b06d-b6f16f7f0e1e",
-    "resourceVersion": "25911",
-    "creationTimestamp": "2021-07-23T18:41:56Z",
-    "annotations": {{
-      "kubectl.kubernetes.io/last-applied-configuration": "{{\\"apiVersion\\":\\"v1\\",\\"data\\":{{\\"cluster.name\\":\\"{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}\\",\\"logs.region\\":\\"us-west-2\\"}},\\"kind\\":\\"ConfigMap\\",\\"metadata\\":{{\\"annotations\\":{{}},\\"name\\":\\"cluster-info\\",\\"namespace\\":\\"amazon-cloudwatch\\"}}}}\\n"
-    }}
-  }},
-  "data": {{
-    "cluster.name": "{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}",
-    "logs.region": "us-west-2"
-  }}
-}}
-""",
+        return_value=(
+            "{\n"
+            '  "kind": "ConfigMap",\n'
+            '  "apiVersion": "v1",\n'
+            '  "metadata": {\n'
+            '    "name": "cluster-info",\n'
+            '    "namespace": "amazon-cloudwatch",\n'
+            '    "selfLink": "/api/v1/namespaces/amazon-cloudwatch/configmaps/cluster-info",\n'
+            '    "uid": "0734438c-48f4-45c3-b06d-b6f16f7f0e1e",\n'
+            '    "resourceVersion": "25911",\n'
+            '    "creationTimestamp": "2021-07-23T18:41:56Z",\n'
+            '    "annotations": {\n'
+            '      "kubectl.kubernetes.io/last-applied-configuration": '
+            '"{\\"apiVersion\\":\\"v1\\",\\"data\\":{\\"cluster.name\\":\\"'
+            f"{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}"
+            '\\",\\"logs.region\\":\\"us-west-2\\"},\\"kind\\":\\"ConfigMap\\",'
+            '\\"metadata\\":{\\"annotations\\":{},\\"name\\":\\"cluster-info\\",'
+            '\\"namespace\\":\\"amazon-cloudwatch\\"}}\\n"\n'
+            "    }\n"
+            "  },\n"
+            '  "data": {\n'
+            f'    "cluster.name": "{MockEksResourceAttributes[ResourceAttributes.K8S_CLUSTER_NAME]}",\n'
+            '    "logs.region": "us-west-2"\n'
+            "  }\n"
+            "}\n"
+        ),
     )
     @patch(
         "builtins.open",
@@ -99,9 +101,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         mock_get_k8_cred_value,
     ):
         actual = AwsEksResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), OrderedDict(MockEksResourceAttributes)
-        )
+        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockEksResourceAttributes))
 
     @patch(
         "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
@@ -115,9 +115,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
         return_value=True,
     )
-    def test_if_no_eks_env_var_and_should_raise(
-        self, mock_is_k8s, mock_is_eks, mock_get_k8_cred_value
-    ):
+    def test_if_no_eks_env_var_and_should_raise(self, mock_is_k8s, mock_is_eks, mock_get_k8_cred_value):
         with self.assertRaises(RuntimeError):
             AwsEksResourceDetector(raise_on_error=True).detect()
 
@@ -133,9 +131,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
         return_value=False,
     )
-    def test_if_no_eks_paths_should_not_raise(
-        self, mock_is_k8s, mock_is_eks, mock_get_k8_cred_value
-    ):
+    def test_if_no_eks_paths_should_not_raise(self, mock_is_k8s, mock_is_eks, mock_get_k8_cred_value):
         try:
             AwsEksResourceDetector(raise_on_error=True).detect()
         except RuntimeError:
@@ -144,9 +140,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
     @patch(
         "opentelemetry.sdk.extension.aws.resource.eks._get_k8s_cred_value",
         return_value=_bearer_jwt(
-            {
-                "iss": "https://oidc.eks.eu-west-2.amazonaws.com/id/A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4"
-            }
+            {"iss": "https://oidc.eks.eu-west-2.amazonaws.com/id/A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4"}
         ),
     )
     @patch(
@@ -188,9 +182,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
         return_value=True,
     )
-    def test_non_eks_jwt_returns_empty(
-        self, mock_is_k8s, mock_get_k8s_cred_value
-    ):
+    def test_non_eks_jwt_returns_empty(self, mock_is_k8s, mock_get_k8s_cred_value):
         actual = AwsEksResourceDetector().detect()
         self.assertEqual(actual.attributes, {})
 
@@ -202,9 +194,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
         return_value=True,
     )
-    def test_non_eks_jwt_should_raise(
-        self, mock_is_k8s, mock_get_k8s_cred_value
-    ):
+    def test_non_eks_jwt_should_raise(self, mock_is_k8s, mock_get_k8s_cred_value):
         with self.assertRaises(RuntimeError):
             AwsEksResourceDetector(raise_on_error=True).detect()
 
@@ -216,9 +206,7 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
         return_value=True,
     )
-    def test_is_eks_wrong_parts_count_should_raise(
-        self, mock_is_k8s, mock_get_k8s_cred_value
-    ):
+    def test_is_eks_wrong_parts_count_should_raise(self, mock_is_k8s, mock_get_k8s_cred_value):
         with self.assertRaises(RuntimeError):
             AwsEksResourceDetector(raise_on_error=True).detect()
 
@@ -230,8 +218,6 @@ class AwsEksResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.eks._is_k8s",
         return_value=True,
     )
-    def test_is_eks_invalid_json_payload_should_raise(
-        self, mock_is_k8s, mock_get_k8s_cred_value
-    ):
+    def test_is_eks_invalid_json_payload_should_raise(self, mock_is_k8s, mock_get_k8s_cred_value):
         with self.assertRaises(RuntimeError):
             AwsEksResourceDetector(raise_on_error=True).detect()

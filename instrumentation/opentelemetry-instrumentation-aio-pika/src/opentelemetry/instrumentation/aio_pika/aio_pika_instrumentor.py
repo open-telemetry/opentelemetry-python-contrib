@@ -31,9 +31,7 @@ class AioPikaInstrumentor(BaseInstrumentor):
                 *fargs,
                 **fkwargs,
             ):
-                decorated_callback = CallbackDecorator(
-                    tracer, instance
-                ).decorate(callback)
+                decorated_callback = CallbackDecorator(tracer, instance).decorate(callback)
                 return await wrapped(decorated_callback, *fargs, **fkwargs)
 
             return await consume(*args, **kwargs)
@@ -43,9 +41,7 @@ class AioPikaInstrumentor(BaseInstrumentor):
     @staticmethod
     def _instrument_exchange(tracer: Tracer):
         async def wrapper(wrapped, instance, args, kwargs):
-            decorated_publish = PublishDecorator(tracer, instance).decorate(
-                wrapped
-            )
+            decorated_publish = PublishDecorator(tracer, instance).decorate(wrapped)
             return await decorated_publish(*args, **kwargs)
 
         wrapt.wrap_function_wrapper(Exchange, "publish", wrapper)

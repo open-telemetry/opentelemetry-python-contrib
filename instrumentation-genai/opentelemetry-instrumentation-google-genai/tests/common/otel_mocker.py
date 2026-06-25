@@ -149,9 +149,7 @@ class OTelMocker:
                 for scope_metrics in resource_metric.scope_metrics:
                     scope = scope_metrics.scope
                     for metric in scope_metrics.metrics:
-                        wrapper = _MetricDataPointWrapper(
-                            resource, scope, metric
-                        )
+                        wrapper = _MetricDataPointWrapper(resource, scope, metric)
                         self._metrics_data.append(wrapper)
         return self._metrics_data
 
@@ -164,9 +162,7 @@ class OTelMocker:
     def assert_has_span_named(self, name):
         span = self.get_span_named(name)
         finished_spans = [span.name for span in self.get_finished_spans()]
-        assert span is not None, (
-            f'Could not find span named "{name}"; finished spans: {finished_spans}'
-        )
+        assert span is not None, f'Could not find span named "{name}"; finished spans: {finished_spans}'
 
     def assert_does_not_have_span_named(self, name):
         span = self.get_span_named(name)
@@ -174,27 +170,17 @@ class OTelMocker:
 
     def get_event_named(self, event_name):
         return next(
-            (
-                event
-                for event in self.get_finished_logs()
-                if event.event_name == event_name
-            ),
+            (event for event in self.get_finished_logs() if event.event_name == event_name),
             None,
         )
 
     def get_events_named(self, event_name):
-        return [
-            event
-            for event in self.get_finished_logs()
-            if event.event_name == event_name
-        ]
+        return [event for event in self.get_finished_logs() if event.event_name == event_name]
 
     def assert_has_event_named(self, name):
         event = self.get_event_named(name)
         finished_logs = self.get_finished_logs()
-        assert event is not None, (
-            f'Could not find event named "{name}"; finished logs: {finished_logs}'
-        )
+        assert event is not None, f'Could not find event named "{name}"; finished logs: {finished_logs}'
 
     def assert_does_not_have_event_named(self, name):
         event = self.get_event_named(name)

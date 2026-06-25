@@ -29,9 +29,7 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
     async def abort(self, code, details="", trailing_metadata=tuple()):
         self._self_code = code
         self._self_details = details
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
-        )
+        self._self_active_span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
         status = _server_status(code, details)
         self._self_active_span.set_status(status)
         return await self.__wrapped__.abort(code, details, trailing_metadata)
@@ -39,9 +37,7 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
     def set_code(self, code):
         self._self_code = code
         details = self._self_details or code.value[1]
-        self._self_active_span.set_attribute(
-            RPC_GRPC_STATUS_CODE, code.value[0]
-        )
+        self._self_active_span.set_attribute(RPC_GRPC_STATUS_CODE, code.value[0])
         if code != grpc.StatusCode.OK:
             status = _server_status(code, details)
             self._self_active_span.set_status(status)
@@ -55,9 +51,7 @@ class _OpenTelemetryAioServicerContext(BaseObjectProxy):
         return self.__wrapped__.set_details(details)
 
 
-class OpenTelemetryAioServerInterceptor(
-    grpc.aio.ServerInterceptor, OpenTelemetryServerInterceptor
-):
+class OpenTelemetryAioServerInterceptor(grpc.aio.ServerInterceptor, OpenTelemetryServerInterceptor):
     """
     An AsyncIO gRPC server interceptor, to add OpenTelemetry.
     Usage::
@@ -128,9 +122,7 @@ class OpenTelemetryAioServerInterceptor(
                     context = _OpenTelemetryAioServicerContext(context, span)
 
                     try:
-                        async for response in behavior(
-                            request_or_iterator, context
-                        ):
+                        async for response in behavior(request_or_iterator, context):
                             yield response
 
                     except Exception as error:

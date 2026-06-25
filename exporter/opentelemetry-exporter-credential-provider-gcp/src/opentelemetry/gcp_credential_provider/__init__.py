@@ -14,9 +14,7 @@ def create_google_grpc_credentials() -> grpc.ChannelCredentials:
     credentials, _ = google.auth.default()
     return grpc.composite_channel_credentials(
         grpc.ssl_channel_credentials(),
-        grpc.metadata_call_credentials(
-            AuthMetadataPlugin(credentials=credentials, request=Request())
-        ),
+        grpc.metadata_call_credentials(AuthMetadataPlugin(credentials=credentials, request=Request())),
     )
 
 

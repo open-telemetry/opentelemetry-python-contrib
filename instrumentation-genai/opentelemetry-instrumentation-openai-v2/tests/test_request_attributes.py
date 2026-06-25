@@ -90,10 +90,7 @@ def test_embeddings_span_name_includes_model():
         GenAIAttributes.GEN_AI_OPERATION_NAME: "embeddings",
         GenAIAttributes.GEN_AI_REQUEST_MODEL: "text-embedding-3-small",
     }
-    assert (
-        _get_embeddings_span_name(span_attributes)
-        == "embeddings text-embedding-3-small"
-    )
+    assert _get_embeddings_span_name(span_attributes) == "embeddings text-embedding-3-small"
 
 
 def test_embeddings_span_name_without_model():

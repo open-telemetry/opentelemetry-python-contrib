@@ -59,11 +59,7 @@ SCOPE = "opentelemetry.instrumentation.tornado"
 class TestTornadoMetricsInstrumentation(TornadoTest):
     # Return Sequence with one histogram
     def create_histogram_data_points(self, sum_data_point, attributes):
-        return [
-            self.create_histogram_data_point(
-                sum_data_point, 1, sum_data_point, sum_data_point, attributes
-            )
-        ]
+        return [self.create_histogram_data_point(sum_data_point, 1, sum_data_point, sum_data_point, attributes)]
 
     def test_basic_metrics(self):
         start_time = default_timer()
@@ -86,9 +82,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
             server_response_size,
         ) = metrics[3:]
 
-        self.assertEqual(
-            server_active_request.name, "http.server.active_requests"
-        )
+        self.assertEqual(server_active_request.name, "http.server.active_requests")
         self.assert_metric_expected(
             server_active_request,
             [
@@ -138,9 +132,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
             ),
         )
 
-        self.assertEqual(
-            server_response_size.name, "http.server.response.size"
-        )
+        self.assertEqual(server_response_size.name, "http.server.response.size")
         self.assert_metric_expected(
             server_response_size,
             self.create_histogram_data_points(
@@ -183,9 +175,7 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
             ),
         )
 
-        self.assertEqual(
-            client_response_size.name, "http.client.response.size"
-        )
+        self.assertEqual(client_response_size.name, "http.client.response.size")
         self.assert_metric_expected(
             client_response_size,
             self.create_histogram_data_points(
@@ -218,47 +208,31 @@ class TestTornadoMetricsInstrumentation(TornadoTest):
         # Calculating duration requires tracking state via `_HANDLER_STATE_KEY`, so we want to make sure
         # duration is calculated properly per request, and doesn't affect concurrent requests.
         req1_client_duration_data_point = next(
-            dp
-            for dp in client_duration.data.data_points
-            if "/slow" in dp.attributes.get("http.url")
+            dp for dp in client_duration.data.data_points if "/slow" in dp.attributes.get("http.url")
         )
         req1_server_duration_data_point = next(
-            dp
-            for dp in server_duration.data.data_points
-            if "/slow" in dp.attributes.get("http.target")
+            dp for dp in server_duration.data.data_points if "/slow" in dp.attributes.get("http.target")
         )
         req2_client_duration_data_point = next(
-            dp
-            for dp in client_duration.data.data_points
-            if "/async" in dp.attributes.get("http.url")
+            dp for dp in client_duration.data.data_points if "/async" in dp.attributes.get("http.url")
         )
         req2_server_duration_data_point = next(
-            dp
-            for dp in server_duration.data.data_points
-            if "/async" in dp.attributes.get("http.target")
+            dp for dp in server_duration.data.data_points if "/async" in dp.attributes.get("http.target")
         )
 
         # Server and client durations should be similar (adjusting for msecs vs secs)
 
         # Give bigger delta for PyPy coarse timers
         def metrics_delta(delta):
-            return (
-                0.05 if platform.python_implementation() == "PyPy" else delta
-            )
+            return 0.05 if platform.python_implementation() == "PyPy" else delta
 
         self.assertAlmostEqual(
-            abs(
-                req1_server_duration_data_point.sum / 1000.0
-                - req1_client_duration_data_point.sum
-            ),
+            abs(req1_server_duration_data_point.sum / 1000.0 - req1_client_duration_data_point.sum),
             0.0,
             delta=metrics_delta(0.01),
         )
         self.assertAlmostEqual(
-            abs(
-                req2_server_duration_data_point.sum / 1000.0
-                - req2_client_duration_data_point.sum
-            ),
+            abs(req2_server_duration_data_point.sum / 1000.0 - req2_client_duration_data_point.sum),
             0.0,
             delta=metrics_delta(0.02),
         )
@@ -403,14 +377,10 @@ class TestTornadoSemconvDefault(TornadoSemconvTestBase):
                 attributes = dict(data_point.attributes)
 
                 self.assertIn(HTTP_TARGET, attributes)
-                self.assertEqual(
-                    attributes[HTTP_TARGET], "/parametrized/{message}/"
-                )
+                self.assertEqual(attributes[HTTP_TARGET], "/parametrized/{message}/")
 
         self.assertTrue(old_duration_found, "Old semconv metric not found")
-        self.assertFalse(
-            new_duration_found, "New semconv metric should not be present"
-        )
+        self.assertFalse(new_duration_found, "New semconv metric should not be present")
 
 
 class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
@@ -493,13 +463,9 @@ class TestTornadoSemconvHttpNew(TornadoSemconvTestBase):
 
                 if metric.name in NEW_SERVER_METRICS:
                     self.assertIn(HTTP_ROUTE, attributes)
-                    self.assertEqual(
-                        attributes[HTTP_ROUTE], "/parametrized/{message}/"
-                    )
+                    self.assertEqual(attributes[HTTP_ROUTE], "/parametrized/{message}/")
 
-        self.assertFalse(
-            old_duration_found, "Old semconv metric should not be present"
-        )
+        self.assertFalse(old_duration_found, "Old semconv metric should not be present")
         self.assertTrue(new_duration_found, "New semconv metric not found")
 
     def test_url_query_attribute_new_semconv(self):
@@ -522,9 +488,7 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
     def setUp(self):
         super().setUp()
         _OpenTelemetrySemanticConventionStability._initialized = False
-        with patch.dict(
-            "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup"}
-        ):
+        with patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http/dup"}):
             TornadoInstrumentor().instrument()
 
     def test_server_span_attributes_both_semconv(self):
@@ -635,9 +599,7 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
         self.assertTrue(new_duration_found, "New semconv metric not found")
 
     def test_server_metrics_method_is_sanitized(self):
-        response = self.fetch(
-            "/", method="UNKNOWN", allow_nonstandard_methods=True
-        )
+        response = self.fetch("/", method="UNKNOWN", allow_nonstandard_methods=True)
         self.assertEqual(response.code, 405)
         metrics = self.get_sorted_metrics(SCOPE)
 
@@ -657,41 +619,17 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
                 attributes = dict(data_point.attributes)
                 if old_attribute := attributes.get("http.method"):
                     self.assertEqual(old_attribute, "_OTHER")
-                    old_server_found = (
-                        True
-                        if metric.name == "http.server.active_requests"
-                        else old_server_found
-                    )
-                    old_client_found = (
-                        True
-                        if metric.name == "http.client.duration"
-                        else old_client_found
-                    )
+                    old_server_found = True if metric.name == "http.server.active_requests" else old_server_found
+                    old_client_found = True if metric.name == "http.client.duration" else old_client_found
                 if new_attribute := attributes.get("http.request.method"):
                     self.assertEqual(new_attribute, "_OTHER")
-                    new_server_found = (
-                        True
-                        if metric.name == "http.server.active_requests"
-                        else new_server_found
-                    )
-                    new_client_found = (
-                        True
-                        if metric.name == "http.client.request.duration"
-                        else new_client_found
-                    )
+                    new_server_found = True if metric.name == "http.server.active_requests" else new_server_found
+                    new_client_found = True if metric.name == "http.client.request.duration" else new_client_found
 
-        self.assertTrue(
-            old_server_found, "Old semconv server metric not found"
-        )
-        self.assertTrue(
-            new_server_found, "New semconv server metric not found"
-        )
-        self.assertTrue(
-            old_client_found, "Old semconv client metric not found"
-        )
-        self.assertTrue(
-            new_client_found, "New semconv client metric not found"
-        )
+        self.assertTrue(old_server_found, "Old semconv server metric not found")
+        self.assertTrue(new_server_found, "New semconv server metric not found")
+        self.assertTrue(old_client_found, "Old semconv client metric not found")
+        self.assertTrue(new_client_found, "New semconv client metric not found")
 
     def test_url_query_attribute_both_semconv(self):
         """Test that URL_QUERY is set in dup mode when request has query string."""
@@ -703,17 +641,13 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
 
         # Verify URL_QUERY is present in new semconv
         self.assertIn(URL_QUERY, server_span.attributes)
-        self.assertEqual(
-            server_span.attributes[URL_QUERY], "test=value&another=param"
-        )
+        self.assertEqual(server_span.attributes[URL_QUERY], "test=value&another=param")
         # Verify URL_PATH is also present
         self.assertIn(URL_PATH, server_span.attributes)
         self.assertEqual(server_span.attributes[URL_PATH], "/")
         # Verify HTTP_TARGET still contains the full target with query
         self.assertIn(HTTP_TARGET, server_span.attributes)
-        self.assertEqual(
-            server_span.attributes[HTTP_TARGET], "/?test=value&another=param"
-        )
+        self.assertEqual(server_span.attributes[HTTP_TARGET], "/?test=value&another=param")
 
     def test_client_metrics_both_semconv(self):
         response = self.fetch("/")
@@ -730,9 +664,5 @@ class TestTornadoSemconvHttpDup(TornadoSemconvTestBase):
             elif metric.name == "http.client.request.duration":
                 new_duration_found = True
                 self.assertEqual(metric.unit, "s")
-        self.assertTrue(
-            old_duration_found, "Old semconv client metric not found"
-        )
-        self.assertTrue(
-            new_duration_found, "New semconv client metric not found"
-        )
+        self.assertTrue(old_duration_found, "Old semconv client metric not found")
+        self.assertTrue(new_duration_found, "New semconv client metric not found")

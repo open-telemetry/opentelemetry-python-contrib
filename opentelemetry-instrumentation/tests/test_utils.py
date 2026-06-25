@@ -64,7 +64,8 @@ class WrappedClass:
 
 # pylint: disable=too-many-public-methods
 class TestUtils(unittest.TestCase):
-    # See https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#status
+    # See https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace
+    # /semantic_conventions/http.md#status
     def test_http_status_to_status_code(self):
         for status_code, expected in (
             (HTTPStatus.OK, StatusCode.UNSET),
@@ -114,9 +115,7 @@ class TestUtils(unittest.TestCase):
             (HTTPStatus.PERMANENT_REDIRECT, StatusCode.ERROR),
         ):
             with self.subTest(status_code=status_code):
-                actual = http_status_to_status_code(
-                    int(status_code), allow_redirect=False
-                )
+                actual = http_status_to_status_code(int(status_code), allow_redirect=False)
                 self.assertEqual(actual, expected, status_code)
 
     def test_http_status_to_status_code_server(self):
@@ -151,55 +150,69 @@ class TestUtils(unittest.TestCase):
             (99, StatusCode.ERROR),
         ):
             with self.subTest(status_code=status_code):
-                actual = http_status_to_status_code(
-                    int(status_code), server_span=True
-                )
+                actual = http_status_to_status_code(int(status_code), server_span=True)
                 self.assertEqual(actual, expected, status_code)
 
     def test_remove_current_directory_from_python_path_windows(self):
-        directory = r"c:\users\Trayvon Martin\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
-        path_separator = r";"
-        python_path = r"c:\users\Trayvon Martin\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation;C:\Users\trayvonmartin\workplace"
-        actual_python_path = _python_path_without_directory(
-            python_path, directory, path_separator
+        directory = (
+            r"c:\users\Trayvon Martin\workplace\opentelemetry-python-contrib"
+            r"\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
         )
+        path_separator = r";"
+        python_path = (
+            r"c:\users\Trayvon Martin\workplace\opentelemetry-python-contrib"
+            r"\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
+            r";C:\Users\trayvonmartin\workplace"
+        )
+        actual_python_path = _python_path_without_directory(python_path, directory, path_separator)
         expected_python_path = r"C:\Users\trayvonmartin\workplace"
         self.assertEqual(actual_python_path, expected_python_path)
 
     def test_remove_current_directory_from_python_path_linux(self):
-        directory = r"/home/georgefloyd/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
-        path_separator = r":"
-        python_path = r"/home/georgefloyd/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation:/home/georgefloyd/workplace"
-        actual_python_path = _python_path_without_directory(
-            python_path, directory, path_separator
+        directory = (
+            r"/home/georgefloyd/workplace/opentelemetry-python-contrib"
+            r"/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
         )
+        path_separator = r":"
+        python_path = (
+            r"/home/georgefloyd/workplace/opentelemetry-python-contrib"
+            r"/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
+            r":/home/georgefloyd/workplace"
+        )
+        actual_python_path = _python_path_without_directory(python_path, directory, path_separator)
         expected_python_path = r"/home/georgefloyd/workplace"
         self.assertEqual(actual_python_path, expected_python_path)
 
     def test_remove_current_directory_from_python_path_windows_only_path(self):
-        directory = r"c:\users\Charleena Lyles\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
-        path_separator = r";"
-        python_path = r"c:\users\Charleena Lyles\workplace\opentelemetry-python-contrib\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
-        actual_python_path = _python_path_without_directory(
-            python_path, directory, path_separator
+        directory = (
+            r"c:\users\Charleena Lyles\workplace\opentelemetry-python-contrib"
+            r"\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
         )
+        path_separator = r";"
+        python_path = (
+            r"c:\users\Charleena Lyles\workplace\opentelemetry-python-contrib"
+            r"\opentelemetry-instrumentation\src\opentelemetry\instrumentation\auto_instrumentation"
+        )
+        actual_python_path = _python_path_without_directory(python_path, directory, path_separator)
         self.assertEqual(actual_python_path, python_path)
 
     def test_remove_current_directory_from_python_path_linux_only_path(self):
-        directory = r"/home/SandraBland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
-        path_separator = r":"
-        python_path = r"/home/SandraBland/workplace/opentelemetry-python-contrib/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
-        actual_python_path = _python_path_without_directory(
-            python_path, directory, path_separator
+        directory = (
+            r"/home/SandraBland/workplace/opentelemetry-python-contrib"
+            r"/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
         )
+        path_separator = r":"
+        python_path = (
+            r"/home/SandraBland/workplace/opentelemetry-python-contrib"
+            r"/opentelemetry-instrumentation/src/opentelemetry/instrumentation/auto_instrumentation"
+        )
+        actual_python_path = _python_path_without_directory(python_path, directory, path_separator)
         self.assertEqual(actual_python_path, python_path)
 
     def test_add_sql_comments_with_semicolon(self):
         sql_query_without_semicolon = "Select 1;"
         comments = {"comment_1": "value 1", "comment 2": "value 3"}
-        commented_sql_without_semicolon = _add_sql_comment(
-            sql_query_without_semicolon, **comments
-        )
+        commented_sql_without_semicolon = _add_sql_comment(sql_query_without_semicolon, **comments)
 
         self.assertEqual(
             commented_sql_without_semicolon,
@@ -209,9 +222,7 @@ class TestUtils(unittest.TestCase):
     def test_add_sql_comments_without_semicolon(self):
         sql_query_without_semicolon = "Select 1"
         comments = {"comment_1": "value 1", "comment 2": "value 3"}
-        commented_sql_without_semicolon = _add_sql_comment(
-            sql_query_without_semicolon, **comments
-        )
+        commented_sql_without_semicolon = _add_sql_comment(sql_query_without_semicolon, **comments)
 
         self.assertEqual(
             commented_sql_without_semicolon,
@@ -221,9 +232,7 @@ class TestUtils(unittest.TestCase):
     def test_add_sql_comments_without_comments(self):
         sql_query_without_semicolon = "Select 1"
         comments = {}
-        commented_sql_without_semicolon = _add_sql_comment(
-            sql_query_without_semicolon, **comments
-        )
+        commented_sql_without_semicolon = _add_sql_comment(sql_query_without_semicolon, **comments)
 
         self.assertEqual(commented_sql_without_semicolon, "Select 1")
 
@@ -232,9 +241,7 @@ class TestUtils(unittest.TestCase):
         _MockTemplate,
     )
     def test_add_sql_comment_t_string_without_semicolon(self):
-        template = _MockTemplate(
-            "SELECT ", _MockInterpolation("val"), " FROM foo"
-        )
+        template = _MockTemplate("SELECT ", _MockInterpolation("val"), " FROM foo")
         result = _add_sql_comment(template, k="v")
         self.assertIsInstance(result, _MockTemplate)
         self.assertEqual(result.strings, ("SELECT ", " FROM foo /*k='v'*/"))
@@ -245,9 +252,7 @@ class TestUtils(unittest.TestCase):
         _MockTemplate,
     )
     def test_add_sql_comment_t_string_with_semicolon(self):
-        template = _MockTemplate(
-            "SELECT ", _MockInterpolation("val"), " FROM foo;"
-        )
+        template = _MockTemplate("SELECT ", _MockInterpolation("val"), " FROM foo;")
         result = _add_sql_comment(template, k="v")
         self.assertIsInstance(result, _MockTemplate)
         self.assertEqual(result.strings, ("SELECT ", " FROM foo /*k='v'*/;"))
@@ -258,9 +263,7 @@ class TestUtils(unittest.TestCase):
         _MockTemplate,
     )
     def test_add_sql_comment_t_string_no_meta(self):
-        template = _MockTemplate(
-            "SELECT ", _MockInterpolation("val"), " FROM foo"
-        )
+        template = _MockTemplate("SELECT ", _MockInterpolation("val"), " FROM foo")
         result = _add_sql_comment(template)
         self.assertIsInstance(result, _MockTemplate)
         self.assertEqual(result.strings, ("SELECT ", " FROM foo"))
@@ -365,9 +368,7 @@ class TestUtils(unittest.TestCase):
 class UnwrapTestCase(unittest.TestCase):
     @staticmethod
     def _wrap_method():
-        return wrap_function_wrapper(
-            WrappedClass, "method", WrappedClass.wrapper_method
-        )
+        return wrap_function_wrapper(WrappedClass, "method", WrappedClass.wrapper_method)
 
     def test_can_unwrap_object_attribute(self):
         self._wrap_method()
@@ -390,9 +391,7 @@ class UnwrapTestCase(unittest.TestCase):
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, BaseObjectProxy))
 
-        with self.assertRaisesRegex(
-            ImportError, "Cannot parse '' as dotted import path"
-        ):
+        with self.assertRaisesRegex(ImportError, "Cannot parse '' as dotted import path"):
             unwrap("", "method")
 
         unwrap(WrappedClass, "method")
@@ -422,9 +421,7 @@ class UnwrapTestCase(unittest.TestCase):
         instance = WrappedClass()
         self.assertTrue(isinstance(instance.method, BaseObjectProxy))
 
-        with self.assertRaisesRegex(
-            ImportError, "Cannot import 'NotWrappedClass' from"
-        ):
+        with self.assertRaisesRegex(ImportError, "Cannot import 'NotWrappedClass' from"):
             unwrap("tests.test_utils.NotWrappedClass", "method")
 
         unwrap(WrappedClass, "method")

@@ -19,22 +19,12 @@ header = """
 def main(base_instrumentation_path):
     table = [header]
     for instrumentation in sorted(os.listdir(base_instrumentation_path)):
-        instrumentation_path = os.path.join(
-            base_instrumentation_path, instrumentation
-        )
-        if not os.path.isdir(
-            instrumentation_path
-        ) or not instrumentation.startswith(_prefix):
+        instrumentation_path = os.path.join(base_instrumentation_path, instrumentation)
+        if not os.path.isdir(instrumentation_path) or not instrumentation.startswith(_prefix):
             continue
 
-        src_dir = os.path.join(
-            instrumentation_path, "src", "opentelemetry", "instrumentation"
-        )
-        src_pkgs = [
-            f
-            for f in os.listdir(src_dir)
-            if os.path.isdir(os.path.join(src_dir, f))
-        ]
+        src_dir = os.path.join(instrumentation_path, "src", "opentelemetry", "instrumentation")
+        src_pkgs = [f for f in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, f))]
         assert len(src_pkgs) == 1
         name = src_pkgs[0]
 
@@ -48,7 +38,9 @@ def main(base_instrumentation_path):
             exec(fh.read(), pkg_info)
 
         instruments_and = pkg_info.get("_instruments", ())
-        # _instruments_any is an optional field that can be used instead of or in addition to _instruments. While _instruments is a list of dependencies, all of which are expected by the instrumentation, _instruments_any is a list any of which but not all are expected.
+        # _instruments_any is an optional field that can be used instead of or in addition to _instruments.
+        # While _instruments is a list of dependencies, all of which are expected by the instrumentation,
+        # _instruments_any is a list any of which but not all are expected.
         instruments_any = pkg_info.get("_instruments_any", ())
         supports_metrics = pkg_info.get("_supports_metrics")
         semconv_status = pkg_info.get("_semconv_status")
@@ -64,7 +56,9 @@ def main(base_instrumentation_path):
         metric_column = "Yes" if supports_metrics else "No"
 
         table.append(
-            f"| [{instrumentation}](./{instrumentation}) | {','.join(instruments_all)} | {metric_column} | {semconv_status}"
+            f"| [{instrumentation}](./{instrumentation}) | "
+            f"{','.join(instruments_all)} | "
+            f"{metric_column} | {semconv_status}"
         )
 
     with open(
@@ -79,7 +73,5 @@ if __name__ == "__main__":
     root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     instrumentation_path = os.path.join(root_path, "instrumentation")
     main(instrumentation_path)
-    genai_instrumentation_path = os.path.join(
-        root_path, "instrumentation-genai"
-    )
+    genai_instrumentation_path = os.path.join(root_path, "instrumentation-genai")
     main(genai_instrumentation_path)

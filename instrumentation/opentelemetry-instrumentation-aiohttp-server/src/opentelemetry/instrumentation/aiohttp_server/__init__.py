@@ -81,9 +81,9 @@ To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-list containing the header values.
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a list containing the header values.
 
 For example:
 ``http.request.header.custom_request_header = ["<value1>, <value2>"]``
@@ -100,8 +100,8 @@ For example,
 
 will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
 
-Response header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
-variable will capture the header named ``custom-header``.
+Response header names in aiohttp are case-insensitive. So, giving the header name as ``CUStom-Header`` in the
+environment variable will capture the header named ``custom-header``.
 
 Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
 ::
@@ -115,9 +115,9 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-list containing the header values.
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a list containing the header values.
 
 For example:
 ``http.response.header.custom_response_header = ["<value1>, <value2>"]``
@@ -217,9 +217,7 @@ _excluded_urls = None
 _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 
 
-def _parse_active_request_count_attrs(
-    req_attrs, sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT
-):
+def _parse_active_request_count_attrs(req_attrs, sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT):
     return _filter_semconv_active_request_count_attr(
         req_attrs,
         _server_active_requests_count_attrs_old,
@@ -326,11 +324,7 @@ def collect_request_attributes(
     result[HTTP_ROUTE] = _get_view_func(request)
 
     if _report_old(sem_conv_opt_in_mode):
-        http_host_value_list = (
-            [request.host]
-            if not isinstance(request.host, list)
-            else request.host
-        )
+        http_host_value_list = [request.host] if not isinstance(request.host, list) else request.host
         if http_host_value_list:
             result[HTTP_SERVER_NAME] = ",".join(http_host_value_list)
 
@@ -340,17 +334,11 @@ def collect_request_attributes(
 def collect_request_headers_attributes(
     request: web.Request,
 ) -> dict[str, list[str]]:
-    sanitize = SanitizeValue(
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
-    )
+    sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
 
     return sanitize.sanitize_header_values(
         request.headers,
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
-        ),
+        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST),
         normalise_request_header_name,
     )
 
@@ -358,17 +346,11 @@ def collect_request_headers_attributes(
 def collect_response_headers_attributes(
     response: web.Response,
 ) -> dict[str, list[str]]:
-    sanitize = SanitizeValue(
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
-    )
+    sanitize = SanitizeValue(get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS))
 
     return sanitize.sanitize_header_values(
         response.headers,
-        get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-        ),
+        get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE),
         normalise_response_header_name,
     )
 
@@ -429,26 +411,17 @@ getter = AiohttpGetter()
 def create_aiohttp_middleware(
     tracer_provider: trace.TracerProvider | None = None,
 ):
-    _tracer = (
-        tracer_provider.get_tracer(__name__, __version__)
-        if tracer_provider
-        else tracer
-    )
+    _tracer = tracer_provider.get_tracer(__name__, __version__) if tracer_provider else tracer
 
     @web.middleware
     async def _middleware(request, handler):
         """Middleware for aiohttp implementing tracing logic"""
-        if (
-            not is_http_instrumentation_enabled()
-            or _excluded_urls.url_disabled(request.url.path)
-        ):
+        if not is_http_instrumentation_enabled() or _excluded_urls.url_disabled(request.url.path):
             return await handler(request)
 
         span_name = get_default_span_name(request)
 
-        request_attrs = collect_request_attributes(
-            request, _sem_conv_opt_in_mode
-        )
+        request_attrs = collect_request_attributes(request, _sem_conv_opt_in_mode)
         active_requests_count_attrs = _parse_active_request_count_attrs(
             request_attrs,
             _sem_conv_opt_in_mode,
@@ -463,9 +436,7 @@ def create_aiohttp_middleware(
             record_exception=False,
         ) as span:
             if span.is_recording():
-                span.set_attributes(
-                    collect_request_headers_attributes(request)
-                )
+                span.set_attributes(collect_request_headers_attributes(request))
             start = default_timer()
             active_requests_counter.add(1, active_requests_count_attrs)
             try:
@@ -477,9 +448,7 @@ def create_aiohttp_middleware(
                     _sem_conv_opt_in_mode,
                 )
                 if span.is_recording():
-                    response_headers_attributes = (
-                        collect_response_headers_attributes(resp)
-                    )
+                    response_headers_attributes = collect_response_headers_attributes(resp)
                     span.set_attributes(response_headers_attributes)
             except web.HTTPServerError as ex:
                 set_status_code(
@@ -510,19 +479,11 @@ def create_aiohttp_middleware(
             finally:
                 duration_s = default_timer() - start
                 if duration_histogram_old:
-                    duration_attrs_old = _parse_duration_attrs(
-                        request_attrs, _StabilityMode.DEFAULT
-                    )
-                    duration_histogram_old.record(
-                        max(round(duration_s * 1000), 0), duration_attrs_old
-                    )
+                    duration_attrs_old = _parse_duration_attrs(request_attrs, _StabilityMode.DEFAULT)
+                    duration_histogram_old.record(max(round(duration_s * 1000), 0), duration_attrs_old)
                 if duration_histogram_new:
-                    duration_attrs_new = _parse_duration_attrs(
-                        request_attrs, _StabilityMode.HTTP
-                    )
-                    duration_histogram_new.record(
-                        max(duration_s, 0), duration_attrs_new
-                    )
+                    duration_attrs_new = _parse_duration_attrs(request_attrs, _StabilityMode.HTTP)
+                    duration_histogram_new.record(max(duration_s, 0), duration_attrs_new)
                 active_requests_counter.add(-1, active_requests_count_attrs)
             return resp
 
@@ -617,9 +578,7 @@ class AioHttpServerInstrumentor(BaseInstrumentor):
 
         self._original_app = web.Application
 
-        _InstrumentedApplication = create_instrumented_application(
-            tracer_provider=tracer_provider
-        )
+        _InstrumentedApplication = create_instrumented_application(tracer_provider=tracer_provider)
         setattr(web, "Application", _InstrumentedApplication)
 
     def _uninstrument(self, **kwargs):

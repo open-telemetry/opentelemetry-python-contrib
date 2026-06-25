@@ -150,16 +150,12 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.assertEqual(spans[0].name, POSTGRES_DB_NAME)
         self.assertEqual(spans[0].attributes[DB_STATEMENT], "")
 
-    def test_instrumented_cursor_execute_method_without_arguments(
-        self, *_, **__
-    ):
+    def test_instrumented_cursor_execute_method_without_arguments(self, *_, **__):
         """Should create spans for the transaction as well as the cursor fetches."""
 
         async def _cursor_execute():
             async with self._connection.transaction():
-                async for record in self._connection.cursor(
-                    "SELECT generate_series(0, 5);"
-                ):
+                async for record in self._connection.cursor("SELECT generate_series(0, 5);"):
                     pass
 
         async_call(_cursor_execute())
@@ -210,11 +206,7 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
     def test_instrumented_remove_comments(self, *_, **__):
         """Should remove comments from the query and set the span name correctly."""
         async_call(self._connection.fetch("/* leading comment */ SELECT 42;"))
-        async_call(
-            self._connection.fetch(
-                "/* leading comment */ SELECT 42; /* trailing comment */"
-            )
-        )
+        async_call(self._connection.fetch("/* leading comment */ SELECT 42; /* trailing comment */"))
         async_call(self._connection.fetch("SELECT 42; /* trailing comment */"))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
@@ -305,9 +297,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
     def setUp(self):
         super().setUp()
         self._tracer = self.tracer_provider.get_tracer(__name__)
-        AsyncPGInstrumentor(capture_parameters=True).instrument(
-            tracer_provider=self.tracer_provider
-        )
+        AsyncPGInstrumentor(capture_parameters=True).instrument(tracer_provider=self.tracer_provider)
         self._connection = async_call(
             asyncpg.connect(
                 database=POSTGRES_DB_NAME,
@@ -332,9 +322,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1;")
-        self.assertEqual(
-            spans[0].attributes["db.statement.parameters"], "('1',)"
-        )
+        self.assertEqual(spans[0].attributes["db.statement.parameters"], "('1',)")
 
     def test_instrumented_fetch_method_with_arguments(self, *_, **__):
         """Should create a span for fetch() with captured parameters."""
@@ -345,9 +333,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1;")
-        self.assertEqual(
-            spans[0].attributes["db.statement.parameters"], "('1',)"
-        )
+        self.assertEqual(spans[0].attributes["db.statement.parameters"], "('1',)")
 
     def test_instrumented_executemany_method_with_arguments(self, *_, **__):
         """Should create a span for executemany with captured parameters."""
@@ -357,9 +343,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
         self.check_span(spans[0])
         self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT $1;")
-        self.assertEqual(
-            spans[0].attributes["db.statement.parameters"], "([['1'], ['2']],)"
-        )
+        self.assertEqual(spans[0].attributes["db.statement.parameters"], "([['1'], ['2']],)")
 
     def test_instrumented_execute_interface_error_method(self, *_, **__):
         """Should create an error span for execute() with captured parameters."""
@@ -370,9 +354,7 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.assertIs(StatusCode.ERROR, spans[0].status.status_code)
         self.check_span(spans[0])
         self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 42;")
-        self.assertEqual(
-            spans[0].attributes["db.statement.parameters"], "(1, 2, 3)"
-        )
+        self.assertEqual(spans[0].attributes["db.statement.parameters"], "(1, 2, 3)")
 
     def test_instrumented_executemany_method_empty_query(self, *_, **__):
         """Should create a span for executemany() with captured parameters."""
@@ -383,15 +365,11 @@ class TestFunctionalAsyncPG_CaptureParameters(TestBase, CheckSpanMixin):
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, POSTGRES_DB_NAME)
         self.assertEqual(spans[0].attributes[DB_STATEMENT], "")
-        self.assertEqual(
-            spans[0].attributes["db.statement.parameters"], "([],)"
-        )
+        self.assertEqual(spans[0].attributes["db.statement.parameters"], "([],)")
 
     def test_instrumented_fetch_method_broken_asyncpg(self, *_, **__):
         """Should create a span for fetch() with "postgresql" as the span name."""
-        with patch.object(
-            self._connection, "_params", namedtuple("ConnectionParams", [])
-        ):
+        with patch.object(self._connection, "_params", namedtuple("ConnectionParams", [])):
             async_call(self._connection.fetch(""))
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)

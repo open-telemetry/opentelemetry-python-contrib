@@ -23,9 +23,7 @@ def mock_invocation():
     return mock.Mock(spec=GenAIInvocation)
 
 
-def test_add_invocation_state_without_parent(
-    invocation_manager, mock_invocation
-):
+def test_add_invocation_state_without_parent(invocation_manager, mock_invocation):
     run_id = uuid.uuid4()
     invocation_manager.add_invocation_state(
         run_id=run_id,
@@ -64,9 +62,7 @@ def test_add_invocation_state_with_parent(invocation_manager):
     assert invocation_manager.get_invocation(parent_id) == parent_invocation
 
 
-def test_add_invocation_state_with_nonexistent_parent(
-    invocation_manager, mock_invocation
-):
+def test_add_invocation_state_with_nonexistent_parent(invocation_manager, mock_invocation):
     run_id = uuid.uuid4()
     nonexistent_parent_id = uuid.uuid4()
 

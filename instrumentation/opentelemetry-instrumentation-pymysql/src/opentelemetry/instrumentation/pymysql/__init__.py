@@ -105,21 +105,26 @@ Available commenter_options
 
 The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| Commenter Option          | Description                                               | Example                                                                   |
-+===========================+===========================================================+===========================================================================+
-| ``db_driver``             | Database driver name with version.                        | ``pymysql='1.2.3'``                                                       |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``mysql_client_version``  | MySQL client version.                                     | ``mysql_client_version='123'``                                            |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
++--------------------------+-------------------------------+-----------------------------------------------------+
+| Commenter Option         | Description                   | Example                                             |
++==========================+===============================+=====================================================+
+| ``db_driver``            | Database driver name with     | ``pymysql='1.2.3'``                                 |
+|                          | version.                      |                                                     |
++--------------------------+-------------------------------+-----------------------------------------------------+
+| ``dbapi_threadsafety``   | DB-API threadsafety value:    | ``dbapi_threadsafety=2``                            |
+|                          | 0-3 or unknown.               |                                                     |
++--------------------------+-------------------------------+-----------------------------------------------------+
+| ``dbapi_level``          | DB-API API level: 1.0, 2.0,   | ``dbapi_level='2.0'``                               |
+|                          | or unknown.                   |                                                     |
++--------------------------+-------------------------------+-----------------------------------------------------+
+| ``driver_paramstyle``    | DB-API paramstyle for SQL     | ``driver_paramstyle='pyformat'``                    |
+|                          | statement parameter.          |                                                     |
++--------------------------+-------------------------------+-----------------------------------------------------+
+| ``mysql_client_version`` | MySQL client version.         | ``mysql_client_version='123'``                      |
++--------------------------+-------------------------------+-----------------------------------------------------+
+| ``opentelemetry_values`` | OpenTelemetry context as      | ``traceparent='00-03afa25236b8cd948fa853d67038ac79- |
+|                          | traceparent at time of query. | 405ff022e8247c46-01'``                              |
++--------------------------+-------------------------------+-----------------------------------------------------+
 
 SQLComment in span attribute
 ****************************
@@ -140,7 +145,10 @@ will also be configured by this setting.
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform
+    normalization. See `Semantic Conventions for database spans
+    <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_
+    for more information.
 
 API
 ---
@@ -175,9 +183,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -209,7 +215,8 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         Args:
             connection:
                 The existing PyMySQL connection instance that needs to be instrumented.
-                This connection was typically created using `pymysql.connect()` and is wrapped with OpenTelemetry tracing.
+                This connection was typically created using `pymysql.connect()` and is wrapped with
+                OpenTelemetry tracing.
             tracer_provider:
                 An optional `TracerProvider` instance that specifies which tracer provider should be used.
                 If not provided, the globally configured OpenTelemetry tracer provider is automatically applied.

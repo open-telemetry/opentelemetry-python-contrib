@@ -44,15 +44,11 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 # configure tracing
 trace.set_tracer_provider(TracerProvider())
-trace.get_tracer_provider().add_span_processor(
-    BatchSpanProcessor(OTLPSpanExporter())
-)
+trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
 
 # configure logging and events
 _logs.set_logger_provider(LoggerProvider())
-_logs.get_logger_provider().add_log_record_processor(
-    BatchLogRecordProcessor(OTLPLogExporter())
-)
+_logs.get_logger_provider().add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
 
 # configure metrics
 metrics.set_meter_provider(
@@ -96,11 +92,7 @@ async def code_reviewer_example():
             for block in message.content:
                 if isinstance(block, TextBlock):
                     print(f"Claude: {block.text}")
-        elif (
-            isinstance(message, ResultMessage)
-            and message.total_cost_usd
-            and message.total_cost_usd > 0
-        ):
+        elif isinstance(message, ResultMessage) and message.total_cost_usd and message.total_cost_usd > 0:
             print(f"\nCost: ${message.total_cost_usd:.4f}")
     print()
 
@@ -132,11 +124,7 @@ async def documentation_writer_example():
             for block in message.content:
                 if isinstance(block, TextBlock):
                     print(f"Claude: {block.text}")
-        elif (
-            isinstance(message, ResultMessage)
-            and message.total_cost_usd
-            and message.total_cost_usd > 0
-        ):
+        elif isinstance(message, ResultMessage) and message.total_cost_usd and message.total_cost_usd > 0:
             print(f"\nCost: ${message.total_cost_usd:.4f}")
     print()
 

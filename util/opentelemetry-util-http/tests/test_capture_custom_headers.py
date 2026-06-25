@@ -18,28 +18,18 @@ from opentelemetry.util.http import (
 class TestCaptureCustomHeaders(unittest.TestCase):
     @patch.dict(
         "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "User-Agent,Test-Header"
-        },
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST: "User-Agent,Test-Header"},
     )
     def test_get_custom_request_header(self):
-        custom_headers_to_capture = get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
-        )
-        self.assertEqual(
-            custom_headers_to_capture, ["User-Agent", "Test-Header"]
-        )
+        custom_headers_to_capture = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST)
+        self.assertEqual(custom_headers_to_capture, ["User-Agent", "Test-Header"])
 
     @patch.dict(
         "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,test-header"
-        },
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE: "content-type,content-length,test-header"},
     )
     def test_get_custom_response_header(self):
-        custom_headers_to_capture = get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE
-        )
+        custom_headers_to_capture = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE)
         self.assertEqual(
             custom_headers_to_capture,
             [
@@ -51,14 +41,10 @@ class TestCaptureCustomHeaders(unittest.TestCase):
 
     @patch.dict(
         "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header,My-Secret-Header-2"
-        },
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header,My-Secret-Header-2"},
     )
     def test_get_custom_sanitize_header(self):
-        sanitized_fields = get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
+        sanitized_fields = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
         self.assertEqual(
             sanitized_fields,
             ["My-Secret-Header", "My-Secret-Header-2"],
@@ -66,28 +52,20 @@ class TestCaptureCustomHeaders(unittest.TestCase):
 
     @patch.dict(
         "os.environ",
-        {
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header,My-Secret-Header-2"
-        },
+        {OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS: "My-Secret-Header,My-Secret-Header-2"},
     )
     def test_sanitize(self):
-        sanitized_fields = get_custom_headers(
-            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
-        )
+        sanitized_fields = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
 
         sanitize = SanitizeValue(sanitized_fields)
 
         self.assertEqual(
-            sanitize.sanitize_header_value(
-                header="My-Secret-Header", value="My-Secret-Value"
-            ),
+            sanitize.sanitize_header_value(header="My-Secret-Header", value="My-Secret-Value"),
             "[REDACTED]",
         )
 
         self.assertEqual(
-            sanitize.sanitize_header_value(
-                header="My-Not-Secret-Header", value="My-Not-Secret-Value"
-            ),
+            sanitize.sanitize_header_value(header="My-Not-Secret-Header", value="My-Not-Secret-Value"),
             "My-Not-Secret-Value",
         )
 

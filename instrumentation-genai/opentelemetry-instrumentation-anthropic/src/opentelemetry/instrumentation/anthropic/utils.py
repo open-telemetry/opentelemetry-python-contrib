@@ -134,14 +134,10 @@ def _convert_content_block_to_part(
         return Text(content=block.text)
 
     if isinstance(block, (ToolUseBlock, ServerToolUseBlock)):
-        return ToolCallRequest(
-            arguments=block.input, name=block.name, id=block.id
-        )
+        return ToolCallRequest(arguments=block.input, name=block.name, id=block.id)
 
     if isinstance(block, (ThinkingBlock, RedactedThinkingBlock)):
-        content = (
-            block.thinking if isinstance(block, ThinkingBlock) else block.data
-        )
+        content = block.thinking if isinstance(block, ThinkingBlock) else block.data
         return Reasoning(content=content)
 
     if isinstance(block, WebSearchToolResultBlock):
@@ -183,9 +179,7 @@ def create_stream_block_state(content_block: ContentBlock) -> StreamBlockState:
         )
 
     if isinstance(content_block, ThinkingBlock):
-        return StreamBlockState(
-            type="thinking", thinking=content_block.thinking
-        )
+        return StreamBlockState(type="thinking", thinking=content_block.thinking)
 
     if isinstance(content_block, RedactedThinkingBlock):
         return StreamBlockState(type="redacted_thinking")
@@ -193,9 +187,7 @@ def create_stream_block_state(content_block: ContentBlock) -> StreamBlockState:
     return StreamBlockState(type=content_block.type)
 
 
-def update_stream_block_state(
-    state: StreamBlockState, delta: RawContentBlockDelta
-) -> None:
+def update_stream_block_state(state: StreamBlockState, delta: RawContentBlockDelta) -> None:
     if isinstance(delta, TextDelta):
         state.type = "text"
         state.text += delta.text

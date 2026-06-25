@@ -27,16 +27,12 @@ class AwsEcsResourceDetector(ResourceDetector):
 
     def detect(self) -> "Resource":
         try:
-            if not os.environ.get(
-                "ECS_CONTAINER_METADATA_URI"
-            ) and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
+            if not os.environ.get("ECS_CONTAINER_METADATA_URI") and not os.environ.get("ECS_CONTAINER_METADATA_URI_V4"):
                 return Resource.get_empty()
 
             container_id = ""
             try:
-                with open(
-                    "/proc/self/cgroup", encoding="utf8"
-                ) as container_info_file:
+                with open("/proc/self/cgroup", encoding="utf8") as container_info_file:
                     for raw_line in container_info_file.readlines():
                         line = raw_line.strip()
                         # Subsequent IDs should be the same, exit if found one
@@ -44,9 +40,7 @@ class AwsEcsResourceDetector(ResourceDetector):
                             container_id = line[-_CONTAINER_ID_LENGTH:]
                             break
             except FileNotFoundError as exception:
-                logger.warning(
-                    "Failed to get container ID on ECS: %s.", exception
-                )
+                logger.warning("Failed to get container ID on ECS: %s.", exception)
 
             base_resource = Resource(
                 {
@@ -57,47 +51,31 @@ class AwsEcsResourceDetector(ResourceDetector):
                 }
             )
 
-            metadata_v4_endpoint = os.environ.get(
-                "ECS_CONTAINER_METADATA_URI_V4"
-            )
+            metadata_v4_endpoint = os.environ.get("ECS_CONTAINER_METADATA_URI_V4")
 
             if not metadata_v4_endpoint:
                 return base_resource
 
             # Returns https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v4.html#task-metadata-endpoint-v4-response
             metadata_container = json.loads(_http_get(metadata_v4_endpoint))
-            metadata_task = json.loads(
-                _http_get(f"{metadata_v4_endpoint}/task")
-            )
+            metadata_task = json.loads(_http_get(f"{metadata_v4_endpoint}/task"))
 
             task_arn = metadata_task["TaskARN"]
             base_arn = task_arn[0 : task_arn.rindex(":")]  # noqa
             cluster: str = metadata_task["Cluster"]
-            cluster_arn = (
-                cluster
-                if cluster.startswith("arn:")
-                else f"{base_arn}:cluster/{cluster}"
-            )
+            cluster_arn = cluster if cluster.startswith("arn:") else f"{base_arn}:cluster/{cluster}"
 
             logs_resource = _get_logs_resource(metadata_container)
 
             return base_resource.merge(logs_resource).merge(
                 Resource(
                     {
-                        ResourceAttributes.AWS_ECS_CONTAINER_ARN: metadata_container[
-                            "ContainerARN"
-                        ],
+                        ResourceAttributes.AWS_ECS_CONTAINER_ARN: metadata_container["ContainerARN"],
                         ResourceAttributes.AWS_ECS_CLUSTER_ARN: cluster_arn,
-                        ResourceAttributes.AWS_ECS_LAUNCHTYPE: metadata_task[
-                            "LaunchType"
-                        ].lower(),
+                        ResourceAttributes.AWS_ECS_LAUNCHTYPE: metadata_task["LaunchType"].lower(),
                         ResourceAttributes.AWS_ECS_TASK_ARN: task_arn,
-                        ResourceAttributes.AWS_ECS_TASK_FAMILY: metadata_task[
-                            "Family"
-                        ],
-                        ResourceAttributes.AWS_ECS_TASK_REVISION: metadata_task[
-                            "Revision"
-                        ],
+                        ResourceAttributes.AWS_ECS_TASK_FAMILY: metadata_task["Family"],
+                        ResourceAttributes.AWS_ECS_TASK_REVISION: metadata_task["Revision"],
                     }
                 )
             )
@@ -121,9 +99,7 @@ def _get_logs_resource(metadata_container):
             container_arn = metadata_container["ContainerARN"]
 
             if not logs_region:
-                aws_region_match = re.match(
-                    r"arn:aws:ecs:([^:]+):.*", container_arn
-                )
+                aws_region_match = re.match(r"arn:aws:ecs:([^:]+):.*", container_arn)
                 if aws_region_match:
                     logs_region = aws_region_match.group(1)
 
@@ -133,9 +109,7 @@ def _get_logs_resource(metadata_container):
             # We need to retrieve the account ID from some other ARN to create the
             # log-group and log-stream ARNs
             aws_account = None
-            aws_account_match = re.match(
-                r"arn:aws:ecs:[^:]+:([^:]+):.*", container_arn
-            )
+            aws_account_match = re.match(r"arn:aws:ecs:[^:]+:([^:]+):.*", container_arn)
             if aws_account_match:
                 aws_account = aws_account_match.group(1)
 
@@ -146,15 +120,16 @@ def _get_logs_resource(metadata_container):
                     logs_group_arn = f"arn:aws:logs:{logs_region}:{aws_account}:log-group:{logs_group_name}"
 
                 if logs_stream_name:
-                    logs_stream_arn = f"arn:aws:logs:{logs_region}:{aws_account}:log-group:{logs_group_name}:log-stream:{logs_stream_name}"
+                    logs_stream_arn = (
+                        f"arn:aws:logs:{logs_region}:{aws_account}:log-group:{logs_group_name}"
+                        f":log-stream:{logs_stream_name}"
+                    )
 
             return Resource(
                 {
                     ResourceAttributes.AWS_LOG_GROUP_NAMES: [logs_group_name],
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: [logs_group_arn],
-                    ResourceAttributes.AWS_LOG_STREAM_NAMES: [
-                        logs_stream_name
-                    ],
+                    ResourceAttributes.AWS_LOG_STREAM_NAMES: [logs_stream_name],
                     ResourceAttributes.AWS_LOG_STREAM_ARNS: [logs_stream_arn],
                 }
             )

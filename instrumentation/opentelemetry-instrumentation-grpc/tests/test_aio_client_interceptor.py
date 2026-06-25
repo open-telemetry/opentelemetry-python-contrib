@@ -37,9 +37,7 @@ from .protobuf import test_server_pb2_grpc  # pylint: disable=no-name-in-module
 class RecordingInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
     recorded_details = None
 
-    async def intercept_unary_unary(
-        self, continuation, client_call_details, request
-    ):
+    async def intercept_unary_unary(self, continuation, client_call_details, request):
         self.recorded_details = client_call_details
         return await continuation(client_call_details, request)
 
@@ -51,9 +49,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.server.start()
 
         interceptors = aio_client_interceptors()
-        self._channel = grpc.aio.insecure_channel(
-            "localhost:25565", interceptors=interceptors
-        )
+        self._channel = grpc.aio.insecure_channel("localhost:25565", interceptors=interceptors)
 
         self._stub = test_server_pb2_grpc.GRPCTestServerStub(self._channel)
 
@@ -108,9 +104,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         self.assertSpanHasAttributes(
             span,
@@ -134,9 +128,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         self.assertSpanHasAttributes(
             span,
@@ -160,9 +152,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         self.assertSpanHasAttributes(
             span,
@@ -182,15 +172,11 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
 
-        self.assertEqual(
-            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
-        )
+        self.assertEqual(span.name, "/GRPCTestServer/BidirectionalStreamingMethod")
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.grpc
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
 
         self.assertSpanHasAttributes(
             span,
@@ -253,9 +239,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
 
     async def test_error_stream_stream(self):
         with self.assertRaises(grpc.RpcError):
-            async for _ in bidirectional_streaming_method(
-                self._stub, error=True
-            ):
+            async for _ in bidirectional_streaming_method(self._stub, error=True):
                 pass
 
         spans = self.memory_exporter.get_finished_spans()
@@ -283,9 +267,7 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
             recording_interceptor = RecordingInterceptor()
             interceptors = [interceptor, recording_interceptor]
 
-            channel = grpc.aio.insecure_channel(
-                "localhost:25565", interceptors=interceptors
-            )
+            channel = grpc.aio.insecure_channel("localhost:25565", interceptors=interceptors)
 
             stub = test_server_pb2_grpc.GRPCTestServerStub(channel)
             await simple_method(stub)

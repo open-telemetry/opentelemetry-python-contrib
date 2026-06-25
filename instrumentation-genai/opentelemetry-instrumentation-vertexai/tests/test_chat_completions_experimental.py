@@ -56,7 +56,8 @@ def test_generate_content_with_files(
                     ),
                     Part.from_image(
                         Image.from_bytes(
-                            "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+                            "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9T"
+                            "XL0Y4OHwAAAABJRU5ErkJggg=="
                         )
                     ),
                 ],
@@ -77,8 +78,15 @@ def test_generate_content_with_files(
         "gen_ai.usage.output_tokens": 5,
         "server.address": "us-central1-aiplatform.googleapis.com",
         "server.port": 443,
-        "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","modality":"image","uri":"https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg","type":"uri"},{"mime_type":"image/jpeg","modality":"image","content":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","type":"blob"}]}]',
-        "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
+        "gen_ai.input.messages": (
+            '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"},{"mime_type":"image/jpeg","modalit'
+            'y":"image","uri":"https://images.pdimagearchive.org/collections/microscopic-delights/1lede-0021.jpg","type'
+            '":"uri"},{"mime_type":"image/jpeg","modality":"image","content":"iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNb'
+            'yblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==","type":"blob"}]}]'
+        ),
+        "gen_ai.output.messages": (
+            '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]'
+        ),
     }
 
     logs = log_exporter.get_finished_logs()
@@ -107,7 +115,11 @@ def test_generate_content_with_files(
                     {
                         "mime_type": "image/jpeg",
                         "modality": "image",
-                        "content": b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x05\x00\x00\x00\x05\x08\x06\x00\x00\x00\x8do&\xe5\x00\x00\x00\x1cIDAT\x08\xd7c\xf8\xff\xff?\xc3\x7f\x06 \x05\xc3 \x12\x84\xd01\xf1\x82X\xcd\x04\x00\x0e\xf55\xcb\xd1\x8e\x0e\x1f\x00\x00\x00\x00IEND\xaeB`\x82",
+                        "content": (
+                            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x05\x00\x00\x00\x05\x08\x06\x00\x00\x00"
+                            b"\x8do&\xe5\x00\x00\x00\x1cIDAT\x08\xd7c\xf8\xff\xff?\xc3\x7f\x06 \x05\xc3 \x12\x84\xd01"
+                            b"\xf1\x82X\xcd\x04\x00\x0e\xf55\xcb\xd1\x8e\x0e\x1f\x00\x00\x00\x00IEND\xaeB`\x82"
+                        ),
                         "type": "blob",
                     },
                 ),
@@ -144,7 +156,9 @@ def test_generate_content_without_events(
     assert spans[0].name == "chat gemini-2.5-pro"
     assert dict(spans[0].attributes) == {
         "gen_ai.operation.name": "chat",
-        "gen_ai.output.messages": '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]',
+        "gen_ai.output.messages": (
+            '[{"role":"model","parts":[{"content":"This is a test.","type":"text"}],"finish_reason":"stop"}]'
+        ),
         "gen_ai.input.messages": '[{"role":"user","parts":[{"content":"Say this is a test","type":"text"}]}]',
         "gen_ai.request.model": "gemini-2.5-pro",
         "gen_ai.response.finish_reasons": ("stop",),
@@ -194,11 +208,7 @@ def test_generate_content_empty_model(
     try:
         generate_content(
             model,
-            [
-                Content(
-                    role="user", parts=[Part.from_text("Say this is a test")]
-                )
-            ],
+            [Content(role="user", parts=[Part.from_text("Say this is a test")])],
         )
     except ValueError:
         pass
@@ -227,11 +237,7 @@ def test_generate_content_missing_model(
     try:
         generate_content(
             model,
-            [
-                Content(
-                    role="user", parts=[Part.from_text("Say this is a test")]
-                )
-            ],
+            [Content(role="user", parts=[Part.from_text("Say this is a test")])],
         )
     except NotFound:
         pass
@@ -261,11 +267,7 @@ def test_generate_content_invalid_temperature(
         # Temperature out of range causes error
         generate_content(
             model,
-            [
-                Content(
-                    role="user", parts=[Part.from_text("Say this is a test")]
-                )
-            ],
+            [Content(role="user", parts=[Part.from_text("Say this is a test")])],
             generation_config=GenerationConfig(temperature=1000),
         )
     except BadRequest:
@@ -391,9 +393,7 @@ def test_generate_content_all_events(
     generate_content_all_input_events(
         GenerativeModel(
             "gemini-2.5-pro",
-            system_instruction=Part.from_text(
-                "You are a clever language model"
-            ),
+            system_instruction=Part.from_text("You are a clever language model"),
         ),
         log_exporter,
         instrument_with_experimental_semconvs,
@@ -409,9 +409,7 @@ def test_preview_generate_content_all_input_events(
     generate_content_all_input_events(
         PreviewGenerativeModel(
             "gemini-2.5-pro",
-            system_instruction=Part.from_text(
-                "You are a clever language model"
-            ),
+            system_instruction=Part.from_text("You are a clever language model"),
         ),
         log_exporter,
         instrument_with_experimental_semconvs,
@@ -425,22 +423,14 @@ def generate_content_all_input_events(
 ):
     model.generate_content(
         [
-            Content(
-                role="user", parts=[Part.from_text("My name is OpenTelemetry")]
-            ),
-            Content(
-                role="model", parts=[Part.from_text("Hello OpenTelemetry!")]
-            ),
+            Content(role="user", parts=[Part.from_text("My name is OpenTelemetry")]),
+            Content(role="model", parts=[Part.from_text("Hello OpenTelemetry!")]),
             Content(
                 role="user",
-                parts=[
-                    Part.from_text("Address me by name and say this is a test")
-                ],
+                parts=[Part.from_text("Address me by name and say this is a test")],
             ),
         ],
-        generation_config=GenerationConfig(
-            seed=12345, response_mime_type="text/plain"
-        ),
+        generation_config=GenerationConfig(seed=12345, response_mime_type="text/plain"),
     )
     # Emits a single log.
     logs = log_exporter.get_finished_logs()
@@ -457,9 +447,7 @@ def generate_content_all_input_events(
         "gen_ai.response.finish_reasons": ("stop",),
         "gen_ai.usage.input_tokens": 25,
         "gen_ai.usage.output_tokens": 8,
-        "gen_ai.system_instructions": (
-            {"type": "text", "content": "You are a clever language model"},
-        ),
+        "gen_ai.system_instructions": ({"type": "text", "content": "You are a clever language model"},),
         "gen_ai.input.messages": (
             {
                 "role": "user",
@@ -472,9 +460,7 @@ def generate_content_all_input_events(
             },
             {
                 "role": "model",
-                "parts": (
-                    {"type": "text", "content": "Hello OpenTelemetry!"},
-                ),
+                "parts": ({"type": "text", "content": "Hello OpenTelemetry!"},),
             },
             {
                 "role": "user",

@@ -37,16 +37,12 @@ pymemcache_version = get_package_version.parse(pymemcache_package_version)
 # In pymemcache versions greater than 2, set_multi, set_many and delete_multi
 # now use a batched call
 # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200  # noqa
-pymemcache_version_lt_2 = pymemcache_version < get_package_version.parse(
-    "2.0.0"
-)
+pymemcache_version_lt_2 = pymemcache_version < get_package_version.parse("2.0.0")
 
 # In pymemcache versions greater than 3.4.1, the stats command no
 # longer sends trailing whitespace in the command
 # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-342  # noqa
-pymemcache_version_gt_341 = pymemcache_version > get_package_version.parse(
-    "3.4.1"
-)
+pymemcache_version_gt_341 = pymemcache_version > get_package_version.parse("3.4.1")
 
 
 class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-methods
@@ -64,9 +60,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         PymemcacheInstrumentor().uninstrument()
 
     def make_client(self, mock_socket_values, **kwargs):
-        self.client = pymemcache.client.base.Client(
-            (TEST_HOST, TEST_PORT), **kwargs
-        )
+        self.client = pymemcache.client.base.Client((TEST_HOST, TEST_PORT), **kwargs)
         self.client.sock = MockSocket(list(mock_socket_values))
         return self.client
 
@@ -161,9 +155,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         self.check_spans(spans, 2, ["set key", "incr key"])
 
     def test_get_found(self):
-        client = self.make_client(
-            [b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"]
-        )
+        client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"])
         result = client.set(b"key", b"value", noreply=False)
         result = client.get(b"key")
         assert result == b"value"
@@ -203,9 +195,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         # In pymemcache versions greater than 2, delete_many now uses a batched call
         # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200  # noqa
         if pymemcache_version_lt_2:
-            self.check_spans(
-                spans, 3, ["add key", "delete key", "delete_many key"]
-            )
+            self.check_spans(spans, 3, ["add key", "delete key", "delete_many key"])
         else:
             self.check_spans(spans, 2, ["add key", "delete_many key"])
 
@@ -226,9 +216,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
             self.check_spans(spans, 1, ["set_many key"])
 
     def test_set_get(self):
-        client = self.make_client(
-            [b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"]
-        )
+        client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"])
         client.set(b"key", b"value", noreply=False)
         result = client.get(b"key")
         assert _str(result) == "value"
@@ -448,9 +436,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         self.check_spans(spans, 1, ["replace key"])
 
     def test_version_success(self):
-        client = self.make_client(
-            [b"VERSION 1.2.3\r\n"], default_noreply=False
-        )
+        client = self.make_client([b"VERSION 1.2.3\r\n"], default_noreply=False)
         result = client.version()
         assert result == b"1.2.3"
 
@@ -478,9 +464,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
     def test_uninstrumented(self):
         PymemcacheInstrumentor().uninstrument()
 
-        client = self.make_client(
-            [b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"]
-        )
+        client = self.make_client([b"STORED\r\n", b"VALUE key 0 5\r\nvalue\r\nEND\r\n"])
         client.set(b"key", b"value", noreply=False)
         result = client.get(b"key")
         assert _str(result) == "value"
@@ -519,16 +503,10 @@ class PymemcacheHashClientTestCase(TestBase):
         super().tearDown()
         PymemcacheInstrumentor().uninstrument()
 
-    def make_client_pool(
-        self, hostname, mock_socket_values, serializer=None, **kwargs
-    ):  # pylint: disable=no-self-use
-        mock_client = pymemcache.client.base.Client(
-            hostname, serializer=serializer, **kwargs
-        )
+    def make_client_pool(self, hostname, mock_socket_values, serializer=None, **kwargs):  # pylint: disable=no-self-use
+        mock_client = pymemcache.client.base.Client(hostname, serializer=serializer, **kwargs)
         mock_client.sock = MockSocket(mock_socket_values)
-        client = pymemcache.client.base.PooledClient(
-            hostname, serializer=serializer
-        )
+        client = pymemcache.client.base.PooledClient(hostname, serializer=serializer)
         client.client_pool = pymemcache.pool.ObjectPool(lambda: mock_client)
         return mock_client
 
@@ -543,9 +521,7 @@ class PymemcacheHashClientTestCase(TestBase):
 
         for vals in mock_socket_values:
             url_string = f"{ip}:{current_port}"
-            clnt_pool = self.make_client_pool(
-                (ip, current_port), vals, **kwargs
-            )
+            clnt_pool = self.make_client_pool((ip, current_port), vals, **kwargs)
             self.client.clients[url_string] = clnt_pool
             self.client.hasher.add_node(url_string)
             current_port += 1

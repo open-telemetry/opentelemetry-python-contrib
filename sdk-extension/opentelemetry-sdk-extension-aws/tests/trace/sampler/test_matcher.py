@@ -27,20 +27,12 @@ class TestMatcher(TestCase):
             ["Bye.World", "*.World"],
         ]
         for test_case in test_cases:
-            self.assertTrue(
-                _Matcher.wild_card_match(
-                    text=test_case[0], pattern=test_case[1]
-                )
-            )
+            self.assertTrue(_Matcher.wild_card_match(text=test_case[0], pattern=test_case[1]))
 
     def test_wild_card_not_match(self):
         test_cases = [[None, "Hello*"], ["HelloWorld", None]]
         for test_case in test_cases:
-            self.assertFalse(
-                _Matcher.wild_card_match(
-                    text=test_case[0], pattern=test_case[1]
-                )
-            )
+            self.assertFalse(_Matcher.wild_card_match(text=test_case[0], pattern=test_case[1]))
 
     def test_attribute_matching(self):
         attributes: Attributes = {

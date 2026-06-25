@@ -114,9 +114,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         )
 
         expected_size = len(response.data)
-        self.assertEqual(
-            client_response_size.name, "http.client.response.size"
-        )
+        self.assertEqual(client_response_size.name, "http.client.response.size")
         self.assert_metric_expected(
             client_response_size,
             [
@@ -168,9 +166,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             est_value_delta=40 / 1000,
         )
 
-        self.assertEqual(
-            client_request_size.name, "http.client.request.body.size"
-        )
+        self.assertEqual(client_request_size.name, "http.client.request.body.size")
         self.assert_metric_expected(
             client_request_size,
             [
@@ -185,9 +181,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         )
 
         expected_size = len(response.data)
-        self.assertEqual(
-            client_response_size.name, "http.client.response.body.size"
-        )
+        self.assertEqual(client_response_size.name, "http.client.response.body.size")
         self.assert_metric_expected(
             client_response_size,
             [
@@ -240,9 +234,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         }
 
         # assert new semconv metrics
-        self.assertEqual(
-            client_request_duration.name, "http.client.request.duration"
-        )
+        self.assertEqual(client_request_duration.name, "http.client.request.duration")
         self.assert_metric_expected(
             client_request_duration,
             [
@@ -258,9 +250,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             est_value_delta=40 / 1000,
         )
 
-        self.assertEqual(
-            client_request_body_size.name, "http.client.request.body.size"
-        )
+        self.assertEqual(client_request_body_size.name, "http.client.request.body.size")
         self.assert_metric_expected(
             client_request_body_size,
             [
@@ -274,9 +264,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             ],
         )
 
-        self.assertEqual(
-            client_response_body_size.name, "http.client.response.body.size"
-        )
+        self.assertEqual(client_response_body_size.name, "http.client.response.body.size")
         self.assert_metric_expected(
             client_response_body_size,
             [
@@ -319,9 +307,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             ],
         )
 
-        self.assertEqual(
-            client_response_size.name, "http.client.response.size"
-        )
+        self.assertEqual(client_response_size.name, "http.client.response.size")
         self.assert_metric_expected(
             client_response_size,
             [
@@ -340,9 +326,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         Entry.METHODS + ("NONSTANDARD",),
     )
     def test_basic_metrics_nonstandard_http_method(self):
-        Entry.single_register(
-            "NONSTANDARD", self.HTTP_URL, body="", status=405
-        )
+        Entry.single_register("NONSTANDARD", self.HTTP_URL, body="", status=405)
 
         start_time = default_timer()
         response = self.pool.request("NONSTANDARD", self.HTTP_URL)
@@ -396,9 +380,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         )
 
         expected_size = len(response.data)
-        self.assertEqual(
-            client_response_size.name, "http.client.response.size"
-        )
+        self.assertEqual(client_response_size.name, "http.client.response.size")
         self.assert_metric_expected(
             client_response_size,
             [
@@ -417,9 +399,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         Entry.METHODS + ("NONSTANDARD",),
     )
     def test_basic_metrics_nonstandard_http_method_new_semconv(self):
-        Entry.single_register(
-            "NONSTANDARD", self.HTTP_URL, body="", status=405
-        )
+        Entry.single_register("NONSTANDARD", self.HTTP_URL, body="", status=405)
         start_time = default_timer()
         response = self.pool.request("NONSTANDARD", self.HTTP_URL)
         duration_s = max(default_timer() - start_time, 0)
@@ -458,9 +438,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
             est_value_delta=40 / 1000,
         )
 
-        self.assertEqual(
-            client_request_size.name, "http.client.request.body.size"
-        )
+        self.assertEqual(client_request_size.name, "http.client.request.body.size")
         self.assert_metric_expected(
             client_request_size,
             [
@@ -475,9 +453,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         )
 
         expected_size = len(response.data)
-        self.assertEqual(
-            client_response_size.name, "http.client.response.body.size"
-        )
+        self.assertEqual(client_response_size.name, "http.client.response.body.size")
         self.assert_metric_expected(
             client_response_size,
             [
@@ -522,14 +498,10 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
     def test_schema_url(self):
         self.pool.request("POST", self.HTTP_URL, body="foobar")
 
-        resource_metrics = (
-            self.memory_metrics_reader.get_metrics_data().resource_metrics
-        )
+        resource_metrics = self.memory_metrics_reader.get_metrics_data().resource_metrics
 
         for metrics in resource_metrics:
-            scope_metrics_list = [
-                sm for sm in metrics.scope_metrics if sm.scope.name == SCOPE
-            ]
+            scope_metrics_list = [sm for sm in metrics.scope_metrics if sm.scope.name == SCOPE]
             for scope_metrics in scope_metrics_list:
                 self.assertEqual(
                     scope_metrics.scope.schema_url,
@@ -622,9 +594,7 @@ class TestURLLib3InstrumentorMetric(HttpTestBase, TestBase):
         )
 
     def test_generator_request_body_size_metrics(self):
-        self.pool.request(
-            "POST", self.HTTP_URL, body=(b for b in (b"foo", b"bar"))
-        )
+        self.pool.request("POST", self.HTTP_URL, body=(b for b in (b"foo", b"bar")))
 
         metrics = self.get_sorted_metrics(SCOPE)
         self.assertEqual(len(metrics), 2)

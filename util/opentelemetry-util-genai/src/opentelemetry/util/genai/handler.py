@@ -96,9 +96,7 @@ class TelemetryHandler:
             tracer_provider,
             schema_url=schema_url,
         )
-        meter = get_meter(
-            __name__, meter_provider=meter_provider, schema_url=schema_url
-        )
+        meter = get_meter(__name__, meter_provider=meter_provider, schema_url=schema_url)
         self._metrics_recorder = InvocationMetricsRecorder(meter)
         self._logger = get_logger(
             __name__,
@@ -108,21 +106,15 @@ class TelemetryHandler:
         )
         self._completion_hook = completion_hook or _NoOpCompletionHook()
         if is_experimental_mode():
-            content_enabled = (
-                get_content_capturing_mode() != ContentCapturingMode.NO_CONTENT
-            )
+            content_enabled = get_content_capturing_mode() != ContentCapturingMode.NO_CONTENT
         else:
-            content_enabled = os.environ.get(
-                OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, ""
-            ).lower() in (
+            content_enabled = os.environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "").lower() in (
                 "true",
                 "span_only",
                 "event_only",
                 "span_and_event",
             )
-        self._capture_content = content_enabled or not isinstance(
-            self._completion_hook, _NoOpCompletionHook
-        )
+        self._capture_content = content_enabled or not isinstance(self._completion_hook, _NoOpCompletionHook)
 
     def should_capture_content(self) -> bool:
         """Returns True if content should be captured.
@@ -467,9 +459,7 @@ def get_telemetry_handler(
     """
     Returns a singleton TelemetryHandler instance.
     """
-    handler: TelemetryHandler | None = getattr(
-        get_telemetry_handler, "_default_handler", None
-    )
+    handler: TelemetryHandler | None = getattr(get_telemetry_handler, "_default_handler", None)
     if handler is None:
         handler = TelemetryHandler(
             tracer_provider=tracer_provider,

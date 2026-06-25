@@ -1,9 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
-)
+OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 
 OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT = "OTEL_INSTRUMENTATION_GENAI_EMIT_EVENT"
 """
@@ -14,16 +12,12 @@ Must be one of ``true`` or ``false`` (case-insensitive).
 Defaults to ``false``.
 """
 
-OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK = (
-    "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK"
-)
+OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK = "OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK"
 """
 .. envvar:: OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK
 """
 
-OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH = (
-    "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH"
-)
+OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH = "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH"
 """
 .. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH
 
@@ -32,16 +26,14 @@ path like ``/path/to/prompts`` or a cloud storage URI such as ``gs://my_bucket``
 information, see
 
 * `Instantiate a file-system
-  <https://filesystem-spec.readthedocs.io/en/latest/usage.html#instantiate-a-file-system>`_ for supported values and how to
-  install support for additional backend implementations.
+  <https://filesystem-spec.readthedocs.io/en/latest/usage.html#instantiate-a-file-system>`_ for supported values
+  and how to install support for additional backend implementations.
 * `Configuration
   <https://filesystem-spec.readthedocs.io/en/latest/features.html#configuration>`_ for
   configuring a backend with environment variables.
 """
 
-OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT = (
-    "OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT"
-)
+OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT = "OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT"
 """
 .. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT
 
@@ -49,9 +41,7 @@ The format to use when uploading prompt and response data. Must be one of ``json
 ``jsonl``. Defaults to ``json``.
 """
 
-OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE = (
-    "OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE"
-)
+OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE = "OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE"
 """
 .. envvar:: OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE
 

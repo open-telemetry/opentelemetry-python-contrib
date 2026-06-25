@@ -49,9 +49,7 @@ class _CompoundMatcher:
             return True
         if x in self._entries:
             return True
-        if (self._regex_matcher is not None) and (
-            self._regex_matcher.fullmatch(x)
-        ):
+        if (self._regex_matcher is not None) and (self._regex_matcher.fullmatch(x)):
             return True
         return False
 
@@ -64,9 +62,9 @@ class AllowList:
     ):
         self._includes = _CompoundMatcher(set(includes or []))
         self._excludes = _CompoundMatcher(set(excludes or []))
-        assert (not self._includes.match_all) or (
-            not self._excludes.match_all
-        ), "Can't have '*' in both includes and excludes."
+        assert (not self._includes.match_all) or (not self._excludes.match_all), (
+            "Can't have '*' in both includes and excludes."
+        )
 
     def allowed(self, x: str):
         if self._excludes.match_all:
@@ -76,9 +74,7 @@ class AllowList:
         return self._includes.matches(x) and not self._excludes.matches(x)
 
     @staticmethod
-    def from_env(
-        includes_env_var: str, excludes_env_var: Optional[str] = None
-    ):
+    def from_env(includes_env_var: str, excludes_env_var: Optional[str] = None):
         includes = _parse_env_list(os.getenv(includes_env_var) or "")
         excludes = set()
         if excludes_env_var:

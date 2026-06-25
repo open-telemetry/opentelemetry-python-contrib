@@ -17,9 +17,7 @@ from .common_test_func import cancellation_create_task
 class TestAsyncioCancel(TestBase):
     @patch.dict(
         "os.environ",
-        {
-            OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "cancellation_coro, cancellable_coroutine"
-        },
+        {OTEL_PYTHON_ASYNCIO_COROUTINE_NAMES_TO_TRACE: "cancellation_coro, cancellable_coroutine"},
     )
     def setUp(self):
         super().setUp()
@@ -45,12 +43,7 @@ class TestAsyncioCancel(TestBase):
 
         self.assertEqual(spans[0].name, "asyncio coro-cancellable_coroutine")
         self.assertEqual(spans[1].name, "asyncio coro-cancellation_coro")
-        for metric in (
-            self.memory_metrics_reader.get_metrics_data()
-            .resource_metrics[0]
-            .scope_metrics[0]
-            .metrics
-        ):
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["type"], "coroutine")
@@ -65,6 +58,4 @@ class TestAsyncioCancel(TestBase):
                         point.attributes["name"],
                         ["cancellation_coro", "cancellable_coroutine"],
                     )
-                    self.assertIn(
-                        point.attributes["state"], ["finished", "cancelled"]
-                    )
+                    self.assertIn(point.attributes["state"], ["finished", "cancelled"])

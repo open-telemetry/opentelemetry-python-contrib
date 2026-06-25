@@ -128,15 +128,11 @@ class _InternalAwsXRayRemoteSampler(Sampler):
 
         self.__client_id = self.__generate_client_id()
         self._clock = _Clock()
-        self.__xray_client = _AwsXRaySamplingClient(
-            endpoint, log_level=log_level
-        )
+        self.__xray_client = _AwsXRaySamplingClient(endpoint, log_level=log_level)
         self.__fallback_sampler = _FallbackSampler(self._clock)
 
         self.__polling_interval = polling_interval
-        self.__target_polling_interval = (
-            DEFAULT_TARGET_POLLING_INTERVAL_SECONDS
-        )
+        self.__target_polling_interval = DEFAULT_TARGET_POLLING_INTERVAL_SECONDS
         self.__rule_polling_jitter = random.uniform(0.0, 5.0)
         self.__target_polling_jitter = random.uniform(0.0, 0.1)
 
@@ -177,9 +173,7 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         trace_state: TraceState | None = None,
     ) -> "SamplingResult":
         if self.__rule_cache.expired():
-            _logger.debug(
-                "Rule cache is expired so using fallback sampling strategy"
-            )
+            _logger.debug("Rule cache is expired so using fallback sampling strategy")
             return self.__fallback_sampler.should_sample(
                 parent_context,
                 trace_id,
@@ -203,9 +197,7 @@ class _InternalAwsXRayRemoteSampler(Sampler):
     # pylint: disable=no-self-use
     @override
     def get_description(self) -> str:
-        description = (
-            "_InternalAwsXRayRemoteSampler{remote sampling with AWS X-Ray}"
-        )
+        description = "_InternalAwsXRayRemoteSampler{remote sampling with AWS X-Ray}"
         return description
 
     def __get_and_update_sampling_rules(self) -> None:
@@ -224,14 +216,8 @@ class _InternalAwsXRayRemoteSampler(Sampler):
 
     def __get_and_update_sampling_targets(self) -> None:
         all_statistics = self.__rule_cache.get_all_statistics()
-        sampling_targets_response = self.__xray_client.get_sampling_targets(
-            all_statistics
-        )
-        refresh_rules, min_polling_interval = (
-            self.__rule_cache.update_sampling_targets(
-                sampling_targets_response
-            )
-        )
+        sampling_targets_response = self.__xray_client.get_sampling_targets(all_statistics)
+        refresh_rules, min_polling_interval = self.__rule_cache.update_sampling_targets(sampling_targets_response)
         if refresh_rules:
             self.__get_and_update_sampling_rules()
         if min_polling_interval is not None:  # type: ignore

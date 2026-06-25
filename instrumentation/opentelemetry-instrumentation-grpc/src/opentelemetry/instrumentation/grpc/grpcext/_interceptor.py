@@ -13,9 +13,7 @@ import grpc
 from opentelemetry.instrumentation.grpc import grpcext
 
 
-class _UnaryClientInfo(
-    collections.namedtuple("_UnaryClientInfo", ("full_method", "timeout"))
-):
+class _UnaryClientInfo(collections.namedtuple("_UnaryClientInfo", ("full_method", "timeout"))):
     pass
 
 
@@ -54,9 +52,7 @@ class _InterceptorUnaryUnaryMultiCallable(grpc.UnaryUnaryMultiCallable):
             )
 
         client_info = _UnaryClientInfo(self._method, timeout)
-        return self._interceptor.intercept_unary(
-            request, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_unary(request, metadata, client_info, invoker)
 
     def with_call(
         self,
@@ -78,9 +74,7 @@ class _InterceptorUnaryUnaryMultiCallable(grpc.UnaryUnaryMultiCallable):
             )
 
         client_info = _UnaryClientInfo(self._method, timeout)
-        return self._interceptor.intercept_unary(
-            request, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_unary(request, metadata, client_info, invoker)
 
     def future(
         self,
@@ -102,9 +96,7 @@ class _InterceptorUnaryUnaryMultiCallable(grpc.UnaryUnaryMultiCallable):
             )
 
         client_info = _UnaryClientInfo(self._method, timeout)
-        return self._interceptor.intercept_unary(
-            request, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_unary(request, metadata, client_info, invoker)
 
 
 class _InterceptorUnaryStreamMultiCallable(grpc.UnaryStreamMultiCallable):
@@ -133,9 +125,7 @@ class _InterceptorUnaryStreamMultiCallable(grpc.UnaryStreamMultiCallable):
             )
 
         client_info = _StreamClientInfo(self._method, False, True, timeout)
-        return self._interceptor.intercept_stream(
-            request, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_stream(request, metadata, client_info, invoker)
 
 
 class _InterceptorStreamUnaryMultiCallable(grpc.StreamUnaryMultiCallable):
@@ -164,9 +154,7 @@ class _InterceptorStreamUnaryMultiCallable(grpc.StreamUnaryMultiCallable):
             )
 
         client_info = _StreamClientInfo(self._method, True, False, timeout)
-        return self._interceptor.intercept_stream(
-            request_iterator, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_stream(request_iterator, metadata, client_info, invoker)
 
     def with_call(
         self,
@@ -188,9 +176,7 @@ class _InterceptorStreamUnaryMultiCallable(grpc.StreamUnaryMultiCallable):
             )
 
         client_info = _StreamClientInfo(self._method, True, False, timeout)
-        return self._interceptor.intercept_stream(
-            request_iterator, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_stream(request_iterator, metadata, client_info, invoker)
 
     def future(
         self,
@@ -212,9 +198,7 @@ class _InterceptorStreamUnaryMultiCallable(grpc.StreamUnaryMultiCallable):
             )
 
         client_info = _StreamClientInfo(self._method, True, False, timeout)
-        return self._interceptor.intercept_stream(
-            request_iterator, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_stream(request_iterator, metadata, client_info, invoker)
 
 
 class _InterceptorStreamStreamMultiCallable(grpc.StreamStreamMultiCallable):
@@ -243,9 +227,7 @@ class _InterceptorStreamStreamMultiCallable(grpc.StreamStreamMultiCallable):
             )
 
         client_info = _StreamClientInfo(self._method, True, True, timeout)
-        return self._interceptor.intercept_stream(
-            request_iterator, metadata, client_info, invoker
-        )
+        return self._interceptor.intercept_stream(request_iterator, metadata, client_info, invoker)
 
 
 class _InterceptorChannel(grpc.Channel):
@@ -274,13 +256,9 @@ class _InterceptorChannel(grpc.Channel):
                 _registered_method,
             )
         else:
-            base_callable = self._channel.unary_unary(
-                method, request_serializer, response_deserializer
-            )
+            base_callable = self._channel.unary_unary(method, request_serializer, response_deserializer)
         if isinstance(self._interceptor, grpcext.UnaryClientInterceptor):
-            return _InterceptorUnaryUnaryMultiCallable(
-                method, base_callable, self._interceptor
-            )
+            return _InterceptorUnaryUnaryMultiCallable(method, base_callable, self._interceptor)
         return base_callable
 
     def unary_stream(
@@ -298,13 +276,9 @@ class _InterceptorChannel(grpc.Channel):
                 _registered_method,
             )
         else:
-            base_callable = self._channel.unary_stream(
-                method, request_serializer, response_deserializer
-            )
+            base_callable = self._channel.unary_stream(method, request_serializer, response_deserializer)
         if isinstance(self._interceptor, grpcext.StreamClientInterceptor):
-            return _InterceptorUnaryStreamMultiCallable(
-                method, base_callable, self._interceptor
-            )
+            return _InterceptorUnaryStreamMultiCallable(method, base_callable, self._interceptor)
         return base_callable
 
     def stream_unary(
@@ -322,13 +296,9 @@ class _InterceptorChannel(grpc.Channel):
                 _registered_method,
             )
         else:
-            base_callable = self._channel.stream_unary(
-                method, request_serializer, response_deserializer
-            )
+            base_callable = self._channel.stream_unary(method, request_serializer, response_deserializer)
         if isinstance(self._interceptor, grpcext.StreamClientInterceptor):
-            return _InterceptorStreamUnaryMultiCallable(
-                method, base_callable, self._interceptor
-            )
+            return _InterceptorStreamUnaryMultiCallable(method, base_callable, self._interceptor)
         return base_callable
 
     def stream_stream(
@@ -346,20 +316,14 @@ class _InterceptorChannel(grpc.Channel):
                 _registered_method,
             )
         else:
-            base_callable = self._channel.stream_stream(
-                method, request_serializer, response_deserializer
-            )
+            base_callable = self._channel.stream_stream(method, request_serializer, response_deserializer)
         if isinstance(self._interceptor, grpcext.StreamClientInterceptor):
-            return _InterceptorStreamStreamMultiCallable(
-                method, base_callable, self._interceptor
-            )
+            return _InterceptorStreamStreamMultiCallable(method, base_callable, self._interceptor)
         return base_callable
 
     def close(self):
         if not hasattr(self._channel, "close"):
-            raise RuntimeError(
-                "close() is not supported with the installed version of grpcio"
-            )
+            raise RuntimeError("close() is not supported with the installed version of grpcio")
         self._channel.close()
 
     def __enter__(self):
@@ -374,13 +338,11 @@ class _InterceptorChannel(grpc.Channel):
 def intercept_channel(channel, *interceptors):
     result = channel
     for interceptor in interceptors:
-        if not isinstance(
-            interceptor, grpcext.UnaryClientInterceptor
-        ) and not isinstance(interceptor, grpcext.StreamClientInterceptor):
+        if not isinstance(interceptor, grpcext.UnaryClientInterceptor) and not isinstance(
+            interceptor, grpcext.StreamClientInterceptor
+        ):
             raise TypeError(
-                "interceptor must be either a "
-                "grpcext.UnaryClientInterceptor or a "
-                "grpcext.StreamClientInterceptor"
+                "interceptor must be either a grpcext.UnaryClientInterceptor or a grpcext.StreamClientInterceptor"
             )
         result = _InterceptorChannel(result, interceptor)
     return result

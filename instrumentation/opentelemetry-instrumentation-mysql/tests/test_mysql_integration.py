@@ -87,9 +87,7 @@ class TestMysqlIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.mysql
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.mysql)
 
         # check that no spans are generated after uninstrumen
         MySQLInstrumentor().uninstrument()
@@ -165,9 +163,7 @@ class TestMysqlIntegration(TestBase):
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -186,7 +182,11 @@ class TestMysqlIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',"
+                    "dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -196,9 +196,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_stmt_enabled(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -218,19 +216,25 @@ class TestMysqlIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',"
+                    "dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',"
+                    "dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_with_options(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -254,7 +258,11 @@ class TestMysqlIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',"
+                    "mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -264,9 +272,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_not_enabled_default(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -328,7 +334,11 @@ class TestMysqlIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',"
+                    "dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -359,11 +369,19 @@ class TestMysqlIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',"
+                    "dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',"
+                    "dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
 
     def test_instrument_with_dbapi_sqlcomment_enabled_with_options(
@@ -394,7 +412,11 @@ class TestMysqlIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                (
+                    "Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',"
+                    "mysql_client_version='foobaz',"
+                    f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;"
+                ),
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],

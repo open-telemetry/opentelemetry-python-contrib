@@ -45,9 +45,7 @@ class _SpanManager:
             parent_state = self.spans[parent_run_id]
             parent_span = parent_state.span
             ctx = set_span_in_context(parent_span)
-            span = self._tracer.start_span(
-                name=span_name, kind=kind, context=ctx
-            )
+            span = self._tracer.start_span(name=span_name, kind=kind, context=ctx)
             parent_state.children.append(run_id)
         else:
             # top-level or missing parent
@@ -100,7 +98,5 @@ class _SpanManager:
             # If the span does not exist, we cannot set the error status
             return
         span.set_status(Status(StatusCode.ERROR, str(error)))
-        span.set_attribute(
-            error_attributes.ERROR_TYPE, type(error).__qualname__
-        )
+        span.set_attribute(error_attributes.ERROR_TYPE, type(error).__qualname__)
         self.end_span(run_id)

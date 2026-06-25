@@ -206,9 +206,7 @@ def test_manager_exit_uses_none_exception_when_manager_suppresses():
 
 def test_manager_exit_still_finalizes_stream_wrapper_when_manager_raises():
     manager_error = RuntimeError("manager failure")
-    manager = _FakeManager(
-        stream=SimpleNamespace(), suppressed=False, exit_error=manager_error
-    )
+    manager = _FakeManager(stream=SimpleNamespace(), suppressed=False, exit_error=manager_error)
     wrapper = _make_wrapper(manager)
     stream_wrapper = _FakeStreamWrapper()
     wrapper._stream_wrapper = stream_wrapper
@@ -283,9 +281,7 @@ async def test_async_manager_exit_uses_none_exception_when_manager_suppresses():
 @pytest.mark.asyncio
 async def test_async_manager_exit_still_finalizes_stream_wrapper_when_manager_raises():
     manager_error = RuntimeError("manager failure")
-    manager = _FakeAsyncManager(
-        stream=SimpleNamespace(), suppressed=False, exit_error=manager_error
-    )
+    manager = _FakeAsyncManager(stream=SimpleNamespace(), suppressed=False, exit_error=manager_error)
     wrapper = _make_async_manager_wrapper(manager)
     stream_wrapper = _FakeAsyncStreamWrapper()
     wrapper._stream_wrapper = stream_wrapper

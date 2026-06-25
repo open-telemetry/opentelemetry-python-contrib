@@ -69,9 +69,7 @@ class TestURLLib3Instrumentor(TestBase):
 
         self.mocketizer = Mocketizer(strict_mode=True)
         self.mocketizer.enter()
-        Entry.single_register(
-            Entry.GET, self.HTTP_URL, body="Hello!", match_querystring=False
-        )
+        Entry.single_register(Entry.GET, self.HTTP_URL, body="Hello!", match_querystring=False)
         Entry.single_register(Entry.GET, self.HTTPS_URL, body="Hello!")
         Entry.single_register(Entry.POST, self.HTTP_URL, body="Hello!")
 
@@ -104,9 +102,7 @@ class TestURLLib3Instrumentor(TestBase):
         span = self.assert_span()
         self.assertIs(trace.SpanKind.CLIENT, span.kind)
         self.assertEqual("GET", span.name)
-        self.assertEqual(
-            span.status.status_code, trace.status.StatusCode.UNSET
-        )
+        self.assertEqual(span.status.status_code, trace.status.StatusCode.UNSET)
         expected_attr_old = {
             "http.method": "GET",
             "http.url": url,
@@ -127,9 +123,7 @@ class TestURLLib3Instrumentor(TestBase):
                 **expected_attr_old,
             },
         }
-        self.assertDictEqual(
-            dict(span.attributes), attributes.get(sem_conv_opt_in_mode)
-        )
+        self.assertDictEqual(dict(span.attributes), attributes.get(sem_conv_opt_in_mode))
 
     def assert_exception_span(
         self,
@@ -158,12 +152,8 @@ class TestURLLib3Instrumentor(TestBase):
             },
         }
 
-        self.assertDictEqual(
-            dict(span.attributes), attributes.get(sem_conv_opt_in_mode)
-        )
-        self.assertEqual(
-            trace.status.StatusCode.ERROR, span.status.status_code
-        )
+        self.assertDictEqual(dict(span.attributes), attributes.get(sem_conv_opt_in_mode))
+        self.assertEqual(trace.status.StatusCode.ERROR, span.status.status_code)
 
     @staticmethod
     def perform_request(
@@ -290,9 +280,7 @@ class TestURLLib3Instrumentor(TestBase):
         Entry.METHODS + ("NONSTANDARD",),
     )
     def test_nonstandard_http_method(self):
-        Entry.single_register(
-            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
-        )
+        Entry.single_register("NONSTANDARD", self.HTTP_URL, body="Hello!", status=405)
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
         span = self.assert_span()
         self.assertEqual("HTTP", span.name)
@@ -304,16 +292,12 @@ class TestURLLib3Instrumentor(TestBase):
         Entry.METHODS + ("NONSTANDARD",),
     )
     def test_nonstandard_http_method_new_semconv(self):
-        Entry.single_register(
-            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
-        )
+        Entry.single_register("NONSTANDARD", self.HTTP_URL, body="Hello!", status=405)
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
         span = self.assert_span()
         self.assertEqual("HTTP", span.name)
         self.assertEqual(span.attributes.get("http.request.method"), "_OTHER")
-        self.assertEqual(
-            span.attributes.get("http.request.method_original"), "NONSTANDARD"
-        )
+        self.assertEqual(span.attributes.get("http.request.method_original"), "NONSTANDARD")
         self.assertEqual(span.attributes.get("http.response.status_code"), 405)
 
     @mock.patch(
@@ -321,18 +305,14 @@ class TestURLLib3Instrumentor(TestBase):
         Entry.METHODS + ("NONSTANDARD",),
     )
     def test_nonstandard_http_method_both_semconv(self):
-        Entry.single_register(
-            "NONSTANDARD", self.HTTP_URL, body="Hello!", status=405
-        )
+        Entry.single_register("NONSTANDARD", self.HTTP_URL, body="Hello!", status=405)
         self.perform_request(self.HTTP_URL, method="NONSTANDARD")
         span = self.assert_span()
         self.assertEqual("HTTP", span.name)
         self.assertEqual(span.attributes.get("http.method"), "_OTHER")
         self.assertEqual(span.attributes.get("http.status_code"), 405)
         self.assertEqual(span.attributes.get("http.request.method"), "_OTHER")
-        self.assertEqual(
-            span.attributes.get("http.request.method_original"), "NONSTANDARD"
-        )
+        self.assertEqual(span.attributes.get("http.request.method_original"), "NONSTANDARD")
         self.assertEqual(span.attributes.get("http.response.status_code"), 405)
 
     def test_basic_http_non_default_port(self):
@@ -454,9 +434,7 @@ class TestURLLib3Instrumentor(TestBase):
     )
     def test_request_exception(self, _):
         with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
-            self.perform_request(
-                self.HTTP_URL, retries=urllib3.Retry(connect=False)
-            )
+            self.perform_request(self.HTTP_URL, retries=urllib3.Retry(connect=False))
 
         self.assert_exception_span(self.HTTP_URL)
 
@@ -466,13 +444,9 @@ class TestURLLib3Instrumentor(TestBase):
     )
     def test_request_exception_new_semconv(self, _):
         with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
-            self.perform_request(
-                self.HTTP_URL, retries=urllib3.Retry(connect=False)
-            )
+            self.perform_request(self.HTTP_URL, retries=urllib3.Retry(connect=False))
 
-        self.assert_exception_span(
-            self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP
-        )
+        self.assert_exception_span(self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP)
 
     @mock.patch(
         "urllib3.connectionpool.HTTPConnectionPool._make_request",
@@ -480,13 +454,9 @@ class TestURLLib3Instrumentor(TestBase):
     )
     def test_request_exception_both_semconv(self, _):
         with self.assertRaises(urllib3.exceptions.ConnectTimeoutError):
-            self.perform_request(
-                self.HTTP_URL, retries=urllib3.Retry(connect=False)
-            )
+            self.perform_request(self.HTTP_URL, retries=urllib3.Retry(connect=False))
 
-        self.assert_exception_span(
-            self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP
-        )
+        self.assert_exception_span(self.HTTP_URL, sem_conv_opt_in_mode=_StabilityMode.HTTP_DUP)
 
     @mock.patch(
         "urllib3.connectionpool.HTTPConnectionPool._make_request",
@@ -523,9 +493,7 @@ class TestURLLib3Instrumentor(TestBase):
             span.set_attribute("response_hook_attr", "value")
 
         URLLib3Instrumentor().uninstrument()
-        URLLib3Instrumentor().instrument(
-            request_hook=request_hook, response_hook=response_hook
-        )
+        URLLib3Instrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
         response = self.perform_request(self.HTTP_URL)
         self.assertEqual(b"Hello!", response.data)
 
@@ -543,9 +511,7 @@ class TestURLLib3Instrumentor(TestBase):
         ) -> None:
             span.set_attribute("request_hook_method", request_info.method)
             span.set_attribute("request_hook_url", request_info.url)
-            span.set_attribute(
-                "request_hook_headers", json.dumps(dict(request_info.headers))
-            )
+            span.set_attribute("request_hook_headers", json.dumps(dict(request_info.headers)))
             span.set_attribute("request_hook_body", request_info.body)
 
         URLLib3Instrumentor().uninstrument()
@@ -557,22 +523,16 @@ class TestURLLib3Instrumentor(TestBase):
         body = "param1=1&param2=2"
 
         pool = urllib3.HTTPConnectionPool("mock")
-        response = pool.request(
-            "POST", "/status/200", body=body, headers=headers
-        )
+        response = pool.request("POST", "/status/200", body=body, headers=headers)
 
         self.assertEqual(b"Hello!", response.data)
 
         span = self.assert_span()
 
         self.assertEqual(span.attributes["request_hook_method"], "POST")
-        self.assertEqual(
-            span.attributes["request_hook_url"], "http://mock/status/200"
-        )
+        self.assertEqual(span.attributes["request_hook_url"], "http://mock/status/200")
         self.assertIn("request_hook_headers", span.attributes)
-        self.assertEqual(
-            span.attributes["request_hook_headers"], json.dumps(headers)
-        )
+        self.assertEqual(span.attributes["request_hook_headers"], json.dumps(headers))
         self.assertIn("request_hook_body", span.attributes)
         self.assertEqual(span.attributes["request_hook_body"], body)
 
@@ -612,9 +572,7 @@ class TestURLLib3Instrumentor(TestBase):
 
     def test_custom_response_headers_captured(self):
         URLLib3Instrumentor().uninstrument()
-        URLLib3Instrumentor().instrument(
-            captured_response_headers=["X-Custom-Header", "X-Another-Header"]
-        )
+        URLLib3Instrumentor().instrument(captured_response_headers=["X-Custom-Header", "X-Another-Header"])
 
         response_headers = {
             "X-Custom-Header": "custom-value",
@@ -638,9 +596,7 @@ class TestURLLib3Instrumentor(TestBase):
             span.attributes["http.response.header.x_another_header"],
             ("another-value",),
         )
-        self.assertNotIn(
-            "http.response.header.x_excluded_header", span.attributes
-        )
+        self.assertNotIn("http.response.header.x_excluded_header", span.attributes)
 
     def test_custom_headers_not_captured_when_not_configured(self):
         """Test that headers are not captured when env vars are not set."""
@@ -653,12 +609,8 @@ class TestURLLib3Instrumentor(TestBase):
         )
 
         span = self.assert_span(num_spans=1)
-        self.assertNotIn(
-            "http.request.header.x_request_header", span.attributes
-        )
-        self.assertNotIn(
-            "http.response.header.x_response_header", span.attributes
-        )
+        self.assertNotIn("http.request.header.x_request_header", span.attributes)
+        self.assertNotIn("http.response.header.x_response_header", span.attributes)
 
     def test_sensitive_headers_sanitized(self):
         """Test that sensitive header values are redacted."""
@@ -749,9 +701,7 @@ class TestURLLib3Instrumentor(TestBase):
             span.attributes["http.request.header.x_custom_request_two"],
             ("value-two",),
         )
-        self.assertNotIn(
-            "http.request.header.x_other_request_header", span.attributes
-        )
+        self.assertNotIn("http.request.header.x_other_request_header", span.attributes)
         self.assertEqual(
             span.attributes["http.response.header.x_custom_response_a"],
             ("value-A",),
@@ -760,9 +710,7 @@ class TestURLLib3Instrumentor(TestBase):
             span.attributes["http.response.header.x_custom_response_b"],
             ("value-B",),
         )
-        self.assertNotIn(
-            "http.response.header.x_other_response_header", span.attributes
-        )
+        self.assertNotIn("http.response.header.x_other_response_header", span.attributes)
 
     def test_custom_headers_case_insensitive(self):
         """Test that header capture is case-insensitive."""
@@ -950,9 +898,7 @@ class TestURLLib3Instrumentor(TestBase):
             body="Hello!",
             headers=response_headers,
         )
-        self.perform_request(
-            url, headers={"x-request-one": "one", "x-request-two": "two"}
-        )
+        self.perform_request(url, headers={"x-request-one": "one", "x-request-two": "two"})
 
         span = self.assert_span(num_spans=1)
         self.assertEqual(
@@ -982,9 +928,7 @@ class TestURLLib3Instrumentor(TestBase):
         response = pool.urlopen("GET", "/status/200", None, headers)
         self.assertEqual(b"Hello!", response.data)
         span = self.assert_span()
-        self.assertEqual(
-            span.attributes["http.request.header.x_test"], ("Value",)
-        )
+        self.assertEqual(span.attributes["http.request.header.x_test"], ("Value",))
 
     def test_urlopen_all_positional(self):
         URLLib3Instrumentor().uninstrument()
@@ -1004,9 +948,7 @@ class TestURLLib3Instrumentor(TestBase):
         )
         self.assertEqual(b"Hello!", response.data)
         span = self.assert_span()
-        self.assertEqual(
-            span.attributes["http.request.header.x_test"], ("Value",)
-        )
+        self.assertEqual(span.attributes["http.request.header.x_test"], ("Value",))
 
     def test_urlopen_mixed_args(self):
         URLLib3Instrumentor().uninstrument()
@@ -1014,11 +956,7 @@ class TestURLLib3Instrumentor(TestBase):
         url = "http://mock/status/200"
         Entry.single_register(Entry.GET, url, body="Hello!")
         pool = urllib3.HTTPConnectionPool("mock")
-        response = pool.urlopen(
-            "GET", "/status/200", headers={"X-Test": "Value"}, body=None
-        )
+        response = pool.urlopen("GET", "/status/200", headers={"X-Test": "Value"}, body=None)
         self.assertEqual(b"Hello!", response.data)
         span = self.assert_span()
-        self.assertEqual(
-            span.attributes["http.request.header.x_test"], ("Value",)
-        )
+        self.assertEqual(span.attributes["http.request.header.x_test"], ("Value",))

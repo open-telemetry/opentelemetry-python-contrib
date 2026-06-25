@@ -120,9 +120,7 @@ def load_completion_hook() -> CompletionHook:
     if not hook_name:
         return _NoOpCompletionHook()
 
-    for entry_point in entry_points(
-        group="opentelemetry_genai_completion_hook"
-    ):
+    for entry_point in entry_points(group="opentelemetry_genai_completion_hook"):
         name = entry_point.name
         try:
             if hook_name != name:
@@ -130,18 +128,14 @@ def load_completion_hook() -> CompletionHook:
 
             hook = entry_point.load()()
             if not isinstance(hook, CompletionHook):
-                _logger.debug(
-                    "%s is not a valid CompletionHook. Using noop", name
-                )
+                _logger.debug("%s is not a valid CompletionHook. Using noop", name)
                 continue
 
             _logger.debug("Using CompletionHook %s", name)
             return _SafeCompletionHook(hook)
 
         except Exception:  # pylint: disable=broad-except
-            _logger.exception(
-                "CompletionHook %s configuration failed. Using noop", name
-            )
+            _logger.exception("CompletionHook %s configuration failed. Using noop", name)
 
     return _NoOpCompletionHook()
 

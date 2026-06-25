@@ -109,9 +109,7 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
 
         user = kwargs.get("user") or connect_method_args.user
         if user is not None:
-            _set_db_user(
-                self.span_attributes, user, self._sem_conv_opt_in_mode_db
-            )
+            _set_db_user(self.span_attributes, user, self._sem_conv_opt_in_mode_db)
 
         port = kwargs.get("port") or connect_method_args.port
         host = kwargs.get("server") or connect_method_args.server
@@ -127,21 +125,15 @@ class _PyMSSQLDatabaseApiIntegration(dbapi.DatabaseApiIntegration):
                     if len(tokens) > 1:
                         port = tokens[1]
         if host is not None:
-            _set_http_net_peer_name_client(
-                self.span_attributes, host, self._sem_conv_opt_in_mode_http
-            )
+            _set_http_net_peer_name_client(self.span_attributes, host, self._sem_conv_opt_in_mode_http)
         if port is not None:
-            _set_http_peer_port_client(
-                self.span_attributes, port, self._sem_conv_opt_in_mode_http
-            )
+            _set_http_peer_port_client(self.span_attributes, port, self._sem_conv_opt_in_mode_http)
 
         charset = kwargs.get("charset") or connect_method_args.charset
         if charset is not None:
             self.span_attributes["db.charset"] = charset
 
-        tds_version = (
-            kwargs.get("tds_version") or connect_method_args.tds_version
-        )
+        tds_version = kwargs.get("tds_version") or connect_method_args.tds_version
         if tds_version is not None:
             self.span_attributes["db.protocol.tds.version"] = tds_version
 

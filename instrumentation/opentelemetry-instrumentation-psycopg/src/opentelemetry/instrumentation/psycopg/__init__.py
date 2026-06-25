@@ -53,7 +53,8 @@ sqlcommenter enabled will have configurable key-value pairs appended to them, e.
 propagation between database client and server when database log records are enabled.
 For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans
+  <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -89,21 +90,23 @@ Available commenter_options
 
 The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| Commenter Option          | Description                                               | Example                                                                   |
-+===========================+===========================================================+===========================================================================+
-| ``db_driver``             | Database driver name with version.                        | ``psycopg='3.1.9'``                                                       |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``libpq_version``         | PostgreSQL libpq version                                  | ``libpq_version=140001``                                                  |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
++---------------------------+------------------------------------------------+---------------------------------------+
+| Commenter Option          | Description                                    | Example                               |
++===========================+================================================+=======================================+
+| ``db_driver``             | Database driver name with version.             | ``psycopg='3.1.9'``                   |
++---------------------------+------------------------------------------------+---------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.     | ``dbapi_threadsafety=2``              |
++---------------------------+------------------------------------------------+---------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.        | ``dbapi_level='2.0'``                 |
++---------------------------+------------------------------------------------+---------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement            | ``driver_paramstyle='pyformat'``      |
+|                           | parameter.                                     |                                       |
++---------------------------+------------------------------------------------+---------------------------------------+
+| ``libpq_version``         | PostgreSQL libpq version                       | ``libpq_version=140001``              |
++---------------------------+------------------------------------------------+---------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at        | ``traceparent='00-03afa25236b8cd948   |
+|                           | time of query.                                 | fa853d67038ac79-405ff022e8247c46-01'``|
++---------------------------+------------------------------------------------+---------------------------------------+
 
 SQLComment in span attribute
 ****************************
@@ -124,7 +127,10 @@ will also be configured by this setting.
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform
+    normalization. See `Semantic Conventions for database spans
+    <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_
+    for more information.
 
 API
 ---
@@ -147,9 +153,7 @@ from opentelemetry.trace import TracerProvider
 _logger = logging.getLogger(__name__)
 _OTEL_CURSOR_FACTORY_KEY = "_otel_orig_cursor_factory"
 
-ConnectionT = TypeVar(
-    "ConnectionT", psycopg.Connection, psycopg.AsyncConnection
-)
+ConnectionT = TypeVar("ConnectionT", psycopg.Connection, psycopg.AsyncConnection)
 CursorT = TypeVar("CursorT", psycopg.Cursor, psycopg.AsyncCursor)
 
 
@@ -173,9 +177,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
         capture_parameters = kwargs.get("capture_parameters", False)
         dbapi.wrap_connect(
             __name__,
@@ -235,9 +237,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
-    def instrument_connection(
-        connection: ConnectionT, tracer_provider: TracerProvider | None = None
-    ) -> ConnectionT:
+    def instrument_connection(connection: ConnectionT, tracer_provider: TracerProvider | None = None) -> ConnectionT:
         """Enable instrumentation in a psycopg connection.
 
         Args:
@@ -254,30 +254,20 @@ class PsycopgInstrumentor(BaseInstrumentor):
             connection._is_instrumented_by_opentelemetry = False
 
         if not connection._is_instrumented_by_opentelemetry:
-            setattr(
-                connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory
-            )
+            setattr(connection, _OTEL_CURSOR_FACTORY_KEY, connection.cursor_factory)
             if isinstance(connection, psycopg.AsyncConnection):
-                connection.cursor_factory = _new_cursor_async_factory(
-                    tracer_provider=tracer_provider
-                )
+                connection.cursor_factory = _new_cursor_async_factory(tracer_provider=tracer_provider)
             else:
-                connection.cursor_factory = _new_cursor_factory(
-                    tracer_provider=tracer_provider
-                )
+                connection.cursor_factory = _new_cursor_factory(tracer_provider=tracer_provider)
             connection._is_instrumented_by_opentelemetry = True
         else:
-            _logger.warning(
-                "Attempting to instrument Psycopg connection while already instrumented"
-            )
+            _logger.warning("Attempting to instrument Psycopg connection while already instrumented")
         return connection
 
     # TODO(owais): check if core dbapi can do this for all dbapi implementations e.g, pymysql and mysql
     @staticmethod
     def uninstrument_connection(connection: ConnectionT) -> ConnectionT:
-        connection.cursor_factory = getattr(
-            connection, _OTEL_CURSOR_FACTORY_KEY, None
-        )
+        connection.cursor_factory = getattr(connection, _OTEL_CURSOR_FACTORY_KEY, None)
 
         return connection
 
@@ -313,9 +303,7 @@ class DatabaseApiAsyncIntegration(dbapi.DatabaseApiIntegration):
         new_factory_kwargs = {"db_api": self}
         if base_cursor_factory:
             new_factory_kwargs["base_factory"] = base_cursor_factory
-        kwargs["cursor_factory"] = _new_cursor_async_factory(
-            **new_factory_kwargs
-        )
+        kwargs["cursor_factory"] = _new_cursor_async_factory(**new_factory_kwargs)
         connection = await connect_method(*args, **kwargs)
         self.get_connection_attributes(connection)
         return connection
@@ -329,11 +317,7 @@ class CursorTracer(dbapi.CursorTracer):
         statement = args[0]
         if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
-            return (
-                self._leading_comment_remover.sub("", statement).split()[0]
-                if statement
-                else ""
-            )
+            return self._leading_comment_remover.sub("", statement).split()[0] if statement else ""
         return super().get_operation_name(cursor, args)
 
     def get_statement(self, cursor: CursorT, args: list[Any]) -> str:
@@ -365,19 +349,13 @@ def _new_cursor_factory(
 
     class TracedCursorFactory(base_factory):
         def execute(self, *args: Any, **kwargs: Any):
-            return _cursor_tracer.traced_execution(
-                self, super().execute, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().execute, *args, **kwargs)
 
         def executemany(self, *args: Any, **kwargs: Any):
-            return _cursor_tracer.traced_execution(
-                self, super().executemany, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().executemany, *args, **kwargs)
 
         def callproc(self, *args: Any, **kwargs: Any):
-            return _cursor_tracer.traced_execution(
-                self, super().callproc, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().callproc, *args, **kwargs)
 
     return TracedCursorFactory
 
@@ -400,18 +378,12 @@ def _new_cursor_async_factory(
 
     class TracedCursorAsyncFactory(base_factory):
         async def execute(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution_async(
-                self, super().execute, *args, **kwargs
-            )
+            return await _cursor_tracer.traced_execution_async(self, super().execute, *args, **kwargs)
 
         async def executemany(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution_async(
-                self, super().executemany, *args, **kwargs
-            )
+            return await _cursor_tracer.traced_execution_async(self, super().executemany, *args, **kwargs)
 
         async def callproc(self, *args: Any, **kwargs: Any):
-            return await _cursor_tracer.traced_execution_async(
-                self, super().callproc, *args, **kwargs
-            )
+            return await _cursor_tracer.traced_execution_async(self, super().callproc, *args, **kwargs)
 
     return TracedCursorAsyncFactory

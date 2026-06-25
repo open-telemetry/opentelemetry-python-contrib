@@ -86,15 +86,21 @@ Available commenter_options
 
 The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| Commenter Option          | Description                                               | Example                                                                   |
-+===========================+===========================================================+===========================================================================+
-| ``db_driver``             | Database driver name.                                     | ``db_driver='psycopg2'``                                                  |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``db_framework``          | Database framework name with version.                     | ``db_framework='sqlalchemy:1.4.0'``                                       |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
+.. list-table::
+   :header-rows: 1
+
+   * - Commenter Option
+     - Description
+     - Example
+   * - ``db_driver``
+     - Database driver name.
+     - ``db_driver='psycopg2'``
+   * - ``db_framework``
+     - Database framework name with version.
+     - ``db_framework='sqlalchemy:1.4.0'``
+   * - ``opentelemetry_values``
+     - OpenTelemetry context as traceparent at time of query.
+     - ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'``
 
 SQLComment in span attribute
 ****************************
@@ -116,7 +122,10 @@ will also be configured by this setting.
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform
+    normalization. See
+    `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_
+    for more information.
 
 API
 ---
@@ -170,7 +179,8 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 ``meter_provider``: a MeterProvider, defaults to global
                 ``enable_commenter``: bool to enable sqlcommenter, defaults to False
                 ``commenter_options``: dict of sqlcommenter config, defaults to {}
-                ``enable_attribute_commenter``: bool to enable sqlcomment addition to span attribute, defaults to False. Must also set `enable_commenter`.
+                ``enable_attribute_commenter``: bool to enable sqlcomment addition to span attribute,
+                    defaults to False. Must also set `enable_commenter`.
 
         Returns:
             An instrumented engine if passed in as an argument or list of instrumented engines, None otherwise.
@@ -211,9 +221,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
 
         enable_commenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
 
         _w(
             "sqlalchemy",
@@ -276,9 +284,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
                 kwargs.get("commenter_options", {}),
                 kwargs.get("enable_attribute_commenter", False),
             )
-        if kwargs.get("engines") is not None and isinstance(
-            kwargs.get("engines"), Sequence
-        ):
+        if kwargs.get("engines") is not None and isinstance(kwargs.get("engines"), Sequence):
             return [
                 EngineTracer(
                     tracer,

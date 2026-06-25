@@ -112,9 +112,7 @@ class TestTortoiseORMInstrumentor(TestBase):
 
     def test_no_op_tracer_provider(self):
         TortoiseORMInstrumentor().uninstrument()
-        TortoiseORMInstrumentor().instrument(
-            tracer_provider=trace.NoOpTracerProvider()
-        )
+        TortoiseORMInstrumentor().instrument(tracer_provider=trace.NoOpTracerProvider())
 
         async def run():
             await self._init_tortoise()

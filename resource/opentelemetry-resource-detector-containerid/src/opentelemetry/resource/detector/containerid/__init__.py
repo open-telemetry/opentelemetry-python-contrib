@@ -16,15 +16,11 @@ _CONTAINER_ID_LENGTH = 64
 def _get_container_id_v1():
     container_id = None
     try:
-        with open(
-            _DEFAULT_CGROUP_V1_PATH, encoding="utf8"
-        ) as container_info_file:
+        with open(_DEFAULT_CGROUP_V1_PATH, encoding="utf8") as container_info_file:
             for raw_line in container_info_file.readlines():
                 line = raw_line.strip()
 
-                match = re.search(
-                    r"^.*/(?:.*[-:])?([0-9a-f]+)(?:\.|\s*$)", line
-                )
+                match = re.search(r"^.*/(?:.*[-:])?([0-9a-f]+)(?:\.|\s*$)", line)
                 if match is not None:
                     container_id = match.group(1)
                     break
@@ -37,19 +33,11 @@ def _get_container_id_v1():
 def _get_container_id_v2():
     container_id = None
     try:
-        with open(
-            _DEFAULT_CGROUP_V2_PATH, encoding="utf8"
-        ) as container_info_file:
+        with open(_DEFAULT_CGROUP_V2_PATH, encoding="utf8") as container_info_file:
             for raw_line in container_info_file.readlines():
                 line = raw_line.strip()
-                if any(
-                    key_word in line for key_word in ["containers", "hostname"]
-                ):
-                    container_id_list = [
-                        id_
-                        for id_ in line.split("/")
-                        if len(id_) == _CONTAINER_ID_LENGTH
-                    ]
+                if any(key_word in line for key_word in ["containers", "hostname"]):
+                    container_id_list = [id_ for id_ in line.split("/") if len(id_) == _CONTAINER_ID_LENGTH]
                     if len(container_id_list) > 0:
                         container_id = container_id_list[0]
                         break
@@ -73,9 +61,7 @@ class ContainerResourceDetector(ResourceDetector):
             container_id = _get_container_id()
             resource = Resource.get_empty()
             if container_id:
-                resource = resource.merge(
-                    Resource({ResourceAttributes.CONTAINER_ID: container_id})
-                )
+                resource = resource.merge(Resource({ResourceAttributes.CONTAINER_ID: container_id}))
             return resource
 
         # pylint: disable=broad-except

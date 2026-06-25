@@ -56,9 +56,7 @@ def test_includes_and_excludes():
 
 
 def test_includes_and_excludes_with_wildcards():
-    allow_list = AllowList(
-        includes=["abc", "xyz", "xyz.*"], excludes=["xyz.foo", "xyz.foo.*"]
-    )
+    allow_list = AllowList(includes=["abc", "xyz", "xyz.*"], excludes=["xyz.foo", "xyz.foo.*"])
     assert allow_list.allowed("abc")
     assert allow_list.allowed("xyz")
     assert not allow_list.allowed("xyz.foo")
@@ -99,9 +97,7 @@ def test_can_load_from_env_with_just_include_list():
     assert not allow_list.allowed("other value not in includes")
 
 
-@mock.patch.dict(
-    os.environ, {"TEST_ALLOW_LIST_INCLUDE_KEYS": " abc , , xyz ,"}
-)
+@mock.patch.dict(os.environ, {"TEST_ALLOW_LIST_INCLUDE_KEYS": " abc , , xyz ,"})
 def test_can_handle_spaces_and_empty_entries():
     allow_list = AllowList.from_env("TEST_ALLOW_LIST_INCLUDE_KEYS")
     assert allow_list.allowed("abc")

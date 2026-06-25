@@ -96,9 +96,7 @@ def set_attributes_from_context(
             routing_key = value.get("routing_key")
 
             if routing_key is not None:
-                span.set_attribute(
-                    SpanAttributes.MESSAGING_DESTINATION, routing_key
-                )
+                span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, routing_key)
 
             value = str(value)
 
@@ -166,9 +164,7 @@ def attach_context(
     ctx_dict[(task_id, is_publish)] = (span, activation, token)
 
 
-def detach_context(
-    task: Optional[Task], task_id: str, is_publish: bool = False
-) -> None:
+def detach_context(task: Optional[Task], task_id: str, is_publish: bool = False) -> None:
     """Helper to remove  `Span`, `ContextManager` and context token in a
     Celery task when it's propagated.
     This function handles tasks where no values are attached to the `Task`.
@@ -184,9 +180,7 @@ def detach_context(
     span_dict.pop((task_id, is_publish), None)
 
 
-def retrieve_context(
-    task: Optional[Task], task_id: str, is_publish: bool = False
-) -> Optional[ContextTuple]:
+def retrieve_context(task: Optional[Task], task_id: str, is_publish: bool = False) -> Optional[ContextTuple]:
     """Helper to retrieve an active `Span`, `ContextManager` and context token
     stored in a `Task` instance
     """

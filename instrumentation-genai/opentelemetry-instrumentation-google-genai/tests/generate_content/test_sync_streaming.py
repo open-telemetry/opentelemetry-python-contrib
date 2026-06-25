@@ -20,17 +20,13 @@ class StreamingMixin:
         return result
 
 
-class TestGenerateContentStreamingWithSingleResult(
-    StreamingMixin, NonStreamingTestCase
-):
+class TestGenerateContentStreamingWithSingleResult(StreamingMixin, NonStreamingTestCase):
     def generate_content(self, *args, **kwargs):
         responses = self.generate_content_stream(*args, **kwargs)
         self.assertEqual(len(responses), 1)
         return responses[0]
 
 
-class TestGenerateContentStreamingWithStreamedResults(
-    StreamingMixin, StreamingTestCase
-):
+class TestGenerateContentStreamingWithStreamedResults(StreamingMixin, StreamingTestCase):
     def generate_content(self, *args, **kwargs):
         return self.generate_content_stream(*args, **kwargs)

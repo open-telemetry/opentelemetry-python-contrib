@@ -22,9 +22,7 @@ class TestSQLite3(TestBase):
         self._cursor = self._connection.cursor()
         self._connection2 = dbapi2.connect(":memory:")
         self._cursor2 = self._connection2.cursor()
-        self._connection3 = SQLite3Instrumentor.instrument_connection(
-            dbapi2.connect(":memory:")
-        )
+        self._connection3 = SQLite3Instrumentor.instrument_connection(dbapi2.connect(":memory:"))
         self._cursor3 = self._connection3.cursor()
 
     def tearDown(self):
@@ -171,9 +169,7 @@ class TestSQLite3Integration(TestBase):
 
     def test_no_op_tracer_provider(self):
         """Should produce no spans with NoOpTracerProvider."""
-        SQLite3Instrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        SQLite3Instrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
         cnx = self._connect()
         cursor = cnx.cursor()
         self.addCleanup(cursor.close)

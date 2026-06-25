@@ -30,30 +30,22 @@ class KafkaPropertiesExtractor:
     @staticmethod
     def extract_send_topic(args, kwargs):
         """extract topic from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "topic", 0, "unknown", args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("topic", 0, "unknown", args, kwargs)
 
     @staticmethod
     def extract_send_value(args, kwargs):
         """extract value from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "value", 1, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("value", 1, None, args, kwargs)
 
     @staticmethod
     def extract_send_key(args, kwargs):
         """extract key from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "key", 2, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("key", 2, None, args, kwargs)
 
     @staticmethod
     def extract_send_headers(args, kwargs):
         """extract headers from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "headers", 3, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("headers", 3, None, args, kwargs)
 
     @staticmethod
     def extract_send_partition(instance, args, kwargs):
@@ -62,29 +54,16 @@ class KafkaPropertiesExtractor:
             topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
             key = KafkaPropertiesExtractor.extract_send_key(args, kwargs)
             value = KafkaPropertiesExtractor.extract_send_value(args, kwargs)
-            partition = KafkaPropertiesExtractor._extract_argument(
-                "partition", 4, None, args, kwargs
-            )
-            key_bytes = instance._serialize(
-                instance.config["key_serializer"], topic, key
-            )
-            value_bytes = instance._serialize(
-                instance.config["value_serializer"], topic, value
-            )
+            partition = KafkaPropertiesExtractor._extract_argument("partition", 4, None, args, kwargs)
+            key_bytes = instance._serialize(instance.config["key_serializer"], topic, key)
+            value_bytes = instance._serialize(instance.config["value_serializer"], topic, value)
             valid_types = (bytes, bytearray, memoryview, type(None))
-            if (
-                type(key_bytes) not in valid_types
-                or type(value_bytes) not in valid_types
-            ):
+            if type(key_bytes) not in valid_types or type(value_bytes) not in valid_types:
                 return None
 
-            instance._wait_on_metadata(
-                topic, instance.config["max_block_ms"] / 1000.0
-            )
+            instance._wait_on_metadata(topic, instance.config["max_block_ms"] / 1000.0)
 
-            return instance._partition(
-                topic, partition, key, value, key_bytes, value_bytes
-            )
+            return instance._partition(topic, partition, key, value, key_bytes, value_bytes)
         except Exception as exception:  # pylint: disable=W0703
             _LOG.debug("Unable to extract partition: %s", exception)
             return None
@@ -125,16 +104,12 @@ _kafka_getter = KafkaContextGetter()
 _kafka_setter = KafkaContextSetter()
 
 
-def _enrich_span(
-    span, bootstrap_servers: List[str], topic: str, partition: int
-):
+def _enrich_span(span, bootstrap_servers: List[str], topic: str, partition: int):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
         span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
         span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
-        span.set_attribute(
-            SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
-        )
+        span.set_attribute(SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers))
 
 
 def _get_span_name(operation: str, topic: str):
@@ -149,16 +124,10 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             kwargs["headers"] = headers
 
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
-        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
-            instance
-        )
-        partition = KafkaPropertiesExtractor.extract_send_partition(
-            instance, args, kwargs
-        )
+        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
+        partition = KafkaPropertiesExtractor.extract_send_partition(instance, args, kwargs)
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.PRODUCER
-        ) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
             _enrich_span(span, bootstrap_servers, topic, partition)
             propagate.inject(
                 headers,
@@ -211,13 +180,9 @@ def _wrap_next(
         record = func(*args, **kwargs)
 
         if record:
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
+            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
 
-            extracted_context = propagate.extract(
-                record.headers, getter=_kafka_getter
-            )
+            extracted_context = propagate.extract(record.headers, getter=_kafka_getter)
             _create_consumer_span(
                 tracer,
                 consume_hook,

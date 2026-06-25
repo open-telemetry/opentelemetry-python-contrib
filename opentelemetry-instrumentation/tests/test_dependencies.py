@@ -152,7 +152,8 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            '''DependencyConflict: requested any of the following: "['foo~=1.0; extra == "instruments-any"', 'bar~=1.0; extra == "instruments-any"']" but found: "[]"''',
+            """DependencyConflict: requested any of the following: "['foo~=1.0; extra == "instruments-any"', """
+            ''''bar~=1.0; extra == "instruments-any"']" but found: "[]"''',
         )
 
     # Tests when both "and" and "either" dependencies are specified and both pass.
@@ -264,5 +265,6 @@ class TestDependencyConflicts(TestBase):
         self.assertTrue(isinstance(conflict, DependencyConflict))
         self.assertEqual(
             str(conflict),
-            '''DependencyConflict: requested any of the following: "['bar~=2.0; extra == "instruments-any"', 'baz~=3.0; extra == "instruments-any"']" but found: "[]"''',
+            """DependencyConflict: requested any of the following: "['bar~=2.0; extra == "instruments-any"', """
+            ''''baz~=3.0; extra == "instruments-any"']" but found: "[]"''',
         )

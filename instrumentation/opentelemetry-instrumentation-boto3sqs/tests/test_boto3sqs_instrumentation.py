@@ -50,20 +50,14 @@ class TestBoto3SQSInstrumentor(TestCase):
         self.assertIsInstance(client.send_message_batch, BoundFunctionWrapper)
         self.assertIsInstance(client.receive_message, BoundFunctionWrapper)
         self.assertIsInstance(client.delete_message, BoundFunctionWrapper)
-        self.assertIsInstance(
-            client.delete_message_batch, BoundFunctionWrapper
-        )
+        self.assertIsInstance(client.delete_message_batch, BoundFunctionWrapper)
 
     def _assert_uninstrumented(self, client):
         self.assertNotIsInstance(client.send_message, BoundFunctionWrapper)
-        self.assertNotIsInstance(
-            client.send_message_batch, BoundFunctionWrapper
-        )
+        self.assertNotIsInstance(client.send_message_batch, BoundFunctionWrapper)
         self.assertNotIsInstance(client.receive_message, BoundFunctionWrapper)
         self.assertNotIsInstance(client.delete_message, BoundFunctionWrapper)
-        self.assertNotIsInstance(
-            client.delete_message_batch, BoundFunctionWrapper
-        )
+        self.assertNotIsInstance(client.delete_message_batch, BoundFunctionWrapper)
 
     @staticmethod
     @contextmanager
@@ -111,12 +105,8 @@ class TestBoto3SQSInstrumentor(TestCase):
     def test_instrument_multiple_resources(self):
         for session in (False, True):
             with self._active_instrumentor():
-                self._assert_instrumented(
-                    _make_sqs_resource(session=session).meta.client
-                )
-                self._assert_instrumented(
-                    _make_sqs_resource(session=session).meta.client
-                )
+                self._assert_instrumented(_make_sqs_resource(session=session).meta.client)
+                self._assert_instrumented(_make_sqs_resource(session=session).meta.client)
 
 
 class TestBoto3SQSGetter(TestCase):
@@ -197,9 +187,7 @@ class TestBoto3SQSInstrumentation(TestBase):
     @contextmanager
     def _mocked_endpoint(self, response):
         response_func = self._make_aws_response_func(response)
-        with mock.patch(
-            "botocore.endpoint.Endpoint.make_request", new=response_func
-        ):
+        with mock.patch("botocore.endpoint.Endpoint.make_request", new=response_func):
             yield
 
     def _assert_injected_span(self, msg_attrs: Dict[str, Any], span: Span):
@@ -219,9 +207,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         }
 
     @staticmethod
-    def _to_trace_parent(
-        trace_id: int, span_id: int, trace_flags: TraceFlags
-    ) -> str:
+    def _to_trace_parent(trace_id: int, span_id: int, trace_flags: TraceFlags) -> str:
         return f"00-{format_trace_id(trace_id)}-{format_span_id(span_id)}-{trace_flags:02x}".lower()
 
     def _get_only_span(self):
@@ -241,13 +227,9 @@ class TestBoto3SQSInstrumentation(TestBase):
             "MessageAttributes": {},
         }
 
-    def _add_trace_parent(
-        self, message: Dict[str, Any], trace_id: int, span_id: int
-    ):
+    def _add_trace_parent(self, message: Dict[str, Any], trace_id: int, span_id: int):
         message["MessageAttributes"]["traceparent"] = {
-            "StringValue": self._to_trace_parent(
-                trace_id, span_id, TraceFlags.get_default()
-            ),
+            "StringValue": self._to_trace_parent(trace_id, span_id, TraceFlags.get_default()),
             "DataType": "String",
         }
 
@@ -290,12 +272,8 @@ class TestBoto3SQSInstrumentation(TestBase):
 
         mock_response = {"Messages": []}
         for msg_id, attrs in msg_def.items():
-            message = self._make_message(
-                msg_id, f"hello {msg_id}", attrs["receipt"]
-            )
-            self._add_trace_parent(
-                message, attrs["trace_id"], attrs["span_id"]
-            )
+            message = self._make_message(msg_id, f"hello {msg_id}", attrs["receipt"])
+            self._add_trace_parent(message, attrs["trace_id"], attrs["span_id"])
             mock_response["Messages"].append(message)
 
         message_attr_names = []
@@ -328,9 +306,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             msg_id = msg["MessageId"]
             attrs = msg_def[msg_id]
             with self._mocked_endpoint(None):
-                self._client.delete_message(
-                    QueueUrl=self._queue_url, ReceiptHandle=attrs["receipt"]
-                )
+                self._client.delete_message(QueueUrl=self._queue_url, ReceiptHandle=attrs["receipt"])
 
             span = self._get_only_span()
             self.assertEqual(f"{self._queue_name} process", span.name)

@@ -40,4 +40,7 @@ def _get_azure_resource_uri() -> Optional[str]:
     if not (website_site_name and website_resource_group and subscription_id):
         return None
 
-    return f"/subscriptions/{subscription_id}/resourceGroups/{website_resource_group}/providers/Microsoft.Web/sites/{website_site_name}"
+    return (
+        f"/subscriptions/{subscription_id}/resourceGroups/{website_resource_group}"
+        f"/providers/Microsoft.Web/sites/{website_site_name}"
+    )

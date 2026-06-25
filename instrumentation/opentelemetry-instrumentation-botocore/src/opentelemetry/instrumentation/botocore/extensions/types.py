@@ -58,17 +58,11 @@ class _AwsSdkCallContext:
         # for all other attributes we extract them defensively. All of them should
         # usually exist unless some future botocore version moved things.
         self.region: Optional[str] = self._get_attr(boto_meta, "region_name")
-        self.endpoint_url: Optional[str] = self._get_attr(
-            boto_meta, "endpoint_url"
-        )
+        self.endpoint_url: Optional[str] = self._get_attr(boto_meta, "endpoint_url")
 
-        self.api_version: Optional[str] = self._get_attr(
-            service_model, "api_version"
-        )
+        self.api_version: Optional[str] = self._get_attr(service_model, "api_version")
         # name of the service in proper casing
-        self.service_id = str(
-            self._get_attr(service_model, "service_id", self.service)
-        )
+        self.service_id = str(self._get_attr(service_model, "service_id", self.service))
 
         self.span_name = f"{self.service_id}.{self.operation}"
         self.span_kind = SpanKind.CLIENT
@@ -139,9 +133,7 @@ class _AwsSdkExtension:
         Extensions might override this function to extract additional attributes.
         """
 
-    def before_service_call(
-        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
-    ):
+    def before_service_call(self, span: Span, instrumentor_context: _BotocoreInstrumentorContext):
         """Callback which gets invoked after the span is created but before the
         AWS SDK service is called.
 
@@ -172,9 +164,7 @@ class _AwsSdkExtension:
         ClientError.
         """
 
-    def after_service_call(
-        self, instrumentor_context: _BotocoreInstrumentorContext
-    ):
+    def after_service_call(self, instrumentor_context: _BotocoreInstrumentorContext):
         """Callback that gets invoked after the AWS SDK service was called.
 
         Extensions might override this function to do some cleanup tasks.

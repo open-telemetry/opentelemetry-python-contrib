@@ -50,17 +50,13 @@ class _SamplingTargetResponse:  # pyright: ignore[reportUnusedClass]
         SamplingTargetDocuments: List[_SamplingTarget] | None = None,
         UnprocessedStatistics: List[_UnprocessedStatistics] | None = None,
     ):
-        self.LastRuleModification: float = (
-            LastRuleModification if LastRuleModification is not None else 0.0
-        )
+        self.LastRuleModification: float = LastRuleModification if LastRuleModification is not None else 0.0
 
         self.SamplingTargetDocuments: List[_SamplingTarget] = []
         if SamplingTargetDocuments is not None:
             for document in SamplingTargetDocuments:
                 try:
-                    self.SamplingTargetDocuments.append(
-                        _SamplingTarget(**cast(Any, document))
-                    )
+                    self.SamplingTargetDocuments.append(_SamplingTarget(**cast(Any, document)))
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     _logger.debug("Error creating _SamplingTarget: %s", e)
 
@@ -68,10 +64,6 @@ class _SamplingTargetResponse:  # pyright: ignore[reportUnusedClass]
         if UnprocessedStatistics is not None:
             for unprocessed in UnprocessedStatistics:
                 try:
-                    self.UnprocessedStatistics.append(
-                        _UnprocessedStatistics(**cast(Any, unprocessed))
-                    )
+                    self.UnprocessedStatistics.append(_UnprocessedStatistics(**cast(Any, unprocessed)))
                 except Exception as e:  # pylint: disable=broad-exception-caught
-                    _logger.debug(
-                        "Error creating _UnprocessedStatistics: %s", e
-                    )
+                    _logger.debug("Error creating _UnprocessedStatistics: %s", e)

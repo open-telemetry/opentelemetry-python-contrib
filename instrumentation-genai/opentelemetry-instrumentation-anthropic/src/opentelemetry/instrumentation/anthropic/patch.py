@@ -71,15 +71,11 @@ def messages_create(
         AnthropicStream[RawMessageStreamEvent],
         MessagesStreamWrapper[None],
     ]:
-        invocation = _create_invocation(
-            handler, instance, args, kwargs, capture_content
-        )
+        invocation = _create_invocation(handler, instance, args, kwargs, capture_content)
         try:
             result = wrapped(*args, **kwargs)
             if isinstance(result, AnthropicStream):
-                return MessagesStreamWrapper(
-                    result, invocation, capture_content
-                )
+                return MessagesStreamWrapper(result, invocation, capture_content)
 
             wrapper = MessageWrapper(result, capture_content)
             wrapper.extract_into(invocation)
@@ -90,7 +86,8 @@ def messages_create(
             raise
 
     return cast(
-        'Callable[..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]", MessagesStreamWrapper[None]]]',
+        'Callable[..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]", '
+        "MessagesStreamWrapper[None]]]",
         traced_method,
     )
 
@@ -104,14 +101,8 @@ def _create_invocation(
 ) -> InferenceInvocation:
     params = extract_params(*args, **kwargs)
     attributes = get_llm_request_attributes(params, instance)
-    request_model_attribute = attributes.get(
-        GenAIAttributes.GEN_AI_REQUEST_MODEL
-    )
-    request_model = (
-        request_model_attribute
-        if isinstance(request_model_attribute, str)
-        else params.model
-    )
+    request_model_attribute = attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
+    request_model = request_model_attribute if isinstance(request_model_attribute, str) else params.model
 
     server_address, server_port = get_server_address_and_port(instance)
     invocation = handler.start_inference(
@@ -120,12 +111,8 @@ def _create_invocation(
         server_address=server_address,
         server_port=server_port,
     )
-    invocation.input_messages = (
-        get_input_messages(params.messages) if capture_content else []
-    )
-    invocation.system_instruction = (
-        get_system_instruction(params.system) if capture_content else []
-    )
+    invocation.input_messages = get_input_messages(params.messages) if capture_content else []
+    invocation.system_instruction = get_system_instruction(params.system) if capture_content else []
     invocation.attributes = attributes
     return invocation
 
@@ -144,12 +131,8 @@ def messages_stream(
     ) -> MessagesStreamManagerWrapper[Any]:
         return MessagesStreamManagerWrapper(
             wrapped(*args, **kwargs),
-            lambda: _create_invocation(
-                handler, instance, args, kwargs, capture_content
-            ),
+            lambda: _create_invocation(handler, instance, args, kwargs, capture_content),
             capture_content,
         )
 
-    return cast(
-        "Callable[..., MessagesStreamManagerWrapper[Any]]", traced_method
-    )
+    return cast("Callable[..., MessagesStreamManagerWrapper[Any]]", traced_method)

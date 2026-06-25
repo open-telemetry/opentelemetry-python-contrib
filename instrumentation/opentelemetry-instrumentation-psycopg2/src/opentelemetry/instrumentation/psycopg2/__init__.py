@@ -52,7 +52,8 @@ sqlcommenter enabled will have configurable key-value pairs appended to them, e.
 propagation between database client and server when database log records are enabled.
 For more information, see:
 
-* `Semantic Conventions - Database Spans <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
+* `Semantic Conventions - Database Spans
+  <https://github.com/open-telemetry/semantic-conventions/blob/main/docs/db/database-spans.md#sql-commenter>`_
 * `sqlcommenter <https://google.github.io/sqlcommenter/>`_
 
 .. code:: python
@@ -88,21 +89,23 @@ Available commenter_options
 
 The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| Commenter Option          | Description                                               | Example                                                                   |
-+===========================+===========================================================+===========================================================================+
-| ``db_driver``             | Database driver name with version.                        | ``psycopg2='2.9.3'``                                                      |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.                | ``dbapi_threadsafety=2``                                                  |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.                   | ``dbapi_level='2.0'``                                                     |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.            | ``driver_paramstyle='pyformat'``                                          |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``libpq_version``         | PostgreSQL libpq version                                  | ``libpq_version=140001``                                                  |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
-| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of query.    | ``traceparent='00-03afa25236b8cd948fa853d67038ac79-405ff022e8247c46-01'`` |
-+---------------------------+-----------------------------------------------------------+---------------------------------------------------------------------------+
++---------------------------+-------------------------------------------------+------------------------------------+
+| Commenter Option          | Description                                      | Example                            |
++===========================+=================================================+====================================+
+| ``db_driver``             | Database driver name with version.              | ``psycopg2='2.9.3'``               |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``dbapi_threadsafety``    | DB-API threadsafety value: 0-3 or unknown.      | ``dbapi_threadsafety=2``           |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``dbapi_level``           | DB-API API level: 1.0, 2.0, or unknown.         | ``dbapi_level='2.0'``              |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``driver_paramstyle``     | DB-API paramstyle for SQL statement parameter.  | ``driver_paramstyle='pyformat'``   |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``libpq_version``         | PostgreSQL libpq version                        | ``libpq_version=140001``           |
++---------------------------+-------------------------------------------------+------------------------------------+
+| ``opentelemetry_values``  | OpenTelemetry context as traceparent at time of | ``traceparent='00-03afa25236b8cd9  |
+|                           | query.                                          | 48fa853d67038ac79-405ff022e8247c46 |
+|                           |                                                 | -01'``                             |
++---------------------------+-------------------------------------------------+------------------------------------+
 
 SQLComment in span attribute
 ****************************
@@ -123,7 +126,10 @@ will also be configured by this setting.
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without
+    platform normalization. See `Semantic Conventions for database spans
+    <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_
+    for more information.
 
 Capture parameters
 ******************
@@ -212,9 +218,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         tracer_provider = kwargs.get("tracer_provider")
         enable_sqlcommenter = kwargs.get("enable_commenter", False)
         commenter_options = kwargs.get("commenter_options", {})
-        enable_attribute_commenter = kwargs.get(
-            "enable_attribute_commenter", False
-        )
+        enable_attribute_commenter = kwargs.get("enable_attribute_commenter", False)
         capture_parameters = kwargs.get("capture_parameters", False)
         dbapi.wrap_connect(
             __name__,
@@ -259,9 +263,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
 
         with Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS_LOCK:
             if connection in Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS:
-                _logger.warning(
-                    "Attempting to instrument Psycopg connection while already instrumented"
-                )
+                _logger.warning("Attempting to instrument Psycopg connection while already instrumented")
                 return connection
 
             original_cursor_factory = connection.cursor_factory
@@ -269,9 +271,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
                 base_factory=original_cursor_factory,
                 tracer_provider=tracer_provider,
             )
-            Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS[connection] = (
-                original_cursor_factory
-            )
+            Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS[connection] = original_cursor_factory
 
         return connection
 
@@ -283,11 +283,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         Restores the original `cursor_factory` from `_INSTRUMENTED_CONNECTIONS`.
         """
         with Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS_LOCK:
-            original_cursor_factory = (
-                Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS.pop(
-                    connection, None
-                )
-            )
+            original_cursor_factory = Psycopg2Instrumentor._INSTRUMENTED_CONNECTIONS.pop(connection, None)
         connection.cursor_factory = original_cursor_factory
 
         return connection
@@ -352,18 +348,12 @@ def _new_cursor_factory(db_api=None, base_factory=None, tracer_provider=None):
 
     class TracedCursorFactory(base_factory):
         def execute(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self, super().execute, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().execute, *args, **kwargs)
 
         def executemany(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self, super().executemany, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().executemany, *args, **kwargs)
 
         def callproc(self, *args, **kwargs):
-            return _cursor_tracer.traced_execution(
-                self, super().callproc, *args, **kwargs
-            )
+            return _cursor_tracer.traced_execution(self, super().callproc, *args, **kwargs)
 
     return TracedCursorFactory

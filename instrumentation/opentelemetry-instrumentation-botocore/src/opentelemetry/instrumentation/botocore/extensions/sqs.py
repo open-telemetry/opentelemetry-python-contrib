@@ -25,9 +25,7 @@ class _SqsExtension(_AwsSdkExtension):
             attributes[SpanAttributes.MESSAGING_SYSTEM] = "aws.sqs"
             attributes[SpanAttributes.MESSAGING_URL] = queue_url
             try:
-                attributes[SpanAttributes.MESSAGING_DESTINATION] = (
-                    queue_url.split("/")[-1]
-                )
+                attributes[SpanAttributes.MESSAGING_DESTINATION] = queue_url.split("/")[-1]
             except IndexError:
                 _logger.error(
                     "Could not extract messaging destination from '%s'",
@@ -48,9 +46,7 @@ class _SqsExtension(_AwsSdkExtension):
                         SpanAttributes.MESSAGING_MESSAGE_ID,
                         result.get("MessageId"),
                     )
-                elif operation == "SendMessageBatch" and result.get(
-                    "Successful"
-                ):
+                elif operation == "SendMessageBatch" and result.get("Successful"):
                     span.set_attribute(
                         SpanAttributes.MESSAGING_MESSAGE_ID,
                         result["Successful"][0]["MessageId"],

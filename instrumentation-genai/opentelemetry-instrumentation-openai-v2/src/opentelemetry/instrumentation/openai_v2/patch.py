@@ -50,9 +50,7 @@ def chat_completions_create_v_old(
     """Wrap the `create` method of the `ChatCompletion` class to trace it."""
 
     def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {
-            **get_llm_request_attributes(kwargs, instance, False)
-        }
+        span_attributes = {**get_llm_request_attributes(kwargs, instance, False)}
 
         operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
         model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
@@ -77,9 +75,7 @@ def chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return LegacyChatStreamWrapper(
-                        parsed_result, span, logger, capture_content
-                    )
+                    return LegacyChatStreamWrapper(parsed_result, span, logger, capture_content)
 
                 if span.is_recording():
                     _set_response_attributes(span, parsed_result)
@@ -114,9 +110,7 @@ def chat_completions_create_v_new(
     capture_content = handler.should_capture_content()
 
     def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = create_chat_invocation(
-            handler, kwargs, instance, capture_content=capture_content
-        )
+        chat_invocation = create_chat_invocation(handler, kwargs, instance, capture_content=capture_content)
 
         try:
             result = wrapped(*args, **kwargs)
@@ -126,13 +120,9 @@ def chat_completions_create_v_new(
             else:
                 parsed_result = result
             if is_streaming(kwargs):
-                return ChatStreamWrapper(
-                    parsed_result, chat_invocation, capture_content
-                )
+                return ChatStreamWrapper(parsed_result, chat_invocation, capture_content)
 
-            _set_response_properties(
-                chat_invocation, parsed_result, capture_content
-            )
+            _set_response_properties(chat_invocation, parsed_result, capture_content)
             chat_invocation.stop()
             return result
         except Exception as error:
@@ -151,9 +141,7 @@ def async_chat_completions_create_v_old(
     """Wrap the `create` method of the `AsyncChatCompletion` class to trace it."""
 
     async def traced_method(wrapped, instance, args, kwargs):
-        span_attributes = {
-            **get_llm_request_attributes(kwargs, instance, False)
-        }
+        span_attributes = {**get_llm_request_attributes(kwargs, instance, False)}
 
         operation_name = span_attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
         model = span_attributes.get(GenAIAttributes.GEN_AI_REQUEST_MODEL)
@@ -178,9 +166,7 @@ def async_chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return LegacyChatStreamWrapper(
-                        parsed_result, span, logger, capture_content
-                    )
+                    return LegacyChatStreamWrapper(parsed_result, span, logger, capture_content)
 
                 if span.is_recording():
                     _set_response_attributes(span, parsed_result)
@@ -215,9 +201,7 @@ def async_chat_completions_create_v_new(
     capture_content = handler.should_capture_content()
 
     async def traced_method(wrapped, instance, args, kwargs):
-        chat_invocation = create_chat_invocation(
-            handler, kwargs, instance, capture_content=capture_content
-        )
+        chat_invocation = create_chat_invocation(handler, kwargs, instance, capture_content=capture_content)
 
         try:
             result = await wrapped(*args, **kwargs)
@@ -227,13 +211,9 @@ def async_chat_completions_create_v_new(
             else:
                 parsed_result = result
             if is_streaming(kwargs):
-                return AsyncChatStreamWrapper(
-                    parsed_result, chat_invocation, capture_content
-                )
+                return AsyncChatStreamWrapper(parsed_result, chat_invocation, capture_content)
 
-            _set_response_properties(
-                chat_invocation, parsed_result, capture_content
-            )
+            _set_response_properties(chat_invocation, parsed_result, capture_content)
             chat_invocation.stop()
             return result
 
@@ -368,15 +348,11 @@ def _record_metrics(
     common_attributes = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: operation_name,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value,
-        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_attributes[
-            GenAIAttributes.GEN_AI_REQUEST_MODEL
-        ],
+        GenAIAttributes.GEN_AI_REQUEST_MODEL: request_attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL],
     }
 
     if "gen_ai.embeddings.dimension.count" in request_attributes:
-        common_attributes["gen_ai.embeddings.dimension.count"] = (
-            request_attributes["gen_ai.embeddings.dimension.count"]
-        )
+        common_attributes["gen_ai.embeddings.dimension.count"] = request_attributes["gen_ai.embeddings.dimension.count"]
 
     if error_type:
         common_attributes["error.type"] = error_type
@@ -385,24 +361,16 @@ def _record_metrics(
         common_attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL] = result.model
 
     if result and getattr(result, "service_tier", None):
-        common_attributes[
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER
-        ] = result.service_tier
+        common_attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SERVICE_TIER] = result.service_tier
 
     if result and getattr(result, "system_fingerprint", None):
-        common_attributes[
-            GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT
-        ] = result.system_fingerprint
+        common_attributes[GenAIAttributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT] = result.system_fingerprint
 
     if ServerAttributes.SERVER_ADDRESS in request_attributes:
-        common_attributes[ServerAttributes.SERVER_ADDRESS] = (
-            request_attributes[ServerAttributes.SERVER_ADDRESS]
-        )
+        common_attributes[ServerAttributes.SERVER_ADDRESS] = request_attributes[ServerAttributes.SERVER_ADDRESS]
 
     if ServerAttributes.SERVER_PORT in request_attributes:
-        common_attributes[ServerAttributes.SERVER_PORT] = request_attributes[
-            ServerAttributes.SERVER_PORT
-        ]
+        common_attributes[ServerAttributes.SERVER_PORT] = request_attributes[ServerAttributes.SERVER_PORT]
 
     instruments.operation_duration_histogram.record(
         duration,
@@ -421,24 +389,17 @@ def _record_metrics(
         )
 
         # For embeddings, don't record output tokens as all tokens are input tokens
-        if (
-            operation_name
-            != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
-        ):
+        if operation_name != GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value:
             output_attributes = {
                 **common_attributes,
                 GenAIAttributes.GEN_AI_TOKEN_TYPE: GenAIAttributes.GenAiTokenTypeValues.COMPLETION.value,
             }
-            instruments.token_usage_histogram.record(
-                result.usage.completion_tokens, attributes=output_attributes
-            )
+            instruments.token_usage_histogram.record(result.usage.completion_tokens, attributes=output_attributes)
 
 
 def _set_response_attributes(span, result):
     if getattr(result, "model", None):
-        set_span_attribute(
-            span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
-        )
+        set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model)
 
     if getattr(result, "choices", None):
         finish_reasons = []
@@ -489,23 +450,17 @@ def _set_response_properties(
         chat_invocation.finish_reasons = finish_reasons
 
         if capture_content:  # optimization
-            chat_invocation.output_messages = _prepare_output_messages(
-                result.choices
-            )
+            chat_invocation.output_messages = _prepare_output_messages(result.choices)
 
     if getattr(result, "id", None):
         chat_invocation.response_id = result.id
 
     if getattr(result, "service_tier", None):
         chat_invocation.attributes.update(
-            {
-                OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier
-            },
+            {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier},
         )
         chat_invocation.metric_attributes.update(
-            {
-                OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier
-            },
+            {OpenAIAttributes.OPENAI_RESPONSE_SERVICE_TIER: result.service_tier},
         )
 
     if getattr(result, "usage", None):
@@ -514,14 +469,10 @@ def _set_response_properties(
 
     if getattr(result, "system_fingerprint", None):
         chat_invocation.attributes.update(
-            {
-                OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint
-            },
+            {OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint},
         )
         chat_invocation.metric_attributes.update(
-            {
-                OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint
-            },
+            {OpenAIAttributes.OPENAI_RESPONSE_SYSTEM_FINGERPRINT: result.system_fingerprint},
         )
 
     return chat_invocation
@@ -531,9 +482,7 @@ def _set_embeddings_response_attributes(
     span: Span,
     result: Any,
 ):
-    set_span_attribute(
-        span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model
-    )
+    set_span_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, result.model)
 
     # Set embeddings dimensions if we can determine it from the response
     if getattr(result, "data", None) and len(result.data) > 0:
@@ -668,20 +617,14 @@ class BaseStreamWrapper:
                 self.choice_buffers.append(ChoiceBuffer(idx))
 
             if choice.finish_reason:
-                self.choice_buffers[
-                    choice.index
-                ].finish_reason = choice.finish_reason
+                self.choice_buffers[choice.index].finish_reason = choice.finish_reason
 
             if choice.delta.content is not None:
-                self.choice_buffers[choice.index].append_text_content(
-                    choice.delta.content
-                )
+                self.choice_buffers[choice.index].append_text_content(choice.delta.content)
 
             if choice.delta.tool_calls is not None:
                 for tool_call in choice.delta.tool_calls:
-                    self.choice_buffers[choice.index].append_tool_call(
-                        tool_call
-                    )
+                    self.choice_buffers[choice.index].append_tool_call(tool_call)
 
     def set_usage(self, chunk):
         if getattr(chunk, "usage", None):
@@ -788,9 +731,7 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
                 "message": message,
             }
 
-            event_attributes = {
-                GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
-            }
+            event_attributes = {GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value}
             context = set_span_in_context(self.span, get_current())
             self.logger.emit(
                 LogRecord(

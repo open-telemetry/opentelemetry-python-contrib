@@ -31,11 +31,10 @@ class TestFunctionalMySqlCommenter(TestBase):
         cursor.fetchall()
         self.assertRegex(
             cursor.statement,
-            r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
+            r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,"
+            r"driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
         )
-        self.assertRegex(
-            cursor.statement, r"mysql_client_version='(?!unknown)[^']+"
-        )
+        self.assertRegex(cursor.statement, r"mysql_client_version='(?!unknown)[^']+")
 
         cursor.close()
         cnx.close()
@@ -59,11 +58,10 @@ class TestFunctionalMySqlCommenter(TestBase):
         cursor.fetchall()
         self.assertRegex(
             cursor.statement,
-            r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
+            r"SELECT 1 /\*db_driver='mysql\.connector[^']*',dbapi_level='\d\.\d',dbapi_threadsafety=\d,"
+            r"driver_paramstyle='[^']*',mysql_client_version='[^']*',traceparent='[^']*'\*/;",
         )
-        self.assertRegex(
-            cursor.statement, r"mysql_client_version='(?!unknown)[^']+"
-        )
+        self.assertRegex(cursor.statement, r"mysql_client_version='(?!unknown)[^']+")
 
         cursor.close()
         MySQLInstrumentor().uninstrument_connection(instrumented_cnx)

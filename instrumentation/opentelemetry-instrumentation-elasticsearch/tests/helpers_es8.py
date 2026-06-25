@@ -31,9 +31,7 @@ dsl_index_span_name = "Elasticsearch/test-index/_doc/:id"
 dsl_index_url = "/test-index/_doc/2"
 dsl_search_method = "POST"
 
-perform_request_mock_path = (
-    "elastic_transport._node._http_urllib3.Urllib3HttpNode.perform_request"
-)
+perform_request_mock_path = "elastic_transport._node._http_urllib3.Urllib3HttpNode.perform_request"
 
 
 def mock_response(body: str, status_code: int = 200):

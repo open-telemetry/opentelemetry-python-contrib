@@ -110,9 +110,9 @@ To capture all request headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
 
-The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+The name of the added span attribute will follow the format ``http.request.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a single item list containing all the header values.
 
 For example:
 ``http.request.header.custom_request_header = ["<value1>,<value2>"]``
@@ -129,8 +129,8 @@ For example,
 
 will extract ``content-type`` and ``custom_response_header`` from the response headers and add them as span attributes.
 
-Response header names in Pyramid are case-insensitive. So, giving the header name as ``CUStom-Header`` in the environment
-variable will capture the header named ``custom-header``.
+Response header names in Pyramid are case-insensitive. So, giving the header name as ``CUStom-Header`` in the
+environment variable will capture the header named ``custom-header``.
 
 Regular expressions may also be used to match multiple headers that correspond to the given pattern.  For example:
 ::
@@ -144,9 +144,9 @@ To capture all response headers, set ``OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS
 
     export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE=".*"
 
-The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where ``<header_name>``
-is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the attribute will be a
-single item list containing all the header values.
+The name of the added span attribute will follow the format ``http.response.header.<header_name>`` where
+``<header_name>`` is the normalized HTTP header name (lowercase, with ``-`` replaced by ``_``). The value of the
+attribute will be a single item list containing all the header values.
 
 For example:
 ``http.response.header.custom_response_header = ["<value1>,<value2>"]``

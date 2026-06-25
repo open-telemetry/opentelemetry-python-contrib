@@ -56,29 +56,22 @@ class AwsEc2ResourceDetectorTest(unittest.TestCase):
         "opentelemetry.sdk.extension.aws.resource.ec2._get_token",
         return_value="mock-token",
     )
-    def test_simple_create(
-        self, mock_get_token, mock_get_identity, mock_get_host
-    ):
+    def test_simple_create(self, mock_get_token, mock_get_identity, mock_get_host):
         actual = AwsEc2ResourceDetector().detect()
-        self.assertDictEqual(
-            actual.attributes.copy(), OrderedDict(MockEc2ResourceAttributes)
-        )
+        self.assertDictEqual(actual.attributes.copy(), OrderedDict(MockEc2ResourceAttributes))
 
     @patch(
         "opentelemetry.sdk.extension.aws.resource.ec2._get_token",
         side_effect=URLError("Something went wrong"),
     )
-    def test_empty_resource_if_token_returns_an_url_error(
-        self, mock_get_token
-    ):
-        with self.assertLogs(
-            "opentelemetry.sdk.extension.aws.resource.ec2", level="DEBUG"
-        ) as logger:
+    def test_empty_resource_if_token_returns_an_url_error(self, mock_get_token):
+        with self.assertLogs("opentelemetry.sdk.extension.aws.resource.ec2", level="DEBUG") as logger:
             actual = AwsEc2ResourceDetector().detect()
             self.assertEqual(
                 logger.output,
                 [
-                    "DEBUG:opentelemetry.sdk.extension.aws.resource.ec2:AwsEc2ResourceDetector failed to get token: <urlopen error Something went wrong>"
+                    "DEBUG:opentelemetry.sdk.extension.aws.resource.ec2:"
+                    "AwsEc2ResourceDetector failed to get token: <urlopen error Something went wrong>"
                 ],
             )
         self.assertDictEqual(actual.attributes.copy(), OrderedDict())

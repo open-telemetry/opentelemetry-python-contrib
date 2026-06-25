@@ -74,9 +74,7 @@ class TestCeleryInstrumentation(TestBase):
 
         self.assertEqual(0, len(consumer.events))
 
-        self.assertEqual(
-            producer.name, "apply_async/tests.celery_test_tasks.task_add"
-        )
+        self.assertEqual(producer.name, "apply_async/tests.celery_test_tasks.task_add")
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
         self.assertSpanHasAttributes(
             producer,
@@ -126,9 +124,7 @@ class TestCeleryInstrumentation(TestBase):
 
         consumer, producer = spans
 
-        self.assertEqual(
-            consumer.name, "run/tests.celery_test_tasks.task_raises"
-        )
+        self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_raises")
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
         self.assertSpanHasAttributes(
             consumer,
@@ -157,9 +153,7 @@ class TestCeleryInstrumentation(TestBase):
             "The task failed!",
         )
 
-        self.assertEqual(
-            producer.name, "apply_async/tests.celery_test_tasks.task_raises"
-        )
+        self.assertEqual(producer.name, "apply_async/tests.celery_test_tasks.task_raises")
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
         self.assertSpanHasAttributes(
             producer,
@@ -207,9 +201,7 @@ class TestCeleryInstrumentation(TestBase):
         self.assertEqual(task.result, {"key": "value"})
 
     def test_task_not_instrumented_does_not_raise(self):
-        def _retrieve_context_wrapper_none_token(
-            wrapped, instance, args, kwargs
-        ):
+        def _retrieve_context_wrapper_none_token(wrapped, instance, args, kwargs):
             ctx = wrapped(*args, **kwargs)
             if ctx is None:
                 return ctx
@@ -280,9 +272,7 @@ class TestCelerySignatureTask(TestBase):
         self.assertEqual(consumer.name, "run/tests.test_tasks.hidden_task")
         self.assertEqual(consumer.kind, SpanKind.CONSUMER)
 
-        self.assertEqual(
-            producer.name, "apply_async/tests.test_tasks.hidden_task"
-        )
+        self.assertEqual(producer.name, "apply_async/tests.test_tasks.hidden_task")
         self.assertEqual(producer.kind, SpanKind.PRODUCER)
 
         self.assertNotEqual(consumer.parent, producer.context)

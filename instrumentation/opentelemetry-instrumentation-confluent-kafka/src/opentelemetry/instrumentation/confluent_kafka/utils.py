@@ -33,9 +33,7 @@ class KafkaPropertiesExtractor:
             return None
         # confluent-kafka uses the dotted key "bootstrap.servers"; also accept
         # the python-style "bootstrap_servers" for robustness.
-        servers = config.get("bootstrap.servers") or config.get(
-            "bootstrap_servers"
-        )
+        servers = config.get("bootstrap.servers") or config.get("bootstrap_servers")
         if isinstance(servers, (list, tuple)):
             servers = ",".join(str(s) for s in servers)
         return servers
@@ -54,9 +52,7 @@ class KafkaPropertiesExtractor:
     @staticmethod
     def extract_produce_headers(args, kwargs):
         """extract headers from `produce` method arguments in Producer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "headers", 6, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("headers", 6, None, args, kwargs)
 
 
 class KafkaContextGetter(textmap.Getter):

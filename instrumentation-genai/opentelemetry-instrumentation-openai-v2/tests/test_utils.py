@@ -19,9 +19,7 @@ from opentelemetry.semconv._incubating.attributes import (
 
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
-GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    "gen_ai.usage.cache_creation.input_tokens"
-)
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = "gen_ai.usage.cache_creation.input_tokens"
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 USER_ONLY_PROMPT = [{"role": "user", "content": "Say this is a test"}]
 USER_ONLY_EXPECTED_INPUT_MESSAGES = [
@@ -87,37 +85,17 @@ def assert_all_attributes(
     response_service_tier: Optional[str] = None,
 ):
     assert span.name == f"{operation_name} {request_model}"
-    assert (
-        operation_name
-        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-    )
+    assert operation_name == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
 
-    provider_name_attr_name = (
-        "gen_ai.provider.name"
-        if latest_experimental_enabled
-        else GenAIAttributes.GEN_AI_SYSTEM
-    )
+    provider_name_attr_name = "gen_ai.provider.name" if latest_experimental_enabled else GenAIAttributes.GEN_AI_SYSTEM
 
-    assert (
-        GenAIAttributes.GenAiProviderNameValues.OPENAI.value
-        == span.attributes[provider_name_attr_name]
-    )
-    assert (
-        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
-    )
+    assert GenAIAttributes.GenAiProviderNameValues.OPENAI.value == span.attributes[provider_name_attr_name]
+    assert request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
 
-    _assert_optional_attribute(
-        span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, response_model
-    )
-    _assert_optional_attribute(
-        span, GenAIAttributes.GEN_AI_RESPONSE_ID, response_id
-    )
-    _assert_optional_attribute(
-        span, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, input_tokens
-    )
-    _assert_optional_attribute(
-        span, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
-    )
+    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_MODEL, response_model)
+    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_RESPONSE_ID, response_id)
+    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, input_tokens)
+    _assert_optional_attribute(span, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens)
 
     assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
     if server_port != 443 and server_port > 0:
@@ -151,9 +129,7 @@ def assert_log_parent(log, span):
     if span:
         assert log.log_record.trace_id == span.get_span_context().trace_id
         assert log.log_record.span_id == span.get_span_context().span_id
-        assert (
-            log.log_record.trace_flags == span.get_span_context().trace_flags
-        )
+        assert log.log_record.trace_flags == span.get_span_context().trace_flags
 
 
 def get_current_weather_tool_definition():
@@ -226,10 +202,7 @@ def remove_none_values(body):
         if isinstance(value, dict):
             result[key] = remove_none_values(value)
         elif isinstance(value, list):
-            result[key] = [
-                remove_none_values(i) if isinstance(i, dict) else i
-                for i in value
-            ]
+            result[key] = [remove_none_values(i) if isinstance(i, dict) else i for i in value]
         else:
             result[key] = value
     return result
@@ -260,9 +233,7 @@ def assert_messages_attribute(actual, expected):
     assert json.loads(actual) == expected
 
 
-def format_simple_expected_output_message(
-    content: str, finish_reason: str = "stop"
-):
+def format_simple_expected_output_message(content: str, finish_reason: str = "stop"):
     return [
         {
             "role": "assistant",
@@ -278,9 +249,7 @@ def format_simple_expected_output_message(
 
 
 def _get_usage_details(usage):
-    return getattr(usage, "input_tokens_details", None) or getattr(
-        usage, "prompt_tokens_details", None
-    )
+    return getattr(usage, "input_tokens_details", None) or getattr(usage, "prompt_tokens_details", None)
 
 
 def assert_cache_attributes(span, usage):
@@ -291,35 +260,24 @@ def assert_cache_attributes(span, usage):
     if cached_tokens is None:
         assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS not in span.attributes
     else:
-        assert (
-            span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
-            == cached_tokens
-        )
+        assert span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cached_tokens
 
     cache_creation = getattr(details, "cache_creation_input_tokens", None)
     if cache_creation is None:
         assert GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS not in span.attributes
     else:
-        assert (
-            span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
-            == cache_creation
-        )
+        assert span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] == cache_creation
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
     assert log.log_record.event_name == event_name
-    assert (
-        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-        == GenAIAttributes.GenAiSystemValues.OPENAI.value
-    )
+    assert log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM] == GenAIAttributes.GenAiSystemValues.OPENAI.value
 
     if not expected_content:
         assert not log.log_record.body
     else:
         assert log.log_record.body
-        assert dict(log.log_record.body) == remove_none_values(
-            expected_content
-        )
+        assert dict(log.log_record.body) == remove_none_values(expected_content)
     assert_log_parent(log, parent_span)
 
 
@@ -343,11 +301,6 @@ def assert_embedding_attributes(
     )
 
     # Assert embeddings-specific attributes
-    if (
-        hasattr(span, "attributes")
-        and "gen_ai.embeddings.dimension.count" in span.attributes
-    ):
+    if hasattr(span, "attributes") and "gen_ai.embeddings.dimension.count" in span.attributes:
         # If dimensions were specified, verify that they match the actual dimensions
-        assert span.attributes["gen_ai.embeddings.dimension.count"] == len(
-            response.data[0].embedding
-        )
+        assert span.attributes["gen_ai.embeddings.dimension.count"] == len(response.data[0].embedding)

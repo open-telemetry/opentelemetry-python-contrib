@@ -33,9 +33,7 @@ class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-p
     def setUp(self):
         self.span_exporter = InMemorySpanExporter()
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        tracer_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         self.handler = TelemetryHandler(tracer_provider=tracer_provider)
 
     def test_start_stop_creates_span(self):
@@ -58,10 +56,7 @@ class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-p
     def test_span_kind_internal(self):
         invocation = self.handler.start_invoke_local_agent("openai")
         invocation.stop()
-        assert (
-            self.span_exporter.get_finished_spans()[0].kind
-            == SpanKind.INTERNAL
-        )
+        assert self.span_exporter.get_finished_spans()[0].kind == SpanKind.INTERNAL
 
     def test_no_server_attributes(self):
         invocation = self.handler.start_invoke_local_agent("openai")
@@ -154,28 +149,18 @@ class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-p
         assert span.attributes.get("error.type") == "RuntimeError"
 
     def test_context_manager_success(self):
-        with self.handler.invoke_local_agent(
-            "openai", request_model="gpt-4", agent_name="CM Agent"
-        ) as inv:
+        with self.handler.invoke_local_agent("openai", request_model="gpt-4", agent_name="CM Agent") as inv:
             inv.input_tokens = 10
             inv.output_tokens = 20
 
-        assert (
-            self.span_exporter.get_finished_spans()[0].name
-            == "invoke_agent CM Agent"
-        )
+        assert self.span_exporter.get_finished_spans()[0].name == "invoke_agent CM Agent"
 
     def test_context_manager_error(self):
         with self.assertRaises(ValueError):
             with self.handler.invoke_local_agent("openai"):
                 raise ValueError("test error")
 
-        assert (
-            self.span_exporter.get_finished_spans()[0].attributes.get(
-                "error.type"
-            )
-            == "ValueError"
-        )
+        assert self.span_exporter.get_finished_spans()[0].attributes.get("error.type") == "ValueError"
 
     def test_context_manager_default_invocation(self):
         with self.handler.invoke_local_agent("openai") as inv:
@@ -199,9 +184,7 @@ class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-p
 
     def test_with_messages(self):
         invocation = self.handler.start_invoke_local_agent("openai")
-        invocation.input_messages = [
-            InputMessage(role="user", parts=[Text(content="Hello")])
-        ]
+        invocation.input_messages = [InputMessage(role="user", parts=[Text(content="Hello")])]
         invocation.output_messages = [
             OutputMessage(
                 role="assistant",
@@ -260,9 +243,7 @@ class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-p
         assert span.attributes[GenAI.GEN_AI_AGENT_NAME] == "Named Agent"
 
     def test_agent_name_passed_at_construction(self):
-        invocation = self.handler.start_invoke_local_agent(
-            "openai", agent_name="Constructor Agent"
-        )
+        invocation = self.handler.start_invoke_local_agent("openai", agent_name="Constructor Agent")
         invocation.stop()
         span = self.span_exporter.get_finished_spans()[0]
         assert span.name == "invoke_agent Constructor Agent"
@@ -288,14 +269,10 @@ class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-p
                 return "AttributeCapturingSampler"
 
         sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
-        sampler_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        sampler_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         handler = TelemetryHandler(tracer_provider=sampler_provider)
 
-        invocation = handler.start_invoke_local_agent(
-            "openai", agent_name="Sampler Agent"
-        )
+        invocation = handler.start_invoke_local_agent("openai", agent_name="Sampler Agent")
         invocation.stop()
 
         assert captured_attributes[GenAI.GEN_AI_AGENT_NAME] == "Sampler Agent"
@@ -320,9 +297,7 @@ class TestLocalAgentInvocation(unittest.TestCase):  # pylint: disable=too-many-p
                 return "AttributeCapturingSampler"
 
         sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
-        sampler_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        sampler_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         handler = TelemetryHandler(tracer_provider=sampler_provider)
 
         invocation = handler.start_invoke_local_agent("openai")
@@ -335,9 +310,7 @@ class TestAgentInvocationContent(unittest.TestCase):
     def setUp(self):
         self.span_exporter = InMemorySpanExporter()
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        tracer_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         self.handler = TelemetryHandler(tracer_provider=tracer_provider)
 
     @patch(
@@ -389,9 +362,7 @@ class TestAgentInvocationContent(unittest.TestCase):
     )
     def test_messages_on_span(self, _mock_exp, _mock_cap):
         invocation = self.handler.start_invoke_local_agent("openai")
-        invocation.input_messages = [
-            InputMessage(role="user", parts=[Text(content="Hello")])
-        ]
+        invocation.input_messages = [InputMessage(role="user", parts=[Text(content="Hello")])]
         invocation.output_messages = [
             OutputMessage(
                 role="assistant",
@@ -410,9 +381,7 @@ class TestAgentInvocationContent(unittest.TestCase):
         invocation.system_instruction = [
             Text(content="You are a helpful assistant."),
         ]
-        invocation.input_messages = [
-            InputMessage(role="user", parts=[Text(content="Hello")])
-        ]
+        invocation.input_messages = [InputMessage(role="user", parts=[Text(content="Hello")])]
         invocation.stop()
 
         attrs = self.span_exporter.get_finished_spans()[0].attributes
@@ -424,17 +393,13 @@ class TestRemoteAgentInvocation(unittest.TestCase):
     def setUp(self):
         self.span_exporter = InMemorySpanExporter()
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        tracer_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         self.handler = TelemetryHandler(tracer_provider=tracer_provider)
 
     def test_span_kind_client(self):
         invocation = self.handler.start_invoke_remote_agent("openai")
         invocation.stop()
-        assert (
-            self.span_exporter.get_finished_spans()[0].kind == SpanKind.CLIENT
-        )
+        assert self.span_exporter.get_finished_spans()[0].kind == SpanKind.CLIENT
 
     def test_server_attributes(self):
         invocation = self.handler.start_invoke_remote_agent(
@@ -497,12 +462,7 @@ class TestRemoteAgentInvocation(unittest.TestCase):
             with self.handler.invoke_remote_agent("openai"):
                 raise ValueError("remote error")
 
-        assert (
-            self.span_exporter.get_finished_spans()[0].attributes.get(
-                "error.type"
-            )
-            == "ValueError"
-        )
+        assert self.span_exporter.get_finished_spans()[0].attributes.get("error.type") == "ValueError"
 
     def test_start_invoke_agent_passes_sampling_attributes_at_span_creation(
         self,
@@ -527,9 +487,7 @@ class TestRemoteAgentInvocation(unittest.TestCase):
                 return "AttributeCapturingSampler"
 
         sampler_provider = TracerProvider(sampler=AttributeCapturingSampler())
-        sampler_provider.add_span_processor(
-            SimpleSpanProcessor(self.span_exporter)
-        )
+        sampler_provider.add_span_processor(SimpleSpanProcessor(self.span_exporter))
         handler = TelemetryHandler(tracer_provider=sampler_provider)
 
         invocation = handler.start_invoke_remote_agent(
@@ -541,18 +499,11 @@ class TestRemoteAgentInvocation(unittest.TestCase):
         )
         invocation.stop()
 
-        assert (
-            captured_attributes[GenAI.GEN_AI_OPERATION_NAME] == "invoke_agent"
-        )
-        assert (
-            captured_attributes[GenAI.GEN_AI_PROVIDER_NAME] == "test-provider"
-        )
+        assert captured_attributes[GenAI.GEN_AI_OPERATION_NAME] == "invoke_agent"
+        assert captured_attributes[GenAI.GEN_AI_PROVIDER_NAME] == "test-provider"
         assert captured_attributes[GenAI.GEN_AI_REQUEST_MODEL] == "agent-model"
         assert captured_attributes[GenAI.GEN_AI_AGENT_NAME] == "Math Tutor"
-        assert (
-            captured_attributes[server_attributes.SERVER_ADDRESS]
-            == "agent.example.com"
-        )
+        assert captured_attributes[server_attributes.SERVER_ADDRESS] == "agent.example.com"
         assert captured_attributes[server_attributes.SERVER_PORT] == 8080
 
 
@@ -563,9 +514,7 @@ class TestAgentInvocationMetrics(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=1000.0):
-            invocation = handler.start_invoke_local_agent(
-                "prov", request_model="model"
-            )
+            invocation = handler.start_invoke_local_agent("prov", request_model="model")
         invocation.input_tokens = 5
         invocation.output_tokens = 7
 
@@ -581,20 +530,13 @@ class TestAgentInvocationMetrics(TestBase):
             duration_point.attributes[GenAI.GEN_AI_OPERATION_NAME],
             GenAI.GenAiOperationNameValues.INVOKE_AGENT.value,
         )
-        self.assertEqual(
-            duration_point.attributes[GenAI.GEN_AI_REQUEST_MODEL], "model"
-        )
-        self.assertEqual(
-            duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME], "prov"
-        )
+        self.assertEqual(duration_point.attributes[GenAI.GEN_AI_REQUEST_MODEL], "model")
+        self.assertEqual(duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME], "prov")
         self.assertAlmostEqual(duration_point.sum, 2.0, places=3)
 
         self.assertIn("gen_ai.client.token.usage", metrics)
         token_points = metrics["gen_ai.client.token.usage"]
-        token_by_type = {
-            point.attributes[GenAI.GEN_AI_TOKEN_TYPE]: point
-            for point in token_points
-        }
+        token_by_type = {point.attributes[GenAI.GEN_AI_TOKEN_TYPE]: point for point in token_points}
         self.assertEqual(len(token_by_type), 2)
         self.assertAlmostEqual(
             token_by_type[GenAI.GenAiTokenTypeValues.INPUT.value].sum,
@@ -624,9 +566,7 @@ class TestAgentInvocationMetrics(TestBase):
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
         duration_point = metrics["gen_ai.client.operation.duration"][0]
-        self.assertEqual(
-            duration_point.attributes["server.address"], "agent.example.com"
-        )
+        self.assertEqual(duration_point.attributes["server.address"], "agent.example.com")
         self.assertEqual(duration_point.attributes["server.port"], 443)
 
     def test_fail_agent_records_error_metric(self) -> None:
@@ -635,9 +575,7 @@ class TestAgentInvocationMetrics(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=2000.0):
-            invocation = handler.start_invoke_local_agent(
-                "", request_model="err-model"
-            )
+            invocation = handler.start_invoke_local_agent("", request_model="err-model")
         invocation.input_tokens = 11
 
         error = Error(message="boom", type=ValueError)
@@ -647,9 +585,7 @@ class TestAgentInvocationMetrics(TestBase):
         metrics = self._harvest_metrics()
         self.assertIn("gen_ai.client.operation.duration", metrics)
         duration_point = metrics["gen_ai.client.operation.duration"][0]
-        self.assertEqual(
-            duration_point.attributes.get("error.type"), "ValueError"
-        )
+        self.assertEqual(duration_point.attributes.get("error.type"), "ValueError")
         self.assertAlmostEqual(duration_point.sum, 1.0, places=3)
 
     def _harvest_metrics(self):

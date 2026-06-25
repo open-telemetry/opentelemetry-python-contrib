@@ -60,9 +60,7 @@ class TestCase(CommonTestCaseBase):
         self._original_generate_content = Models.generate_content
         self._original_generate_content_stream = Models.generate_content_stream
         self._original_async_generate_content = AsyncModels.generate_content
-        self._original_async_generate_content_stream = (
-            AsyncModels.generate_content_stream
-        )
+        self._original_async_generate_content_stream = AsyncModels.generate_content_stream
         self._responses = []
         self._response_index = 0
 
@@ -123,35 +121,20 @@ class TestCase(CommonTestCaseBase):
 
     def _install_mocks(self):
         output_wrapped = _wrap_output(self._generate_content_mock)
-        output_wrapped_stream = _wrap_output_stream(
-            self._generate_content_stream_mock
-        )
+        output_wrapped_stream = _wrap_output_stream(self._generate_content_stream_mock)
         Models.generate_content = output_wrapped
         Models.generate_content_stream = output_wrapped_stream
         AsyncModels.generate_content = _async_wrapper(output_wrapped)
-        AsyncModels.generate_content_stream = _async_stream_wrapper(
-            output_wrapped_stream
-        )
+        AsyncModels.generate_content_stream = _async_stream_wrapper(output_wrapped_stream)
 
     def tearDown(self):
         super().tearDown()
         if self._generate_content_mock is None:
             assert Models.generate_content == self._original_generate_content
-            assert (
-                Models.generate_content_stream
-                == self._original_generate_content_stream
-            )
-            assert (
-                AsyncModels.generate_content
-                == self._original_async_generate_content
-            )
-            assert (
-                AsyncModels.generate_content_stream
-                == self._original_async_generate_content_stream
-            )
+            assert Models.generate_content_stream == self._original_generate_content_stream
+            assert AsyncModels.generate_content == self._original_async_generate_content
+            assert AsyncModels.generate_content_stream == self._original_async_generate_content_stream
         Models.generate_content = self._original_generate_content
         Models.generate_content_stream = self._original_generate_content_stream
         AsyncModels.generate_content = self._original_async_generate_content
-        AsyncModels.generate_content_stream = (
-            self._original_async_generate_content_stream
-        )
+        AsyncModels.generate_content_stream = self._original_async_generate_content_stream

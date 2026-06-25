@@ -48,20 +48,13 @@ class TelemetryHandlerMetricsTest(TestBase):
             duration_point.attributes[GenAI.GEN_AI_OPERATION_NAME],
             GenAI.GenAiOperationNameValues.CHAT.value,
         )
-        self.assertEqual(
-            duration_point.attributes[GenAI.GEN_AI_REQUEST_MODEL], "model"
-        )
-        self.assertEqual(
-            duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME], "prov"
-        )
+        self.assertEqual(duration_point.attributes[GenAI.GEN_AI_REQUEST_MODEL], "model")
+        self.assertEqual(duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME], "prov")
         self.assertAlmostEqual(duration_point.sum, 2.0, places=3)
 
         self.assertIn("gen_ai.client.token.usage", metrics)
         token_points = metrics["gen_ai.client.token.usage"]
-        token_by_type = {
-            point.attributes[GenAI.GEN_AI_TOKEN_TYPE]: point
-            for point in token_points
-        }
+        token_by_type = {point.attributes[GenAI.GEN_AI_TOKEN_TYPE]: point for point in token_points}
         self.assertEqual(len(token_by_type), 2)
         self.assertAlmostEqual(
             token_by_type[GenAI.GenAiTokenTypeValues.INPUT.value].sum,
@@ -105,13 +98,9 @@ class TelemetryHandlerMetricsTest(TestBase):
         points = duration_points + token_points
 
         for point in points:
-            self.assertEqual(
-                point.attributes["server.address"], "custom.server.com"
-            )
+            self.assertEqual(point.attributes["server.address"], "custom.server.com")
             self.assertEqual(point.attributes["server.port"], 42)
-            self.assertEqual(
-                point.attributes["custom.attribute"], "custom_value"
-            )
+            self.assertEqual(point.attributes["custom.attribute"], "custom_value")
             self.assertIsNone(point.attributes.get("should not be on metrics"))
 
     def test_fail_llm_records_error_and_available_tokens(self) -> None:
@@ -137,9 +126,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         duration_points = metrics["gen_ai.client.operation.duration"]
         self.assertEqual(len(duration_points), 1)
         duration_point = duration_points[0]
-        self.assertEqual(
-            duration_point.attributes.get("error.type"), "ValueError"
-        )
+        self.assertEqual(duration_point.attributes.get("error.type"), "ValueError")
         self.assertEqual(
             duration_point.attributes.get(GenAI.GEN_AI_REQUEST_MODEL),
             "err-model",
@@ -172,18 +159,12 @@ class TelemetryHandlerMetricsTest(TestBase):
             metrics_by_name.setdefault(metric.name, []).extend(points)
         return metrics_by_name
 
-    def _assert_metric_scope_schema_urls(
-        self, expected_schema_url: str
-    ) -> None:
-        for (
-            resource_metric
-        ) in self.memory_metrics_reader.get_metrics_data().resource_metrics:
+    def _assert_metric_scope_schema_urls(self, expected_schema_url: str) -> None:
+        for resource_metric in self.memory_metrics_reader.get_metrics_data().resource_metrics:
             for scope_metric in resource_metric.scope_metrics:
                 if scope_metric.scope.name != SCOPE:
                     continue
-                self.assertEqual(
-                    scope_metric.scope.schema_url, expected_schema_url
-                )
+                self.assertEqual(scope_metric.scope.schema_url, expected_schema_url)
 
     def test_stop_embedding_records_duration_and_tokens(self) -> None:
         """Verify embedding invocations record duration and input token metrics."""
@@ -193,9 +174,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         )
         # Patch default_timer during start to ensure monotonic_start_s
         with patch("timeit.default_timer", return_value=1000.0):
-            invocation = handler.start_embedding(
-                "embed-prov", request_model="embed-model"
-            )
+            invocation = handler.start_embedding("embed-prov", request_model="embed-model")
         invocation.input_tokens = 100
 
         # Simulate 1.5 seconds of elapsed monotonic time
@@ -218,9 +197,7 @@ class TelemetryHandlerMetricsTest(TestBase):
             duration_point.attributes[GenAI.GEN_AI_REQUEST_MODEL],
             "embed-model",
         )
-        self.assertEqual(
-            duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME], "embed-prov"
-        )
+        self.assertEqual(duration_point.attributes[GenAI.GEN_AI_PROVIDER_NAME], "embed-prov")
         self.assertAlmostEqual(duration_point.sum, 1.5, places=3)
 
         # Token metrics should be recorded for embedding (input only)
@@ -260,13 +237,9 @@ class TelemetryHandlerMetricsTest(TestBase):
         self.assertEqual(len(duration_points), 1)
         duration_point = duration_points[0]
 
-        self.assertEqual(
-            duration_point.attributes["server.address"], "embed.server.com"
-        )
+        self.assertEqual(duration_point.attributes["server.address"], "embed.server.com")
         self.assertEqual(duration_point.attributes["server.port"], 8080)
-        self.assertEqual(
-            duration_point.attributes["custom.embed.attr"], "embed_value"
-        )
+        self.assertEqual(duration_point.attributes["custom.embed.attr"], "embed_value")
         self.assertEqual(
             duration_point.attributes[GenAI.GEN_AI_RESPONSE_MODEL],
             "embed-response-model",
@@ -279,9 +252,7 @@ class TelemetryHandlerMetricsTest(TestBase):
             meter_provider=self.meter_provider,
         )
         with patch("timeit.default_timer", return_value=3000.0):
-            invocation = handler.start_embedding(
-                "embed-prov", request_model="embed-err-model"
-            )
+            invocation = handler.start_embedding("embed-prov", request_model="embed-err-model")
 
         error = Error(message="embedding failed", type=RuntimeError)
         with patch("timeit.default_timer", return_value=3002.5):
@@ -295,9 +266,7 @@ class TelemetryHandlerMetricsTest(TestBase):
         self.assertEqual(len(duration_points), 1)
         duration_point = duration_points[0]
 
-        self.assertEqual(
-            duration_point.attributes.get("error.type"), "RuntimeError"
-        )
+        self.assertEqual(duration_point.attributes.get("error.type"), "RuntimeError")
         self.assertEqual(
             duration_point.attributes.get(GenAI.GEN_AI_REQUEST_MODEL),
             "embed-err-model",
@@ -313,9 +282,7 @@ class TelemetryHandlerMetricsTest(TestBase):
             tracer_provider=self.tracer_provider,
             meter_provider=self.meter_provider,
         )
-        invocation = handler.start_embedding(
-            "embed-prov", request_model="embed-model"
-        )
+        invocation = handler.start_embedding("embed-prov", request_model="embed-model")
         # input_tokens is not set
         invocation.stop()
 
@@ -359,9 +326,7 @@ class TelemetryHandlerToolMetricsTest(TestBase):
             duration_point.attributes[GenAI.GEN_AI_OPERATION_NAME],
             "execute_tool",
         )
-        self.assertEqual(
-            duration_point.attributes["custom.key"], "custom_value"
-        )
+        self.assertEqual(duration_point.attributes["custom.key"], "custom_value")
         self.assertAlmostEqual(duration_point.sum, 2.5, places=3)
         self.assertNotIn("gen_ai.client.token.usage", metrics)
 
@@ -383,9 +348,7 @@ class TelemetryHandlerToolMetricsTest(TestBase):
         self.assertEqual(len(duration_points), 1)
         duration_point = duration_points[0]
 
-        self.assertEqual(
-            duration_point.attributes["error.type"], "RuntimeError"
-        )
+        self.assertEqual(duration_point.attributes["error.type"], "RuntimeError")
         self.assertEqual(
             duration_point.attributes[GenAI.GEN_AI_OPERATION_NAME],
             "execute_tool",

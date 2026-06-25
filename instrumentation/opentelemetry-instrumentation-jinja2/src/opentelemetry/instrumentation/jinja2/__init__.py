@@ -54,12 +54,8 @@ R = TypeVar("R")
 
 
 def _with_tracer_wrapper(
-    func: Callable[
-        [Tracer, Callable[..., R], Any, list[Any], dict[str, Any]], R
-    ],
-) -> Callable[
-    [Tracer], Callable[[Callable[..., R], Any, list[Any], dict[str, Any]], R]
-]:
+    func: Callable[[Tracer, Callable[..., R], Any, list[Any], dict[str, Any]], R],
+) -> Callable[[Tracer], Callable[[Callable[..., R], Any, list[Any], dict[str, Any]], R]]:
     """Helper for providing tracer for wrapper functions."""
 
     def _with_tracer(
@@ -110,11 +106,7 @@ def _wrap_compile(
         kind=SpanKind.INTERNAL,
     ) as span:
         if span.is_recording():
-            template_name = (
-                args[1]
-                if len(args) > 1
-                else kwargs.get("name", DEFAULT_TEMPLATE_NAME)
-            )
+            template_name = args[1] if len(args) > 1 else kwargs.get("name", DEFAULT_TEMPLATE_NAME)
             span.set_attribute(ATTRIBUTE_JINJA2_TEMPLATE_NAME, template_name)
         return wrapped(*args, **kwargs)
 
@@ -140,9 +132,7 @@ def _wrap_load_template(
             return template
         finally:
             if template and span.is_recording():
-                span.set_attribute(
-                    ATTRIBUTE_JINJA2_TEMPLATE_PATH, template.filename
-                )
+                span.set_attribute(ATTRIBUTE_JINJA2_TEMPLATE_PATH, template.filename)
 
 
 class Jinja2Instrumentor(BaseInstrumentor):

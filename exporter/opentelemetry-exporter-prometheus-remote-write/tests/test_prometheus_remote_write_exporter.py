@@ -111,9 +111,7 @@ def test_parse_metric(metric, prom_rw):
         "bool_value": True,
     }
 
-    assert len(metric.data.data_points) == 1, (
-        "We can only support a single datapoint in tests"
-    )
+    assert len(metric.data.data_points) == 1, "We can only support a single datapoint in tests"
     series = prom_rw._parse_metric(metric, tuple(attributes.items()))
     timestamp = metric.data.data_points[0].time_unix_nano // 1_000_000
     for single_series in series:
@@ -124,9 +122,7 @@ def test_parse_metric(metric, prom_rw):
         # test cases already do.
         assert "__name__" in labels
         assert prom_rw._sanitize_string(metric.name, "name") in labels
-        combined_attrs = list(attributes.items()) + list(
-            metric.data.data_points[0].attributes.items()
-        )
+        combined_attrs = list(attributes.items()) + list(metric.data.data_points[0].attributes.items())
         for name, value in combined_attrs:
             assert prom_rw._sanitize_string(name, "label") in labels
             assert str(value) in labels
@@ -149,9 +145,7 @@ def test_parse_metric(metric, prom_rw):
 def test_convert_to_timeseries(prom_rw):
     resource_labels = (("service_name", "foo"), ("bool_value", True))
     sample_sets = {
-        (("foo", "bar"), ("baz", 42), ("__name__", "test_histogram_tu")): [
-            (1, 1641946016139)
-        ],
+        (("foo", "bar"), ("baz", 42), ("__name__", "test_histogram_tu")): [(1, 1641946016139)],
         (("baz", "42"), ("foo", "bar")): [(4, 1641946016139)],
     }
     timeseries = prom_rw._convert_to_timeseries(sample_sets, resource_labels)
@@ -228,9 +222,7 @@ class TestValidation(unittest.TestCase):
 
     def test_invalid_timeout_param(self):
         with self.assertRaises(ValueError):
-            PrometheusRemoteWriteMetricsExporter(
-                endpoint="/prom/test_endpoint", timeout=0
-            )
+            PrometheusRemoteWriteMetricsExporter(endpoint="/prom/test_endpoint", timeout=0)
 
     def test_valid_tls_config_param(self):
         tls_config = {
@@ -239,16 +231,10 @@ class TestValidation(unittest.TestCase):
             "key_file": "test_key_file",
             "insecure_skip_verify": True,
         }
-        exporter = PrometheusRemoteWriteMetricsExporter(
-            endpoint="/prom/test_endpoint", tls_config=tls_config
-        )
+        exporter = PrometheusRemoteWriteMetricsExporter(endpoint="/prom/test_endpoint", tls_config=tls_config)
         self.assertEqual(exporter.tls_config["ca_file"], tls_config["ca_file"])
-        self.assertEqual(
-            exporter.tls_config["cert_file"], tls_config["cert_file"]
-        )
-        self.assertEqual(
-            exporter.tls_config["key_file"], tls_config["key_file"]
-        )
+        self.assertEqual(exporter.tls_config["cert_file"], tls_config["cert_file"])
+        self.assertEqual(exporter.tls_config["key_file"], tls_config["key_file"])
         self.assertEqual(
             exporter.tls_config["insecure_skip_verify"],
             tls_config["insecure_skip_verify"],
@@ -258,17 +244,13 @@ class TestValidation(unittest.TestCase):
     def test_invalid_tls_config_cert_only_param(self):
         tls_config = {"cert_file": "value"}
         with self.assertRaises(ValueError):
-            PrometheusRemoteWriteMetricsExporter(
-                endpoint="/prom/test_endpoint", tls_config=tls_config
-            )
+            PrometheusRemoteWriteMetricsExporter(endpoint="/prom/test_endpoint", tls_config=tls_config)
 
     # if cert_file is provided, then key_file must also be provided
     def test_invalid_tls_config_key_only_param(self):
         tls_config = {"cert_file": "value"}
         with self.assertRaises(ValueError):
-            PrometheusRemoteWriteMetricsExporter(
-                endpoint="/prom/test_endpoint", tls_config=tls_config
-            )
+            PrometheusRemoteWriteMetricsExporter(endpoint="/prom/test_endpoint", tls_config=tls_config)
 
 
 # Ensures export is successful with valid export_records and config
@@ -277,12 +259,8 @@ def test_valid_export(mock_post, prom_rw, metric):
     mock_post.return_value.configure_mock(**{"status_code": 200})
 
     # Assumed a "None" for Scope or Resource aren't valid, so build them here
-    scope = ScopeMetrics(
-        InstrumentationScope(name="prom-rw-test"), [metric], None
-    )
-    resource = ResourceMetrics(
-        Resource({"service.name": "foo"}), [scope], None
-    )
+    scope = ScopeMetrics(InstrumentationScope(name="prom-rw-test"), [metric], None)
+    resource = ResourceMetrics(Resource({"service.name": "foo"}), [scope], None)
     record = MetricsData([resource])
 
     result = prom_rw.export(record)

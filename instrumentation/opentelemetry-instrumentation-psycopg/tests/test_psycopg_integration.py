@@ -46,9 +46,7 @@ class MockAsyncCursor:
         pass
 
     # pylint: disable=unused-argument, no-self-use
-    async def execute(
-        self, query, params=None, throw_exception=False, delay=0.0
-    ):
+    async def execute(self, query, params=None, throw_exception=False, delay=0.0):
         if throw_exception:
             raise psycopg.Error("Test Exception")
 
@@ -132,20 +130,14 @@ class PostgresqlIntegrationTestMixin:
     # pylint: disable=invalid-name
     def setUp(self):
         super().setUp()
-        self.cursor_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg.psycopg.Cursor", MockCursor
-        )
+        self.cursor_mock = mock.patch("opentelemetry.instrumentation.psycopg.psycopg.Cursor", MockCursor)
         self.cursor_async_mock = mock.patch(
             "opentelemetry.instrumentation.psycopg.psycopg.AsyncCursor",
             MockAsyncCursor,
         )
         self.connection_mock = mock.patch("psycopg.connect", MockConnection)
-        self.connection_sync_mock = mock.patch(
-            "psycopg.Connection.connect", MockConnection
-        )
-        self.connection_async_mock = mock.patch(
-            "psycopg.AsyncConnection.connect", MockAsyncConnection.connect
-        )
+        self.connection_sync_mock = mock.patch("psycopg.Connection.connect", MockConnection)
+        self.connection_async_mock = mock.patch("psycopg.AsyncConnection.connect", MockAsyncConnection.connect)
 
         self.cursor_mock.start()
         self.cursor_async_mock.start()
@@ -185,9 +177,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -218,9 +208,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -279,9 +267,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(spans_list[0].name, "SELECT")
         assert spans_list[0].attributes is not None
         self.assertEqual(spans_list[0].attributes["db.statement"], query)
-        self.assertEqual(
-            spans_list[0].attributes["db.statement.parameters"], str(params)
-        )
+        self.assertEqual(spans_list[0].attributes["db.statement.parameters"], str(params))
 
     # pylint: disable=unused-argument
     def test_not_recording(self):
@@ -357,9 +343,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         self.assertEqual(spans_list[0].name, "SELECT")
-        self.assertEqual(
-            spans_list[0].attributes["db.statement"], "SELECT * FROM test"
-        )
+        self.assertEqual(spans_list[0].attributes["db.statement"], "SELECT * FROM test")
 
     def test_instrument_connection_composed_query(self):
         cnx = psycopg.connect(database="test")
@@ -374,9 +358,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         self.assertEqual(spans_list[0].name, "SELECT")
-        self.assertEqual(
-            spans_list[0].attributes["db.statement"], "SELECT * FROM test"
-        )
+        self.assertEqual(spans_list[0].attributes["db.statement"], "SELECT * FROM test")
 
     # pylint: disable=unused-argument
     def test_instrument_connection_with_instrument(self):
@@ -465,17 +447,13 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         cnx = psycopg.connect(database="test")
         cursor = cnx.cursor()
         value = 42
-        template = Template(
-            "SELECT ", Interpolation(value, "value"), " FROM foo"
-        )
+        template = Template("SELECT ", Interpolation(value, "value"), " FROM foo")
         cursor.execute(template)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "SELECT")
-        self.assertEqual(
-            span.attributes["db.statement"], "SELECT {value} FROM foo"
-        )
+        self.assertEqual(span.attributes["db.statement"], "SELECT {value} FROM foo")
 
     @pytest.mark.skipif(
         sys.version_info < (3, 14),
@@ -490,9 +468,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         cursor = cnx.cursor()
         MockCursor.executemany.reset_mock()
         value = 42
-        template = Template(
-            "SELECT ", Interpolation(value, "value"), " FROM foo;"
-        )
+        template = Template("SELECT ", Interpolation(value, "value"), " FROM foo;")
         cursor.executemany(template)
         called_query = MockCursor.executemany.call_args[0][0]
         self.assertIsInstance(called_query, Template)
@@ -504,23 +480,17 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "SELECT")
-        self.assertEqual(
-            span.attributes["db.statement"], "SELECT {value} FROM foo;"
-        )
+        self.assertEqual(span.attributes["db.statement"], "SELECT {value} FROM foo;")
 
 
-class TestPostgresqlIntegrationAsync(
-    PostgresqlIntegrationTestMixin, TestBase, IsolatedAsyncioTestCase
-):
+class TestPostgresqlIntegrationAsync(PostgresqlIntegrationTestMixin, TestBase, IsolatedAsyncioTestCase):
     async def test_wrap_async_connection_class_with_cursor(self):
         PsycopgInstrumentor().instrument()
 
         async def test_async_connection():
             acnx = await psycopg.AsyncConnection.connect("test")
             async with acnx as cnx:
-                self.assertTrue(
-                    issubclass(cnx.cursor_factory, MockAsyncCursor)
-                )
+                self.assertTrue(issubclass(cnx.cursor_factory, MockAsyncCursor))
                 async with cnx.cursor() as cursor:
                     await cursor.execute("SELECT * FROM test")
 
@@ -530,9 +500,7 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -549,9 +517,7 @@ class TestPostgresqlIntegrationAsync(
         async def test_async_connection():
             acnx = await psycopg.AsyncConnection.connect("test")
             async with acnx as cnx:
-                self.assertTrue(
-                    issubclass(cnx.cursor_factory, MockAsyncCursor)
-                )
+                self.assertTrue(issubclass(cnx.cursor_factory, MockAsyncCursor))
                 await cnx.execute("SELECT * FROM test")
 
         await test_async_connection()
@@ -561,9 +527,7 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
         # check that no spans are generated after uninstrument
         PsycopgInstrumentor().uninstrument()
@@ -586,9 +550,7 @@ class TestPostgresqlIntegrationAsync(
             )
             await cursor.execute("tab\tseparated query")
             await cursor.execute("/* leading comment */ query")
-            await cursor.execute(
-                "/* leading comment */ query /* trailing comment */"
-            )
+            await cursor.execute("/* leading comment */ query /* trailing comment */")
             await cursor.execute("query /* trailing comment */")
 
         spans_list = self.memory_exporter.get_finished_spans()
@@ -614,9 +576,7 @@ class TestPostgresqlIntegrationAsync(
         self.assertEqual(spans_list[0].name, "SELECT")
         assert spans_list[0].attributes is not None
         self.assertEqual(spans_list[0].attributes["db.statement"], query)
-        self.assertEqual(
-            spans_list[0].attributes["db.statement.parameters"], str(params)
-        )
+        self.assertEqual(spans_list[0].attributes["db.statement.parameters"], str(params))
 
     # pylint: disable=unused-argument
     async def test_not_recording_async(self):
@@ -689,9 +649,7 @@ class TestPostgresqlIntegrationAsync(
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg)
 
     @pytest.mark.skipif(
         sys.version_info < (3, 14),
@@ -706,14 +664,10 @@ class TestPostgresqlIntegrationAsync(
         self.assertTrue(issubclass(cnx.cursor_factory, MockAsyncCursor))
         async with cnx.cursor() as cursor:
             value = 42
-            template = Template(
-                "SELECT ", Interpolation(value, "value"), " FROM foo"
-            )
+            template = Template("SELECT ", Interpolation(value, "value"), " FROM foo")
             await cursor.execute(template)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertEqual(span.name, "SELECT")
-        self.assertEqual(
-            span.attributes["db.statement"], "SELECT {value} FROM foo"
-        )
+        self.assertEqual(span.attributes["db.statement"], "SELECT {value} FROM foo")

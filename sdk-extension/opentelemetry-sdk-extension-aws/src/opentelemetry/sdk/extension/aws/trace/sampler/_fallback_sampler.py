@@ -64,5 +64,7 @@ class _FallbackSampler(Sampler):  # pyright: ignore[reportUnusedClass]
 
     # pylint: disable=no-self-use
     def get_description(self) -> str:
-        description = "FallbackSampler{fallback sampling with sampling config of 1 req/sec and 5% of additional requests}"
+        description = (
+            "FallbackSampler{fallback sampling with sampling config of 1 req/sec and 5% of additional requests}"
+        )
         return description

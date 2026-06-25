@@ -95,9 +95,7 @@ class MessageWrapper:
 
     def extract_into(self, invocation: InferenceInvocation) -> None:
         """Extract response data into the invocation."""
-        set_invocation_response_attributes(
-            invocation, self._message, self._capture_content
-        )
+        set_invocation_response_attributes(invocation, self._message, self._capture_content)
 
     @property
     def message(self) -> Message:
@@ -107,9 +105,7 @@ class MessageWrapper:
 
 class MessagesStreamWrapper(
     Generic[ResponseFormatT],
-    Iterator[
-        "RawMessageStreamEvent | ParsedMessageStreamEvent[ResponseFormatT]"
-    ],
+    Iterator["RawMessageStreamEvent | ParsedMessageStreamEvent[ResponseFormatT]"],
 ):
     """Wrapper for Anthropic Stream that handles telemetry."""
 
@@ -176,9 +172,7 @@ class MessagesStreamWrapper(
     def _stop(self) -> None:
         if self._finalized:
             return
-        _set_response_attributes(
-            self.invocation, self._message, self._capture_content
-        )
+        _set_response_attributes(self.invocation, self._message, self._capture_content)
         self.invocation.stop()
         self._finalized = True
 
@@ -190,8 +184,7 @@ class MessagesStreamWrapper(
 
     def _process_chunk(
         self,
-        chunk: RawMessageStreamEvent
-        | ParsedMessageStreamEvent[ResponseFormatT],
+        chunk: RawMessageStreamEvent | ParsedMessageStreamEvent[ResponseFormatT],
     ) -> None:
         """Accumulate a final message snapshot from a streaming chunk."""
         snapshot = cast(
@@ -205,9 +198,7 @@ class MessagesStreamWrapper(
             return
         self._message = accumulate_event(
             event=cast("RawMessageStreamEvent", chunk),
-            current_snapshot=cast(
-                "ParsedMessage[ResponseFormatT] | None", self._message
-            ),
+            current_snapshot=cast("ParsedMessage[ResponseFormatT] | None", self._message),
         )
 
 
@@ -216,8 +207,7 @@ class AsyncMessagesStreamWrapper(MessagesStreamWrapper[ResponseFormatT]):
 
     def __init__(
         self,
-        stream: AsyncStream[RawMessageStreamEvent]
-        | AsyncMessageStream[ResponseFormatT],
+        stream: AsyncStream[RawMessageStreamEvent] | AsyncMessageStream[ResponseFormatT],
         invocation: InferenceInvocation,
         capture_content: bool,
     ):
@@ -288,9 +278,7 @@ class MessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         self._invocation_factory = invocation_factory
         self._invocation: InferenceInvocation | None = None
         self._capture_content = capture_content
-        self._stream_wrapper: MessagesStreamWrapper[ResponseFormatT] | None = (
-            None
-        )
+        self._stream_wrapper: MessagesStreamWrapper[ResponseFormatT] | None = None
 
     def __enter__(self) -> MessagesStreamWrapper[ResponseFormatT]:
         invocation = self._invocation_factory()
@@ -354,9 +342,7 @@ class AsyncMessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         self._manager = manager
         self._invocation = invocation
         self._capture_content = capture_content
-        self._stream_wrapper: (
-            AsyncMessagesStreamWrapper[ResponseFormatT] | None
-        ) = None
+        self._stream_wrapper: AsyncMessagesStreamWrapper[ResponseFormatT] | None = None
 
     async def __aenter__(
         self,
@@ -382,14 +368,10 @@ class AsyncMessagesStreamManagerWrapper(Generic[ResponseFormatT]):
         stream_wrapper = self._stream_wrapper
         self._stream_wrapper = None
         try:
-            suppressed = await self._manager.__aexit__(
-                exc_type, exc_val, exc_tb
-            )
+            suppressed = await self._manager.__aexit__(exc_type, exc_val, exc_tb)
         except Exception as exc:
             if stream_wrapper is not None:
-                await stream_wrapper.__aexit__(
-                    type(exc), exc, exc.__traceback__
-                )
+                await stream_wrapper.__aexit__(type(exc), exc, exc.__traceback__)
             else:
                 self._invocation.fail(exc)
             raise

@@ -104,9 +104,7 @@ class CustomResponseHeaderHandler(tornado.web.RequestHandler):
     def get(self):
         self.set_header("content-type", "text/plain; charset=utf-8")
         self.set_header("content-length", "0")
-        self.set_header(
-            "my-custom-header", "my-custom-value-1,my-custom-header-2"
-        )
+        self.set_header("my-custom-header", "my-custom-value-1,my-custom-header-2")
         self.set_status(200)
 
 

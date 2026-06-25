@@ -69,9 +69,7 @@ def meter_provider(metric_reader):
 
 
 @pytest.fixture
-def instrument_claude_agent_sdk(
-    tracer_provider, logger_provider, meter_provider
-):
+def instrument_claude_agent_sdk(tracer_provider, logger_provider, meter_provider):
     """Fixture to instrument Claude Agent SDK with test providers."""
     # pylint: disable=import-outside-toplevel
     from opentelemetry.instrumentation.claude_agent_sdk import (  # noqa: PLC0415

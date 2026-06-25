@@ -44,9 +44,7 @@ class TestDetectSyntheticUserAgent(unittest.TestCase):
 
     def test_normal_user_agent_not_detected(self):
         """Test that normal browser user agents are not detected as synthetic."""
-        user_agent = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        )
+        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         result = detect_synthetic_user_agent(user_agent)
         self.assertIsNone(result)
 
@@ -103,19 +101,13 @@ class TestNormalizeUserAgent(unittest.TestCase):
         self.assertEqual(normalize_user_agent("Mozilla"), "Mozilla")
 
     def test_decodes_bytes(self):
-        self.assertEqual(
-            normalize_user_agent(b"Custom-Client/1.0"), "Custom-Client/1.0"
-        )
+        self.assertEqual(normalize_user_agent(b"Custom-Client/1.0"), "Custom-Client/1.0")
 
     def test_decodes_bytearray(self):
-        self.assertEqual(
-            normalize_user_agent(bytearray(b"Bot/2.0")), "Bot/2.0"
-        )
+        self.assertEqual(normalize_user_agent(bytearray(b"Bot/2.0")), "Bot/2.0")
 
     def test_decodes_memoryview(self):
-        self.assertEqual(
-            normalize_user_agent(memoryview(b"Monitor/3.0")), "Monitor/3.0"
-        )
+        self.assertEqual(normalize_user_agent(memoryview(b"Monitor/3.0")), "Monitor/3.0")
 
     def test_none(self):
         self.assertIsNone(normalize_user_agent(None))

@@ -50,7 +50,8 @@ Async Redis clients (i.e. ``redis.asyncio.Redis``) are also instrumented in the 
 Instrument Single Client
 ------------------------
 
-The :func:`RedisInstrumentor.instrument_client` can instrument a connection instance. This is useful when there are multiple clients with a different redis database index.
+The :func:`RedisInstrumentor.instrument_client` can instrument a connection instance. This is useful when there
+are multiple clients with a different redis database index.
 Or, you might have a different connection pool used for an application function you
 don't want instrumented.
 
@@ -198,9 +199,7 @@ _REDIS_ASYNCIO_CLUSTER_VERSION = (4, 3, 2)
 
 
 _CLIENT_ASYNCIO_SUPPORT = redis.VERSION >= _REDIS_ASYNCIO_VERSION
-_CLIENT_ASYNCIO_CLUSTER_SUPPORT = (
-    redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION
-)
+_CLIENT_ASYNCIO_CLUSTER_SUPPORT = redis.VERSION >= _REDIS_ASYNCIO_CLUSTER_VERSION
 _CLIENT_CLUSTER_SUPPORT = redis.VERSION >= _REDIS_CLUSTER_VERSION
 _CLIENT_BEFORE_V3 = redis.VERSION < (3, 0, 0)
 
@@ -229,12 +228,8 @@ def _traced_execute_factory(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
     )
-    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.DATABASE
-    ]
-    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.HTTP
-    ]
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.DATABASE]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.HTTP]
 
     def _traced_execute_command(
         func: Callable[..., R],
@@ -247,9 +242,7 @@ def _traced_execute_factory(
 
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
-        with tracer.start_as_current_span(
-            name, kind=trace.SpanKind.CLIENT
-        ) as span:
+        with tracer.start_as_current_span(name, kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
                 span_attrs = {}
                 _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
@@ -291,12 +284,8 @@ def _traced_execute_pipeline_factory(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
     )
-    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.DATABASE
-    ]
-    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.HTTP
-    ]
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.DATABASE]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.HTTP]
 
     def _traced_execute_pipeline(
         func: Callable[..., R],
@@ -313,14 +302,10 @@ def _traced_execute_pipeline_factory(
             span_name,
         ) = _build_span_meta_data_for_pipeline(instance)
         exception = None
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.CLIENT
-        ) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
                 span_attrs = {}
-                _set_db_statement(
-                    span_attrs, resource, db_sem_conv_opt_in_mode
-                )
+                _set_db_statement(span_attrs, resource, db_sem_conv_opt_in_mode)
                 span_attrs["db.redis.pipeline_length"] = len(command_stack)
 
                 # Set all DB attributes
@@ -363,12 +348,8 @@ def _async_traced_execute_factory(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
     )
-    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.DATABASE
-    ]
-    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.HTTP
-    ]
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.DATABASE]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.HTTP]
 
     async def _async_traced_execute_command(
         func: Callable[..., Awaitable[R]],
@@ -382,9 +363,7 @@ def _async_traced_execute_factory(
         query = _format_command_args(args)
         name = _build_span_name(instance, args)
 
-        with tracer.start_as_current_span(
-            name, kind=trace.SpanKind.CLIENT
-        ) as span:
+        with tracer.start_as_current_span(name, kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
                 span_attrs = {}
                 _set_db_statement(span_attrs, query, db_sem_conv_opt_in_mode)
@@ -421,12 +400,8 @@ def _async_traced_execute_pipeline_factory(
             _OpenTelemetryStabilitySignalType.HTTP,
         )
     )
-    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.DATABASE
-    ]
-    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[
-        _OpenTelemetryStabilitySignalType.HTTP
-    ]
+    db_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.DATABASE]
+    http_sem_conv_opt_in_mode = sem_conv_opt_in_modes[_OpenTelemetryStabilitySignalType.HTTP]
 
     async def _async_traced_execute_pipeline(
         func: Callable[..., Awaitable[R]],
@@ -445,14 +420,10 @@ def _async_traced_execute_pipeline_factory(
 
         exception = None
 
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.CLIENT
-        ) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
                 span_attrs = {}
-                _set_db_statement(
-                    span_attrs, resource, db_sem_conv_opt_in_mode
-                )
+                _set_db_statement(span_attrs, resource, db_sem_conv_opt_in_mode)
                 span_attrs["db.redis.pipeline_length"] = len(command_stack)
 
                 # Set all DB attributes
@@ -490,18 +461,12 @@ def _instrument(
     request_hook: RequestHook | None = None,
     response_hook: ResponseHook | None = None,
 ):
-    _traced_execute_command = _traced_execute_factory(
-        tracer, request_hook, response_hook
-    )
-    _traced_execute_pipeline = _traced_execute_pipeline_factory(
-        tracer, request_hook, response_hook
-    )
+    _traced_execute_command = _traced_execute_factory(tracer, request_hook, response_hook)
+    _traced_execute_pipeline = _traced_execute_pipeline_factory(tracer, request_hook, response_hook)
     pipeline_class = "BasePipeline" if _CLIENT_BEFORE_V3 else "Pipeline"
     redis_class = "StrictRedis" if _CLIENT_BEFORE_V3 else "Redis"
 
-    wrap_function_wrapper(
-        "redis", f"{redis_class}.execute_command", _traced_execute_command
-    )
+    wrap_function_wrapper("redis", f"{redis_class}.execute_command", _traced_execute_command)
     wrap_function_wrapper(
         "redis.client",
         f"{pipeline_class}.execute",
@@ -524,12 +489,8 @@ def _instrument(
             _traced_execute_pipeline,
         )
 
-    _async_traced_execute_command = _async_traced_execute_factory(
-        tracer, request_hook, response_hook
-    )
-    _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
-        tracer, request_hook, response_hook
-    )
+    _async_traced_execute_command = _async_traced_execute_factory(tracer, request_hook, response_hook)
+    _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(tracer, request_hook, response_hook)
     if _CLIENT_ASYNCIO_SUPPORT:
         wrap_function_wrapper(
             "redis.asyncio",
@@ -566,60 +527,40 @@ def _instrument_client(
     response_hook: ResponseHook | None = None,
 ):
     # first, handle async clients and cluster clients
-    _async_traced_execute = _async_traced_execute_factory(
-        tracer, request_hook, response_hook
-    )
-    _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(
-        tracer, request_hook, response_hook
-    )
+    _async_traced_execute = _async_traced_execute_factory(tracer, request_hook, response_hook)
+    _async_traced_execute_pipeline = _async_traced_execute_pipeline_factory(tracer, request_hook, response_hook)
 
     if _CLIENT_ASYNCIO_SUPPORT and isinstance(client, redis.asyncio.Redis):
 
         def _async_pipeline_wrapper(func, instance, args, kwargs):
             result = func(*args, **kwargs)
-            wrap_function_wrapper(
-                result, "execute", _async_traced_execute_pipeline
-            )
-            wrap_function_wrapper(
-                result, "immediate_execute_command", _async_traced_execute
-            )
+            wrap_function_wrapper(result, "execute", _async_traced_execute_pipeline)
+            wrap_function_wrapper(result, "immediate_execute_command", _async_traced_execute)
             return result
 
         wrap_function_wrapper(client, "execute_command", _async_traced_execute)
         wrap_function_wrapper(client, "pipeline", _async_pipeline_wrapper)
         return
 
-    if _CLIENT_ASYNCIO_CLUSTER_SUPPORT and isinstance(
-        client, redis.asyncio.RedisCluster
-    ):
+    if _CLIENT_ASYNCIO_CLUSTER_SUPPORT and isinstance(client, redis.asyncio.RedisCluster):
 
         def _async_cluster_pipeline_wrapper(func, instance, args, kwargs):
             result = func(*args, **kwargs)
-            wrap_function_wrapper(
-                result, "execute", _async_traced_execute_pipeline
-            )
+            wrap_function_wrapper(result, "execute", _async_traced_execute_pipeline)
             return result
 
         wrap_function_wrapper(client, "execute_command", _async_traced_execute)
-        wrap_function_wrapper(
-            client, "pipeline", _async_cluster_pipeline_wrapper
-        )
+        wrap_function_wrapper(client, "pipeline", _async_cluster_pipeline_wrapper)
         return
     # for redis.client.Redis, redis.Cluster and v3.0.0 redis.client.StrictRedis
     # the wrappers are the same
-    _traced_execute = _traced_execute_factory(
-        tracer, request_hook, response_hook
-    )
-    _traced_execute_pipeline = _traced_execute_pipeline_factory(
-        tracer, request_hook, response_hook
-    )
+    _traced_execute = _traced_execute_factory(tracer, request_hook, response_hook)
+    _traced_execute_pipeline = _traced_execute_pipeline_factory(tracer, request_hook, response_hook)
 
     def _pipeline_wrapper(func, instance, args, kwargs):
         result = func(*args, **kwargs)
         wrap_function_wrapper(result, "execute", _traced_execute_pipeline)
-        wrap_function_wrapper(
-            result, "immediate_execute_command", _traced_execute
-        )
+        wrap_function_wrapper(result, "immediate_execute_command", _traced_execute)
         return result
 
     wrap_function_wrapper(
@@ -693,7 +634,8 @@ class RedisInstrumentor(BaseInstrumentor):
             **kwargs: Optional arguments
                 ``tracer_provider``: a TracerProvider, defaults to global.
                 ``request_hook``: An optional callback that is invoked right after a span is created.
-                ``response_hook``: An optional callback which is invoked right before the span is finished processing a response.
+                ``response_hook``: An optional callback which is invoked right before the span is finished
+                    processing a response.
         """
         _instrument(
             self._get_tracer(**kwargs),
@@ -775,9 +717,7 @@ class RedisInstrumentor(BaseInstrumentor):
             )
             setattr(client, _INSTRUMENTATION_ATTR, True)
         else:
-            _logger.warning(
-                "Attempting to instrument Redis connection while already instrumented"
-            )
+            _logger.warning("Attempting to instrument Redis connection while already instrumented")
 
     @staticmethod
     def uninstrument_client(
@@ -800,9 +740,7 @@ class RedisInstrumentor(BaseInstrumentor):
             # remain instrumented (pipelines should usually have a short span)
             unwrap(client, "pipeline")
         else:
-            _logger.warning(
-                "Attempting to un-instrument Redis connection that wasn't instrumented"
-            )
+            _logger.warning("Attempting to un-instrument Redis connection that wasn't instrumented")
 
     def instrumentation_dependencies(self) -> Collection[str]:
         """Return a list of python packages with versions that the will be instrumented."""

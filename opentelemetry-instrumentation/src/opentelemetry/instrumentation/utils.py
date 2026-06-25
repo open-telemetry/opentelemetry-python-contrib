@@ -19,7 +19,8 @@ except ImportError:
 from opentelemetry import context, trace
 
 # pylint: disable=E0611
-# FIXME: fix the importing of these private attributes when the location of the _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.=
+# FIXME: fix the importing of these private attributes when the location of the
+# _SUPPRESS_HTTP_INSTRUMENTATION_KEY is defined.=
 from opentelemetry.context import (
     _SUPPRESS_HTTP_INSTRUMENTATION_KEY,
     _SUPPRESS_INSTRUMENTATION_KEY,
@@ -34,9 +35,7 @@ from opentelemetry.trace.propagation.tracecontext import (
 
 propagator = TraceContextTextMapPropagator()
 
-_SUPPRESS_INSTRUMENTATION_KEY_PLAIN = (
-    "suppress_instrumentation"  # Set for backward compatibility
-)
+_SUPPRESS_INSTRUMENTATION_KEY_PLAIN = "suppress_instrumentation"  # Set for backward compatibility
 
 
 def extract_attributes_from_object(
@@ -90,9 +89,7 @@ def unwrap(obj: object, attr: str):
         try:
             module_path, class_name = obj.rsplit(".", 1)
         except ValueError as exc:
-            raise ImportError(
-                f"Cannot parse '{obj}' as dotted import path"
-            ) from exc
+            raise ImportError(f"Cannot parse '{obj}' as dotted import path") from exc
         if module_path not in sys.modules:
             # Was never imported, meaning it could never have been wrapped
             return
@@ -100,16 +97,10 @@ def unwrap(obj: object, attr: str):
         try:
             obj = getattr(module, class_name)
         except AttributeError as exc:
-            raise ImportError(
-                f"Cannot import '{class_name}' from '{module}'"
-            ) from exc
+            raise ImportError(f"Cannot import '{class_name}' from '{module}'") from exc
 
     func = getattr(obj, attr, None)
-    if (
-        func
-        and isinstance(func, BaseObjectProxy)
-        and hasattr(func, "__wrapped__")
-    ):
+    if func and isinstance(func, BaseObjectProxy) and hasattr(func, "__wrapped__"):
         setattr(obj, attr, func.__wrapped__)
 
 
@@ -187,15 +178,12 @@ def _python_path_without_directory(python_path, directory, path_separator):
 
 def is_instrumentation_enabled() -> bool:
     return not (
-        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY)
-        or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY_PLAIN)
+        context.get_value(_SUPPRESS_INSTRUMENTATION_KEY) or context.get_value(_SUPPRESS_INSTRUMENTATION_KEY_PLAIN)
     )
 
 
 def is_http_instrumentation_enabled() -> bool:
-    return is_instrumentation_enabled() and not context.get_value(
-        _SUPPRESS_HTTP_INSTRUMENTATION_KEY
-    )
+    return is_instrumentation_enabled() and not context.get_value(_SUPPRESS_HTTP_INSTRUMENTATION_KEY)
 
 
 @contextmanager
@@ -215,9 +203,7 @@ def _suppress_instrumentation(*keys: str) -> Generator[None]:
 @contextmanager
 def suppress_instrumentation() -> Generator[None]:
     """Suppress instrumentation within the context."""
-    with _suppress_instrumentation(
-        _SUPPRESS_INSTRUMENTATION_KEY, _SUPPRESS_INSTRUMENTATION_KEY_PLAIN
-    ):
+    with _suppress_instrumentation(_SUPPRESS_INSTRUMENTATION_KEY, _SUPPRESS_INSTRUMENTATION_KEY_PLAIN):
         yield
 
 

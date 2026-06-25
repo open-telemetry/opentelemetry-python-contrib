@@ -87,9 +87,7 @@ def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
-    for pkg in get_instrumentation_packages(
-        independent_packages=independent_packages
-    ):
+    for pkg in get_instrumentation_packages(independent_packages=independent_packages):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
             continue
@@ -102,7 +100,9 @@ def main():
                     values=[ast.Str(target_pkg), ast.Str(pkg["requirement"])],
                 )
             )
-        # instruments-any is an optional field that can be used instead of or in addition to _instruments. While _instruments is a list of dependencies, all of which are expected by the instrumentation, instruments-any is a list any of which but not all are expected.
+        # instruments-any is an optional field that can be used instead of or in addition to
+        # _instruments. While _instruments is a list of dependencies, all of which are expected by the
+        # instrumentation, instruments-any is a list any of which but not all are expected.
         for target_pkg in pkg["instruments-any"]:
             libraries.elts.append(
                 ast.Dict(
@@ -116,9 +116,7 @@ def main():
     tree.body[1].value = default_instrumentations
     source = astor.to_source(tree)
 
-    with open(
-        os.path.join(scripts_path, "license_header.txt"), encoding="utf-8"
-    ) as header_file:
+    with open(os.path.join(scripts_path, "license_header.txt"), encoding="utf-8") as header_file:
         header = header_file.read()
         source = _template.format(header=header, source=source)
 

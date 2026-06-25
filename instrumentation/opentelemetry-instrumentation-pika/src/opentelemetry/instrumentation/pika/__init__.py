@@ -97,7 +97,8 @@ Consumer Instrumentation
 For consumer instrumentation, pika supports two consuming modes:
 
 * Consumers using the `basic_consume` method which accepts a callback. This is supported for global instrumentation
-  (`PikaInstrumentor().instrument()`) as well channel specific instrumentation (`PikaInstrumentor().instrument_channel(channel)`)
+  (`PikaInstrumentor().instrument()`) as well channel specific instrumentation
+  (`PikaInstrumentor().instrument_channel(channel)`)
 * Consumers using the `consume` method which returns a generator over messages. This is supported for global
   instrumentations only (`PikaInstrumentor().instrument()`)
 

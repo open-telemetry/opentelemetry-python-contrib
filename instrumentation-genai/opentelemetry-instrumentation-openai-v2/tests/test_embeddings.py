@@ -35,9 +35,7 @@ from .test_utils import (
 )
 
 
-def test_embeddings_no_content(
-    span_exporter, log_exporter, openai_client, instrument_no_content, vcr
-):
+def test_embeddings_no_content(span_exporter, log_exporter, openai_client, instrument_no_content, vcr):
     """Test creating embeddings with content capture disabled"""
     latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings"
@@ -63,9 +61,7 @@ def test_embeddings_no_content(
     assert len(logs) == 0
 
 
-def test_embeddings_with_dimensions(
-    span_exporter, metric_reader, openai_client, instrument_no_content, vcr
-):
+def test_embeddings_with_dimensions(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test creating embeddings with custom dimensions parameter"""
     latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings with dimensions"
@@ -89,9 +85,7 @@ def test_embeddings_with_dimensions(
     )
 
     # Verify dimensions attribute is set correctly
-    assert (
-        spans[0].attributes["gen_ai.embeddings.dimension.count"] == dimensions
-    )
+    assert spans[0].attributes["gen_ai.embeddings.dimension.count"] == dimensions
 
     # Verify actual embedding dimensions match the requested dimensions
     assert len(response.data[0].embedding) == dimensions
@@ -102,11 +96,7 @@ def test_embeddings_with_dimensions(
 
     metric_data = metrics[0].scope_metrics[0].metrics
     duration_metric = next(
-        (
-            m
-            for m in metric_data
-            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
-        ),
+        (m for m in metric_data if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION),
         None,
     )
     assert duration_metric is not None
@@ -114,18 +104,13 @@ def test_embeddings_with_dimensions(
     # Verify the dimensions attribute is present in metrics
     for point in duration_metric.data.data_points:
         if "gen_ai.embeddings.dimension.count" in point.attributes:
-            assert (
-                point.attributes["gen_ai.embeddings.dimension.count"]
-                == dimensions
-            )
+            assert point.attributes["gen_ai.embeddings.dimension.count"] == dimensions
             break
     else:
         assert False, "Dimensions attribute not found in metrics"
 
 
-def test_embeddings_with_batch_input(
-    span_exporter, metric_reader, openai_client, instrument_with_content, vcr
-):
+def test_embeddings_with_batch_input(span_exporter, metric_reader, openai_client, instrument_with_content, vcr):
     """Test creating embeddings with batch input (list of strings)"""
     latest_experimental_enabled = is_experimental_mode()
 
@@ -155,9 +140,7 @@ def test_embeddings_with_batch_input(
     assert len(response.data) == len(input_texts)
 
 
-def test_embeddings_with_encoding_format(
-    span_exporter, metric_reader, openai_client, instrument_no_content, vcr
-):
+def test_embeddings_with_encoding_format(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test creating embeddings with different encoding format"""
     latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings with encoding format"
@@ -181,9 +164,7 @@ def test_embeddings_with_encoding_format(
     )
 
     # Verify encoding_format attribute is set correctly
-    assert spans[0].attributes["gen_ai.request.encoding_formats"] == (
-        encoding_format,
-    )
+    assert spans[0].attributes["gen_ai.request.encoding_formats"] == (encoding_format,)
 
 
 @pytest.mark.parametrize("not_given_value", [NOT_GIVEN, not_given])
@@ -220,9 +201,7 @@ def test_embeddings_with_not_given_values(
     assert "gen_ai.request.dimensions" not in spans[0].attributes
 
 
-def test_embeddings_bad_endpoint(
-    span_exporter, metric_reader, instrument_no_content, vcr
-):
+def test_embeddings_bad_endpoint(span_exporter, metric_reader, instrument_no_content, vcr):
     """Test error handling for bad endpoint"""
     latest_experimental_enabled = is_experimental_mode()
     input_text = "This is a test for embeddings with bad endpoint"
@@ -248,9 +227,7 @@ def test_embeddings_bad_endpoint(
         server_address="localhost",
     )
     assert 4242 == spans[0].attributes[ServerAttributes.SERVER_PORT]
-    assert (
-        "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
-    )
+    assert "APIConnectionError" == spans[0].attributes[ErrorAttributes.ERROR_TYPE]
 
     # Verify metrics
     metrics = metric_reader.get_metrics_data().resource_metrics
@@ -258,26 +235,15 @@ def test_embeddings_bad_endpoint(
 
     metric_data = metrics[0].scope_metrics[0].metrics
     duration_metric = next(
-        (
-            m
-            for m in metric_data
-            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
-        ),
+        (m for m in metric_data if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION),
         None,
     )
     assert duration_metric is not None
     assert duration_metric.data.data_points[0].sum > 0
-    assert (
-        duration_metric.data.data_points[0].attributes[
-            ErrorAttributes.ERROR_TYPE
-        ]
-        == "APIConnectionError"
-    )
+    assert duration_metric.data.data_points[0].attributes[ErrorAttributes.ERROR_TYPE] == "APIConnectionError"
 
 
-def test_embeddings_model_not_found(
-    span_exporter, metric_reader, openai_client, instrument_no_content, vcr
-):
+def test_embeddings_model_not_found(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test error handling for non-existent model"""
     latest_experimental_enabled = is_experimental_mode()
     model_name = "non-existent-embedding-model"
@@ -307,26 +273,15 @@ def test_embeddings_model_not_found(
 
     metric_data = metrics[0].scope_metrics[0].metrics
     duration_metric = next(
-        (
-            m
-            for m in metric_data
-            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
-        ),
+        (m for m in metric_data if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION),
         None,
     )
     assert duration_metric is not None
     assert duration_metric.data.data_points[0].sum > 0
-    assert (
-        duration_metric.data.data_points[0].attributes[
-            ErrorAttributes.ERROR_TYPE
-        ]
-        == "NotFoundError"
-    )
+    assert duration_metric.data.data_points[0].attributes[ErrorAttributes.ERROR_TYPE] == "NotFoundError"
 
 
-def test_embeddings_token_metrics(
-    span_exporter, metric_reader, openai_client, instrument_no_content, vcr
-):
+def test_embeddings_token_metrics(span_exporter, metric_reader, openai_client, instrument_no_content, vcr):
     """Test that token usage metrics are correctly recorded"""
 
     latest_experimental_enabled = is_experimental_mode()
@@ -357,22 +312,14 @@ def test_embeddings_token_metrics(
 
     # Verify operation duration metric
     duration_metric = next(
-        (
-            m
-            for m in metric_data
-            if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION
-        ),
+        (m for m in metric_data if m.name == gen_ai_metrics.GEN_AI_CLIENT_OPERATION_DURATION),
         None,
     )
     assert duration_metric is not None
 
     # Verify token usage metric
     token_metric = next(
-        (
-            m
-            for m in metric_data
-            if m.name == gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE
-        ),
+        (m for m in metric_data if m.name == gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE),
         None,
     )
     assert token_metric is not None
@@ -380,10 +327,7 @@ def test_embeddings_token_metrics(
     # Find the input token data point
     input_token_point = None
     for point in token_metric.data.data_points:
-        if (
-            point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
-            == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
-        ):
+        if point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE] == GenAIAttributes.GenAiTokenTypeValues.INPUT.value:
             input_token_point = point
             break
 

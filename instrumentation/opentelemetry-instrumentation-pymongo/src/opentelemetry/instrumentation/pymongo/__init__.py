@@ -26,9 +26,12 @@ API
 The `instrument` method accepts the following keyword args:
 
 * tracer_provider (``TracerProvider``) - an optional tracer provider
-* request_hook (``Callable[[Span, CommandStartedEvent], None]``) - a function with extra user-defined logic to be performed before querying mongodb
-* response_hook (``Callable[[Span, CommandSucceededEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a successful response
-* failed_hook (``Callable[[Span, CommandFailedEvent], None]``) - a function with extra user-defined logic to be performed after the query returns with a failed response
+* request_hook (``Callable[[Span, CommandStartedEvent], None]``) - a function with extra user-defined logic to be
+  performed before querying mongodb
+* response_hook (``Callable[[Span, CommandSucceededEvent], None]``) - a function with extra user-defined logic to be
+  performed after the query returns with a successful response
+* failed_hook (``Callable[[Span, CommandFailedEvent], None]``) - a function with extra user-defined logic to be
+  performed after the query returns with a failed response
 * capture_statement (``bool``) - an optional value to enable capturing the database statement that is being executed
 
 for example:
@@ -200,9 +203,7 @@ class CommandTracer(monitoring.CommandListener):
     def _pop_span(self, event: CommandEvent) -> Span | None:
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
-    def _get_statement_by_command_name(
-        self, command_name: str, event: CommandEvent
-    ) -> str:
+    def _get_statement_by_command_name(self, command_name: str, event: CommandEvent) -> str:
         statement = command_name
         command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
         command = event.command.get(command_attribute)

@@ -49,5 +49,8 @@ class _RateLimitingSampler(Sampler):  # pyright: ignore[reportUnusedClass]
         )
 
     def get_description(self) -> str:
-        description = f"RateLimitingSampler{{rate limiting sampling with sampling config of {self.__quota} req/sec and 0% of additional requests}}"
+        description = (
+            f"RateLimitingSampler{{rate limiting sampling with sampling config of {self.__quota} "
+            "req/sec and 0% of additional requests}"
+        )
         return description

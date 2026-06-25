@@ -137,9 +137,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             "Connection.fetchval",
             "Connection.fetchrow",
         ]:
-            wrapt.wrap_function_wrapper(
-                "asyncpg.connection", method, self._do_execute
-            )
+            wrapt.wrap_function_wrapper("asyncpg.connection", method, self._do_execute)
 
         for method in [
             "Cursor.fetch",
@@ -147,9 +145,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             "Cursor.fetchrow",
             "CursorIterator.__anext__",
         ]:
-            wrapt.wrap_function_wrapper(
-                "asyncpg.cursor", method, self._do_cursor_execute
-            )
+            wrapt.wrap_function_wrapper("asyncpg.cursor", method, self._do_cursor_execute)
 
         for method in _PREPARED_STMT_METHODS:
             if hasattr(asyncpg.prepared_stmt.PreparedStatement, method):
@@ -178,9 +174,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
         params = getattr(instance, "_params", None)
-        name = (
-            args[0] if args[0] else getattr(params, "database", "postgresql")
-        )
+        name = args[0] if args[0] else getattr(params, "database", "postgresql")
 
         try:
             # Strip leading comments so we get the operation name.
@@ -195,9 +189,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             args[1:] if self.capture_parameters else None,
         )
 
-        with self._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
+        with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
             try:
                 result = await func(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703
@@ -213,11 +205,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         """Wrap cursor based functions. For every call this will generate a new span."""
         exception = None
         params = getattr(instance._connection, "_params", None)
-        name = (
-            instance._query
-            if instance._query
-            else getattr(params, "database", "postgresql")
-        )
+        name = instance._query if instance._query else getattr(params, "database", "postgresql")
 
         try:
             # Strip leading comments so we get the operation name.
@@ -269,9 +257,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             args if self.capture_parameters else None,
         )
 
-        with self._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT, attributes=span_attributes
-        ) as span:
+        with self._tracer.start_as_current_span(name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
             try:
                 result = await func(*args, **kwargs)
             except Exception as exc:  # pylint: disable=W0703

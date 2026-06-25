@@ -102,9 +102,7 @@ def _with_tracer_wrapper(func):
 
 @_with_tracer_wrapper
 def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
-    with tracer.start_as_current_span(
-        cmd, kind=SpanKind.CLIENT, attributes={}
-    ) as span:
+    with tracer.start_as_current_span(cmd, kind=SpanKind.CLIENT, attributes={}) as span:
         try:
             if span.is_recording():
                 if not args:
@@ -117,9 +115,7 @@ def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
 
                 _set_connection_attributes(span, instance)
         except Exception as ex:  # pylint: disable=broad-except
-            logger.warning(
-                "Failed to set attributes for pymemcache span %s", str(ex)
-            )
+            logger.warning("Failed to set attributes for pymemcache span %s", str(ex))
 
         return wrapped(*args, **kwargs)
 

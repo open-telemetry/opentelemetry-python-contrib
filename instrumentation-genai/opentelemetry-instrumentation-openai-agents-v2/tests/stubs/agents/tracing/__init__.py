@@ -154,9 +154,7 @@ class TraceProvider:
         else:
             trace_id = f"trace_{next(self._ids)}"
             parent_id = None
-        return Span(
-            trace_id, span_id, span_data, parent_id, self._multi_processor
-        )
+        return Span(trace_id, span_id, span_data, parent_id, self._multi_processor)
 
     def shutdown(self) -> None:
         self._multi_processor.shutdown()
@@ -207,9 +205,7 @@ def agent_span(
     output_type: str | None = None,
     **kwargs: Any,
 ):
-    data = AgentSpanData(
-        name=name, handoffs=handoffs, tools=tools, output_type=output_type
-    )
+    data = AgentSpanData(name=name, handoffs=handoffs, tools=tools, output_type=output_type)
     span = _PROVIDER.create_span(data, parent=_CURRENT_TRACE)
     span.start()
     try:

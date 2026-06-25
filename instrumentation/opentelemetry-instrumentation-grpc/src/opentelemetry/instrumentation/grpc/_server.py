@@ -56,9 +56,7 @@ def _wrap_rpc_behavior(handler, continuation):
         handler_factory = grpc.unary_unary_rpc_method_handler
 
     return handler_factory(
-        continuation(
-            behavior_fn, handler.request_streaming, handler.response_streaming
-        ),
+        continuation(behavior_fn, handler.request_streaming, handler.response_streaming),
         request_deserializer=handler.request_deserializer,
         response_serializer=handler.response_serializer,
     )
@@ -131,17 +129,12 @@ class _OpenTelemetryServicerContext(grpc.ServicerContext):
 
     def code(self):
         if not hasattr(self._servicer_context, "code"):
-            raise RuntimeError(
-                "code() is not supported with the installed version of grpcio"
-            )
+            raise RuntimeError("code() is not supported with the installed version of grpcio")
         return self._servicer_context.code()
 
     def details(self):
         if not hasattr(self._servicer_context, "details"):
-            raise RuntimeError(
-                "details() is not supported with the installed version of "
-                "grpcio"
-            )
+            raise RuntimeError("details() is not supported with the installed version of grpcio")
         return self._servicer_context.details()
 
     def set_code(self, code):
@@ -203,9 +196,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         else:
             yield
 
-    def _start_span(
-        self, handler_call_details, context, set_status_on_exception=False
-    ):
+    def _start_span(self, handler_call_details, context, set_status_on_exception=False):
         # standard attributes
         attributes = {
             RPC_SYSTEM: "grpc",
@@ -214,9 +205,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
         # if we have details about the call, split into service and method
         if handler_call_details.method:
-            service, method = handler_call_details.method.lstrip("/").split(
-                "/", 1
-            )
+            service, method = handler_call_details.method.lstrip("/").split("/", 1)
             attributes.update(
                 {
                     RPC_METHOD: method,
@@ -237,12 +226,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
         #
         if not context.peer().startswith("unix:"):
             try:
-                ip, port = (
-                    context.peer()
-                    .split(",")[0]
-                    .split(":", 1)[1]
-                    .rsplit(":", 1)
-                )
+                ip, port = context.peer().split(",")[0].split(":", 1)[1].rsplit(":", 1)
                 ip = unquote(ip)
                 attributes.update(
                     {
@@ -256,9 +240,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                     attributes[NET_PEER_NAME] = "localhost"
 
             except IndexError:
-                logger.warning(
-                    "Failed to parse peer address '%s'", context.peer()
-                )
+                logger.warning("Failed to parse peer address '%s'", context.peer())
 
         return self._tracer.start_as_current_span(
             name=handler_call_details.method,
@@ -306,20 +288,14 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
             return telemetry_interceptor
 
-        return _wrap_rpc_behavior(
-            continuation(handler_call_details), telemetry_wrapper
-        )
+        return _wrap_rpc_behavior(continuation(handler_call_details), telemetry_wrapper)
 
     # Handle streaming responses separately - we have to do this
     # to return a *new* generator or various upstream things
     # get confused, or we'll lose the consistent trace
-    def _intercept_server_stream(
-        self, behavior, handler_call_details, request_or_iterator, context
-    ):
+    def _intercept_server_stream(self, behavior, handler_call_details, request_or_iterator, context):
         with self._set_remote_context(context):
-            with self._start_span(
-                handler_call_details, context, set_status_on_exception=False
-            ) as span:
+            with self._start_span(handler_call_details, context, set_status_on_exception=False) as span:
                 context = _OpenTelemetryServicerContext(context, span)
 
                 try:

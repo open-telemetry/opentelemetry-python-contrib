@@ -71,9 +71,7 @@ def _extract_params(
     | None = None,
     *,
     model: str | None = None,
-    contents: MutableSequence[content.Content]
-    | MutableSequence[content_v1beta1.Content]
-    | None = None,
+    contents: MutableSequence[content.Content] | MutableSequence[content_v1beta1.Content] | None = None,
     **_kwargs: Any,
 ) -> GenerateContentParams:
     # Request vs the named parameters are mututally exclusive or the RPC will fail
@@ -107,9 +105,7 @@ class MethodWrappers:
         tracer: Tracer,
         logger: Logger,
         capture_content: ContentCapturingMode,
-        sem_conv_opt_in_mode: Literal[
-            _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-        ],
+        sem_conv_opt_in_mode: Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
         completion_hook: CompletionHook,
     ) -> None: ...
 
@@ -144,15 +140,16 @@ class MethodWrappers:
     def _with_new_instrumentation(
         self,
         capture_content: ContentCapturingMode,
-        instance: client.PredictionServiceClient
-        | client_v1beta1.PredictionServiceClient,
+        instance: client.PredictionServiceClient | client_v1beta1.PredictionServiceClient,
         args: Any,
         kwargs: Any,
     ):
         params = _extract_params(*args, **kwargs)
         request_attributes = get_genai_request_attributes(True, params)
         with self.tracer.start_as_current_span(
-            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_attributes.get(GenAI.GEN_AI_REQUEST_MODEL, '')}".strip(),
+            name=(
+                f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_attributes.get(GenAI.GEN_AI_REQUEST_MODEL, '')}"
+            ).strip(),
             kind=SpanKind.CLIENT,
         ) as span:
 
@@ -172,9 +169,7 @@ class MethodWrappers:
                 event.attributes = attributes.copy()
                 system_instructions, inputs, outputs = [], [], []
                 if params.system_instruction:
-                    system_instructions = convert_content_to_message_parts(
-                        params.system_instruction
-                    )
+                    system_instructions = convert_content_to_message_parts(params.system_instruction)
                 if params.contents:
                     inputs = [
                         InputMessage(
@@ -186,13 +181,9 @@ class MethodWrappers:
                 if response:
                     outputs = [
                         OutputMessage(
-                            finish_reason=_map_finish_reason(
-                                candidate.finish_reason
-                            ),
+                            finish_reason=_map_finish_reason(candidate.finish_reason),
                             role=candidate.content.role,
-                            parts=convert_content_to_message_parts(
-                                candidate.content
-                            ),
+                            parts=convert_content_to_message_parts(candidate.content),
                         )
                         for candidate in response.candidates
                     ]
@@ -221,12 +212,7 @@ class MethodWrappers:
                         ContentCapturingMode.SPAN_AND_EVENT,
                         ContentCapturingMode.SPAN_ONLY,
                     ):
-                        span.set_attributes(
-                            {
-                                k: gen_ai_json_dumps(v)
-                                for k, v in content_attributes.items()
-                            }
-                        )
+                        span.set_attributes({k: gen_ai_json_dumps(v) for k, v in content_attributes.items()})
                 if capture_content in (
                     ContentCapturingMode.SPAN_AND_EVENT,
                     ContentCapturingMode.EVENT_ONLY,
@@ -240,8 +226,7 @@ class MethodWrappers:
     def _with_default_instrumentation(
         self,
         capture_content: bool,
-        instance: client.PredictionServiceClient
-        | client_v1beta1.PredictionServiceClient,
+        instance: client.PredictionServiceClient | client_v1beta1.PredictionServiceClient,
         args: Any,
         kwargs: Any,
     ):
@@ -259,9 +244,7 @@ class MethodWrappers:
             kind=SpanKind.CLIENT,
             attributes=span_attributes,
         ) as span:
-            for event in request_to_events(
-                params=params, capture_content=capture_content
-            ):
+            for event in request_to_events(params=params, capture_content=capture_content):
                 self.logger.emit(event)
 
             # TODO: set error.type attribute
@@ -276,13 +259,9 @@ class MethodWrappers:
                     # overwritten. In practice, it looks the API only returns the interesting
                     # attributes on the last streamed response. However, I couldn't find
                     # documentation for this and setting attributes shouldn't be too expensive.
-                    span.set_attributes(
-                        get_genai_response_attributes(response)
-                    )
+                    span.set_attributes(get_genai_response_attributes(response))
 
-                for event in response_to_events(
-                    response=response, capture_content=capture_content
-                ):
+                for event in response_to_events(response=response, capture_content=capture_content):
                     self.logger.emit(event)
 
             yield handle_response
@@ -291,30 +270,21 @@ class MethodWrappers:
         self,
         wrapped: Callable[
             ...,
-            prediction_service.GenerateContentResponse
-            | prediction_service_v1beta1.GenerateContentResponse,
+            prediction_service.GenerateContentResponse | prediction_service_v1beta1.GenerateContentResponse,
         ],
-        instance: client.PredictionServiceClient
-        | client_v1beta1.PredictionServiceClient,
+        instance: client.PredictionServiceClient | client_v1beta1.PredictionServiceClient,
         args: Any,
         kwargs: Any,
-    ) -> (
-        prediction_service.GenerateContentResponse
-        | prediction_service_v1beta1.GenerateContentResponse
-    ):
+    ) -> prediction_service.GenerateContentResponse | prediction_service_v1beta1.GenerateContentResponse:
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
             capture_content_bool = cast(bool, self.capture_content)
-            with self._with_default_instrumentation(
-                capture_content_bool, instance, args, kwargs
-            ) as handle_response:
+            with self._with_default_instrumentation(capture_content_bool, instance, args, kwargs) as handle_response:
                 response = wrapped(*args, **kwargs)
                 handle_response(response)
                 return response
         else:
             capture_content = cast(ContentCapturingMode, self.capture_content)
-            with self._with_new_instrumentation(
-                capture_content, instance, args, kwargs
-            ) as handle_response:
+            with self._with_new_instrumentation(capture_content, instance, args, kwargs) as handle_response:
                 response = None
                 try:
                     response = wrapped(*args, **kwargs)
@@ -326,32 +296,21 @@ class MethodWrappers:
         self,
         wrapped: Callable[
             ...,
-            Awaitable[
-                prediction_service.GenerateContentResponse
-                | prediction_service_v1beta1.GenerateContentResponse
-            ],
+            Awaitable[prediction_service.GenerateContentResponse | prediction_service_v1beta1.GenerateContentResponse],
         ],
-        instance: client.PredictionServiceClient
-        | client_v1beta1.PredictionServiceClient,
+        instance: client.PredictionServiceClient | client_v1beta1.PredictionServiceClient,
         args: Any,
         kwargs: Any,
-    ) -> (
-        prediction_service.GenerateContentResponse
-        | prediction_service_v1beta1.GenerateContentResponse
-    ):
+    ) -> prediction_service.GenerateContentResponse | prediction_service_v1beta1.GenerateContentResponse:
         if self.sem_conv_opt_in_mode == _StabilityMode.DEFAULT:
             capture_content_bool = cast(bool, self.capture_content)
-            with self._with_default_instrumentation(
-                capture_content_bool, instance, args, kwargs
-            ) as handle_response:
+            with self._with_default_instrumentation(capture_content_bool, instance, args, kwargs) as handle_response:
                 response = await wrapped(*args, **kwargs)
                 handle_response(response)
                 return response
         else:
             capture_content = cast(ContentCapturingMode, self.capture_content)
-            with self._with_new_instrumentation(
-                capture_content, instance, args, kwargs
-            ) as handle_response:
+            with self._with_new_instrumentation(capture_content, instance, args, kwargs) as handle_response:
                 response = None
                 try:
                     response = await wrapped(*args, **kwargs)

@@ -47,9 +47,7 @@ def run() -> None:
 
     argument_otel_environment_variable = {}
 
-    for entry_point in entry_points(
-        group="opentelemetry_environment_variables"
-    ):
+    for entry_point in entry_points(group="opentelemetry_environment_variables"):
         environment_variable_module = entry_point.load()
 
         for attribute in dir(environment_variable_module):
@@ -77,9 +75,7 @@ def run() -> None:
 
     args = parser.parse_args()
 
-    for argument, otel_environment_variable in (
-        argument_otel_environment_variable
-    ).items():
+    for argument, otel_environment_variable in (argument_otel_environment_variable).items():
         value = getattr(args, argument)
         if value is not None:
             environ[otel_environment_variable] = value
@@ -115,9 +111,7 @@ def run() -> None:
 def _initialize(*, swallow_exceptions: bool = True) -> None:
     # handle optional gevent monkey patching. This is done via environment variables so it may be used from the
     # opentelemetry operator
-    gevent_patch: str | None = environ.get(
-        OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH
-    )
+    gevent_patch: str | None = environ.get(OTEL_PYTHON_AUTO_INSTRUMENTATION_EXPERIMENTAL_GEVENT_PATCH)
     if gevent_patch is not None:
         if gevent_patch != "patch_all":
             _logger.error(
@@ -131,9 +125,7 @@ def _initialize(*, swallow_exceptions: bool = True) -> None:
 
                 getattr(monkey, gevent_patch)()
             except ImportError:
-                _logger.exception(
-                    "Failed to monkey patch with gevent because gevent is not available"
-                )
+                _logger.exception("Failed to monkey patch with gevent because gevent is not available")
                 if not swallow_exceptions:
                     raise
 
@@ -152,14 +144,13 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
     """
     Setup auto-instrumentation, called by the sitecustomize module
 
-    :param swallow_exceptions: Whether or not to propagate instrumentation exceptions to the caller. Exceptions are logged and swallowed by default.
+    :param swallow_exceptions: Whether or not to propagate instrumentation exceptions to the caller. Exceptions are
+        logged and swallowed by default.
     """
     filedir = dirname(abspath(__file__))
 
     python_path = environ.get("PYTHONPATH")
-    auto_instrumentation_path_was_present = (
-        python_path is not None and filedir in python_path.split(pathsep)
-    )
+    auto_instrumentation_path_was_present = python_path is not None and filedir in python_path.split(pathsep)
 
     # Remove the auto-instrumentation path during initialization to prevent
     # auto-instrumentation from executing in subprocesses spawned during this phase.
@@ -167,9 +158,7 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
     # where subprocesses spawned in the initialization phase execute the
     # initialization phase again, spawning more subprocesses.
     if python_path is not None:
-        environ["PYTHONPATH"] = _python_path_without_directory(
-            python_path, filedir, pathsep
-        )
+        environ["PYTHONPATH"] = _python_path_without_directory(python_path, filedir, pathsep)
 
     try:
         _initialize(swallow_exceptions=swallow_exceptions)
@@ -177,6 +166,4 @@ def initialize(*, swallow_exceptions: bool = True) -> None:
         if auto_instrumentation_path_was_present:
             current = environ.get("PYTHONPATH", "")
             if filedir not in current.split(pathsep):
-                environ["PYTHONPATH"] = (
-                    filedir + pathsep + current if current else filedir
-                )
+                environ["PYTHONPATH"] = filedir + pathsep + current if current else filedir

@@ -28,25 +28,13 @@ from opentelemetry.semconv._incubating.attributes.user_agent_attributes import (
 )
 from opentelemetry.util.http.constants import BOT_PATTERNS, TEST_PATTERNS
 
-OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = (
-    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
-)
-OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = (
-    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST"
-)
-OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = (
-    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
-)
-OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST = (
-    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST"
-)
-OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE = (
-    "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE"
-)
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS = "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS"
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST"
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE"
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST = "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST"
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE = "OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE"
 
-OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = (
-    "OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS"
-)
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = "OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS"
 
 # List of recommended metrics attributes
 _duration_attrs = {
@@ -92,11 +80,7 @@ class SanitizeValue:
             self._regex = re_compile("|".join(sanitized_fields), RE_IGNORECASE)
 
     def sanitize_header_value(self, header: str, value: str) -> str:
-        return (
-            "[REDACTED]"
-            if (self._sanitized_fields and search(self._regex, header))
-            else value
-        )
+        return "[REDACTED]" if (self._sanitized_fields and search(self._regex, header)) else value
 
     def sanitize_header_values(
         self,
@@ -116,16 +100,9 @@ class SanitizeValue:
                 if header_regexes_compiled.fullmatch(header_name):
                     key = normalize_function(header_name.lower())
                     if isinstance(header_value, str):
-                        values[key] = [
-                            self.sanitize_header_value(
-                                header_name, header_value
-                            )
-                        ]
+                        values[key] = [self.sanitize_header_value(header_name, header_value)]
                     else:
-                        values[key] = [
-                            self.sanitize_header_value(header_name, value)
-                            for value in header_value
-                        ]
+                        values[key] = [self.sanitize_header_value(header_name, value) for value in header_value]
 
         return values
 
@@ -134,14 +111,9 @@ _root = r"OTEL_PYTHON_{}"
 
 
 def get_traced_request_attrs(instrumentation: str) -> list[str]:
-    traced_request_attrs = environ.get(
-        _root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS")
-    )
+    traced_request_attrs = environ.get(_root.format(f"{instrumentation}_TRACED_REQUEST_ATTRS"))
     if traced_request_attrs:
-        return [
-            traced_request_attr.strip()
-            for traced_request_attr in traced_request_attrs.split(",")
-        ]
+        return [traced_request_attr.strip() for traced_request_attr in traced_request_attrs.split(",")]
     return []
 
 
@@ -161,9 +133,7 @@ def parse_excluded_urls(excluded_urls: str) -> ExcludeList:
     Small helper to put an arbitrary url list inside an ExcludeList
     """
     if excluded_urls:
-        excluded_url_list = [
-            excluded_url.strip() for excluded_url in excluded_urls.split(",")
-        ]
+        excluded_url_list = [excluded_url.strip() for excluded_url in excluded_urls.split(",")]
     else:
         excluded_url_list = []
 
@@ -239,10 +209,7 @@ def sanitize_method(method: str | None) -> str | None:
 def get_custom_headers(env_var: str) -> list[str]:
     custom_headers = environ.get(env_var, None)
     if custom_headers:
-        return [
-            custom_headers.strip()
-            for custom_headers in custom_headers.split(",")
-        ]
+        return [custom_headers.strip() for custom_headers in custom_headers.split(",")]
     return []
 
 
@@ -270,24 +237,18 @@ def get_custom_header_attributes(
     if not headers or not captured_headers:
         return {}
     sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
-    return sanitize.sanitize_header_values(
-        headers, captured_headers, normalize_function
-    )
+    return sanitize.sanitize_header_values(headers, captured_headers, normalize_function)
 
 
 def _parse_active_request_count_attrs(req_attrs):
     active_requests_count_attrs = {
-        key: req_attrs[key]
-        for key in _active_requests_count_attrs.intersection(req_attrs.keys())
+        key: req_attrs[key] for key in _active_requests_count_attrs.intersection(req_attrs.keys())
     }
     return active_requests_count_attrs
 
 
 def _parse_duration_attrs(req_attrs):
-    duration_attrs = {
-        key: req_attrs[key]
-        for key in _duration_attrs.intersection(req_attrs.keys())
-    }
+    duration_attrs = {key: req_attrs[key] for key in _duration_attrs.intersection(req_attrs.keys())}
     return duration_attrs
 
 

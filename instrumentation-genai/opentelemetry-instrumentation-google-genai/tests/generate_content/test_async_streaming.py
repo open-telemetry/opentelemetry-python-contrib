@@ -14,31 +14,23 @@ class AsyncStreamingMixin:
 
     async def _generate_content_stream_helper(self, *args, **kwargs):
         result = []
-        async for (
-            response
-        ) in await self.client.aio.models.generate_content_stream(  # pylint: disable=missing-kwoa
+        async for response in await self.client.aio.models.generate_content_stream(  # pylint: disable=missing-kwoa
             *args, **kwargs
         ):
             result.append(response)
         return result
 
     def generate_content_stream(self, *args, **kwargs):
-        return asyncio.run(
-            self._generate_content_stream_helper(*args, **kwargs)
-        )
+        return asyncio.run(self._generate_content_stream_helper(*args, **kwargs))
 
 
-class TestGenerateContentAsyncStreamingWithSingleResult(
-    AsyncStreamingMixin, NonStreamingTestCase
-):
+class TestGenerateContentAsyncStreamingWithSingleResult(AsyncStreamingMixin, NonStreamingTestCase):
     def generate_content(self, *args, **kwargs):
         responses = self.generate_content_stream(*args, **kwargs)
         self.assertEqual(len(responses), 1)
         return responses[0]
 
 
-class TestGenerateContentAsyncStreamingWithStreamedResults(
-    AsyncStreamingMixin, StreamingTestCase
-):
+class TestGenerateContentAsyncStreamingWithStreamedResults(AsyncStreamingMixin, StreamingTestCase):
     def generate_content(self, *args, **kwargs):
         return self.generate_content_stream(*args, **kwargs)

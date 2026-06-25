@@ -29,7 +29,8 @@ class TestAsyncioAnext(TestBase):
         AsyncioInstrumentor().uninstrument()
 
     # Asyncio anext() does not have __name__ attribute, which is used to determine if the coroutine should be traced.
-    # This test is to ensure that the instrumentation does not break when the coroutine does not have __name__ attribute.
+    # This test is to ensure that the instrumentation does not break when the coroutine does not have __name__
+    # attribute.
     # Additionally, ensure the coroutine is actually awaited.
     def test_asyncio_anext(self):
         async def main():

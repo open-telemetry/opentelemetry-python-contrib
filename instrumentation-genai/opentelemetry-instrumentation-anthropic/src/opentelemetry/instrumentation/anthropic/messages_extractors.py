@@ -59,9 +59,7 @@ class MessageRequestParams:
     system: str | Iterable[TextBlockParam] | None = None
 
 
-GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = (
-    "gen_ai.usage.cache_creation.input_tokens"
-)
+GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS = "gen_ai.usage.cache_creation.input_tokens"
 GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = "gen_ai.usage.cache_read.input_tokens"
 
 
@@ -84,18 +82,10 @@ def extract_usage_tokens(
     cache_creation_input_tokens = usage.cache_creation_input_tokens
     cache_read_input_tokens = usage.cache_read_input_tokens
 
-    if (
-        input_tokens is None
-        and cache_creation_input_tokens is None
-        and cache_read_input_tokens is None
-    ):
+    if input_tokens is None and cache_creation_input_tokens is None and cache_read_input_tokens is None:
         total_input_tokens = None
     else:
-        total_input_tokens = (
-            (input_tokens or 0)
-            + (cache_creation_input_tokens or 0)
-            + (cache_read_input_tokens or 0)
-        )
+        total_input_tokens = (input_tokens or 0) + (cache_creation_input_tokens or 0) + (cache_read_input_tokens or 0)
 
     return UsageTokens(
         input_tokens=total_input_tokens,
@@ -162,13 +152,9 @@ def set_invocation_response_attributes(
     invocation.input_tokens = tokens.input_tokens
     invocation.output_tokens = tokens.output_tokens
     if tokens.cache_creation_input_tokens is not None:
-        invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = (
-            tokens.cache_creation_input_tokens
-        )
+        invocation.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] = tokens.cache_creation_input_tokens
     if tokens.cache_read_input_tokens is not None:
-        invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = (
-            tokens.cache_read_input_tokens
-        )
+        invocation.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] = tokens.cache_read_input_tokens
 
     if capture_content:
         invocation.output_messages = get_output_messages_from_message(message)
@@ -220,9 +206,7 @@ def get_server_address_and_port(
     )
 
 
-def get_llm_request_attributes(
-    params: MessageRequestParams, client_instance: "Messages"
-) -> dict[str, AttributeValue]:
+def get_llm_request_attributes(params: MessageRequestParams, client_instance: "Messages") -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue | None] = {
         GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]

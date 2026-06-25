@@ -1,7 +1,11 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(otelTraceID)s span_id=%(otelSpanID)s resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s] - %(message)s"
+DEFAULT_LOGGING_FORMAT = (
+    "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] "
+    "[trace_id=%(otelTraceID)s span_id=%(otelSpanID)s "
+    "resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s] - %(message)s"
+)
 
 
 _MODULE_DOC = """
@@ -14,17 +18,17 @@ You can disable this by setting ``OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION`` to ``fa
     This package provides a logging handler to replace the deprecated one in ``opentelemetry-sdk``.
     Therefore if you have ``opentelemetry-instrumentation-logging`` installed, you don't need to set the
     ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED`` environment variable to ``true``.
-    By default, this instrumentation does not add ``code`` namespace attributes as the SDK's logger does, but adding them can be enabled by using the
-    ``OTEL_PYTHON_LOG_CODE_ATTRIBUTES`` environment variable.
+    By default, this instrumentation does not add ``code`` namespace attributes as the SDK's logger does,
+    but adding them can be enabled by using the ``OTEL_PYTHON_LOG_CODE_ATTRIBUTES`` environment variable.
 
 Enable trace context injection
 ------------------------------
 
 The OpenTelemetry ``logging`` integration can also be configured to inject tracing context into log statements.
 
-The integration registers a custom log record factory with the the standard library logging module that automatically inject
-tracing context into log record objects. Optionally, the integration can also call ``logging.basicConfig()`` to set a logging
-format with placeholders for span ID, trace ID and service name.
+The integration registers a custom log record factory with the the standard library logging module that
+automatically inject tracing context into log record objects. Optionally, the integration can also call
+``logging.basicConfig()`` to set a logging format with placeholders for span ID, trace ID and service name.
 
 The following keys are injected into log record objects by the factory:
 
@@ -58,17 +62,18 @@ The default value is ``true``.
 
 .. envvar:: OTEL_PYTHON_CODE_ATTRIBUTES
 
-Set this env var to ``true`` to add ``code`` attributes (``code.file.path``, ``code.function.name``, ``code.line.number``) to OpenTelemetry logs, referencing the Python source location that emitted each log message.
+Set this env var to ``true`` to add ``code`` attributes (``code.file.path``, ``code.function.name``,
+``code.line.number``) to OpenTelemetry logs, referencing the Python source location that emitted each log message.
 
 The default value is ``false``.
 
 .. envvar:: OTEL_PYTHON_LOG_CORRELATION
 
-This env var must be set to ``true`` in order to enable trace context injection into logs by calling ``logging.basicConfig()`` and
-setting a logging format that makes use of the injected tracing variables.
+This env var must be set to ``true`` in order to enable trace context injection into logs by calling
+``logging.basicConfig()`` and setting a logging format that makes use of the injected tracing variables.
 
-Alternatively, ``set_logging_format`` argument can be set to ``True`` when initializing the ``LoggingInstrumentor`` class to achieve the
-same effect.
+Alternatively, ``set_logging_format`` argument can be set to ``True`` when initializing the
+``LoggingInstrumentor`` class to achieve the same effect.
 
 .. code-block::
 
@@ -80,7 +85,8 @@ The default value is ``false``.
 
 This env var can be used to instruct the instrumentation to use a custom logging format.
 
-Alternatively, a custom logging format can be passed to the ``LoggingInstrumentor`` as the ``logging_format`` argument. For example:
+Alternatively, a custom logging format can be passed to the ``LoggingInstrumentor`` as the ``logging_format``
+argument. For example:
 
 .. code-block::
 
@@ -132,14 +138,20 @@ Options are:
 Manually calling logging.basicConfig
 ------------------------------------
 
-``logging.basicConfig()`` can be called to set a global logging level and format. Only the first ever call has any effect on the global logger.
-Any subsequent calls have no effect and do not override a previously configured global logger. This integration calls ``logging.basicConfig()`` for you
-when ``OTEL_PYTHON_LOG_CORRELATION`` is set to ``true``. It uses the format and level specified by ``OTEL_PYTHON_LOG_FORMAT`` and ``OTEL_PYTHON_LOG_LEVEL``
+``logging.basicConfig()`` can be called to set a global logging level and format. Only the first ever call
+has any effect on the global logger.
+Any subsequent calls have no effect and do not override a previously configured global logger. This integration
+calls ``logging.basicConfig()`` for you
+when ``OTEL_PYTHON_LOG_CORRELATION`` is set to ``true``. It uses the format and level specified by
+``OTEL_PYTHON_LOG_FORMAT`` and ``OTEL_PYTHON_LOG_LEVEL``
 environment variables respectively.
 
-If you code or some other library/framework you are using calls logging.basicConfig before this integration is enabled, then this integration's logging
-format will not be used and log statements will not contain tracing context. For this reason, you'll need to make sure this integration is enabled as early
-as possible in the service lifecycle or your framework is configured to use a logging format with placeholders for tracing context. This can be achieved by
+If you code or some other library/framework you are using calls logging.basicConfig before this integration is
+enabled, then this integration's logging
+format will not be used and log statements will not contain tracing context. For this reason, you'll need to make
+sure this integration is enabled as early
+as possible in the service lifecycle or your framework is configured to use a logging format with placeholders for
+tracing context. This can be achieved by
 adding the following placeholders to your logging format:
 
 .. code-block::

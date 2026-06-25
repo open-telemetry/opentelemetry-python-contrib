@@ -4,7 +4,9 @@
 MOCK_LAMBDA_ALB_EVENT = {
     "requestContext": {
         "elb": {
-            "targetGroupArn": "arn:aws:elasticloadbalancing:region:123456789012:targetgroup/my-target-group/6d0ecf831eec9f09"
+            "targetGroupArn": (
+                "arn:aws:elasticloadbalancing:region:123456789012:targetgroup/my-target-group/6d0ecf831eec9f09"
+            )
         }
     },
     "httpMethod": "GET",

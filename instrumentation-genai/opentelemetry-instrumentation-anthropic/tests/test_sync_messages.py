@@ -66,48 +66,26 @@ def assert_span_attributes(  # pylint: disable=too-many-arguments
 ):
     """Assert that a span has the expected attributes."""
     assert span.name == f"{operation_name} {request_model}"
-    assert (
-        operation_name
-        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-    )
-    assert (
-        GenAIAttributes.GenAiSystemValues.ANTHROPIC.value
-        == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-    )
-    assert (
-        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
-    )
+    assert operation_name == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+    assert GenAIAttributes.GenAiSystemValues.ANTHROPIC.value == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+    assert request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
     assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
 
     if response_id is not None:
-        assert (
-            response_id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
-        )
+        assert response_id == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_ID]
 
     if response_model is not None:
-        assert (
-            response_model
-            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
-        )
+        assert response_model == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_MODEL]
 
     if input_tokens is not None:
-        assert (
-            input_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        )
+        assert input_tokens == span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
 
     if output_tokens is not None:
-        assert (
-            output_tokens
-            == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        )
+        assert output_tokens == span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
 
     if finish_reasons is not None:
         # OpenTelemetry converts lists to tuples when storing as attributes
-        assert (
-            tuple(finish_reasons)
-            == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS]
-        )
+        assert tuple(finish_reasons) == span.attributes[GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS]
 
 
 def _load_span_messages(span, attribute):
@@ -120,21 +98,14 @@ def _load_span_messages(span, attribute):
 
 
 def _skip_if_cassette_missing_and_no_real_key(request):
-    cassette_path = (
-        Path(__file__).parent / "cassettes" / f"{request.node.name}.yaml"
-    )
+    cassette_path = Path(__file__).parent / "cassettes" / f"{request.node.name}.yaml"
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not cassette_path.exists() and api_key == "test_anthropic_api_key":
-        pytest.skip(
-            f"Cassette {cassette_path.name} is missing. "
-            "Set a real ANTHROPIC_API_KEY to record it."
-        )
+        pytest.skip(f"Cassette {cassette_path.name} is missing. Set a real ANTHROPIC_API_KEY to record it.")
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_basic(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_basic(span_exporter, anthropic_client, instrument_no_content):
     """Test basic sync message creation produces correct span."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
@@ -160,9 +131,7 @@ def test_sync_messages_create_basic(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_captures_content(
-    span_exporter, anthropic_client, instrument_with_content
-):
+def test_sync_messages_create_captures_content(span_exporter, anthropic_client, instrument_with_content):
     """Test content capture on non-streaming create."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
@@ -177,12 +146,8 @@ def test_sync_messages_create_captures_content(
     assert len(spans) == 1
     span = spans[0]
 
-    input_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
-    )
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
 
     assert input_messages[0]["role"] == "user"
     assert input_messages[0]["parts"][0]["type"] == "text"
@@ -191,9 +156,7 @@ def test_sync_messages_create_captures_content(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_with_all_params(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_with_all_params(span_exporter, anthropic_client, instrument_no_content):
     """Test message creation with all optional parameters."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello."}]
@@ -216,15 +179,11 @@ def test_sync_messages_create_with_all_params(
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] == 0.9
     assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_K] == 40
     # OpenTelemetry converts lists to tuples when storing as attributes
-    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] == (
-        "STOP",
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] == ("STOP",)
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_token_usage(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_token_usage(span_exporter, anthropic_client, instrument_no_content):
     """Test that token usage is captured correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Count to 5."}]
@@ -241,19 +200,12 @@ def test_sync_messages_create_token_usage(
     span = spans[0]
     assert GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS in span.attributes
     assert GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS in span.attributes
-    assert span.attributes[
-        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
-    ] == expected_input_tokens(response.usage)
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        == response.usage.output_tokens
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS] == expected_input_tokens(response.usage)
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS] == response.usage.output_tokens
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_stop_reason(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_stop_reason(span_exporter, anthropic_client, instrument_no_content):
     """Test that stop reason is captured as finish_reasons array."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
@@ -274,9 +226,7 @@ def test_sync_messages_create_stop_reason(
     )
 
 
-def test_sync_messages_create_connection_error(
-    span_exporter, instrument_no_content
-):
+def test_sync_messages_create_connection_error(span_exporter, instrument_no_content):
     """Test that connection errors are handled correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
@@ -302,9 +252,7 @@ def test_sync_messages_create_connection_error(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_api_error(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_api_error(span_exporter, anthropic_client, instrument_no_content):
     """Test that API errors (e.g., invalid model) are handled correctly."""
     model = "invalid-model-name"
     messages = [{"role": "user", "content": "Hello"}]
@@ -325,9 +273,7 @@ def test_sync_messages_create_api_error(
     assert "NotFoundError" in span.attributes[ErrorAttributes.ERROR_TYPE]
 
 
-def test_uninstrument_removes_patching(
-    span_exporter, tracer_provider, logger_provider, meter_provider
-):
+def test_uninstrument_removes_patching(span_exporter, tracer_provider, logger_provider, meter_provider):
     """Test that uninstrument() removes the patching."""
     instrumentor = AnthropicInstrumentor()
     instrumentor.instrument(
@@ -346,9 +292,7 @@ def test_uninstrument_removes_patching(
     assert True
 
 
-def test_multiple_instrument_uninstrument_cycles(
-    tracer_provider, logger_provider, meter_provider
-):
+def test_multiple_instrument_uninstrument_cycles(tracer_provider, logger_provider, meter_provider):
     """Test that multiple instrument/uninstrument cycles work correctly."""
     instrumentor = AnthropicInstrumentor()
 
@@ -431,16 +375,12 @@ def test_sync_messages_create_streaming(  # pylint: disable=too-many-locals
         response_model=response_model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        finish_reasons=[normalize_stop_reason(stop_reason)]
-        if stop_reason
-        else None,
+        finish_reasons=[normalize_stop_reason(stop_reason)] if stop_reason else None,
     )
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_streaming_captures_content(
-    span_exporter, anthropic_client, instrument_with_content
-):
+def test_sync_messages_create_streaming_captures_content(span_exporter, anthropic_client, instrument_with_content):
     """Test content capture on create(stream=True)."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
@@ -458,12 +398,8 @@ def test_sync_messages_create_streaming_captures_content(
     assert len(spans) == 1
     span = spans[0]
 
-    input_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
-    )
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
     assert input_messages[0]["role"] == "user"
     assert output_messages[0]["role"] == "assistant"
     assert output_messages[0]["parts"]
@@ -516,16 +452,12 @@ def test_sync_messages_stream(  # pylint: disable=too-many-locals
         response_model=response_model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        finish_reasons=[normalize_stop_reason(stop_reason)]
-        if stop_reason
-        else None,
+        finish_reasons=[normalize_stop_reason(stop_reason)] if stop_reason else None,
     )
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_captures_content(
-    request, span_exporter, anthropic_client, instrument_with_content
-):
+def test_sync_messages_stream_captures_content(request, span_exporter, anthropic_client, instrument_with_content):
     """Test content capture on Messages.stream."""
     _skip_if_cassette_missing_and_no_real_key(request)
     model = "claude-sonnet-4-20250514"
@@ -543,12 +475,8 @@ def test_sync_messages_stream_captures_content(
     assert len(spans) == 1
     span = spans[0]
 
-    input_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_INPUT_MESSAGES
-    )
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    input_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_INPUT_MESSAGES)
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
     assert input_messages[0]["role"] == "user"
     assert input_messages[0]["parts"][0]["type"] == "text"
     assert output_messages[0]["role"] == "assistant"
@@ -556,9 +484,7 @@ def test_sync_messages_stream_captures_content(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_delegates_response_attribute(
-    request, anthropic_client, instrument_no_content
-):
+def test_sync_messages_stream_delegates_response_attribute(request, anthropic_client, instrument_no_content):
     """Messages.stream wrapper should expose attributes from the wrapped stream."""
     _skip_if_cassette_missing_and_no_real_key(request)
 
@@ -572,9 +498,7 @@ def test_sync_messages_stream_delegates_response_attribute(
         assert stream.response.headers.get("request-id") is not None
 
 
-def test_sync_messages_stream_connection_error(
-    span_exporter, instrument_no_content
-):
+def test_sync_messages_stream_connection_error(span_exporter, instrument_no_content):
     """Test that connection errors from Messages.stream are handled correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
@@ -600,9 +524,7 @@ def test_sync_messages_stream_connection_error(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_api_error(
-    request, span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_stream_api_error(request, span_exporter, anthropic_client, instrument_no_content):
     """Test that API errors from Messages.stream are propagated."""
     _skip_if_cassette_missing_and_no_real_key(request)
     model = "invalid-model-name"
@@ -658,9 +580,7 @@ def test_sync_messages_stream_interrupted_mid_iteration(
         def __getattr__(self, name):
             return getattr(self._inner, name)
 
-    with pytest.raises(
-        ConnectionError, match="connection reset during stream"
-    ):
+    with pytest.raises(ConnectionError, match="connection reset during stream"):
         with anthropic_client.messages.stream(
             model=model,
             max_tokens=100,
@@ -682,9 +602,7 @@ def test_sync_messages_stream_interrupted_mid_iteration(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_closed_early_by_caller(
-    request, span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_stream_closed_early_by_caller(request, span_exporter, anthropic_client, instrument_no_content):
     """Caller-closing Messages.stream early finalizes the span without error."""
     _skip_if_cassette_missing_and_no_real_key(request)
     model = "claude-sonnet-4-20250514"
@@ -706,9 +624,7 @@ def test_sync_messages_stream_closed_early_by_caller(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_streaming_iteration(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_streaming_iteration(span_exporter, anthropic_client, instrument_no_content):
     """Test streaming with direct iteration (without context manager)."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hi."}]
@@ -735,9 +651,7 @@ def test_sync_messages_create_streaming_iteration(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_streaming_delegates_response_attribute(
-    request, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_streaming_delegates_response_attribute(request, anthropic_client, instrument_no_content):
     """Stream wrapper should expose attributes from the wrapped stream."""
     _skip_if_cassette_missing_and_no_real_key(request)
 
@@ -755,9 +669,7 @@ def test_sync_messages_create_streaming_delegates_response_attribute(
     stream.close()
 
 
-def test_sync_messages_create_streaming_connection_error(
-    span_exporter, instrument_no_content
-):
+def test_sync_messages_create_streaming_connection_error(span_exporter, instrument_no_content):
     """Test that connection errors during streaming are handled correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Hello"}]
@@ -817,15 +729,9 @@ def test_sync_messages_create_captures_tool_use_content(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span = spans[0]
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
 
-    assert any(
-        part.get("type") == "tool_call"
-        for message in output_messages
-        for part in message.get("parts", [])
-    )
+    assert any(part.get("type") == "tool_call" for message in output_messages for part in message.get("parts", []))
 
 
 @pytest.mark.vcr()
@@ -851,15 +757,9 @@ def test_sync_messages_create_captures_thinking_content(
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
     span = spans[0]
-    output_messages = _load_span_messages(
-        span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES
-    )
+    output_messages = _load_span_messages(span, GenAIAttributes.GEN_AI_OUTPUT_MESSAGES)
 
-    assert any(
-        part.get("type") == "reasoning"
-        for message in output_messages
-        for part in message.get("parts", [])
-    )
+    assert any(part.get("type") == "reasoning" for message in output_messages for part in message.get("parts", []))
 
 
 @pytest.mark.vcr()
@@ -915,16 +815,12 @@ def test_stream_wrapper_finalize_idempotent(  # pylint: disable=too-many-locals
         response_model=response_model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        finish_reasons=[normalize_stop_reason(stop_reason)]
-        if stop_reason
-        else None,
+        finish_reasons=[normalize_stop_reason(stop_reason)] if stop_reason else None,
     )
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_aggregates_cache_tokens(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_aggregates_cache_tokens(span_exporter, anthropic_client, instrument_no_content):
     """Non-streaming response with non-zero cache tokens aggregates correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
@@ -941,26 +837,16 @@ def test_sync_messages_create_aggregates_cache_tokens(
 
     assert GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
     assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS in span.attributes
-    assert span.attributes[
-        GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS
-    ] == expected_input_tokens(response.usage)
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        == response.usage.output_tokens
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS] == expected_input_tokens(response.usage)
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS] == response.usage.output_tokens
     cache_creation = getattr(response.usage, "cache_creation_input_tokens", 0)
     cache_read = getattr(response.usage, "cache_read_input_tokens", 0)
-    assert (
-        span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
-        == cache_creation
-    )
+    assert span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] == cache_creation
     assert span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cache_read
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_streaming_aggregates_cache_tokens(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_streaming_aggregates_cache_tokens(span_exporter, anthropic_client, instrument_no_content):
     """Streaming response with non-zero cache tokens aggregates correctly."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
@@ -982,12 +868,8 @@ def test_sync_messages_create_streaming_aggregates_cache_tokens(
                 if usage:
                     input_tokens = expected_input_tokens(usage)
                     output_tokens = getattr(usage, "output_tokens", None)
-                    cache_creation = getattr(
-                        usage, "cache_creation_input_tokens", None
-                    )
-                    cache_read = getattr(
-                        usage, "cache_read_input_tokens", None
-                    )
+                    cache_creation = getattr(usage, "cache_creation_input_tokens", None)
+                    cache_read = getattr(usage, "cache_read_input_tokens", None)
 
     spans = span_exporter.get_finished_spans()
     assert len(spans) == 1
@@ -995,18 +877,9 @@ def test_sync_messages_create_streaming_aggregates_cache_tokens(
 
     assert GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS in span.attributes
     assert GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS in span.attributes
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS]
-        == input_tokens
-    )
-    assert (
-        span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS]
-        == output_tokens
-    )
-    assert (
-        span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS]
-        == cache_creation
-    )
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS] == input_tokens
+    assert span.attributes[GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS] == output_tokens
+    assert span.attributes[GEN_AI_USAGE_CACHE_CREATION_INPUT_TOKENS] == cache_creation
     assert span.attributes[GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == cache_read
 
 
@@ -1048,13 +921,9 @@ def test_sync_messages_create_stream_propagation_error(
         def __getattr__(self, name):
             return getattr(self._inner, name)
 
-    monkeypatch.setattr(
-        stream, "stream", ErrorInjectingStreamDelegate(stream.stream)
-    )
+    monkeypatch.setattr(stream, "stream", ErrorInjectingStreamDelegate(stream.stream))
 
-    with pytest.raises(
-        ConnectionError, match="connection reset during stream"
-    ):
+    with pytest.raises(ConnectionError, match="connection reset during stream"):
         with stream:
             for _ in stream:
                 pass
@@ -1067,9 +936,7 @@ def test_sync_messages_create_stream_propagation_error(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_create_streaming_user_exception(
-    span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_create_streaming_user_exception(span_exporter, anthropic_client, instrument_no_content):
     """Test that user raised exceptions are propagated."""
     model = "claude-sonnet-4-20250514"
     messages = [{"role": "user", "content": "Say hello in one word."}]
@@ -1092,9 +959,7 @@ def test_sync_messages_create_streaming_user_exception(
 
 
 @pytest.mark.vcr()
-def test_sync_messages_stream_user_exception(
-    request, span_exporter, anthropic_client, instrument_no_content
-):
+def test_sync_messages_stream_user_exception(request, span_exporter, anthropic_client, instrument_no_content):
     """Test that user raised exceptions from Messages.stream are propagated."""
     _skip_if_cassette_missing_and_no_real_key(request)
     model = "claude-sonnet-4-20250514"

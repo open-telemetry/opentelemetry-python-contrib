@@ -111,9 +111,7 @@ logger = logging.getLogger(__name__)
 _HANDLER = "_HANDLER"
 _X_AMZN_TRACE_ID = "_X_AMZN_TRACE_ID"
 ORIG_HANDLER = "ORIG_HANDLER"
-OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
-    "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
-)
+OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
 
 if TYPE_CHECKING:
     import typing
@@ -162,7 +160,9 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
         headers = lambda_event["headers"]
     except (TypeError, KeyError):
         logger.debug(
-            "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will have an invalid (empty) parent context."
+            "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure "
+            "API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will "
+            "have an invalid (empty) parent context."
         )
     if not isinstance(headers, dict):
         headers = {}
@@ -197,9 +197,7 @@ def _determine_parent_context(
     return event_context_extractor(lambda_event)
 
 
-def _set_api_gateway_v1_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
+def _set_api_gateway_v1_proxy_attributes(lambda_event: Any, span: Span) -> Span:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
     More info:
@@ -238,9 +236,7 @@ def _set_api_gateway_v1_proxy_attributes(
     return span
 
 
-def _set_api_gateway_v2_proxy_attributes(
-    lambda_event: Any, span: Span
-) -> Span:
+def _set_api_gateway_v2_proxy_attributes(lambda_event: Any, span: Span) -> Span:
     """Sets HTTP attributes for v2 HTTP APIs
 
     More info:
@@ -296,9 +292,7 @@ def _get_lambda_context_attributes(
     Returns:
         A dictionary mapping of OpenTelemetry attribute names to their values.
     """
-    function_arn_parts: list[str] = lambda_context.invoked_function_arn.split(
-        ":"
-    )
+    function_arn_parts: list[str] = lambda_context.invoked_function_arn.split(":")
     # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
     #
     # See more:
@@ -374,19 +368,13 @@ def _instrument(
                 # If the request came from an API Gateway, extract http attributes from the event
                 # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/instrumentation/aws-lambda.md#api-gateway
                 # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
-                if isinstance(lambda_event, dict) and lambda_event.get(
-                    "requestContext"
-                ):
+                if isinstance(lambda_event, dict) and lambda_event.get("requestContext"):
                     span.set_attribute(FAAS_TRIGGER, "http")
 
                     if lambda_event.get("version") == "2.0":
-                        _set_api_gateway_v2_proxy_attributes(
-                            lambda_event, span
-                        )
+                        _set_api_gateway_v2_proxy_attributes(lambda_event, span)
                     else:
-                        _set_api_gateway_v1_proxy_attributes(
-                            lambda_event, span
-                        )
+                        _set_api_gateway_v1_proxy_attributes(lambda_event, span)
 
                     if isinstance(result, dict) and result.get("statusCode"):
                         span.set_attribute(
@@ -407,7 +395,8 @@ def _instrument(
                 logger.exception("TracerProvider failed to flush traces")
         else:
             logger.warning(
-                "TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+                "TracerProvider was missing `force_flush` method. This is necessary in case of a Lambda "
+                "freeze and would exist in the OTel SDK implementation."
             )
 
         _meter_provider = meter_provider or get_meter_provider()
@@ -421,7 +410,8 @@ def _instrument(
                     logger.exception("MeterProvider failed to flush metrics")
         else:
             logger.warning(
-                "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+                "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda "
+                "freeze and would exist in the OTel SDK implementation."
             )
 
         if exception is not None:
@@ -478,9 +468,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             self._wrapped_function_name,
         ) = lambda_handler.rsplit(".", 1)
 
-        flush_timeout_env = os.environ.get(
-            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
-        )
+        flush_timeout_env = os.environ.get(OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None)
         flush_timeout = 30000
         try:
             if flush_timeout_env is not None:
@@ -495,9 +483,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             self._wrapped_module_name,
             self._wrapped_function_name,
             flush_timeout,
-            event_context_extractor=kwargs.get(
-                "event_context_extractor", _default_event_context_extractor
-            ),
+            event_context_extractor=kwargs.get("event_context_extractor", _default_event_context_extractor),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
         )

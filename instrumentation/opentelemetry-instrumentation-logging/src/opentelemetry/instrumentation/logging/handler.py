@@ -130,12 +130,8 @@ class LoggingHandler(logging.Handler):
 
         self._log_code_attributes = log_code_attributes
 
-    def _get_attributes(
-        self, record: logging.LogRecord
-    ) -> Mapping[str, AnyValue]:
-        attributes = {
-            k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS
-        }
+    def _get_attributes(self, record: logging.LogRecord) -> Mapping[str, AnyValue]:
+        attributes = {k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS}
 
         if self._log_code_attributes:
             # Add standard code attributes for logs.
@@ -146,17 +142,13 @@ class LoggingHandler(logging.Handler):
         if record.exc_info:
             exctype, value, tb = record.exc_info
             if exctype is not None:
-                attributes[exception_attributes.EXCEPTION_TYPE] = (
-                    exctype.__name__
-                )
+                attributes[exception_attributes.EXCEPTION_TYPE] = exctype.__name__
             if value is not None and value.args:
-                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(
-                    value.args[0]
-                )
+                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(value.args[0])
             if tb is not None:
                 # https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/#stacktrace-representation
-                attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
-                    "".join(traceback.format_exception(*record.exc_info))
+                attributes[exception_attributes.EXCEPTION_STACKTRACE] = "".join(
+                    traceback.format_exception(*record.exc_info)
                 )
         return attributes
 
@@ -176,9 +168,7 @@ class LoggingHandler(logging.Handler):
             "WARNING": "WARN",
             "CRITICAL": "FATAL",
         }
-        level_name = _python_to_otel_severity_text.get(
-            record.levelname, record.levelname
-        )
+        level_name = _python_to_otel_severity_text.get(record.levelname, record.levelname)
 
         return LogRecord(
             timestamp=timestamp,
@@ -205,15 +195,11 @@ class LoggingHandler(logging.Handler):
         # See: https://github.com/open-telemetry/opentelemetry-python/issues/3858
 
         if self._is_emitting.get():
-            _internal_logger.warning(
-                "LoggingHandler.emit detected recursive logging, skipping to prevent deadlock."
-            )
+            _internal_logger.warning("LoggingHandler.emit detected recursive logging, skipping to prevent deadlock.")
             return
         token = self._is_emitting.set(True)
         try:
-            logger = get_logger(
-                record.name, logger_provider=self._logger_provider
-            )
+            logger = get_logger(record.name, logger_provider=self._logger_provider)
             if not isinstance(logger, NoOpLogger):
                 logger.emit(self._translate(record))
         finally:

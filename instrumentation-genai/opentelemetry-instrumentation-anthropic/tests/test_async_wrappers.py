@@ -88,9 +88,7 @@ class _FakeAsyncStream:
 
 
 class _FakeSyncManager:
-    def __init__(
-        self, stream, suppressed=False, enter_error=None, exit_error=None
-    ):
+    def __init__(self, stream, suppressed=False, enter_error=None, exit_error=None):
         self._stream = stream
         self._suppressed = suppressed
         self._enter_error = enter_error
@@ -110,9 +108,7 @@ class _FakeSyncManager:
 
 
 class _FakeAsyncManager:
-    def __init__(
-        self, stream, suppressed=False, enter_error=None, exit_error=None
-    ):
+    def __init__(self, stream, suppressed=False, enter_error=None, exit_error=None):
         self._stream = stream
         self._suppressed = suppressed
         self._enter_error = enter_error
@@ -295,8 +291,7 @@ def test_sync_manager_does_not_create_invocation_until_enter():
     factory_calls = []
     wrapper = MessagesStreamManagerWrapper(
         manager=_FakeSyncManager(stream=stream),
-        invocation_factory=lambda: factory_calls.append(True)
-        or _make_invocation(),
+        invocation_factory=lambda: factory_calls.append(True) or _make_invocation(),
         capture_content=False,
     )
 

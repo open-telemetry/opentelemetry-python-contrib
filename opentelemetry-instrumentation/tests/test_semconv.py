@@ -243,9 +243,7 @@ class TestOpenTelemetrySemConvStability(TestCase):
 class TestOpenTelemetrySemConvSchemaUrl(TestCase):
     @stability_mode("")
     def test_get_schema_version_for_opt_in_mode_default(self):
-        version = _get_schema_version_for_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.DEFAULT
-        )
+        version = _get_schema_version_for_opt_in_mode(_OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.DEFAULT)
         self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
 
         version = _get_schema_version_for_opt_in_mode(
@@ -253,16 +251,12 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
         )
         self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
 
-        version = _get_schema_version_for_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.GEN_AI, _StabilityMode.DEFAULT
-        )
+        version = _get_schema_version_for_opt_in_mode(_OpenTelemetryStabilitySignalType.GEN_AI, _StabilityMode.DEFAULT)
         self.assertEqual(version, _LEGACY_SCHEMA_VERSION)
 
     @stability_mode("")
     def test_get_schema_version_for_opt_in_mode_http_stable(self):
-        version = _get_schema_version_for_opt_in_mode(
-            _OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.HTTP
-        )
+        version = _get_schema_version_for_opt_in_mode(_OpenTelemetryStabilitySignalType.HTTP, _StabilityMode.HTTP)
         self.assertEqual(version, "1.21.0")
 
     @stability_mode("")
@@ -282,25 +276,17 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
 
     @stability_mode("")
     def test_get_schema_url_for_signal_types_single_http_default(self):
-        url = _get_schema_url_for_signal_types(
-            [_OpenTelemetryStabilitySignalType.HTTP]
-        )
-        self.assertEqual(
-            url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}"
-        )
+        url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.HTTP])
+        self.assertEqual(url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}")
 
     @stability_mode("http")
     def test_get_schema_url_for_signal_types_single_http_stable(self):
-        url = _get_schema_url_for_signal_types(
-            [_OpenTelemetryStabilitySignalType.HTTP]
-        )
+        url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.HTTP])
         self.assertEqual(url, "https://opentelemetry.io/schemas/1.21.0")
 
     @stability_mode("database")
     def test_get_schema_url_for_signal_types_single_database_stable(self):
-        url = _get_schema_url_for_signal_types(
-            [_OpenTelemetryStabilitySignalType.DATABASE]
-        )
+        url = _get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE])
         self.assertEqual(url, "https://opentelemetry.io/schemas/1.25.0")
 
     @stability_mode("http,database")
@@ -341,9 +327,7 @@ class TestOpenTelemetrySemConvSchemaUrl(TestCase):
     @stability_mode("")
     def test_get_schema_url_for_signal_types_empty_list(self):
         url = _get_schema_url_for_signal_types([])
-        self.assertEqual(
-            url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}"
-        )
+        self.assertEqual(url, f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}")
 
     @stability_mode("http/dup,database/dup")
     def test_get_schema_url_for_signal_types_dup_modes(self):
@@ -433,9 +417,7 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         span.set_attribute.assert_not_called()
         status_call = span.set_status.call_args[0][0]
         self.assertEqual(status_call.status_code, StatusCode.ERROR)
-        self.assertEqual(
-            status_call.description, "Non-integer HTTP status: " + "Exception"
-        )
+        self.assertEqual(status_call.description, "Non-integer HTTP status: " + "Exception")
 
     def test_status_code_http_default(self):
         span = Mock()
@@ -526,18 +508,14 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
 class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
     def test_db_system_default(self):
         result = {}
-        _set_db_system(
-            result, "postgresql", sem_conv_opt_in_mode=_StabilityMode.DEFAULT
-        )
+        _set_db_system(result, "postgresql", sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertIn(DB_SYSTEM, result)
         self.assertEqual(result[DB_SYSTEM], "postgresql")
         self.assertNotIn(DB_SYSTEM_NAME, result)
 
     def test_db_system_database_stable(self):
         result = {}
-        _set_db_system(
-            result, "postgresql", sem_conv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        _set_db_system(result, "postgresql", sem_conv_opt_in_mode=_StabilityMode.DATABASE)
         self.assertNotIn(DB_SYSTEM, result)
         self.assertIn(DB_SYSTEM_NAME, result)
         self.assertEqual(result[DB_SYSTEM_NAME], "postgresql")
@@ -556,26 +534,20 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
 
     def test_db_system_none_value(self):
         result = {}
-        _set_db_system(
-            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
-        )
+        _set_db_system(result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         self.assertNotIn(DB_SYSTEM, result)
         self.assertNotIn(DB_SYSTEM_NAME, result)
 
     def test_db_name_default(self):
         result = {}
-        _set_db_name(
-            result, "my_database", sem_conv_opt_in_mode=_StabilityMode.DEFAULT
-        )
+        _set_db_name(result, "my_database", sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertIn(DB_NAME, result)
         self.assertEqual(result[DB_NAME], "my_database")
         self.assertNotIn(DB_NAMESPACE, result)
 
     def test_db_name_database_stable(self):
         result = {}
-        _set_db_name(
-            result, "my_database", sem_conv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        _set_db_name(result, "my_database", sem_conv_opt_in_mode=_StabilityMode.DATABASE)
         self.assertNotIn(DB_NAME, result)
         self.assertIn(DB_NAMESPACE, result)
         self.assertEqual(result[DB_NAMESPACE], "my_database")
@@ -594,43 +566,33 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
 
     def test_db_name_none_value(self):
         result = {}
-        _set_db_name(
-            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
-        )
+        _set_db_name(result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         self.assertNotIn(DB_NAME, result)
         self.assertNotIn(DB_NAMESPACE, result)
 
     def test_db_redis_database_index_default(self):
         result = {}
-        _set_db_redis_database_index(
-            result, 0, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
-        )
+        _set_db_redis_database_index(result, 0, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertIn(DB_REDIS_DATABASE_INDEX, result)
         self.assertEqual(result[DB_REDIS_DATABASE_INDEX], 0)
         self.assertNotIn(DB_NAMESPACE, result)
 
     def test_db_redis_database_index_database_stable(self):
         result = {}
-        _set_db_redis_database_index(
-            result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        _set_db_redis_database_index(result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE)
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, result)
         self.assertNotIn(DB_NAMESPACE, result)
 
     def test_db_redis_database_index_database_dup(self):
         result = {}
-        _set_db_redis_database_index(
-            result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
-        )
+        _set_db_redis_database_index(result, 0, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         self.assertIn(DB_REDIS_DATABASE_INDEX, result)
         self.assertEqual(result[DB_REDIS_DATABASE_INDEX], 0)
         self.assertNotIn(DB_NAMESPACE, result)
 
     def test_db_redis_database_index_none_value(self):
         result = {}
-        _set_db_redis_database_index(
-            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP
-        )
+        _set_db_redis_database_index(result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP)
         self.assertNotIn(DB_REDIS_DATABASE_INDEX, result)
         self.assertNotIn(DB_NAMESPACE, result)
 
@@ -670,25 +632,19 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
 
     def test_db_statement_none_value(self):
         result = {}
-        _set_db_statement(
-            result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
-        )
+        _set_db_statement(result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertNotIn(DB_STATEMENT, result)
         self.assertNotIn(DB_QUERY_TEXT, result)
 
     def test_db_user_default(self):
         result = {}
-        _set_db_user(
-            result, "admin", sem_conv_opt_in_mode=_StabilityMode.DEFAULT
-        )
+        _set_db_user(result, "admin", sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertIn(DB_USER, result)
         self.assertEqual(result[DB_USER], "admin")
 
     def test_db_user_database_stable(self):
         result = {}
-        _set_db_user(
-            result, "admin", sem_conv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        _set_db_user(result, "admin", sem_conv_opt_in_mode=_StabilityMode.DATABASE)
         # No new attribute - db.user was removed with no replacement
         self.assertNotIn(DB_USER, result)
 
@@ -743,8 +699,6 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
 
     def test_db_operation_none_value(self):
         result = {}
-        _set_db_operation(
-            result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT
-        )
+        _set_db_operation(result, None, sem_conv_opt_in_mode=_StabilityMode.DEFAULT)
         self.assertNotIn(DB_OPERATION, result)
         self.assertNotIn(DB_OPERATION_NAME, result)

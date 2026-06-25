@@ -22,34 +22,20 @@ class Interceptor(
     def __init__(self):
         pass
 
-    def intercept_unary_unary(
-        self, continuation, client_call_details, request
-    ):
+    def intercept_unary_unary(self, continuation, client_call_details, request):
         return self._intercept_call(continuation, client_call_details, request)
 
-    def intercept_unary_stream(
-        self, continuation, client_call_details, request
-    ):
+    def intercept_unary_stream(self, continuation, client_call_details, request):
         return self._intercept_call(continuation, client_call_details, request)
 
-    def intercept_stream_unary(
-        self, continuation, client_call_details, request_iterator
-    ):
-        return self._intercept_call(
-            continuation, client_call_details, request_iterator
-        )
+    def intercept_stream_unary(self, continuation, client_call_details, request_iterator):
+        return self._intercept_call(continuation, client_call_details, request_iterator)
 
-    def intercept_stream_stream(
-        self, continuation, client_call_details, request_iterator
-    ):
-        return self._intercept_call(
-            continuation, client_call_details, request_iterator
-        )
+    def intercept_stream_stream(self, continuation, client_call_details, request_iterator):
+        return self._intercept_call(continuation, client_call_details, request_iterator)
 
     @staticmethod
-    def _intercept_call(
-        continuation, client_call_details, request_or_iterator
-    ):
+    def _intercept_call(continuation, client_call_details, request_or_iterator):
         return continuation(client_call_details, request_or_iterator)
 
 

@@ -36,9 +36,7 @@ class TestMySQLClientIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.mysqlclient
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.mysqlclient)
 
         # check that no spans are generated after uninstrument
         MySQLClientInstrumentor().uninstrument()
@@ -146,7 +144,9 @@ class TestMySQLClientIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',"
+                "driver_paramstyle='test',mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -191,11 +191,15 @@ class TestMySQLClientIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',"
+                "driver_paramstyle='test',mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',"
+                "driver_paramstyle='test',mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_with_options(
@@ -240,7 +244,9 @@ class TestMySQLClientIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',"
+                "mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -342,7 +348,9 @@ class TestMySQLClientIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',"
+                "driver_paramstyle='test',mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -388,11 +396,15 @@ class TestMySQLClientIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',"
+                "driver_paramstyle='test',mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',"
+                "driver_paramstyle='test',mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
 
     def test_instrument_with_dbapi_sqlcomment_enabled_with_options(
@@ -438,7 +450,9 @@ class TestMySQLClientIntegration(TestBase):
             trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
+                "Select 1 /*db_driver='MySQLdb%%3Afoobar',dbapi_threadsafety='123',"
+                "mysql_client_version='foobaz',"
+                f"traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
