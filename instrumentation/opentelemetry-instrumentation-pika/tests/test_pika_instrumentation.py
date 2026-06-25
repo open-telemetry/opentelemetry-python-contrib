@@ -28,10 +28,16 @@ class TestPika(TestCase):
         self.channel = mock.MagicMock(spec=Channel)
         consumer_info = mock.MagicMock()
         callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
-        setattr(consumer_info, callback_attr, mock.MagicMock())
+        setattr(consumer_info, callback_attr, self._consumer_callback)
         self.blocking_channel._consumer_infos = {"consumer-tag": consumer_info}
         self.channel._consumers = {"consumer-tag": consumer_info}
         self.mock_callback = mock.MagicMock()
+
+    @staticmethod
+    def _consumer_callback(
+        channel: object, method: object, properties: object, body: object
+    ) -> None:
+        pass
 
     def test_instrument_api(self) -> None:
         instrumentation = PikaInstrumentor()
@@ -130,7 +136,10 @@ class TestPika(TestCase):
             calls=expected_decoration_calls, any_order=True
         )
         assert all(
-            hasattr(callback, "_original_callback")
+            hasattr(
+                getattr(callback, callback_attr),
+                "_original_callback",
+            )
             for callback in self.blocking_channel._consumer_infos.values()
         )
 
@@ -151,9 +160,73 @@ class TestPika(TestCase):
             calls=expected_decoration_calls, any_order=True
         )
         assert all(
-            hasattr(callback, "_original_callback")
+            hasattr(
+                getattr(callback, callback_attr),
+                "_original_callback",
+            )
             for callback in self.channel._consumers.values()
         )
+
+    @mock.patch("opentelemetry.instrumentation.pika.utils._decorate_callback")
+    def test_instrument_consumers_skips_already_decorated_callbacks(
+        self, decorate_callback: mock.MagicMock
+    ) -> None:
+        tracer = mock.MagicMock(spec=Tracer)
+        callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
+
+        for channel, consumer_infos in (
+            (self.blocking_channel, self.blocking_channel._consumer_infos),
+            (self.channel, self.channel._consumers),
+        ):
+            with self.subTest(channel=channel):
+                decorated_consumer_info = mock.MagicMock()
+
+                def decorated_callback(
+                    channel: object,
+                    method: object,
+                    properties: object,
+                    body: object,
+                ) -> None:
+                    pass
+
+                decorated_callback._original_callback = self._consumer_callback
+                setattr(
+                    decorated_consumer_info,
+                    callback_attr,
+                    decorated_callback,
+                )
+                new_consumer_info = mock.MagicMock()
+                setattr(
+                    new_consumer_info,
+                    callback_attr,
+                    self._consumer_callback,
+                )
+                consumer_infos.clear()
+                consumer_infos.update(
+                    {
+                        "decorated-consumer-tag": decorated_consumer_info,
+                        "new-consumer-tag": new_consumer_info,
+                    }
+                )
+
+                PikaInstrumentor._instrument_channel_consumers(channel, tracer)
+
+                decorate_callback.assert_called_once_with(
+                    self._consumer_callback,
+                    tracer,
+                    "new-consumer-tag",
+                    dummy_callback,
+                )
+                self.assertIs(
+                    getattr(decorated_consumer_info, callback_attr),
+                    decorated_callback,
+                )
+                self.assertIs(
+                    getattr(new_consumer_info, callback_attr),
+                    decorate_callback.return_value,
+                )
+
+                decorate_callback.reset_mock()
 
     @mock.patch(
         "opentelemetry.instrumentation.pika.utils._decorate_basic_publish"
