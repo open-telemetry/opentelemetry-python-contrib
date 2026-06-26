@@ -26,7 +26,7 @@ Usage
     from opentelemetry import trace
     from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID, Resource
 
-    # This will use the GoogleCloudResourceDetector under the covers.
+    # This will use the GoogleCloudResourceDetector under the covers if it's installed in the python environment.
     resource = Resource.create(
         attributes={
             # Use the PID as the service.instance.id to avoid duplicate timeseries
