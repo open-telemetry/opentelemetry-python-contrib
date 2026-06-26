@@ -86,8 +86,7 @@ def messages_create(
             raise
 
     return cast(
-        'Callable[..., Union["AnthropicMessage", "AnthropicStream[RawMessageStreamEvent]", '
-        "MessagesStreamWrapper[None]]]",
+        "Callable[..., Union[AnthropicMessage, AnthropicStream[RawMessageStreamEvent], MessagesStreamWrapper[None]]]",
         traced_method,
     )
 

@@ -90,7 +90,7 @@ Available commenter_options
 The following sqlcomment key-values can be opted out of through ``commenter_options``:
 
 +---------------------------+-------------------------------------------------+------------------------------------+
-| Commenter Option          | Description                                      | Example                            |
+| Commenter Option          | Description                                     | Example                            |
 +===========================+=================================================+====================================+
 | ``db_driver``             | Database driver name with version.              | ``psycopg2='2.9.3'``               |
 +---------------------------+-------------------------------------------------+------------------------------------+
