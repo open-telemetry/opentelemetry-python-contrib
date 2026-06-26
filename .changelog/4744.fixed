@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-boto3sqs`: avoid `KeyError: 'Successful'` when all `send_message_batch` entries fail

@@ -282,6 +282,31 @@ class TestBoto3SQSInstrumentation(TestBase):
         )
         self._assert_injected_span(message_attrs, span)
 
+    def test_send_message_batch_all_failed(self):
+        # When every entry in the batch fails, SQS omits the "Successful" key
+        # entirely. The wrapper must not raise KeyError and must still end the
+        # producer spans.
+        mock_response = {
+            "Failed": [
+                {
+                    "Id": "1",
+                    "SenderFault": True,
+                    "Code": "InvalidMessageContents",
+                }
+            ]
+        }
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message_batch(
+                QueueUrl=self._queue_url,
+                Entries=[{"Id": "1", "MessageBody": "hello msg"}],
+            )
+
+        span = self._get_only_span()
+        self.assertEqual(f"{self._queue_name} send", span.name)
+        self.assertEqual(SpanKind.PRODUCER, span.kind)
+        self.assertNotIn(SpanAttributes.MESSAGING_MESSAGE_ID, span.attributes)
+
     def test_receive_message(self):
         msg_def = {
             "1": {"receipt": "01", "trace_id": 10, "span_id": 1},
