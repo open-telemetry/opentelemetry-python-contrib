@@ -1,4 +1,4 @@
-# Copyright The OpenTelemetry Authors
+﻿# Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
 from importlib.metadata import PackageNotFoundError
@@ -18,7 +18,25 @@ from opentelemetry.instrumentation.cassandra.package import (
 from opentelemetry.sdk import resources
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind
-
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+)
 
 def connect_and_execute_query():
     cluster = cassandra.cluster.Cluster()
@@ -241,3 +259,105 @@ class TestCassandraInstrumentationDependencies(TestCase):
             package_to_instrument,
             (_instruments_cassandra_driver, _instruments_scylla_driver),
         )
+
+class TestCassandraSemconvStability(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            CassandraInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    @property
+    def _mocked_session(self):
+        return cassandra.cluster.Session(cluster=mock.Mock(), hosts=[])
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_default_semconv(
+        self, mock_create_response_future, mock_session_init, mock_connect
+    ):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+
+        CassandraInstrumentor().instrument(include_db_statement=True)
+        connect_and_execute_query()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.attributes[DB_NAME], "test")
+        self.assertEqual(span.attributes[DB_SYSTEM], "cassandra")
+        self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+        self.assertIn(NET_PEER_NAME, span.attributes)
+        self.assertNotIn(DB_NAMESPACE, span.attributes)
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_new_semconv(
+        self, mock_create_response_future, mock_session_init, mock_connect
+    ):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            CassandraInstrumentor().instrument(include_db_statement=True)
+            connect_and_execute_query()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "cassandra")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    @mock.patch("cassandra.cluster.Cluster.connect")
+    @mock.patch("cassandra.cluster.Session.__init__")
+    @mock.patch("cassandra.cluster.Session._create_response_future")
+    def test_dup_semconv(
+        self, mock_create_response_future, mock_session_init, mock_connect
+    ):
+        mock_create_response_future.return_value = mock.Mock()
+        mock_session_init.return_value = None
+        mock_connect.return_value = self._mocked_session
+
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database/dup"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            CassandraInstrumentor().instrument(include_db_statement=True)
+            connect_and_execute_query()
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_SYSTEM], "cassandra")
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertIn(NET_PEER_NAME, span.attributes)
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "cassandra")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertIn(SERVER_ADDRESS, span.attributes)
+        _OpenTelemetrySemanticConventionStability._initialized = False
+

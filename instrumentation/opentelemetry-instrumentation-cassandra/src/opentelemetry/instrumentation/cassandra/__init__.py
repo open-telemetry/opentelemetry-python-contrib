@@ -41,6 +41,13 @@ from opentelemetry.instrumentation.cassandra.package import (
 from opentelemetry.instrumentation.cassandra.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
+)
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_STATEMENT,
@@ -49,9 +56,17 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
 )
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+)
 
 
-def _instrument(tracer_provider, include_db_statement=False):
+def _instrument(tracer_provider, include_db_statement=False, sem_conv_opt_in_mode=None):
     """Instruments the cassandra-driver/scylla-driver module
 
     Wraps cassandra.cluster.Session.execute_async().
@@ -60,7 +75,9 @@ def _instrument(tracer_provider, include_db_statement=False):
         __name__,
         __version__,
         tracer_provider,
-        schema_url="https://opentelemetry.io/schemas/1.11.0",
+        schema_url=_get_schema_url_for_signal_types(
+            [_OpenTelemetryStabilitySignalType.DATABASE]
+        ),
     )
     name = "Cassandra"
 
@@ -69,16 +86,27 @@ def _instrument(tracer_provider, include_db_statement=False):
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_NAME, instance.keyspace)
-                span.set_attribute(DB_SYSTEM, "cassandra")
-                span.set_attribute(
-                    NET_PEER_NAME,
-                    instance.cluster.contact_points,
-                )
+                if _report_old(sem_conv_opt_in_mode):
+                    span.set_attribute(DB_NAME, instance.keyspace)
+                    span.set_attribute(DB_SYSTEM, "cassandra")
+                    span.set_attribute(
+                        NET_PEER_NAME,
+                        instance.cluster.contact_points,
+                    )
+                if _report_new(sem_conv_opt_in_mode):
+                    span.set_attribute(DB_NAMESPACE, instance.keyspace)
+                    span.set_attribute(DB_SYSTEM_NAME, "cassandra")
+                    span.set_attribute(
+                        SERVER_ADDRESS,
+                        instance.cluster.contact_points,
+                    )
 
                 if include_db_statement:
                     query = args[0]
-                    span.set_attribute(DB_STATEMENT, str(query))
+                    if _report_old(sem_conv_opt_in_mode):
+                        span.set_attribute(DB_STATEMENT, str(query))
+                    if _report_new(sem_conv_opt_in_mode):
+                        span.set_attribute(DB_QUERY_TEXT, str(query))
 
             response = func(*args, **kwargs)
             return response
@@ -108,9 +136,14 @@ class CassandraInstrumentor(BaseInstrumentor):
         return _instruments_any
 
     def _instrument(self, **kwargs):
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE,
+        )
         _instrument(
             tracer_provider=kwargs.get("tracer_provider"),
             include_db_statement=kwargs.get("include_db_statement"),
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
 
     def _uninstrument(self, **kwargs):
