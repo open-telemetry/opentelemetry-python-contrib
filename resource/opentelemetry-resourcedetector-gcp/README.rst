@@ -3,8 +3,8 @@ OpenTelemetry Google Cloud Resource Detector
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-gcp.svg
-   :target: https://pypi.org/project/opentelemetry-resource-detector-gcp/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-resourcedetector-gcp.svg
+   :target: https://pypi.org/project/opentelemetry-resourcedetector-gcp/
 
 This library provides support for detecting GCP resources like GCE, GKE, etc.
 
@@ -13,7 +13,7 @@ Installation
 
 ::
 
-    pip install opentelemetry-resource-detector-gcp
+    pip install opentelemetry-resourcedetector-gcp
 
 Usage
 -----

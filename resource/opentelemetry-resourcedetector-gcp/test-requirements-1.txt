@@ -10,7 +10,6 @@ wrapt==1.16.0
 zipp==3.19.2
 requests==2.33.1
 syrupy==4.6.1
-opentelemetry-api==1.30  # when updating, also update in pyproject.toml
-opentelemetry-sdk==1.30  # when updating, also update in pyproject.toml
+# test with the latest version of opentelemetry-api, sdk, and semantic conventions
 
--e resource/opentelemetry-resource-detector-gcp
+-e resource/opentelemetry-resourcedetector-gcp
