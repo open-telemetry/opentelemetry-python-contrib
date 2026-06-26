@@ -92,6 +92,7 @@ def _hydrate_span_from_args(
     parameters,
     semconv_opt_in_mode=_StabilityMode.DEFAULT,
 ) -> dict:
+    """Get network and database span attributes"""
     span_attributes: dict = {}
     _set_db_system(
         span_attributes,

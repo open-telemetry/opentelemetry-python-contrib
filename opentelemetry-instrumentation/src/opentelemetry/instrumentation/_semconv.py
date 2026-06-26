@@ -589,6 +589,7 @@ def _set_db_statement(
     statement: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
+    # skip the statement if it's None but set it if it's an empty string
     if statement is None:
         return
 
