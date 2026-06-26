@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=too-many-lines
+
 """
 This library uses OpenTelemetry to track web requests in Tornado applications.
 
@@ -732,7 +734,9 @@ def _get_default_span_name(handler):
         Default span name.
     """
 
-    method = handler.request.method
+    method = sanitize_method(handler.request.method)
+    if method == "_OTHER":
+        method = "HTTP"
     rule = find_matched_rule(handler)
     # if there's no rule, like for 404 just return the method
     route = route_from_rule(rule, handler) if rule else None
@@ -791,7 +795,7 @@ def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
     if error:
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
-            if not ctx and status_code == 404:
+            if not ctx and status_code in (404, 405):
                 ctx = _start_span(tracer, handler, sem_conv_opt_in_mode)
         else:
             status_code = 500
@@ -838,10 +842,22 @@ def _record_prepare_metrics(server_histograms, handler, sem_conv_opt_in_mode):
             request_size, attributes=metric_attributes_old
         )
         active_requests_attributes_old = (
-            _create_active_requests_attributes_old(handler.request)
+            _create_active_requests_attributes_old(handler)
         )
+        # in case of http/dup send both old and new attributes since we will add one entry
+        if _report_new(sem_conv_opt_in_mode):
+            active_requests_attributes_new = (
+                _create_active_requests_attributes_new(handler.request)
+            )
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old | active_requests_attributes_new
+            )
+        else:
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old
+            )
         server_histograms["active_requests"].add(
-            1, attributes=active_requests_attributes_old
+            1, attributes=active_requests_attributes_old_or_dup
         )
 
     # Record new semconv metrics
@@ -890,10 +906,23 @@ def _record_on_finish_metrics(
         )
 
         active_requests_attributes_old = (
-            _create_active_requests_attributes_old(handler.request)
+            _create_active_requests_attributes_old(handler)
         )
+        # in case of http/dup send both old and new attributes since we will add one entry
+        if _report_new(sem_conv_opt_in_mode):
+            active_requests_attributes_new = (
+                _create_active_requests_attributes_new(handler.request)
+            )
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old | active_requests_attributes_new
+            )
+        else:
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old
+            )
+
         server_histograms["active_requests"].add(
-            -1, attributes=active_requests_attributes_old
+            -1, attributes=active_requests_attributes_old_or_dup
         )
 
     # Record new semconv metrics
@@ -919,22 +948,28 @@ def _record_on_finish_metrics(
             )
 
 
-def _create_active_requests_attributes_old(request):
+def _create_active_requests_attributes_old(handler):
     """Create metric attributes for active requests using old semconv."""
+    request = handler.request
     metric_attributes = {
-        HTTP_METHOD: request.method,
+        HTTP_METHOD: sanitize_method(request.method),
         HTTP_SCHEME: request.protocol,
         HTTP_FLAVOR: request.version,
         HTTP_HOST: request.host,
     }
-    metric_attributes[HTTP_TARGET] = request.path
+
+    if rule := find_matched_rule(handler):
+        route = route_from_rule(rule, handler)
+
+        if route is not None:
+            metric_attributes[HTTP_TARGET] = route
     return metric_attributes
 
 
 def _create_active_requests_attributes_new(request):
     """Create metric attributes for active requests using new semconv."""
     metric_attributes = {
-        HTTP_REQUEST_METHOD: request.method,
+        HTTP_REQUEST_METHOD: sanitize_method(request.method),
         URL_SCHEME: request.protocol,
     }
     if request.version:
@@ -944,7 +979,7 @@ def _create_active_requests_attributes_new(request):
 
 def _create_metric_attributes_old(handler):
     """Create metric attributes using old semconv."""
-    metric_attributes = _create_active_requests_attributes_old(handler.request)
+    metric_attributes = _create_active_requests_attributes_old(handler)
     metric_attributes[HTTP_STATUS_CODE] = handler.get_status()
     return metric_attributes
 
