@@ -9,7 +9,7 @@ import threading
 import traceback
 from contextvars import ContextVar
 from time import time_ns
-from typing import Callable, Mapping
+from typing import Callable
 
 from opentelemetry._logs import (
     LoggerProvider,
@@ -20,8 +20,14 @@ from opentelemetry._logs import (
     get_logger_provider,
 )
 from opentelemetry.context import get_current
-from opentelemetry.semconv._incubating.attributes import code_attributes
-from opentelemetry.semconv.attributes import exception_attributes
+from opentelemetry.semconv._incubating.attributes import (
+    code_attributes,
+    event_attributes,
+)
+from opentelemetry.semconv.attributes import (
+    exception_attributes,
+    otel_attributes,
+)
 from opentelemetry.util.types import AnyValue
 
 _internal_logger = logging.getLogger(__name__ + ".internal")
@@ -132,10 +138,24 @@ class LoggingHandler(logging.Handler):
 
     def _get_attributes(
         self, record: logging.LogRecord
-    ) -> Mapping[str, AnyValue]:
+    ) -> tuple[dict[str, AnyValue], str | None]:
         attributes = {
             k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS
         }
+
+        # Promote otel.event.name (stable) or event.name (deprecated) to the
+        # first-class LogRecord.event_name field instead of leaving it as a
+        # plain attribute.  otel.event.name takes precedence; event.name is a
+        # deprecated fallback per the OTel semantic conventions.
+        # Both keys are always popped so neither leaks into attributes.
+        event_name: str | None = attributes.pop(
+            otel_attributes.OTEL_EVENT_NAME, None
+        )
+        deprecated_event_name: str | None = attributes.pop(
+            event_attributes.EVENT_NAME, None
+        )
+        if event_name is None:
+            event_name = deprecated_event_name
 
         if self._log_code_attributes:
             # Add standard code attributes for logs.
@@ -158,12 +178,12 @@ class LoggingHandler(logging.Handler):
                 attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
                     "".join(traceback.format_exception(*record.exc_info))
                 )
-        return attributes
+        return attributes, event_name
 
     def _translate(self, record: logging.LogRecord) -> LogRecord:
         timestamp = int(record.created * 1e9)
         observered_timestamp = time_ns()
-        attributes = self._get_attributes(record)
+        attributes, event_name = self._get_attributes(record)
         severity_number = std_to_otel(record.levelno)
         if self.formatter:
             body = self.format(record)
@@ -188,6 +208,7 @@ class LoggingHandler(logging.Handler):
             severity_number=severity_number,
             body=body,
             attributes=attributes,
+            event_name=event_name,
         )
 
     def emit(self, record: logging.LogRecord) -> None:
