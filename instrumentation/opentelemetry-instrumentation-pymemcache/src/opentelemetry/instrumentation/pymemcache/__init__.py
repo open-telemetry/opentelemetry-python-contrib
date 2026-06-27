@@ -36,30 +36,21 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
-    _report_new,
-    _report_old,
+    _set_db_statement,
+    _set_db_system,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+    _set_net_transport,
 )
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_STATEMENT,
-    DB_SYSTEM,
-)
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
-    NET_TRANSPORT,
     NetTransportValues,
 )
-from opentelemetry.semconv.attributes.db_attributes import (
-    DB_QUERY_TEXT,
-    DB_SYSTEM_NAME,
-)
-from opentelemetry.semconv.attributes.server_attributes import (
-    SERVER_ADDRESS,
-    SERVER_PORT,
+from opentelemetry.semconv.attributes.network_attributes import (
+    NetworkTransportValues,
 )
 from opentelemetry.trace import SpanKind, get_tracer
 
@@ -131,10 +122,10 @@ def _wrap_cmd(tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs
 
                 query = f"{cmd}{' ' if vals else ''}{vals}"
 
-                if _report_old(sem_conv_opt_in_mode):
-                    span.set_attribute(DB_STATEMENT, query)
-                if _report_new(sem_conv_opt_in_mode):
-                    span.set_attribute(DB_QUERY_TEXT, query)
+                stmt_attrs = {}
+                _set_db_statement(stmt_attrs, query, sem_conv_opt_in_mode)
+                for k, v in stmt_attrs.items():
+                    span.set_attribute(k, v)
 
                 _set_connection_attributes(span, instance, sem_conv_opt_in_mode)
         except Exception as ex:  # pylint: disable=broad-except
@@ -173,27 +164,17 @@ def _get_address_attributes(instance, sem_conv_opt_in_mode):
     """Attempt to get host and port from Client instance."""
     address_attributes = {}
 
-    if _report_old(sem_conv_opt_in_mode):
-        address_attributes[DB_SYSTEM] = "memcached"
-    if _report_new(sem_conv_opt_in_mode):
-        address_attributes[DB_SYSTEM_NAME] = "memcached"
+    _set_db_system(address_attributes, "memcached", sem_conv_opt_in_mode)
 
     if hasattr(instance, "server"):
         if isinstance(instance.server, tuple):
             host, port = instance.server
-            if _report_old(sem_conv_opt_in_mode):
-                address_attributes[NET_PEER_NAME] = host
-                address_attributes[NET_PEER_PORT] = port
-                address_attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
-            if _report_new(sem_conv_opt_in_mode):
-                address_attributes[SERVER_ADDRESS] = host
-                address_attributes[SERVER_PORT] = port
+            _set_http_net_peer_name_client(address_attributes, host, sem_conv_opt_in_mode)
+            _set_http_peer_port_client(address_attributes, port, sem_conv_opt_in_mode)
+            _set_net_transport(address_attributes, NetTransportValues.IP_TCP.value, NetworkTransportValues.TCP.value, sem_conv_opt_in_mode)
         elif isinstance(instance.server, str):
-            if _report_old(sem_conv_opt_in_mode):
-                address_attributes[NET_PEER_NAME] = instance.server
-                address_attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
-            if _report_new(sem_conv_opt_in_mode):
-                address_attributes[SERVER_ADDRESS] = instance.server
+            _set_http_net_peer_name_client(address_attributes, instance.server, sem_conv_opt_in_mode)
+            _set_net_transport(address_attributes, NetTransportValues.OTHER.value, NetworkTransportValues.PIPE.value, sem_conv_opt_in_mode)
 
     return address_attributes
 
