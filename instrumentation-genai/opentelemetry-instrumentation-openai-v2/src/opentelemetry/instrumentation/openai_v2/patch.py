@@ -5,7 +5,7 @@
 from timeit import default_timer
 from typing import Any, Optional
 
-from openai import Stream
+from openai import AsyncStream, Stream
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import get_current
@@ -178,7 +178,7 @@ def async_chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return LegacyChatStreamWrapper(
+                    return AsyncLegacyChatStreamWrapper(
                         parsed_result, span, logger, capture_content
                     )
 
@@ -806,3 +806,20 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
         else:
             self.span.end()
         self._started = False
+
+
+class AsyncLegacyChatStreamWrapper(LegacyChatStreamWrapper):
+    """Async variant of :class:`LegacyChatStreamWrapper`.
+
+    Wraps an ``openai.AsyncStream`` whose ``close`` is a coroutine. ``close``
+    is therefore overridden as an awaitable so the underlying
+    ``AsyncStream.close`` is awaited, releasing the httpx response/connection
+    instead of leaking it (and avoiding the ``coroutine ... was never awaited``
+    warning).
+    """
+
+    stream: AsyncStream
+
+    async def close(self) -> None:
+        await self.stream.close()
+        self.cleanup()
