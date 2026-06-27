@@ -1,5 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+from collections import Counter
+from types import SimpleNamespace
 from unittest import TestCase, mock
 
 from pika.adapters import BaseConnection, BlockingConnection
@@ -9,6 +11,7 @@ from pika.adapters.blocking_connection import (
 )
 from pika.channel import Channel
 from pika.connection import Connection
+from pika.spec import BasicProperties
 from wrapt import BoundFunctionWrapper
 
 from opentelemetry.instrumentation.pika import PikaInstrumentor
@@ -19,7 +22,12 @@ from opentelemetry.instrumentation.pika.utils import (
     ReadyMessagesDequeProxy,
     dummy_callback,
 )
-from opentelemetry.trace import Tracer
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+from opentelemetry.trace import SpanKind, Tracer
 
 
 class TestPika(TestCase):
@@ -227,6 +235,91 @@ class TestPika(TestCase):
                 )
 
                 decorate_callback.reset_mock()
+
+    def test_sequential_basic_consume_registrations_do_not_duplicate_spans(
+        self,
+    ) -> None:
+        callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
+        memory_exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(
+            SimpleSpanProcessor(memory_exporter)
+        )
+        tracer = tracer_provider.get_tracer(__name__)
+
+        callback_calls = []
+
+        def on_msg(
+            channel: object,
+            method: object,
+            properties: object,
+            body: object,
+        ) -> None:
+            callback_calls.append((channel, method, properties, body))
+            channel.basic_ack(method.delivery_tag)
+
+        class FakeBlockingChannel:
+            def __init__(self) -> None:
+                self._consumer_infos = {}
+                self.connection = SimpleNamespace(
+                    params=SimpleNamespace(host="localhost", port=5672)
+                )
+                self.basic_ack = mock.MagicMock()
+
+            @property
+            def __class__(self):
+                return BlockingChannel
+
+            def basic_consume(
+                self, queue: str, *args: object, **kwargs: object
+            ) -> str:
+                consumer_callback = (
+                    kwargs.get("on_message_callback")
+                    or kwargs.get("consumer_callback")
+                    or kwargs.get("consumer_cb")
+                    or args[0]
+                )
+                self._consumer_infos[queue] = SimpleNamespace(
+                    **{callback_attr: consumer_callback}
+                )
+                return queue
+
+        channel = FakeBlockingChannel()
+        PikaInstrumentor._decorate_basic_consume(channel, tracer)
+
+        for queue_name in ("q1", "q2", "q3"):
+            channel.basic_consume(
+                queue_name,
+                on_message_callback=on_msg,
+            )
+
+        method = SimpleNamespace(
+            exchange="",
+            routing_key="q1",
+            consumer_tag="q1",
+            delivery_tag=1,
+        )
+        properties = BasicProperties(headers={})
+        q1_callback = getattr(channel._consumer_infos["q1"], callback_attr)
+
+        q1_callback(
+            channel,
+            method,
+            properties,
+            b"hello",
+        )
+
+        spans = memory_exporter.get_finished_spans()
+        self.assertEqual(
+            Counter(
+                span.name for span in spans if span.kind == SpanKind.CONSUMER
+            ),
+            Counter({"q1 receive": 1}),
+        )
+        self.assertEqual(
+            callback_calls, [(channel, method, properties, b"hello")]
+        )
+        channel.basic_ack.assert_called_once_with(1)
 
     @mock.patch(
         "opentelemetry.instrumentation.pika.utils._decorate_basic_publish"
