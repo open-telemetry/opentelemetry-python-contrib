@@ -76,8 +76,11 @@ def fetch_async(  # pylint: disable=too-many-locals
     args, kwargs = _normalize_request(args, kwargs)
     request = args[0]
 
+    span_name = sanitize_method(request.method)
+    if span_name == "_OTHER":
+        span_name = "HTTP"
     span = tracer.start_span(
-        request.method,
+        span_name,
         kind=trace.SpanKind.CLIENT,
         start_time=start_time,
     )
@@ -209,7 +212,7 @@ def _create_metric_attributes_old(response):
     metric_attributes = {
         HTTP_STATUS_CODE: response.code,
         HTTP_URL: redact_url(response.request.url),
-        HTTP_METHOD: response.request.method,
+        HTTP_METHOD: sanitize_method(response.request.method),
     }
     return metric_attributes
 
@@ -219,7 +222,7 @@ def _create_metric_attributes_new(response):
     metric_attributes = {
         HTTP_RESPONSE_STATUS_CODE: response.code,
         URL_FULL: redact_url(response.request.url),
-        HTTP_REQUEST_METHOD: response.request.method,
+        HTTP_REQUEST_METHOD: sanitize_method(response.request.method),
     }
 
     # Add server address and port if available
