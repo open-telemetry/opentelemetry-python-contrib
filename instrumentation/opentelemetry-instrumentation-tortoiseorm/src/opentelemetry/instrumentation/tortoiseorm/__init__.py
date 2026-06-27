@@ -34,6 +34,17 @@ from typing import Collection
 import wrapt
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _set_db_name,
+    _set_db_statement,
+    _set_db_system,
+    _set_db_user,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.tortoiseorm.package import _instruments
 from opentelemetry.instrumentation.tortoiseorm.version import __version__
@@ -42,15 +53,7 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_NAME,
-    DB_STATEMENT,
-    DB_SYSTEM,
-    DB_USER,
     DbSystemValues,
-)
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
 )
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
@@ -96,12 +99,18 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         Returns:
             None
         """
+        _OpenTelemetrySemanticConventionStability._initialize()
+        self._sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE
+        )
         tracer_provider = kwargs.get("tracer_provider")
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types(
+                [_OpenTelemetryStabilitySignalType.DATABASE]
+            ),
         )
         self.capture_parameters = kwargs.get("capture_parameters", False)
         if TORTOISE_SQLITE_SUPPORT:
@@ -228,31 +237,44 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
     def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
         """Get network and database attributes from connection."""
         span_attributes = {}
+        mode = self._sem_conv_opt_in_mode
+
         capabilities = getattr(connection, "capabilities", None)
         if capabilities is not None:
             if capabilities.dialect == "sqlite":
-                span_attributes[DB_SYSTEM] = DbSystemValues.SQLITE.value
+                _set_db_system(
+                    span_attributes, DbSystemValues.SQLITE.value, mode
+                )
             elif capabilities.dialect == "postgres":
-                span_attributes[DB_SYSTEM] = DbSystemValues.POSTGRESQL.value
+                _set_db_system(
+                    span_attributes, DbSystemValues.POSTGRESQL.value, mode
+                )
             elif capabilities.dialect == "mysql":
-                span_attributes[DB_SYSTEM] = DbSystemValues.MYSQL.value
+                _set_db_system(
+                    span_attributes, DbSystemValues.MYSQL.value, mode
+                )
+
         dbname = getattr(connection, "filename", None)
         if dbname:
-            span_attributes[DB_NAME] = dbname
+            _set_db_name(span_attributes, dbname, mode)
         dbname = getattr(connection, "database", None)
         if dbname:
-            span_attributes[DB_NAME] = dbname
+            _set_db_name(span_attributes, dbname, mode)
+
         if query is not None:
-            span_attributes[DB_STATEMENT] = query
+            _set_db_statement(span_attributes, query, mode)
+
         user = getattr(connection, "user", None)
         if user:
-            span_attributes[DB_USER] = user
+            _set_db_user(span_attributes, user, mode)
+
         host = getattr(connection, "host", None)
         if host:
-            span_attributes[NET_PEER_NAME] = host
+            _set_http_net_peer_name_client(span_attributes, host, mode)
+
         port = getattr(connection, "port", None)
         if port:
-            span_attributes[NET_PEER_PORT] = port
+            _set_http_peer_port_client(span_attributes, port, mode)
 
         if self.capture_parameters:
             if parameters is not None and len(parameters) > 0:

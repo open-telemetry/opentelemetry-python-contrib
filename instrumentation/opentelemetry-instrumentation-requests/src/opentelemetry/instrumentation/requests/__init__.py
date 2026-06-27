@@ -328,7 +328,8 @@ def _instrument(
         # See
         # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-client
         method = request.method
-        span_name = get_default_span_name(method)
+        sanitized_method = sanitize_method(method.strip())
+        span_name = get_default_span_name(sanitized_method)
 
         url = redact_url(request.url)
 
@@ -336,7 +337,7 @@ def _instrument(
         _set_http_method(
             span_attributes,
             method,
-            sanitize_method(method),
+            sanitized_method,
             sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
@@ -363,7 +364,7 @@ def _instrument(
         _set_http_method(
             metric_labels,
             method,
-            sanitize_method(method),
+            sanitized_method,
             sem_conv_opt_in_mode,
         )
 
@@ -532,7 +533,6 @@ def get_default_span_name(method: str) -> str:
     Returns:
         span name
     """
-    method = sanitize_method(method.strip())
     if method == "_OTHER":
         return "HTTP"
     return method
