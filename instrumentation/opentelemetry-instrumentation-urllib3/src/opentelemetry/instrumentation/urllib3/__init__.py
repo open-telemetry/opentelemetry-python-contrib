@@ -242,6 +242,22 @@ _excluded_urls_from_env = get_excluded_urls("URLLIB3")
 
 
 @dataclass
+class URLLib3InstrumentorConfig:
+    """Declarative configuration schema for :class:`URLLib3Instrumentor`.
+
+    Fields map directly to the ``instrument()`` keyword arguments that are
+    expressible as plain YAML values.  Callable options (``request_hook``,
+    ``response_hook``, ``url_filter``) and SDK provider objects are not
+    included because they cannot be represented in a configuration file.
+    """
+
+    excluded_urls: str | None = None
+    captured_request_headers: list[str] | None = None
+    captured_response_headers: list[str] | None = None
+    sensitive_headers: list[str] | None = None
+
+
+@dataclass
 class RequestInfo:
     """Arguments that were passed to the ``urlopen()`` call."""
 
@@ -280,6 +296,8 @@ _ResponseHookT = typing.Optional[
 
 
 class URLLib3Instrumentor(BaseInstrumentor):
+    config_dataclass = URLLib3InstrumentorConfig
+
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
 
