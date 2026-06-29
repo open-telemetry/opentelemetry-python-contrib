@@ -81,11 +81,11 @@ def _resolve_content_mode(value: Any) -> ContentCaptureMode:
         )
 
     if value is None:
-        return ContentCaptureMode.SPAN_AND_EVENT
+        return ContentCaptureMode.NO_CONTENT
 
     text = str(value).strip().lower()
     if not text:
-        return ContentCaptureMode.SPAN_AND_EVENT
+        return ContentCaptureMode.NO_CONTENT
 
     mapping = {
         "span_only": ContentCaptureMode.SPAN_ONLY,
@@ -108,7 +108,7 @@ def _resolve_content_mode(value: Any) -> ContentCaptureMode:
         "none": ContentCaptureMode.NO_CONTENT,
     }
 
-    return mapping.get(text, ContentCaptureMode.SPAN_AND_EVENT)
+    return mapping.get(text, ContentCaptureMode.NO_CONTENT)
 
 
 def _resolve_bool(value: Any, default: bool) -> bool:

@@ -181,12 +181,12 @@ class TestResolveContentMode:
     def test_resolve_content_mode_for_none(self):
         sp, init_module = _get_modules()
         result = init_module._resolve_content_mode(None)
-        assert result == sp.ContentCaptureMode.SPAN_AND_EVENT
+        assert result == sp.ContentCaptureMode.NO_CONTENT
 
     def test_resolve_content_mode_for_empty_string(self):
         sp, init_module = _get_modules()
         result = init_module._resolve_content_mode("")
-        assert result == sp.ContentCaptureMode.SPAN_AND_EVENT
+        assert result == sp.ContentCaptureMode.NO_CONTENT
 
     def test_resolve_content_mode_span_only_variants(self):
         sp, init_module = _get_modules()

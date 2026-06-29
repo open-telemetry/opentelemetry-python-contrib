@@ -363,7 +363,9 @@ def test_agent_content_aggregation_appends_new_messages_once():
 
 
 def test_agent_span_collects_child_messages():
-    instrumentor, exporter = _instrument_with_provider()
+    instrumentor, exporter = _instrument_with_provider(
+        capture_message_content="span_only"
+    )
 
     try:
         provider = agents_tracing.get_trace_provider()
@@ -475,7 +477,9 @@ def test_capture_mode_can_be_disabled():
 
 
 def test_response_span_records_response_attributes():
-    instrumentor, exporter = _instrument_with_provider()
+    instrumentor, exporter = _instrument_with_provider(
+        capture_message_content="span_only"
+    )
 
     class _Usage:
         def __init__(self, input_tokens: int, output_tokens: int) -> None:

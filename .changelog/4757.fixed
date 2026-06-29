@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-agents-v2`: fix default content capture mode to NO_CONTENT when env var is unset
