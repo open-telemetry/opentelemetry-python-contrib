@@ -76,15 +76,10 @@ def _instrument(tracer_provider, include_db_statement=False, sem_conv_opt_in_mod
                 _set_db_system(attrs, "cassandra", sem_conv_opt_in_mode)
                 _set_db_name(attrs, instance.keyspace, sem_conv_opt_in_mode)
                 _set_http_net_peer_name_client(attrs, instance.cluster.contact_points, sem_conv_opt_in_mode)
-                for k, v in attrs.items():
-                    span.set_attribute(k, v)
-
                 if include_db_statement:
                     query = args[0]
-                    stmt_attrs = {}
-                    _set_db_statement(stmt_attrs, str(query), sem_conv_opt_in_mode)
-                    for k, v in stmt_attrs.items():
-                        span.set_attribute(k, v)
+                    _set_db_statement(attrs, str(query), sem_conv_opt_in_mode)
+                span.set_attributes(attrs)    
             response = func(*args, **kwargs)
             return response
 
