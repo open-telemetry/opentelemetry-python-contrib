@@ -1,7 +1,9 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
+import warnings
 from typing import Optional
 from unittest import mock
 
@@ -495,3 +497,99 @@ class TestLoggingInstrumentor(TestBase):
             log_code_attributes=False,
             level=logging.DEBUG,
         )
+
+    # -- Spec-compliant (snake_case) attribute names: issue #4643 --------
+
+    def test_spec_compliant_attribute_names_are_injected(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        with self.tracer.start_as_current_span("s1") as span:
+            span_ctx = span.get_span_context()
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                record = self.caplog.records[0]
+                self.assertEqual(
+                    record.span_id, format(span_ctx.span_id, "016x")
+                )
+                self.assertEqual(
+                    record.trace_id, format(span_ctx.trace_id, "032x")
+                )
+                self.assertEqual(
+                    record.trace_flags, span_ctx.trace_flags.sampled
+                )
+                self.assertEqual(record.service_name, "unknown_service")
+
+    def test_json_formatter_uses_spec_compliant_field_names(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+
+        class _SimpleJsonFormatter(logging.Formatter):
+            def format(self, record):
+                return json.dumps(
+                    {
+                        "message": record.getMessage(),
+                        "trace_id": record.trace_id,
+                        "span_id": record.span_id,
+                        "trace_flags": record.trace_flags,
+                        "service_name": record.service_name,
+                    }
+                )
+
+        with self.tracer.start_as_current_span("s1"):
+            record = logging.getLogger("test logger").makeRecord(
+                "test logger", logging.INFO, "f", 1, "hello", None, None
+            )
+            payload = json.loads(_SimpleJsonFormatter().format(record))
+            self.assertIn("trace_id", payload)
+            self.assertIn("span_id", payload)
+            self.assertIn("trace_flags", payload)
+            self.assertIn("service_name", payload)
+
+    def test_legacy_attribute_names_still_work_but_warn(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        with self.tracer.start_as_current_span("s1") as span:
+            span_ctx = span.get_span_context()
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                record = self.caplog.records[0]
+
+                with warnings.catch_warnings(record=True) as caught:
+                    warnings.simplefilter("always")
+                    self.assertEqual(
+                        record.otelSpanID, format(span_ctx.span_id, "016x")
+                    )
+                self.assertEqual(len(caught), 1)
+                self.assertTrue(
+                    issubclass(caught[0].category, DeprecationWarning)
+                )
+                self.assertIn("otelSpanID", str(caught[0].message))
+                self.assertIn("span_id", str(caught[0].message))
+
+    def test_legacy_attribute_write_forwards_to_new_name(self):
+        def hook(span, record):
+            record.otelSpanID = "deadbeef"
+
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(log_hook=hook)
+        with self.tracer.start_as_current_span("s1"):
+            with self.caplog.at_level(level=logging.INFO):
+                logger = logging.getLogger("test logger")
+                logger.info("hello")
+                record = self.caplog.records[0]
+                self.assertEqual(record.span_id, "deadbeef")
+
+    def test_uninstrument_removes_deprecated_attribute_proxies(self):
+        LoggingInstrumentor().uninstrument()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        LoggingInstrumentor().uninstrument()
+
+        record = logging.getLogger("test logger").makeRecord(
+            "test logger", logging.INFO, "f", 1, "hello", None, None
+        )
+        with self.assertRaises(AttributeError):
+            record.otelSpanID
+
+        LoggingInstrumentor().instrument()
