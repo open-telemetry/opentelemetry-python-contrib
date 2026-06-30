@@ -3,6 +3,7 @@
 
 import json
 import typing
+import unittest
 from unittest import mock
 
 import urllib3
@@ -19,6 +20,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.instrumentation.urllib3 import (
     RequestInfo,
     URLLib3Instrumentor,
+    URLLib3InstrumentorConfig,
 )
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
@@ -1022,3 +1024,29 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(
             span.attributes["http.request.header.x_test"], ("Value",)
         )
+
+
+class TestURLLib3InstrumentorConfig(unittest.TestCase):
+    def test_configuration_attribute_is_config_dataclass(self):
+        self.assertIs(
+            URLLib3Instrumentor.configuration, URLLib3InstrumentorConfig
+        )
+
+    def test_default_fields_are_none(self):
+        config = URLLib3InstrumentorConfig()
+        self.assertIsNone(config.excluded_urls)
+        self.assertIsNone(config.captured_request_headers)
+        self.assertIsNone(config.captured_response_headers)
+        self.assertIsNone(config.sensitive_headers)
+
+    def test_fields_accept_declared_values(self):
+        config = URLLib3InstrumentorConfig(
+            excluded_urls="/healthz",
+            captured_request_headers=["X-Test"],
+            captured_response_headers=["X-Response"],
+            sensitive_headers=["Authorization"],
+        )
+        self.assertEqual(config.excluded_urls, "/healthz")
+        self.assertEqual(config.captured_request_headers, ["X-Test"])
+        self.assertEqual(config.captured_response_headers, ["X-Response"])
+        self.assertEqual(config.sensitive_headers, ["Authorization"])
