@@ -296,7 +296,7 @@ _ResponseHookT = typing.Optional[
 
 
 class URLLib3Instrumentor(BaseInstrumentor):
-    config_dataclass = URLLib3InstrumentorConfig
+    configuration = URLLib3InstrumentorConfig
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
