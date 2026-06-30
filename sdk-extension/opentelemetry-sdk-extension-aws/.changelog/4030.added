@@ -1,0 +1,1 @@
+`opentelemetry-sdk-extension-aws`: Update xray trace id generator for 'random-trace-id' flags compatibility

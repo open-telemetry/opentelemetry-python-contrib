@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Langchain instrumentation supporting `ChatOpenAI` and `ChatBedrock`, it can be enabled by
@@ -70,18 +59,22 @@ class LangChainInstrumentor(BaseInstrumentor):
         Enable Langchain instrumentation.
         """
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
+        logger_provider = kwargs.get("logger_provider")
 
         telemetry_handler = get_telemetry_handler(
-            tracer_provider=tracer_provider
+            tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
+            logger_provider=logger_provider,
         )
         otel_callback_handler = OpenTelemetryLangChainCallbackHandler(
-            telemetry_handler=telemetry_handler
+            telemetry_handler=telemetry_handler,
         )
 
         wrap_function_wrapper(
-            module="langchain_core.callbacks",
-            name="BaseCallbackManager.__init__",
-            wrapper=_BaseCallbackManagerInitWrapper(otel_callback_handler),
+            "langchain_core.callbacks",
+            "BaseCallbackManager.__init__",
+            _BaseCallbackManagerInitWrapper(otel_callback_handler),
         )
 
     def _uninstrument(self, **kwargs: Any):
@@ -89,6 +82,14 @@ class LangChainInstrumentor(BaseInstrumentor):
         Cleanup instrumentation (unwrap).
         """
         unwrap("langchain_core.callbacks.base.BaseCallbackManager", "__init__")
+        # Clear the TelemetryHandler singleton so the next instrument() uses
+        # the provided tracer_provider/meter_provider/logger_provider instead
+        # of reusing the previous handler.
+        if (
+            getattr(get_telemetry_handler, "_default_handler", None)
+            is not None
+        ):
+            delattr(get_telemetry_handler, "_default_handler")
 
 
 class _BaseCallbackManagerInitWrapper:

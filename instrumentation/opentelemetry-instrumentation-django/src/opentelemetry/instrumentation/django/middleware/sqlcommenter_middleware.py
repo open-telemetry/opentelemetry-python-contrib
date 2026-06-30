@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 from contextlib import ExitStack
 from logging import getLogger
 from typing import Any, Type, TypeVar
@@ -18,7 +7,6 @@ from typing import Any, Type, TypeVar
 # pylint: disable=no-name-in-module
 from django import conf, get_version
 from django.db import connections
-from django.db.backends.utils import CursorDebugWrapper
 
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
@@ -115,15 +103,5 @@ class _QueryWrapper:
             db_driver=db_driver if with_db_driver else None,
             **_get_opentelemetry_values() if with_opentelemetry else {},
         )
-
-        # TODO: MySQL truncates logs > 1024B so prepend comments
-        # instead of statements, if the engine is MySQL.
-        # See:
-        #  * https://github.com/basecamp/marginalia/issues/61
-        #  * https://github.com/basecamp/marginalia/pull/80
-
-        # Add the query to the query log if debugging.
-        if isinstance(context["cursor"], CursorDebugWrapper):
-            context["connection"].queries_log.append(sql)
 
         return execute(sql, params, many, context)

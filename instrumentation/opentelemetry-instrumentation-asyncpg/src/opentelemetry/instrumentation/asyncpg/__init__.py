@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 This library allows tracing PostgreSQL queries made by the
@@ -53,33 +42,63 @@ import re
 from typing import Collection
 
 import asyncpg
+import asyncpg.prepared_stmt
 import wrapt
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _set_db_name,
+    _set_db_statement,
+    _set_db_system,
+    _set_db_user,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+    _set_net_transport,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.asyncpg.package import _instruments
 from opentelemetry.instrumentation.asyncpg.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_NAME,
-    DB_STATEMENT,
-    DB_SYSTEM,
-    DB_USER,
     DbSystemValues,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
-    NET_TRANSPORT,
     NetTransportValues,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.network_attributes import (
+    NetworkTransportValues,
 )
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import Status, StatusCode
 
+_PREPARED_STMT_METHODS = (
+    "fetch",
+    "fetchval",
+    "fetchrow",
+    "executemany",
+    "fetchmany",
+)
 
-def _hydrate_span_from_args(connection, query, parameters) -> dict:
-    """Get network and database attributes from connection."""
-    span_attributes = {DB_SYSTEM: DbSystemValues.POSTGRESQL.value}
+
+def _hydrate_span_from_args(
+    connection,
+    query,
+    parameters,
+    semconv_opt_in_mode=_StabilityMode.DEFAULT,
+) -> dict:
+    """Get network and database span attributes"""
+    span_attributes: dict = {}
+    _set_db_system(
+        span_attributes,
+        DbSystemValues.POSTGRESQL.value,
+        semconv_opt_in_mode,
+    )
 
     # connection contains _params attribute which is a namedtuple ConnectionParameters.
     # https://github.com/MagicStack/asyncpg/blob/master/asyncpg/connection.py#L68
@@ -87,24 +106,40 @@ def _hydrate_span_from_args(connection, query, parameters) -> dict:
     params = getattr(connection, "_params", None)
     dbname = getattr(params, "database", None)
     if dbname:
-        span_attributes[DB_NAME] = dbname
+        _set_db_name(span_attributes, dbname, semconv_opt_in_mode)
     user = getattr(params, "user", None)
     if user:
-        span_attributes[DB_USER] = user
+        _set_db_user(span_attributes, user, semconv_opt_in_mode)
 
     # connection contains _addr attribute which is either a host/port tuple, or unix socket string
     # https://magicstack.github.io/asyncpg/current/_modules/asyncpg/connection.html
     addr = getattr(connection, "_addr", None)
     if isinstance(addr, tuple):
-        span_attributes[NET_PEER_NAME] = addr[0]
-        span_attributes[NET_PEER_PORT] = addr[1]
-        span_attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
+        _set_http_net_peer_name_client(
+            span_attributes, addr[0], semconv_opt_in_mode
+        )
+        _set_http_peer_port_client(
+            span_attributes, addr[1], semconv_opt_in_mode
+        )
+        _set_net_transport(
+            span_attributes,
+            NetTransportValues.IP_TCP.value,
+            NetworkTransportValues.TCP.value,
+            semconv_opt_in_mode,
+        )
     elif isinstance(addr, str):
-        span_attributes[NET_PEER_NAME] = addr
-        span_attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
+        _set_http_net_peer_name_client(
+            span_attributes, addr, semconv_opt_in_mode
+        )
+        _set_net_transport(
+            span_attributes,
+            NetTransportValues.OTHER.value,
+            NetworkTransportValues.PIPE.value,
+            semconv_opt_in_mode,
+        )
 
     if query is not None:
-        span_attributes[DB_STATEMENT] = query
+        _set_db_statement(span_attributes, query, semconv_opt_in_mode)
 
     if parameters is not None and len(parameters) > 0:
         span_attributes["db.statement.parameters"] = str(parameters)
@@ -125,11 +160,19 @@ class AsyncPGInstrumentor(BaseInstrumentor):
 
     def _instrument(self, **kwargs):
         tracer_provider = kwargs.get("tracer_provider")
+        _OpenTelemetrySemanticConventionStability._initialize()
+        self._semconv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE,
+        )
         self._tracer = trace.get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types(
+                [
+                    _OpenTelemetryStabilitySignalType.DATABASE,
+                ]
+            ),
         )
 
         for method in [
@@ -153,6 +196,14 @@ class AsyncPGInstrumentor(BaseInstrumentor):
                 "asyncpg.cursor", method, self._do_cursor_execute
             )
 
+        for method in _PREPARED_STMT_METHODS:
+            if hasattr(asyncpg.prepared_stmt.PreparedStatement, method):
+                wrapt.wrap_function_wrapper(
+                    "asyncpg.prepared_stmt",
+                    f"PreparedStatement.{method}",
+                    self._do_prepared_execute,
+                )
+
     def _uninstrument(self, **__):
         for cls, methods in [
             (
@@ -164,6 +215,10 @@ class AsyncPGInstrumentor(BaseInstrumentor):
         ]:
             for method_name in methods:
                 unwrap(cls, method_name)
+
+        for method_name in _PREPARED_STMT_METHODS:
+            if hasattr(asyncpg.prepared_stmt.PreparedStatement, method_name):
+                unwrap(asyncpg.prepared_stmt.PreparedStatement, method_name)
 
     async def _do_execute(self, func, instance, args, kwargs):
         exception = None
@@ -183,6 +238,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             instance,
             args[0],
             args[1:] if self.capture_parameters else None,
+            semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
         with self._tracer.start_as_current_span(
@@ -196,6 +252,10 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             finally:
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
+                    if _report_new(self._semconv_opt_in_mode):
+                        span.set_attribute(
+                            ERROR_TYPE, type(exception).__qualname__
+                        )
 
         return result
 
@@ -220,6 +280,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             instance._connection,
             instance._query,
             instance._args if self.capture_parameters else None,
+            semconv_opt_in_mode=self._semconv_opt_in_mode,
         )
 
         stop = False
@@ -239,7 +300,45 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             finally:
                 if span.is_recording() and exception is not None:
                     span.set_status(Status(StatusCode.ERROR))
+                    if _report_new(self._semconv_opt_in_mode):
+                        span.set_attribute(
+                            ERROR_TYPE, type(exception).__qualname__
+                        )
 
         if not stop:
             return result
         raise StopAsyncIteration
+
+    async def _do_prepared_execute(self, func, instance, args, kwargs):
+        exception = None
+        query = instance._query or ""
+
+        try:
+            name = self._leading_comment_remover.sub("", query).split()[0]
+        except IndexError:
+            name = ""
+
+        span_attributes = _hydrate_span_from_args(
+            instance._connection,
+            query,
+            args if self.capture_parameters else None,
+            semconv_opt_in_mode=self._semconv_opt_in_mode,
+        )
+
+        with self._tracer.start_as_current_span(
+            name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
+            try:
+                result = await func(*args, **kwargs)
+            except Exception as exc:  # pylint: disable=W0703
+                exception = exc
+                raise
+            finally:
+                if span.is_recording() and exception is not None:
+                    span.set_status(Status(StatusCode.ERROR))
+                    if _report_new(self._semconv_opt_in_mode):
+                        span.set_attribute(
+                            ERROR_TYPE, type(exception).__qualname__
+                        )
+
+        return result

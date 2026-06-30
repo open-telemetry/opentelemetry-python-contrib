@@ -1,16 +1,5 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -87,8 +76,7 @@ def run_with_test_server(
                 await runnable(server)
         return netloc
 
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(do_request())
+    return asyncio.run(do_request())
 
 
 SCOPE = "opentelemetry.instrumentation.aiohttp_client"
@@ -487,9 +475,8 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
-                loop = asyncio.get_event_loop()
                 with self.assertRaises(aiohttp.ClientConnectorError):
-                    loop.run_until_complete(do_request(url))
+                    asyncio.run(do_request(url))
 
             self._assert_spans(
                 [
@@ -710,8 +697,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -752,8 +738,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.request("NONSTANDARD", url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [
@@ -797,8 +782,7 @@ class TestAioHttpIntegration(TestBase):
                         async with session.get(url):
                             pass
 
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(do_request(url))
+                asyncio.run(do_request(url))
 
         self._assert_spans(
             [

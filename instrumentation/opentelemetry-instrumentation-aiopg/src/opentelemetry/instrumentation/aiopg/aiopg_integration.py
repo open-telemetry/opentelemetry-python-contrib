@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import inspect
 import typing
 from collections.abc import Coroutine
@@ -11,7 +14,7 @@ from opentelemetry.instrumentation.dbapi import (
 from opentelemetry.trace import SpanKind
 
 
-# pylint: disable=abstract-method
+# pylint: disable=abstract-method,no-member
 class AsyncProxyObject(wrapt.ObjectProxy):
     def __aiter__(self):
         return self.__wrapped__.__aiter__()
@@ -54,7 +57,7 @@ class AiopgIntegration(DatabaseApiIntegration):
 def get_traced_connection_proxy(
     connection, db_api_integration, *args, **kwargs
 ):
-    # pylint: disable=abstract-method
+    # pylint: disable=abstract-method,no-member
     class TracedConnectionProxy(AsyncProxyObject):
         # pylint: disable=unused-argument
         def __init__(self, connection, *args, **kwargs):
@@ -73,7 +76,7 @@ def get_traced_connection_proxy(
 
 
 def get_traced_pool_proxy(pool, db_api_integration, *args, **kwargs):
-    # pylint: disable=abstract-method
+    # pylint: disable=abstract-method,no-member
     class TracedPoolProxy(AsyncProxyObject):
         # pylint: disable=unused-argument
         def __init__(self, pool, *args, **kwargs):
@@ -125,7 +128,7 @@ class AsyncCursorTracer(CursorTracer):
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
     _traced_cursor = AsyncCursorTracer(db_api_integration)
 
-    # pylint: disable=abstract-method
+    # pylint: disable=abstract-method,no-member
     class AsyncCursorTracerProxy(AsyncProxyObject):
         # pylint: disable=unused-argument
         def __init__(self, cursor, *args, **kwargs):

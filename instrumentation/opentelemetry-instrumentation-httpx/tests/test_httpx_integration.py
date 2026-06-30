@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -22,7 +11,12 @@ from unittest import mock
 
 import httpx
 import respx
-from wrapt import ObjectProxy
+
+try:
+    # wrapt 2.0.0+
+    from wrapt import BaseObjectProxy  # pylint: disable=no-name-in-module
+except ImportError:
+    from wrapt import ObjectProxy as BaseObjectProxy
 
 import opentelemetry.instrumentation.httpx
 from opentelemetry import trace
@@ -98,15 +92,14 @@ def _is_url_tuple(request: "RequestInfo"):
 
 
 def _async_call(coro: typing.Coroutine) -> asyncio.Task:
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        b"".join(response[2]),
+        "".join([part.decode() for part in response[2]]),
     )
 
 
@@ -116,7 +109,7 @@ async def _async_response_hook(
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        b"".join([part async for part in response[2]]),
+        "".join([part.decode() async for part in response[2]]),
     )
 
 
@@ -1483,7 +1476,7 @@ class BaseTestCases:
                     else:
                         handler = self.get_transport_handler(transport)
                         self.assertTrue(
-                            isinstance(handler, ObjectProxy)
+                            isinstance(handler, BaseObjectProxy)
                             and getattr(handler, "__wrapped__")
                         )
 
@@ -2083,13 +2076,13 @@ class TestSyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
         client = CustomClient()
         self.assertFalse(
-            isinstance(client._transport.handle_request, ObjectProxy)
+            isinstance(client._transport.handle_request, BaseObjectProxy)
         )
 
         HTTPXClientInstrumentor().instrument()
 
         self.assertTrue(
-            isinstance(client._transport.handle_request, ObjectProxy)
+            isinstance(client._transport.handle_request, BaseObjectProxy)
         )
 
 
@@ -2178,11 +2171,11 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
 
         client = CustomAsyncClient()
         self.assertFalse(
-            isinstance(client._transport.handle_async_request, ObjectProxy)
+            isinstance(client._transport.handle_async_request, BaseObjectProxy)
         )
 
         HTTPXClientInstrumentor().instrument()
 
         self.assertTrue(
-            isinstance(client._transport.handle_async_request, ObjectProxy)
+            isinstance(client._transport.handle_async_request, BaseObjectProxy)
         )

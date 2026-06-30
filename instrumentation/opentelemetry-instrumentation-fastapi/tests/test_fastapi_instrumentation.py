@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -25,10 +14,13 @@ from unittest.mock import Mock, call, patch
 
 import fastapi
 import pytest
+from fastapi.background import BackgroundTasks
+from fastapi.middleware.asyncexitstack import AsyncExitStackMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from starlette.background import BackgroundTask
 from starlette.routing import Match
 from starlette.types import Receive, Scope, Send
 
@@ -237,27 +229,27 @@ class TestBaseFastAPI(TestBase):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -365,6 +357,39 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
                 "https://testserver/custom-router/success",
                 span.attributes[HTTP_URL],
             )
+
+    def test_included_router_route_details(self):
+        """
+        Regression test for
+        https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4699
+
+        FastAPI 0.137 added intermediate ``_IncludedRouter`` objects to
+        ``app.routes`` that do not expose a ``path`` attribute. Resolving the
+        route details for a request to an ``include_router``-added route must
+        not raise ``AttributeError`` and must still report the templated route.
+        """
+        app = fastapi.FastAPI()
+        router = fastapi.APIRouter()
+
+        @router.get("/items/{item_id}")
+        async def _read_item(item_id: str):
+            return {"item_id": item_id}
+
+        app.include_router(router, prefix="/api")
+        self._instrumentor.instrument_app(app)
+        try:
+            client = TestClient(app)
+            resp = client.get("/api/items/123")
+            self.assertEqual(200, resp.status_code)
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertTrue(spans)
+            server_span = spans[-1]
+            self.assertEqual(
+                "/api/items/{item_id}", server_span.attributes[HTTP_ROUTE]
+            )
+            self.assertIn("GET /api/items/{item_id}", server_span.name)
+        finally:
+            self._instrumentor.uninstrument_app(app)
 
     def test_host_fastapi_call(self):
         client = TestClient(self._app, base_url="https://testserver2:443")
@@ -491,6 +516,51 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         self.assertEqual(len(spans), 3)
         for span in spans:
             self.assertIn("GET /foobar", span.name)
+
+    def test_background_task_span_parents_inner_spans(self):
+        """Regression test for #4251: spans created inside a FastAPI
+        BackgroundTask must be children of a dedicated background-task span
+        instead of the already-closed request span."""
+        self.memory_exporter.clear()
+        app = fastapi.FastAPI()
+        self._instrumentor.instrument_app(app)
+        tracer = self.tracer_provider.get_tracer(__name__)
+
+        async def background_notify():
+            with tracer.start_as_current_span("inside-background-task"):
+                pass
+
+        @app.post("/checkout")
+        async def checkout(background_tasks: BackgroundTasks):
+            background_tasks.add_task(background_notify)
+            return {"status": "processing"}
+
+        with TestClient(app) as client:
+            response = client.post("/checkout")
+        self.assertEqual(200, response.status_code)
+        spans = self.memory_exporter.get_finished_spans()
+        request_span = next(
+            span for span in spans if span.name == "POST /checkout"
+        )
+        background_span = next(
+            span
+            for span in spans
+            if span.name == "BackgroundTask background_notify"
+        )
+        inner_span = next(
+            span for span in spans if span.name == "inside-background-task"
+        )
+        self.assertIsNotNone(background_span.parent)
+        self.assertEqual(
+            background_span.parent.span_id,
+            request_span.context.span_id,
+        )
+        self.assertIsNotNone(inner_span.parent)
+        self.assertEqual(
+            inner_span.parent.span_id,
+            background_span.context.span_id,
+        )
+        otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
 
     def test_fastapi_route_attribute_added(self):
         """Ensure that fastapi routes are used as the span name."""
@@ -987,6 +1057,49 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                 if isinstance(point, NumberDataPoint):
                     self.assertEqual(point.value, 0)
 
+    def test_uninstrument_app_restores_background_task_call(self):
+        """Regression test for #4251: uninstrumentation must restore the
+        original BackgroundTask.__call__ after FastAPI patches it."""
+        self.assertTrue(hasattr(BackgroundTask, "_otel_original_call"))
+        self._instrumentor.uninstrument_app(self._app)
+        self.assertFalse(hasattr(BackgroundTask, "_otel_original_call"))
+
+    def test_background_task_span_not_duplicated_on_double_instrument_app(
+        self,
+    ):
+        """Regression test for #4251: repeated instrument_app calls must not
+        wrap BackgroundTask.__call__ multiple times or duplicate spans."""
+        self.memory_exporter.clear()
+        app = fastapi.FastAPI()
+        self._instrumentor.instrument_app(app)
+        self._instrumentor.instrument_app(app)
+        tracer = self.tracer_provider.get_tracer(__name__)
+
+        async def background_notify():
+            with tracer.start_as_current_span("inside-background-task"):
+                pass
+
+        @app.post("/checkout")
+        async def checkout(background_tasks: BackgroundTasks):
+            background_tasks.add_task(background_notify)
+            return {"status": "processing"}
+
+        with TestClient(app) as client:
+            response = client.post("/checkout")
+        self.assertEqual(200, response.status_code)
+        spans = self.memory_exporter.get_finished_spans()
+        background_spans = [
+            span
+            for span in spans
+            if span.name == "BackgroundTask background_notify"
+        ]
+        inner_spans = [
+            span for span in spans if span.name == "inside-background-task"
+        ]
+        self.assertEqual(len(background_spans), 1)
+        self.assertEqual(len(inner_spans), 1)
+        otel_fastapi.FastAPIInstrumentor().uninstrument_app(app)
+
     def test_metric_uninstrument_app(self):
         self._client.get("/foobar")
         self._instrumentor.uninstrument_app(self._app)
@@ -1021,27 +1134,27 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
         custom_router = fastapi.APIRouter(route_class=CustomRoute)
 
         @sub_app.get("/home")
-        async def _():
+        async def _home():
             return {"message": "sub hi"}
 
         @app.get("/foobar")
-        async def _():
+        async def _foobar():
             return {"message": "hello world"}
 
         @app.get("/user/{username}")
-        async def _(username: str):
+        async def _user(username: str):
             return {"message": username}
 
         @app.get("/exclude/{param}")
-        async def _(param: str):
+        async def _exclude(param: str):
             return {"message": param}
 
         @app.get("/healthzz")
-        async def _():
+        async def _health():
             return {"message": "ok"}
 
         @app.get("/error")
-        async def _():
+        async def _error():
             raise UnhandledException("This is an unhandled exception")
 
         @custom_router.get("/success")
@@ -1964,7 +2077,7 @@ class TestTraceableExceptionHandling(TestBase):
             return PlainTextResponse("", status_code)
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             self.request_trace_id = (
                 trace.get_current_span().get_span_context().trace_id
             )
@@ -2031,7 +2144,7 @@ class TestTraceableExceptionHandling(TestBase):
         """Exceptions from user middlewares are recorded in the active span"""
 
         @self.app.get("/foobar")
-        async def _():
+        async def _foobar():
             return PlainTextResponse("Hello World")
 
         @self.app.middleware("http")
@@ -2062,7 +2175,6 @@ class TestTraceableExceptionHandling(TestBase):
         )
 
 
-# pylint: disable=attribute-defined-outside-init
 class TestFastAPIFallback(TestBaseFastAPI):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
@@ -2073,7 +2185,12 @@ class TestFastAPIFallback(TestBaseFastAPI):
         app = TestBaseFastAPI._create_fastapi_app()
 
         def build_middleware_stack():
-            return app.router
+            # Return something that is NOT a ServerErrorMiddleware so the
+            # instrumentation fallback path triggers, but still wrap the
+            # router with AsyncExitStackMiddleware so that newer FastAPI
+            # versions (which assert ``fastapi_middleware_astack`` exists in
+            # the request scope) can service requests normally.
+            return AsyncExitStackMiddleware(app.router)
 
         app.build_middleware_stack = build_middleware_stack
         return app
@@ -2098,7 +2215,7 @@ class TestFastAPIFallback(TestBaseFastAPI):
         self.assertEqual(len(errors), 1)
         self.assertEqual(
             errors[0].getMessage(),
-            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.routing.APIRouter'>",
+            "Skipping FastAPI instrumentation due to unexpected middleware stack: expected ServerErrorMiddleware, got <class 'fastapi.middleware.asyncexitstack.AsyncExitStackMiddleware'>",
         )
 
 

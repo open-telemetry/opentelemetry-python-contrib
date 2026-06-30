@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 # pylint: disable=unnecessary-dunder-call
 from __future__ import annotations
 
@@ -256,7 +245,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         extract_bootstrap_servers: mock.MagicMock,
         _enrich_getmany_poll_span: mock.MagicMock,
         _enrich_getmany_topic_span: mock.MagicMock,
-        _create_consumer_span: mock.MagicMock,
+        _create_consumer_span: mock.AsyncMock,
         extract: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
@@ -270,6 +259,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             }
         )
         kafka_consumer = mock.MagicMock()
+        _create_consumer_span.return_value = mock.MagicMock()
 
         wrapped_getmany = _wrap_getmany(tracer, consume_hook)
         records = await wrapped_getmany(
@@ -370,7 +360,8 @@ class TestUtils(IsolatedAsyncioTestCase):
 
     async def test_kafka_properties_extractor(self):
         aiokafka_instance_mock = mock.Mock()
-        aiokafka_instance_mock._serialize.return_value = None, None
+        aiokafka_instance_mock._key_serializer = None
+        aiokafka_instance_mock._value_serializer = None
         aiokafka_instance_mock._partition.return_value = "partition"
         aiokafka_instance_mock.client._wait_on_metadata = mock.AsyncMock()
         assert (

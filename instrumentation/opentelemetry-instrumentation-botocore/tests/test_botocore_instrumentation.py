@@ -1,25 +1,19 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import json
 import os
-from unittest.mock import ANY, Mock, patch
+from importlib.metadata import EntryPoint
+from unittest.mock import ANY, Mock, call, patch
+from urllib.parse import urlparse
 
 import botocore.session
 from botocore.exceptions import ParamValidationError
 from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation.auto_instrumentation import (
+    _load_instrumentors,
+)
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
@@ -349,7 +343,7 @@ class TestBotocoreInstrumentor(TestBase):
         span = self.assert_only_span()
         expected = self._default_span_attributes("STS", "GetCallerIdentity")
         expected["aws.request_id"] = ANY
-        expected[SERVER_ADDRESS] = "sts.amazonaws.com"
+        expected[SERVER_ADDRESS] = urlparse(sts.meta.endpoint_url).hostname
         # check for exact attribute set to make sure not to leak any sts secrets
         self.assertEqual(expected, dict(span.attributes))
 
@@ -568,3 +562,33 @@ class TestBotocoreInstrumentor(TestBase):
                     SERVER_PORT: 2025,
                 },
             )
+
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
+    @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
+    def test_instruments_with_botocore_installed(self, mock_logger, mock_dep):
+        def _load_instrumentor(ep: EntryPoint, **kwargs):
+            # simulate aiobotocore not being present
+            if ep.name == "aiobotocore":
+                raise ModuleNotFoundError("aiobotocore")
+
+        mock_distro = Mock()
+        mock_dep.return_value = None
+        mock_distro.load_instrumentor.side_effect = _load_instrumentor
+        _load_instrumentors(mock_distro)
+        eps = [
+            c[0][0].name for c in mock_distro.load_instrumentor.call_args_list
+        ]
+        self.assertIn("botocore", eps)
+        mock_logger.debug.assert_has_calls(
+            [
+                call("Instrumented %s", "botocore"),
+                call(
+                    "Skipping instrumentation %s: %s",
+                    "aiobotocore",
+                    "aiobotocore",
+                ),
+            ],
+            any_order=True,
+        )

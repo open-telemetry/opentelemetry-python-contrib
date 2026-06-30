@@ -1,23 +1,16 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=empty-docstring,no-value-for-parameter,no-member,no-name-in-module
 
 """
-The OpenTelemetry `logging` integration automatically injects tracing context into
-log statements, though it is opt-in and must be enabled explicitly by setting the
-environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
+The OpenTelemetry `logging` instrumentation automatically instruments Python logging
+system with an handler to convert log messages into OpenTelemetry logs.
+You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
+
+Trace context injection is opt-in. Pass ``inject_trace_context=True`` to add
+``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName``
+to every log record without changing the logging format:
 
 .. code-block:: python
 
@@ -25,23 +18,13 @@ environment variable `OTEL_PYTHON_LOG_CORRELATION` to `true`.
 
     from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
-    LoggingInstrumentor().instrument()
+    LoggingInstrumentor().instrument(inject_trace_context=True)
 
     logging.warning('OTel test')
 
-When running the above example you will see the following output:
-
-::
-
-    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
-
-The environment variable `OTEL_PYTHON_LOG_CORRELATION` must be set to `true`
-in order to enable trace context injection into logs by calling
-`logging.basicConfig()` and setting a logging format that makes use of the
-injected tracing variables.
-
-Alternatively, `set_logging_format` argument can be set to `True` when
-initializing the `LoggingInstrumentor` class to achieve the same effect:
+Alternatively, set ``set_logging_format=True`` (or the environment variable
+``OTEL_PYTHON_LOG_CORRELATION=true``) to inject those same attributes and
+call ``logging.basicConfig()`` with a format string that includes them:
 
 .. code-block:: python
 
@@ -53,21 +36,34 @@ initializing the `LoggingInstrumentor` class to achieve the same effect:
 
     logging.warning('OTel test')
 
+When running the above example you will see the following output:
+
+::
+
+    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
+
 """
 
 import logging  # pylint: disable=import-self
 from os import environ
-from typing import Collection
+from typing import Collection, Optional
 
+from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.logging.constants import (
     _MODULE_DOC,
     DEFAULT_LOGGING_FORMAT,
 )
 from opentelemetry.instrumentation.logging.environment_variables import (
+    OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION,
+    OTEL_PYTHON_LOG_CODE_ATTRIBUTES,
     OTEL_PYTHON_LOG_CORRELATION,
     OTEL_PYTHON_LOG_FORMAT,
+    OTEL_PYTHON_LOG_HANDLER_LEVEL,
     OTEL_PYTHON_LOG_LEVEL,
+)
+from opentelemetry.instrumentation.logging.handler import (
+    _setup_logging_handler,
 )
 from opentelemetry.instrumentation.logging.package import _instruments
 from opentelemetry.trace import (
@@ -85,6 +81,22 @@ LEVELS = {
     "warning": logging.WARNING,
     "error": logging.ERROR,
 }
+
+_logger = logging.getLogger(__name__)
+
+
+def _get_log_level(level_name: Optional[str]) -> Optional[int]:
+    if level_name is None:
+        return None
+    result = logging.getLevelName(level_name.upper().strip())
+    if not isinstance(result, int):
+        _logger.warning(
+            "Invalid log level %r for %s; defaulting to NOTSET",
+            level_name,
+            OTEL_PYTHON_LOG_HANDLER_LEVEL,
+        )
+        return logging.NOTSET
+    return result
 
 
 class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
@@ -104,7 +116,10 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     Args:
         tracer_provider: Tracer provider instance that can be used to fetch a tracer.
-        set_logging_format: When set to True, it calls logging.basicConfig() and sets a logging format.
+        set_logging_format: When set to True, injects trace context attributes into log records
+            and calls logging.basicConfig() with a format string that includes those attributes.
+        inject_trace_context: When set to True, injects trace context attributes
+            into every log record without modifying the logging format.
         logging_format: Accepts a string and sets it as the logging format when set_logging_format
             is set to True.
         log_level: Accepts one of the following values and sets the logging level to it.
@@ -120,6 +135,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     _old_factory = None
     _log_hook = None
+    _logging_handler = None
 
     def instrumentation_dependencies(self) -> Collection[str]:
         return _instruments
@@ -139,29 +155,33 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         )
 
         if set_logging_format:
-            log_format = kwargs.get(
-                "logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)
+            log_format = (
+                kwargs.get(
+                    "logging_format", environ.get(OTEL_PYTHON_LOG_FORMAT, None)
+                )
+                or DEFAULT_LOGGING_FORMAT
             )
-            log_format = log_format or DEFAULT_LOGGING_FORMAT
-
-            log_level = kwargs.get(
-                "log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))
+            log_level = (
+                kwargs.get(
+                    "log_level", LEVELS.get(environ.get(OTEL_PYTHON_LOG_LEVEL))
+                )
+                or logging.INFO
             )
-            log_level = log_level or logging.INFO
-
             logging.basicConfig(format=log_format, level=log_level)
+
+        inject_context = set_logging_format or kwargs.get(
+            "inject_trace_context", False
+        )
 
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
 
-            # this factory is a no-op if log correlation or log hook are not set
-            if not set_logging_format and not callable(
+            if not inject_context and not callable(
                 LoggingInstrumentor._log_hook
             ):
                 return record
 
-            # out of spec attributes are added to the log record only if log correlation is set
-            if set_logging_format:
+            if inject_context:
                 record.otelSpanID = "0"
                 record.otelTraceID = "0"
                 record.otelTraceSampled = False
@@ -182,7 +202,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             if span != INVALID_SPAN:
                 ctx = span.get_span_context()
                 if ctx != INVALID_SPAN_CONTEXT:
-                    if set_logging_format:
+                    if inject_context:
                         record.otelSpanID = format(ctx.span_id, "016x")
                         record.otelTraceID = format(ctx.trace_id, "032x")
                         record.otelTraceSampled = ctx.trace_flags.sampled
@@ -199,7 +219,58 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
         logging.setLogRecordFactory(record_factory)
 
+        # Here we need to handle 3 scenarios:
+        # - the sdk logging handler is enabled and we should do no nothing
+        # - the sdk logging handler is not enabled and we should setup the handler by default
+        # - the sdk logging handler is not enabled and the user do not want we setup the handler
+        sdk_autoinstrumentation_env_var = (
+            environ.get(
+                "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "notset"
+            )
+            .strip()
+            .lower()
+        )
+        if sdk_autoinstrumentation_env_var == "true":
+            _logger.warning(
+                "Skipping installation of LoggingHandler from "
+                "`opentelemetry-instrumentation-logging` to avoid duplicate logs. "
+                "The SDK's deprecated LoggingHandler is already active "
+                "(OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true). To migrate, unset "
+                "this environment variable. The SDK's handler will be removed in a future release."
+            )
+        elif kwargs.get(
+            "enable_log_auto_instrumentation",
+            environ.get(OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION, "true")
+            .strip()
+            .lower()
+            == "true",
+        ):
+            log_code_attributes = kwargs.get(
+                "log_code_attributes",
+                environ.get(OTEL_PYTHON_LOG_CODE_ATTRIBUTES, "false")
+                .strip()
+                .lower()
+                == "true",
+            )
+            handler_level = kwargs.get(
+                "log_handler_level",
+                _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
+            )
+            logger_provider = get_logger_provider()
+            handler = _setup_logging_handler(
+                logger_provider=logger_provider,
+                log_code_attributes=log_code_attributes,
+                level=handler_level,
+            )
+            LoggingInstrumentor._logging_handler = handler
+
     def _uninstrument(self, **kwargs):
         if LoggingInstrumentor._old_factory:
             logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
             LoggingInstrumentor._old_factory = None
+
+        if LoggingInstrumentor._logging_handler:
+            logging.getLogger().removeHandler(
+                LoggingInstrumentor._logging_handler
+            )
+            LoggingInstrumentor._logging_handler = None

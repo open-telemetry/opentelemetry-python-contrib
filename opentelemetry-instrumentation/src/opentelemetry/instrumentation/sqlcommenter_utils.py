@@ -1,27 +1,57 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
+
+from __future__ import annotations
+
+import itertools
+import sys
+from typing import TYPE_CHECKING, Any
 
 from opentelemetry import context
 from opentelemetry.instrumentation.utils import _url_quote
 
+if sys.version_info >= (3, 14):
+    from string.templatelib import Template as _Template
+else:
+    _Template = ()
 
-def _add_sql_comment(sql, **meta) -> str:
+if TYPE_CHECKING:
+    if sys.version_info >= (3, 14):
+        from string.templatelib import Template
+    else:
+        from typing import Never
+
+        Template = Never
+    from typing import overload
+
+    @overload
+    def _add_sql_comment(sql: str, **meta: Any) -> str: ...
+
+    @overload
+    def _add_sql_comment(sql: Template, **meta: Any) -> Template: ...
+
+
+def _add_sql_comment(sql: str | Template, **meta: Any) -> str | Template:
     """
     Appends comments to the sql statement and returns it
     """
     meta.update(**_add_framework_tags())
     comment = _generate_sql_comment(**meta)
+
+    if isinstance(sql, _Template):
+        last = sql.strings[-1].rstrip()
+        if last.endswith(";"):
+            last = last[:-1] + comment + ";"
+        else:
+            last += comment
+        args = [
+            *itertools.chain.from_iterable(
+                zip(sql.strings[:-1], sql.interpolations)
+            ),
+            last,
+        ]
+        return _Template(*args)
+
     sql = sql.rstrip()
     if sql.endswith(";"):
         sql = sql[:-1] + comment + ";"

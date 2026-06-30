@@ -1,16 +1,7 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
+
+# pylint: disable=too-many-lines
 
 """
 This library uses OpenTelemetry to track web requests in Tornado applications.
@@ -154,7 +145,6 @@ API
 ---
 """
 
-import urllib
 from collections import namedtuple
 from functools import partial
 from logging import getLogger
@@ -190,6 +180,10 @@ from opentelemetry.instrumentation.propagators import (
     FuncSetter,
     get_global_response_propagator,
 )
+from opentelemetry.instrumentation.tornado._utils import (
+    find_matched_rule,
+    route_from_rule,
+)
 from opentelemetry.instrumentation.tornado.package import _instruments
 from opentelemetry.instrumentation.tornado.version import __version__
 from opentelemetry.instrumentation.utils import (
@@ -205,6 +199,7 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_HOST,
     HTTP_METHOD,
+    HTTP_ROUTE,
     HTTP_SCHEME,
     HTTP_STATUS_CODE,
     HTTP_TARGET,
@@ -224,8 +219,6 @@ from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
 )
 from opentelemetry.semconv.attributes.url_attributes import (
-    URL_PATH,
-    URL_QUERY,
     URL_SCHEME,
 )
 from opentelemetry.semconv.metrics import MetricInstruments
@@ -729,22 +722,26 @@ def _get_attributes_from_request(request, sem_conv_opt_in_mode):
     )
 
 
-def _get_default_span_name(request):
+def _get_default_span_name(handler):
     """
-    Default span name is the HTTP method and URL path, or just the method.
+    Default span name is the HTTP method and route, or just the method.
     https://github.com/open-telemetry/opentelemetry-specification/pull/3165
     https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/http/#name
 
     Args:
-        request: Tornado request object.
+        handler: Tornado handler object.
     Returns:
         Default span name.
     """
 
-    path = request.path
-    method = request.method
-    if method and path:
-        return f"{method} {path}"
+    method = sanitize_method(handler.request.method)
+    if method == "_OTHER":
+        method = "HTTP"
+    rule = find_matched_rule(handler)
+    # if there's no rule, like for 404 just return the method
+    route = route_from_rule(rule, handler) if rule else None
+    if method and route:
+        return f"{method} {route}"
     return f"{method}"
 
 
@@ -759,7 +756,7 @@ def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
     )
     span, token = _start_internal_or_server_span(
         tracer=tracer,
-        span_name=_get_default_span_name(handler.request),
+        span_name=_get_default_span_name(handler),
         start_time=time_ns(),
         context_carrier=handler.request.headers,
         context_getter=textmap.default_getter,
@@ -776,7 +773,7 @@ def _start_span(tracer, handler, sem_conv_opt_in_mode) -> _TraceContext:
                 span.set_attributes(custom_attributes)
 
     activation = trace.use_span(span, end_on_exit=True)
-    activation.__enter__()  # pylint: disable=E1101
+    activation.__enter__()  # pylint: disable=unnecessary-dunder-call
     ctx = _TraceContext(activation, span, token)
     setattr(handler, _HANDLER_CONTEXT_KEY, ctx)
 
@@ -798,7 +795,7 @@ def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
     if error:
         if isinstance(error, tornado.web.HTTPError):
             status_code = error.status_code
-            if not ctx and status_code == 404:
+            if not ctx and status_code in (404, 405):
                 ctx = _start_span(tracer, handler, sem_conv_opt_in_mode)
         else:
             status_code = 500
@@ -829,7 +826,7 @@ def _finish_span(tracer, handler, error, sem_conv_opt_in_mode):
             if len(custom_attributes) > 0:
                 ctx.span.set_attributes(custom_attributes)
 
-    ctx.activation.__exit__(*finish_args)  # pylint: disable=E1101
+    ctx.activation.__exit__(*finish_args)  # pylint: disable=unnecessary-dunder-call
     if ctx.token:
         context.detach(ctx.token)
     delattr(handler, _HANDLER_CONTEXT_KEY)
@@ -845,10 +842,22 @@ def _record_prepare_metrics(server_histograms, handler, sem_conv_opt_in_mode):
             request_size, attributes=metric_attributes_old
         )
         active_requests_attributes_old = (
-            _create_active_requests_attributes_old(handler.request)
+            _create_active_requests_attributes_old(handler)
         )
+        # in case of http/dup send both old and new attributes since we will add one entry
+        if _report_new(sem_conv_opt_in_mode):
+            active_requests_attributes_new = (
+                _create_active_requests_attributes_new(handler.request)
+            )
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old | active_requests_attributes_new
+            )
+        else:
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old
+            )
         server_histograms["active_requests"].add(
-            1, attributes=active_requests_attributes_old
+            1, attributes=active_requests_attributes_old_or_dup
         )
 
     # Record new semconv metrics
@@ -897,10 +906,23 @@ def _record_on_finish_metrics(
         )
 
         active_requests_attributes_old = (
-            _create_active_requests_attributes_old(handler.request)
+            _create_active_requests_attributes_old(handler)
         )
+        # in case of http/dup send both old and new attributes since we will add one entry
+        if _report_new(sem_conv_opt_in_mode):
+            active_requests_attributes_new = (
+                _create_active_requests_attributes_new(handler.request)
+            )
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old | active_requests_attributes_new
+            )
+        else:
+            active_requests_attributes_old_or_dup = (
+                active_requests_attributes_old
+            )
+
         server_histograms["active_requests"].add(
-            -1, attributes=active_requests_attributes_old
+            -1, attributes=active_requests_attributes_old_or_dup
         )
 
     # Record new semconv metrics
@@ -926,22 +948,28 @@ def _record_on_finish_metrics(
             )
 
 
-def _create_active_requests_attributes_old(request):
+def _create_active_requests_attributes_old(handler):
     """Create metric attributes for active requests using old semconv."""
+    request = handler.request
     metric_attributes = {
-        HTTP_METHOD: request.method,
+        HTTP_METHOD: sanitize_method(request.method),
         HTTP_SCHEME: request.protocol,
         HTTP_FLAVOR: request.version,
         HTTP_HOST: request.host,
     }
-    metric_attributes[HTTP_TARGET] = request.path
+
+    if rule := find_matched_rule(handler):
+        route = route_from_rule(rule, handler)
+
+        if route is not None:
+            metric_attributes[HTTP_TARGET] = route
     return metric_attributes
 
 
 def _create_active_requests_attributes_new(request):
     """Create metric attributes for active requests using new semconv."""
     metric_attributes = {
-        HTTP_REQUEST_METHOD: request.method,
+        HTTP_REQUEST_METHOD: sanitize_method(request.method),
         URL_SCHEME: request.protocol,
     }
     if request.version:
@@ -951,7 +979,7 @@ def _create_active_requests_attributes_new(request):
 
 def _create_metric_attributes_old(handler):
     """Create metric attributes using old semconv."""
-    metric_attributes = _create_active_requests_attributes_old(handler.request)
+    metric_attributes = _create_active_requests_attributes_old(handler)
     metric_attributes[HTTP_STATUS_CODE] = handler.get_status()
     return metric_attributes
 
@@ -961,13 +989,13 @@ def _create_metric_attributes_new(handler):
     metric_attributes = _create_active_requests_attributes_new(handler.request)
     metric_attributes[HTTP_RESPONSE_STATUS_CODE] = handler.get_status()
 
-    # Add URL path if available
     if handler.request.path:
-        # Parse query from path if present
-        parsed = urllib.parse.urlparse(handler.request.path)
-        if parsed.path:
-            metric_attributes[URL_PATH] = parsed.path
-        if parsed.query:
-            metric_attributes[URL_QUERY] = parsed.query
+        rule = find_matched_rule(handler)
+
+        if rule:
+            route = route_from_rule(rule, handler)
+
+            if route is not None:
+                metric_attributes[HTTP_ROUTE] = route
 
     return metric_attributes

@@ -1,22 +1,14 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
+# pylint: disable=no-member  # psycopg stubs reference string.templatelib on 3.14+
 
 import asyncio
+import sys
 import types
 from unittest import IsolatedAsyncioTestCase, mock
 
 import psycopg
+import pytest
 from psycopg.sql import SQL, Composed
 
 import opentelemetry.instrumentation.psycopg
@@ -461,6 +453,61 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         kwargs = event_mocked.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], False)
 
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_t_string_span_attributes(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        PsycopgInstrumentor().instrument()
+        cnx = psycopg.connect(database="test")
+        cursor = cnx.cursor()
+        value = 42
+        template = Template(
+            "SELECT ", Interpolation(value, "value"), " FROM foo"
+        )
+        cursor.execute(template)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes["db.statement"], "SELECT {value} FROM foo"
+        )
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    def test_t_string_commenter(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        PsycopgInstrumentor().instrument(enable_commenter=True)
+        cnx = psycopg.connect(database="test")
+        cursor = cnx.cursor()
+        MockCursor.executemany.reset_mock()
+        value = 42
+        template = Template(
+            "SELECT ", Interpolation(value, "value"), " FROM foo;"
+        )
+        cursor.executemany(template)
+        called_query = MockCursor.executemany.call_args[0][0]
+        self.assertIsInstance(called_query, Template)
+        self.assertRegex(
+            called_query.strings[-1],
+            r" FROM foo /\*.*traceparent=.*\*/;",
+        )
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes["db.statement"], "SELECT {value} FROM foo;"
+        )
+
 
 class TestPostgresqlIntegrationAsync(
     PostgresqlIntegrationTestMixin, TestBase, IsolatedAsyncioTestCase
@@ -644,4 +691,29 @@ class TestPostgresqlIntegrationAsync(
         # Check version and name in span's instrumentation info
         self.assertEqualSpanInstrumentationScope(
             span, opentelemetry.instrumentation.psycopg
+        )
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 14),
+        reason="requires Python 3.14+ for t-strings",
+    )
+    async def test_t_string_span_attributes_async(self):
+        # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
+        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+
+        PsycopgInstrumentor().instrument()
+        cnx = await psycopg.AsyncConnection.connect("test")
+        self.assertTrue(issubclass(cnx.cursor_factory, MockAsyncCursor))
+        async with cnx.cursor() as cursor:
+            value = 42
+            template = Template(
+                "SELECT ", Interpolation(value, "value"), " FROM foo"
+            )
+            await cursor.execute(template)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(
+            span.attributes["db.statement"], "SELECT {value} FROM foo"
         )

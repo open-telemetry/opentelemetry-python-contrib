@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -37,6 +26,7 @@ from opentelemetry.instrumentation.propagators import (
     get_global_response_propagator,
     set_global_response_propagator,
 )
+from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.sdk import resources
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
@@ -333,10 +323,13 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         self.env_patch.start()
 
+    def tearDown(self):
+        self.env_patch.stop()
+        super().tearDown()
+
     def subTest(self, msg=..., **params):
         sub = super().subTest(msg, **params)
-        # Reinitialize test state to avoid state pollution
-        self.setUp()
+        self.memory_exporter.clear()
         return sub
 
     # Helper to assert exemplars presence across specified histogram metric names.
@@ -1093,7 +1086,8 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         trace_id = format_trace_id(span.get_span_context().trace_id)
         span_id = format_span_id(span.get_span_context().span_id)
-        traceresponse = f"00-{trace_id}-{span_id}-01"
+        trace_flags = span.get_span_context().trace_flags
+        traceresponse = f"00-{trace_id}-{span_id}-{trace_flags:02x}"
 
         self.assertListEqual(
             response_start["headers"],
@@ -1367,7 +1361,8 @@ class TestAsgiApplication(AsyncAsgiTestBase):
 
         trace_id = format_trace_id(span.get_span_context().trace_id)
         span_id = format_span_id(span.get_span_context().span_id)
-        traceresponse = f"00-{trace_id}-{span_id}-01"
+        trace_flags = span.get_span_context().trace_flags
+        traceresponse = f"00-{trace_id}-{span_id}-{trace_flags:02x}"
 
         self.assertListEqual(
             socket_send["headers"],
@@ -1879,6 +1874,19 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.get_all_output()
         spans = self.get_finished_spans()
         self.assertGreater(len(spans), 0)
+
+    async def test_suppress_http_instrumentation(self):
+        app = otel_asgi.OpenTelemetryMiddleware(simple_asgi)
+
+        async def suppression_wrapper(scope, receive, send):
+            with suppress_http_instrumentation():
+                await app(scope, receive, send)
+
+        self.seed_app(suppression_wrapper)
+        await self.send_default_request()
+        await self.get_all_output()
+        spans = self.get_finished_spans()
+        self.assertEqual(len(spans), 0)
 
 
 class TestAsgiAttributes(unittest.TestCase):
