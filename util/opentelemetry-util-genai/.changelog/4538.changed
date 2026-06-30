@@ -1,2 +1,1 @@
 Change `InferenceInvocation` init params to only accept base params; pass in `attributes` on invocation `_start` so samplers have access to attributes.
-
