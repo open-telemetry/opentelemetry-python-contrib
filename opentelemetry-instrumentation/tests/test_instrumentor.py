@@ -52,13 +52,13 @@ class TestInstrumentor(TestCase):
 
     def test_configuration_can_be_overridden(self):
         @dataclass
-        class FooConfig:
-            bar: str | None = None
+        class SampleConfig:
+            excluded_urls: str | None = None
 
         class ConfiguredInstrumentor(self.Instrumentor):
-            configuration = FooConfig
+            configuration = SampleConfig
 
-        self.assertIs(ConfiguredInstrumentor.configuration, FooConfig)
+        self.assertIs(ConfiguredInstrumentor.configuration, SampleConfig)
         self.assertIsNone(self.Instrumentor.configuration)
 
     @patch("opentelemetry.instrumentation.instrumentor._LOG")
