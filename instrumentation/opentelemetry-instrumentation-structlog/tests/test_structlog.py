@@ -470,6 +470,20 @@ class TestStructlogInstrumentor(TestBase):
         )
         self.assertTrue(has_otel_processor)
 
+    def test_instrument_without_prior_structlog_configuration_emits_logs(self):
+        """Test instrument() emits logs before the app configures structlog."""
+        structlog.reset_defaults()
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        structlog.get_logger().info("zero config message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].log_record.body, "zero config message")
+
     def test_uninstrument_removes_processor(self):
         """Test that uninstrument() removes the OTel processor."""
         # Configure structlog
