@@ -329,13 +329,12 @@ class CursorTracer(dbapi.CursorTracer):
         statement = args[0]
         if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
-
-        # `statement` can be empty string. See #2643
-        if statement and isinstance(statement, str):
-            # Strip leading comments so we get the operation name.
-            return self._leading_comment_remover.sub("", statement).split()[0]
-
-        return ""
+            return (
+                self._leading_comment_remover.sub("", statement).split()[0]
+                if statement
+                else ""
+            )
+        return super().get_operation_name(cursor, args)
 
     def get_statement(self, cursor: CursorT, args: list[Any]) -> str:
         if not args:
@@ -343,8 +342,8 @@ class CursorTracer(dbapi.CursorTracer):
 
         statement = args[0]
         if isinstance(statement, Composable):
-            statement = statement.as_string(cursor)
-        return statement
+            return statement.as_string(cursor)
+        return super().get_statement(cursor, args)
 
 
 def _new_cursor_factory(

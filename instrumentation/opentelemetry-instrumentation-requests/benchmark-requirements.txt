@@ -1,0 +1,4 @@
+pytest-benchmark==4.0.0
+-e opentelemetry-instrumentation
+-e util/opentelemetry-util-http
+-e instrumentation/opentelemetry-instrumentation-requests
