@@ -702,6 +702,20 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
+    def _assert_duration_metric(self, metric_name: str, max_duration: float):
+        """Find a histogram metric by name and assert its sum is below max_duration."""
+        metrics = self.get_sorted_metrics(SCOPE)
+        duration_found = False
+        for metric in metrics:
+            if metric.name == metric_name:
+                for point in metric.data.data_points:
+                    if isinstance(point, HistogramDataPoint):
+                        duration_found = True
+                        self.assertLess(point.sum, max_duration)
+        self.assertTrue(
+            duration_found, f"{metric_name} metric not found"
+        )
+
     async def test_background_execution_metrics_duration(self):
         """Test that http.server.duration excludes background task time."""
         app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
@@ -709,20 +723,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_default_request()
         await self.get_all_output()
 
-        metrics = self.get_sorted_metrics(SCOPE)
-        duration_found = False
-        for metric in metrics:
-            if metric.name == "http.server.duration":
-                data_points = list(metric.data.data_points)
-                for point in data_points:
-                    if isinstance(point, HistogramDataPoint):
-                        duration_found = True
-                        self.assertLess(
-                            point.sum,
-                            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
-                        )
-        self.assertTrue(
-            duration_found, "http.server.duration metric not found"
+        self._assert_duration_metric(
+            "http.server.duration",
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
         )
 
     async def test_background_execution_metrics_duration_new_semconv(self):
@@ -732,21 +735,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_default_request()
         await self.get_all_output()
 
-        metrics = self.get_sorted_metrics(SCOPE)
-        duration_found = False
-        for metric in metrics:
-            if metric.name == "http.server.request.duration":
-                data_points = list(metric.data.data_points)
-                for point in data_points:
-                    if isinstance(point, HistogramDataPoint):
-                        duration_found = True
-                        self.assertLess(
-                            point.sum,
-                            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S,
-                        )
-        self.assertTrue(
-            duration_found,
-            "http.server.request.duration metric not found",
+        self._assert_duration_metric(
+            "http.server.request.duration",
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S,
         )
 
     async def test_trailers_background_execution_metrics_duration(self):
@@ -758,20 +749,9 @@ class TestAsgiApplication(AsyncAsgiTestBase):
         await self.send_default_request()
         await self.get_all_output()
 
-        metrics = self.get_sorted_metrics(SCOPE)
-        duration_found = False
-        for metric in metrics:
-            if metric.name == "http.server.duration":
-                data_points = list(metric.data.data_points)
-                for point in data_points:
-                    if isinstance(point, HistogramDataPoint):
-                        duration_found = True
-                        self.assertLess(
-                            point.sum,
-                            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
-                        )
-        self.assertTrue(
-            duration_found, "http.server.duration metric not found"
+        self._assert_duration_metric(
+            "http.server.duration",
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
         )
 
     async def test_override_span_name(self):
