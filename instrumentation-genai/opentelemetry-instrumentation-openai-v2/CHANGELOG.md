@@ -2,19 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+<!--
+Do *NOT* add changelog entries here!
+
+This changelog is managed by towncrier and is compiled at release time.
+
+See https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md#changelog for details.
+-->
+
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
-
-- Refactor chat completion stream wrappers to use shared GenAI stream lifecycle helpers.
-  ([#4500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4500))
-- Pass tool definitions from `tools` kwarg to `InferenceInvocation.tool_definitions`
-  so `gen_ai.tool.definitions` span attribute is populated on chat completion spans
-  ([#4554](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4554))
+<!-- changelog start -->
 
 ## Version 2.4b0 (2026-05-01)
-
 
 - Migrate experimental path from deprecated `LLMInvocation` to `InferenceInvocation`,
   using `handler.start_inference()` and `invocation.stop()`/`invocation.fail()` directly
