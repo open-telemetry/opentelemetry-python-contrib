@@ -590,6 +590,6 @@ class TestLoggingInstrumentor(TestBase):
             "test logger", logging.INFO, "f", 1, "hello", None, None
         )
         with self.assertRaises(AttributeError):
-            record.otelSpanID
+            _ = record.otelSpanID
 
         LoggingInstrumentor().instrument()

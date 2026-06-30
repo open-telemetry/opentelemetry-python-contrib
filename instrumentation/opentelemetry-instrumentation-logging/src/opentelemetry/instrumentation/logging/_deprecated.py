@@ -21,7 +21,9 @@ people toward the new, spec-compliant names.
 The legacy aliases are scheduled for removal in a future release.
 """
 
-import logging
+# pylint: disable=no-member
+
+import logging  # pylint: disable=import-self
 import warnings
 
 # Maps legacy attribute name -> new attribute name.
