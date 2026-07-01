@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -173,7 +162,7 @@ class MethodWrappers:
                 | None,
             ) -> None:
                 attributes = (
-                    get_server_attributes(instance.api_endpoint)  # type: ignore[reportUnknownMemberType]
+                    get_server_attributes(instance.api_endpoint)
                     | request_attributes
                     | get_genai_response_attributes(response)
                 )
@@ -257,7 +246,7 @@ class MethodWrappers:
         kwargs: Any,
     ):
         params = _extract_params(*args, **kwargs)
-        api_endpoint: str = instance.api_endpoint  # type: ignore[reportUnknownMemberType]
+        api_endpoint: str = instance.api_endpoint
         span_attributes = {
             **get_genai_request_attributes(False, params),
             **get_server_attributes(api_endpoint),

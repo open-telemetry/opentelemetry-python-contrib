@@ -1,20 +1,9 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -28,7 +17,8 @@ from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.types import (
     Error,
     InputMessage,
-    LLMInvocation,
+    LLMInvocation,  # TODO: migrate to InferenceInvocation
+    MessagePart,
     OutputMessage,
     Text,
 )
@@ -115,7 +105,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         for sub_messages in messages:
             for message in sub_messages:
                 # Cast to Any to avoid type checking issues with LangChain's complex content type
-                raw_content: Any = message.content  # type: ignore[misc]
+                raw_content: Any = message.content
                 role = message.type
                 parts: list[Text] = []
 
@@ -133,7 +123,11 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                                     Text(content=text_value, type="text")
                                 )
 
-                input_messages.append(InputMessage(parts=parts, role=role))
+                input_messages.append(
+                    InputMessage(
+                        parts=cast(list[MessagePart], parts), role=role
+                    )
+                )
 
         llm_invocation = LLMInvocation(
             request_model=request_model,
@@ -153,7 +147,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
         self._invocation_manager.add_invocation_state(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            invocation=llm_invocation,
+            invocation=llm_invocation,  # pyright: ignore[reportArgumentType]
         )
 
     def on_llm_end(
@@ -166,7 +160,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return
@@ -206,7 +201,7 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
                     role = chat_generation.message.type
                     output_message = OutputMessage(
                         role=role,
-                        parts=parts,
+                        parts=cast(list[MessagePart], parts),
                         finish_reason=finish_reason,
                     )
                     output_messages.append(output_message)
@@ -257,7 +252,8 @@ class OpenTelemetryLangChainCallbackHandler(BaseCallbackHandler):
     ) -> None:
         llm_invocation = self._invocation_manager.get_invocation(run_id=run_id)
         if llm_invocation is None or not isinstance(
-            llm_invocation, LLMInvocation
+            llm_invocation,
+            LLMInvocation,
         ):
             # If the invocation does not exist, we cannot set attributes or end it
             return

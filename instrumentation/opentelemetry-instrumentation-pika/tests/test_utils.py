@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import collections
 from unittest import TestCase, mock
 
@@ -58,7 +47,13 @@ class TestUtils(TestCase):
         tracer.start_span.assert_called_once_with(
             name=generate_span_name.return_value, kind=span_kind
         )
-        enrich_span.assert_called_once()
+        enrich_span.assert_called_once_with(
+            tracer.start_span.return_value,
+            channel,
+            properties,
+            destination,
+            None,
+        )
 
     @mock.patch("opentelemetry.context.get_value")
     @mock.patch("opentelemetry.instrumentation.pika.utils._generate_span_name")
@@ -568,3 +563,12 @@ class TestUtils(TestCase):
         get_span.assert_not_called()
         consume_hook.assert_not_called()
         returned_span.end.assert_not_called()
+
+    def test_deque_proxy_is_iterable(self) -> None:
+        deque = collections.deque([1, 2, 3])
+        generator_info = mock.MagicMock(
+            spec=_QueueConsumerGeneratorInfo,
+            consumer_tag="mock_task_name",
+        )
+        proxy = utils.ReadyMessagesDequeProxy(deque, generator_info, None)
+        self.assertEqual(list(proxy), [1, 2, 3])

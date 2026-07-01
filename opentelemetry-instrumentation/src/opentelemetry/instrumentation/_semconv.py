@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -18,10 +7,15 @@ import os
 import threading
 from enum import Enum
 from typing import Container, Mapping, MutableMapping
+from urllib.parse import urlparse
+
+from packaging import version as package_version
 
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION,
+    DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -43,6 +37,7 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
     NET_PEER_NAME,
     NET_PEER_PORT,
+    NET_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.client_attributes import (
     CLIENT_ADDRESS,
@@ -50,6 +45,7 @@ from opentelemetry.semconv.attributes.client_attributes import (
 )
 from opentelemetry.semconv.attributes.db_attributes import (
     DB_NAMESPACE,
+    DB_OPERATION_NAME,
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
@@ -62,6 +58,7 @@ from opentelemetry.semconv.attributes.http_attributes import (
 )
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PROTOCOL_VERSION,
+    NETWORK_TRANSPORT,
 )
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
@@ -177,6 +174,9 @@ _server_active_requests_count_attrs_new = [
 
 OTEL_SEMCONV_STABILITY_OPT_IN = "OTEL_SEMCONV_STABILITY_OPT_IN"
 
+# Legacy/default schema version when schema_url was first introduced
+_LEGACY_SCHEMA_VERSION = "1.11.0"
+
 
 class _OpenTelemetryStabilitySignalType(Enum):
     HTTP = "http"
@@ -274,6 +274,21 @@ class _OpenTelemetrySemanticConventionStability:
         )
 
 
+def _get_semconv_opt_in_modes(
+    signal_types: tuple[_OpenTelemetryStabilitySignalType, ...],
+) -> dict[_OpenTelemetryStabilitySignalType, _StabilityMode]:
+    """Returns a mapping of signal type to mode for the provided
+    signal_types (one/more of DATABASE, HTTP, GEN_AI).
+    """
+    _OpenTelemetrySemanticConventionStability._initialize()
+    return {
+        signal_type: _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal_type
+        )
+        for signal_type in signal_types
+    }
+
+
 def _filter_semconv_duration_attrs(
     attrs: Mapping[str, AttributeValue],
     old_attrs: Container[AttributeValue],
@@ -326,8 +341,8 @@ def set_int_attribute(
     if value:
         try:
             result[key] = int(value)
-        except ValueError:
-            return
+        except (ValueError, TypeError):
+            pass
 
 
 def _set_http_method(
@@ -574,10 +589,14 @@ def _set_db_statement(
     statement: str,
     sem_conv_opt_in_mode: _StabilityMode,
 ) -> None:
+    # skip the statement if it's None but set it if it's an empty string
+    if statement is None:
+        return
+
     if _report_old(sem_conv_opt_in_mode):
-        set_string_attribute(result, DB_STATEMENT, statement)
+        result[DB_STATEMENT] = statement
     if _report_new(sem_conv_opt_in_mode):
-        set_string_attribute(result, DB_QUERY_TEXT, statement)
+        result[DB_QUERY_TEXT] = statement
 
 
 def _set_db_user(
@@ -588,6 +607,40 @@ def _set_db_user(
     if _report_old(sem_conv_opt_in_mode):
         set_string_attribute(result, DB_USER, user)
     # No new attribute - db.user was removed with no replacement
+
+
+def _set_db_operation(
+    result: MutableMapping[str, AttributeValue],
+    operation: str,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_OPERATION, operation)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, DB_OPERATION_NAME, operation)
+
+
+def _set_db_redis_database_index(
+    result: MutableMapping[str, AttributeValue],
+    database_index: int,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        if database_index is not None:
+            result[DB_REDIS_DATABASE_INDEX] = int(database_index)
+    # No new attribute - db.redis.database_index was removed with no replacement in semconv 1.38.0
+
+
+def _set_net_transport(
+    result: MutableMapping[str, AttributeValue],
+    old_transport: AttributeValue,
+    new_transport: AttributeValue,
+    sem_conv_opt_in_mode: _StabilityMode,
+) -> None:
+    if _report_old(sem_conv_opt_in_mode):
+        set_string_attribute(result, NET_TRANSPORT, old_transport)
+    if _report_new(sem_conv_opt_in_mode):
+        set_string_attribute(result, NETWORK_TRANSPORT, new_transport)
 
 
 # General
@@ -634,8 +687,63 @@ def _set_status(
             span.set_status(Status(status))
 
 
-# Get schema version based off of opt-in mode
 def _get_schema_url(mode: _StabilityMode) -> str:
+    """Get schema version URL for a single signal type's opt-in mode (backwards compatible).
+
+    For new instrumentations using multiple signal types, use
+    _get_schema_url_for_signal_types()
+    """
     if mode is _StabilityMode.DEFAULT:
-        return "https://opentelemetry.io/schemas/1.11.0"
+        return f"https://opentelemetry.io/schemas/{_LEGACY_SCHEMA_VERSION}"
     return Schemas.V1_21_0.value
+
+
+def _get_schema_version_for_opt_in_mode(
+    signal_type: _OpenTelemetryStabilitySignalType,
+    mode: _StabilityMode,
+) -> str:
+    """Get the schema version for a specific signal type and opt-in mode."""
+    if mode == _StabilityMode.DEFAULT:
+        return _LEGACY_SCHEMA_VERSION
+
+    signal_versions = {
+        _OpenTelemetryStabilitySignalType.HTTP: Schemas.V1_21_0.value,
+        _OpenTelemetryStabilitySignalType.DATABASE: Schemas.V1_25_0.value,
+        _OpenTelemetryStabilitySignalType.GEN_AI: Schemas.V1_26_0.value,
+    }
+    schema_url = signal_versions.get(signal_type)
+    if not schema_url:
+        return _LEGACY_SCHEMA_VERSION
+
+    path = urlparse(schema_url).path
+    schema_version = path.rstrip("/").split("/")[-1]
+    return schema_version or _LEGACY_SCHEMA_VERSION
+
+
+def _get_schema_url_for_signal_types(
+    signal_types: list[_OpenTelemetryStabilitySignalType],
+) -> str:
+    """Get the highest applicable schema URL for multiple signal types.
+
+    Note:
+        Instrumentors should call _OpenTelemetrySemanticConventionStability._initialize()
+        before using this function to ensure proper initialization of stability modes.
+
+    Args:
+        signal_types: List of signal types used by the instrumentation
+
+    Returns:
+        Schema URL string representing the highest applicable semconv version
+    """
+    highest_schema_version = _LEGACY_SCHEMA_VERSION
+    for signal_type in signal_types:
+        mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal_type
+        )
+        schema_version = _get_schema_version_for_opt_in_mode(signal_type, mode)
+        # Keep the highest for all signals
+        if package_version.Version(schema_version) > package_version.Version(
+            highest_schema_version
+        ):
+            highest_schema_version = schema_version
+    return f"https://opentelemetry.io/schemas/{highest_schema_version}"

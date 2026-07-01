@@ -15,8 +15,6 @@ interaction.
 
 Note: `.env <.env>`_ file configures additional environment variables:
 
-- ``OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`` configures
-  OpenTelemetry SDK to export logs and events.
 - ``OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true`` configures
   Claude Agent SDK instrumentation to capture prompt and completion contents
   on events.

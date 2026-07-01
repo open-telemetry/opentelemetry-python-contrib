@@ -1,16 +1,5 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The opentelemetry-instrumentation-aiohttp-server package allows tracing HTTP
@@ -269,14 +258,21 @@ def _parse_duration_attrs(
 
 
 def get_default_span_name(request: web.Request) -> str:
-    """Default implementation for get_default_span_details
+    """Returns the span name.
     Args:
         request: the request object itself.
     Returns:
-        The span name.
+        The span name as "{method} {canonical_name}" of a resource if possible or just "{method}".
     """
-    span_name = request.path.strip() or f"HTTP {request.method}"
-    return span_name
+    try:
+        resource = request.match_info.route.resource
+        path = resource.canonical
+    except AttributeError:
+        path = ""
+
+    if path:
+        return f"{request.method} {path}"
+    return f"{request.method}"
 
 
 def _get_view_func(request: web.Request) -> str:
@@ -571,7 +567,7 @@ def create_instrumented_application(
 
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for aiohttp.web.Application
 
     See `BaseInstrumentor`

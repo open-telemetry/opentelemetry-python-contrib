@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -23,7 +12,8 @@ from urllib import request
 from urllib.error import HTTPError
 from urllib.request import OpenerDirector
 
-import httpretty
+from mocket import Mocket, Mocketizer
+from mocket.mocks.mockhttp import Entry
 
 import opentelemetry.instrumentation.urllib  # pylint: disable=no-name-in-module,import-error
 from opentelemetry import trace
@@ -96,20 +86,21 @@ class URLLibIntegrationTestBase(abc.ABC):
         self.exclude_patch.start()
 
         URLLibInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body=b"Hello!")
-        httpretty.register_uri(
-            httpretty.GET,
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(Entry.GET, self.URL, body=b"Hello!")
+        Entry.single_register(
+            Entry.GET,
             self.URL_TIMEOUT,
-            body=self.timeout_exception_callback,
+            exception=socket.timeout(),
         )
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             self.URL_EXCEPTION,
-            body=self.base_exception_callback,
+            exception=Exception("test"),  # pylint: disable=broad-exception-raised
         )
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             "http://mock/status/500",
             status=500,
         )
@@ -118,15 +109,7 @@ class URLLibIntegrationTestBase(abc.ABC):
     def tearDown(self):
         super().tearDown()
         URLLibInstrumentor().uninstrument()
-        httpretty.disable()
-
-    @staticmethod
-    def timeout_exception_callback(*_, **__):
-        raise socket.timeout
-
-    @staticmethod
-    def base_exception_callback(*_, **__):
-        raise Exception("test")  # pylint: disable=broad-exception-raised
+        self.mocketizer.exit()
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
@@ -225,8 +208,8 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_excluded_urls_explicit(self):
         url_201 = "http://mock/status/201"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_201,
             status=201,
         )
@@ -240,8 +223,8 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_excluded_urls_from_env(self):
         url = "http://localhost/env_excluded_arg/123"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url,
             status=200,
         )
@@ -255,8 +238,8 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic(self):
         url_404 = "http://mock/status/404/"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_404,
             status=404,
         )
@@ -279,8 +262,8 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic_new_semconv(self):
         url_404 = "http://mock/status/404/"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_404,
             status=404,
         )
@@ -303,8 +286,8 @@ class URLLibIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic_both_semconv(self):
         url_404 = "http://mock/status/404/"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_404,
             status=404,
         )
@@ -421,7 +404,7 @@ class URLLibIntegrationTestBase(abc.ABC):
 
             span = self.assert_span()
 
-            headers_ = dict(httpretty.last_request().headers)
+            headers_ = dict(Mocket.last_request().headers)
             headers = {}
             for k, v in headers_.items():
                 headers[k.lower()] = v
@@ -521,6 +504,8 @@ class URLLibIntegrationTestBase(abc.ABC):
     def test_remove_sensitive_params(self):
         url = "http://username:password@mock/status/200"
 
+        Mocket.reset()
+        Entry.single_register(Entry.GET, url, exception=Exception("test"))
         with self.assertRaises(Exception):
             self.perform_request(url)
 
@@ -569,9 +554,12 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Custom-Header": "custom-value",
             "X-Another-Header": "another-value",
         }
-        url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
         )
         self.perform_request(url)
 
@@ -624,9 +612,12 @@ class URLLibIntegrationTestBase(abc.ABC):
             "Set-Cookie": "session=abc123",
             "X-Secret": "secret",
         }
-        url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
         )
         self.perform_request(
             url,
@@ -667,9 +658,12 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Custom-Response-B": "value-B",
             "X-Other-Response-Header": "other-value",
         }
-        url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
         )
         self.perform_request(
             url,
@@ -713,9 +707,12 @@ class URLLibIntegrationTestBase(abc.ABC):
         )
 
         response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
-        url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
         )
         self.perform_request(
             url,
@@ -744,9 +741,12 @@ class URLLibIntegrationTestBase(abc.ABC):
             "Content-Type": "text/plain",
             "Server": "TestServer/1.0",
         }
-        url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
         )
         self.perform_request(
             url,
@@ -812,9 +812,12 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Response-Two": "value2",
             "X-Response-Three": "value3",
         }
-        url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
         )
         self.perform_request(url)
 
@@ -874,9 +877,12 @@ class URLLibIntegrationTestBase(abc.ABC):
             "X-Response-One": "value1",
             "X-Response-Two": "value2",
         }
-        url = "http://mock//capture_headers"
-        httpretty.register_uri(
-            httpretty.GET, url, body="Hello!", adding_headers=response_headers
+        url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            url,
+            body="Hello!",
+            headers=response_headers,
         )
         self.perform_request(
             url, headers=[("x-request-one", "one"), ("x-request-two", "two")]

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The integration with PostgreSQL supports the `Psycopg`_ library. It can be enabled by
@@ -119,23 +108,23 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 SQLComment in span attribute
 ****************************
 If sqlcommenter is enabled, you can opt into the inclusion of sqlcomment in
-the query span ``db.statement`` attribute for your needs. If ``commenter_options``
-have been set, the span attribute comment will also be configured by this
-setting.
+the query span ``db.statement`` and/or ``db.query.text`` attribute for your
+needs. If ``commenter_options`` have been set, the span attribute comment
+will also be configured by this setting.
 
 .. code:: python
 
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 
     # Opts into sqlcomment for Psycopg trace integration.
-    # Opts into sqlcomment for `db.statement` span attribute.
+    # Opts into sqlcomment for `db.statement` and/or `db.query.text` span attribute.
     PsycopgInstrumentor().instrument(
         enable_commenter=True,
         enable_attribute_commenter=True,
     )
 
 Warning:
-    Capture of sqlcomment in ``db.statement`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
+    Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
 API
 ---
@@ -340,13 +329,12 @@ class CursorTracer(dbapi.CursorTracer):
         statement = args[0]
         if isinstance(statement, Composable):
             statement = statement.as_string(cursor)
-
-        # `statement` can be empty string. See #2643
-        if statement and isinstance(statement, str):
-            # Strip leading comments so we get the operation name.
-            return self._leading_comment_remover.sub("", statement).split()[0]
-
-        return ""
+            return (
+                self._leading_comment_remover.sub("", statement).split()[0]
+                if statement
+                else ""
+            )
+        return super().get_operation_name(cursor, args)
 
     def get_statement(self, cursor: CursorT, args: list[Any]) -> str:
         if not args:
@@ -354,8 +342,8 @@ class CursorTracer(dbapi.CursorTracer):
 
         statement = args[0]
         if isinstance(statement, Composable):
-            statement = statement.as_string(cursor)
-        return statement
+            return statement.as_string(cursor)
+        return super().get_statement(cursor, args)
 
 
 def _new_cursor_factory(

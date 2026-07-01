@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 This library allows tracing HTTP requests made by the
@@ -356,7 +345,8 @@ def _instrument(
         # See
         # https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-spans.md#http-client
         method = request.method
-        span_name = get_default_span_name(method)
+        sanitized_method = sanitize_method(method.strip())
+        span_name = get_default_span_name(sanitized_method)
 
         url = redact_url(request.url)
 
@@ -364,7 +354,7 @@ def _instrument(
         _set_http_method(
             span_attributes,
             method,
-            sanitize_method(method),
+            sanitized_method,
             sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
@@ -391,7 +381,7 @@ def _instrument(
         _set_http_method(
             metric_labels,
             method,
-            sanitize_method(method),
+            sanitized_method,
             sem_conv_opt_in_mode,
         )
 
@@ -560,7 +550,6 @@ def get_default_span_name(method: str) -> str:
     Returns:
         span name
     """
-    method = sanitize_method(method.strip())
     if method == "_OTHER":
         return "HTTP"
     return method
