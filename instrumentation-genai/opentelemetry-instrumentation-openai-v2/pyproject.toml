@@ -28,7 +28,7 @@ dependencies = [
   "opentelemetry-api ~= 1.40",
   "opentelemetry-instrumentation ~= 0.61b0",
   "opentelemetry-semantic-conventions ~= 0.61b0",
-  "opentelemetry-util-genai >= 0.4b0",
+  "opentelemetry-util-genai > 0.4b0, < 0.6b0",
 ]
 
 [project.optional-dependencies]
@@ -49,3 +49,37 @@ include = ["/src", "/tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/opentelemetry"]
+
+[tool.towncrier]
+directory = ".changelog"
+filename = "CHANGELOG.md"
+start_string = "<!-- changelog start -->\n"
+template = "../../scripts/changelog_template.j2"
+issue_format = "[#{issue}](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/{issue})"
+wrap = true
+issue_pattern = "^(\\d+)"
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "changed"
+name = "Changed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "deprecated"
+name = "Deprecated"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "removed"
+name = "Removed"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fixed"
+name = "Fixed"
+showcontent = true
