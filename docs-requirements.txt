@@ -47,7 +47,7 @@ remoulade[limits]>=5.0.0 ; python_version >= "3.12"
 remoulade>=0.50.0 ; python_version < "3.12"
 sqlalchemy>=1.0
 starlette~=0.50
-tornado>=5.1.1
+tornado>=6.5.7
 tortoise-orm>=0.17.0
 wrapt~=2.1
 
