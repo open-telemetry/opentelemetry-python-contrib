@@ -1,1 +1,1 @@
-Drop `opentelemetry-instrumentation-elasticsearch` since all supported `elasticsearch` versions have a native OTel instrumentation
+`opentelemetry-instrumentation-elasticsearch`: drop the package since all supported `elasticsearch` versions have a native OTel instrumentation
