@@ -43,7 +43,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_TRANSPORT,
 )
-from opentelemetry.trace.status import StatusCode
+from opentelemetry.trace.status import Status, StatusCode
 
 
 def stability_mode(mode):
@@ -520,6 +520,61 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         # Verify status code set for metrics independent of tracing decision
         self.assertIn("http.status_code", metrics_attributes)
         self.assertIn("http.response.status_code", metrics_attributes)
+
+    def test_set_status_preserves_existing_error_status(self):
+        # An ERROR status already set on the span (e.g. by the application or
+        # another instrumentation) must not be overwritten by _set_status, which
+        # would drop its description. See issue #3713.
+        span = Mock()
+        span.is_recording.return_value = True
+        span.status = Status(StatusCode.ERROR, "original error description")
+        _set_status(
+            span=span,
+            metrics_attributes={},
+            status_code=500,
+            status_code_str="500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        span.set_status.assert_not_called()
+
+    def test_set_status_sets_error_when_status_unset(self):
+        # With no error already set (UNSET), _set_status must still record the
+        # ERROR status for an error response.
+        span = Mock()
+        span.is_recording.return_value = True
+        span.status = Status(StatusCode.UNSET)
+        _set_status(
+            span=span,
+            metrics_attributes={},
+            status_code=500,
+            status_code_str="500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        span.set_status.assert_called_once()
+        self.assertEqual(
+            span.set_status.call_args[0][0].status_code, StatusCode.ERROR
+        )
+
+    def test_set_status_sets_error_when_no_status_attribute(self):
+        # Spans that do not expose a readable status (getattr -> None) are still
+        # updated normally.
+        span = Mock()
+        span.is_recording.return_value = True
+        span.status = None
+        _set_status(
+            span=span,
+            metrics_attributes={},
+            status_code=500,
+            status_code_str="500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        span.set_status.assert_called_once()
+        self.assertEqual(
+            span.set_status.call_args[0][0].status_code, StatusCode.ERROR
+        )
 
 
 # pylint: disable=too-many-public-methods

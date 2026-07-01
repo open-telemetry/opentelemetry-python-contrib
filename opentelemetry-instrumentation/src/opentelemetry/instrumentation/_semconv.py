@@ -684,7 +684,17 @@ def _set_status(
                     span.set_attribute(ERROR_TYPE, status_code_str)
                 metrics_attributes[ERROR_TYPE] = status_code_str
         if span.is_recording():
-            span.set_status(Status(status))
+            # Do not override a status that has already been set on the span.
+            # The SDK ignores an UNSET status and keeps an existing OK, but it
+            # will replace an existing ERROR, dropping any description set by
+            # the application or another instrumentation. Skip in that case so
+            # the more specific status is preserved (see issue #3713).
+            current_status = getattr(span, "status", None)
+            if (
+                current_status is None
+                or current_status.status_code is not StatusCode.ERROR
+            ):
+                span.set_status(Status(status))
 
 
 def _get_schema_url(mode: _StabilityMode) -> str:
