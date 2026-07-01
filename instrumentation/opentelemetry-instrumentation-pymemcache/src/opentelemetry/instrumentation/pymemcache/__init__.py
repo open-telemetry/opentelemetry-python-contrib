@@ -101,7 +101,15 @@ def _with_tracer_wrapper(func):
             if hasattr(wrapped, "__wrapped__"):
                 return wrapped(*args, **kwargs)
 
-            return func(tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs)
+            return func(
+                tracer,
+                cmd,
+                sem_conv_opt_in_mode,
+                wrapped,
+                instance,
+                args,
+                kwargs,
+            )
 
         return wrapper
 
@@ -109,7 +117,9 @@ def _with_tracer_wrapper(func):
 
 
 @_with_tracer_wrapper
-def _wrap_cmd(tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs):
+def _wrap_cmd(
+    tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs
+):
     with tracer.start_as_current_span(
         cmd, kind=SpanKind.CLIENT, attributes={}
     ) as span:
@@ -127,7 +137,9 @@ def _wrap_cmd(tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs
                 for k, v in stmt_attrs.items():
                     span.set_attribute(k, v)
 
-                _set_connection_attributes(span, instance, sem_conv_opt_in_mode)
+                _set_connection_attributes(
+                    span, instance, sem_conv_opt_in_mode
+                )
         except Exception as ex:  # pylint: disable=broad-except
             logger.warning(
                 "Failed to set attributes for pymemcache span %s", str(ex)
@@ -169,12 +181,28 @@ def _get_address_attributes(instance, sem_conv_opt_in_mode):
     if hasattr(instance, "server"):
         if isinstance(instance.server, tuple):
             host, port = instance.server
-            _set_http_net_peer_name_client(address_attributes, host, sem_conv_opt_in_mode)
-            _set_http_peer_port_client(address_attributes, port, sem_conv_opt_in_mode)
-            _set_net_transport(address_attributes, NetTransportValues.IP_TCP.value, NetworkTransportValues.TCP.value, sem_conv_opt_in_mode)
+            _set_http_net_peer_name_client(
+                address_attributes, host, sem_conv_opt_in_mode
+            )
+            _set_http_peer_port_client(
+                address_attributes, port, sem_conv_opt_in_mode
+            )
+            _set_net_transport(
+                address_attributes,
+                NetTransportValues.IP_TCP.value,
+                NetworkTransportValues.TCP.value,
+                sem_conv_opt_in_mode,
+            )
         elif isinstance(instance.server, str):
-            _set_http_net_peer_name_client(address_attributes, instance.server, sem_conv_opt_in_mode)
-            _set_net_transport(address_attributes, NetTransportValues.OTHER.value, NetworkTransportValues.PIPE.value, sem_conv_opt_in_mode)
+            _set_http_net_peer_name_client(
+                address_attributes, instance.server, sem_conv_opt_in_mode
+            )
+            _set_net_transport(
+                address_attributes,
+                NetTransportValues.OTHER.value,
+                NetworkTransportValues.PIPE.value,
+                sem_conv_opt_in_mode,
+            )
 
     return address_attributes
 
