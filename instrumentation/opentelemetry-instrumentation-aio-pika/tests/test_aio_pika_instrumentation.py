@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-from unittest import TestCase
+import asyncio
+from unittest import TestCase, mock
+
 import wrapt
 from aio_pika import Exchange, Queue
 
