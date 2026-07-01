@@ -29,7 +29,6 @@ dependencies = [
   "opentelemetry-instrumentation-confluent-kafka[instruments]",
   "opentelemetry-instrumentation-dbapi",
   "opentelemetry-instrumentation-django[instruments]",
-  "opentelemetry-instrumentation-elasticsearch[instruments]",
   "opentelemetry-instrumentation-falcon[instruments]",
   "opentelemetry-instrumentation-fastapi[instruments]",
   "opentelemetry-instrumentation-flask[instruments]",
@@ -103,7 +102,6 @@ opentelemetry-instrumentation-click = { workspace = true }
 opentelemetry-instrumentation-confluent-kafka = { workspace = true }
 opentelemetry-instrumentation-dbapi = { workspace = true }
 opentelemetry-instrumentation-django = { workspace = true }
-opentelemetry-instrumentation-elasticsearch = { workspace = true }
 opentelemetry-instrumentation-falcon = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
 opentelemetry-instrumentation-flask = { workspace = true }
