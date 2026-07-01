@@ -23,6 +23,23 @@ class TestSanitizeMethod(unittest.TestCase):
         method = sanitize_method("UNKNOWN")
         self.assertEqual(method, "_OTHER")
 
+    def test_known_methods(self):
+        known_methods = [
+            "GET",
+            "HEAD",
+            "POST",
+            "PUT",
+            "DELETE",
+            "CONNECT",
+            "OPTIONS",
+            "TRACE",
+            "PATCH",
+            "QUERY",
+        ]
+        for method in known_methods:
+            with self.subTest(method=method):
+                self.assertEqual(method, sanitize_method(method))
+
     @patch.dict(
         "os.environ",
         {
