@@ -33,14 +33,6 @@ import cassandra.cluster
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
-from opentelemetry.instrumentation.cassandra.package import (
-    _instruments_any,
-    _instruments_cassandra_driver,
-    _instruments_scylla_driver,
-)
-from opentelemetry.instrumentation.cassandra.version import __version__
-from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
-from opentelemetry.instrumentation.utils import unwrap
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
@@ -50,9 +42,19 @@ from opentelemetry.instrumentation._semconv import (
     _set_db_system,
     _set_http_net_peer_name_client,
 )
+from opentelemetry.instrumentation.cassandra.package import (
+    _instruments_any,
+    _instruments_cassandra_driver,
+    _instruments_scylla_driver,
+)
+from opentelemetry.instrumentation.cassandra.version import __version__
+from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.utils import unwrap
 
 
-def _instrument(tracer_provider, include_db_statement=False, sem_conv_opt_in_mode=None):
+def _instrument(
+    tracer_provider, include_db_statement=False, sem_conv_opt_in_mode=None
+):
     """Instruments the cassandra-driver/scylla-driver module
 
     Wraps cassandra.cluster.Session.execute_async().
@@ -75,11 +77,15 @@ def _instrument(tracer_provider, include_db_statement=False, sem_conv_opt_in_mod
                 attrs = {}
                 _set_db_system(attrs, "cassandra", sem_conv_opt_in_mode)
                 _set_db_name(attrs, instance.keyspace, sem_conv_opt_in_mode)
-                _set_http_net_peer_name_client(attrs, instance.cluster.contact_points, sem_conv_opt_in_mode)
+                _set_http_net_peer_name_client(
+                    attrs,
+                    instance.cluster.contact_points,
+                    sem_conv_opt_in_mode,
+                )
                 if include_db_statement:
                     query = args[0]
                     _set_db_statement(attrs, str(query), sem_conv_opt_in_mode)
-                span.set_attributes(attrs)    
+                span.set_attributes(attrs)
             response = func(*args, **kwargs)
             return response
 

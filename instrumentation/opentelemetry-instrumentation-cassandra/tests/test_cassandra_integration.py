@@ -1,4 +1,4 @@
-﻿# Copyright The OpenTelemetry Authors
+# Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
 from importlib.metadata import PackageNotFoundError
@@ -10,17 +10,15 @@ from wrapt import BoundFunctionWrapper
 
 import opentelemetry.instrumentation.cassandra
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.cassandra import CassandraInstrumentor
 from opentelemetry.instrumentation.cassandra.package import (
     _instruments_cassandra_driver,
     _instruments_scylla_driver,
 )
 from opentelemetry.sdk import resources
-from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind
-from opentelemetry.instrumentation._semconv import (
-    _OpenTelemetrySemanticConventionStability,
-)
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_STATEMENT,
@@ -37,6 +35,9 @@ from opentelemetry.semconv.attributes.db_attributes import (
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
 )
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanKind
+
 
 def connect_and_execute_query():
     cluster = cassandra.cluster.Cluster()
@@ -260,6 +261,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
             (_instruments_cassandra_driver, _instruments_scylla_driver),
         )
 
+
 class TestCassandraSemconvStability(TestBase):
     def tearDown(self):
         super().tearDown()
@@ -321,7 +323,9 @@ class TestCassandraSemconvStability(TestBase):
 
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "cassandra")
-            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
             self.assertIn(SERVER_ADDRESS, span.attributes)
             self.assertNotIn(DB_NAME, span.attributes)
             self.assertNotIn(DB_SYSTEM, span.attributes)
@@ -353,11 +357,14 @@ class TestCassandraSemconvStability(TestBase):
 
             self.assertEqual(span.attributes[DB_NAME], "test")
             self.assertEqual(span.attributes[DB_SYSTEM], "cassandra")
-            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertEqual(
+                span.attributes[DB_STATEMENT], "SELECT * FROM test"
+            )
             self.assertIn(NET_PEER_NAME, span.attributes)
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "cassandra")
-            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
             self.assertIn(SERVER_ADDRESS, span.attributes)
         _OpenTelemetrySemanticConventionStability._initialized = False
-
