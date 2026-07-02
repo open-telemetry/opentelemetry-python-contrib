@@ -47,7 +47,6 @@ dependencies = [
     "opentelemetry-instrumentation-confluent-kafka==0.65b0.dev",
     "opentelemetry-instrumentation-dbapi==0.65b0.dev",
     "opentelemetry-instrumentation-django==0.65b0.dev",
-    "opentelemetry-instrumentation-elasticsearch==0.65b0.dev",
     "opentelemetry-instrumentation-exceptions==0.65b0.dev",
     "opentelemetry-instrumentation-falcon==0.65b0.dev",
     "opentelemetry-instrumentation-fastapi==0.65b0.dev",

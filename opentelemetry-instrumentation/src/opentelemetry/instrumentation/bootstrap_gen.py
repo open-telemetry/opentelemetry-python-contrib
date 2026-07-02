@@ -82,10 +82,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-django==0.65b0.dev",
     },
     {
-        "library": "elasticsearch >= 6.0",
-        "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.65b0.dev",
-    },
-    {
         "library": "falcon >= 1.4.1, < 5.0.0",
         "instrumentation": "opentelemetry-instrumentation-falcon==0.65b0.dev",
     },
