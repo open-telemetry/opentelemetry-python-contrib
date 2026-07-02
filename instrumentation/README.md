@@ -19,7 +19,6 @@
 | [opentelemetry-instrumentation-confluent-kafka](./opentelemetry-instrumentation-confluent-kafka) | confluent-kafka >= 1.8.2, < 3.0.0 | No | development
 | [opentelemetry-instrumentation-dbapi](./opentelemetry-instrumentation-dbapi) | dbapi | No | migration
 | [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 2.0 | Yes | development
-| [opentelemetry-instrumentation-elasticsearch](./opentelemetry-instrumentation-elasticsearch) | elasticsearch >= 6.0 | No | development
 | [opentelemetry-instrumentation-exceptions](./opentelemetry-instrumentation-exceptions) | exceptions | No | development
 | [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 5.0.0 | Yes | migration
 | [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.92 | Yes | migration
