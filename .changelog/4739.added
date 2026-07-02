@@ -1,1 +1,1 @@
-opentelemetry-instrumentation-pymemcache: add semconv stability migration support
+`opentelemetry-instrumentation-pymemcache`: add database semconv stability migration support
