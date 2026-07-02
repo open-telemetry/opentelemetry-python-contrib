@@ -83,15 +83,6 @@ COMMANDS = [
 ]
 
 
-def _set_connection_attributes(span, instance, sem_conv_opt_in_mode):
-    if not span.is_recording():
-        return
-    for key, value in _get_address_attributes(
-        instance, sem_conv_opt_in_mode
-    ).items():
-        span.set_attribute(key, value)
-
-
 def _with_tracer_wrapper(func):
     """Helper for providing tracer for wrapper functions."""
 
@@ -132,14 +123,9 @@ def _wrap_cmd(
 
                 query = f"{cmd}{' ' if vals else ''}{vals}"
 
-                stmt_attrs = {}
-                _set_db_statement(stmt_attrs, query, sem_conv_opt_in_mode)
-                for k, v in stmt_attrs.items():
-                    span.set_attribute(k, v)
-
-                _set_connection_attributes(
-                    span, instance, sem_conv_opt_in_mode
-                )
+                attrs = _get_address_attributes(instance, sem_conv_opt_in_mode)
+                _set_db_statement(attrs, query, sem_conv_opt_in_mode)
+                span.set_attributes(attrs)
         except Exception as ex:  # pylint: disable=broad-except
             logger.warning(
                 "Failed to set attributes for pymemcache span %s", str(ex)
@@ -175,9 +161,9 @@ def _get_query_string(arg):
 def _get_address_attributes(instance, sem_conv_opt_in_mode):
     """Attempt to get host and port from Client instance."""
     address_attributes = {}
-
     _set_db_system(address_attributes, "memcached", sem_conv_opt_in_mode)
-
+    # client.base.Client contains server attribute which is either a host/port tuple, or unix socket path string
+    # https://github.com/pinterest/pymemcache/blob/f02ddf73a28c09256589b8afbb3ee50f1171cac7/pymemcache/client/base.py#L228
     if hasattr(instance, "server"):
         if isinstance(instance.server, tuple):
             host, port = instance.server
