@@ -298,6 +298,10 @@ class TestCassandraSemconvStability(TestBase):
         self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
         self.assertNotIn(DB_QUERY_TEXT, span.attributes)
         self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
 
     @mock.patch("cassandra.cluster.Cluster.connect")
     @mock.patch("cassandra.cluster.Session.__init__")
@@ -331,6 +335,10 @@ class TestCassandraSemconvStability(TestBase):
             self.assertNotIn(DB_SYSTEM, span.attributes)
             self.assertNotIn(DB_STATEMENT, span.attributes)
             self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
         _OpenTelemetrySemanticConventionStability._initialized = False
 
     @mock.patch("cassandra.cluster.Cluster.connect")
@@ -367,4 +375,8 @@ class TestCassandraSemconvStability(TestBase):
                 span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
             )
             self.assertIn(SERVER_ADDRESS, span.attributes)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
         _OpenTelemetrySemanticConventionStability._initialized = False
