@@ -3,3 +3,5 @@
 
 
 _instruments = ("tortoise-orm >= 0.17.0",)
+
+_semconv_status = "migration"

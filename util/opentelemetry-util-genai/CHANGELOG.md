@@ -2,20 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+<!--
+Do *NOT* add changelog entries here!
+
+This changelog is managed by towncrier and is compiled at release time.
+
+See https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/CONTRIBUTING.md#changelog for details.
+-->
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
-
-- Add shared sync and async stream wrapper base classes for GenAI instrumentations.
-  ([#4500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4500))
-- Change `InferenceInvocation` init params to only accept base params
-- Pass in `attributes` on invocation `_start` so samplers have access to attributes.
-  ([#4538](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4538))
-- Apply attribute for sampling on instantiation of all invocation types.
-  ([#4553](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4553))
-- Minor code cleanup and changes in preparation of moving google's GenAI instrumentation
-  library to use this util library ([#4556](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4556))
+<!-- changelog start -->
 
 ## Version 0.4b0 (2026-05-01)
 

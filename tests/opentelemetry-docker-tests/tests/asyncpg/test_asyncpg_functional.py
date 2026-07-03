@@ -2,13 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextlib
 import os
 from collections import namedtuple
+from unittest import mock
 from unittest.mock import patch
 
 import asyncpg
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -26,6 +32,15 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_PORT,
     NET_TRANSPORT,
 )
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import StatusCode
 
@@ -39,6 +54,21 @@ POSTGRES_USER = os.getenv("POSTGRESQL_USER", "testuser")
 def async_call(coro):
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(coro)
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class CheckSpanMixin:
@@ -99,6 +129,29 @@ class TestFunctionalAsyncPG(TestBase, CheckSpanMixin):
         self.check_span(spans[0])
         self.assertEqual(spans[0].name, "SELECT")
         self.assertEqual(spans[0].attributes[DB_STATEMENT], "SELECT 42;")
+
+    def test_instrumented_fetch_method_without_arguments_stable_semconv(
+        self, *_, **__
+    ):
+        """Should create a span from fetch() using stable semconv attributes."""
+        with use_semconv_opt_in("database"):
+            AsyncPGInstrumentor().uninstrument()
+            AsyncPGInstrumentor().instrument(
+                tracer_provider=self.tracer_provider
+            )
+            async_call(self._connection.fetch("SELECT 42;"))
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertIs(StatusCode.UNSET, spans[0].status.status_code)
+        self.assertEqual(spans[0].name, "SELECT")
+        self.assertEqual(spans[0].attributes[DB_SYSTEM_NAME], "postgresql")
+        self.assertEqual(spans[0].attributes[DB_NAMESPACE], POSTGRES_DB_NAME)
+        self.assertEqual(spans[0].attributes[DB_QUERY_TEXT], "SELECT 42;")
+        self.assertEqual(spans[0].attributes[SERVER_ADDRESS], POSTGRES_HOST)
+        self.assertEqual(spans[0].attributes[SERVER_PORT], POSTGRES_PORT)
+        self.assertNotIn(DB_STATEMENT, spans[0].attributes)
+        self.assertNotIn(DB_SYSTEM, spans[0].attributes)
+        self.assertNotIn(DB_NAME, spans[0].attributes)
 
     def test_instrumented_fetch_method_empty_query(self, *_, **__):
         """Should create an error span for fetch() with the database name as the span name."""
