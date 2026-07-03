@@ -120,6 +120,9 @@ class _DjangoMiddleware:
         "opentelemetry-instrumentor-django.duration_attr_key"
     )
     _environ_timer_key = "opentelemetry-instrumentor-django.timer_key"
+    _environ_url_disabled_key = (
+        "opentelemetry-instrumentor-django.url_disabled_key"
+    )
     _traced_request_attrs = get_traced_request_attrs("DJANGO")
     _excluded_urls = get_excluded_urls("DJANGO")
     _tracer = None
@@ -171,7 +174,11 @@ class _DjangoMiddleware:
         # Read more about request.META here:
         # https://docs.djangoproject.com/en/3.0/ref/request-response/#django.http.HttpRequest.META
 
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        is_url_disabled = self._excluded_urls.url_disabled(
+            request.build_absolute_uri("?")
+        )
+        request.META[self._environ_url_disabled_key] = is_url_disabled
+        if is_url_disabled:
             return
 
         is_asgi_request = _is_asgi_request(request)
@@ -282,7 +289,7 @@ class _DjangoMiddleware:
     def process_view(self, request, view_func, *args, **kwargs):
         # Process view is executed before the view function, here we get the
         # route template from request.resolver_match.  It is not set yet in process_request
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if request.META.get(self._environ_url_disabled_key, False):
             return
 
         if (
@@ -307,7 +314,7 @@ class _DjangoMiddleware:
                         duration_attrs[HTTP_ROUTE] = route
 
     def process_exception(self, request, exception):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if request.META.get(self._environ_url_disabled_key, False):
             return
 
         if self._environ_activation_key in request.META.keys():
@@ -317,7 +324,7 @@ class _DjangoMiddleware:
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     def process_response(self, request, response):
-        if self._excluded_urls.url_disabled(request.build_absolute_uri("?")):
+        if request.META.get(self._environ_url_disabled_key, False):
             return response
 
         is_asgi_request = _is_asgi_request(request)
