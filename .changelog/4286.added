@@ -1,0 +1,1 @@
+Add `opentelemetry-instrumentation-structlog` instrumentation package and shared `log_utils` helpers for emitting structlog events as OpenTelemetry logs.
