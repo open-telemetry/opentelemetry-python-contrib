@@ -509,6 +509,10 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
             self.assertNotIn(DB_STATEMENT, span.attributes)
             self.assertNotIn(NET_PEER_NAME, span.attributes)
             self.assertNotIn(NET_PEER_PORT, span.attributes)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
         _OpenTelemetrySemanticConventionStability._initialized = False
 
     def test_dup_semconv(self):
@@ -534,6 +538,10 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
             self.assertEqual(span.attributes[DB_STATEMENT], "set key")
             self.assertEqual(span.attributes[NET_PEER_NAME], TEST_HOST)
             self.assertEqual(span.attributes[NET_PEER_PORT], TEST_PORT)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
         _OpenTelemetrySemanticConventionStability._initialized = False
 
     def test_default_semconv(self):
@@ -552,6 +560,10 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         self.assertNotIn(DB_QUERY_TEXT, span.attributes)
         self.assertNotIn(SERVER_ADDRESS, span.attributes)
         self.assertNotIn(SERVER_PORT, span.attributes)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
 
     def test_uninstrumented(self):
         PymemcacheInstrumentor().uninstrument()
