@@ -19,7 +19,6 @@
 | [opentelemetry-instrumentation-confluent-kafka](./opentelemetry-instrumentation-confluent-kafka) | confluent-kafka >= 1.8.2, < 3.0.0 | No | development
 | [opentelemetry-instrumentation-dbapi](./opentelemetry-instrumentation-dbapi) | dbapi | No | migration
 | [opentelemetry-instrumentation-django](./opentelemetry-instrumentation-django) | django >= 2.0 | Yes | development
-| [opentelemetry-instrumentation-elasticsearch](./opentelemetry-instrumentation-elasticsearch) | elasticsearch >= 6.0 | No | development
 | [opentelemetry-instrumentation-exceptions](./opentelemetry-instrumentation-exceptions) | exceptions | No | development
 | [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 5.0.0 | Yes | migration
 | [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.92 | Yes | migration
@@ -45,6 +44,7 @@
 | [opentelemetry-instrumentation-sqlalchemy](./opentelemetry-instrumentation-sqlalchemy) | sqlalchemy >= 1.0.0, < 2.1.0 | Yes | migration
 | [opentelemetry-instrumentation-sqlite3](./opentelemetry-instrumentation-sqlite3) | sqlite3 | No | migration
 | [opentelemetry-instrumentation-starlette](./opentelemetry-instrumentation-starlette) | starlette >= 0.13 | Yes | development
+| [opentelemetry-instrumentation-structlog](./opentelemetry-instrumentation-structlog) | structlog >= 21.1 | No | development
 | [opentelemetry-instrumentation-system-metrics](./opentelemetry-instrumentation-system-metrics) | psutil >= 5 | No | development
 | [opentelemetry-instrumentation-threading](./opentelemetry-instrumentation-threading) | threading | No | development
 | [opentelemetry-instrumentation-tornado](./opentelemetry-instrumentation-tornado) | tornado >= 5.1.1 | Yes | migration
