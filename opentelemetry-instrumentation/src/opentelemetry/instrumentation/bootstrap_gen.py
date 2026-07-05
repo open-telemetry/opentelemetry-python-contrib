@@ -82,10 +82,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-django==0.65b0.dev",
     },
     {
-        "library": "elasticsearch >= 6.0",
-        "instrumentation": "opentelemetry-instrumentation-elasticsearch==0.65b0.dev",
-    },
-    {
         "library": "falcon >= 1.4.1, < 5.0.0",
         "instrumentation": "opentelemetry-instrumentation-falcon==0.65b0.dev",
     },
@@ -180,6 +176,10 @@ libraries = [
     {
         "library": "starlette >= 0.13",
         "instrumentation": "opentelemetry-instrumentation-starlette==0.65b0.dev",
+    },
+    {
+        "library": "structlog >= 21.1",
+        "instrumentation": "opentelemetry-instrumentation-structlog==0.65b0.dev",
     },
     {
         "library": "psutil >= 5",

@@ -2,4 +2,4 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-_instruments = ("elasticsearch >= 6.0",)
+_instruments = ("structlog >= 21.1",)
