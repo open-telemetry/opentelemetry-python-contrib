@@ -32,19 +32,25 @@ from typing import Collection
 import pymemcache
 from wrapt import wrap_function_wrapper as _wrap
 
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _set_db_statement,
+    _set_db_system,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+    _set_net_transport,
+)
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pymemcache.package import _instruments
 from opentelemetry.instrumentation.pymemcache.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_STATEMENT,
-    DB_SYSTEM,
-)
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
-    NET_TRANSPORT,
     NetTransportValues,
+)
+from opentelemetry.semconv.attributes.network_attributes import (
+    NetworkTransportValues,
 )
 from opentelemetry.trace import SpanKind, get_tracer
 
@@ -77,23 +83,24 @@ COMMANDS = [
 ]
 
 
-def _set_connection_attributes(span, instance):
-    if not span.is_recording():
-        return
-    for key, value in _get_address_attributes(instance).items():
-        span.set_attribute(key, value)
-
-
 def _with_tracer_wrapper(func):
     """Helper for providing tracer for wrapper functions."""
 
-    def _with_tracer(tracer, cmd):
+    def _with_tracer(tracer, cmd, sem_conv_opt_in_mode):
         def wrapper(wrapped, instance, args, kwargs):
             # prevent double wrapping
             if hasattr(wrapped, "__wrapped__"):
                 return wrapped(*args, **kwargs)
 
-            return func(tracer, cmd, wrapped, instance, args, kwargs)
+            return func(
+                tracer,
+                cmd,
+                sem_conv_opt_in_mode,
+                wrapped,
+                instance,
+                args,
+                kwargs,
+            )
 
         return wrapper
 
@@ -101,7 +108,9 @@ def _with_tracer_wrapper(func):
 
 
 @_with_tracer_wrapper
-def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
+def _wrap_cmd(
+    tracer, cmd, sem_conv_opt_in_mode, wrapped, instance, args, kwargs
+):
     with tracer.start_as_current_span(
         cmd, kind=SpanKind.CLIENT, attributes={}
     ) as span:
@@ -113,9 +122,10 @@ def _wrap_cmd(tracer, cmd, wrapped, instance, args, kwargs):
                     vals = _get_query_string(args[0])
 
                 query = f"{cmd}{' ' if vals else ''}{vals}"
-                span.set_attribute(DB_STATEMENT, query)
 
-                _set_connection_attributes(span, instance)
+                attrs = _get_address_attributes(instance, sem_conv_opt_in_mode)
+                _set_db_statement(attrs, query, sem_conv_opt_in_mode)
+                span.set_attributes(attrs)
         except Exception as ex:  # pylint: disable=broad-except
             logger.warning(
                 "Failed to set attributes for pymemcache span %s", str(ex)
@@ -148,22 +158,37 @@ def _get_query_string(arg):
     return keys
 
 
-def _get_address_attributes(instance):
+def _get_address_attributes(instance, sem_conv_opt_in_mode):
     """Attempt to get host and port from Client instance."""
     address_attributes = {}
-    address_attributes[DB_SYSTEM] = "memcached"
-
+    _set_db_system(address_attributes, "memcached", sem_conv_opt_in_mode)
     # client.base.Client contains server attribute which is either a host/port tuple, or unix socket path string
     # https://github.com/pinterest/pymemcache/blob/f02ddf73a28c09256589b8afbb3ee50f1171cac7/pymemcache/client/base.py#L228
     if hasattr(instance, "server"):
         if isinstance(instance.server, tuple):
             host, port = instance.server
-            address_attributes[NET_PEER_NAME] = host
-            address_attributes[NET_PEER_PORT] = port
-            address_attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
+            _set_http_net_peer_name_client(
+                address_attributes, host, sem_conv_opt_in_mode
+            )
+            _set_http_peer_port_client(
+                address_attributes, port, sem_conv_opt_in_mode
+            )
+            _set_net_transport(
+                address_attributes,
+                NetTransportValues.IP_TCP.value,
+                NetworkTransportValues.TCP.value,
+                sem_conv_opt_in_mode,
+            )
         elif isinstance(instance.server, str):
-            address_attributes[NET_PEER_NAME] = instance.server
-            address_attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
+            _set_http_net_peer_name_client(
+                address_attributes, instance.server, sem_conv_opt_in_mode
+            )
+            _set_net_transport(
+                address_attributes,
+                NetTransportValues.OTHER.value,
+                NetworkTransportValues.PIPE.value,
+                sem_conv_opt_in_mode,
+            )
 
     return address_attributes
 
@@ -175,19 +200,26 @@ class PymemcacheInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE,
+        )
+
         tracer_provider = kwargs.get("tracer_provider")
         tracer = get_tracer(
             __name__,
             __version__,
             tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=_get_schema_url_for_signal_types(
+                [_OpenTelemetryStabilitySignalType.DATABASE]
+            ),
         )
 
         for cmd in COMMANDS:
             _wrap(
                 "pymemcache.client.base",
                 f"Client.{cmd}",
-                _wrap_cmd(tracer, cmd),
+                _wrap_cmd(tracer, cmd, sem_conv_opt_in_mode),
             )
 
     def _uninstrument(self, **kwargs):

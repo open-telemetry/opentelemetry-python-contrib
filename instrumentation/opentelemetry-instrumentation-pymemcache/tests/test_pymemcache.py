@@ -15,6 +15,9 @@ from pymemcache.exceptions import (
 )
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.pymemcache import PymemcacheInstrumentor
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
@@ -23,6 +26,14 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import get_tracer
@@ -474,6 +485,85 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         spans = self.memory_exporter.get_finished_spans()
 
         self.check_spans(spans, 1, ["stats"])
+
+    def test_new_semconv(self):
+        PymemcacheInstrumentor().uninstrument()
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            PymemcacheInstrumentor().instrument()
+            client = self.make_client([b"STORED\r\n"])
+            client.set(b"key", b"value", noreply=False)
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "memcached")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "set key")
+            self.assertEqual(span.attributes[SERVER_ADDRESS], TEST_HOST)
+            self.assertEqual(span.attributes[SERVER_PORT], TEST_PORT)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def test_dup_semconv(self):
+        PymemcacheInstrumentor().uninstrument()
+        with mock.patch.dict(
+            "os.environ",
+            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database/dup"},
+        ):
+            _OpenTelemetrySemanticConventionStability._initialized = False
+            PymemcacheInstrumentor().instrument()
+            client = self.make_client([b"STORED\r\n"])
+            client.set(b"key", b"value", noreply=False)
+
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            span = spans[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "memcached")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "set key")
+            self.assertEqual(span.attributes[SERVER_ADDRESS], TEST_HOST)
+            self.assertEqual(span.attributes[SERVER_PORT], TEST_PORT)
+            self.assertEqual(span.attributes[DB_SYSTEM], "memcached")
+            self.assertEqual(span.attributes[DB_STATEMENT], "set key")
+            self.assertEqual(span.attributes[NET_PEER_NAME], TEST_HOST)
+            self.assertEqual(span.attributes[NET_PEER_PORT], TEST_PORT)
+            self.assertEqual(
+                span.instrumentation_scope.schema_url,
+                "https://opentelemetry.io/schemas/1.25.0",
+            )
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def test_default_semconv(self):
+        client = self.make_client([b"STORED\r\n"])
+        client.set(b"key", b"value", noreply=False)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.attributes[DB_SYSTEM], "memcached")
+        self.assertEqual(span.attributes[DB_STATEMENT], "set key")
+        self.assertEqual(span.attributes[NET_PEER_NAME], TEST_HOST)
+        self.assertEqual(span.attributes[NET_PEER_PORT], TEST_PORT)
+        self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+        self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
 
     def test_uninstrumented(self):
         PymemcacheInstrumentor().uninstrument()
