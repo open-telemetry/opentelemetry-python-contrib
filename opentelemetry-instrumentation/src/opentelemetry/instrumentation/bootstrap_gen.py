@@ -178,6 +178,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-starlette==0.65b0.dev",
     },
     {
+        "library": "structlog >= 21.1",
+        "instrumentation": "opentelemetry-instrumentation-structlog==0.65b0.dev",
+    },
+    {
         "library": "psutil >= 5",
         "instrumentation": "opentelemetry-instrumentation-system-metrics==0.65b0.dev",
     },
