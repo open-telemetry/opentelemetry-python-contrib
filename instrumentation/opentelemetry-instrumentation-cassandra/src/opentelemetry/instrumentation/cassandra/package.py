@@ -7,3 +7,4 @@ _instruments_scylla_driver = "scylla-driver ~= 3.25"
 
 _instruments = ()
 _instruments_any = (_instruments_cassandra_driver, _instruments_scylla_driver)
+_semconv_status = "migration"
