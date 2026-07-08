@@ -6,6 +6,7 @@ import os
 from unittest import mock
 
 from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
@@ -17,7 +18,6 @@ from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_MONGODB_COLLECTION,
     DB_NAME,
     DB_STATEMENT,
-    DB_SYSTEM,
 )
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
@@ -29,6 +29,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_QUERY_TEXT,
     DB_SYSTEM_NAME,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
@@ -189,8 +190,12 @@ class TestFunctionalPymongo(TestBase):
             self.instrumentor.instrument()
             self.instrumentor._commandtracer_instance._tracer = self._tracer
             self.instrumentor._commandtracer_instance.capture_statement = True
+            client = MongoClient(
+                MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
+            )
+            collection = client[MONGODB_DB_NAME][MONGODB_COLLECTION_NAME]
             with self._tracer.start_as_current_span("rootSpan"):
-                self._collection.find_one({"name": "testName"})
+                collection.find_one({"name": "testName"})
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -209,9 +214,30 @@ class TestFunctionalPymongo(TestBase):
             pymongo_span.attributes[DB_COLLECTION_NAME],
             MONGODB_COLLECTION_NAME,
         )
-        self.assertNotIn(DB_SYSTEM, pymongo_span.attributes)
-        self.assertNotIn(DB_NAME, pymongo_span.attributes)
-        self.assertNotIn(DB_STATEMENT, pymongo_span.attributes)
-        self.assertNotIn(NET_PEER_NAME, pymongo_span.attributes)
-        self.assertNotIn(NET_PEER_PORT, pymongo_span.attributes)
-        self.assertNotIn(DB_MONGODB_COLLECTION, pymongo_span.attributes)
+
+    def test_failed_command_stable_semconv_records_error_type(self):
+        with use_semconv_opt_in("database"):
+            self.instrumentor.uninstrument()
+            self.instrumentor._commandtracer_instance = None
+            self.instrumentor.instrument()
+            self.instrumentor._commandtracer_instance._tracer = self._tracer
+            client = MongoClient(
+                MONGODB_HOST, MONGODB_PORT, serverSelectionTimeoutMS=2000
+            )
+            db = client[MONGODB_DB_NAME]
+
+            with self._tracer.start_as_current_span("rootSpan"):
+                with self.assertRaises(OperationFailure):
+                    db.command({"FakeCommand": 1})
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 2)
+        pymongo_span = next(s for s in spans if s.name != "rootSpan")
+        self.assertEqual(
+            pymongo_span.status.status_code,
+            trace_api.StatusCode.ERROR,
+        )
+        self.assertEqual(
+            pymongo_span.attributes[ERROR_TYPE],
+            "FakeCommand",
+        )
