@@ -206,6 +206,9 @@ else:
     CALLER_LEVELS = 2
 
 
+_OTEL_INSTRUMENTED_KEY = "_opentelemetry_instrumented"
+
+
 def _traced_init(wrapped, instance, args, kwargs):
     settings = kwargs.get("settings", {})
     tweens = aslist(settings.get("pyramid.tweens", []))
@@ -232,7 +235,15 @@ def _traced_init(wrapped, instance, args, kwargs):
         kwargs["package"] = caller_package(level=CALLER_LEVELS)
 
     wrapped(*args, **kwargs)
-    instance.include("opentelemetry.instrumentation.pyramid.callbacks")
+
+    # Guard against double-registration: config.commit() clears Pyramid's
+    # action_state._seen_files, so a subsequent config.include() re-triggers
+    # _traced_init on a child Configurator. The sentinel prevents registering
+    # the BeforeTraversal subscriber more than once per root registry.
+    registry = instance.registry
+    if not getattr(registry, _OTEL_INSTRUMENTED_KEY, False):
+        setattr(registry, _OTEL_INSTRUMENTED_KEY, True)
+        instance.include("opentelemetry.instrumentation.pyramid.callbacks")
 
 
 class PyramidInstrumentor(BaseInstrumentor):

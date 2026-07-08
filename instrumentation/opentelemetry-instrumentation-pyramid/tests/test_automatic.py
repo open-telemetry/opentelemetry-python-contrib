@@ -5,6 +5,7 @@ from timeit import default_timer
 from unittest.mock import patch
 
 from pyramid.config import Configurator
+from pyramid.interfaces import IBeforeTraversal
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -684,3 +685,60 @@ class TestCustomHeadersNonRecordingSpan(InstrumentationTest, WsgiTestBase):
             self.assertEqual(200, resp.status_code)
         except Exception as exc:  # pylint: disable=W0703
             self.fail(f"Exception raised with NonRecordingSpan {exc}")
+
+
+class TestDoubleSubscriberRegistration(InstrumentationTest, WsgiTestBase):
+    """Regression test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4663"""
+
+    def setUp(self):
+        super().setUp()
+        PyramidInstrumentor().instrument()
+
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            PyramidInstrumentor().uninstrument()
+
+    def test_commit_does_not_double_register_subscriber(self):
+        """config.commit() must not cause a second _before_traversal registration."""
+        config = Configurator()
+
+        def library_that_commits(cfg):
+            cfg.add_route("lib_route", "/lib")
+            cfg.commit()
+
+        def another_library(cfg):
+            pass
+
+        config.include(library_that_commits)
+        config.include(another_library)
+        config.commit()
+
+        handlers = [
+            h
+            for h in config.registry.registeredHandlers()
+            if any(r.isOrExtends(IBeforeTraversal) for r in h.required)
+        ]
+        self.assertEqual(
+            len(handlers),
+            1,
+            f"Expected 1 BeforeTraversal handler, got {len(handlers)}",
+        )
+
+    def test_normal_operation_after_commit(self):
+        """Verify tracing still works correctly after a config.commit() mid-configuration."""
+        config = Configurator()
+
+        def library_that_commits(cfg):
+            cfg.add_route("committed", "/committed")
+            cfg.commit()
+
+        config.include(library_that_commits)
+        self._common_initialization(config)
+
+        resp = self.client.get("/hello/123")
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual([b"Hello: 123"], list(resp.response))
+        span_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(span_list), 1)
+        self.assertEqual(span_list[0].kind, SpanKind.SERVER)
