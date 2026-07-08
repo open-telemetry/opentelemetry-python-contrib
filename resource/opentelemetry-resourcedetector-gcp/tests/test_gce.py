@@ -1,20 +1,10 @@
-# Copyright 2023 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 from unittest.mock import MagicMock
 
 import pytest
+
 from opentelemetry.resource.detector.gcp import (
     _gce,
     _metadata,
@@ -70,5 +60,7 @@ def test_detects_zone_and_region(fake_get_metadata: MagicMock) -> None:
 def test_throws_for_invalid_zone(fake_get_metadata: MagicMock) -> None:
     fake_get_metadata.return_value = {"instance": {"zone": ""}}
 
-    with pytest.raises(ValueError, match="zone was not in the expected format"):
+    with pytest.raises(
+        ValueError, match="zone was not in the expected format"
+    ):
         _gce.availability_zone_and_region()
