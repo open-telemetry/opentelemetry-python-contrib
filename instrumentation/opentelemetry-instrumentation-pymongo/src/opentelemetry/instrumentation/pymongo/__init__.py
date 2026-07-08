@@ -192,6 +192,8 @@ class CommandTracer(monitoring.CommandListener):
         except Exception as ex:  # noqa pylint: disable=broad-except
             if span is not None and span.is_recording():
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
+                if _report_new(self._semconv_opt_in_mode):
+                    span.set_attribute(ERROR_TYPE, type(ex).__qualname__)
                 span.end()
                 self._pop_span(event)
 
@@ -226,11 +228,9 @@ class CommandTracer(monitoring.CommandListener):
                 )
             )
             if _report_new(self._semconv_opt_in_mode):
-                error_type = (
-                    event.failure.get("codeName") if event.failure else None
+                span.set_attribute(
+                    ERROR_TYPE, event.failure.get("codeName", "UnknownError")
                 )
-                if error_type:
-                    span.set_attribute(ERROR_TYPE, error_type)
             try:
                 self.failed_hook(span, event)
             except (
