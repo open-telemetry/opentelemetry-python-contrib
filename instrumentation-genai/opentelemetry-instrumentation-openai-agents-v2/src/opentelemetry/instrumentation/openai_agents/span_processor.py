@@ -877,6 +877,27 @@ class GenAISemanticProcessor(TracingProcessor):
 
         return normalized
 
+    def _tool_call_part_from_output_item(self, item: Any) -> dict[str, Any]:
+        if isinstance(item, dict):
+            call_id = item.get("call_id") or item.get("id")
+            name = item.get("name")
+            arguments = item.get("arguments")
+        else:
+            call_id = getattr(item, "call_id", None) or getattr(
+                item, "id", None
+            )
+            name = getattr(item, "name", None)
+            arguments = getattr(item, "arguments", None)
+        part: dict[str, Any] = {
+            "type": "tool_call",
+            "id": call_id,
+            "name": name,
+        }
+        part["arguments"] = (
+            "readacted" if not self.include_sensitive_data else arguments
+        )
+        return part
+
     def _normalize_output_messages_to_role_parts(
         self, span_data: Any
     ) -> list[dict[str, Any]]:
@@ -909,9 +930,18 @@ class GenAISemanticProcessor(TracingProcessor):
                 output = getattr(response, "output", None)
                 if isinstance(output, Sequence):
                     for item in output:
+                        item_type = (
+                            item.get("type")
+                            if isinstance(item, dict)
+                            else getattr(item, "type", None)
+                        )
                         # ResponseOutputMessage may have a string representation
                         txt = getattr(item, "content", None)
-                        if isinstance(txt, str) and txt:
+                        if item_type == "function_call":
+                            parts.append(
+                                self._tool_call_part_from_output_item(item)
+                            )
+                        elif isinstance(txt, str) and txt:
                             parts.append(
                                 {
                                     "type": "text",

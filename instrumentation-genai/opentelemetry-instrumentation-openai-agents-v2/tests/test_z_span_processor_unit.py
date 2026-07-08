@@ -538,3 +538,62 @@ def test_chat_span_renamed_with_model(processor_setup):
 
     span_names = {span.name for span in exporter.get_finished_spans()}
     assert "chat gpt-4o" in span_names
+
+
+def test_response_output_function_call_becomes_tool_call_part(processor_setup):
+    processor, _ = processor_setup
+    tool_call = SimpleNamespace(
+        type="function_call",
+        name="get_weather",
+        arguments='{"city": "Barcelona"}',
+        call_id="call_123",
+        id="fc_1",
+        content=None,
+    )
+    span_data = SimpleNamespace(
+        response=SimpleNamespace(output_text=None, output=[tool_call]),
+        output=None,
+    )
+
+    messages = processor._normalize_output_messages_to_role_parts(span_data)
+
+    assert messages == [
+        {
+            "role": "assistant",
+            "parts": [
+                {
+                    "type": "tool_call",
+                    "id": "call_123",
+                    "name": "get_weather",
+                    "arguments": '{"city": "Barcelona"}',
+                }
+            ],
+        }
+    ]
+
+
+def test_response_output_function_call_redacted_when_sensitive_disabled(
+    processor_setup,
+):
+    processor, _ = processor_setup
+    processor.include_sensitive_data = False
+    tool_call = SimpleNamespace(
+        type="function_call",
+        name="get_weather",
+        arguments='{"city": "Barcelona"}',
+        call_id="call_123",
+        id="fc_1",
+        content=None,
+    )
+    span_data = SimpleNamespace(
+        response=SimpleNamespace(output_text=None, output=[tool_call]),
+        output=None,
+    )
+
+    parts = processor._normalize_output_messages_to_role_parts(span_data)[0][
+        "parts"
+    ]
+
+    assert parts[0]["type"] == "tool_call"
+    assert parts[0]["name"] == "get_weather"
+    assert parts[0]["arguments"] == "readacted"
