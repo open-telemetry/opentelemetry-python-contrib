@@ -15,6 +15,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 2.5b0 (2026-07-08)
+
+### Changed
+
+- Refactor chat completion stream wrappers to use shared GenAI stream lifecycle
+  helpers.
+  ([#4500](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4500))
+- Pass tool definitions from `tools` kwarg to
+  `InferenceInvocation.tool_definitions` so `gen_ai.tool.definitions` span
+  attribute is populated on chat completion spans
+  ([#4554](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4554))
+
+### Fixed
+
+- `opentelemetry-instrumentation-openai-v2`: await `AsyncStream.close` when
+  closing an async streaming chat completion on the default semantic convention
+  path so the underlying httpx response/connection is released instead of
+  leaked
+  ([#4751](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4751))
+
 ## Version 2.4b0 (2026-05-01)
 
 - Migrate experimental path from deprecated `LLMInvocation` to `InferenceInvocation`,
