@@ -228,7 +228,7 @@ class TestFunctionalPymongo(TestBase):
 
             with self._tracer.start_as_current_span("rootSpan"):
                 with self.assertRaises(OperationFailure):
-                    db.command({"FakeCommand": 1})
+                    db.command({"fakeCommand": 1})
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -238,6 +238,9 @@ class TestFunctionalPymongo(TestBase):
             trace_api.StatusCode.ERROR,
         )
         self.assertEqual(
+            pymongo_span.status.description, "no such command: 'fakeCommand'"
+        )
+        self.assertEqual(
             pymongo_span.attributes[ERROR_TYPE],
-            "FakeCommand",
+            "CommandNotFound",
         )
