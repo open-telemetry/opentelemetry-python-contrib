@@ -54,6 +54,7 @@ def use_semconv_opt_in(sem_conv_mode):
         _OpenTelemetrySemanticConventionStability._initialized = False
 
 
+# pylint: disable=too-many-public-methods
 class TestPymongo(TestBase):
     def setUp(self):
         super().setUp()
