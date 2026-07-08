@@ -1202,6 +1202,25 @@ jobs:
       - name: Run tests
         run: tox -e lint-propagator-ot-trace
 
+  lint-sampler-jaeger-remote:
+    name: sampler-jaeger-remote
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-sampler-jaeger-remote
+
   lint-instrumentation-sio-pika:
     name: instrumentation-sio-pika
     runs-on: ubuntu-latest
