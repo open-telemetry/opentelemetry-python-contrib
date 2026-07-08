@@ -4,13 +4,20 @@
 // Adapted from
 // https://github.com/jaegertracing/jaeger-idl/blob/ca9d21aa7c2f1cabe00f6ac844ca10def9053923/proto/api_v2/sampling.proto
 //
-// The upstream file imports "gogoproto/gogo.proto" (Go-only marshaler/
-// unmarshaler/sizer extensions) and "google/api/annotations.proto" (REST/HTTP
-// transcoding for the RPC). Neither is meaningful for a pure-Python gRPC
-// client, so both imports and their associated options have been stripped
-// here. All messages, the enum, and the service/RPC are otherwise unchanged
-// from upstream. When bumping the pinned commit above, diff against the
-// upstream file and re-apply this same stripping.
+// Copyright (c) 2019 The Jaeger Authors.
+// Copyright (c) 2018 Uber Technologies, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 syntax="proto3";
 

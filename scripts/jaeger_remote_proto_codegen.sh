@@ -18,7 +18,7 @@ package_root="$repo_root/sampler/opentelemetry-sampler-jaeger-remote"
 proto_output_dir="$package_root/src/opentelemetry/sampler/jaeger/remote/proto"
 
 protoc() {
-    uvx -c $repo_root/jaeger-remote-gen-requirements.txt \
+    uvx -c $package_root/gen-requirements.txt \
         --python 3.12 \
         --from grpcio-tools \
         --with mypy-protobuf \
