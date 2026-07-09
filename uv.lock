@@ -4472,8 +4472,8 @@ requires-dist = [
     { name = "grpcio", marker = "python_full_version >= '3.14' and extra == 'grpc'", specifier = ">=1.75.1,<2.0.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
-    { name = "protobuf", marker = "extra == 'grpc'", specifier = ">=5.0,<8.0" },
-    { name = "urllib3", marker = "extra == 'http'", specifier = ">=1.26,<3.0" },
+    { name = "protobuf", marker = "extra == 'grpc'", specifier = ">=5.27.0,<8.0" },
+    { name = "urllib3", marker = "extra == 'http'", specifier = ">=1.26.5,<3.0" },
 ]
 provides-extras = ["grpc", "http"]
 

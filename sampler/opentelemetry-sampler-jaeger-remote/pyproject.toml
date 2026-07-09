@@ -31,13 +31,13 @@ dependencies = [
 
 [project.optional-dependencies]
 http = [
-  "urllib3 >= 1.26, < 3.0"
+  "urllib3 >= 1.26.5, < 3.0"
 ]
 grpc = [
   "grpcio >= 1.63.2, < 2.0.0; python_version < '3.13'",
   "grpcio >= 1.66.2, < 2.0.0; python_version == '3.13'",
   "grpcio >= 1.75.1, < 2.0.0; python_version >= '3.14'",
-  "protobuf >= 5.0, < 8.0",
+  "protobuf >= 5.27.0, < 8.0",
 ]
 
 [project.urls]

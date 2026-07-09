@@ -63,7 +63,7 @@ class RateLimiter:
 
         with self._lock:
             self._refill_locked()
-            self._balance = max_balance * self._balance / self._max_balance
+            self._balance = min(max_balance * self._balance / self._max_balance, max_balance)
             self._credits_per_second = credits_per_second
             self._max_balance = max_balance
 
