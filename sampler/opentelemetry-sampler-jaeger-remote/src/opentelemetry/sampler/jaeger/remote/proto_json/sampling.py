@@ -9,10 +9,7 @@ from __future__ import annotations
 import builtins
 import dataclasses
 import enum
-import functools
 import typing
-
-_dataclass = functools.partial(dataclasses.dataclass, slots=True)
 
 from . import _json_codec
 
@@ -27,7 +24,7 @@ class SamplingStrategyType(enum.IntEnum):
     RATE_LIMITING = 1
 
 @typing.final
-@_dataclass
+@dataclasses.dataclass(slots=True)
 class ProbabilisticSamplingStrategy(_json_codec.JsonMessage):
     """
     Generated from protobuf message ProbabilisticSamplingStrategy
@@ -68,7 +65,7 @@ class ProbabilisticSamplingStrategy(_json_codec.JsonMessage):
 
 
 @typing.final
-@_dataclass
+@dataclasses.dataclass(slots=True)
 class RateLimitingSamplingStrategy(_json_codec.JsonMessage):
     """
     Generated from protobuf message RateLimitingSamplingStrategy
@@ -110,7 +107,7 @@ class RateLimitingSamplingStrategy(_json_codec.JsonMessage):
 
 
 @typing.final
-@_dataclass
+@dataclasses.dataclass(slots=True)
 class OperationSamplingStrategy(_json_codec.JsonMessage):
     """
     Generated from protobuf message OperationSamplingStrategy
@@ -157,7 +154,7 @@ class OperationSamplingStrategy(_json_codec.JsonMessage):
 
 
 @typing.final
-@_dataclass
+@dataclasses.dataclass(slots=True)
 class PerOperationSamplingStrategies(_json_codec.JsonMessage):
     """
     Generated from protobuf message PerOperationSamplingStrategies
@@ -213,7 +210,7 @@ class PerOperationSamplingStrategies(_json_codec.JsonMessage):
 
 
 @typing.final
-@_dataclass
+@dataclasses.dataclass(slots=True)
 class SamplingStrategyResponse(_json_codec.JsonMessage):
     """
     Generated from protobuf message SamplingStrategyResponse
@@ -257,8 +254,7 @@ class SamplingStrategyResponse(_json_codec.JsonMessage):
         _args = {}
 
         if (_value := data.get("strategyType")) is not None:
-            _json_codec.validate_type(_value, builtins.int, "strategyType")
-            _args["strategyType"] = SamplingStrategyType(_value)
+            _args["strategyType"] = _json_codec.decode_enum(_value, SamplingStrategyType, "strategyType")
         if (_value := data.get("probabilisticSampling")) is not None:
             _args["probabilisticSampling"] = ProbabilisticSamplingStrategy.from_dict(_value)
         if (_value := data.get("rateLimitingSampling")) is not None:
@@ -270,7 +266,7 @@ class SamplingStrategyResponse(_json_codec.JsonMessage):
 
 
 @typing.final
-@_dataclass
+@dataclasses.dataclass(slots=True)
 class SamplingStrategyParameters(_json_codec.JsonMessage):
     """
     Generated from protobuf message SamplingStrategyParameters
