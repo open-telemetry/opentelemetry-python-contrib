@@ -259,16 +259,17 @@ async def test_span_name_handler_unknown_method(
 
     assert len(memory_exporter.get_finished_spans()) == 0
 
-    session = aiohttp.ClientSession(
+    async with aiohttp.ClientSession(
         base_url=f"http://{server.host}:{server.port}"
-    )
-    # the client is strict about the HTTP methods, for some reason
-    # QUERY is fine for the client but unrecognized by the server
-    await session.request("QUERY", "/test-path")
+    ) as session:
+        # PURGE is accepted by aiohttp but not recognized by sanitize_method.
+        async with session.request("PURGE", "/test-path") as response:
+            assert response.status == HTTPStatus.METHOD_NOT_ALLOWED
 
     spans = memory_exporter.get_finished_spans()
     assert len(spans) == 1
 
+    assert "_OTHER" == spans[0].attributes[HTTP_METHOD]
     assert "HTTP" == spans[0].name
 
 
