@@ -1,0 +1,5 @@
+Add `opentelemetry-instrumentation-alephalpha`, instrumenting the
+`aleph_alpha_client` Python SDK text completions (`Client.complete` /
+`AsyncClient.complete`), emitting standard GenAI semantic conventions
+(`gen_ai.*`) via `opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

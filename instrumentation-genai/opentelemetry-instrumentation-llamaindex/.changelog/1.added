@@ -1,0 +1,5 @@
+Add `opentelemetry-instrumentation-llamaindex`, instrumenting LlamaIndex
+tool execution (`llama_index.core.tools.FunctionTool.call` /
+`FunctionTool.acall`) and emitting standard GenAI `execute_tool` spans
+(`gen_ai.*`) via `opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

@@ -26,6 +26,9 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as _server_attributes,
 )
+from opentelemetry.semconv.attributes import (
+    error_attributes as _error_attributes,
+)
 from opentelemetry.trace import SpanKind
 from opentelemetry.trace.status import StatusCode
 
@@ -538,3 +541,208 @@ def test_chat_span_renamed_with_model(processor_setup):
 
     span_names = {span.name for span in exporter.get_finished_spans()}
     assert "chat gpt-4o" in span_names
+
+
+def test_error_type_uses_semconv_constant(processor_setup):
+    processor, exporter = processor_setup
+
+    trace = FakeTrace(name="workflow", trace_id="trace-err")
+    processor.on_trace_start(trace)
+
+    child = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="child-err",
+        span_data=FunctionSpanData(name="lookup"),
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:01Z",
+        error={"message": "boom", "data": "bad", "type": "ValueError"},
+    )
+    processor.on_span_start(child)
+    processor.on_span_end(child)
+    processor.on_trace_end(trace)
+
+    # The processor must use the semconv ERROR_TYPE constant, not a literal.
+    assert sp.ERROR_TYPE == _error_attributes.ERROR_TYPE == "error.type"
+
+    finished = exporter.get_finished_spans()
+    tool_span = next(s for s in finished if s.name == "execute_tool lookup")
+    assert tool_span.attributes[_error_attributes.ERROR_TYPE] == "ValueError"
+
+
+def test_record_metrics_error_type_uses_constant(monkeypatch):
+    processor = sp.GenAISemanticProcessor(system_name="openai")
+
+    recorded: dict[str, Any] = {}
+
+    class _Hist:
+        def record(self, value, attrs):
+            recorded.update(attrs)
+
+    processor._duration_histogram = _Hist()
+    processor._token_usage_histogram = _Hist()
+
+    span = SimpleNamespace(
+        started_at="2024-01-01T00:00:00+00:00",
+        ended_at="2024-01-01T00:00:01+00:00",
+        error={"name": "TimeoutError"},
+    )
+    processor._record_metrics(
+        span,
+        {
+            sp.GEN_AI_USAGE_INPUT_TOKENS: 5,
+            sp.GEN_AI_OPERATION_NAME: sp.GenAIOperationName.CHAT,
+        },
+    )
+    assert recorded[_error_attributes.ERROR_TYPE] == "TimeoutError"
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("stop", "stop"),
+        ("completed", "stop"),
+        ("end_turn", "stop"),
+        ("length", "length"),
+        ("max_tokens", "length"),
+        ("content_filter", "content_filter"),
+        ("safety", "content_filter"),
+        ("tool_calls", "tool_calls"),
+        ("function_call", "tool_calls"),
+        ("error", "error"),
+        ("failed", "error"),
+        ("MAX_OUTPUT_TOKENS", "length"),
+        (None, "stop"),
+        ("", "stop"),
+        ("totally_unknown_value", "stop"),
+        ("some_tool_thing", "tool_calls"),
+    ],
+)
+def test_normalize_finish_reason(raw, expected):
+    assert sp.normalize_finish_reason(raw) == expected
+    # Every result must be inside the semconv value set.
+    assert sp.normalize_finish_reason(raw) in {
+        "stop",
+        "length",
+        "content_filter",
+        "tool_calls",
+        "error",
+    }
+
+
+def test_generation_finish_reasons_are_normalized(processor_setup):
+    processor, _ = processor_setup
+
+    generation_span = GenerationSpanData(
+        input=[{"role": "user"}],
+        output=[
+            {"finish_reason": "completed"},
+            {"stop_reason": "max_tokens"},
+        ],
+        model="gpt-4o",
+    )
+    attrs = _collect(
+        processor._get_attributes_from_generation_span_data(
+            generation_span, sp.ContentPayload()
+        )
+    )
+    # Raw SDK values ("completed", "max_tokens") normalized to spec values.
+    assert attrs[sp.GEN_AI_RESPONSE_FINISH_REASONS] == ["stop", "length"]
+
+
+def test_response_finish_reasons_are_normalized(processor_setup):
+    processor, _ = processor_setup
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-fr"
+            self.model = "gpt-4o"
+            self.usage = None
+            self.output = [{"finish_reason": "content_filtered"}]
+
+    response_span = ResponseSpanData(response=_Response())
+    attrs = _collect(
+        processor._get_attributes_from_response_span_data(
+            response_span, sp.ContentPayload()
+        )
+    )
+    assert attrs[sp.GEN_AI_RESPONSE_FINISH_REASONS] == ["content_filter"]
+
+
+def test_response_reasoning_and_cache_tokens(processor_setup):
+    processor, _ = processor_setup
+
+    class _Usage:
+        def __init__(self) -> None:
+            self.input_tokens = 100
+            self.output_tokens = 40
+            self.input_tokens_details = SimpleNamespace(cached_tokens=64)
+            self.output_tokens_details = SimpleNamespace(reasoning_tokens=12)
+
+    class _Response:
+        def __init__(self) -> None:
+            self.id = "resp-tok"
+            self.model = "gpt-4o"
+            self.usage = _Usage()
+            self.output = [{"finish_reason": "stop"}]
+
+    response_span = ResponseSpanData(response=_Response())
+    attrs = _collect(
+        processor._get_attributes_from_response_span_data(
+            response_span, sp.ContentPayload()
+        )
+    )
+
+    assert sp.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS == (
+        "gen_ai.usage.reasoning.output_tokens"
+    )
+    assert sp.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS == (
+        "gen_ai.usage.cache_read.input_tokens"
+    )
+
+    reasoning = attrs[sp.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS]
+    cache_read = attrs[sp.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS]
+    assert reasoning == 12 and isinstance(reasoning, int)
+    assert cache_read == 64 and isinstance(cache_read, int)
+
+
+def test_generation_reasoning_and_cache_tokens_from_dict(processor_setup):
+    processor, _ = processor_setup
+
+    generation_span = GenerationSpanData(
+        input=[{"role": "user"}],
+        output=[{"finish_reason": "stop"}],
+        model="gpt-4o",
+        usage={
+            "prompt_tokens": 20,
+            "completion_tokens": 5,
+            "output_tokens_details": {"reasoning_tokens": 3},
+            "input_tokens_details": {"cached_tokens": 8},
+        },
+    )
+    attrs = _collect(
+        processor._get_attributes_from_generation_span_data(
+            generation_span, sp.ContentPayload()
+        )
+    )
+    assert attrs[sp.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS] == 3
+    assert isinstance(attrs[sp.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS], int)
+    assert attrs[sp.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS] == 8
+    assert isinstance(attrs[sp.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS], int)
+
+
+def test_usage_token_details_absent_are_not_emitted(processor_setup):
+    processor, _ = processor_setup
+
+    generation_span = GenerationSpanData(
+        input=[{"role": "user"}],
+        output=[{"finish_reason": "stop"}],
+        model="gpt-4o",
+        usage={"prompt_tokens": 1, "completion_tokens": 1},
+    )
+    attrs = _collect(
+        processor._get_attributes_from_generation_span_data(
+            generation_span, sp.ContentPayload()
+        )
+    )
+    assert sp.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS not in attrs
+    assert sp.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS not in attrs

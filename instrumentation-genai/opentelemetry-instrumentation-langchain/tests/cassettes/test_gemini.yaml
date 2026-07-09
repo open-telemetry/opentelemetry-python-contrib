@@ -1,0 +1,104 @@
+interactions:
+- request:
+    body: |-
+      {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "What is the capital of France?"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "systemInstruction": {
+          "parts": [
+            {
+              "text": "You are a helpful assistant!"
+            }
+          ]
+        },
+        "safetySettings": [],
+        "generationConfig": {
+          "temperature": 0.7,
+          "candidateCount": 1
+        }
+      }
+    headers:
+      accept:
+      - '*/*'
+      accept-encoding:
+      - gzip, deflate, zstd
+      connection:
+      - keep-alive
+      content-length:
+      - '248'
+      content-type:
+      - application/json
+      host:
+      - generativelanguage.googleapis.com
+      user-agent:
+      - google-genai-sdk/2.10.0 gl-python/3.12.5 langchain-google-genai/4.2.6-ChatGoogleGenerativeAI
+      x-goog-api-client:
+      - google-genai-sdk/2.10.0 gl-python/3.12.5
+      x-goog-api-key:
+      - test_key
+    method: POST
+    uri: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent
+  response:
+    body:
+      string: |-
+        {
+          "error": {
+            "code": 400,
+            "message": "API key not valid. Please pass a valid API key.",
+            "status": "INVALID_ARGUMENT",
+            "details": [
+              {
+                "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                "reason": "API_KEY_INVALID",
+                "domain": "googleapis.com",
+                "metadata": {
+                  "service": "generativelanguage.googleapis.com"
+                }
+              },
+              {
+                "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+                "locale": "en-US",
+                "message": "API key not valid. Please pass a valid API key."
+              }
+            ]
+          }
+        }
+    headers:
+      Set-Cookie: test_set_cookie
+      alt-svc:
+      - h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+      content-length:
+      - '581'
+      content-type:
+      - application/json; charset=UTF-8
+      date:
+      - Mon, 06 Jul 2026 06:37:58 GMT
+      openai-organization: test_openai_org_id
+      server:
+      - scaffolding on HTTPServer2
+      server-timing:
+      - gfet4t7; dur=45
+      transfer-encoding:
+      - chunked
+      vary:
+      - Origin
+      - X-Origin
+      - Referer
+      x-content-type-options:
+      - nosniff
+      x-frame-options:
+      - SAMEORIGIN
+      x-xss-protection:
+      - '0'
+    status:
+      code: 400
+      message: Bad Request
+version: 1

@@ -212,6 +212,14 @@ def assert_openai_completion_attributes(
         attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL]
         == "gpt-3.5-turbo-0125"
     )
+    finish_reasons = attributes[
+        gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS
+    ]
+    # Sequence span attributes are stored as tuples; normalize and verify
+    # the exact attribute name carries a list/tuple of str finish reasons.
+    finish_reasons = _normalize_to_list(finish_reasons)
+    assert finish_reasons == ["stop"]
+    assert all(isinstance(reason, str) for reason in finish_reasons)
     assert attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
     assert attributes["gen_ai.provider.name"] == "openai"
@@ -280,6 +288,7 @@ def assert_openai_completion_attributes_with_error(
         attributes[gen_ai_attributes.GEN_AI_REQUEST_MODEL] == "gpt-3.5-turbo"
     )
     assert gen_ai_attributes.GEN_AI_RESPONSE_MODEL not in attributes
+    assert gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS not in attributes
     assert attributes[gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS] == 100
     assert attributes[gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE] == 0.1
     assert attributes["gen_ai.provider.name"] == "openai"

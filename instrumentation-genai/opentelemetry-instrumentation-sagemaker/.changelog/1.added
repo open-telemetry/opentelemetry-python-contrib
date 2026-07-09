@@ -1,0 +1,8 @@
+Add `opentelemetry-instrumentation-sagemaker`, instrumenting the AWS SageMaker
+runtime (`sagemaker-runtime` client's `invoke_endpoint`) via `boto3`/`botocore`.
+Because `invoke_endpoint` payloads are opaque, model-specific bytes, the emitted
+standard GenAI semantic conventions (`gen_ai.*`) are intentionally thin:
+`gen_ai.provider.name` (`aws.sagemaker`), `gen_ai.operation.name`, and
+`gen_ai.request.model` (the SageMaker endpoint name). Telemetry is emitted via
+`opentelemetry-util-genai` and requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

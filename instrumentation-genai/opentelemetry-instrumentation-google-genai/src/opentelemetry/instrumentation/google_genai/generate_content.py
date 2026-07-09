@@ -512,6 +512,8 @@ class _GenerateContentInstrumentationHelper:
         self.completion_hook = completion_hook
         self._finish_reasons_set = set()
         self._error_type = None
+        self._response_id: Optional[str] = None
+        self._response_model: Optional[str] = None
         self._input_tokens = 0
         self._cached_tokens = 0
         self._thinking_tokens = 0
@@ -563,13 +565,21 @@ class _GenerateContentInstrumentationHelper:
         )
 
     def create_final_attributes(self) -> dict[str, AttributeValue]:
-        final_attributes = {
+        final_attributes: dict[str, AttributeValue] = {
             gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS: self._input_tokens,
             gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS: self._output_tokens,
             gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS: sorted(
                 self._finish_reasons_set
             ),
         }
+        if self._response_id:
+            final_attributes[gen_ai_attributes.GEN_AI_RESPONSE_ID] = (
+                self._response_id
+            )
+        if self._response_model:
+            final_attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL] = (
+                self._response_model
+            )
         if self._error_type:
             final_attributes[error_attributes.ERROR_TYPE] = self._error_type
         return final_attributes
@@ -598,8 +608,20 @@ class _GenerateContentInstrumentationHelper:
         #
         # See also: TODOS.md.
         self._update_finish_reasons(response)
+        self._maybe_update_response_id(response)
+        self._maybe_update_response_model(response)
         self._maybe_update_token_counts(response)
         self._maybe_update_error_type(response)
+
+    def _maybe_update_response_id(self, response: GenerateContentResponse):
+        response_id = getattr(response, "response_id", None)
+        if response_id:
+            self._response_id = response_id
+
+    def _maybe_update_response_model(self, response: GenerateContentResponse):
+        response_model = getattr(response, "model_version", None)
+        if response_model:
+            self._response_model = response_model
 
     def _update_finish_reasons(self, response: GenerateContentResponse):
         if not response.candidates:
@@ -963,31 +985,44 @@ class _GenerateContentInstrumentationHelper:
         pass
 
     def _record_token_usage_metric(self):
-        self._otel_wrapper.token_usage_metric.record(
-            self._input_tokens,
-            attributes={
-                gen_ai_attributes.GEN_AI_TOKEN_TYPE: "input",
-                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-                gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
-                gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
-            },
-        )
-        self._otel_wrapper.token_usage_metric.record(
-            self._output_tokens,
-            attributes={
-                gen_ai_attributes.GEN_AI_TOKEN_TYPE: "output",
-                gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
-                gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
-                gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
-            },
-        )
-
-    def _record_duration_metric(self):
-        attributes = {
+        input_attributes: dict[str, AttributeValue] = {
+            gen_ai_attributes.GEN_AI_TOKEN_TYPE: "input",
             gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
             gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
             gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
         }
+        output_attributes: dict[str, AttributeValue] = {
+            gen_ai_attributes.GEN_AI_TOKEN_TYPE: "output",
+            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+            gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
+            gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
+        }
+        if self._response_model:
+            input_attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL] = (
+                self._response_model
+            )
+            output_attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL] = (
+                self._response_model
+            )
+        self._otel_wrapper.token_usage_metric.record(
+            self._input_tokens,
+            attributes=input_attributes,
+        )
+        self._otel_wrapper.token_usage_metric.record(
+            self._output_tokens,
+            attributes=output_attributes,
+        )
+
+    def _record_duration_metric(self):
+        attributes: dict[str, AttributeValue] = {
+            gen_ai_attributes.GEN_AI_SYSTEM: self._genai_system,
+            gen_ai_attributes.GEN_AI_REQUEST_MODEL: self._genai_request_model,
+            gen_ai_attributes.GEN_AI_OPERATION_NAME: _GENERATE_CONTENT_OP_NAME,
+        }
+        if self._response_model:
+            attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL] = (
+                self._response_model
+            )
         if self._error_type is not None:
             attributes[error_attributes.ERROR_TYPE] = self._error_type
         duration_nanos = time.time_ns() - self._start_time

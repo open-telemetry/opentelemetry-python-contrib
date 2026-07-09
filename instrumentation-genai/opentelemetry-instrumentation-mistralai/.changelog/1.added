@@ -1,0 +1,6 @@
+Add `opentelemetry-instrumentation-mistralai`, instrumenting the `mistralai`
+v1 Python SDK chat completions (`chat.complete` / `chat.complete_async`,
+`chat.stream` / `chat.stream_async`) and embeddings (`embeddings.create` /
+`embeddings.create_async`), emitting standard GenAI semantic conventions
+(`gen_ai.*`) via `opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

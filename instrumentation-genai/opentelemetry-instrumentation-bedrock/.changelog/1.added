@@ -1,0 +1,5 @@
+Add `opentelemetry-instrumentation-bedrock`, instrumenting AWS Bedrock via
+`boto3` / `botocore`. The bedrock-runtime `converse` API and the Anthropic
+Messages shape of `invoke_model` are traced, emitting standard GenAI semantic
+conventions (`gen_ai.*`) via `opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

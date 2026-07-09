@@ -136,16 +136,42 @@ def _to_role(role: str | None) -> str:
     return ""
 
 
+# Finish reasons whose meaning maps to the OTel "content_filter" value. These
+# are matched by name so that enum members added in newer google-genai
+# releases (and absent in older ones) do not require a hard dependency.
+_CONTENT_FILTER_FINISH_REASONS = frozenset(
+    {
+        "SAFETY",
+        "RECITATION",
+        "BLOCKLIST",
+        "PROHIBITED_CONTENT",
+        "SPII",
+        "IMAGE_SAFETY",
+        "IMAGE_PROHIBITED_CONTENT",
+    }
+)
+
+# Finish reasons whose meaning maps to the OTel "error" value.
+_ERROR_FINISH_REASONS = frozenset(
+    {
+        "FINISH_REASON_UNSPECIFIED",
+        "OTHER",
+        "MALFORMED_FUNCTION_CALL",
+        "UNEXPECTED_TOOL_CALL",
+    }
+)
+
+
 def _to_finish_reason(
     finish_reason: genai_types.FinishReason | None,
 ) -> FinishReason | str:
     if finish_reason is None:
         return ""
-    if (
-        finish_reason is genai_types.FinishReason.FINISH_REASON_UNSPECIFIED
-        or finish_reason is genai_types.FinishReason.OTHER
-    ):
+    name = finish_reason.name
+    if name in _ERROR_FINISH_REASONS:
         return "error"
+    if name in _CONTENT_FILTER_FINISH_REASONS:
+        return "content_filter"
     if finish_reason is genai_types.FinishReason.STOP:
         return "stop"
     if finish_reason is genai_types.FinishReason.MAX_TOKENS:

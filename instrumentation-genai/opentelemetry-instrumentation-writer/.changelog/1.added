@@ -1,0 +1,5 @@
+Add `opentelemetry-instrumentation-writer`, instrumenting the `writerai`
+Python SDK chat (`chat.chat` sync/async, streaming and non-streaming) and text
+completions (`completions.create` sync/async), emitting standard GenAI semantic
+conventions (`gen_ai.*`) via `opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

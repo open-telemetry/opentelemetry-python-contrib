@@ -1,0 +1,6 @@
+Add `opentelemetry-instrumentation-watsonx`, instrumenting the IBM
+watsonx.ai Python SDK (`ibm_watsonx_ai`) `ModelInference` text generation
+(`generate`), chat (`chat`), and streaming text generation
+(`generate_text_stream`), emitting standard GenAI semantic conventions
+(`gen_ai.*`) via `opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

@@ -932,3 +932,74 @@ class NonStreamingTestCase(TestCase):
         self.otel.assert_has_metrics_data_named(
             "gen_ai.client.operation.duration"
         )
+
+    def test_generated_span_has_response_id_and_model(self):
+        self.configure_valid_response(
+            response_id="resp-abc-123",
+            model_version="gemini-2.0-flash-001",
+        )
+        span = self._generate_and_get_span(config=None)
+        self.assertEqual(
+            span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_ID],
+            "resp-abc-123",
+        )
+        self.assertIsInstance(
+            span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_ID], str
+        )
+        self.assertEqual(
+            span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL],
+            "gemini-2.0-flash-001",
+        )
+        self.assertIsInstance(
+            span.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL], str
+        )
+
+    def test_generated_span_omits_response_id_and_model_when_absent(self):
+        self.configure_valid_response()
+        span = self._generate_and_get_span(config=None)
+        self.assertNotIn(
+            gen_ai_attributes.GEN_AI_RESPONSE_ID, span.attributes
+        )
+        self.assertNotIn(
+            gen_ai_attributes.GEN_AI_RESPONSE_MODEL, span.attributes
+        )
+
+    def _get_metric_data_points_named(self, name):
+        data_points = []
+        for entry in self.otel.get_metrics_data_named(name):
+            data_points.extend(entry.data.data_points)
+        return data_points
+
+    def test_response_model_recorded_on_metrics(self):
+        self.configure_valid_response(model_version="gemini-2.0-flash-001")
+        self.generate_content(model="gemini-2.0-flash", contents="Some input")
+        token_points = self._get_metric_data_points_named(
+            "gen_ai.client.token.usage"
+        )
+        self.assertGreater(len(token_points), 0)
+        for point in token_points:
+            self.assertEqual(
+                point.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL],
+                "gemini-2.0-flash-001",
+            )
+        duration_points = self._get_metric_data_points_named(
+            "gen_ai.client.operation.duration"
+        )
+        self.assertGreater(len(duration_points), 0)
+        for point in duration_points:
+            self.assertEqual(
+                point.attributes[gen_ai_attributes.GEN_AI_RESPONSE_MODEL],
+                "gemini-2.0-flash-001",
+            )
+
+    def test_response_model_omitted_from_metrics_when_absent(self):
+        self.configure_valid_response()
+        self.generate_content(model="gemini-2.0-flash", contents="Some input")
+        token_points = self._get_metric_data_points_named(
+            "gen_ai.client.token.usage"
+        )
+        self.assertGreater(len(token_points), 0)
+        for point in token_points:
+            self.assertNotIn(
+                gen_ai_attributes.GEN_AI_RESPONSE_MODEL, point.attributes
+            )

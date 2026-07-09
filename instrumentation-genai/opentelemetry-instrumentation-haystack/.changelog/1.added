@@ -1,0 +1,6 @@
+Add `opentelemetry-instrumentation-haystack`, instrumenting the Haystack
+(`haystack-ai`) `Pipeline.run` and `AsyncPipeline.run_async` entry points and
+emitting a standard GenAI workflow span (`invoke_workflow`) via
+`opentelemetry-util-genai`. Set
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` to capture the
+experimental content-carrying attributes.

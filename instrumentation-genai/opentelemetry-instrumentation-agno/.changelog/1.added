@@ -1,0 +1,5 @@
+Add `opentelemetry-instrumentation-agno`, instrumenting the `agno` agent
+framework (`Agent.run` / `Agent.arun` agent invocations and
+`FunctionCall.execute` tool executions), emitting standard GenAI semantic
+conventions (`gen_ai.*`) via `opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

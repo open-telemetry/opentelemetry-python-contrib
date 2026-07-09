@@ -1,0 +1,6 @@
+Add `opentelemetry-instrumentation-mcp`, instrumenting client-side tool calls
+(`ClientSession.call_tool`) of the Model Context Protocol (`mcp`) Python SDK,
+emitting standard GenAI `execute_tool` spans (`gen_ai.*`) via
+`opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`. Transport context
+propagation, `list_tools`, and the server-side `ServerSession` are follow-ups.

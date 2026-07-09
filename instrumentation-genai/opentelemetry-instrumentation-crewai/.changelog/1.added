@@ -1,0 +1,6 @@
+Add `opentelemetry-instrumentation-crewai`, instrumenting the `crewai`
+framework: `Crew.kickoff` / `Crew.kickoff_async` (workflow spans),
+`Agent.execute_task` (agent spans), and `BaseTool.run` (tool spans),
+emitting standard GenAI semantic conventions (`gen_ai.*`) via
+`opentelemetry-util-genai`. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.

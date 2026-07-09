@@ -1,5 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 
-_instruments = ("weaviate-client >= 3.0.0,<5.0.0",)
+_instruments = ("weaviate-client >= 4.0.0",)

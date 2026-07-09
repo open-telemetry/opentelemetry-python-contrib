@@ -65,6 +65,7 @@ from opentelemetry.semconv._incubating.attributes import (
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import Span as OtelSpan
 from opentelemetry.trace import (
     SpanKind,
@@ -200,6 +201,14 @@ GEN_AI_USAGE_INPUT_TOKENS = _attr(
 GEN_AI_USAGE_OUTPUT_TOKENS = _attr(
     "GEN_AI_USAGE_OUTPUT_TOKENS", "gen_ai.usage.output_tokens"
 )
+GEN_AI_USAGE_REASONING_OUTPUT_TOKENS = _attr(
+    "GEN_AI_USAGE_REASONING_OUTPUT_TOKENS",
+    "gen_ai.usage.reasoning.output_tokens",
+)
+GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS = _attr(
+    "GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS",
+    "gen_ai.usage.cache_read.input_tokens",
+)
 GEN_AI_CONVERSATION_ID = _attr(
     "GEN_AI_CONVERSATION_ID", "gen_ai.conversation.id"
 )
@@ -295,6 +304,62 @@ def normalize_output_type(output_type: Optional[str]) -> str:
     }:
         return normalized
     return GenAIOutputType.TEXT  # default for unknown
+
+
+# Spec-compliant finish reason value set per GenAI semantic conventions.
+_FINISH_REASON_STOP = "stop"
+_FINISH_REASON_LENGTH = "length"
+_FINISH_REASON_CONTENT_FILTER = "content_filter"
+_FINISH_REASON_TOOL_CALLS = "tool_calls"
+_FINISH_REASON_ERROR = "error"
+
+# Map raw SDK finish/stop reasons to the semconv value set.
+_FINISH_REASON_MAP = {
+    "stop": _FINISH_REASON_STOP,
+    "completed": _FINISH_REASON_STOP,
+    "end_turn": _FINISH_REASON_STOP,
+    "stop_sequence": _FINISH_REASON_STOP,
+    "eos": _FINISH_REASON_STOP,
+    "length": _FINISH_REASON_LENGTH,
+    "max_tokens": _FINISH_REASON_LENGTH,
+    "max_output_tokens": _FINISH_REASON_LENGTH,
+    "model_length": _FINISH_REASON_LENGTH,
+    "incomplete": _FINISH_REASON_LENGTH,
+    "content_filter": _FINISH_REASON_CONTENT_FILTER,
+    "content_filtered": _FINISH_REASON_CONTENT_FILTER,
+    "safety": _FINISH_REASON_CONTENT_FILTER,
+    "tool_calls": _FINISH_REASON_TOOL_CALLS,
+    "tool_call": _FINISH_REASON_TOOL_CALLS,
+    "tool_use": _FINISH_REASON_TOOL_CALLS,
+    "function_call": _FINISH_REASON_TOOL_CALLS,
+    "error": _FINISH_REASON_ERROR,
+    "failed": _FINISH_REASON_ERROR,
+}
+
+
+def normalize_finish_reason(reason: Any) -> str:
+    """Normalize a raw SDK finish/stop reason to the semconv value set.
+
+    Recognized values map to one of stop/length/content_filter/tool_calls/error.
+    Unknown values fall back to ``error`` when they indicate a failure and to
+    ``stop`` otherwise, so downstream consumers always see a spec value.
+    """
+    if not isinstance(reason, str):
+        reason = str(reason) if reason is not None else ""
+    normalized = reason.strip().lower()
+    if not normalized:
+        return _FINISH_REASON_STOP
+    if normalized in _FINISH_REASON_MAP:
+        return _FINISH_REASON_MAP[normalized]
+    if "filter" in normalized or "safety" in normalized:
+        return _FINISH_REASON_CONTENT_FILTER
+    if "tool" in normalized or "function" in normalized:
+        return _FINISH_REASON_TOOL_CALLS
+    if "length" in normalized or "max" in normalized:
+        return _FINISH_REASON_LENGTH
+    if "error" in normalized or "fail" in normalized:
+        return _FINISH_REASON_ERROR
+    return _FINISH_REASON_STOP
 
 
 if TYPE_CHECKING:
@@ -593,7 +658,7 @@ class GenAISemanticProcessor(TracingProcessor):
             if error := getattr(span, "error", None):
                 error_type = error.get("type") or error.get("name")
                 if error_type:
-                    metric_attrs["error.type"] = error_type
+                    metric_attrs[ERROR_TYPE] = error_type
 
             # Remove None values
             metric_attrs = {
@@ -1254,6 +1319,44 @@ class GenAISemanticProcessor(TracingProcessor):
         return GenAIOutputType.TEXT
 
     @staticmethod
+    def _coerce_token_count(value: Any) -> Optional[int]:
+        """Coerce a usage token value to a non-negative int, else None."""
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value if value >= 0 else None
+        if isinstance(value, float):
+            return int(value) if value >= 0 else None
+        return None
+
+    @staticmethod
+    def _get_usage_field(usage: Any, name: str) -> Any:
+        """Read a field from a usage object or dict."""
+        if usage is None:
+            return None
+        if isinstance(usage, dict):
+            return usage.get(name)
+        return getattr(usage, name, None)
+
+    @classmethod
+    def _extract_reasoning_tokens(cls, usage: Any) -> Optional[int]:
+        """Extract reasoning output tokens from a usage object/dict."""
+        details = cls._get_usage_field(usage, "output_tokens_details")
+        reasoning = cls._get_usage_field(details, "reasoning_tokens")
+        if reasoning is None:
+            reasoning = cls._get_usage_field(usage, "reasoning_tokens")
+        return cls._coerce_token_count(reasoning)
+
+    @classmethod
+    def _extract_cache_read_tokens(cls, usage: Any) -> Optional[int]:
+        """Extract cache-read input tokens from a usage object/dict."""
+        details = cls._get_usage_field(usage, "input_tokens_details")
+        cached = cls._get_usage_field(details, "cached_tokens")
+        if cached is None:
+            cached = cls._get_usage_field(usage, "cached_tokens")
+        return cls._coerce_token_count(cached)
+
+    @staticmethod
     def _sanitize_usage_payload(usage: Any) -> None:
         """Remove non-spec usage fields (e.g., total tokens) in-place."""
         if not usage:
@@ -1479,7 +1582,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 err_obj = span.error
                 err_type = err_obj.get("type") or err_obj.get("name")
                 if err_type:
-                    otel_span.set_attribute("error.type", err_type)
+                    otel_span.set_attribute(ERROR_TYPE, err_type)
 
             # Record metrics before ending span
             self._record_metrics(span, attributes)
@@ -1632,7 +1735,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if hasattr(span_data, "data_source_id"):
             yield GEN_AI_DATA_SOURCE_ID, span_data.data_source_id
 
-        finish_reasons: list[Any] = []
+        finish_reasons: list[str] = []
         if span_data.output:
             for part in span_data.output:
                 if isinstance(part, dict):
@@ -1640,9 +1743,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 else:
                     fr = getattr(part, "finish_reason", None)
                 if fr:
-                    finish_reasons.append(
-                        fr if isinstance(fr, str) else str(fr)
-                    )
+                    finish_reasons.append(normalize_finish_reason(fr))
         if finish_reasons:
             yield GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
 
@@ -1662,6 +1763,14 @@ class GenAISemanticProcessor(TracingProcessor):
                 )
                 if tokens is not None:
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, tokens
+
+            reasoning_tokens = self._extract_reasoning_tokens(usage)
+            if reasoning_tokens is not None:
+                yield GEN_AI_USAGE_REASONING_OUTPUT_TOKENS, reasoning_tokens
+
+            cache_read_tokens = self._extract_cache_read_tokens(usage)
+            if cache_read_tokens is not None:
+                yield GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS, cache_read_tokens
 
         # Model configuration
         if span_data.model_config:
@@ -1994,7 +2103,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     yield GEN_AI_REQUEST_MODEL, span_data.response.model
 
             # Finish reasons
-            finish_reasons = []
+            finish_reasons: list[str] = []
             if (
                 hasattr(span_data.response, "output")
                 and span_data.response.output
@@ -2007,7 +2116,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     else:
                         fr = getattr(part, "finish_reason", None)
                     if fr:
-                        finish_reasons.append(fr)
+                        finish_reasons.append(normalize_finish_reason(fr))
             if finish_reasons:
                 yield GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
 
@@ -2029,6 +2138,14 @@ class GenAISemanticProcessor(TracingProcessor):
                     output_tokens = getattr(usage, "completion_tokens", None)
                 if output_tokens is not None:
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
+
+                reasoning_tokens = self._extract_reasoning_tokens(usage)
+                if reasoning_tokens is not None:
+                    yield GEN_AI_USAGE_REASONING_OUTPUT_TOKENS, reasoning_tokens
+
+                cache_read_tokens = self._extract_cache_read_tokens(usage)
+                if cache_read_tokens is not None:
+                    yield GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS, cache_read_tokens
 
             # Tool definitions from response
             if self._capture_tool_definitions and hasattr(
@@ -2202,5 +2319,6 @@ __all__ = [
     "GenAISemanticProcessor",
     "normalize_provider",
     "normalize_output_type",
+    "normalize_finish_reason",
     "validate_tool_type",
 ]

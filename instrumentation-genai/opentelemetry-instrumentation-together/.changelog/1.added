@@ -1,0 +1,4 @@
+Add `opentelemetry-instrumentation-together`, instrumenting the `together`
+Python SDK chat completions (`chat.completions.create`, sync and async,
+streaming and non-streaming) and emitting standard GenAI semantic conventions
+(`gen_ai.*`) via `opentelemetry-util-genai`.

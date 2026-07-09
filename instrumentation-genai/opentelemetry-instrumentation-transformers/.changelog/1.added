@@ -1,0 +1,6 @@
+Add `opentelemetry-instrumentation-transformers`, instrumenting local
+HuggingFace `transformers` text-generation pipelines
+(`TextGenerationPipeline.__call__`), emitting standard GenAI semantic
+conventions (`gen_ai.*`) via `opentelemetry-util-genai`. Local inference
+exposes no token usage or finish reason, so those fields are omitted. Requires
+`OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`.
