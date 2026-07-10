@@ -139,9 +139,7 @@ class HttpSamplingStrategyProvider(SamplingStrategyProvider):
                         f"Jaeger sampling endpoint {self._endpoint} "
                         f"returned status {response.status}"
                     )
-            time.sleep(
-                2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
-            )
+            time.sleep(2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER))
 
     def close(self) -> None:
         self._pool.clear()

@@ -106,7 +106,9 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
         for attempt in itertools.count():
             try:
                 response = self._stub.GetSamplingStrategy(
-                    request, metadata=self._metadata, timeout=max(deadline - time.monotonic(), 0)
+                    request,
+                    metadata=self._metadata,
+                    timeout=max(deadline - time.monotonic(), 0),
                 )
             except grpc.RpcError as error:
                 # pylint: disable=no-member
@@ -119,9 +121,7 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
                         f"Jaeger gRPC sampling endpoint {self._endpoint} "
                         f"returned {error.code()}: {error.details()}"
                     ) from error
-                backoff = 2**attempt * random.uniform(
-                    1 - _JITTER, 1 + _JITTER
-                )
+                backoff = 2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
                 time.sleep(backoff)
                 continue
             return _decode_sampling_strategy(response)

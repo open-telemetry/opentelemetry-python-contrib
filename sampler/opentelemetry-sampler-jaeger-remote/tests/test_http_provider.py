@@ -1,6 +1,9 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import http
+import json
+import socket
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
@@ -12,6 +15,8 @@ from mocket.mocks.mockhttp import Entry
 from opentelemetry.sampler.jaeger.remote._http_provider import (
     _DEFAULT_TIMEOUT,
     _MAX_RETRIES,
+    _RETRYABLE_CONNECTION_ERRORS,
+    _RETRYABLE_STATUSES,
     HttpSamplingStrategyProvider,
 )
 from opentelemetry.sampler.jaeger.remote._provider import (
@@ -23,9 +28,20 @@ from opentelemetry.sampler.jaeger.remote._provider import (
 
 _ENDPOINT = "http://mock/sampling"
 
-_PROBABILISTIC_BODY = (
-    '{"strategyType": "PROBABILISTIC", '
-    '"probabilisticSampling": {"samplingRate": 0.5}}'
+_PROBABILISTIC_BODY = json.dumps(
+    {
+        "strategyType": "PROBABILISTIC",
+        "probabilisticSampling": {"samplingRate": 0.5},
+    }
+)
+
+_NON_RETRYABLE_STATUSES = tuple(
+    sorted(
+        status.value
+        for status in http.HTTPStatus
+        if status not in (http.HTTPStatus.OK, http.HTTPStatus.CONTINUE)
+        and status.value not in _RETRYABLE_STATUSES
+    )
 )
 
 _SLEEP_TARGET = "opentelemetry.sampler.jaeger.remote._http_provider.time.sleep"
@@ -38,6 +54,21 @@ def _register(*responses, match_querystring=False):
     Entry.register(
         Entry.GET, _ENDPOINT, *responses, match_querystring=match_querystring
     )
+
+
+def _make_connection_error(
+    error_type: type[Exception],
+) -> Exception:
+    """Build a constructible instance of a urllib3 connection error type."""
+    if error_type is urllib3.exceptions.MaxRetryError:
+        return error_type(
+            None, _ENDPOINT, reason=Exception("connection broken")
+        )
+    if error_type is getattr(urllib3.exceptions, "NameResolutionError", None):
+        return error_type("mock", None, socket.gaierror("connection broken"))
+    if error_type is urllib3.exceptions.NewConnectionError:
+        return error_type(None, "connection broken")
+    return error_type("connection broken")
 
 
 class _MocketTestCase(TestCase):
@@ -78,87 +109,92 @@ class TestGetSamplingStrategy(_MocketTestCase):
         headers = {k.lower(): v for k, v in request.headers.items()}
         self.assertEqual(headers.get("x-test"), "yes")
 
-    def test_probabilistic_strategy(self):
-        _register(Entry.response_cls(body=_PROBABILISTIC_BODY, status=200))
-        provider = HttpSamplingStrategyProvider(_ENDPOINT)
-
-        strategy = provider.get_sampling_strategy("my-service")
-
-        self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
-
-    def test_rate_limiting_strategy(self):
-        _register(
-            Entry.response_cls(
-                body=(
-                    '{"strategyType": "RATE_LIMITING", '
-                    '"rateLimitingSampling": {"maxTracesPerSecond": 5}}'
-                ),
-                status=200,
-            )
-        )
-        provider = HttpSamplingStrategyProvider(_ENDPOINT)
-
-        strategy = provider.get_sampling_strategy("my-service")
-
-        self.assertEqual(
-            strategy, RateLimitingStrategy(max_traces_per_second=5)
-        )
-
-    def test_per_operation_strategy(self):
-        _register(
-            Entry.response_cls(
-                body=(
-                    '{"operationSampling": {'
-                    '"defaultSamplingProbability": 0.1,'
-                    '"defaultLowerBoundTracesPerSecond": 1.0,'
-                    '"defaultUpperBoundTracesPerSecond": 10.0,'
-                    '"perOperationStrategies": [{'
-                    '"operation": "op-a",'
-                    '"probabilisticSampling": {"samplingRate": 0.75}'
-                    "}]"
-                    "}}"
-                ),
-                status=200,
-            )
-        )
-        provider = HttpSamplingStrategyProvider(_ENDPOINT)
-
-        strategy = provider.get_sampling_strategy("my-service")
-
-        self.assertEqual(
-            strategy,
-            PerOperationStrategy(
-                default_sampling_probability=0.1,
-                default_lower_bound_traces_per_second=1.0,
-                operation_strategies=(
-                    OperationStrategy(operation="op-a", sampling_rate=0.75),
-                ),
-                default_upper_bound_traces_per_second=10.0,
+    def test_decodes_strategy_response(self):
+        cases = {
+            "probabilistic": (
+                _PROBABILISTIC_BODY,
+                ProbabilisticStrategy(sampling_rate=0.5),
             ),
-        )
+            "rate_limiting": (
+                json.dumps(
+                    {
+                        "strategyType": "RATE_LIMITING",
+                        "rateLimitingSampling": {"maxTracesPerSecond": 5},
+                    }
+                ),
+                RateLimitingStrategy(max_traces_per_second=5),
+            ),
+            "per_operation": (
+                json.dumps(
+                    {
+                        "operationSampling": {
+                            "defaultSamplingProbability": 0.1,
+                            "defaultLowerBoundTracesPerSecond": 1.0,
+                            "defaultUpperBoundTracesPerSecond": 10.0,
+                            "perOperationStrategies": [
+                                {
+                                    "operation": "op-a",
+                                    "probabilisticSampling": {
+                                        "samplingRate": 0.75
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ),
+                PerOperationStrategy(
+                    default_sampling_probability=0.1,
+                    default_lower_bound_traces_per_second=1.0,
+                    operation_strategies=(
+                        OperationStrategy(
+                            operation="op-a", sampling_rate=0.75
+                        ),
+                    ),
+                    default_upper_bound_traces_per_second=10.0,
+                ),
+            ),
+        }
+        for description, (body, expected) in cases.items():
+            with self.subTest(description):
+                Mocket.reset()
+                _register(Entry.response_cls(body=body, status=200))
+                provider = HttpSamplingStrategyProvider(_ENDPOINT)
+
+                strategy = provider.get_sampling_strategy("my-service")
+
+                self.assertEqual(strategy, expected)
 
     @patch(_SLEEP_TARGET)
     def test_non_retryable_error_status_raises(self, mock_sleep):
-        _register(Entry.response_cls(status=404))
-        provider = HttpSamplingStrategyProvider(_ENDPOINT)
+        for status in _NON_RETRYABLE_STATUSES:
+            with self.subTest(status=status):
+                Mocket.reset()
+                _register(Entry.response_cls(status=status))
+                provider = HttpSamplingStrategyProvider(_ENDPOINT)
 
-        with self.assertRaises(RuntimeError):
-            provider.get_sampling_strategy("my-service")
+                with self.assertRaises(RuntimeError):
+                    provider.get_sampling_strategy("my-service")
 
         mock_sleep.assert_not_called()
 
     @patch(_SLEEP_TARGET)
     def test_retries_then_succeeds(self, mock_sleep):
-        _register(
-            Entry.response_cls(status=503),
-            Entry.response_cls(body=_PROBABILISTIC_BODY, status=200),
-        )
-        provider = HttpSamplingStrategyProvider(_ENDPOINT)
+        for status in sorted(_RETRYABLE_STATUSES):
+            with self.subTest(status=status):
+                Mocket.reset()
+                mock_sleep.reset_mock()
+                _register(
+                    Entry.response_cls(status=status),
+                    Entry.response_cls(body=_PROBABILISTIC_BODY, status=200),
+                )
+                provider = HttpSamplingStrategyProvider(_ENDPOINT)
 
-        strategy = provider.get_sampling_strategy("my-service")
+                strategy = provider.get_sampling_strategy("my-service")
 
-        self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
-        mock_sleep.assert_called_once()
+                self.assertEqual(
+                    strategy, ProbabilisticStrategy(sampling_rate=0.5)
+                )
+                mock_sleep.assert_called_once()
 
     @patch(_SLEEP_TARGET)
     def test_retries_exhausted_raises(self, mock_sleep):
@@ -174,16 +210,22 @@ class TestGetSamplingStrategy(_MocketTestCase):
 
     @patch(_SLEEP_TARGET)
     def test_retries_transport_error(self, mock_sleep):
-        _register(
-            urllib3.exceptions.ProtocolError("connection broken"),
-            Entry.response_cls(body=_PROBABILISTIC_BODY, status=200),
-        )
-        provider = HttpSamplingStrategyProvider(_ENDPOINT)
+        for error_type in dict.fromkeys(_RETRYABLE_CONNECTION_ERRORS):
+            with self.subTest(error_type.__name__):
+                Mocket.reset()
+                mock_sleep.reset_mock()
+                _register(
+                    _make_connection_error(error_type),
+                    Entry.response_cls(body=_PROBABILISTIC_BODY, status=200),
+                )
+                provider = HttpSamplingStrategyProvider(_ENDPOINT)
 
-        strategy = provider.get_sampling_strategy("my-service")
+                strategy = provider.get_sampling_strategy("my-service")
 
-        self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
-        mock_sleep.assert_called_once()
+                self.assertEqual(
+                    strategy, ProbabilisticStrategy(sampling_rate=0.5)
+                )
+                mock_sleep.assert_called_once()
 
     @patch(_SLEEP_TARGET)
     def test_transport_errors_exhausted_raises(self, mock_sleep):
@@ -202,13 +244,7 @@ class TestGetSamplingStrategy(_MocketTestCase):
 
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)
-    def test_retry_uses_remaining_deadline(
-        self, mock_monotonic, mock_sleep
-    ):
-        # 1 call for the initial deadline, then per attempt: 1 before the
-        # call (used as its timeout) and, on failure, 1 more right after to
-        # check the deadline before deciding to retry. Attempt 0 fails at
-        # t=0/t=0; attempt 1 (t=3) then succeeds.
+    def test_retry_uses_remaining_deadline(self, mock_monotonic, mock_sleep):
         mock_monotonic.side_effect = [0, 0, 0, 3]
         provider = HttpSamplingStrategyProvider(_ENDPOINT, timeout=10)
         responses = [
@@ -227,12 +263,7 @@ class TestGetSamplingStrategy(_MocketTestCase):
 
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)
-    def test_deadline_exceeded_raises_early(
-        self, mock_monotonic, mock_sleep
-    ):
-        # Deadline (t=10) has already passed by the time the post-failure
-        # check for attempt 0 runs (t=15), well before _MAX_RETRIES (3) and
-        # before ever sleeping/retrying.
+    def test_deadline_exceeded_raises_early(self, mock_monotonic, mock_sleep):
         mock_monotonic.side_effect = [0, 0, 15]
         provider = HttpSamplingStrategyProvider(_ENDPOINT, timeout=10)
         error = urllib3.exceptions.ProtocolError("connection broken")

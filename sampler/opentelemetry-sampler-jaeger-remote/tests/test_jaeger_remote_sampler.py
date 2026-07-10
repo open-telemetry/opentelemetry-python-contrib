@@ -96,8 +96,6 @@ class TestJaegerRemoteSampler(TestCase):
             sampler = JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME)
         self.addCleanup(sampler.close)
 
-        # The constructor must have returned already; the fake provider's
-        # fetch is still blocked, so the initial default sampler is active.
         self.assertIsInstance(sampler._sampler, ProbabilisticSampler)
         self.assertEqual(sampler._sampler.rate, 0.001)
 

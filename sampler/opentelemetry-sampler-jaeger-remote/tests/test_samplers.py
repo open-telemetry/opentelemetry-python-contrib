@@ -175,15 +175,14 @@ class TestRateLimitingSampler(TestCase):
 
     def test_update_reconfigures_in_place(self):
         clock = _FakeClock()
-        # Starts full (balance == max(1, 1.0) == 1.0).
+
         sampler = RateLimitingSampler(1, clock=clock)
 
         sampler.update(5)
 
         self.assertEqual(sampler.max_traces_per_second, 5)
         self.assertEqual(sampler.get_description(), "RateLimitingSampler{5}")
-        # The full balance rescales proportionally to the new capacity (5),
-        # rather than resetting - same instance, no time advancement needed.
+
         sampled = 0
         for _ in range(10):
             if (
@@ -199,8 +198,6 @@ class TestGuaranteedThroughputSampler(TestCase):
         clock = _FakeClock()
         sampler = GuaranteedThroughputSampler(1.0, 1.0, clock=clock)
 
-        # rate=1.0 always samples probabilistically, and consumes the
-        # lower-bound limiter's only credit as a side effect.
         result = sampler.should_sample(None, _TRACE_IDS[0], "op")
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
         self.assertEqual(
@@ -208,9 +205,6 @@ class TestGuaranteedThroughputSampler(TestCase):
             {"sampler.type": "probabilistic", "sampler.param": 1.0},
         )
 
-        # Switch to rate=0 so probabilistic always drops - the lower bound
-        # limiter's exhausted balance now shows through, proving the
-        # earlier credit really was spent.
         sampler.update(0.0, 1.0)
         result = sampler.should_sample(None, _TRACE_IDS[0], "op")
         self.assertEqual(result.decision, Decision.DROP)
@@ -293,10 +287,6 @@ class TestPerOperationSampler(TestCase):
             max_operations=1,
         )
 
-        # op-a is already tracked (count == cap == 1), so it keeps its own
-        # rate (0.0), while a newly-seen operation exceeds the cap and
-        # falls back to the default sampler (rate=1.0) without being
-        # tracked itself.
         result = sampler.should_sample(None, _TRACE_IDS[0], "op-a")
         self.assertEqual(result.decision, Decision.DROP)
 
@@ -315,7 +305,6 @@ class TestPerOperationSampler(TestCase):
             Decision.DROP,
         )
 
-        # Update op-a's rate; op-b is left out of the new strategy list.
         sampler.update(
             default_sampling_probability=1.0,
             default_lower_bound_traces_per_second=0.0,
@@ -326,9 +315,7 @@ class TestPerOperationSampler(TestCase):
             sampler.should_sample(None, _TRACE_IDS[0], "op-a").decision,
             Decision.RECORD_AND_SAMPLE,
         )
-        # op-b wasn't in the update - it's pruned and now falls back to the
-        # (freshly updated) default sampler instead of keeping its stale
-        # config.
+
         self.assertNotIn("op-b", sampler._operation_samplers)
         self.assertEqual(
             sampler.should_sample(None, _TRACE_IDS[0], "op-b").decision,
@@ -345,8 +332,6 @@ class TestPerOperationSampler(TestCase):
             per_operation_strategies=[("op-a", 0.0)],
             clock=clock,
         )
-        # Spend op-a's only lower-bound credit (rate=0 default lower bound
-        # means no credit exists yet - give op-a a lower bound directly).
         sampler.update(
             default_sampling_probability=0.0,
             default_lower_bound_traces_per_second=1.0,
@@ -358,9 +343,6 @@ class TestPerOperationSampler(TestCase):
         )
         existing_sampler = sampler._operation_samplers["op-a"]
 
-        # A second update that still includes op-a must reuse the same
-        # sampler instance (preserving its now-exhausted balance) rather
-        # than recreating it with a fresh, full balance.
         sampler.update(
             default_sampling_probability=0.0,
             default_lower_bound_traces_per_second=1.0,

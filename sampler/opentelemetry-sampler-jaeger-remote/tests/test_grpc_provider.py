@@ -69,68 +69,65 @@ class TestGetSamplingStrategy(TestCase):
         self.provider = GrpcSamplingStrategyProvider(_ENDPOINT)
         self.addCleanup(self.provider.close)
 
-    def test_probabilistic_strategy(self):
-        response = SamplingStrategyResponse(
-            strategyType=SamplingStrategyType.PROBABILISTIC,
-            probabilisticSampling=ProbabilisticSamplingStrategy(
-                samplingRate=0.5
-            ),
-        )
-        with patch.object(
-            self.provider._stub, "GetSamplingStrategy", return_value=response
-        ):
-            strategy = self.provider.get_sampling_strategy("my-service")
-
-        self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
-
-    def test_rate_limiting_strategy(self):
-        response = SamplingStrategyResponse(
-            strategyType=SamplingStrategyType.RATE_LIMITING,
-            rateLimitingSampling=RateLimitingSamplingStrategy(
-                maxTracesPerSecond=5
-            ),
-        )
-        with patch.object(
-            self.provider._stub, "GetSamplingStrategy", return_value=response
-        ):
-            strategy = self.provider.get_sampling_strategy("my-service")
-
-        self.assertEqual(
-            strategy, RateLimitingStrategy(max_traces_per_second=5)
-        )
-
-    def test_per_operation_strategy(self):
-        response = SamplingStrategyResponse(
-            operationSampling=PerOperationSamplingStrategies(
-                defaultSamplingProbability=0.1,
-                defaultLowerBoundTracesPerSecond=1.0,
-                defaultUpperBoundTracesPerSecond=10.0,
-                perOperationStrategies=[
-                    OperationSamplingStrategy(
-                        operation="op-a",
-                        probabilisticSampling=ProbabilisticSamplingStrategy(
-                            samplingRate=0.75
-                        ),
-                    )
-                ],
-            )
-        )
-        with patch.object(
-            self.provider._stub, "GetSamplingStrategy", return_value=response
-        ):
-            strategy = self.provider.get_sampling_strategy("my-service")
-
-        self.assertEqual(
-            strategy,
-            PerOperationStrategy(
-                default_sampling_probability=0.1,
-                default_lower_bound_traces_per_second=1.0,
-                operation_strategies=(
-                    OperationStrategy(operation="op-a", sampling_rate=0.75),
+    def test_decodes_strategy_response(self):
+        cases = {
+            "probabilistic": (
+                SamplingStrategyResponse(
+                    strategyType=SamplingStrategyType.PROBABILISTIC,
+                    probabilisticSampling=ProbabilisticSamplingStrategy(
+                        samplingRate=0.5
+                    ),
                 ),
-                default_upper_bound_traces_per_second=10.0,
+                ProbabilisticStrategy(sampling_rate=0.5),
             ),
-        )
+            "rate_limiting": (
+                SamplingStrategyResponse(
+                    strategyType=SamplingStrategyType.RATE_LIMITING,
+                    rateLimitingSampling=RateLimitingSamplingStrategy(
+                        maxTracesPerSecond=5
+                    ),
+                ),
+                RateLimitingStrategy(max_traces_per_second=5),
+            ),
+            "per_operation": (
+                SamplingStrategyResponse(
+                    operationSampling=PerOperationSamplingStrategies(
+                        defaultSamplingProbability=0.1,
+                        defaultLowerBoundTracesPerSecond=1.0,
+                        defaultUpperBoundTracesPerSecond=10.0,
+                        perOperationStrategies=[
+                            OperationSamplingStrategy(
+                                operation="op-a",
+                                probabilisticSampling=ProbabilisticSamplingStrategy(
+                                    samplingRate=0.75
+                                ),
+                            )
+                        ],
+                    )
+                ),
+                PerOperationStrategy(
+                    default_sampling_probability=0.1,
+                    default_lower_bound_traces_per_second=1.0,
+                    operation_strategies=(
+                        OperationStrategy(
+                            operation="op-a", sampling_rate=0.75
+                        ),
+                    ),
+                    default_upper_bound_traces_per_second=10.0,
+                ),
+            ),
+        }
+        for description, (response, expected) in cases.items():
+            with self.subTest(description):
+                with patch.object(
+                    self.provider._stub,
+                    "GetSamplingStrategy",
+                    return_value=response,
+                ):
+                    strategy = self.provider.get_sampling_strategy(
+                        "my-service"
+                    )
+                self.assertEqual(strategy, expected)
 
     @patch(_SLEEP_TARGET)
     def test_non_retryable_error_skips_sleep(self, mock_sleep):
@@ -176,13 +173,7 @@ class TestGetSamplingStrategy(TestCase):
 
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)
-    def test_retry_uses_remaining_deadline(
-        self, mock_monotonic, mock_sleep
-    ):
-        # 1 call for the initial deadline, then per attempt: 1 before the
-        # call (used as its timeout) and, on failure, 1 more right after to
-        # check the deadline before deciding to retry. Attempt 0 fails at
-        # t=0/t=0; attempt 1 (t=3) then succeeds.
+    def test_retry_uses_remaining_deadline(self, mock_monotonic, mock_sleep):
         mock_monotonic.side_effect = [0, 0, 0, 3]
         response = SamplingStrategyResponse(
             probabilisticSampling=ProbabilisticSamplingStrategy(
@@ -208,12 +199,7 @@ class TestGetSamplingStrategy(TestCase):
 
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)
-    def test_deadline_exceeded_raises_early(
-        self, mock_monotonic, mock_sleep
-    ):
-        # Deadline (t=10) has already passed by the time the post-failure
-        # check for attempt 0 runs (t=15), well before _MAX_RETRIES (3) and
-        # before ever sleeping/retrying.
+    def test_deadline_exceeded_raises_early(self, mock_monotonic, mock_sleep):
         mock_monotonic.side_effect = [0, 0, 15]
         error = _FakeRpcError(grpc.StatusCode.UNAVAILABLE)
         with patch.object(
