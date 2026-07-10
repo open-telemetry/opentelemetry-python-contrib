@@ -133,8 +133,9 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             span.end()
 
     def tracing_skipped(self, client_call_details):
-        return not is_instrumentation_enabled() or not self.rpc_matches_filters(
-            client_call_details
+        return (
+            not is_instrumentation_enabled()
+            or not self.rpc_matches_filters(client_call_details)
         )
 
     def rpc_matches_filters(self, client_call_details):
@@ -145,7 +146,9 @@ class UnaryUnaryAioClientInterceptor(
     grpc.aio.UnaryUnaryClientInterceptor,
     _BaseAioClientInterceptor,
 ):
-    async def intercept_unary_unary(self, continuation, client_call_details, request):
+    async def intercept_unary_unary(
+        self, continuation, client_call_details, request
+    ):
         if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request)
 
@@ -160,14 +163,18 @@ class UnaryUnaryAioClientInterceptor(
             continuation_with_args = functools.partial(
                 continuation, new_details, request
             )
-            return await self._wrap_unary_response(continuation_with_args, span)
+            return await self._wrap_unary_response(
+                continuation_with_args, span
+            )
 
 
 class UnaryStreamAioClientInterceptor(
     grpc.aio.UnaryStreamClientInterceptor,
     _BaseAioClientInterceptor,
 ):
-    async def intercept_unary_stream(self, continuation, client_call_details, request):
+    async def intercept_unary_stream(
+        self, continuation, client_call_details, request
+    ):
         if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request)
 
@@ -200,7 +207,9 @@ class StreamUnaryAioClientInterceptor(
             continuation_with_args = functools.partial(
                 continuation, new_details, request_iterator
             )
-            return await self._wrap_unary_response(continuation_with_args, span)
+            return await self._wrap_unary_response(
+                continuation_with_args, span
+            )
 
 
 class StreamStreamAioClientInterceptor(
