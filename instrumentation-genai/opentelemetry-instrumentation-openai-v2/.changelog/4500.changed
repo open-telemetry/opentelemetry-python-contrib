@@ -1,0 +1,1 @@
+Refactor chat completion stream wrappers to use shared GenAI stream lifecycle helpers.

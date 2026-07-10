@@ -118,7 +118,11 @@ def _set_connection_attributes(
     db_sem_conv_opt_in_mode,
     http_sem_conv_opt_in_mode,
 ) -> None:
-    if not span.is_recording() or not hasattr(conn, "connection_pool"):
+    if (
+        not span.is_recording()
+        or not hasattr(conn, "connection_pool")
+        or not hasattr(conn.connection_pool, "connection_kwargs")
+    ):
         return
     for key, value in _extract_conn_attributes(
         conn.connection_pool.connection_kwargs,
