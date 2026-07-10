@@ -171,7 +171,7 @@ class SamplingStrategyResponse(google.protobuf.message.Message):
     strategyType: global___SamplingStrategyType.ValueType
     """Legacy field that was meant to indicate which one of the strategy fields
     below is present. This enum was not extended when per-operation strategy
-    was introduced, because extending enum has backwards compatiblity issues.
+    was introduced, because extending enum has backwards compatibility issues.
     The recommended approach for consumers is to ignore this field and instead
     checks the other fields being not null (starting with operationSampling).
     For producers, it is recommended to set this field correctly for probabilistic
