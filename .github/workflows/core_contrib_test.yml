@@ -3477,8 +3477,8 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-aiokafka -- -ra
 
-  py310-test-instrumentation-kafka-python:
-    name: instrumentation-kafka-python 
+  py310-test-instrumentation-kafka-python-0:
+    name: instrumentation-kafka-python-0 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -3505,10 +3505,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-python -- -ra
+        run: tox -e py310-test-instrumentation-kafka-python-0 -- -ra
 
-  py310-test-instrumentation-kafka-pythonng:
-    name: instrumentation-kafka-pythonng 
+  py310-test-instrumentation-kafka-python-1:
+    name: instrumentation-kafka-python-1 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -3535,7 +3535,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py310-test-instrumentation-kafka-python-1 -- -ra
 
   py310-test-instrumentation-confluent-kafka:
     name: instrumentation-confluent-kafka 
