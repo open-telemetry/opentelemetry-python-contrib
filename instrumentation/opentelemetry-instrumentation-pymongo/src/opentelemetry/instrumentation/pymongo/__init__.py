@@ -178,8 +178,7 @@ class CommandTracer(monitoring.CommandListener):
                         event.connection_id[1],
                         self._semconv_opt_in_mode,
                     )
-                for key, val in span_attributes.items():
-                    span.set_attribute(key, val)
+                span.set_attributes(span_attributes)
             try:
                 self.start_hook(span, event)
             except (
