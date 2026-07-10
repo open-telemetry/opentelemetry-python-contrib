@@ -135,6 +135,7 @@ class CeleryInstrumentor(BaseInstrumentor):
         return _instruments
 
     def _instrument(self, **kwargs):
+        # TODO: deprecate this when support for stable semconv is available
         tracer_provider = kwargs.get("tracer_provider")
         use_span_links = kwargs.get("use_span_links", False)
 
