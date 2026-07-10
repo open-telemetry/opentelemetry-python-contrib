@@ -49,35 +49,29 @@ class TestProbabilisticSampler(TestCase):
             )
 
     def test_rejects_out_of_range_rate(self):
-        with self.assertRaises(ValueError):
-            ProbabilisticSampler(-0.1)
-        with self.assertRaises(ValueError):
-            ProbabilisticSampler(1.1)
+        for rate in (-0.1, 1.1):
+            with self.subTest(rate=rate):
+                with self.assertRaises(ValueError):
+                    ProbabilisticSampler(rate)
 
-    def test_sampler_tags_attached_and_caller_attributes_replaced(self):
+    def test_attributes_include_sampler_tags(self):
         attributes = {"foo": "bar"}
-
-        sampled = ProbabilisticSampler(1.0)
-        result = sampled.should_sample(
-            None, _TRACE_IDS[0], "span", attributes=attributes
-        )
-        self.assertEqual(
-            dict(result.attributes),
-            {"sampler.type": "probabilistic", "sampler.param": 1.0},
-        )
-
-        dropped = ProbabilisticSampler(0.0)
-        result = dropped.should_sample(
-            None, _TRACE_IDS[0], "span", attributes=attributes
-        )
-        self.assertEqual(
-            dict(result.attributes),
-            {"sampler.type": "probabilistic", "sampler.param": 0.0},
-        )
+        for rate in (1.0, 0.0):
+            with self.subTest(rate=rate):
+                sampler = ProbabilisticSampler(rate)
+                result = sampler.should_sample(
+                    None, _TRACE_IDS[0], "span", attributes=attributes
+                )
+                self.assertEqual(
+                    dict(result.attributes),
+                    {"sampler.type": "probabilistic", "sampler.param": rate},
+                )
 
     def test_get_description(self):
         sampler = ProbabilisticSampler(0.5)
-        self.assertEqual(sampler.get_description(), "ProbabilisticSampler{0.5}")
+        self.assertEqual(
+            sampler.get_description(), "ProbabilisticSampler{0.5}"
+        )
 
     def test_rate_property(self):
         sampler = ProbabilisticSampler(0.5)
@@ -91,11 +85,13 @@ class TestProbabilisticSampler(TestCase):
         sampler.update(1.0)
 
         self.assertEqual(sampler.rate, 1.0)
-        self.assertEqual(sampler.get_description(), "ProbabilisticSampler{1.0}")
+        self.assertEqual(
+            sampler.get_description(), "ProbabilisticSampler{1.0}"
+        )
         result = sampler.should_sample(None, _TRACE_IDS[0], "span")
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
 
-    def test_update_rejects_out_of_range_rate_without_mutating(self):
+    def test_update_rejects_out_of_range_rate(self):
         sampler = ProbabilisticSampler(1.0)
 
         with self.assertRaises(ValueError):
@@ -107,7 +103,7 @@ class TestProbabilisticSampler(TestCase):
 
 
 class TestRateLimitingSampler(TestCase):
-    def test_first_n_calls_sample_then_drops(self):
+    def test_samples_first_n_then_drops(self):
         clock = _FakeClock()
         sampler = RateLimitingSampler(3, clock=clock)
 
@@ -139,7 +135,7 @@ class TestRateLimitingSampler(TestCase):
                 sampled += 1
         self.assertEqual(sampled, 5)
 
-    def test_sub_one_rate_gets_immediate_burst_credit(self):
+    def test_sub_one_rate(self):
         clock = _FakeClock()
         sampler = RateLimitingSampler(0.5, clock=clock)
 
@@ -148,34 +144,30 @@ class TestRateLimitingSampler(TestCase):
         result = sampler.should_sample(None, _TRACE_IDS[0], "span")
         self.assertEqual(result.decision, Decision.DROP)
 
-    def test_sampler_tags_attached_and_caller_attributes_replaced(self):
+    def test_attributes_include_sampler_tags(self):
         clock = _FakeClock()
         attributes = {"foo": "bar"}
-
         sampler = RateLimitingSampler(1, clock=clock)
+        expected_attributes = {
+            "sampler.type": "ratelimiting",
+            "sampler.param": 1,
+        }
+
         result = sampler.should_sample(
             None, _TRACE_IDS[0], "span", attributes=attributes
         )
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
-        self.assertEqual(
-            dict(result.attributes),
-            {"sampler.type": "ratelimiting", "sampler.param": 1},
-        )
+        self.assertEqual(dict(result.attributes), expected_attributes)
 
         result = sampler.should_sample(
             None, _TRACE_IDS[0], "span", attributes=attributes
         )
         self.assertEqual(result.decision, Decision.DROP)
-        self.assertEqual(
-            dict(result.attributes),
-            {"sampler.type": "ratelimiting", "sampler.param": 1},
-        )
+        self.assertEqual(dict(result.attributes), expected_attributes)
 
     def test_get_description(self):
         sampler = RateLimitingSampler(2)
-        self.assertEqual(
-            sampler.get_description(), "RateLimitingSampler{2}"
-        )
+        self.assertEqual(sampler.get_description(), "RateLimitingSampler{2}")
 
     def test_max_traces_per_second_property(self):
         sampler = RateLimitingSampler(2)
@@ -203,7 +195,7 @@ class TestRateLimitingSampler(TestCase):
 
 
 class TestGuaranteedThroughputSampler(TestCase):
-    def test_probabilistic_wins_and_still_spends_lower_bound_credit(self):
+    def test_probabilistic_win_spends_lower_bound_credit(self):
         clock = _FakeClock()
         sampler = GuaranteedThroughputSampler(1.0, 1.0, clock=clock)
 
@@ -227,7 +219,7 @@ class TestGuaranteedThroughputSampler(TestCase):
             {"sampler.type": "lowerbound", "sampler.param": 1.0},
         )
 
-    def test_lower_bound_provides_guarantee_when_probabilistic_drops(self):
+    def test_lower_bound_guarantees_on_drop(self):
         clock = _FakeClock()
         sampler = GuaranteedThroughputSampler(0.0, 2.0, clock=clock)
 
@@ -254,7 +246,7 @@ class TestGuaranteedThroughputSampler(TestCase):
             result = sampler.should_sample(None, _TRACE_IDS[0], "op")
             self.assertEqual(result.decision, Decision.DROP)
 
-    def test_update_creates_and_tears_down_limiter(self):
+    def test_update_toggles_limiter(self):
         clock = _FakeClock()
         sampler = GuaranteedThroughputSampler(0.0, 0.0, clock=clock)
         self.assertEqual(
@@ -293,7 +285,7 @@ class TestPerOperationSampler(TestCase):
         result = sampler.should_sample(None, _TRACE_IDS[0], "op-b")
         self.assertEqual(result.decision, Decision.DROP)
 
-    def test_max_operations_cap_falls_back_to_default(self):
+    def test_over_cap_falls_back_to_default(self):
         sampler = PerOperationSampler(
             default_sampling_probability=1.0,
             default_lower_bound_traces_per_second=0.0,
@@ -312,9 +304,9 @@ class TestPerOperationSampler(TestCase):
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
         self.assertNotIn("op-b", sampler._operation_samplers)
 
-    def test_update_reconfigures_in_place_without_pruning(self):
+    def test_update_prunes_absent_operations(self):
         sampler = PerOperationSampler(
-            default_sampling_probability=0.0,
+            default_sampling_probability=1.0,
             default_lower_bound_traces_per_second=0.0,
             per_operation_strategies=[("op-a", 0.0), ("op-b", 0.0)],
         )
@@ -325,7 +317,7 @@ class TestPerOperationSampler(TestCase):
 
         # Update op-a's rate; op-b is left out of the new strategy list.
         sampler.update(
-            default_sampling_probability=0.0,
+            default_sampling_probability=1.0,
             default_lower_bound_traces_per_second=0.0,
             per_operation_strategies=[("op-a", 1.0)],
         )
@@ -334,13 +326,51 @@ class TestPerOperationSampler(TestCase):
             sampler.should_sample(None, _TRACE_IDS[0], "op-a").decision,
             Decision.RECORD_AND_SAMPLE,
         )
-        # op-b wasn't in the update - it keeps its old (rate=0.0) config
-        # rather than being pruned.
+        # op-b wasn't in the update - it's pruned and now falls back to the
+        # (freshly updated) default sampler instead of keeping its stale
+        # config.
+        self.assertNotIn("op-b", sampler._operation_samplers)
         self.assertEqual(
             sampler.should_sample(None, _TRACE_IDS[0], "op-b").decision,
+            Decision.RECORD_AND_SAMPLE,
+        )
+
+    def test_update_preserves_balance_for_retained_ops(
+        self,
+    ):
+        clock = _FakeClock()
+        sampler = PerOperationSampler(
+            default_sampling_probability=0.0,
+            default_lower_bound_traces_per_second=0.0,
+            per_operation_strategies=[("op-a", 0.0)],
+            clock=clock,
+        )
+        # Spend op-a's only lower-bound credit (rate=0 default lower bound
+        # means no credit exists yet - give op-a a lower bound directly).
+        sampler.update(
+            default_sampling_probability=0.0,
+            default_lower_bound_traces_per_second=1.0,
+            per_operation_strategies=[("op-a", 0.0)],
+        )
+        self.assertEqual(
+            sampler.should_sample(None, _TRACE_IDS[0], "op-a").decision,
+            Decision.RECORD_AND_SAMPLE,
+        )
+        existing_sampler = sampler._operation_samplers["op-a"]
+
+        # A second update that still includes op-a must reuse the same
+        # sampler instance (preserving its now-exhausted balance) rather
+        # than recreating it with a fresh, full balance.
+        sampler.update(
+            default_sampling_probability=0.0,
+            default_lower_bound_traces_per_second=1.0,
+            per_operation_strategies=[("op-a", 0.0)],
+        )
+        self.assertIs(sampler._operation_samplers["op-a"], existing_sampler)
+        self.assertEqual(
+            sampler.should_sample(None, _TRACE_IDS[0], "op-a").decision,
             Decision.DROP,
         )
-        self.assertIn("op-b", sampler._operation_samplers)
 
     def test_get_description(self):
         sampler = PerOperationSampler(

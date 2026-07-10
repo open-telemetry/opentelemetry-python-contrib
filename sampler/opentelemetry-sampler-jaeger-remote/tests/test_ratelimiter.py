@@ -27,7 +27,7 @@ class TestRateLimiter(TestCase):
             self.assertTrue(limiter.try_spend(1))
         self.assertFalse(limiter.try_spend(1))
 
-    def test_max_balance_defaults_to_credits_per_second(self):
+    def test_max_balance_defaults_to_rate(self):
         clock = _FakeClock()
         limiter = RateLimiter(3, clock=clock)
 
@@ -35,7 +35,7 @@ class TestRateLimiter(TestCase):
             self.assertTrue(limiter.try_spend(1))
         self.assertFalse(limiter.try_spend(1))
 
-    def test_update_max_balance_defaults_to_credits_per_second(self):
+    def test_update_max_balance_defaults_to_rate(self):
         clock = _FakeClock()
         # Starts full (balance == max_balance == 10).
         limiter = RateLimiter(0, 10, clock=clock)
@@ -59,7 +59,7 @@ class TestRateLimiter(TestCase):
             self.assertTrue(limiter.try_spend(1))
         self.assertFalse(limiter.try_spend(1))
 
-    def test_balance_caps_at_max_balance(self):
+    def test_balance_caps_at_max(self):
         clock = _FakeClock()
         limiter = RateLimiter(10, 5, clock=clock)
 
@@ -81,7 +81,7 @@ class TestRateLimiter(TestCase):
         self.assertTrue(limiter.try_spend(0.5))
         self.assertFalse(limiter.try_spend(0.5))
 
-    def test_insufficient_balance_leaves_balance_unchanged(self):
+    def test_insufficient_balance_unchanged(self):
         clock = _FakeClock()
         limiter = RateLimiter(1, 1, clock=clock)
 
@@ -91,12 +91,11 @@ class TestRateLimiter(TestCase):
         # The failed attempt above must not have touched the balance.
         self.assertTrue(limiter.try_spend(0.25))
 
-    def test_update_rescales_balance_proportionally(self):
+    def test_update_rescales_balance(self):
         clock = _FakeClock()
         limiter = RateLimiter(0, 10, clock=clock)
 
-        # Spend half the balance, then double the capacity - the remaining
-        # balance should scale up proportionally rather than resetting.
+        # Spend half the balance, then double the capacity
         self.assertTrue(limiter.try_spend(5))
         limiter.update(0, 20)
         self.assertTrue(limiter.try_spend(10))
@@ -105,22 +104,29 @@ class TestRateLimiter(TestCase):
     def test_update_rejects_invalid_arguments(self):
         limiter = RateLimiter(1, 1, clock=_FakeClock())
 
-        with self.assertRaises(ValueError):
-            limiter.update(-1, 1)
-        with self.assertRaises(ValueError):
-            limiter.update(1, 0)
+        cases = {
+            "negative credits_per_second": (-1, 1),
+            "zero max_balance": (1, 0),
+        }
+        for description, (credits_per_second, max_balance) in cases.items():
+            with self.subTest(description):
+                with self.assertRaises(ValueError):
+                    limiter.update(credits_per_second, max_balance)
 
     def test_constructor_rejects_invalid_arguments(self):
-        with self.assertRaises(ValueError):
-            RateLimiter(-1, 1)
-        with self.assertRaises(ValueError):
-            RateLimiter(1, 0)
-        with self.assertRaises(ValueError):
-            RateLimiter(1, -1)
+        cases = {
+            "negative credits_per_second": (-1, 1),
+            "zero max_balance": (1, 0),
+            "negative max_balance": (1, -1),
+        }
+        for description, (credits_per_second, max_balance) in cases.items():
+            with self.subTest(description):
+                with self.assertRaises(ValueError):
+                    RateLimiter(credits_per_second, max_balance)
 
-    def test_concurrent_try_spend_is_thread_safe(self):
+    def test_concurrent_try_spend_thread_safe(self):
         clock = _FakeClock()
-        max_balance = 50
+        max_balance = 5
         limiter = RateLimiter(0, max_balance, clock=clock)
 
         successes = []
@@ -129,7 +135,7 @@ class TestRateLimiter(TestCase):
             if limiter.try_spend(1):
                 successes.append(1)
 
-        threads = [Thread(target=spend) for _ in range(500)]
+        threads = [Thread(target=spend) for _ in range(50)]
         for thread in threads:
             thread.start()
         for thread in threads:

@@ -3,6 +3,10 @@
 
 from __future__ import annotations
 
+import http
+import itertools
+import random
+import time
 from typing import Mapping
 
 import urllib3
@@ -23,10 +27,23 @@ from opentelemetry.sampler.jaeger.remote.proto_json.sampling import (
 
 _DEFAULT_TIMEOUT = 10  # in seconds
 _MAX_RETRIES = 3
+_JITTER = 0.2
 _RETRYABLE_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+_RETRYABLE_CONNECTION_ERRORS: tuple[type[Exception], ...] = (
+    urllib3.exceptions.ConnectionError,
+    urllib3.exceptions.NewConnectionError,
+    urllib3.exceptions.ConnectTimeoutError,
+    urllib3.exceptions.MaxRetryError,
+    urllib3.exceptions.ProtocolError,
+)
+if hasattr(urllib3.exceptions, "NameResolutionError"):
+    # NameResolutionError was added in urllib3 2.0
+    _RETRYABLE_CONNECTION_ERRORS += (urllib3.exceptions.NameResolutionError,)
 
 
-def _decode_operation_strategy(strategy: OperationSamplingStrategy) -> OperationStrategy:
+def _decode_operation_strategy(
+    strategy: OperationSamplingStrategy,
+) -> OperationStrategy:
     sampling_rate = 0.0
     if strategy.probabilisticSampling is not None:
         sampling_rate = strategy.probabilisticSampling.samplingRate or 0.0
@@ -35,7 +52,9 @@ def _decode_operation_strategy(strategy: OperationSamplingStrategy) -> Operation
     )
 
 
-def _decode_sampling_strategy(response: SamplingStrategyResponse) -> SamplingStrategy:
+def _decode_sampling_strategy(
+    response: SamplingStrategyResponse,
+) -> SamplingStrategy:
     if response.operationSampling is not None:
         operation_sampling = response.operationSampling
         return PerOperationStrategy(
@@ -53,7 +72,9 @@ def _decode_sampling_strategy(response: SamplingStrategyResponse) -> SamplingStr
     if response.strategyType == SamplingStrategyType.RATE_LIMITING:
         rate_limiting = response.rateLimitingSampling
         max_traces_per_second = (
-            rate_limiting.maxTracesPerSecond if rate_limiting is not None else 0
+            rate_limiting.maxTracesPerSecond
+            if rate_limiting is not None
+            else 0
         )
         return RateLimitingStrategy(
             max_traces_per_second=max_traces_per_second or 0
@@ -66,11 +87,11 @@ def _decode_sampling_strategy(response: SamplingStrategyResponse) -> SamplingStr
 
 
 class HttpSamplingStrategyProvider(SamplingStrategyProvider):
-    """Fetches Jaeger sampling strategies over HTTP using the protobuf-JSON encoding.
+    """Fetches Jaeger sampling strategies over HTTP using the protobuf JSON encoding.
 
-    Polls ``GET {endpoint}?service={service_name}``, matching the sampling endpoint
+    Performs ``GET {endpoint}?service={service_name}``, matching the sampling endpoint
     exposed by Jaeger agents/collectors, and decodes the response body as a
-    `SamplingStrategyResponse` using the protobuf-JSON encoding.
+    `SamplingStrategyResponse` using the protobuf JSON encoding.
     """
 
     def __init__(
@@ -84,24 +105,43 @@ class HttpSamplingStrategyProvider(SamplingStrategyProvider):
         self._timeout = timeout if timeout is not None else _DEFAULT_TIMEOUT
         self._pool = urllib3.PoolManager(
             headers=dict(headers) if headers is not None else None,
-            timeout=self._timeout,
-            retries=urllib3.Retry(
-                total=_MAX_RETRIES, status_forcelist=_RETRYABLE_STATUSES
-            ),
+            retries=False,
         )
 
+    # pylint: disable-next=inconsistent-return-statements
     def get_sampling_strategy(self, service_name: str) -> SamplingStrategy:
-        response = self._pool.request(
-            "GET", self._endpoint, fields={"service": service_name}
-        )
-        if response.status != 200:
-            raise RuntimeError(
-                f"Jaeger sampling endpoint {self._endpoint} returned "
-                f"HTTP {response.status}"
+        deadline = time.monotonic() + self._timeout
+        for attempt in itertools.count():
+            try:
+                response = self._pool.request(
+                    "GET",
+                    self._endpoint,
+                    fields={"service": service_name},
+                    timeout=max(deadline - time.monotonic(), 0),
+                )
+            except _RETRYABLE_CONNECTION_ERRORS as error:
+                if attempt >= _MAX_RETRIES or deadline < time.monotonic():
+                    raise RuntimeError(
+                        f"Jaeger sampling endpoint {self._endpoint} failed: "
+                        f"{error}"
+                    ) from error
+            else:
+                if response.status == http.HTTPStatus.OK:
+                    return _decode_sampling_strategy(
+                        SamplingStrategyResponse.from_json(response.data)
+                    )
+                if (
+                    response.status not in _RETRYABLE_STATUSES
+                    or attempt >= _MAX_RETRIES
+                    or deadline < time.monotonic()
+                ):
+                    raise RuntimeError(
+                        f"Jaeger sampling endpoint {self._endpoint} "
+                        f"returned status {response.status}"
+                    )
+            time.sleep(
+                2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
             )
-        return _decode_sampling_strategy(
-            SamplingStrategyResponse.from_json(response.data)
-        )
 
     def close(self) -> None:
         self._pool.clear()

@@ -19,7 +19,8 @@ CODEGEN_JSON_REPO_BRANCH_OR_COMMIT="634cec5f2a2fecb40cb9d8216888c7b8865b845a"
 
 set -e
 
-CODEGEN_JSON_PACKAGE="opentelemetry-codegen-json @ git+https://github.com/open-telemetry/opentelemetry-python.git@${CODEGEN_JSON_REPO_BRANCH_OR_COMMIT}#subdirectory=codegen/opentelemetry-codegen-json"
+#CODEGEN_JSON_PACKAGE="opentelemetry-codegen-json @ git+https://github.com/open-telemetry/opentelemetry-python.git@${CODEGEN_JSON_REPO_BRANCH_OR_COMMIT}#subdirectory=codegen/opentelemetry-codegen-json"
+CODEGEN_JSON_PACKAGE="/Users/lukas/Documents/github-projects/opentelemetry-python/codegen/opentelemetry-codegen-json"
 
 # root of opentelemetry-python-contrib repo
 repo_root="$(git rev-parse --show-toplevel)"

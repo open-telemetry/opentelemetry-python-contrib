@@ -20,7 +20,7 @@ from opentelemetry.util.types import Attributes
 
 _SAMPLER_TYPE_KEY = "sampler.type"
 _SAMPLER_PARAM_KEY = "sampler.param"
-_DEFAULT_MAX_OPERATIONS = 2000
+_DEFAULT_MAX_OPERATIONS = 256
 
 
 def _sampler_result(
@@ -41,10 +41,7 @@ class ProbabilisticSampler(Sampler):
 
     Delegates the actual sampling decision to `TraceIdRatioBased`, which
     already implements the same trace ID bound algorithm Jaeger's
-    probabilistic sampler uses. This wrapper exists to give the sampler a
-    Jaeger-flavored description, attach `sampler.type`/`sampler.param`
-    attributes, and provide an `update` method for reconfiguring it in
-    place as new sampling strategies are polled from the remote server.
+    probabilistic sampler uses.
     """
 
     def __init__(self, rate: float) -> None:
@@ -89,9 +86,7 @@ class RateLimitingSampler(Sampler):
     """Sampler for Jaeger's RateLimitingSamplingStrategy.
 
     Samples at most `max_traces_per_second`, using a token bucket
-    (`RateLimiter`) with one credit spent per span. Burst capacity is
-    floored at 1.0 so that sub-1/sec rates still get an immediate credit
-    rather than starting starved.
+    rate limiter with one credit spent per span.
     """
 
     def __init__(
@@ -143,12 +138,9 @@ class RateLimitingSampler(Sampler):
 class GuaranteedThroughputSampler(Sampler):
     """Probabilistic sampling with a guaranteed minimum rate.
 
-    Combines a `ProbabilisticSampler(rate)` with a lower-bound `RateLimiter`
-    (when `lower_bound > 0`): the probabilistic decision wins whenever it
-    samples, but a lower bound credit is always spent regardless, so an
-    operation that would otherwise never be sampled probabilistically is
-    still guaranteed to fire at least `lower_bound` times per second. A
-    `lower_bound` of 0 disables the guarantee entirely.
+    Combines a `ProbabilisticSampler(rate)` with a lower bound `RateLimiter`.
+    This sampler is guaranteed to fire at least `lower_bound` times per second.
+    A `lower_bound` of 0 disables the guarantee entirely.
     """
 
     def __init__(
@@ -165,7 +157,9 @@ class GuaranteedThroughputSampler(Sampler):
     def _make_rate_limiter(self, lower_bound: float) -> RateLimiter | None:
         if lower_bound <= 0:
             return None
-        return RateLimiter(lower_bound, max(lower_bound, 1.0), clock=self._clock)
+        return RateLimiter(
+            lower_bound, max(lower_bound, 1.0), clock=self._clock
+        )
 
     def update(self, rate: float, lower_bound: float) -> None:
         """Reconfigure the rate/lower bound in place."""
@@ -197,9 +191,7 @@ class GuaranteedThroughputSampler(Sampler):
             links=links,
             trace_state=trace_state,
         )
-        # Always spend a lower bound credit, even if the probabilistic
-        # decision already samples, so the limiter stays ticking in sync
-        # with elapsed time rather than stockpiling unused credits.
+        # Always spend a lower bound credit
         spent = (
             self._rate_limiter.try_spend(1.0)
             if self._rate_limiter is not None
@@ -223,6 +215,12 @@ class PerOperationSampler(Sampler):
     without a specific strategy or seen after `max_operations` distinct
     operations are already tracked fall back to a shared default sampler
     built from `default_sampling_probability`/`default_lower_bound_traces_per_second`.
+
+    `update` rebuilds the tracked operations from the new strategy list on
+    every call, reusing (and thus preserving the rate limiter balance of)
+    samplers for operations that are still present, and dropping ones that
+    aren't - so the tracked set stays in sync with the latest strategy
+    response instead of growing without bound.
     """
 
     def __init__(
@@ -258,8 +256,11 @@ class PerOperationSampler(Sampler):
     ) -> None:
         """Reconfigure the default and per-operation samplers in place.
 
-        Operations absent from `per_operation_strategies` keep whatever
-        configuration they already have (not pruned).
+        The tracked operations are rebuilt from `per_operation_strategies`:
+        operations still present keep their existing sampler (refreshed via
+        `update`, preserving its rate limiter balance), operations absent
+        from the new list are pruned, and new ones are added up to
+        `max_operations`.
         """
         self._default_sampling_probability = default_sampling_probability
         self._default_lower_bound_traces_per_second = (
@@ -269,18 +270,19 @@ class PerOperationSampler(Sampler):
             default_sampling_probability, default_lower_bound_traces_per_second
         )
 
+        updated_samplers: dict[str, GuaranteedThroughputSampler] = {}
         for operation, rate in per_operation_strategies:
             existing = self._operation_samplers.get(operation)
             if existing is not None:
                 existing.update(rate, default_lower_bound_traces_per_second)
-            elif len(self._operation_samplers) < self._max_operations:
-                self._operation_samplers[operation] = (
-                    GuaranteedThroughputSampler(
-                        rate,
-                        default_lower_bound_traces_per_second,
-                        clock=self._clock,
-                    )
+                updated_samplers[operation] = existing
+            elif len(updated_samplers) < self._max_operations:
+                updated_samplers[operation] = GuaranteedThroughputSampler(
+                    rate,
+                    default_lower_bound_traces_per_second,
+                    clock=self._clock,
                 )
+        self._operation_samplers = updated_samplers
 
     def should_sample(
         self,

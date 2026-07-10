@@ -29,6 +29,9 @@ from opentelemetry.sampler.jaeger.remote.proto.sampling_pb2 import (  # pylint: 
 _ENDPOINT = "localhost:14250"
 
 _SLEEP_TARGET = "opentelemetry.sampler.jaeger.remote._grpc_provider.time.sleep"
+_MONOTONIC_TARGET = (
+    "opentelemetry.sampler.jaeger.remote._grpc_provider.time.monotonic"
+)
 
 
 class _FakeRpcError(grpc.RpcError):
@@ -130,7 +133,7 @@ class TestGetSamplingStrategy(TestCase):
         )
 
     @patch(_SLEEP_TARGET)
-    def test_non_retryable_error_raises_without_sleeping(self, mock_sleep):
+    def test_non_retryable_error_skips_sleep(self, mock_sleep):
         error = _FakeRpcError(grpc.StatusCode.INVALID_ARGUMENT)
         with patch.object(
             self.provider._stub, "GetSamplingStrategy", side_effect=error
@@ -141,7 +144,7 @@ class TestGetSamplingStrategy(TestCase):
         mock_sleep.assert_not_called()
 
     @patch(_SLEEP_TARGET)
-    def test_retries_transient_error_then_succeeds(self, mock_sleep):
+    def test_retries_then_succeeds(self, mock_sleep):
         response = SamplingStrategyResponse(
             probabilisticSampling=ProbabilisticSamplingStrategy(
                 samplingRate=0.5
@@ -170,6 +173,58 @@ class TestGetSamplingStrategy(TestCase):
                 self.provider.get_sampling_strategy("my-service")
 
         self.assertEqual(mock_sleep.call_count, _MAX_RETRIES)
+
+    @patch(_SLEEP_TARGET)
+    @patch(_MONOTONIC_TARGET)
+    def test_retry_uses_remaining_deadline(
+        self, mock_monotonic, mock_sleep
+    ):
+        # 1 call for the initial deadline, then per attempt: 1 before the
+        # call (used as its timeout) and, on failure, 1 more right after to
+        # check the deadline before deciding to retry. Attempt 0 fails at
+        # t=0/t=0; attempt 1 (t=3) then succeeds.
+        mock_monotonic.side_effect = [0, 0, 0, 3]
+        response = SamplingStrategyResponse(
+            probabilisticSampling=ProbabilisticSamplingStrategy(
+                samplingRate=0.5
+            )
+        )
+        side_effects = [_FakeRpcError(grpc.StatusCode.UNAVAILABLE), response]
+        with patch.object(
+            self.provider._stub,
+            "GetSamplingStrategy",
+            side_effect=side_effects,
+        ) as mock_get_strategy:
+            strategy = self.provider.get_sampling_strategy("my-service")
+
+        self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
+        self.assertEqual(
+            mock_get_strategy.call_args_list[0].kwargs["timeout"], 10
+        )
+        self.assertEqual(
+            mock_get_strategy.call_args_list[1].kwargs["timeout"], 7
+        )
+        mock_sleep.assert_called_once()
+
+    @patch(_SLEEP_TARGET)
+    @patch(_MONOTONIC_TARGET)
+    def test_deadline_exceeded_raises_early(
+        self, mock_monotonic, mock_sleep
+    ):
+        # Deadline (t=10) has already passed by the time the post-failure
+        # check for attempt 0 runs (t=15), well before _MAX_RETRIES (3) and
+        # before ever sleeping/retrying.
+        mock_monotonic.side_effect = [0, 0, 15]
+        error = _FakeRpcError(grpc.StatusCode.UNAVAILABLE)
+        with patch.object(
+            self.provider._stub, "GetSamplingStrategy", side_effect=[error]
+        ) as mock_get_strategy:
+            with self.assertRaises(RuntimeError) as ctx:
+                self.provider.get_sampling_strategy("my-service")
+
+        self.assertIn("UNAVAILABLE", str(ctx.exception))
+        self.assertEqual(mock_get_strategy.call_count, 1)
+        mock_sleep.assert_not_called()
 
 
 class TestClose(TestCase):

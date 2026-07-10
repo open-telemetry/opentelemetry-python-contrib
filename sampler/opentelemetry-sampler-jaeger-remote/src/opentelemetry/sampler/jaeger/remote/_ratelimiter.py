@@ -51,7 +51,7 @@ class RateLimiter:
         """Reconfigure the rate/capacity in place.
 
         The current balance is rescaled proportionally to the new
-        `max_balance` rather than being reset, so an in-progress bucket
+        `max_balance` rather than being reset, so an in progress bucket
         doesn't lose or gain credits purely as a result of reconfiguration.
         """
         if max_balance is None:
@@ -63,7 +63,9 @@ class RateLimiter:
 
         with self._lock:
             self._refill_locked()
-            self._balance = min(max_balance * self._balance / self._max_balance, max_balance)
+            self._balance = min(
+                max_balance * self._balance / self._max_balance, max_balance
+            )
             self._credits_per_second = credits_per_second
             self._max_balance = max_balance
 

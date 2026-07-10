@@ -1,7 +1,9 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from types import SimpleNamespace
 from unittest import TestCase
+from unittest.mock import patch
 
 import urllib3.exceptions
 from mocket import Mocket, Mocketizer
@@ -9,6 +11,7 @@ from mocket.mocks.mockhttp import Entry
 
 from opentelemetry.sampler.jaeger.remote._http_provider import (
     _DEFAULT_TIMEOUT,
+    _MAX_RETRIES,
     HttpSamplingStrategyProvider,
 )
 from opentelemetry.sampler.jaeger.remote._provider import (
@@ -23,6 +26,11 @@ _ENDPOINT = "http://mock/sampling"
 _PROBABILISTIC_BODY = (
     '{"strategyType": "PROBABILISTIC", '
     '"probabilisticSampling": {"samplingRate": 0.5}}'
+)
+
+_SLEEP_TARGET = "opentelemetry.sampler.jaeger.remote._http_provider.time.sleep"
+_MONOTONIC_TARGET = (
+    "opentelemetry.sampler.jaeger.remote._http_provider.time.monotonic"
 )
 
 
@@ -57,7 +65,7 @@ class TestConstructor(_MocketTestCase):
 
 
 class TestGetSamplingStrategy(_MocketTestCase):
-    def test_sends_service_query_param_and_headers(self):
+    def test_sends_service_param_and_headers(self):
         _register(Entry.response_cls(body=_PROBABILISTIC_BODY, status=200))
         provider = HttpSamplingStrategyProvider(
             _ENDPOINT, headers={"X-Test": "yes"}
@@ -129,14 +137,18 @@ class TestGetSamplingStrategy(_MocketTestCase):
             ),
         )
 
-    def test_non_retryable_error_status_raises(self):
+    @patch(_SLEEP_TARGET)
+    def test_non_retryable_error_status_raises(self, mock_sleep):
         _register(Entry.response_cls(status=404))
         provider = HttpSamplingStrategyProvider(_ENDPOINT)
 
         with self.assertRaises(RuntimeError):
             provider.get_sampling_strategy("my-service")
 
-    def test_retries_transient_error_then_succeeds(self):
+        mock_sleep.assert_not_called()
+
+    @patch(_SLEEP_TARGET)
+    def test_retries_then_succeeds(self, mock_sleep):
         _register(
             Entry.response_cls(status=503),
             Entry.response_cls(body=_PROBABILISTIC_BODY, status=200),
@@ -146,13 +158,93 @@ class TestGetSamplingStrategy(_MocketTestCase):
         strategy = provider.get_sampling_strategy("my-service")
 
         self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
+        mock_sleep.assert_called_once()
 
-    def test_retries_exhausted_raises(self):
-        _register(*(Entry.response_cls(status=503) for _ in range(6)))
+    @patch(_SLEEP_TARGET)
+    def test_retries_exhausted_raises(self, mock_sleep):
+        _register(
+            *(Entry.response_cls(status=503) for _ in range(_MAX_RETRIES + 1))
+        )
         provider = HttpSamplingStrategyProvider(_ENDPOINT)
 
-        with self.assertRaises(urllib3.exceptions.MaxRetryError):
+        with self.assertRaises(RuntimeError):
             provider.get_sampling_strategy("my-service")
+
+        self.assertEqual(mock_sleep.call_count, _MAX_RETRIES)
+
+    @patch(_SLEEP_TARGET)
+    def test_retries_transport_error(self, mock_sleep):
+        _register(
+            urllib3.exceptions.ProtocolError("connection broken"),
+            Entry.response_cls(body=_PROBABILISTIC_BODY, status=200),
+        )
+        provider = HttpSamplingStrategyProvider(_ENDPOINT)
+
+        strategy = provider.get_sampling_strategy("my-service")
+
+        self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
+        mock_sleep.assert_called_once()
+
+    @patch(_SLEEP_TARGET)
+    def test_transport_errors_exhausted_raises(self, mock_sleep):
+        _register(
+            *(
+                urllib3.exceptions.ProtocolError("connection broken")
+                for _ in range(_MAX_RETRIES + 1)
+            )
+        )
+        provider = HttpSamplingStrategyProvider(_ENDPOINT)
+
+        with self.assertRaises(RuntimeError):
+            provider.get_sampling_strategy("my-service")
+
+        self.assertEqual(mock_sleep.call_count, _MAX_RETRIES)
+
+    @patch(_SLEEP_TARGET)
+    @patch(_MONOTONIC_TARGET)
+    def test_retry_uses_remaining_deadline(
+        self, mock_monotonic, mock_sleep
+    ):
+        # 1 call for the initial deadline, then per attempt: 1 before the
+        # call (used as its timeout) and, on failure, 1 more right after to
+        # check the deadline before deciding to retry. Attempt 0 fails at
+        # t=0/t=0; attempt 1 (t=3) then succeeds.
+        mock_monotonic.side_effect = [0, 0, 0, 3]
+        provider = HttpSamplingStrategyProvider(_ENDPOINT, timeout=10)
+        responses = [
+            urllib3.exceptions.ProtocolError("connection broken"),
+            SimpleNamespace(status=200, data=_PROBABILISTIC_BODY.encode()),
+        ]
+        with patch.object(
+            provider._pool, "request", side_effect=responses
+        ) as mock_request:
+            strategy = provider.get_sampling_strategy("my-service")
+
+        self.assertEqual(strategy, ProbabilisticStrategy(sampling_rate=0.5))
+        self.assertEqual(mock_request.call_args_list[0].kwargs["timeout"], 10)
+        self.assertEqual(mock_request.call_args_list[1].kwargs["timeout"], 7)
+        mock_sleep.assert_called_once()
+
+    @patch(_SLEEP_TARGET)
+    @patch(_MONOTONIC_TARGET)
+    def test_deadline_exceeded_raises_early(
+        self, mock_monotonic, mock_sleep
+    ):
+        # Deadline (t=10) has already passed by the time the post-failure
+        # check for attempt 0 runs (t=15), well before _MAX_RETRIES (3) and
+        # before ever sleeping/retrying.
+        mock_monotonic.side_effect = [0, 0, 15]
+        provider = HttpSamplingStrategyProvider(_ENDPOINT, timeout=10)
+        error = urllib3.exceptions.ProtocolError("connection broken")
+        with patch.object(
+            provider._pool, "request", side_effect=[error]
+        ) as mock_request:
+            with self.assertRaises(RuntimeError) as ctx:
+                provider.get_sampling_strategy("my-service")
+
+        self.assertIn("connection broken", str(ctx.exception))
+        self.assertEqual(mock_request.call_count, 1)
+        mock_sleep.assert_not_called()
 
 
 class TestClose(_MocketTestCase):
