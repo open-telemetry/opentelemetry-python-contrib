@@ -5,7 +5,7 @@
 from timeit import default_timer
 from typing import Any, Optional
 
-from openai import Stream
+from openai import AsyncStream, Stream
 
 from opentelemetry._logs import Logger, LogRecord
 from opentelemetry.context import get_current
@@ -178,7 +178,7 @@ def async_chat_completions_create_v_old(
                 else:
                     parsed_result = result
                 if is_streaming(kwargs):
-                    return LegacyChatStreamWrapper(
+                    return AsyncLegacyChatStreamWrapper(
                         parsed_result, span, logger, capture_content
                     )
 
@@ -806,3 +806,35 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
         else:
             self.span.end()
         self._started = False
+
+
+class AsyncLegacyChatStreamWrapper(LegacyChatStreamWrapper):
+    """Async variant of :class:`LegacyChatStreamWrapper`.
+
+    Wraps an ``openai.AsyncStream`` whose ``close`` is a coroutine. ``close``
+    and ``__aexit__`` are therefore overridden as awaitables so the underlying
+    ``AsyncStream.close`` is awaited, releasing the httpx response/connection
+    instead of leaking it (and avoiding the ``coroutine ... was never awaited``
+    warning).
+    """
+
+    stream: AsyncStream
+
+    async def close(self) -> None:
+        # Finalize the span even if the underlying close raises, and re-raise
+        # the original exception unmodified.
+        try:
+            await self.stream.close()
+        finally:
+            self.cleanup()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # The wrapper replaces the underlying AsyncStream as the async context
+        # manager, so it must await AsyncStream.close on exit to release the
+        # httpx response/connection instead of leaking it.
+        error = exc_val if exc_type else None
+        try:
+            await self.stream.close()
+        finally:
+            self.cleanup(error)
+        return False  # Propagate the exception
