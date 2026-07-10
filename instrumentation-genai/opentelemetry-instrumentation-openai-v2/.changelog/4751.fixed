@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-v2`: await `AsyncStream.close` when closing an async streaming chat completion on the default semantic convention path so the underlying httpx response/connection is released instead of leaked
