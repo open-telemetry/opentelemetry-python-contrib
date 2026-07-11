@@ -3582,7 +3582,7 @@ instruments-any = [
 
 [package.metadata]
 requires-dist = [
-    { name = "kafka-python", marker = "extra == 'instruments-any'", specifier = ">=2.0,<3.0" },
+    { name = "kafka-python", marker = "extra == 'instruments-any'", specifier = ">=2.0,<4.0" },
     { name = "kafka-python-ng", marker = "extra == 'instruments-any'", specifier = ">=2.0,<3.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
