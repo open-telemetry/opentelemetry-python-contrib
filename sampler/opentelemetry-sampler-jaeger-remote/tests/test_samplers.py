@@ -64,7 +64,11 @@ class TestProbabilisticSampler(TestCase):
                 )
                 self.assertEqual(
                     dict(result.attributes),
-                    {"sampler.type": "probabilistic", "sampler.param": rate},
+                    {
+                        "foo": "bar",
+                        "sampler.type": "probabilistic",
+                        "sampler.param": rate,
+                    },
                 )
 
     def test_get_description(self):
@@ -149,6 +153,7 @@ class TestRateLimitingSampler(TestCase):
         attributes = {"foo": "bar"}
         sampler = RateLimitingSampler(1, clock=clock)
         expected_attributes = {
+            "foo": "bar",
             "sampler.type": "ratelimiting",
             "sampler.param": 1,
         }
@@ -230,6 +235,24 @@ class TestGuaranteedThroughputSampler(TestCase):
         self.assertEqual(
             dict(result.attributes),
             {"sampler.type": "lowerbound", "sampler.param": 2.0},
+        )
+
+    def test_attributes_include_sampler_tags_on_lower_bound_path(self):
+        clock = _FakeClock()
+        sampler = GuaranteedThroughputSampler(0.0, 2.0, clock=clock)
+        attributes = {"foo": "bar"}
+
+        result = sampler.should_sample(
+            None, _TRACE_IDS[0], "op", attributes=attributes
+        )
+        self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
+        self.assertEqual(
+            dict(result.attributes),
+            {
+                "foo": "bar",
+                "sampler.type": "lowerbound",
+                "sampler.param": 2.0,
+            },
         )
 
     def test_lower_bound_zero_disables_guarantee(self):

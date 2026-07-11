@@ -25,15 +25,15 @@ _DEFAULT_MAX_OPERATIONS = 256
 
 def _sampler_result(
     decision: Decision,
+    attributes: Attributes | None,
     trace_state: TraceState | None,
     sampler_type: str,
     param: float,
 ) -> SamplingResult:
-    return SamplingResult(
-        decision,
-        {_SAMPLER_TYPE_KEY: sampler_type, _SAMPLER_PARAM_KEY: param},
-        trace_state,
-    )
+    merged_attributes = dict(attributes) if attributes else {}
+    merged_attributes[_SAMPLER_TYPE_KEY] = sampler_type
+    merged_attributes[_SAMPLER_PARAM_KEY] = param
+    return SamplingResult(decision, merged_attributes, trace_state)
 
 
 class ProbabilisticSampler(Sampler):
@@ -75,7 +75,11 @@ class ProbabilisticSampler(Sampler):
             trace_state=trace_state,
         )
         return _sampler_result(
-            result.decision, result.trace_state, "probabilistic", self.rate
+            result.decision,
+            attributes,
+            result.trace_state,
+            "probabilistic",
+            self.rate,
         )
 
     def get_description(self) -> str:
@@ -128,7 +132,11 @@ class RateLimitingSampler(Sampler):
             else Decision.DROP
         )
         return _sampler_result(
-            decision, trace_state, "ratelimiting", self._max_traces_per_second
+            decision,
+            attributes,
+            trace_state,
+            "ratelimiting",
+            self._max_traces_per_second,
         )
 
     def get_description(self) -> str:
@@ -201,7 +209,11 @@ class GuaranteedThroughputSampler(Sampler):
             return result
         decision = Decision.RECORD_AND_SAMPLE if spent else Decision.DROP
         return _sampler_result(
-            decision, result.trace_state, "lowerbound", self._lower_bound
+            decision,
+            attributes,
+            result.trace_state,
+            "lowerbound",
+            self._lower_bound,
         )
 
     def get_description(self) -> str:
