@@ -104,6 +104,7 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
         request = SamplingStrategyParameters(serviceName=service_name)
         deadline = time.monotonic() + self._timeout
         for attempt in itertools.count():
+            backoff = 2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
             try:
                 response = self._stub.GetSamplingStrategy(
                     request,
@@ -115,13 +116,12 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
                 if (
                     error.code() not in _RETRYABLE_STATUS_CODES
                     or attempt >= _MAX_RETRIES
-                    or deadline < time.monotonic()
+                    or deadline < time.monotonic() + backoff
                 ):
                     raise RuntimeError(
                         f"Jaeger gRPC sampling endpoint {self._endpoint} "
                         f"returned {error.code()}: {error.details()}"
                     ) from error
-                backoff = 2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
                 time.sleep(backoff)
                 continue
             return _decode_sampling_strategy(response)

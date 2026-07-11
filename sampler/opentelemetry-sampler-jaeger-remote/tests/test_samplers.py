@@ -10,6 +10,13 @@ from opentelemetry.sampler.jaeger.remote._samplers import (
     RateLimitingSampler,
 )
 from opentelemetry.sdk.trace.sampling import Decision, TraceIdRatioBased
+from opentelemetry.trace import (
+    NonRecordingSpan,
+    SpanContext,
+    TraceFlags,
+    set_span_in_context,
+)
+from opentelemetry.trace.span import TraceState
 
 _TRACE_IDS = [1, 2, 3, 12345, 2**63, 2**64 - 1]
 
@@ -170,6 +177,27 @@ class TestRateLimitingSampler(TestCase):
         self.assertEqual(result.decision, Decision.DROP)
         self.assertEqual(dict(result.attributes), expected_attributes)
 
+    def test_preserves_parent_trace_state(self):
+        clock = _FakeClock()
+        sampler = RateLimitingSampler(1, clock=clock)
+        parent_trace_state = TraceState([("foo", "bar")])
+        parent_context = set_span_in_context(
+            NonRecordingSpan(
+                SpanContext(
+                    trace_id=_TRACE_IDS[0],
+                    span_id=1,
+                    is_remote=True,
+                    trace_flags=TraceFlags(TraceFlags.SAMPLED),
+                    trace_state=parent_trace_state,
+                )
+            )
+        )
+
+        result = sampler.should_sample(parent_context, _TRACE_IDS[0], "span")
+
+        self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
+        self.assertEqual(result.trace_state, parent_trace_state)
+
     def test_get_description(self):
         sampler = RateLimitingSampler(2)
         self.assertEqual(sampler.get_description(), "RateLimitingSampler{2}")
@@ -316,6 +344,34 @@ class TestPerOperationSampler(TestCase):
         result = sampler.should_sample(None, _TRACE_IDS[0], "op-b")
         self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
         self.assertNotIn("op-b", sampler._operation_samplers)
+
+    def test_constructor_enforces_max_operations(self):
+        sampler = PerOperationSampler(
+            default_sampling_probability=0.0,
+            default_lower_bound_traces_per_second=0.0,
+            per_operation_strategies=[("op-a", 1.0), ("op-b", 1.0)],
+            max_operations=1,
+        )
+
+        self.assertEqual(list(sampler._operation_samplers), ["op-a"])
+
+        result = sampler.should_sample(None, _TRACE_IDS[0], "op-b")
+        self.assertEqual(result.decision, Decision.DROP)
+        self.assertNotIn("op-b", sampler._operation_samplers)
+
+    def test_constructor_max_operations_zero(self):
+        sampler = PerOperationSampler(
+            default_sampling_probability=1.0,
+            default_lower_bound_traces_per_second=0.0,
+            per_operation_strategies=[("op-a", 0.0)],
+            max_operations=0,
+        )
+
+        self.assertEqual(sampler._operation_samplers, {})
+
+        result = sampler.should_sample(None, _TRACE_IDS[0], "op-a")
+        self.assertEqual(result.decision, Decision.RECORD_AND_SAMPLE)
+        self.assertNotIn("op-a", sampler._operation_samplers)
 
     def test_update_prunes_absent_operations(self):
         sampler = PerOperationSampler(

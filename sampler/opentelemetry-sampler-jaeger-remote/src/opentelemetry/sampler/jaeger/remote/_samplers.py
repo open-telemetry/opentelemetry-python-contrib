@@ -14,7 +14,7 @@ from opentelemetry.sdk.trace.sampling import (
     SamplingResult,
     TraceIdRatioBased,
 )
-from opentelemetry.trace import Link, SpanKind
+from opentelemetry.trace import Link, SpanKind, get_current_span
 from opentelemetry.trace.span import TraceState
 from opentelemetry.util.types import Attributes
 
@@ -34,6 +34,15 @@ def _sampler_result(
     merged_attributes[_SAMPLER_TYPE_KEY] = sampler_type
     merged_attributes[_SAMPLER_PARAM_KEY] = param
     return SamplingResult(decision, merged_attributes, trace_state)
+
+
+def _get_parent_trace_state(
+    parent_context: Context | None,
+) -> TraceState | None:
+    parent_span_context = get_current_span(parent_context).get_span_context()
+    if not parent_span_context.is_valid:
+        return None
+    return parent_span_context.trace_state
 
 
 class ProbabilisticSampler(Sampler):
@@ -134,7 +143,7 @@ class RateLimitingSampler(Sampler):
         return _sampler_result(
             decision,
             attributes,
-            trace_state,
+            _get_parent_trace_state(parent_context),
             "ratelimiting",
             self._max_traces_per_second,
         )
@@ -256,6 +265,8 @@ class PerOperationSampler(Sampler):
         )
         self._operation_samplers: dict[str, GuaranteedThroughputSampler] = {}
         for operation, rate in per_operation_strategies:
+            if len(self._operation_samplers) >= max_operations:
+                break
             self._operation_samplers[operation] = GuaranteedThroughputSampler(
                 rate, default_lower_bound_traces_per_second, clock=clock
             )

@@ -32,6 +32,9 @@ _SLEEP_TARGET = "opentelemetry.sampler.jaeger.remote._grpc_provider.time.sleep"
 _MONOTONIC_TARGET = (
     "opentelemetry.sampler.jaeger.remote._grpc_provider.time.monotonic"
 )
+_RANDOM_TARGET = (
+    "opentelemetry.sampler.jaeger.remote._grpc_provider.random.uniform"
+)
 
 
 class _FakeRpcError(grpc.RpcError):
@@ -196,6 +199,25 @@ class TestGetSamplingStrategy(TestCase):
             mock_get_strategy.call_args_list[1].kwargs["timeout"], 7
         )
         mock_sleep.assert_called_once()
+
+    @patch(_RANDOM_TARGET)
+    @patch(_SLEEP_TARGET)
+    @patch(_MONOTONIC_TARGET)
+    def test_raises_before_sleep_exceeds_deadline(
+        self, mock_monotonic, mock_sleep, mock_uniform
+    ):
+        mock_uniform.return_value = 1.0
+        mock_monotonic.side_effect = [0, 0, 9.5]
+        error = _FakeRpcError(grpc.StatusCode.UNAVAILABLE)
+        with patch.object(
+            self.provider._stub, "GetSamplingStrategy", side_effect=[error]
+        ) as mock_get_strategy:
+            with self.assertRaises(RuntimeError) as ctx:
+                self.provider.get_sampling_strategy("my-service")
+
+        self.assertIn("UNAVAILABLE", str(ctx.exception))
+        self.assertEqual(mock_get_strategy.call_count, 1)
+        mock_sleep.assert_not_called()
 
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)

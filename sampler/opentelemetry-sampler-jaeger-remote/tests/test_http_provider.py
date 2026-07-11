@@ -48,6 +48,9 @@ _SLEEP_TARGET = "opentelemetry.sampler.jaeger.remote._http_provider.time.sleep"
 _MONOTONIC_TARGET = (
     "opentelemetry.sampler.jaeger.remote._http_provider.time.monotonic"
 )
+_RANDOM_TARGET = (
+    "opentelemetry.sampler.jaeger.remote._http_provider.random.uniform"
+)
 
 
 def _register(*responses, match_querystring=False):
@@ -68,6 +71,8 @@ def _make_connection_error(
         return error_type("mock", None, socket.gaierror("connection broken"))
     if error_type is urllib3.exceptions.NewConnectionError:
         return error_type(None, "connection broken")
+    if error_type is urllib3.exceptions.ReadTimeoutError:
+        return error_type(None, _ENDPOINT, "Read timed out.")
     return error_type("connection broken")
 
 
@@ -260,6 +265,26 @@ class TestGetSamplingStrategy(_MocketTestCase):
         self.assertEqual(mock_request.call_args_list[0].kwargs["timeout"], 10)
         self.assertEqual(mock_request.call_args_list[1].kwargs["timeout"], 7)
         mock_sleep.assert_called_once()
+
+    @patch(_RANDOM_TARGET)
+    @patch(_SLEEP_TARGET)
+    @patch(_MONOTONIC_TARGET)
+    def test_raises_before_sleep_exceeds_deadline(
+        self, mock_monotonic, mock_sleep, mock_uniform
+    ):
+        mock_uniform.return_value = 1.0
+        mock_monotonic.side_effect = [0, 0, 9.5]
+        provider = HttpSamplingStrategyProvider(_ENDPOINT, timeout=10)
+        error = urllib3.exceptions.ProtocolError("connection broken")
+        with patch.object(
+            provider._pool, "request", side_effect=[error]
+        ) as mock_request:
+            with self.assertRaises(RuntimeError) as ctx:
+                provider.get_sampling_strategy("my-service")
+
+        self.assertIn("connection broken", str(ctx.exception))
+        self.assertEqual(mock_request.call_count, 1)
+        mock_sleep.assert_not_called()
 
     @patch(_SLEEP_TARGET)
     @patch(_MONOTONIC_TARGET)

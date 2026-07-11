@@ -33,6 +33,7 @@ _RETRYABLE_CONNECTION_ERRORS: tuple[type[Exception], ...] = (
     urllib3.exceptions.ConnectionError,
     urllib3.exceptions.NewConnectionError,
     urllib3.exceptions.ConnectTimeoutError,
+    urllib3.exceptions.ReadTimeoutError,
     urllib3.exceptions.MaxRetryError,
     urllib3.exceptions.ProtocolError,
 )
@@ -112,6 +113,7 @@ class HttpSamplingStrategyProvider(SamplingStrategyProvider):
     def get_sampling_strategy(self, service_name: str) -> SamplingStrategy:
         deadline = time.monotonic() + self._timeout
         for attempt in itertools.count():
+            backoff = 2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
             try:
                 response = self._pool.request(
                     "GET",
@@ -120,7 +122,10 @@ class HttpSamplingStrategyProvider(SamplingStrategyProvider):
                     timeout=max(deadline - time.monotonic(), 0),
                 )
             except _RETRYABLE_CONNECTION_ERRORS as error:
-                if attempt >= _MAX_RETRIES or deadline < time.monotonic():
+                if (
+                    attempt >= _MAX_RETRIES
+                    or deadline < time.monotonic() + backoff
+                ):
                     raise RuntimeError(
                         f"Jaeger sampling endpoint {self._endpoint} failed: "
                         f"{error}"
@@ -133,13 +138,13 @@ class HttpSamplingStrategyProvider(SamplingStrategyProvider):
                 if (
                     response.status not in _RETRYABLE_STATUSES
                     or attempt >= _MAX_RETRIES
-                    or deadline < time.monotonic()
+                    or deadline < time.monotonic() + backoff
                 ):
                     raise RuntimeError(
                         f"Jaeger sampling endpoint {self._endpoint} "
                         f"returned status {response.status}"
                     )
-            time.sleep(2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER))
+            time.sleep(backoff)
 
     def close(self) -> None:
         self._pool.clear()
