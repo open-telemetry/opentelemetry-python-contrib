@@ -24,6 +24,7 @@ from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes import net_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -354,6 +355,13 @@ class TestDBApiIntegration(TestBase):
             span.attributes["db.statement.parameters"],
             "('param1Value', False)",
         )
+        # db.query.parameter.<key> belongs to the new semconv only.
+        self.assertFalse(
+            any(
+                key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
+                for key in span.attributes
+            )
+        )
         self.assertEqual(span.attributes[DB_USER], "testuser")
         self.assertEqual(
             span.attributes[net_attributes.NET_PEER_NAME], "testhost"
@@ -388,10 +396,18 @@ class TestDBApiIntegration(TestBase):
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
             self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
             self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+            # Positional parameters are keyed by their 0-based index and their
+            # values are captured as strings.
             self.assertEqual(
-                span.attributes["db.statement.parameters"],
-                "('param1Value', False)",
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
+                "param1Value",
             )
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False"
+            )
+            # The legacy db.statement.parameters is replaced by
+            # db.query.parameter.<key> in the stable semconv.
+            self.assertFalse("db.statement.parameters" in span.attributes)
             # db.user removed in stable - no replacement
             self.assertFalse(DB_USER in span.attributes)
             self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
@@ -450,10 +466,78 @@ class TestDBApiIntegration(TestBase):
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
             self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
             self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
+                "param1Value",
+            )
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False"
+            )
             self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
             self.assertEqual(span.attributes[SERVER_PORT], 123)
 
             self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
+
+    def test_span_succeeded_with_capture_of_named_query_parameters(self):
+        with use_semconv_opt_in("database"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+                capture_parameters=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.execute(
+                "SELECT * FROM users WHERE name = %(userName)s",
+                {"userName": "jdoe"},
+            )
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            # Named parameters are keyed by their name.
+            self.assertEqual(
+                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.userName"],
+                "jdoe",
+            )
+
+    def test_query_parameters_not_captured_for_batch_operations(self):
+        with use_semconv_opt_in("database/dup"):
+            connection_props = _get_default_connection_props()
+            connection_attributes = _get_default_connection_attributes()
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+                capture_parameters=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            cursor.executemany(
+                "INSERT INTO users VALUES (%s)",
+                [("param1Value",), ("param2Value",)],
+            )
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            # db.query.parameter.<key> SHOULD NOT be captured on batch
+            # operations, but the legacy attribute is still captured.
+            self.assertFalse(
+                any(
+                    key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
+                    for key in span.attributes
+                )
+            )
+            self.assertEqual(
+                span.attributes["db.statement.parameters"],
+                "[('param1Value',), ('param2Value',)]",
+            )
 
     def test_span_not_recording(self):
         connection_props = _get_default_connection_props()
