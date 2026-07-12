@@ -100,13 +100,13 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
         self._channel = grpc.insecure_channel(endpoint)
         self._stub = SamplingManagerStub(self._channel)
 
-    def get_sampling_strategy(self, service_name: str) -> SamplingStrategy:
+    def get_sampling_strategy(self, service_name: str) -> SamplingStrategy:  # pyright: ignore[reportReturnType]
         request = SamplingStrategyParameters(serviceName=service_name)
         deadline = time.monotonic() + self._timeout
         for attempt in itertools.count():
             backoff = 2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
             try:
-                response = self._stub.GetSamplingStrategy(
+                response = self._stub.GetSamplingStrategy(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
                     request,
                     metadata=self._metadata,
                     timeout=max(deadline - time.monotonic(), 0),
@@ -124,7 +124,7 @@ class GrpcSamplingStrategyProvider(SamplingStrategyProvider):
                     ) from error
                 time.sleep(backoff)
                 continue
-            return _decode_sampling_strategy(response)
+            return _decode_sampling_strategy(response)  # pyright: ignore[reportUnknownArgumentType]
 
     def close(self) -> None:
         self._channel.close()

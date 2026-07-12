@@ -36,10 +36,13 @@ _RETRYABLE_CONNECTION_ERRORS: tuple[type[Exception], ...] = (
     urllib3.exceptions.ReadTimeoutError,
     urllib3.exceptions.MaxRetryError,
     urllib3.exceptions.ProtocolError,
-)
-if hasattr(urllib3.exceptions, "NameResolutionError"):
     # NameResolutionError was added in urllib3 2.0
-    _RETRYABLE_CONNECTION_ERRORS += (urllib3.exceptions.NameResolutionError,)
+    *(
+        (urllib3.exceptions.NameResolutionError,)
+        if hasattr(urllib3.exceptions, "NameResolutionError")
+        else ()
+    ),
+)
 
 
 def _decode_operation_strategy(
@@ -110,7 +113,7 @@ class HttpSamplingStrategyProvider(SamplingStrategyProvider):
         )
 
     # pylint: disable-next=inconsistent-return-statements
-    def get_sampling_strategy(self, service_name: str) -> SamplingStrategy:
+    def get_sampling_strategy(self, service_name: str) -> SamplingStrategy:  # pyright: ignore[reportReturnType]
         deadline = time.monotonic() + self._timeout
         for attempt in itertools.count():
             backoff = 2**attempt * random.uniform(1 - _JITTER, 1 + _JITTER)
