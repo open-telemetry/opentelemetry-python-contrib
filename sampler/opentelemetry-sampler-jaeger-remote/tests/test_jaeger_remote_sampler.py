@@ -89,6 +89,10 @@ class TestCreateProvider(TestCase):
 
 
 class TestJaegerRemoteSampler(TestCase):
+    def test_negative_polling_interval_raises(self):
+        with self.assertRaises(ValueError):
+            JaegerRemoteSampler(_ENDPOINT, _SERVICE_NAME, polling_interval=-1)
+
     def test_constructor_does_not_block(self):
         provider = _FakeProvider(ProbabilisticStrategy(sampling_rate=1.0))
         provider.block_event = threading.Event()
@@ -218,7 +222,7 @@ class TestJaegerRemoteSampler(TestCase):
         self.assertIsInstance(first_sampler, ProbabilisticSampler)
 
         provider.strategy = ProbabilisticStrategy(sampling_rate=0.75)
-        sampler._update_sampler()
+        sampler._update_sampler(provider)
 
         self.assertIs(sampler._sampler, first_sampler)
         self.assertEqual(sampler._sampler.rate, 0.75)
@@ -237,7 +241,7 @@ class TestJaegerRemoteSampler(TestCase):
         self.assertIsInstance(first_sampler, ProbabilisticSampler)
 
         provider.strategy = RateLimitingStrategy(max_traces_per_second=5)
-        sampler._update_sampler()
+        sampler._update_sampler(provider)
 
         self.assertIsNot(sampler._sampler, first_sampler)
         self.assertIsInstance(sampler._sampler, RateLimitingSampler)
@@ -280,7 +284,7 @@ class TestJaegerRemoteSampler(TestCase):
         with patch.object(
             provider, "get_sampling_strategy", side_effect=RuntimeError
         ):
-            sampler._update_sampler()
+            sampler._update_sampler(provider)
 
         self.assertIs(sampler._sampler, previous_sampler)
 

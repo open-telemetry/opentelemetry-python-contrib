@@ -118,16 +118,20 @@ def _poll_loop(
     sampler_ref: weakref.ReferenceType[JaegerRemoteSampler],
     shutdown_event: threading.Event,
     polling_interval: float,
+    provider: SamplingStrategyProvider,
 ) -> None:
-    while True:
-        sampler = sampler_ref()
-        if sampler is None:
-            return
-        # pylint: disable-next=protected-access
-        sampler._update_sampler()
-        del sampler
-        if shutdown_event.wait(polling_interval):
-            return
+    try:
+        while True:
+            sampler = sampler_ref()
+            if sampler is None:
+                return
+            # pylint: disable-next=protected-access
+            sampler._update_sampler(provider)
+            del sampler
+            if shutdown_event.wait(polling_interval):
+                return
+    finally:
+        provider.close()
 
 
 class JaegerRemoteSampler(Sampler):
@@ -151,12 +155,13 @@ class JaegerRemoteSampler(Sampler):
         polling_interval: float = _DEFAULT_POLLING_INTERVAL,
         max_operations: int = _DEFAULT_MAX_OPERATIONS,
     ) -> None:
+        if polling_interval < 0:
+            raise ValueError("polling_interval must be non-negative")
         self._lock = threading.Lock()
         self._shutdown_event = threading.Event()
         self._service_name = service_name
         self._polling_interval = polling_interval
         self._max_operations = max_operations
-        self._provider = _create_provider(protocol, endpoint, headers, timeout)
         self._sampler: Sampler = (
             initial_sampler
             if initial_sampler is not None
@@ -168,6 +173,7 @@ class JaegerRemoteSampler(Sampler):
                 weakref.ref(self),
                 self._shutdown_event,
                 self._polling_interval,
+                _create_provider(protocol, endpoint, headers, timeout),
             ),
             name="JaegerRemoteSamplerWorker",
             daemon=True,
@@ -200,20 +206,17 @@ class JaegerRemoteSampler(Sampler):
             return f"JaegerRemoteSampler{{{self._sampler.get_description()}}}"
 
     def close(self) -> None:
-        """Stop the background polling thread and release the provider."""
+        """Stop the background polling thread, which releases the provider."""
         self._shutdown_event.set()
         self._thread.join()
-        self._provider.close()
 
     def __del__(self) -> None:
         if shutdown_event := getattr(self, "_shutdown_event", None):
             shutdown_event.set()
-        if provider := getattr(self, "_provider", None):
-            provider.close()
 
-    def _update_sampler(self) -> None:
+    def _update_sampler(self, provider: SamplingStrategyProvider) -> None:
         try:
-            strategy = self._provider.get_sampling_strategy(self._service_name)
+            strategy = provider.get_sampling_strategy(self._service_name)
             with self._lock:
                 self._sampler = _build_or_update_sampler(
                     self._sampler, strategy, self._max_operations
