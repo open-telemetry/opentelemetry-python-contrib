@@ -80,6 +80,7 @@ async def async_with_custom_header(request):
     response.headers["custom-test-header-2"] = "test-header-value-2"
     return response
 
+
 def streaming_view(request, events):  # pylint: disable=unused-argument
     def stream_generator():
         events.append("generator_started")

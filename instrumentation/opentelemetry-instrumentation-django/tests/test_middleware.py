@@ -1203,4 +1203,3 @@ class TestMiddlewareStreamingResponse(WsgiTestBase):
             "Span ended before streaming content was consumed: "
             f"event order was {events}",
         )
-
