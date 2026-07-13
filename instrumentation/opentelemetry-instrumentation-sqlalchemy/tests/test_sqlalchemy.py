@@ -29,6 +29,7 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_STATEMENT,
     DB_SYSTEM,
 )
@@ -812,6 +813,132 @@ class TestSqlalchemyInstrumentation(TestBase):
         # Verify old conventions are NOT present
         self.assertNotIn(DB_STATEMENT, query_span.attributes)
         self.assertNotIn(DB_SYSTEM, query_span.attributes)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_capture_parameters_off_by_default(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT :a, :b"), {"a": 1, "b": "two"}).fetchall()
+
+        query_span = self._get_query_span()
+        self.assertFalse(
+            any(
+                key.startswith(f"{DB_QUERY_PARAMETER_TEMPLATE}.")
+                for key in query_span.attributes
+            )
+        )
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_capture_parameters_named(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            capture_parameters=True,
+        )
+        cnx = engine.connect()
+        cnx.exec_driver_sql("SELECT :a, :b", {"a": 1, "b": "two"})
+
+        query_span = self._get_query_span()
+        key_a = f"{DB_QUERY_PARAMETER_TEMPLATE}.a"
+        key_b = f"{DB_QUERY_PARAMETER_TEMPLATE}.b"
+        self.assertIn(key_a, query_span.attributes)
+        self.assertIn(key_b, query_span.attributes)
+        self.assertEqual(query_span.attributes[key_a], "1")
+        self.assertEqual(query_span.attributes[key_b], "two")
+        self.assertIsInstance(query_span.attributes[key_a], str)
+        self.assertIsInstance(query_span.attributes[key_b], str)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_capture_parameters_positional(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            capture_parameters=True,
+        )
+        cnx = engine.connect()
+        cnx.exec_driver_sql("SELECT ?, ?", (1, "two"))
+
+        query_span = self._get_query_span()
+        key_0 = f"{DB_QUERY_PARAMETER_TEMPLATE}.0"
+        key_1 = f"{DB_QUERY_PARAMETER_TEMPLATE}.1"
+        self.assertIn(key_0, query_span.attributes)
+        self.assertIn(key_1, query_span.attributes)
+        self.assertEqual(query_span.attributes[key_0], "1")
+        self.assertEqual(query_span.attributes[key_1], "two")
+        self.assertIsInstance(query_span.attributes[key_0], str)
+        self.assertIsInstance(query_span.attributes[key_1], str)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_capture_parameters_executemany(self):
+        SQLAlchemyInstrumentor().uninstrument()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        _OpenTelemetrySemanticConventionStability._initialize()
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            capture_parameters=True,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("CREATE TABLE t (a INTEGER, b TEXT)"))
+        cnx.execute(
+            text("INSERT INTO t (a, b) VALUES (:a, :b)"),
+            [{"a": 1, "b": "one"}, {"a": 2, "b": "two"}],
+        )
+
+        spans = self.memory_exporter.get_finished_spans()
+        for span in spans:
+            self.assertFalse(
+                any(
+                    key.startswith(f"{DB_QUERY_PARAMETER_TEMPLATE}.")
+                    for key in span.attributes
+                )
+            )
+
+    def test_capture_parameters_default_mode_absent(self):
+        engine = create_engine("sqlite:///:memory:")
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine,
+            tracer_provider=self.tracer_provider,
+            capture_parameters=True,
+        )
+        cnx = engine.connect()
+        cnx.execute(text("SELECT :a, :b"), {"a": 1, "b": "two"}).fetchall()
+
+        spans = self.memory_exporter.get_finished_spans()
+        for span in spans:
+            self.assertFalse(
+                any(
+                    key.startswith(f"{DB_QUERY_PARAMETER_TEMPLATE}.")
+                    for key in span.attributes
+                )
+            )
+
+    def _get_query_span(self):
+        spans = self.memory_exporter.get_finished_spans()
+        for span in spans:
+            if span.kind is trace.SpanKind.CLIENT and (
+                DB_SYSTEM in span.attributes
+                or DB_SYSTEM_NAME in span.attributes
+            ):
+                if span.name != "connect":
+                    return span
+        raise AssertionError("no query span found")
 
     @mock.patch.dict(
         "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "http,database"}
