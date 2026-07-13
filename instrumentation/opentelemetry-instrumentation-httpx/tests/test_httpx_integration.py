@@ -97,9 +97,16 @@ def _async_call(coro: typing.Coroutine) -> asyncio.Task:
 
 def _response_hook(span, request: "RequestInfo", response: "ResponseInfo"):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
+    httpx_response = response.response
+    if httpx_response is not None:
+        assert isinstance(httpx_response, httpx.Response)
+        content = httpx_response.read().decode()
+    else:
+        content = b"".join(response[2]).decode()
+
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        "".join([part.decode() for part in response[2]]),
+        content,
     )
 
 
@@ -107,21 +114,38 @@ async def _async_response_hook(
     span: "Span", request: "RequestInfo", response: "ResponseInfo"
 ):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
+    httpx_response = response.response
+    if httpx_response is not None:
+        assert isinstance(httpx_response, httpx.Response)
+        content = (await httpx_response.aread()).decode()
+    else:
+        content = b"".join([part async for part in response[2]]).decode()
+
     span.set_attribute(
         HTTP_RESPONSE_BODY,
-        "".join([part.decode() async for part in response[2]]),
+        content,
     )
 
 
 def _request_hook(span: "Span", request: "RequestInfo"):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
-    url = httpx.URL(request[1])
+    httpx_request = request.request
+    if httpx_request is not None:
+        assert isinstance(httpx_request, httpx.Request)
+        url = httpx_request.url
+    else:
+        url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 
 async def _async_request_hook(span: "Span", request: "RequestInfo"):
     assert _is_url_tuple(request) or isinstance(request.url, httpx.URL)
-    url = httpx.URL(request[1])
+    httpx_request = request.request
+    if httpx_request is not None:
+        assert isinstance(httpx_request, httpx.Request)
+        url = httpx_request.url
+    else:
+        url = httpx.URL(request[1])
     span.update_name("GET" + str(url))
 
 

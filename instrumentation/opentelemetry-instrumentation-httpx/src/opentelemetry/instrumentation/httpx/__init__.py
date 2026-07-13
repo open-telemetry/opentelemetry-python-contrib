@@ -113,7 +113,38 @@ and right before the span is finished while processing a response.
 
 .. note::
 
-    The request hook receives the raw arguments provided to the transport layer. The response hook receives the raw return values from the transport layer.
+    The request hook receives the raw arguments provided to the transport layer.
+    The response hook receives the raw return values from the transport layer.
+    For HTTPX versions that pass ``httpx.Request`` and ``httpx.Response``
+    objects to the transport layer, these original objects are available as
+    ``request.request`` and ``response.response``. Older HTTPX transport APIs may
+    set these attributes to ``None``.
+
+Request and response bodies can contain sensitive data. If you log or add them
+to spans, make sure to redact and limit the captured content.
+
+.. code-block:: python
+
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    def response_hook(span, request, response):
+        if request.request is not None:
+            logger.debug("HTTPX request body: %r", request.request.content)
+
+        if response.response is not None:
+            logger.debug("HTTPX response body: %r", response.response.read())
+
+    async def async_response_hook(span, request, response):
+        if request.request is not None:
+            logger.debug("HTTPX request body: %r", request.request.content)
+
+        if response.response is not None:
+            logger.debug(
+                "HTTPX response body: %r",
+                await response.response.aread(),
+            )
 
 The hooks can be configured as follows:
 
@@ -305,7 +336,7 @@ from __future__ import annotations
 
 import logging
 import typing
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from functools import partial
 from inspect import iscoroutinefunction
 from timeit import default_timer
@@ -384,19 +415,58 @@ AsyncResponseHook = typing.Callable[
 ]
 
 
-class RequestInfo(typing.NamedTuple):
+_RequestInfo = namedtuple(
+    "RequestInfo", ("method", "url", "headers", "stream", "extensions")
+)
+
+
+class RequestInfo(_RequestInfo):
     method: bytes
-    url: httpx.URL
+    url: httpx.URL | tuple[bytes, bytes, int | None, bytes]
     headers: httpx.Headers | None
     stream: httpx.SyncByteStream | httpx.AsyncByteStream | None
     extensions: dict[str, typing.Any] | None
+    request: httpx.Request | None
+
+    # pylint: disable=too-many-arguments
+    def __new__(
+        cls,
+        method: bytes,
+        url: httpx.URL | tuple[bytes, bytes, int | None, bytes],
+        headers: httpx.Headers | None,
+        stream: httpx.SyncByteStream | httpx.AsyncByteStream | None,
+        extensions: dict[str, typing.Any] | None,
+        request: httpx.Request | None = None,
+    ):
+        info = super().__new__(cls, method, url, headers, stream, extensions)
+        info.request = request
+        return info
 
 
-class ResponseInfo(typing.NamedTuple):
+_ResponseInfo = namedtuple(
+    "ResponseInfo", ("status_code", "headers", "stream", "extensions")
+)
+
+
+class ResponseInfo(_ResponseInfo):
     status_code: int
     headers: httpx.Headers | None
     stream: httpx.SyncByteStream | httpx.AsyncByteStream
     extensions: dict[str, typing.Any] | None
+    response: httpx.Response | None
+
+    # pylint: disable=too-many-arguments
+    def __new__(
+        cls,
+        status_code: int,
+        headers: httpx.Headers | None,
+        stream: httpx.SyncByteStream | httpx.AsyncByteStream,
+        extensions: dict[str, typing.Any] | None,
+        response: httpx.Response | None = None,
+    ):
+        info = super().__new__(cls, status_code, headers, stream, extensions)
+        info.response = response
+        return info
 
 
 def _get_default_span_name(method: str) -> str:
@@ -419,6 +489,7 @@ def _extract_parameters(
     httpx.Headers | None,
     httpx.SyncByteStream | httpx.AsyncByteStream | None,
     dict[str, typing.Any],
+    httpx.Request | None,
 ]:
     if isinstance(args[0], httpx.Request):
         # In httpx >= 0.20.0, handle_request receives a Request object
@@ -437,8 +508,9 @@ def _extract_parameters(
         extensions = kwargs.get(
             "extensions", args[4] if len(args) > 4 else None
         )
+        request = None
 
-    return method, url, headers, stream, extensions
+    return method, url, headers, stream, extensions, request
 
 
 def _normalize_url(
@@ -495,7 +567,12 @@ def _normalize_headers(
 
 def _extract_response(
     response: httpx.Response
-    | tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]],
+    | tuple[
+        int,
+        httpx.Headers,
+        httpx.SyncByteStream | httpx.AsyncByteStream,
+        dict[str, typing.Any],
+    ],
 ) -> tuple[
     int,
     httpx.Headers,
@@ -516,6 +593,30 @@ def _extract_response(
         )
 
     return (status_code, headers, stream, extensions, http_version)
+
+
+def _response_info_from_response(
+    status_code: int,
+    headers: httpx.Headers | None,
+    stream: httpx.SyncByteStream | httpx.AsyncByteStream,
+    extensions: dict[str, typing.Any] | None,
+    response: (
+        httpx.Response
+        | tuple[
+            int,
+            httpx.Headers,
+            httpx.SyncByteStream | httpx.AsyncByteStream,
+            dict[str, typing.Any],
+        ]
+    ),
+) -> ResponseInfo:
+    return ResponseInfo(
+        status_code,
+        headers,
+        stream,
+        extensions,
+        response if isinstance(response, httpx.Response) else None,
+    )
 
 
 def _apply_request_client_attributes_to_span(
@@ -746,9 +847,14 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
         if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(
-            args, kwargs
-        )
+        (
+            method,
+            url,
+            headers,
+            stream,
+            extensions,
+            request,
+        ) = _extract_parameters(args, kwargs)
 
         if self._excluded_urls and self._excluded_urls.url_disabled(
             _normalize_url(url)
@@ -771,7 +877,9 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
             self._sensitive_headers,
         )
 
-        request_info = RequestInfo(method, url, headers, stream, extensions)
+        request_info = RequestInfo(
+            method, url, headers, stream, extensions, request
+        )
 
         with self._tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
@@ -821,7 +929,13 @@ class SyncOpenTelemetryTransport(httpx.BaseTransport):
                     self._response_hook(
                         span,
                         request_info,
-                        ResponseInfo(status_code, headers, stream, extensions),
+                        _response_info_from_response(
+                            status_code,
+                            headers,
+                            stream,
+                            extensions,
+                            response,
+                        ),
                     )
 
             if exception:
@@ -959,9 +1073,14 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
         if not is_http_instrumentation_enabled():
             return await self._transport.handle_async_request(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(
-            args, kwargs
-        )
+        (
+            method,
+            url,
+            headers,
+            stream,
+            extensions,
+            request,
+        ) = _extract_parameters(args, kwargs)
 
         if self._excluded_urls and self._excluded_urls.url_disabled(
             _normalize_url(url)
@@ -984,7 +1103,9 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
             self._sensitive_headers,
         )
 
-        request_info = RequestInfo(method, url, headers, stream, extensions)
+        request_info = RequestInfo(
+            method, url, headers, stream, extensions, request
+        )
 
         with self._tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
@@ -1037,7 +1158,13 @@ class AsyncOpenTelemetryTransport(httpx.AsyncBaseTransport):
                     await self._response_hook(
                         span,
                         request_info,
-                        ResponseInfo(status_code, headers, stream, extensions),
+                        _response_info_from_response(
+                            status_code,
+                            headers,
+                            stream,
+                            extensions,
+                            response,
+                        ),
                     )
 
             if exception:
@@ -1228,9 +1355,14 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(
-            args, kwargs
-        )
+        (
+            method,
+            url,
+            headers,
+            stream,
+            extensions,
+            request,
+        ) = _extract_parameters(args, kwargs)
 
         if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
             return wrapped(*args, **kwargs)
@@ -1251,7 +1383,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             sensitive_headers,
         )
 
-        request_info = RequestInfo(method, url, headers, stream, extensions)
+        request_info = RequestInfo(
+            method, url, headers, stream, extensions, request
+        )
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
@@ -1302,7 +1436,13 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     response_hook(
                         span,
                         request_info,
-                        ResponseInfo(status_code, headers, stream, extensions),
+                        _response_info_from_response(
+                            status_code,
+                            headers,
+                            stream,
+                            extensions,
+                            response,
+                        ),
                     )
 
             if exception:
@@ -1359,9 +1499,14 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(
-            args, kwargs
-        )
+        (
+            method,
+            url,
+            headers,
+            stream,
+            extensions,
+            request,
+        ) = _extract_parameters(args, kwargs)
 
         if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
             return await wrapped(*args, **kwargs)
@@ -1382,7 +1527,9 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
             sensitive_headers,
         )
 
-        request_info = RequestInfo(method, url, headers, stream, extensions)
+        request_info = RequestInfo(
+            method, url, headers, stream, extensions, request
+        )
 
         with tracer.start_as_current_span(
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
@@ -1433,7 +1580,13 @@ class HTTPXClientInstrumentor(BaseInstrumentor):
                     await async_response_hook(
                         span,
                         request_info,
-                        ResponseInfo(status_code, headers, stream, extensions),
+                        _response_info_from_response(
+                            status_code,
+                            headers,
+                            stream,
+                            extensions,
+                            response,
+                        ),
                     )
 
             if exception:
