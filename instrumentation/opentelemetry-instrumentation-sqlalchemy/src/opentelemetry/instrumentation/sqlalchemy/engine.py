@@ -16,6 +16,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
     _set_db_operation,
+    _set_db_query_parameters,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -110,6 +111,7 @@ def _wrap_create_async_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    capture_parameters: bool = False,
 ):
     # pylint: disable=unused-argument
     def _wrap_create_async_engine_internal(func, module, args, kwargs):
@@ -127,6 +129,7 @@ def _wrap_create_async_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            capture_parameters,
         )
         return engine
 
@@ -139,6 +142,7 @@ def _wrap_create_engine(
     enable_commenter=False,
     commenter_options=None,
     enable_attribute_commenter=False,
+    capture_parameters: bool = False,
 ):
     def _wrap_create_engine_internal(func, _module, args, kwargs):
         """Trace the SQLAlchemy engine, creating an `EngineTracer`
@@ -155,6 +159,7 @@ def _wrap_create_engine(
             enable_commenter,
             commenter_options,
             enable_attribute_commenter,
+            capture_parameters,
         )
         return engine
 
@@ -205,6 +210,7 @@ class EngineTracer:
         enable_commenter=False,
         commenter_options=None,
         enable_attribute_commenter=False,
+        capture_parameters: bool = False,
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -225,6 +231,7 @@ class EngineTracer:
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options if commenter_options else {}
         self.enable_attribute_commenter = enable_attribute_commenter
+        self.capture_parameters = capture_parameters
         self._engine_attrs = _get_attributes_from_engine(engine)
         self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
 
@@ -351,7 +358,7 @@ class EngineTracer:
         for key, value in span_attrs.items():
             span.set_attribute(key, value)
 
-    def _before_cur_exec(self, conn, cursor, statement, params, context, _executemany):
+    def _before_cur_exec(self, conn, cursor, statement, params, context, executemany):
         if not is_instrumentation_enabled():
             return statement, params
 
@@ -399,6 +406,12 @@ class EngineTracer:
                 else:
                     # no sqlcomment anywhere
                     self._set_db_client_span_attributes(span, statement, db_name, attrs)
+
+                if self.capture_parameters and not executemany:
+                    query_params = {}
+                    _set_db_query_parameters(query_params, params, self._sem_conv_opt_in_mode_db)
+                    for key, value in query_params.items():
+                        span.set_attribute(key, value)
 
         context._otel_span = span
 
