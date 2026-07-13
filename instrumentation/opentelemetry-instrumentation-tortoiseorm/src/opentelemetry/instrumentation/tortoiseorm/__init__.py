@@ -38,7 +38,9 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _report_old,
     _set_db_name,
+    _set_db_query_parameters,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -234,7 +236,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
             tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset"
         )
 
-    def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
+    def _hydrate_span_from_args(
+        self, connection, query, parameters, is_batch: bool
+    ) -> dict:
         """Get network and database attributes from connection."""
         span_attributes = {}
         mode = self._sem_conv_opt_in_mode
@@ -276,9 +280,13 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         if port:
             _set_http_peer_port_client(span_attributes, port, mode)
 
-        if self.capture_parameters:
-            if parameters is not None and len(parameters) > 0:
+        if self.capture_parameters and parameters:
+            if _report_old(mode):
                 span_attributes["db.statement.parameters"] = str(parameters)
+            # db.query.parameter.<key> SHOULD NOT be captured on batch
+            # operations (e.g. execute_many).
+            if not is_batch:
+                _set_db_query_parameters(span_attributes, parameters[0], mode)
 
         return span_attributes
 
@@ -288,6 +296,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
 
         exception = None
         name = args[0].split()[0]
+        is_batch = func.__name__ == "execute_many"
 
         with self._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
@@ -297,6 +306,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                     instance,
                     args[0],
                     args[1:],
+                    is_batch,
                 )
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
