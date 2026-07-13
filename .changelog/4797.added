@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlalchemy`: add `capture_parameters` option to capture prepared statement parameters as `db.query.parameter.<key>` under the new database semantic conventions
