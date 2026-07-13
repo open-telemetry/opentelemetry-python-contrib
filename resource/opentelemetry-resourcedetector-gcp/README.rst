@@ -18,23 +18,18 @@ Installation
 Usage
 -----
 
+The `GoogleCloudResourceDetector` is automatically used by the OpenTelemetry SDK 
+when it is installed in the python environment.
+
 .. code-block:: python
 
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry import trace
-    from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID, Resource
 
-    # This will use the GoogleCloudResourceDetector under the covers if it's installed in the python environment.
-    resource = Resource.create(
-        attributes={
-            # Use the PID as the service.instance.id to avoid duplicate timeseries
-            # from different Gunicorn worker processes.
-            SERVICE_INSTANCE_ID: f"worker-{os.getpid()}",
-        }
-    )
-    traceProvider = TracerProvider(resource=resource)
+    # GoogleCloudResourceDetector will automatically get used here if it's installed in the environment.
+    traceProvider = TracerProvider()
     processor = BatchSpanProcessor(OTLPSpanExporter())
     traceProvider.add_span_processor(processor)
     trace.set_tracer_provider(traceProvider)
@@ -42,5 +37,5 @@ Usage
 References
 ----------
 
-* `Cloud Monitoring <https://cloud.google.com/monitoring>`_
+* `GCP Open Telemetry Docs <https://cloud.google.com/learn/what-is-opentelemetry>`_
 * `OpenTelemetry Project <https://opentelemetry.io/>`_
