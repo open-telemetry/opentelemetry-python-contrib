@@ -77,6 +77,7 @@ def wrap_connect(
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
     meter_provider: typing.Optional[MeterProvider] = None,
+    capture_parameters: bool = False,
 ):
     """Integrate with aiopg library.
     https://github.com/aio-libs/aiopg
@@ -92,6 +93,8 @@ def wrap_connect(
             use. If omitted the current configured one is used.
         meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
+        capture_parameters: Configure if db.statement.parameters should be
+            captured.
     """
 
     # pylint: disable=unused-argument
@@ -108,6 +111,7 @@ def wrap_connect(
             version=version,
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            capture_parameters=capture_parameters,
         )
         return _ContextManager(  # pylint: disable=no-value-for-parameter
             db_integration.wrapped_connection(wrapped, args, kwargs)
@@ -135,6 +139,7 @@ def instrument_connection(
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
     meter_provider: typing.Optional[MeterProvider] = None,
+    capture_parameters: bool = False,
 ):
     """Enable instrumentation in a database connection.
 
@@ -150,6 +155,8 @@ def instrument_connection(
             use. If omitted the current configured one is used.
         meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
+        capture_parameters: Configure if db.statement.parameters should be
+            captured.
 
     Returns:
         An instrumented connection.
@@ -165,6 +172,7 @@ def instrument_connection(
         version=version,
         tracer_provider=tracer_provider,
         meter_provider=meter_provider,
+        capture_parameters=capture_parameters,
     )
     db_integration.get_connection_attributes(getattr(connection, "_conn", connection))
     return get_traced_connection_proxy(connection, db_integration)
@@ -193,6 +201,7 @@ def wrap_create_pool(
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
     meter_provider: typing.Optional[MeterProvider] = None,
+    capture_parameters: bool = False,
 ):
     # pylint: disable=unused-argument
     def wrap_create_pool_(
@@ -208,6 +217,7 @@ def wrap_create_pool(
             version=version,
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
+            capture_parameters=capture_parameters,
         )
         return _PoolContextManager(db_integration.wrapped_pool(wrapped, args, kwargs))
 

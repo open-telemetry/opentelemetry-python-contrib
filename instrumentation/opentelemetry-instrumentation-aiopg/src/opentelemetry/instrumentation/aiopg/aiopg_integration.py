@@ -116,9 +116,10 @@ class AsyncCursorTracer(CursorTracer):
                 else self._db_api_integration.name
             )
 
+        is_batch = getattr(query_method, "__name__", None) == "executemany"
         with self._db_api_integration._tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
-                self._populate_span(span, cursor, *args)
+                self._populate_span(span, cursor, *args, is_batch=is_batch)
             start_time = time.perf_counter()
             error = None
             try:
