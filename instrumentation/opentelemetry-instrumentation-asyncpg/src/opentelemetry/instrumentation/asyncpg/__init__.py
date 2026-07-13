@@ -51,7 +51,9 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
+    _report_old,
     _set_db_name,
+    _set_db_query_parameters,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -91,6 +93,7 @@ def _hydrate_span_from_args(
     query,
     parameters,
     semconv_opt_in_mode=_StabilityMode.DEFAULT,
+    is_batch: bool = False,
 ) -> dict:
     """Get network and database span attributes"""
     span_attributes: dict = {}
@@ -142,7 +145,12 @@ def _hydrate_span_from_args(
         _set_db_statement(span_attributes, query, semconv_opt_in_mode)
 
     if parameters is not None and len(parameters) > 0:
-        span_attributes["db.statement.parameters"] = str(parameters)
+        if _report_old(semconv_opt_in_mode):
+            span_attributes["db.statement.parameters"] = str(parameters)
+        if not is_batch:
+            _set_db_query_parameters(
+                span_attributes, parameters, semconv_opt_in_mode
+            )
 
     return span_attributes
 
@@ -239,6 +247,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             args[0],
             args[1:] if self.capture_parameters else None,
             semconv_opt_in_mode=self._semconv_opt_in_mode,
+            is_batch=func.__name__ == "executemany",
         )
 
         with self._tracer.start_as_current_span(
@@ -281,6 +290,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             instance._query,
             instance._args if self.capture_parameters else None,
             semconv_opt_in_mode=self._semconv_opt_in_mode,
+            is_batch=False,
         )
 
         stop = False
@@ -323,6 +333,7 @@ class AsyncPGInstrumentor(BaseInstrumentor):
             query,
             args if self.capture_parameters else None,
             semconv_opt_in_mode=self._semconv_opt_in_mode,
+            is_batch=func.__name__ == "executemany",
         )
 
         with self._tracer.start_as_current_span(
