@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-mysqlclient`: add `capture_parameters` option to capture prepared statement parameters as `db.query.parameter.<key>` span attributes when the database semantic conventions are opted in
