@@ -64,6 +64,24 @@ both old and stable HTTP conventions.
 By default, when the environment variable is not set, the old experimental
 database and HTTP conventions are emitted.
 
+Configuration
+-------------
+
+capture_parameters
+******************
+You can optionally capture the parameters bound to a query by passing
+``capture_parameters=True``. When the database semantic conventions are opted
+in (``OTEL_SEMCONV_STABILITY_OPT_IN=database``) parameters are recorded as one
+``db.query.parameter.<key>`` attribute per parameter; otherwise they are
+recorded in the legacy ``db.statement.parameters`` attribute.
+
+.. code:: python
+
+    import sqlite3
+    from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+
+    SQLite3Instrumentor().instrument(capture_parameters=True)
+
 API
 ---
 """
@@ -102,6 +120,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
         https://docs.python.org/3/library/sqlite3.html
         """
         tracer_provider = kwargs.get("tracer_provider")
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         for module in self._TO_WRAP:
             dbapi.wrap_connect(
@@ -112,6 +131,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 _CONNECTION_ATTRIBUTES,
                 version=__version__,
                 tracer_provider=tracer_provider,
+                capture_parameters=capture_parameters,
             )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -123,6 +143,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
     def instrument_connection(
         connection: SQLite3Connection,
         tracer_provider: TracerProvider | None = None,
+        capture_parameters: bool = False,
     ) -> SQLite3Connection:
         """Enable instrumentation in a SQLite connection.
 
@@ -130,6 +151,9 @@ class SQLite3Instrumentor(BaseInstrumentor):
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            capture_parameters: Configure if db.query.parameter.<key> (new
+                semantic conventions) or db.statement.parameters (old semantic
+                conventions) should be captured (default False).
 
         Returns:
             An instrumented SQLite connection that supports
@@ -143,6 +167,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            capture_parameters=capture_parameters,
         )
 
     @staticmethod
