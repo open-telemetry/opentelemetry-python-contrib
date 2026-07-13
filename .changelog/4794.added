@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-asyncpg`: capture prepared statement parameters as `db.query.parameter.<key>` under the new database semantic conventions
