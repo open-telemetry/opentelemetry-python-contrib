@@ -118,10 +118,14 @@ class AsyncCursorTracer(CursorTracer):
                 else self._db_api_integration.name
             )
 
+        # Query parameters must not be captured for batch operations, which are
+        # executed through the cursor's executemany method.
+        is_batch = getattr(query_method, "__name__", None) == "executemany"
+
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            self._populate_span(span, cursor, *args)
+            self._populate_span(span, cursor, *args, is_batch=is_batch)
             return await query_method(*args, **kwargs)
 
 
