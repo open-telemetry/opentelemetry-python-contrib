@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-aiohttp-server`: fix span name and `http.route` attribute according to http semantic conventions

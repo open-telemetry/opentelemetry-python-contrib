@@ -1227,96 +1227,6 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-click -- -ra
 
-  py310-test-instrumentation-elasticsearch-0:
-    name: instrumentation-elasticsearch-0 
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python-contrib
-          ref: ${{ env.CONTRIB_REPO_SHA }}
-
-      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          architecture: "x64"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-elasticsearch-0 -- -ra
-
-  py310-test-instrumentation-elasticsearch-1:
-    name: instrumentation-elasticsearch-1 
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python-contrib
-          ref: ${{ env.CONTRIB_REPO_SHA }}
-
-      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          architecture: "x64"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-elasticsearch-1 -- -ra
-
-  py310-test-instrumentation-elasticsearch-2:
-    name: instrumentation-elasticsearch-2 
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python-contrib
-          ref: ${{ env.CONTRIB_REPO_SHA }}
-
-      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
-        uses: actions/checkout@v4
-        with:
-          repository: open-telemetry/opentelemetry-python
-          ref: ${{ env.CORE_REPO_SHA }}
-          path: opentelemetry-python
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          architecture: "x64"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py310-test-instrumentation-elasticsearch-2 -- -ra
-
   py310-test-instrumentation-falcon-1:
     name: instrumentation-falcon-1 
     runs-on: ubuntu-latest
@@ -1796,6 +1706,66 @@ jobs:
 
       - name: Run tests
         run: tox -e py310-test-instrumentation-starlette-latest -- -ra
+
+  py310-test-instrumentation-structlog-oldest:
+    name: instrumentation-structlog-oldest 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-structlog-oldest -- -ra
+
+  py310-test-instrumentation-structlog-latest:
+    name: instrumentation-structlog-latest 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-structlog-latest -- -ra
 
   py310-test-instrumentation-jinja2:
     name: instrumentation-jinja2 
