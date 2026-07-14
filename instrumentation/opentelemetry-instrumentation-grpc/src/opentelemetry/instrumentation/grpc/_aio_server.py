@@ -1,6 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import time
+
 import grpc
 import grpc.aio
 
@@ -93,6 +95,8 @@ class OpenTelemetryAioServerInterceptor(
 
     def _intercept_aio_server_unary(self, behavior, handler_call_details):
         async def _unary_interceptor(request_or_iterator, context):
+            start_time = time.perf_counter()
+
             with self._set_remote_context(context):
                 with self._start_span(
                     handler_call_details,
@@ -103,6 +107,7 @@ class OpenTelemetryAioServerInterceptor(
                     context = _OpenTelemetryAioServicerContext(context, span)
 
                     # And now we run the actual RPC.
+                    metric_status = None
                     try:
                         return await behavior(request_or_iterator, context)
 
@@ -113,12 +118,23 @@ class OpenTelemetryAioServerInterceptor(
                         # pylint:disable=unidiomatic-typecheck
                         if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
+                            if context._self_code == grpc.StatusCode.OK:
+                                metric_status = grpc.StatusCode.UNKNOWN
                         raise error
+
+                    finally:
+                        self._record_duration(
+                            handler_call_details,
+                            start_time,
+                            metric_status or context._self_code,
+                        )
 
         return _unary_interceptor
 
     def _intercept_aio_server_stream(self, behavior, handler_call_details):
         async def _stream_interceptor(request_or_iterator, context):
+            start_time = time.perf_counter()
+
             with self._set_remote_context(context):
                 with self._start_span(
                     handler_call_details,
@@ -127,6 +143,7 @@ class OpenTelemetryAioServerInterceptor(
                 ) as span:
                     context = _OpenTelemetryAioServicerContext(context, span)
 
+                    metric_status = None
                     try:
                         async for response in behavior(
                             request_or_iterator, context
@@ -137,6 +154,15 @@ class OpenTelemetryAioServerInterceptor(
                         # pylint:disable=unidiomatic-typecheck
                         if type(error) != Exception:  # noqa: E721
                             span.record_exception(error)
+                            if context._self_code == grpc.StatusCode.OK:
+                                metric_status = grpc.StatusCode.UNKNOWN
                         raise error
+
+                    finally:
+                        self._record_duration(
+                            handler_call_details,
+                            start_time,
+                            metric_status or context._self_code,
+                        )
 
         return _stream_interceptor

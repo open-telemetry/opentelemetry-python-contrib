@@ -3,6 +3,7 @@
 
 import functools
 import logging
+import time
 
 import grpc
 from grpc.aio import ClientCallDetails, Metadata
@@ -92,7 +93,10 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             set_status_on_exception=False,
         )
 
-    async def _wrap_unary_response(self, continuation, span):
+    async def _wrap_unary_response(
+        self, continuation, span, method, start_time
+    ):
+        status_code = grpc.StatusCode.OK
         try:
             call = await continuation()
 
@@ -103,6 +107,8 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             code = await call.code()
             details = await call.details()
 
+            status_code = code
+
             call.add_done_callback(
                 _unary_done_callback(
                     span, code, details, self._call_response_hook
@@ -111,20 +117,27 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
 
             return call
         except grpc.aio.AioRpcError as exc:
+            status_code = exc.code()
             self.add_error_details_to_span(span, exc)
             raise exc
+        finally:
+            self._record_duration(method, start_time, status_code)
 
-    async def _wrap_stream_response(self, span, call):
+    async def _wrap_stream_response(self, span, call, method, start_time):
+        status_code = grpc.StatusCode.OK
         try:
             async for response in call:
                 if self._response_hook:
                     self._call_response_hook(span, response)
                 yield response
         except Exception as exc:
+            if isinstance(exc, grpc.aio.AioRpcError):
+                status_code = exc.code()
             self.add_error_details_to_span(span, exc)
             raise exc
         finally:
             span.end()
+            self._record_duration(method, start_time, status_code)
 
     def tracing_skipped(self, client_call_details):
         return (
@@ -146,9 +159,12 @@ class UnaryUnaryAioClientInterceptor(
         if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request)
 
-        with self._start_interceptor_span(
-            client_call_details.method,
-        ) as span:
+        start_time = time.perf_counter()
+        method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
+
+        with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
             if self._request_hook:
@@ -158,7 +174,10 @@ class UnaryUnaryAioClientInterceptor(
                 continuation, new_details, request
             )
             return await self._wrap_unary_response(
-                continuation_with_args, span
+                continuation_with_args,
+                span,
+                method=method,
+                start_time=start_time,
             )
 
 
@@ -172,15 +191,23 @@ class UnaryStreamAioClientInterceptor(
         if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request)
 
-        with self._start_interceptor_span(
-            client_call_details.method,
-        ) as span:
+        start_time = time.perf_counter()
+        method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
+
+        with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
             resp = await continuation(new_details, request)
             if self._request_hook:
                 self._call_request_hook(span, request)
-            return self._wrap_stream_response(span, resp)
+            return self._wrap_stream_response(
+                span,
+                resp,
+                method=method,
+                start_time=start_time,
+            )
 
 
 class StreamUnaryAioClientInterceptor(
@@ -193,16 +220,22 @@ class StreamUnaryAioClientInterceptor(
         if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request_iterator)
 
-        with self._start_interceptor_span(
-            client_call_details.method,
-        ) as span:
+        start_time = time.perf_counter()
+        method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
+
+        with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
             continuation_with_args = functools.partial(
                 continuation, new_details, request_iterator
             )
             return await self._wrap_unary_response(
-                continuation_with_args, span
+                continuation_with_args,
+                span,
+                method=method,
+                start_time=start_time,
             )
 
 
@@ -216,11 +249,19 @@ class StreamStreamAioClientInterceptor(
         if self.tracing_skipped(client_call_details):
             return await continuation(client_call_details, request_iterator)
 
-        with self._start_interceptor_span(
-            client_call_details.method,
-        ) as span:
+        start_time = time.perf_counter()
+        method = client_call_details.method
+        if isinstance(method, bytes):
+            method = method.decode()
+
+        with self._start_interceptor_span(method) as span:
             new_details = self.propagate_trace_in_details(client_call_details)
 
             resp = await continuation(new_details, request_iterator)
 
-            return self._wrap_stream_response(span, resp)
+            return self._wrap_stream_response(
+                span,
+                resp,
+                method=method,
+                start_time=start_time,
+            )
