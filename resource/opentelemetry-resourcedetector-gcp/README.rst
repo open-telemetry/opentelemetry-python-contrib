@@ -18,21 +18,11 @@ Installation
 Usage
 -----
 
-The `GoogleCloudResourceDetector` is automatically used by the OpenTelemetry SDK 
+The ``GoogleCloudResourceDetector`` is automatically used by the OpenTelemetry SDK 
 when it is installed in the python environment.
 
-.. code-block:: python
-
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry import trace
-
-    # GoogleCloudResourceDetector will automatically get used here if it's installed in the environment.
-    traceProvider = TracerProvider()
-    processor = BatchSpanProcessor(OTLPSpanExporter())
-    traceProvider.add_span_processor(processor)
-    trace.set_tracer_provider(traceProvider)
+If you are setting resource detectors through the environment variable ``OTEL_EXPERIMENTAL_RESOURCE_DETECTORS``, 
+you should use the value ``gcp``, for the ``GoogleCloudResourceDetector`` to be installed.
 
 References
 ----------
