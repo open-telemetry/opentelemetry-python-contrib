@@ -459,7 +459,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         """Calling _patch_cluster_id_capture twice does not double-wrap."""
         cluster = mock.MagicMock(spec=[])
         update_calls: list[object] = []
-        cluster.update_metadata = lambda m: update_calls.append(m)
+        cluster.update_metadata = update_calls.append
         client = mock.MagicMock()
         client.cluster = cluster
 
@@ -473,7 +473,8 @@ class TestUtils(IsolatedAsyncioTestCase):
         # original called exactly once despite two patch calls
         self.assertEqual(len(update_calls), 1)
 
-    def test_patch_cluster_id_capture_ignores_none_cluster(self) -> None:
+    @staticmethod
+    def test_patch_cluster_id_capture_ignores_none_cluster() -> None:
         """_patch_cluster_id_capture is a no-op when client has no cluster."""
         client = mock.MagicMock(spec=[])  # no attributes
         _patch_cluster_id_capture(client)  # must not raise

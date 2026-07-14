@@ -689,33 +689,3 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
         return records
 
     return _traced_getmany
-
-
-def _wrap_start_producer() -> Callable[..., Awaitable[None]]:
-    """Wrap AIOKafkaProducer.start to install the cluster_id capture patch."""
-
-    async def _traced_start(
-        func: Callable[..., Awaitable[None]],
-        instance: aiokafka.AIOKafkaProducer,
-        args: tuple[Any, ...],
-        kwargs: dict[str, Any],
-    ) -> None:
-        _patch_cluster_id_capture(instance.client)
-        return await func(*args, **kwargs)
-
-    return _traced_start
-
-
-def _wrap_start_consumer() -> Callable[..., Awaitable[None]]:
-    """Wrap AIOKafkaConsumer.start to install the cluster_id capture patch."""
-
-    async def _traced_start(
-        func: Callable[..., Awaitable[None]],
-        instance: aiokafka.AIOKafkaConsumer,
-        args: tuple[Any, ...],
-        kwargs: dict[str, Any],
-    ) -> None:
-        _patch_cluster_id_capture(instance._client)
-        return await func(*args, **kwargs)
-
-    return _traced_start

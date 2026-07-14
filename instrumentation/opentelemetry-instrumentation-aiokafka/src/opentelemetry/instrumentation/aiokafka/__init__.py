@@ -96,7 +96,7 @@ API
 from __future__ import annotations
 
 from inspect import iscoroutinefunction
-from typing import TYPE_CHECKING, Collection
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection
 
 import aiokafka
 from wrapt import (
@@ -106,11 +106,10 @@ from wrapt import (
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
+    _patch_cluster_id_capture,
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
-    _wrap_start_consumer,
-    _wrap_start_producer,
 )
 from opentelemetry.instrumentation.aiokafka.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -131,6 +130,26 @@ if TYPE_CHECKING:
 
     class UninstrumentKwargs(TypedDict, total=False):
         pass
+
+
+async def _start_producer_wrapper(
+    func: Callable[..., Awaitable[None]],
+    instance: aiokafka.AIOKafkaProducer,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> None:
+    _patch_cluster_id_capture(instance.client)
+    await func(*args, **kwargs)
+
+
+async def _start_consumer_wrapper(
+    func: Callable[..., Awaitable[None]],
+    instance: aiokafka.AIOKafkaConsumer,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> None:
+    _patch_cluster_id_capture(instance._client)
+    await func(*args, **kwargs)
 
 
 class AIOKafkaInstrumentor(BaseInstrumentor):
@@ -170,12 +189,12 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             aiokafka.AIOKafkaProducer,
             "start",
-            _wrap_start_producer(),
+            _start_producer_wrapper,
         )
         wrap_function_wrapper(
             aiokafka.AIOKafkaConsumer,
             "start",
-            _wrap_start_consumer(),
+            _start_consumer_wrapper,
         )
         wrap_function_wrapper(
             aiokafka.AIOKafkaProducer,
