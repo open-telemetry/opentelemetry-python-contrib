@@ -7,6 +7,7 @@ from unittest import IsolatedAsyncioTestCase, mock
 
 import aiokafka
 
+from opentelemetry.instrumentation.aiokafka import _patch_cluster_id_capture
 from opentelemetry.instrumentation.aiokafka.utils import (
     _MESSAGING_CLUSTER_ID,
     AIOKafkaContextGetter,
@@ -17,7 +18,6 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _extract_cluster_id_from_client,
     _extract_send_partition,
     _get_span_name,
-    _patch_cluster_id_capture,
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,

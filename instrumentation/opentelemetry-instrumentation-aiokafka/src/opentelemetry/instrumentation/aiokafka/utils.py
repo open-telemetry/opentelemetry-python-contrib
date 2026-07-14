@@ -92,28 +92,6 @@ def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
     return client._client_id
 
 
-def _patch_cluster_id_capture(client: aiokafka.AIOKafkaClient) -> None:
-    """Wrap cluster.update_metadata once to populate cluster.cluster_id.
-
-    aiokafka's ClusterMetadata receives cluster_id in every MetadataResponse
-    but does not store it as an attribute. This one-time patch intercepts
-    update_metadata so that _extract_cluster_id_from_client can read it.
-    """
-    cluster = getattr(client, "cluster", None)
-    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
-        return
-    original_update = cluster.update_metadata
-
-    def _patched_update(metadata: Any) -> None:
-        cluster_id = getattr(metadata, "cluster_id", None)
-        if cluster_id:
-            cluster.cluster_id = cluster_id
-        original_update(metadata)
-
-    cluster.update_metadata = _patched_update
-    cluster._otel_cluster_id_patched = True
-
-
 def _extract_cluster_id_from_client(
     client: aiokafka.AIOKafkaClient,
 ) -> str | None:

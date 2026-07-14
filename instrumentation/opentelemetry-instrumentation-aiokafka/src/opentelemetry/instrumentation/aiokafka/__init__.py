@@ -106,7 +106,6 @@ from wrapt import (
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
-    _patch_cluster_id_capture,
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
@@ -130,6 +129,22 @@ if TYPE_CHECKING:
 
     class UninstrumentKwargs(TypedDict, total=False):
         pass
+
+
+def _patch_cluster_id_capture(client: aiokafka.AIOKafkaClient) -> None:
+    cluster = getattr(client, "cluster", None)
+    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
+        return
+    original_update = cluster.update_metadata
+
+    def _patched_update(metadata: Any) -> None:
+        cluster_id = getattr(metadata, "cluster_id", None)
+        if cluster_id:
+            cluster.cluster_id = cluster_id
+        original_update(metadata)
+
+    cluster.update_metadata = _patched_update
+    cluster._otel_cluster_id_patched = True
 
 
 async def _start_producer_wrapper(
