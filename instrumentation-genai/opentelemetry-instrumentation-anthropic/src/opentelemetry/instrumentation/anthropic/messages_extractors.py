@@ -224,7 +224,7 @@ def get_llm_request_attributes(
     params: MessageRequestParams, client_instance: "Messages"
 ) -> dict[str, AttributeValue]:
     attributes: dict[str, AttributeValue | None] = {
-        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,
+        GenAIAttributes.GEN_AI_OPERATION_NAME: GenAIAttributes.GenAiOperationNameValues.CHAT.value,  # pyright: ignore[reportDeprecated]
         GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.ANTHROPIC.value,  # pyright: ignore[reportDeprecated]
         GenAIAttributes.GEN_AI_REQUEST_MODEL: params.model,
         GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: params.max_tokens,
