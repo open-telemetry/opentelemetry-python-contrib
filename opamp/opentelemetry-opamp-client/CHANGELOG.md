@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 0.3b0 (2026-07-14)
+
+### Added
+
+- `opentelemetry-opamp-client`: support non-JSON effective config bodies
+  ([#4536](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4536))
+
 ## Version 0.2b0 (2026-04-01)
 
 - Breaking change: callback class `Callbacks` renamed to `OpAMPCallbacks`
