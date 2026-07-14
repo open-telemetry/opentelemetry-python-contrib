@@ -31,6 +31,12 @@ class TestAIOKafkaInstrumentor(TestCase):
 
         instrumentation.instrument()
         self.assertTrue(
+            isinstance(AIOKafkaProducer.start, BoundFunctionWrapper)
+        )
+        self.assertTrue(
+            isinstance(AIOKafkaConsumer.start, BoundFunctionWrapper)
+        )
+        self.assertTrue(
             isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
         )
         self.assertTrue(
@@ -41,6 +47,12 @@ class TestAIOKafkaInstrumentor(TestCase):
         )
 
         instrumentation.uninstrument()
+        self.assertFalse(
+            isinstance(AIOKafkaProducer.start, BoundFunctionWrapper)
+        )
+        self.assertFalse(
+            isinstance(AIOKafkaConsumer.start, BoundFunctionWrapper)
+        )
         self.assertFalse(
             isinstance(AIOKafkaProducer.send, BoundFunctionWrapper)
         )

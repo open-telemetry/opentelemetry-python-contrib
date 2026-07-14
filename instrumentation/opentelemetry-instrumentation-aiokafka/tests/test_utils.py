@@ -17,6 +17,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _extract_cluster_id_from_client,
     _extract_send_partition,
     _get_span_name,
+    _patch_cluster_id_capture,
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
@@ -429,6 +430,53 @@ class TestUtils(IsolatedAsyncioTestCase):
             call.args[0] for call in span.set_attribute.call_args_list
         ]
         self.assertNotIn(_MESSAGING_CLUSTER_ID, attribute_keys)
+
+    def test_patch_cluster_id_capture_sets_cluster_id_from_metadata(
+        self,
+    ) -> None:
+        """_patch_cluster_id_capture intercepts update_metadata and sets cluster_id."""
+        cluster = mock.MagicMock(spec=[])
+        cluster.cluster_id = None
+        update_calls: list[object] = []
+
+        def original_update(metadata: object) -> None:
+            update_calls.append(metadata)
+
+        cluster.update_metadata = original_update
+        client = mock.MagicMock()
+        client.cluster = cluster
+
+        _patch_cluster_id_capture(client)
+
+        metadata = mock.MagicMock()
+        metadata.cluster_id = "test-cluster-uuid"
+        cluster.update_metadata(metadata)
+
+        self.assertEqual(cluster.cluster_id, "test-cluster-uuid")
+        self.assertEqual(update_calls, [metadata])
+
+    def test_patch_cluster_id_capture_is_idempotent(self) -> None:
+        """Calling _patch_cluster_id_capture twice does not double-wrap."""
+        cluster = mock.MagicMock(spec=[])
+        update_calls: list[object] = []
+        cluster.update_metadata = lambda m: update_calls.append(m)
+        client = mock.MagicMock()
+        client.cluster = cluster
+
+        _patch_cluster_id_capture(client)
+        _patch_cluster_id_capture(client)
+
+        metadata = mock.MagicMock()
+        metadata.cluster_id = "id-1"
+        cluster.update_metadata(metadata)
+
+        # original called exactly once despite two patch calls
+        self.assertEqual(len(update_calls), 1)
+
+    def test_patch_cluster_id_capture_ignores_none_cluster(self) -> None:
+        """_patch_cluster_id_capture is a no-op when client has no cluster."""
+        client = mock.MagicMock(spec=[])  # no attributes
+        _patch_cluster_id_capture(client)  # must not raise
 
     def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
         """Returns cluster ID from client.cluster.cluster_id when available."""

@@ -92,13 +92,33 @@ def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
     return client._client_id
 
 
+def _patch_cluster_id_capture(client: aiokafka.AIOKafkaClient) -> None:
+    """Wrap cluster.update_metadata once to populate cluster.cluster_id.
+
+    aiokafka's ClusterMetadata receives cluster_id in every MetadataResponse
+    but does not store it as an attribute. This one-time patch intercepts
+    update_metadata so that _extract_cluster_id_from_client can read it.
+    """
+    cluster = getattr(client, "cluster", None)
+    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
+        return
+    original_update = cluster.update_metadata
+
+    def _patched_update(metadata: Any) -> None:
+        cluster_id = getattr(metadata, "cluster_id", None)
+        if cluster_id:
+            cluster.cluster_id = cluster_id
+        original_update(metadata)
+
+    cluster.update_metadata = _patched_update
+    cluster._otel_cluster_id_patched = True
+
+
 def _extract_cluster_id_from_client(
     client: aiokafka.AIOKafkaClient,
 ) -> str | None:
     """Read cluster ID from the aiokafka client's cached cluster metadata.
 
-    aiokafka sets AIOKafkaClient.cluster.cluster_id after the first successful
-    broker metadata response — no extra connection or background thread needed.
     Returns None if metadata has not been received yet.
     """
     try:
@@ -669,3 +689,33 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
         return records
 
     return _traced_getmany
+
+
+def _wrap_start_producer() -> Callable[..., Awaitable[None]]:
+    """Wrap AIOKafkaProducer.start to install the cluster_id capture patch."""
+
+    async def _traced_start(
+        func: Callable[..., Awaitable[None]],
+        instance: aiokafka.AIOKafkaProducer,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> None:
+        _patch_cluster_id_capture(instance.client)
+        return await func(*args, **kwargs)
+
+    return _traced_start
+
+
+def _wrap_start_consumer() -> Callable[..., Awaitable[None]]:
+    """Wrap AIOKafkaConsumer.start to install the cluster_id capture patch."""
+
+    async def _traced_start(
+        func: Callable[..., Awaitable[None]],
+        instance: aiokafka.AIOKafkaConsumer,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> None:
+        _patch_cluster_id_capture(instance._client)
+        return await func(*args, **kwargs)
+
+    return _traced_start

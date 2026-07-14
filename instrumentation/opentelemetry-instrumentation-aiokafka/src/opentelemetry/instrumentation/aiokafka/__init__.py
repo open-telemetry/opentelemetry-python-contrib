@@ -109,6 +109,8 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
+    _wrap_start_consumer,
+    _wrap_start_producer,
 )
 from opentelemetry.instrumentation.aiokafka.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -167,6 +169,16 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
 
         wrap_function_wrapper(
             aiokafka.AIOKafkaProducer,
+            "start",
+            _wrap_start_producer(),
+        )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaConsumer,
+            "start",
+            _wrap_start_consumer(),
+        )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaProducer,
             "send",
             _wrap_send(tracer, async_produce_hook),
         )
@@ -182,6 +194,8 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]):
+        unwrap(aiokafka.AIOKafkaProducer, "start")
+        unwrap(aiokafka.AIOKafkaConsumer, "start")
         unwrap(aiokafka.AIOKafkaProducer, "send")
         unwrap(aiokafka.AIOKafkaConsumer, "getone")
         unwrap(aiokafka.AIOKafkaConsumer, "getmany")
