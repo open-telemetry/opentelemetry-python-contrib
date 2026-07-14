@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-aiokafka`: add `capture_experimental_span_attributes` option to gate `messaging.cluster.id` on producer and consumer spans
+`opentelemetry-instrumentation-aiokafka`: emit `messaging.kafka.cluster.id` on producer and consumer spans
