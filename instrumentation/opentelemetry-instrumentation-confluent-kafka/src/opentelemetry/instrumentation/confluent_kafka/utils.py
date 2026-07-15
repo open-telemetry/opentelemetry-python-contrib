@@ -26,7 +26,9 @@ from opentelemetry.trace import Link, SpanKind
 
 _LOG = getLogger(__name__)
 
-_MESSAGING_CLUSTER_ID = "messaging.kafka.cluster.id"
+# TODO(semconv #3819): once generated in opentelemetry-semantic-conventions,
+# use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
+_MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
 
 _CLUSTER_ID_TTL_SECONDS = 60 * 60
 
@@ -297,7 +299,7 @@ def _enrich_span(
     _fetch_cluster_id_background(bootstrap_servers, instance=instance)
     cluster_id = _get_cluster_id(bootstrap_servers)
     if cluster_id:
-        span.set_attribute(_MESSAGING_CLUSTER_ID, cluster_id)
+        span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
     # https://stackoverflow.com/questions/65935155/identify-and-find-specific-message-in-kafka-topic
     # A message within Kafka is uniquely defined by its topic name, topic partition and offset.

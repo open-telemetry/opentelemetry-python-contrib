@@ -9,7 +9,7 @@ import aiokafka
 
 from opentelemetry.instrumentation.aiokafka import _patch_cluster_id_capture
 from opentelemetry.instrumentation.aiokafka.utils import (
-    _MESSAGING_CLUSTER_ID,
+    _MESSAGING_KAFKA_CLUSTER_ID,
     AIOKafkaContextGetter,
     AIOKafkaContextSetter,
     _aiokafka_getter,
@@ -398,7 +398,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             for call in span.set_attribute.call_args_list
         }
         self.assertEqual(
-            set_attribute_calls.get(_MESSAGING_CLUSTER_ID),
+            set_attribute_calls.get(_MESSAGING_KAFKA_CLUSTER_ID),
             "test-cluster-uuid",
         )
 
@@ -429,7 +429,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         attribute_keys = [
             call.args[0] for call in span.set_attribute.call_args_list
         ]
-        self.assertNotIn(_MESSAGING_CLUSTER_ID, attribute_keys)
+        self.assertNotIn(_MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
 
     def test_patch_cluster_id_capture_sets_cluster_id_from_metadata(
         self,

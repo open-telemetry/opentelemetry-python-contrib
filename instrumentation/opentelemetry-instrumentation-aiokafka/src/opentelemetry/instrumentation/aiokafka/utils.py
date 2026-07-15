@@ -79,7 +79,9 @@ if TYPE_CHECKING:
 
 _LOG = getLogger(__name__)
 
-_MESSAGING_CLUSTER_ID = "messaging.kafka.cluster.id"
+# TODO(semconv #3819): once generated in opentelemetry-semantic-conventions,
+# use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
+_MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
 
 
 def _extract_bootstrap_servers(
@@ -279,7 +281,7 @@ def _enrich_base_span(
         )
 
     if cluster_id is not None:
-        span.set_attribute(_MESSAGING_CLUSTER_ID, cluster_id)
+        span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
 
 def _enrich_send_span(
@@ -385,7 +387,7 @@ def _enrich_getmany_poll_span(
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
 
     if cluster_id is not None:
-        span.set_attribute(_MESSAGING_CLUSTER_ID, cluster_id)
+        span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
     if consumer_group is not None:
         span.set_attribute(
@@ -501,7 +503,7 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
             # metadata was not yet populated before the send started.
             cluster_id = _extract_cluster_id_from_client(instance.client)
             if cluster_id is not None and span.is_recording():
-                span.set_attribute(_MESSAGING_CLUSTER_ID, cluster_id)
+                span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
             return result
 
     return _traced_send
