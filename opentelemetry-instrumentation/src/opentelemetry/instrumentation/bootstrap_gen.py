@@ -103,7 +103,7 @@ libraries = [
     },
     {
         "library": "httpx2 >= 2.0.0",
-        "instrumentation": "opentelemetry-instrumentation-httpx==0.64b0.dev",
+        "instrumentation": "opentelemetry-instrumentation-httpx==0.65b0.dev",
     },
     {
         "library": "jinja2 >= 2.7, < 4.0",
