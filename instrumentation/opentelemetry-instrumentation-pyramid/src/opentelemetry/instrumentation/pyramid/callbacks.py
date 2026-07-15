@@ -44,6 +44,7 @@ from opentelemetry.util.http import get_excluded_urls, redact_url
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
+_SETTING_CALLBACKS_REGISTERED = "opentelemetry-pyramid.callbacks_registered"
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-pyramid.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-pyramid.span_key"
@@ -61,6 +62,10 @@ _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 def includeme(config):
     config.add_settings({SETTING_TRACE_ENABLED: True})
 
+    if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
+        return
+
+    config.add_settings({_SETTING_CALLBACKS_REGISTERED: True})
     config.add_subscriber(_before_traversal, BeforeTraversal)
     _insert_tween(config)
 
