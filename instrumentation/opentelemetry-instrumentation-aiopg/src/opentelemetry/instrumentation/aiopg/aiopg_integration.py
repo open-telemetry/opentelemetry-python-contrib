@@ -107,9 +107,7 @@ class AsyncCursorTracer(CursorTracer):
         *args: typing.Tuple[typing.Any, typing.Any],
         **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
-        name = ""
-        if args:
-            name = self.get_operation_name(cursor, args)
+        name = self.get_operation_name(cursor, args)
 
         if not name:
             name = (
