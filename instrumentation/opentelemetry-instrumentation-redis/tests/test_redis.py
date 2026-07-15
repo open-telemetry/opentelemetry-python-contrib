@@ -1673,6 +1673,23 @@ class _FakeClusterPipeline:
         self._execution_strategy = _FakeExecutionStrategy(commands)
 
 
+class _FakeAsyncExecutionStrategy:
+    """Mimics redis-py 6+ async cluster strategy: unlike the sync strategy
+    (public ``command_queue`` property), it only exposes the private
+    ``_command_queue`` attribute."""
+
+    def __init__(self, commands):
+        self._command_queue = commands
+
+
+class _FakeAsyncClusterPipeline:
+    """Mimics redis-py 6+ async ClusterPipeline: queued commands live on
+    ``_execution_strategy._command_queue`` and there is no ``command_stack``."""
+
+    def __init__(self, commands):
+        self._execution_strategy = _FakeAsyncExecutionStrategy(commands)
+
+
 class _FakeLegacyPipeline:
     def __init__(self, commands):
         self.command_stack = commands
@@ -1685,6 +1702,22 @@ class TestBuildSpanMetaDataForPipeline(TestBase):
         # _execution_strategy.command_queue.
         commands = [_FakeCommand("SET", "k1", "v1"), _FakeCommand("GET", "k1")]
         instance = _FakeClusterPipeline(commands)
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(len(command_stack), 2)
+        self.assertEqual(resource, "SET ? ?\nGET ?")
+        self.assertEqual(span_name, "SET GET")
+
+    def test_async_cluster_pipeline_reads_private_command_queue(self):
+        # Regression test for issue #4084 on the async path: the redis-py 6+
+        # async cluster strategy exposes only the private ``_command_queue``
+        # (no public ``command_queue`` property), so reading only
+        # ``command_queue`` left the async ClusterPipeline span empty.
+        commands = [_FakeCommand("SET", "k1", "v1"), _FakeCommand("GET", "k1")]
+        instance = _FakeAsyncClusterPipeline(commands)
 
         command_stack, resource, span_name = (
             _build_span_meta_data_for_pipeline(instance)

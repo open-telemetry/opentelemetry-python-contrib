@@ -208,13 +208,20 @@ def _build_span_meta_data_for_pipeline(
 ) -> tuple[list[Any], str, str]:
     try:
         # redis-py 6+ ClusterPipeline no longer updates ``command_stack``;
-        # queued commands are tracked on ``_execution_strategy.command_queue``.
-        # Fall back to ``command_stack`` / ``_command_stack`` for non-cluster
-        # pipelines and older redis-py versions.
-        if hasattr(instance, "_execution_strategy") and hasattr(
-            instance._execution_strategy, "command_queue"
+        # queued commands are tracked on the execution strategy instead. The
+        # sync cluster strategy exposes them via a public ``command_queue``
+        # property, while the async cluster strategy only has the private
+        # ``_command_queue`` attribute. Fall back to ``command_stack`` /
+        # ``_command_stack`` for non-cluster pipelines and older redis-py.
+        execution_strategy = getattr(instance, "_execution_strategy", None)
+        if execution_strategy is not None and hasattr(
+            execution_strategy, "command_queue"
         ):
-            command_stack = instance._execution_strategy.command_queue
+            command_stack = execution_strategy.command_queue
+        elif execution_strategy is not None and hasattr(
+            execution_strategy, "_command_queue"
+        ):
+            command_stack = execution_strategy._command_queue
         elif hasattr(instance, "command_stack"):
             command_stack = instance.command_stack
         else:
