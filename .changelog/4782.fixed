@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-redis`: don't fail commands when the connection pool lacks `connection_kwargs`
