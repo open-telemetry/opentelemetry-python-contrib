@@ -1,0 +1,87 @@
+# serializer version: 1
+# name: test_detects_cloud_functions
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.platform': 'gcp_cloud_functions',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'faas.instance': '0087244a',
+    'faas.name': 'fake-service',
+    'faas.version': 'fake-revision',
+  })
+# ---
+# name: test_detects_cloud_run
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.platform': 'gcp_cloud_run',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'faas.instance': '0087244a',
+    'faas.name': 'fake-service',
+    'faas.version': 'fake-revision',
+  })
+# ---
+# name: test_detects_empty_as_fallback
+  dict({
+  })
+# ---
+# name: test_detects_empty_when_not_available
+  dict({
+  })
+# ---
+# name: test_detects_gae_flex
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.availability_zone': 'us-east4-b',
+    'cloud.platform': 'gcp_app_engine',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'faas.instance': 'fake-instance',
+    'faas.name': 'fake-service',
+    'faas.version': 'fake-version',
+  })
+# ---
+# name: test_detects_gae_standard
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.availability_zone': 'us-east4-b',
+    'cloud.platform': 'gcp_app_engine',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'faas.instance': 'fake-instance',
+    'faas.name': 'fake-service',
+    'faas.version': 'fake-version',
+  })
+# ---
+# name: test_detects_gce
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.availability_zone': 'us-east4-b',
+    'cloud.platform': 'gcp_compute_engine',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'host.id': '0087244a',
+    'host.name': 'fakeName',
+    'host.type': 'fakeMachineType',
+  })
+# ---
+# name: test_detects_gke[regional]
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.platform': 'gcp_kubernetes_engine',
+    'cloud.provider': 'gcp',
+    'cloud.region': 'us-east4',
+    'host.id': '12345',
+    'k8s.cluster.name': 'fakeClusterName',
+  })
+# ---
+# name: test_detects_gke[zonal]
+  dict({
+    'cloud.account.id': 'fakeProject',
+    'cloud.availability_zone': 'us-east4-b',
+    'cloud.platform': 'gcp_kubernetes_engine',
+    'cloud.provider': 'gcp',
+    'host.id': '12345',
+    'k8s.cluster.name': 'fakeClusterName',
+  })
+# ---

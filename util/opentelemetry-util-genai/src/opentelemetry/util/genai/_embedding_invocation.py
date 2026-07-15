@@ -37,7 +37,7 @@ class EmbeddingInvocation(GenAIInvocation):
         server_port: int | None = None,
     ) -> None:
         """Use handler.start_embedding(provider) or handler.embedding(provider) instead of calling this directly."""
-        _operation_name = GenAI.GenAiOperationNameValues.EMBEDDINGS.value
+        _operation_name = GenAI.GenAiOperationNameValues.EMBEDDINGS.value  # pyright: ignore[reportDeprecated]
         super().__init__(
             tracer,
             metrics_recorder,
@@ -91,7 +91,7 @@ class EmbeddingInvocation(GenAIInvocation):
 
     def _get_metric_token_counts(self) -> dict[str, int]:
         if self.input_tokens is not None:
-            return {GenAI.GenAiTokenTypeValues.INPUT.value: self.input_tokens}
+            return {GenAI.GenAiTokenTypeValues.INPUT.value: self.input_tokens}  # pyright: ignore[reportDeprecated]
         return {}
 
     def _apply_finish(self, error: Error | None = None) -> None:

@@ -1,0 +1,1 @@
+Moved the Google Cloud resource detector package from the opentelemetry-operations-python repository to the opentelemetry-python-contrib repo.
