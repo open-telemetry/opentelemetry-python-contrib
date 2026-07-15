@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-aiokafka`: emit `messaging.kafka.cluster.id` on producer and consumer spans
