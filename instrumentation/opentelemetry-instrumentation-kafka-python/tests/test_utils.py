@@ -101,7 +101,6 @@ class TestUtils(TestCase):
         produce_hook = mock.MagicMock()
         original_send_callback = mock.MagicMock()
         kafka_producer = mock.MagicMock()
-        expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
         retval = wrapped_send(
@@ -113,7 +112,7 @@ class TestUtils(TestCase):
             kafka_producer, self.args, self.kwargs
         )
         tracer.start_as_current_span.assert_called_once_with(
-            expected_span_name, kind=SpanKind.PRODUCER
+            _get_span_name("send", self.topic_name), kind=SpanKind.PRODUCER
         )
 
         span = tracer.start_as_current_span().__enter__.return_value
