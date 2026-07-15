@@ -218,14 +218,15 @@ def _determine_parent_context(
     return event_context_extractor(lambda_event)
 
 
-def _set_api_gateway_v1_proxy_attributes(
-    lambda_event: Any, attributes: MutableMapping[str, Any]
-) -> None:
+def _get_api_gateway_v1_proxy_attributes(
+    lambda_event: Any,
+) -> MutableMapping[str, Any]:
     """Sets HTTP attributes for REST APIs and v1 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
     """
+    attributes = {}
     attributes[HTTP_METHOD] = lambda_event.get("httpMethod")
 
     if lambda_event.get("headers"):
@@ -246,16 +247,18 @@ def _set_api_gateway_v1_proxy_attributes(
             )
         else:
             attributes[HTTP_TARGET] = lambda_event["resource"]
+    return attributes
 
 
-def _set_api_gateway_v2_proxy_attributes(
-    lambda_event: Any, attributes: MutableMapping[str, Any]
-) -> None:
+def _get_api_gateway_v2_proxy_attributes(
+    lambda_event: Any,
+) -> MutableMapping[str, Any]:
     """Sets HTTP attributes for v2 HTTP APIs
 
     More info:
     https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
+    attributes = {}
     if "domainName" in lambda_event["requestContext"]:
         attributes[NET_HOST_NAME] = lambda_event["requestContext"][
             "domainName"
@@ -275,6 +278,7 @@ def _set_api_gateway_v2_proxy_attributes(
                 )
             else:
                 attributes[HTTP_TARGET] = http["path"]
+    return attributes
 
 
 def _get_lambda_context_attributes(
@@ -363,12 +367,12 @@ def _instrument(
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
             span_attributes[FAAS_TRIGGER] = "http"
             if lambda_event.get("version") == "2.0":
-                _set_api_gateway_v2_proxy_attributes(
-                    lambda_event, span_attributes
+                span_attributes |= _get_api_gateway_v2_proxy_attributes(
+                    lambda_event
                 )
             else:
-                _set_api_gateway_v1_proxy_attributes(
-                    lambda_event, span_attributes
+                span_attributes |= _get_api_gateway_v1_proxy_attributes(
+                    lambda_event
                 )
 
         try:
