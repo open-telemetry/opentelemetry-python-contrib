@@ -91,8 +91,7 @@ from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import _instruments
 from opentelemetry.instrumentation.kafka.utils import (
-    KafkaPropertiesExtractor,
-    _fetch_cluster_id_background,
+    _patch_cluster_id_capture,
     _wrap_next,
     _wrap_send,
 )
@@ -130,23 +129,11 @@ class KafkaInstrumentor(BaseInstrumentor):
 
         def _wrap_producer_init(func, instance, args, kwargs):
             func(*args, **kwargs)
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
-            if bootstrap_servers:
-                _fetch_cluster_id_background(
-                    bootstrap_servers, getattr(instance, "config", None)
-                )
+            _patch_cluster_id_capture(instance)
 
         def _wrap_consumer_init(func, instance, args, kwargs):
             func(*args, **kwargs)
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
-            if bootstrap_servers:
-                _fetch_cluster_id_background(
-                    bootstrap_servers, getattr(instance, "config", None)
-                )
+            _patch_cluster_id_capture(instance)
 
         wrap_function_wrapper(
             kafka.KafkaProducer, "__init__", _wrap_producer_init

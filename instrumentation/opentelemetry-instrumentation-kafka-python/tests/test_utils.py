@@ -7,9 +7,11 @@ from unittest import TestCase, mock
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
+    _extract_cluster_id,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
+    _patch_cluster_id_capture,
     _wrap_next,
     _wrap_send,
 )
@@ -30,6 +32,9 @@ class TestUtils(TestCase):
     @mock.patch(
         "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition"
     )
+    @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils._extract_cluster_id"
+    )
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -38,6 +43,7 @@ class TestUtils(TestCase):
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
         enrich_span: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -45,6 +51,7 @@ class TestUtils(TestCase):
             inject,
             set_span_in_context,
             enrich_span,
+            extract_cluster_id,
             extract_send_partition,
             extract_bootstrap_servers,
         )
@@ -55,6 +62,9 @@ class TestUtils(TestCase):
     @mock.patch(
         "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition"
     )
+    @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils._extract_cluster_id"
+    )
     @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
     @mock.patch("opentelemetry.trace.set_span_in_context")
     @mock.patch("opentelemetry.propagate.inject")
@@ -63,6 +73,7 @@ class TestUtils(TestCase):
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
         enrich_span: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -72,6 +83,7 @@ class TestUtils(TestCase):
             inject,
             set_span_in_context,
             enrich_span,
+            extract_cluster_id,
             extract_send_partition,
             extract_bootstrap_servers,
         )
@@ -81,6 +93,7 @@ class TestUtils(TestCase):
         inject: mock.MagicMock,
         set_span_in_context: mock.MagicMock,
         enrich_span: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
         extract_send_partition: mock.MagicMock,
         extract_bootstrap_servers: mock.MagicMock,
     ) -> None:
@@ -109,6 +122,7 @@ class TestUtils(TestCase):
             extract_bootstrap_servers.return_value,
             self.topic_name,
             extract_send_partition.return_value,
+            extract_cluster_id.return_value,
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -124,6 +138,9 @@ class TestUtils(TestCase):
         )
         self.assertEqual(retval, original_send_callback.return_value)
 
+    @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils._extract_cluster_id"
+    )
     @mock.patch("opentelemetry.propagate.extract")
     @mock.patch(
         "opentelemetry.instrumentation.kafka.utils._create_consumer_span"
@@ -136,6 +153,7 @@ class TestUtils(TestCase):
         extract_bootstrap_servers: mock.MagicMock,
         _create_consumer_span: mock.MagicMock,
         extract: mock.MagicMock,
+        extract_cluster_id: mock.MagicMock,
     ) -> None:
         tracer = mock.MagicMock()
         consume_hook = mock.MagicMock()
@@ -164,6 +182,7 @@ class TestUtils(TestCase):
             record,
             context,
             bootstrap_servers,
+            extract_cluster_id.return_value,
             self.args,
             self.kwargs,
         )
@@ -184,6 +203,7 @@ class TestUtils(TestCase):
         bootstrap_servers = mock.MagicMock()
         extracted_context = mock.MagicMock()
         record = mock.MagicMock()
+        cluster_id = mock.MagicMock()
 
         _create_consumer_span(
             tracer,
@@ -191,6 +211,7 @@ class TestUtils(TestCase):
             record,
             extracted_context,
             bootstrap_servers,
+            cluster_id,
             self.args,
             self.kwargs,
         )
@@ -207,7 +228,11 @@ class TestUtils(TestCase):
         attach.assert_called_once_with(set_span_in_context.return_value)
 
         enrich_span.assert_called_once_with(
-            span, bootstrap_servers, record.topic, record.partition
+            span,
+            bootstrap_servers,
+            record.topic,
+            record.partition,
+            cluster_id,
         )
         consume_hook.assert_called_once_with(
             span, record, self.args, self.kwargs
@@ -238,3 +263,43 @@ class TestUtils(TestCase):
             )
             is None
         )
+
+    def test_extract_cluster_id_from_producer_metadata(self) -> None:
+        producer = mock.MagicMock()
+        producer._metadata.cluster_id = "test-cluster-id"
+        self.assertEqual(_extract_cluster_id(producer), "test-cluster-id")
+
+    def test_extract_cluster_id_from_consumer_client(self) -> None:
+        consumer = mock.MagicMock(spec=["_client"])
+        consumer._client.cluster.cluster_id = "test-cluster-id"
+        self.assertEqual(_extract_cluster_id(consumer), "test-cluster-id")
+
+    def test_extract_cluster_id_absent_returns_none(self) -> None:
+        instance = mock.MagicMock(spec=[])
+        self.assertIsNone(_extract_cluster_id(instance))
+
+    def test_patch_cluster_id_capture_captures_and_is_idempotent(
+        self,
+    ) -> None:
+        class FakeCluster:
+            def __init__(self) -> None:
+                self.update_calls = 0
+
+            def update_metadata(self, metadata) -> None:
+                self.update_calls += 1
+
+        class FakeMetadataResponse:
+            cluster_id = "test-cluster-id"
+
+        cluster = FakeCluster()
+        instance = mock.MagicMock()
+        instance._metadata = cluster
+
+        _patch_cluster_id_capture(instance)
+        # Second call must not double-wrap update_metadata.
+        _patch_cluster_id_capture(instance)
+
+        cluster.update_metadata(FakeMetadataResponse())
+
+        self.assertEqual(cluster.update_calls, 1)
+        self.assertEqual(_extract_cluster_id(instance), "test-cluster-id")

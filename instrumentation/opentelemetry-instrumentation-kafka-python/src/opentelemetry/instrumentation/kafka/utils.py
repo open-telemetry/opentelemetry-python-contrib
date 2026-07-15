@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import threading
-import time
 from logging import getLogger
 from typing import Callable, Dict, List, Optional
 
@@ -19,105 +17,47 @@ _LOG = getLogger(__name__)
 
 _MESSAGING_CLUSTER_ID = "messaging.kafka.cluster.id"
 
-_SECURITY_CONFIG_KEYS = frozenset(
-    {
-        "ssl_cafile",
-        "ssl_certfile",
-        "ssl_keyfile",
-        "ssl_password",
-        "ssl_crlfile",
-        "ssl_check_hostname",
-        "ssl_context",
-        "security_protocol",
-        "sasl_mechanism",
-        "sasl_plain_username",
-        "sasl_plain_password",
-        "sasl_kerberos_service_name",
-        "sasl_kerberos_domain_name",
-        "sasl_oauth_token_provider",
-    }
-)
 
-_CLUSTER_ID_TTL_SECONDS = 60 * 60
+def _get_cluster_metadata(instance):
+    """Return the kafka-python ``ClusterMetadata`` for a producer or consumer.
 
-_kafka_cluster_id_cache: Dict[str, object] = {}
-_kafka_cluster_id_lock = threading.Lock()
+    ``KafkaProducer`` exposes it as ``_metadata``; ``KafkaConsumer`` as
+    ``_client.cluster``.
+    """
+    cluster = getattr(instance, "_metadata", None)
+    if cluster is not None:
+        return cluster
+    return getattr(getattr(instance, "_client", None), "cluster", None)
 
 
-def _bootstrap_cache_key(servers) -> str:
-    if isinstance(servers, (list, tuple)):
-        return ",".join(sorted(str(s) for s in servers))
-    parts = [s.strip() for s in str(servers).split(",") if s.strip()]
-    return ",".join(sorted(parts))
+def _patch_cluster_id_capture(instance) -> None:
+    """Capture the cluster id from the client's own metadata responses.
+
+    Reads from the client's already-resolved metadata; opens no extra broker
+    connection. kafka-python < 2.1 does not persist ``cluster_id`` on
+    ``ClusterMetadata``, but the ``MetadataResponse`` (v2+) passed to
+    ``update_metadata`` carries it, so wrap ``update_metadata`` to store it.
+    Guarded so each client's metadata object is patched at most once.
+    """
+    cluster = _get_cluster_metadata(instance)
+    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
+        return
+    original_update = cluster.update_metadata
+
+    def _patched_update(metadata):
+        result = original_update(metadata)
+        cluster_id = getattr(metadata, "cluster_id", None)
+        if cluster_id:
+            cluster.cluster_id = cluster_id
+        return result
+
+    cluster.update_metadata = _patched_update
+    cluster._otel_cluster_id_patched = True
 
 
-def _fetch_cluster_id_background(bootstrap_servers, extra_config=None) -> None:
-    """Fetch cluster UUID via KafkaAdminClient in a daemon thread. Caches result by broker key."""
-    cache_key = _bootstrap_cache_key(bootstrap_servers)
-    with _kafka_cluster_id_lock:
-        existing = _kafka_cluster_id_cache.get(cache_key)
-        if isinstance(existing, tuple):
-            if time.monotonic() - existing[1] <= _CLUSTER_ID_TTL_SECONDS:
-                return  # still fresh; stale value stays until re-fetch succeeds
-            # TTL expired — leave stale tuple in cache so callers get the old value
-            # while the background refresh runs, then the refresh will overwrite it.
-        elif existing is not None:
-            return  # "" sentinel — first fetch already in progress
-        else:
-            _kafka_cluster_id_cache[cache_key] = (
-                ""  # mark first fetch in-flight
-            )
-
-    def _run() -> None:
-        admin = None
-        try:
-            from kafka.admin import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
-                KafkaAdminClient,
-            )
-
-            security_kwargs = {
-                k: v
-                for k, v in (extra_config or {}).items()
-                if k in _SECURITY_CONFIG_KEYS and v is not None
-            }
-            admin = KafkaAdminClient(
-                bootstrap_servers=bootstrap_servers, **security_kwargs
-            )
-            info = admin.describe_cluster()
-            cluster_id = info.get("cluster_id")
-            if cluster_id:
-                with _kafka_cluster_id_lock:
-                    _kafka_cluster_id_cache[cache_key] = (
-                        cluster_id,
-                        time.monotonic(),
-                    )
-            else:
-                with _kafka_cluster_id_lock:
-                    _kafka_cluster_id_cache.pop(cache_key, None)
-        except Exception:  # pylint: disable=broad-except
-            with _kafka_cluster_id_lock:
-                _kafka_cluster_id_cache.pop(cache_key, None)
-        finally:
-            if admin is not None:
-                try:
-                    admin.close()
-                except Exception:  # pylint: disable=broad-except
-                    pass
-
-    thread = threading.Thread(
-        target=_run, daemon=True, name="otel-kafka-cluster-id"
-    )
-    try:
-        thread.start()
-    except Exception:  # pylint: disable=broad-except
-        with _kafka_cluster_id_lock:
-            _kafka_cluster_id_cache.pop(cache_key, None)
-
-
-def _get_cluster_id(bootstrap_servers) -> Optional[str]:
-    cache_key = _bootstrap_cache_key(bootstrap_servers)
-    val = _kafka_cluster_id_cache.get(cache_key)
-    return val[0] if isinstance(val, tuple) else None
+def _extract_cluster_id(instance) -> Optional[str]:
+    cluster_id = getattr(_get_cluster_metadata(instance), "cluster_id", None)
+    return cluster_id if cluster_id else None
 
 
 class KafkaPropertiesExtractor:
@@ -230,7 +170,11 @@ _kafka_setter = KafkaContextSetter()
 
 
 def _enrich_span(
-    span, bootstrap_servers: List[str], topic: str, partition: int
+    span,
+    bootstrap_servers: List[str],
+    topic: str,
+    partition: int,
+    cluster_id: Optional[str] = None,
 ):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
@@ -239,7 +183,6 @@ def _enrich_span(
         span.set_attribute(
             SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
         )
-        cluster_id = _get_cluster_id(bootstrap_servers)
         if cluster_id:
             span.set_attribute(_MESSAGING_CLUSTER_ID, cluster_id)
 
@@ -262,12 +205,12 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
         partition = KafkaPropertiesExtractor.extract_send_partition(
             instance, args, kwargs
         )
+        cluster_id = _extract_cluster_id(instance)
         span_name = _get_span_name("send", topic)
-        _fetch_cluster_id_background(bootstrap_servers, dict(instance.config))
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.PRODUCER
         ) as span:
-            _enrich_span(span, bootstrap_servers, topic, partition)
+            _enrich_span(span, bootstrap_servers, topic, partition, cluster_id)
             propagate.inject(
                 headers,
                 context=trace.set_span_in_context(span),
@@ -289,6 +232,7 @@ def _create_consumer_span(
     record,
     extracted_context,
     bootstrap_servers,
+    cluster_id,
     args,
     kwargs,
 ):
@@ -300,7 +244,13 @@ def _create_consumer_span(
     ) as span:
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
-        _enrich_span(span, bootstrap_servers, record.topic, record.partition)
+        _enrich_span(
+            span,
+            bootstrap_servers,
+            record.topic,
+            record.partition,
+            cluster_id,
+        )
         try:
             if callable(consume_hook):
                 consume_hook(span, record, args, kwargs)
@@ -321,9 +271,7 @@ def _wrap_next(
             bootstrap_servers = (
                 KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             )
-            _fetch_cluster_id_background(
-                bootstrap_servers, dict(instance.config)
-            )
+            cluster_id = _extract_cluster_id(instance)
             extracted_context = propagate.extract(
                 record.headers, getter=_kafka_getter
             )
@@ -333,6 +281,7 @@ def _wrap_next(
                 record,
                 extracted_context,
                 bootstrap_servers,
+                cluster_id,
                 args,
                 kwargs,
             )
