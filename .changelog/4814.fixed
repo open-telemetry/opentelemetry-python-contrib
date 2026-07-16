@@ -1,0 +1,1 @@
+`opentelemetry-util-genai`, `instrumentation-genai/*`: ignore now deprecated GenAI enums
