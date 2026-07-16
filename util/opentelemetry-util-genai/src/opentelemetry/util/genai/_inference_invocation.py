@@ -55,7 +55,7 @@ class InferenceInvocation(GenAIInvocation):
         operation_name: str | None = None,
     ) -> None:
         operation_name = (
-            operation_name or GenAI.GenAiOperationNameValues.CHAT.value
+            operation_name or GenAI.GenAiOperationNameValues.CHAT.value  # pyright: ignore[reportDeprecated]
         )
         """Use handler.start_inference(provider) or handler.inference(provider) instead of calling this directly."""
         super().__init__(
@@ -176,9 +176,9 @@ class InferenceInvocation(GenAIInvocation):
     def _get_metric_token_counts(self) -> dict[str, int]:
         counts: dict[str, int] = {}
         if self.input_tokens is not None:
-            counts[GenAI.GenAiTokenTypeValues.INPUT.value] = self.input_tokens
+            counts[GenAI.GenAiTokenTypeValues.INPUT.value] = self.input_tokens  # pyright: ignore[reportDeprecated]
         if self.output_tokens is not None:
-            counts[GenAI.GenAiTokenTypeValues.OUTPUT.value] = (
+            counts[GenAI.GenAiTokenTypeValues.OUTPUT.value] = (  # pyright: ignore[reportDeprecated]
                 self.output_tokens
             )
         return counts
