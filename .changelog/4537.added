@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-celery`: add `use_span_links` option to link task execution spans to producer spans instead of creating parent-child relationships
