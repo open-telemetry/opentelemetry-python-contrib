@@ -1,1 +1,0 @@
-opentelemetry-instrumentation-urllib3: remove multiple calls to sanitize_method
