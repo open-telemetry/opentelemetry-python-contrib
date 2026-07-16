@@ -7,10 +7,12 @@ from collections.abc import Coroutine
 
 import wrapt
 
+from opentelemetry.instrumentation._semconv import _report_new
 from opentelemetry.instrumentation.dbapi import (
     CursorTracer,
     DatabaseApiIntegration,
 )
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.trace import SpanKind
 
 
@@ -119,8 +121,16 @@ class AsyncCursorTracer(CursorTracer):
         with self._db_api_integration._tracer.start_as_current_span(
             name, kind=SpanKind.CLIENT
         ) as span:
-            self._populate_span(span, cursor, *args)
-            return await query_method(*args, **kwargs)
+            if span.is_recording():
+                self._populate_span(span, cursor, *args)
+            try:
+                return await query_method(*args, **kwargs)
+            except Exception as exc:
+                if span.is_recording() and _report_new(
+                    self._db_api_integration._sem_conv_opt_in_mode_db
+                ):
+                    span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
+                raise
 
 
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
