@@ -5,6 +5,7 @@ from timeit import default_timer
 from unittest.mock import patch
 
 from pyramid.config import Configurator
+from pyramid.config.adapters import AdaptersConfiguratorMixin
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -145,6 +146,37 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(
             config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0]
         )
+
+    def test_before_traversal_subscriber_not_duplicated_after_commit(self):
+        registrations = []
+
+        def library_that_commits(config):
+            config.add_route("example", "/example")
+            config.commit()
+
+        def another_library(config):
+            pass
+
+        original_add_subscriber = AdaptersConfiguratorMixin.add_subscriber
+
+        def counting_add_subscriber(config, subscriber, iface=None, **kwargs):
+            if getattr(subscriber, "__name__", "") == "_before_traversal":
+                registrations.append(subscriber)
+
+            return original_add_subscriber(
+                config, subscriber, iface=iface, **kwargs
+            )
+
+        with patch.object(
+            AdaptersConfiguratorMixin,
+            "add_subscriber",
+            counting_add_subscriber,
+        ):
+            config = Configurator()
+            config.include(library_that_commits)
+            config.include(another_library)
+
+        self.assertEqual(len(registrations), 1)
 
     def test_redirect_response_is_not_an_error(self):
         tween_list = "pyramid.tweens.excview_tween_factory"
