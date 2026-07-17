@@ -1,9 +1,15 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 from unittest import mock
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+    _StabilityMode,
+)
 from opentelemetry.instrumentation.pymongo import (
     CommandTracer,
     PymongoInstrumentor,
@@ -19,9 +25,36 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_COLLECTION_NAME,
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+
+# pylint: disable=too-many-public-methods
 class TestPymongo(TestBase):
     def setUp(self):
         super().setUp()
@@ -29,6 +62,15 @@ class TestPymongo(TestBase):
         self.start_callback = mock.MagicMock()
         self.success_callback = mock.MagicMock()
         self.failed_callback = mock.MagicMock()
+        PymongoInstrumentor._instance = None
+        PymongoInstrumentor._commandtracer_instance = None
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def tearDown(self):
+        super().tearDown()
+        PymongoInstrumentor._instance = None
+        PymongoInstrumentor._commandtracer_instance = None
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
     def test_pymongo_instrumentor(self):
         mock_register = mock.Mock()
@@ -60,7 +102,7 @@ class TestPymongo(TestBase):
         self.assertEqual(span.attributes[DB_NAME], "database_name")
         self.assertEqual(span.attributes[DB_STATEMENT], "find")
         self.assertEqual(span.attributes[NET_PEER_NAME], "test.com")
-        self.assertEqual(span.attributes[NET_PEER_PORT], "1234")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 1234)
         self.start_callback.assert_called_once_with(span, mock_event)
 
     def test_succeeded(self):
@@ -300,6 +342,139 @@ class TestPymongo(TestBase):
                     expected,
                 )
                 self.memory_exporter.clear()
+
+    def test_schema_url_default(self):
+        with mock.patch("pymongo.monitoring.register"):
+            instrumentor = PymongoInstrumentor()
+            instrumentor.instrument(tracer_provider=self.tracer_provider)
+        self.assertEqual(
+            instrumentor._commandtracer_instance._tracer._instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.11.0",
+        )
+
+    def test_schema_url_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            with mock.patch("pymongo.monitoring.register"):
+                instrumentor = PymongoInstrumentor()
+                instrumentor.instrument(tracer_provider=self.tracer_provider)
+        self.assertEqual(
+            instrumentor._commandtracer_instance._tracer._instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
+
+    def test_started_new_semconv(self):
+        command_tracer = CommandTracer(
+            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        mock_event = MockEvent({"command_name": "find"}, ("testhost", 1234))
+        command_tracer.started(event=mock_event)
+        span = command_tracer._pop_span(mock_event)  # pylint: disable=protected-access
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mongodb")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "database_name")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "find")
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 1234)
+
+    def test_started_both_semconv(self):
+        command_tracer = CommandTracer(
+            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        mock_event = MockEvent({"command_name": "find"}, ("testhost", 1234))
+        command_tracer.started(event=mock_event)
+        span = command_tracer._pop_span(mock_event)  # pylint: disable=protected-access
+        self.assertEqual(span.attributes[DB_SYSTEM], "mongodb")
+        self.assertEqual(span.attributes[DB_NAME], "database_name")
+        self.assertEqual(span.attributes[DB_STATEMENT], "find")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 1234)
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mongodb")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "database_name")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "find")
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 1234)
+
+    def test_collection_name_default_semconv(self):
+        command_tracer = CommandTracer(self.tracer)
+        mock_event = MockEvent({"command_name": "find", "find": "test_coll"})
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.attributes[DB_MONGODB_COLLECTION], "test_coll")
+        self.assertNotIn(DB_COLLECTION_NAME, span.attributes)
+
+    def test_collection_name_new_semconv(self):
+        command_tracer = CommandTracer(
+            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        mock_event = MockEvent({"command_name": "find", "find": "test_coll"})
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.attributes[DB_COLLECTION_NAME], "test_coll")
+        self.assertNotIn(DB_MONGODB_COLLECTION, span.attributes)
+
+    def test_collection_name_both_semconv(self):
+        command_tracer = CommandTracer(
+            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        mock_event = MockEvent({"command_name": "find", "find": "test_coll"})
+        command_tracer.started(event=mock_event)
+        command_tracer.succeeded(event=mock_event)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.attributes[DB_MONGODB_COLLECTION], "test_coll")
+        self.assertEqual(span.attributes[DB_COLLECTION_NAME], "test_coll")
+
+    def test_failed_error_type_not_set_on_default(self):
+        command_tracer = CommandTracer(self.tracer)
+        mock_event = MockEvent({})
+        command_tracer.started(event=mock_event)
+        mock_event.mark_as_failed()
+        command_tracer.failed(event=mock_event)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertFalse(span.status.is_ok)
+        self.assertNotIn(ERROR_TYPE, span.attributes)
+
+    def test_failed_error_type_set_on_new_semconv(self):
+        command_tracer = CommandTracer(
+            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        mock_event = MockEvent({})
+        command_tracer.started(event=mock_event)
+        mock_event.failure = {
+            "errmsg": "operation failed",
+            "codeName": "OperationFailed",
+        }
+        command_tracer.failed(event=mock_event)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertFalse(span.status.is_ok)
+        self.assertEqual(span.attributes[ERROR_TYPE], "OperationFailed")
+
+    def test_failed_error_type_set_on_both_semconv(self):
+        command_tracer = CommandTracer(
+            self.tracer, semconv_opt_in_mode=_StabilityMode.DATABASE_DUP
+        )
+        mock_event = MockEvent({})
+        command_tracer.started(event=mock_event)
+        mock_event.failure = {
+            "errmsg": "operation failed",
+            "codeName": "OperationFailed",
+        }
+        command_tracer.failed(event=mock_event)
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertFalse(span.status.is_ok)
+        self.assertEqual(span.attributes[ERROR_TYPE], "OperationFailed")
 
 
 class MockCommand:
