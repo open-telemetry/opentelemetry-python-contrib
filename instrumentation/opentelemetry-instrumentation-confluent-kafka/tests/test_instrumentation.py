@@ -41,7 +41,11 @@ class TestConfluentKafka(TestBase):
         producer = Producer({"bootstrap.servers": "localhost:29092"})
         producer = instrumentation.instrument_producer(producer)
 
-        self.assertEqual(producer.__class__, ProxiedProducer)
+        # The proxies are wrapt.ObjectProxy subclasses, which deliberately
+        # report the *wrapped* object's __class__, so assert on the proxy type
+        # rather than comparing __class__ directly. Checks against the
+        # unwrapped class below are unaffected.
+        self.assertIsInstance(producer, ProxiedProducer)
 
         producer = instrumentation.uninstrument_producer(producer)
         self.assertEqual(producer.__class__, Producer)
@@ -55,7 +59,7 @@ class TestConfluentKafka(TestBase):
         )
 
         consumer = instrumentation.instrument_consumer(consumer)
-        self.assertEqual(consumer.__class__, ProxiedConsumer)
+        self.assertIsInstance(consumer, ProxiedConsumer)
 
         consumer = instrumentation.uninstrument_consumer(consumer)
         self.assertEqual(consumer.__class__, Consumer)
@@ -69,7 +73,7 @@ class TestConfluentKafka(TestBase):
         )
 
         consumer = instrumentation.instrument_consumer(consumer)
-        self.assertEqual(consumer.__class__, ProxiedConsumer)
+        self.assertIsInstance(consumer, ProxiedConsumer)
 
         consumer = instrumentation.uninstrument_consumer(consumer)
         self.assertEqual(consumer.__class__, Consumer)
@@ -116,7 +120,9 @@ class TestConfluentKafka(TestBase):
         )
 
         consumer = instrumentation.instrument_consumer(consumer)
-        self.assertEqual(consumer.__class__, ProxiedConsumer)
+        # See test_instrument_api: ObjectProxy reports the wrapped __class__.
+        self.assertIsInstance(consumer, ProxiedConsumer)
+        # commit() is no longer declared on the proxy; ObjectProxy forwards it.
         self.assertTrue(hasattr(consumer, "commit"))
 
     def test_context_setter(self) -> None:
@@ -484,22 +490,29 @@ class TestConfluentKafka(TestBase):
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
 
     def test_proxied_producer_delegates_unproxied_methods(self) -> None:
-        """ProxiedProducer.__getattr__ must forward methods not explicitly
-        defined on the proxy to the underlying producer, preventing
+        """ProxiedProducer (a wrapt.ObjectProxy) must forward methods not
+        overridden on the proxy to the underlying producer, preventing
         AttributeError or segfaults (see #4278)."""
+        from confluent_kafka import Producer  # noqa: PLC0415
+
         instrumentation = ConfluentKafkaInstrumentor()
         producer = MockedProducer([], {"bootstrap.servers": "localhost:9092"})
-        # Add a sentinel method that is *not* explicitly defined on ProxiedProducer
+        # A method that is *not* overridden on ProxiedProducer.
         producer.custom_metadata = lambda: {"clusters": 1}
         proxied = instrumentation.instrument_producer(producer)
         self.assertIsInstance(proxied, ProxiedProducer)
-        # Must be forwarded via __getattr__, not raise AttributeError
+        # ObjectProxy exposes the wrapped object and keeps its identity.
+        self.assertIs(proxied.__wrapped__, producer)
+        self.assertIsInstance(proxied, Producer)
+        # Transparently forwarded, not raising AttributeError.
         self.assertEqual(proxied.custom_metadata(), {"clusters": 1})
 
     def test_proxied_consumer_delegates_unproxied_methods(self) -> None:
-        """ProxiedConsumer.__getattr__ must forward methods not explicitly
-        defined on the proxy to the underlying consumer, preventing
+        """ProxiedConsumer (a wrapt.ObjectProxy) must forward methods not
+        overridden on the proxy to the underlying consumer, preventing
         AttributeError or segfaults (see #4278)."""
+        from confluent_kafka import Consumer  # noqa: PLC0415
+
         instrumentation = ConfluentKafkaInstrumentor()
         consumer = MockConsumer(
             [],
@@ -509,9 +522,12 @@ class TestConfluentKafka(TestBase):
                 "auto.offset.reset": "earliest",
             },
         )
-        # Add a sentinel method that is *not* explicitly defined on ProxiedConsumer
+        # A method that is *not* overridden on ProxiedConsumer.
         consumer.custom_assignment = lambda: []
         proxied = instrumentation.instrument_consumer(consumer)
         self.assertIsInstance(proxied, ProxiedConsumer)
-        # Must be forwarded via __getattr__, not raise AttributeError
+        # ObjectProxy exposes the wrapped object and keeps its identity.
+        self.assertIs(proxied.__wrapped__, consumer)
+        self.assertIsInstance(proxied, Consumer)
+        # Transparently forwarded, not raising AttributeError.
         self.assertEqual(proxied.custom_assignment(), [])
