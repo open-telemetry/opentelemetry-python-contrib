@@ -30,14 +30,14 @@ class _SqsMessageAttributesGetter(Getter[CarrierT]):
     """Extracts W3C trace context from SQS message attribute dicts.
 
     SQS message attributes have the structure:
-    ``{"traceparent": {"DataType": "String", "StringValue": "00-..."}}``.
+    ``{"traceparent": {"dataType": "String", "stringValue": "00-..."}}``.
     """
 
     def get(self, carrier: CarrierT, key: str) -> list[str] | None:
         msg_attr = carrier.get(key)
         if not isinstance(msg_attr, Mapping):
             return None
-        value = msg_attr.get("StringValue")
+        value = msg_attr.get("stringValue")
         return [value] if isinstance(value, str) else None
 
     def keys(self, carrier: CarrierT) -> list[str]:
