@@ -351,13 +351,16 @@ from __future__ import annotations
 import logging
 import typing
 from collections import defaultdict
+from collections.abc import MutableMapping
 from functools import partial
 from importlib import import_module
 from inspect import iscoroutinefunction
 from timeit import default_timer
 from types import TracebackType
 
-from wrapt import wrap_function_wrapper
+from wrapt import (
+    wrap_function_wrapper,  # pyright: ignore[reportUnknownVariableType]
+)
 
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -399,7 +402,9 @@ from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_PEER_ADDRESS,
     NETWORK_PEER_PORT,
 )
-from opentelemetry.semconv.metrics import MetricInstruments
+from opentelemetry.semconv.metrics import (
+    MetricInstruments,  # pyright: ignore[reportDeprecated]
+)
 from opentelemetry.semconv.metrics.http_metrics import (
     HTTP_CLIENT_REQUEST_DURATION,
 )
@@ -419,8 +424,11 @@ from opentelemetry.util.http import (
     redact_url,
     sanitize_method,
 )
+from opentelemetry.util.types import AttributeValue
 
 if typing.TYPE_CHECKING:
+    from typing_extensions import TypeIs
+
     try:
         import httpx
     except ImportError:
@@ -438,6 +446,12 @@ if typing.TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
+
+# The old HTTP semantic conventions use a metric name that is only available
+# from the deprecated ``MetricInstruments`` class.
+_HTTP_CLIENT_DURATION_OLD = (
+    MetricInstruments.HTTP_CLIENT_DURATION  # pyright: ignore[reportDeprecated]
+)
 
 
 def _try_import(name: str) -> _HTTPXModule | None:
@@ -460,19 +474,43 @@ AsyncResponseHook = typing.Callable[
 ]
 
 
+def _is_async_request_hook(
+    hook: RequestHook | AsyncRequestHook | None,
+) -> TypeIs[AsyncRequestHook]:
+    return iscoroutinefunction(hook)
+
+
+def _is_sync_request_hook(
+    hook: RequestHook | AsyncRequestHook | None,
+) -> TypeIs[RequestHook]:
+    return callable(hook) and not iscoroutinefunction(hook)
+
+
+def _is_async_response_hook(
+    hook: ResponseHook | AsyncResponseHook | None,
+) -> TypeIs[AsyncResponseHook]:
+    return iscoroutinefunction(hook)
+
+
+def _is_sync_response_hook(
+    hook: ResponseHook | AsyncResponseHook | None,
+) -> TypeIs[ResponseHook]:
+    return callable(hook) and not iscoroutinefunction(hook)
+
+
 class RequestInfo(typing.NamedTuple):
     method: bytes
-    url: httpx.URL
+    url: httpx.URL | tuple[bytes, bytes, int | None, bytes]
     headers: httpx.Headers | None
     stream: httpx.SyncByteStream | httpx.AsyncByteStream | None
-    extensions: dict[str, typing.Any] | None
+    extensions: MutableMapping[str, typing.Any] | None
 
 
 class ResponseInfo(typing.NamedTuple):
     status_code: int
     headers: httpx.Headers | None
     stream: httpx.SyncByteStream | httpx.AsyncByteStream
-    extensions: dict[str, typing.Any] | None
+    extensions: MutableMapping[str, typing.Any] | None
 
 
 def _get_default_span_name(method: str) -> str:
@@ -486,7 +524,7 @@ def _get_default_span_name(method: str) -> str:
 def _prepare_headers(
     headers: httpx.Headers | None, module: _HTTPXModule
 ) -> httpx.Headers:
-    return typing.cast("httpx.Headers", module.Headers(headers))
+    return module.Headers(headers)
 
 
 def _extract_parameters(
@@ -498,13 +536,13 @@ def _extract_parameters(
     httpx.URL | tuple[bytes, bytes, int | None, bytes],
     httpx.Headers | None,
     httpx.SyncByteStream | httpx.AsyncByteStream | None,
-    dict[str, typing.Any],
+    MutableMapping[str, typing.Any] | None,
 ]:
     if isinstance(args[0], module.Request):
         # In httpx >= 0.20.0, handle_request receives a Request object
-        request = typing.cast("httpx.Request", args[0])
+        request = args[0]
         method = request.method.encode()
-        url = typing.cast("httpx.URL", module.URL(str(request.url)))
+        url = module.URL(str(request.url))
         headers = request.headers
         stream = request.stream
         extensions = request.extensions
@@ -537,11 +575,16 @@ def _normalize_url(
     return str(url)
 
 
-def _inject_propagation_headers(headers, args, kwargs, module: _HTTPXModule):
+def _inject_propagation_headers(
+    headers: httpx.Headers | None,
+    args: tuple[typing.Any, ...],
+    kwargs: dict[str, typing.Any],
+    module: _HTTPXModule,
+) -> None:
     _headers = _prepare_headers(headers, module)
     inject(_headers)
     if isinstance(args[0], module.Request):
-        request = typing.cast("httpx.Request", args[0])
+        request = args[0]
         request.headers = _headers
     else:
         kwargs["headers"] = _headers.raw
@@ -575,44 +618,46 @@ def _normalize_headers(
 
 
 def _extract_response(
-    response: httpx.Response
-    | tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]],
+    response: httpx.Response | tuple[typing.Any, ...],
     module: _HTTPXModule,
 ) -> tuple[
     int,
     httpx.Headers,
     httpx.SyncByteStream | httpx.AsyncByteStream,
-    dict[str, typing.Any],
+    MutableMapping[str, typing.Any],
     str,
 ]:
-    if isinstance(response, module.Response):
-        http_response = typing.cast("httpx.Response", response)
-        status_code = http_response.status_code
-        headers = http_response.headers
-        stream = http_response.stream
-        extensions = http_response.extensions
-        http_version = http_response.http_version
-    else:
+    if isinstance(response, tuple):
+        # In httpx < 0.20.0, handle_request returns
+        # (status_code, headers, stream, extensions)
         status_code, headers, stream, extensions = response
         http_version = extensions.get("http_version", b"HTTP/1.1").decode(
             "ascii", errors="ignore"
         )
+    else:
+        status_code = response.status_code
+        headers = response.headers
+        stream = response.stream
+        extensions = response.extensions
+        http_version = response.http_version
 
     return (status_code, headers, stream, extensions, http_version)
 
 
 def _apply_request_client_attributes_to_span(
-    span_attributes: dict[str, typing.Any],
-    metric_attributes: dict[str, typing.Any],
-    url: str | httpx.URL,
+    span_attributes: dict[str, AttributeValue],
+    metric_attributes: dict[str, AttributeValue],
+    url: str | httpx.URL | tuple[bytes, bytes, int | None, bytes],
     method_original: str,
     semconv: _StabilityMode,
     module: _HTTPXModule,
     headers: httpx.Headers | dict[str, list[str] | str] | None = None,
     captured_headers: list[str] | None = None,
     sensitive_headers: list[str] | None = None,
-):
-    url = typing.cast("httpx.URL", module.URL(url))
+) -> None:
+    if isinstance(url, tuple):
+        url = _normalize_url(url)
+    url = module.URL(url)
     # http semconv transition: http.method -> http.request.method
     _set_http_method(
         span_attributes,
@@ -673,10 +718,10 @@ def _apply_response_client_attributes_to_span(
     headers: httpx.Headers | dict[str, list[str] | str] | None = None,
     captured_headers: list[str] | None = None,
     sensitive_headers: list[str] | None = None,
-):
+) -> None:
     # http semconv transition: http.status_code -> http.response.status_code
     # TODO: use _set_status when it's stable for http clients
-    span_attributes = {}
+    span_attributes: dict[str, AttributeValue] = {}
     _set_http_status_code(
         span_attributes,
         status_code,
@@ -711,8 +756,8 @@ def _apply_response_client_attributes_to_span(
 
 
 def _apply_response_client_attributes_to_metrics(
-    span: Span | None,
-    metric_attributes: dict[str, typing.Any],
+    span: Span,
+    metric_attributes: dict[str, AttributeValue],
     status_code: int,
     http_version: str,
     semconv: _StabilityMode,
@@ -782,7 +827,7 @@ class _SyncOpenTelemetryTransportBase:
         self._duration_histogram_old = None
         if _report_old(self._sem_conv_opt_in_mode):
             self._duration_histogram_old = meter.create_histogram(
-                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                name=_HTTP_CLIENT_DURATION_OLD,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
@@ -825,10 +870,7 @@ class _SyncOpenTelemetryTransportBase:
         self,
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> (
-        tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]]
-        | httpx.Response
-    ):
+    ) -> httpx.Response:
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
@@ -844,8 +886,8 @@ class _SyncOpenTelemetryTransportBase:
 
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
-        span_attributes = {}
-        metric_attributes = {}
+        span_attributes: dict[str, AttributeValue] = {}
+        metric_attributes: dict[str, AttributeValue] = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
@@ -865,6 +907,7 @@ class _SyncOpenTelemetryTransportBase:
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             exception = None
+            response: httpx.Response | tuple[typing.Any, ...] | None = None
             if callable(self._request_hook):
                 self._request_hook(span, request_info)
 
@@ -947,7 +990,10 @@ class _SyncOpenTelemetryTransportBase:
                     elapsed_time, attributes=duration_attrs_new
                 )
 
-        return response
+        # ``response`` can only be ``None`` when the wrapped transport raised,
+        # in which case the exception was re-raised above; the tuple form is
+        # only produced by httpx < 0.20.0, whose transport API expects it.
+        return typing.cast("httpx.Response", response)
 
     def close(self) -> None:
         self._transport.close()
@@ -1000,7 +1046,7 @@ class _AsyncOpenTelemetryTransportBase:
         self._duration_histogram_old = None
         if _report_old(self._sem_conv_opt_in_mode):
             self._duration_histogram_old = meter.create_histogram(
-                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                name=_HTTP_CLIENT_DURATION_OLD,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
@@ -1042,10 +1088,7 @@ class _AsyncOpenTelemetryTransportBase:
     # pylint: disable=R0914
     async def handle_async_request(
         self, *args: typing.Any, **kwargs: typing.Any
-    ) -> (
-        tuple[int, httpx.Headers, httpx.AsyncByteStream, dict[str, typing.Any]]
-        | httpx.Response
-    ):
+    ) -> httpx.Response:
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return await self._transport.handle_async_request(*args, **kwargs)
@@ -1061,8 +1104,8 @@ class _AsyncOpenTelemetryTransportBase:
 
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
-        span_attributes = {}
-        metric_attributes = {}
+        span_attributes: dict[str, AttributeValue] = {}
+        metric_attributes: dict[str, AttributeValue] = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
@@ -1082,6 +1125,7 @@ class _AsyncOpenTelemetryTransportBase:
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             exception = None
+            response: httpx.Response | tuple[typing.Any, ...] | None = None
             if callable(self._request_hook):
                 await self._request_hook(span, request_info)
 
@@ -1168,7 +1212,10 @@ class _AsyncOpenTelemetryTransportBase:
                     elapsed_time, attributes=duration_attrs_new
                 )
 
-        return response
+        # ``response`` can only be ``None`` when the wrapped transport raised,
+        # in which case the exception was re-raised above; the tuple form is
+        # only produced by httpx < 0.20.0, whose transport API expects it.
+        return typing.cast("httpx.Response", response)
 
     async def aclose(self) -> None:
         await self._transport.aclose()
@@ -1189,7 +1236,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         return self._instrumentation_dependencies
 
     # pylint: disable=too-many-locals
-    def _instrument(self, **kwargs: typing.Any):
+    def _instrument(self, **kwargs: typing.Any) -> None:
         """Instrument the configured httpx API-compatible clients.
 
         Args:
@@ -1260,7 +1307,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
             duration_histogram_old = meter.create_histogram(
-                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                name=_HTTP_CLIENT_DURATION_OLD,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
@@ -1311,7 +1358,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             ),
         )
 
-    def _uninstrument(self, **kwargs: typing.Any):
+    def _uninstrument(self, **kwargs: typing.Any) -> None:
         module = self._module
         if module is None:
             raise ModuleNotFoundError(f"{self._module_name} must be installed")
@@ -1327,16 +1374,16 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         *,
         module: _HTTPXModule,
         tracer: Tracer,
-        duration_histogram_old: Histogram,
-        duration_histogram_new: Histogram,
+        duration_histogram_old: Histogram | None,
+        duration_histogram_new: Histogram | None,
         sem_conv_opt_in_mode: _StabilityMode,
-        request_hook: RequestHook,
-        response_hook: ResponseHook,
+        request_hook: RequestHook | None,
+        response_hook: ResponseHook | None,
         excluded_urls: ExcludeList | None,
         captured_request_headers: list[str] | None = None,
         captured_response_headers: list[str] | None = None,
         sensitive_headers: list[str] | None = None,
-    ):
+    ) -> typing.Any:
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
@@ -1349,8 +1396,8 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
-        span_attributes = {}
-        metric_attributes = {}
+        span_attributes: dict[str, AttributeValue] = {}
+        metric_attributes: dict[str, AttributeValue] = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
@@ -1370,6 +1417,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             exception = None
+            response: httpx.Response | tuple[typing.Any, ...] | None = None
             if callable(request_hook):
                 request_hook(span, request_info)
 
@@ -1462,16 +1510,16 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         *,
         module: _HTTPXModule,
         tracer: Tracer,
-        duration_histogram_old: Histogram,
-        duration_histogram_new: Histogram,
+        duration_histogram_old: Histogram | None,
+        duration_histogram_new: Histogram | None,
         sem_conv_opt_in_mode: _StabilityMode,
-        async_request_hook: AsyncRequestHook,
-        async_response_hook: AsyncResponseHook,
+        async_request_hook: AsyncRequestHook | None,
+        async_response_hook: AsyncResponseHook | None,
         excluded_urls: ExcludeList | None,
-        captured_request_headers: typing.Optional[list[str]] = None,
-        captured_response_headers: typing.Optional[list[str]] = None,
-        sensitive_headers: typing.Optional[list[str]] = None,
-    ):
+        captured_request_headers: list[str] | None = None,
+        captured_response_headers: list[str] | None = None,
+        sensitive_headers: list[str] | None = None,
+    ) -> typing.Any:
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
 
@@ -1484,8 +1532,8 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
         method_original = method.decode()
         span_name = _get_default_span_name(method_original)
-        span_attributes = {}
-        metric_attributes = {}
+        span_attributes: dict[str, AttributeValue] = {}
+        metric_attributes: dict[str, AttributeValue] = {}
         # apply http client response attributes according to semconv
         _apply_request_client_attributes_to_span(
             span_attributes,
@@ -1505,6 +1553,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             span_name, kind=SpanKind.CLIENT, attributes=span_attributes
         ) as span:
             exception = None
+            response: httpx.Response | tuple[typing.Any, ...] | None = None
             if callable(async_request_hook):
                 await async_request_hook(span, request_info)
 
@@ -1637,7 +1686,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         duration_histogram_old = None
         if _report_old(sem_conv_opt_in_mode):
             duration_histogram_old = meter.create_histogram(
-                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                name=_HTTP_CLIENT_DURATION_OLD,
                 unit="ms",
                 description="measures the duration of the outbound HTTP request",
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
@@ -1651,19 +1700,19 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
 
-        if iscoroutinefunction(request_hook):
+        sync_request_hook: RequestHook | None = None
+        async_request_hook: AsyncRequestHook | None = None
+        if _is_async_request_hook(request_hook):
             async_request_hook = request_hook
-            request_hook = None
-        else:
-            # request_hook already set
-            async_request_hook = None
+        elif _is_sync_request_hook(request_hook):
+            sync_request_hook = request_hook
 
-        if iscoroutinefunction(response_hook):
+        sync_response_hook: ResponseHook | None = None
+        async_response_hook: AsyncResponseHook | None = None
+        if _is_async_response_hook(response_hook):
             async_response_hook = response_hook
-            response_hook = None
-        else:
-            # response_hook already set
-            async_response_hook = None
+        elif _is_sync_response_hook(response_hook):
+            sync_response_hook = response_hook
 
         excluded_urls = get_excluded_urls("HTTPX")
         captured_request_headers: list[str] = get_custom_headers(
@@ -1687,8 +1736,8 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                     duration_histogram_old=duration_histogram_old,
                     duration_histogram_new=duration_histogram_new,
                     sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-                    request_hook=request_hook,
-                    response_hook=response_hook,
+                    request_hook=sync_request_hook,
+                    response_hook=sync_response_hook,
                     excluded_urls=excluded_urls,
                     captured_request_headers=captured_request_headers,
                     captured_response_headers=captured_response_headers,
@@ -1707,15 +1756,15 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                             duration_histogram_old=duration_histogram_old,
                             duration_histogram_new=duration_histogram_new,
                             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
-                            request_hook=request_hook,
-                            response_hook=response_hook,
+                            request_hook=sync_request_hook,
+                            response_hook=sync_response_hook,
                             excluded_urls=excluded_urls,
                             captured_request_headers=captured_request_headers,
                             captured_response_headers=captured_response_headers,
                             sensitive_headers=sensitive_headers,
                         ),
                     )
-            client._is_instrumented_by_opentelemetry = True
+            setattr(client, "_is_instrumented_by_opentelemetry", True)
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
                 client._transport,
@@ -1755,7 +1804,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                             sensitive_headers=sensitive_headers,
                         ),
                     )
-            client._is_instrumented_by_opentelemetry = True
+            setattr(client, "_is_instrumented_by_opentelemetry", True)
 
     @staticmethod
     def uninstrument_client(client: httpx.Client | httpx.AsyncClient) -> None:
@@ -1768,12 +1817,12 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             unwrap(client._transport, "handle_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_request")
-            client._is_instrumented_by_opentelemetry = False
+            setattr(client, "_is_instrumented_by_opentelemetry", False)
         elif hasattr(client._transport, "handle_async_request"):
             unwrap(client._transport, "handle_async_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_async_request")
-            client._is_instrumented_by_opentelemetry = False
+            setattr(client, "_is_instrumented_by_opentelemetry", False)
 
 
 if _httpx_module is not None:
