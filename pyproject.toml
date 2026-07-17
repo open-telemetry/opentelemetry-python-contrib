@@ -31,6 +31,7 @@ dependencies = [
   "opentelemetry-instrumentation-django[instruments]",
   "opentelemetry-instrumentation-falcon[instruments]",
   "opentelemetry-instrumentation-fastapi[instruments]",
+  "opentelemetry-instrumentation-faust[instruments]",
   "opentelemetry-instrumentation-flask[instruments]",
   "opentelemetry-instrumentation-grpc[instruments]",
   "opentelemetry-instrumentation-httpx[instruments-any]",
@@ -105,6 +106,7 @@ opentelemetry-instrumentation-dbapi = { workspace = true }
 opentelemetry-instrumentation-django = { workspace = true }
 opentelemetry-instrumentation-falcon = { workspace = true }
 opentelemetry-instrumentation-fastapi = { workspace = true }
+opentelemetry-instrumentation-faust = { workspace = true }
 opentelemetry-instrumentation-flask = { workspace = true }
 opentelemetry-instrumentation-grpc = { workspace = true }
 opentelemetry-instrumentation-httpx = { workspace = true }

@@ -15,6 +15,9 @@ components:
   instrumentation/opentelemetry-instrumentation-exceptions:
     - iblancasa
 
+  instrumentation/opentelemetry-instrumentation-faust:
+    - wbarnha
+
   instrumentation/opentelemetry-instrumentation-botocore:
     - lukeina2z
     - yiyuan-he

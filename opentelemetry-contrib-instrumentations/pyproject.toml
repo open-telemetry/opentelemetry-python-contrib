@@ -50,6 +50,7 @@ dependencies = [
     "opentelemetry-instrumentation-exceptions==0.66b0.dev",
     "opentelemetry-instrumentation-falcon==0.66b0.dev",
     "opentelemetry-instrumentation-fastapi==0.66b0.dev",
+    "opentelemetry-instrumentation-faust==0.66b0.dev",
     "opentelemetry-instrumentation-flask==0.66b0.dev",
     "opentelemetry-instrumentation-grpc==0.66b0.dev",
     "opentelemetry-instrumentation-httpx==0.66b0.dev",
