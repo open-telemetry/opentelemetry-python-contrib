@@ -111,6 +111,8 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry._logs import get_logger_provider, set_logger_provider
+from opentelemetry.sdk._logs import LoggerProvider
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +326,7 @@ def _instrument(
     event_context_extractor: Callable[[Any], Context],
     tracer_provider: TracerProvider = None,
     meter_provider: MeterProvider = None,
+    logger_provider: LoggerProvider = None,
 ):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
@@ -415,6 +418,18 @@ def _instrument(
                 "MeterProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
             )
 
+        _logger_provider = logger_provider or get_logger_provider()
+        if hasattr(_logger_provider, "force_flush"):
+            try:
+                # NOTE: `force_flush` before function quit in case of Lambda freeze.
+                _logger_provider.force_flush(flush_timeout)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("LoggerProvider failed to flush logs")
+        else:
+            logger.warning(
+                "LoggerProvider was missing `force_flush` method. This is necessary in case of a Lambda freeze and would exist in the OTel SDK implementation."
+            )
+
         if exception is not None:
             raise exception.with_traceback(exception.__traceback__)
 
@@ -487,6 +502,7 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             event_context_extractor=kwargs.get("event_context_extractor", _default_event_context_extractor),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
+            logger_provider=kwargs.get("logger_provider"),
         )
 
     def _uninstrument(self, **kwargs):

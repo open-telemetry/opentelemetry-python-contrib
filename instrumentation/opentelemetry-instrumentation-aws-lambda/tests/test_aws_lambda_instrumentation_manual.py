@@ -12,6 +12,7 @@ from typing import Any
 from unittest import mock
 
 from opentelemetry import propagate
+from opentelemetry._logs import NoOpLoggerProvider
 from opentelemetry.baggage.propagation import W3CBaggagePropagator
 from opentelemetry.environment_variables import OTEL_PROPAGATORS
 from opentelemetry.instrumentation.aws_lambda import (
@@ -638,6 +639,15 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         spans = self.memory_exporter.get_finished_spans()
         assert spans is not None
         self.assertEqual(len(spans), 0)
+
+    def test_no_op_logger_provider(self):
+        logger_provider = NoOpLoggerProvider()
+        AwsLambdaInstrumentor().instrument(logger_provider=logger_provider)
+
+        mock_execute_lambda()
+        spans = self.memory_exporter.get_finished_spans()
+        assert spans is not None
+        self.assertEqual(len(spans), 1)
 
     def test_load_entry_point(self):
         self.assertIs(
