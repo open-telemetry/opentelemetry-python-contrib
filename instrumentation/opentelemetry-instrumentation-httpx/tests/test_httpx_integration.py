@@ -7,6 +7,7 @@ import abc
 import asyncio
 import inspect
 import typing
+import unittest
 from unittest import mock
 
 import httpx
@@ -25,11 +26,13 @@ from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_OLD,
     OTEL_SEMCONV_STABILITY_OPT_IN,
     _OpenTelemetrySemanticConventionStability,
+    _StabilityMode,
 )
 from opentelemetry.instrumentation.httpx import (
     AsyncOpenTelemetryTransport,
     HTTPXClientInstrumentor,
     SyncOpenTelemetryTransport,
+    _apply_request_client_attributes_to_span,
 )
 from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.propagate import get_global_textmap, set_global_textmap
@@ -2179,3 +2182,37 @@ class TestAsyncInstrumentationIntegration(BaseTestCases.BaseInstrumentorTest):
         self.assertTrue(
             isinstance(client._transport.handle_async_request, BaseObjectProxy)
         )
+
+
+class TestRawURLTupleAttributes(unittest.TestCase):
+    """httpx < 0.20 passes raw URL tuples to the transport layer."""
+
+    def _apply_attributes(self, url_tuple):
+        module = opentelemetry.instrumentation.httpx._httpx_module
+        try:
+            module.URL(url_tuple)
+        except TypeError:
+            self.skipTest("this httpx version does not accept raw URL tuples")
+        span_attributes = {}
+        metric_attributes = {}
+        _apply_request_client_attributes_to_span(
+            span_attributes,
+            metric_attributes,
+            url_tuple,
+            "GET",
+            _StabilityMode.DEFAULT,
+            module,
+        )
+        return span_attributes
+
+    def test_ipv6_host_is_bracketed(self):
+        span_attributes = self._apply_attributes(
+            (b"http", b"::1", 8080, b"/foo")
+        )
+        self.assertEqual(span_attributes[HTTP_URL], "http://[::1]:8080/foo")
+
+    def test_port_zero_is_kept(self):
+        span_attributes = self._apply_attributes(
+            (b"http", b"example.com", 0, b"/")
+        )
+        self.assertEqual(span_attributes[HTTP_URL], "http://example.com:0/")
