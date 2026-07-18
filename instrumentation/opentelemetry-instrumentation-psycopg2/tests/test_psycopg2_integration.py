@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import types
 from unittest import mock
 
@@ -8,9 +9,47 @@ import psycopg2
 
 import opentelemetry.instrumentation.psycopg2
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class MockCursor:
@@ -54,7 +93,18 @@ class MockConnection:
         return {"dbname": "test"}
 
 
-class TestPostgresqlIntegration(TestBase):
+class MockConnectionInfo:
+    dbname = "test"
+    host = "localhost"
+    port = 5432
+    user = "testuser"
+
+
+class MockConnectionWithInfo(MockConnection):
+    info = MockConnectionInfo()
+
+
+class TestPostgresqlIntegration(TestBase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         super().setUp()
         self.cursor_mock = mock.patch(
@@ -381,3 +431,65 @@ class TestPostgresqlIntegration(TestBase):
             spans_list[0].attributes["db.statement.parameters"],
             "(42, 'John Doe')",
         )
+
+    def test_semconv_stable(self):
+        """database,http opt-in emits only stable attributes."""
+        with (
+            use_semconv_opt_in("database,http"),
+            mock.patch("psycopg2.connect", MockConnectionWithInfo),
+        ):
+            Psycopg2Instrumentor().instrument()
+
+            cnx = psycopg2.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    def test_semconv_dup(self):
+        """database/dup,http/dup opt-in emits both legacy and stable attributes."""
+        with (
+            use_semconv_opt_in("database/dup,http/dup"),
+            mock.patch("psycopg2.connect", MockConnectionWithInfo),
+        ):
+            Psycopg2Instrumentor().instrument()
+
+            cnx = psycopg2.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_STATEMENT], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 5432)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
