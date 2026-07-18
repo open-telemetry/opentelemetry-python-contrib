@@ -438,7 +438,13 @@ if typing.TYPE_CHECKING:
         Request: type[httpx.Request]
         Response: type[httpx.Response]
         Headers: type[httpx.Headers]
-        URL: type[httpx.URL]
+        # Declared as a callable rather than type[httpx.URL] because the
+        # URL constructor of httpx < 0.20.0 additionally accepts the raw
+        # URL tuple its transport API passes around.
+        URL: typing.Callable[
+            [str | httpx.URL | tuple[bytes, bytes, int | None, bytes]],
+            httpx.URL,
+        ]
         BaseTransport: type[httpx.BaseTransport]
         AsyncBaseTransport: type[httpx.AsyncBaseTransport]
         HTTPTransport: type[httpx.HTTPTransport]
@@ -619,7 +625,6 @@ def _normalize_headers(
 
 def _extract_response(
     response: httpx.Response | tuple[typing.Any, ...],
-    module: _HTTPXModule,
 ) -> tuple[
     int,
     httpx.Headers,
@@ -655,8 +660,6 @@ def _apply_request_client_attributes_to_span(
     captured_headers: list[str] | None = None,
     sensitive_headers: list[str] | None = None,
 ) -> None:
-    if isinstance(url, tuple):
-        url = _normalize_url(url)
     url = module.URL(url)
     # http semconv transition: http.method -> http.request.method
     _set_http_method(
@@ -925,7 +928,7 @@ class _SyncOpenTelemetryTransportBase:
 
             if isinstance(response, (self._module.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
-                    _extract_response(response, self._module)
+                    _extract_response(response)
                 )
 
                 # Always apply response attributes to metrics
@@ -1145,7 +1148,7 @@ class _AsyncOpenTelemetryTransportBase:
 
             if isinstance(response, (self._module.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
-                    _extract_response(response, self._module)
+                    _extract_response(response)
                 )
 
                 # Always apply response attributes to metrics
@@ -1435,7 +1438,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
             if isinstance(response, (module.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
-                    _extract_response(response, module)
+                    _extract_response(response)
                 )
 
                 # Always apply response attributes to metrics
@@ -1571,7 +1574,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
             if isinstance(response, (module.Response, tuple)):
                 status_code, headers, stream, extensions, http_version = (
-                    _extract_response(response, module)
+                    _extract_response(response)
                 )
 
                 # Always apply response attributes to metrics
