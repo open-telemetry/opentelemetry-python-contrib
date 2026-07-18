@@ -1,16 +1,53 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import sqlite3
 from sqlite3 import dbapi2
+from unittest import mock
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
     DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.test.test_base import TestBase
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class TestSQLite3(TestBase):
@@ -217,3 +254,52 @@ class TestSQLite3Integration(TestBase):
             span.status.description,
             "OperationalError: no such table: nonexistent_table",
         )
+
+    def test_semconv_stable(self):
+        """database,http opt-in emits only stable attributes."""
+        with use_semconv_opt_in("database,http"):
+            SQLite3Instrumentor().instrument(
+                tracer_provider=self.tracer_provider
+            )
+            cnx = self._connect()
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("SELECT 1")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "sqlite")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT 1")
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            # sqlite3 does not capture connection attributes, so neither
+            # legacy nor stable database/peer attributes are emitted.
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_NAMESPACE, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_semconv_dup(self):
+        """database/dup,http/dup opt-in emits both legacy and stable attributes."""
+        with use_semconv_opt_in("database/dup,http/dup"):
+            SQLite3Instrumentor().instrument(
+                tracer_provider=self.tracer_provider
+            )
+            cnx = self._connect()
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("SELECT 1")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "sqlite")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "sqlite")
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT 1")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT 1")
