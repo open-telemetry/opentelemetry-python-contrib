@@ -1,0 +1,5 @@
+discord.py==2.4.0
+pytest==7.4.4
+wrapt==1.16.0
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-discord-py
