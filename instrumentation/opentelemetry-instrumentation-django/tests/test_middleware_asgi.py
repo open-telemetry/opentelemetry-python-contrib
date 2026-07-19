@@ -10,7 +10,11 @@ import pytest
 from django import VERSION, conf
 from django.http import HttpRequest, HttpResponse
 from django.test import SimpleTestCase
-from django.test.utils import setup_test_environment, teardown_test_environment
+from django.test.utils import (
+    override_settings,
+    setup_test_environment,
+    teardown_test_environment,
+)
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
@@ -35,6 +39,11 @@ from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_URL,
 )
 from opentelemetry.semconv.attributes.client_attributes import CLIENT_ADDRESS
+from opentelemetry.semconv.attributes.code_attributes import (
+    CODE_FILE_PATH,
+    CODE_FUNCTION_NAME,
+    CODE_LINE_NUMBER,
+)
 from opentelemetry.semconv.attributes.exception_attributes import (
     EXCEPTION_MESSAGE,
     EXCEPTION_TYPE,
@@ -247,6 +256,31 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
         self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
         self.assertEqual(span.attributes[HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[HTTP_STATUS_CODE], 200)
+
+    async def test_code_attributes_async_view(self):
+        # override_settings mutates the settings object Django internals
+        # hold a reference to; the plain settings.configure() done in
+        # setUpClass is not visible to the URL resolver when another test
+        # module configured settings first in the same process.
+        with override_settings(ROOT_URLCONF=modules[__name__]):
+            await self.async_client.get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[CODE_FUNCTION_NAME],
+            f"{async_traced.__module__}.async_traced",
+        )
+        self.assertEqual(
+            span.attributes[CODE_FILE_PATH],
+            async_traced.__code__.co_filename,
+        )
+        self.assertEqual(
+            span.attributes[CODE_LINE_NUMBER],
+            async_traced.__code__.co_firstlineno,
+        )
 
     async def test_traced_get_new_semconv(self):
         await self.async_client.get("/traced/")

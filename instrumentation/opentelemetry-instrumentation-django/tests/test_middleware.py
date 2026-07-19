@@ -35,6 +35,11 @@ from opentelemetry.sdk.metrics.export import (
 )
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
+from opentelemetry.semconv.attributes.code_attributes import (
+    CODE_FILE_PATH,
+    CODE_FUNCTION_NAME,
+    CODE_LINE_NUMBER,
+)
 from opentelemetry.test.wsgitestutil import WsgiTestBase
 from opentelemetry.trace import (
     SpanKind,
@@ -52,6 +57,7 @@ from opentelemetry.util.http import (
 
 # pylint: disable=import-error
 from .views import (
+    TracedClassView,
     error,
     excluded,
     excluded_noarg,
@@ -59,7 +65,10 @@ from .views import (
     response_with_custom_header,
     route_span_name,
     traced,
+    traced_decorated,
+    traced_partial,
     traced_template,
+    traced_with_arg,
 )
 
 DJANGO_2_0 = VERSION >= (2, 0)
@@ -84,6 +93,9 @@ urlpatterns = [
     re_path(r"^excluded_noarg/", excluded_noarg),
     re_path(r"^excluded_noarg2/", excluded_noarg2),
     re_path(r"^span_name/([0-9]{4})/$", route_span_name),
+    re_path(r"^traced_class/", TracedClassView.as_view()),
+    re_path(r"^traced_partial/", traced_partial),
+    re_path(r"^traced_decorated/", traced_decorated),
     path("", traced, name="empty"),
 ]
 _django_instrumentor = DjangoInstrumentor()
@@ -241,6 +253,85 @@ class TestMiddleware(WsgiTestBase):
             self.assertEqual(span.attributes["http.route"], "^traced/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
+
+    def test_code_attributes_function_view(self):
+        Client().get("/traced/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[CODE_FUNCTION_NAME],
+            f"{traced.__module__}.traced",
+        )
+        self.assertEqual(
+            span.attributes[CODE_FILE_PATH],
+            traced.__code__.co_filename,
+        )
+        self.assertEqual(
+            span.attributes[CODE_LINE_NUMBER],
+            traced.__code__.co_firstlineno,
+        )
+
+    def test_code_attributes_class_based_view(self):
+        Client().get("/traced_class/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[CODE_FUNCTION_NAME],
+            f"{TracedClassView.__module__}.TracedClassView",
+        )
+        self.assertEqual(
+            span.attributes[CODE_FILE_PATH],
+            traced.__code__.co_filename,
+        )
+        # line numbers are not resolved for class-based views
+        self.assertNotIn(CODE_LINE_NUMBER, span.attributes)
+
+    def test_code_attributes_partial_view(self):
+        Client().get("/traced_partial/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[CODE_FUNCTION_NAME],
+            f"{traced_with_arg.__module__}.traced_with_arg",
+        )
+        self.assertEqual(
+            span.attributes[CODE_FILE_PATH],
+            traced_with_arg.__code__.co_filename,
+        )
+        self.assertEqual(
+            span.attributes[CODE_LINE_NUMBER],
+            traced_with_arg.__code__.co_firstlineno,
+        )
+
+    def test_code_attributes_decorated_view(self):
+        Client().get("/traced_decorated/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        wrapped = traced_decorated.__wrapped__
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[CODE_FUNCTION_NAME],
+            f"{wrapped.__module__}.traced_decorated",
+        )
+        self.assertEqual(
+            span.attributes[CODE_FILE_PATH],
+            wrapped.__code__.co_filename,
+        )
+        self.assertEqual(
+            span.attributes[CODE_LINE_NUMBER],
+            wrapped.__code__.co_firstlineno,
+        )
 
     def test_traced_get_new_semconv(self):
         Client().get("/traced/")
