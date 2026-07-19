@@ -178,38 +178,32 @@ def _default_event_context_extractor(lambda_event: Any) -> Context:
     Returns:
         A Context with configuration found in the event.
     """
-    headers = _extract_http_headers(lambda_event)
-    if not headers:
-        logger.debug(
-            "Extracting context from Lambda Event failed: either enable X-Ray active tracing or configure API Gateway to trigger this Lambda function as a pure proxy. Otherwise, generated spans will have an invalid (empty) parent context."
-        )
     return get_global_textmap().extract(
-        CIDict(headers),
+        CIDict(_extract_http_headers(lambda_event)),
     )
 
 
 def _extract_http_headers(lambda_event: Any) -> dict[str, Any]:
-    try:
-        headers = lambda_event["headers"]
-    except (TypeError, KeyError):
-        headers = None
-
-    if isinstance(headers, dict):
-        return headers
-
-    try:
-        multi_value_headers = lambda_event["multiValueHeaders"]
-    except (TypeError, KeyError):
+    if not isinstance(lambda_event, dict):
         return {}
 
-    if not isinstance(multi_value_headers, dict):
-        return {}
+    headers = lambda_event.get("headers")
+    multi_value_headers = lambda_event.get("multiValueHeaders")
+    normalized_multi_value_headers = {}
+    if isinstance(multi_value_headers, dict):
+        normalized_multi_value_headers = {
+            key: values[0]
+            for key, values in multi_value_headers.items()
+            if isinstance(values, list) and values
+        }
 
-    normalized_headers = {}
-    for key, values in multi_value_headers.items():
-        if isinstance(values, list) and values:
-            normalized_headers[key] = values[0]
-    return normalized_headers
+    if not isinstance(headers, dict):
+        return normalized_multi_value_headers
+
+    return {
+        **headers,
+        **normalized_multi_value_headers,
+    }
 
 
 def _determine_parent_context(
@@ -249,8 +243,7 @@ def _get_api_gateway_v1_proxy_attributes(
     attributes = {}
     attributes[HTTP_METHOD] = lambda_event.get("httpMethod")
 
-    headers = _extract_http_headers(lambda_event)
-    if headers:
+    if headers := _extract_http_headers(lambda_event):
         headers = CIDict(headers)
         if "User-Agent" in headers:
             attributes[HTTP_USER_AGENT] = headers["User-Agent"]
