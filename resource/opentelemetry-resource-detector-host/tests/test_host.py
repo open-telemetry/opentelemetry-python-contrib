@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import mock_open, patch
 
 from opentelemetry.resource.detector.host import HostIdResourceDetector
-from opentelemetry.sdk.resources import get_aggregated_resources
 from opentelemetry.semconv._incubating.attributes.host_attributes import (
     HOST_ID,
 )
