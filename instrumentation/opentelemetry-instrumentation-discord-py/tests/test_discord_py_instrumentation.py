@@ -3,8 +3,7 @@
 
 # pylint: disable=invalid-name,no-name-in-module
 
-import asyncio
-from unittest import mock
+from unittest import IsolatedAsyncioTestCase, mock
 
 import discord.app_commands.tree
 import discord.ext.commands.bot
@@ -14,11 +13,7 @@ from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, StatusCode
 
 
-def _run(coro):
-    return asyncio.run(coro)
-
-
-class TestDiscordPyInstrumentor(TestBase):
+class TestDiscordPyInstrumentor(TestBase, IsolatedAsyncioTestCase):
     def setUp(self):
         super().setUp()
         DiscordPyInstrumentor().instrument(tracer_provider=self.tracer_provider)
@@ -27,7 +22,7 @@ class TestDiscordPyInstrumentor(TestBase):
         super().tearDown()
         DiscordPyInstrumentor().uninstrument()
 
-    def test_prefix_command_creates_span(self):
+    async def test_prefix_command_creates_span(self):
         ctx = mock.Mock()
         ctx.command.qualified_name = "ping"
         ctx.guild.id = 111
@@ -48,7 +43,7 @@ class TestDiscordPyInstrumentor(TestBase):
             fake_bot = discord.ext.commands.bot.Bot.__new__(
                 discord.ext.commands.bot.Bot
             )
-            _run(fake_bot.invoke(ctx))
+            await fake_bot.invoke(ctx)
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
@@ -60,7 +55,7 @@ class TestDiscordPyInstrumentor(TestBase):
         self.assertEqual(span.attributes["discord.channel.id"], 222)
         self.assertEqual(span.attributes["discord.user.id"], 333)
 
-    def test_prefix_command_records_exception(self):
+    async def test_prefix_command_records_exception(self):
         ctx = mock.Mock()
         ctx.command = None
         ctx.guild = None
@@ -81,13 +76,13 @@ class TestDiscordPyInstrumentor(TestBase):
                 discord.ext.commands.bot.Bot
             )
             with self.assertRaises(RuntimeError):
-                _run(fake_bot.invoke(ctx))
+                await fake_bot.invoke(ctx)
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
 
-    def test_app_command_creates_span(self):
+    async def test_app_command_creates_span(self):
         interaction = mock.Mock()
         interaction.command.qualified_name = "slash-ping"
         interaction.guild_id = 444
@@ -107,7 +102,7 @@ class TestDiscordPyInstrumentor(TestBase):
             fake_tree = discord.app_commands.tree.CommandTree.__new__(
                 discord.app_commands.tree.CommandTree
             )
-            _run(fake_tree._call(interaction))
+            await fake_tree._call(interaction)
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
