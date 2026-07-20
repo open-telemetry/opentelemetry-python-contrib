@@ -8,7 +8,9 @@ import subprocess
 from logging import getLogger
 
 from opentelemetry.sdk.resources import Resource, ResourceDetector
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv._incubating.attributes.host_attributes import (
+    HOST_ID,
+)
 
 logger = getLogger(__name__)
 
@@ -122,9 +124,8 @@ def _get_host_id() -> str | None:
 
 
 class HostIdResourceDetector(ResourceDetector):
-    """Detects the ``host.id`` resource attribute from the machine id of the
-    host, using only the non-privileged sources described in the OpenTelemetry
-    semantic conventions.
+    """Detects the ``host.id`` resource attribute from the non-privileged
+    machine id of the host and returns it in a Resource
     """
 
     def detect(self) -> Resource:
@@ -132,9 +133,7 @@ class HostIdResourceDetector(ResourceDetector):
             host_id = _get_host_id()
             resource = Resource.get_empty()
             if host_id:
-                resource = resource.merge(
-                    Resource({ResourceAttributes.HOST_ID: host_id})
-                )
+                resource = resource.merge(Resource({HOST_ID: host_id}))
             return resource
 
         # pylint: disable=broad-except

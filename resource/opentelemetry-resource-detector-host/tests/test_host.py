@@ -7,12 +7,13 @@ from unittest.mock import mock_open, patch
 
 from opentelemetry.resource.detector.host import HostIdResourceDetector
 from opentelemetry.sdk.resources import get_aggregated_resources
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv._incubating.attributes.host_attributes import (
+    HOST_ID,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.util._importlib_metadata import entry_points
 
 MODULE = "opentelemetry.resource.detector.host"
-HOST_ID = ResourceAttributes.HOST_ID
 
 _IOREG_OUTPUT = """+-o IOPlatformExpertDevice  <class IOPlatformExpertDevice>
     {
@@ -105,6 +106,15 @@ class HostIdResourceDetectorTest(TestBase):
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
+    @patch(f"{MODULE}.platform.system", return_value="Windows")
+    @patch(
+        f"{MODULE}.subprocess.run",
+        return_value=_completed("no machine guid here"),
+    )
+    def test_windows_no_machine_guid(self, mock_run, mock_system):
+        resource = HostIdResourceDetector().detect()
+        self.assertNotIn(HOST_ID, resource.attributes)
+
     # ---- BSD ----
 
     @patch(f"{MODULE}.platform.system", return_value="FreeBSD")
@@ -124,6 +134,16 @@ class HostIdResourceDetectorTest(TestBase):
         self._assert_only_host_id(
             HostIdResourceDetector().detect(), "bsd-kenv-uuid"
         )
+
+    @patch(f"{MODULE}.platform.system", return_value="FreeBSD")
+    @patch(f"{MODULE}._read_first_line", return_value=None)
+    @patch(
+        f"{MODULE}.subprocess.run",
+        return_value=_completed("", returncode=1),
+    )
+    def test_bsd_no_host_id(self, mock_run, mock_read, mock_system):
+        resource = HostIdResourceDetector().detect()
+        self.assertNotIn(HOST_ID, resource.attributes)
 
     # ---- Unsupported / error paths ----
 
