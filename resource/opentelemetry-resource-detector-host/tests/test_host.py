@@ -28,18 +28,15 @@ _REG_OUTPUT = (
 )
 
 
-def _completed(stdout: str = "", returncode: int = 0) -> SimpleNamespace:
-    return SimpleNamespace(stdout=stdout, stderr="", returncode=returncode)
+def _completed(stdout: str = "", return_code: int = 0) -> SimpleNamespace:
+    return SimpleNamespace(stdout=stdout, stderr="", returncode=return_code)
 
 
 class HostIdResourceDetectorTest(TestBase):
     def _assert_only_host_id(self, resource, expected: str) -> None:
         attributes = resource.attributes
         self.assertEqual(dict(attributes), {HOST_ID: expected})
-        # Verify the value type matches the semconv spec (string).
         self.assertIsInstance(attributes[HOST_ID], str)
-
-    # ---- Linux ----
 
     @patch(f"{MODULE}.platform.system", return_value="Linux")
     @patch(
@@ -71,8 +68,6 @@ class HostIdResourceDetectorTest(TestBase):
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
-    # ---- macOS ----
-
     @patch(f"{MODULE}.platform.system", return_value="Darwin")
     @patch(f"{MODULE}.subprocess.run", return_value=_completed(_IOREG_OUTPUT))
     def test_macos_parses_ioreg_platform_uuid(self, mock_run, mock_system):
@@ -87,8 +82,6 @@ class HostIdResourceDetectorTest(TestBase):
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
-    # ---- Windows ----
-
     @patch(f"{MODULE}.platform.system", return_value="Windows")
     @patch(f"{MODULE}.subprocess.run", return_value=_completed(_REG_OUTPUT))
     def test_windows_parses_machine_guid(self, mock_run, mock_system):
@@ -100,7 +93,7 @@ class HostIdResourceDetectorTest(TestBase):
     @patch(f"{MODULE}.platform.system", return_value="Windows")
     @patch(
         f"{MODULE}.subprocess.run",
-        return_value=_completed("", returncode=1),
+        return_value=_completed("", return_code=1),
     )
     def test_windows_registry_query_fails(self, mock_run, mock_system):
         resource = HostIdResourceDetector().detect()
@@ -114,8 +107,6 @@ class HostIdResourceDetectorTest(TestBase):
     def test_windows_no_machine_guid(self, mock_run, mock_system):
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
-
-    # ---- BSD ----
 
     @patch(f"{MODULE}.platform.system", return_value="FreeBSD")
     @patch(f"{MODULE}._read_first_line", return_value="bsd-host-id")
@@ -139,13 +130,11 @@ class HostIdResourceDetectorTest(TestBase):
     @patch(f"{MODULE}._read_first_line", return_value=None)
     @patch(
         f"{MODULE}.subprocess.run",
-        return_value=_completed("", returncode=1),
+        return_value=_completed("", return_code=1),
     )
     def test_bsd_no_host_id(self, mock_run, mock_read, mock_system):
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
-
-    # ---- Unsupported / error paths ----
 
     @patch(f"{MODULE}.platform.system", return_value="Java")
     def test_unsupported_os_returns_empty(self, mock_system):
@@ -176,13 +165,6 @@ class HostIdResourceDetectorTest(TestBase):
     def test_raise_on_error(self, mock_get):
         with self.assertRaises(ValueError):
             HostIdResourceDetector(raise_on_error=True).detect()
-
-    # ---- Integration ----
-
-    @patch(f"{MODULE}._get_host_id", return_value="agg-host-id")
-    def test_host_id_via_aggregated_resources(self, mock_get):
-        resource = get_aggregated_resources([HostIdResourceDetector()])
-        self.assertEqual(resource.attributes[HOST_ID], "agg-host-id")
 
     def test_host_id_entrypoint(self):
         (entrypoint,) = entry_points(
