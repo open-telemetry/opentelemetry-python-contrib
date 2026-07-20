@@ -78,6 +78,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-confluent-kafka==0.65b0.dev",
     },
     {
+        "library": "discord.py >= 2.0",
+        "instrumentation": "opentelemetry-instrumentation-discord-py==0.1.dev0",
+    },
+    {
         "library": "django >= 2.0",
         "instrumentation": "opentelemetry-instrumentation-django==0.65b0.dev",
     },
