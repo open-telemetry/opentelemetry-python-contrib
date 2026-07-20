@@ -163,12 +163,12 @@ class LoggingHandler(logging.Handler):
     def _translate(self, record: logging.LogRecord) -> LogRecord:
         timestamp = int(record.created * 1e9)
         observered_timestamp = time_ns()
-        attributes = self._get_attributes(record)
         severity_number = std_to_otel(record.levelno)
         if self.formatter:
             body = self.format(record)
         else:
             body = record.getMessage()
+        attributes = self._get_attributes(record)
 
         # Map Python log level names to OTel severity text as defined in
         # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
