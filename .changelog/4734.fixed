@@ -1,1 +1,0 @@
-`opentelemetry-util-http`: recognize QUERY as known method in `sanitize_method`

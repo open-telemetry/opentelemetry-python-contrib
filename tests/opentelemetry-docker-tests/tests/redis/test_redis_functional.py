@@ -10,7 +10,7 @@ from redis.commands.search.field import (
     TextField,
     VectorField,
 )
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 from redis.exceptions import ResponseError
 
@@ -213,6 +213,42 @@ class TestRedisClusterInstrument(TestBase):
             pipeline.set("blah", 32)
             pipeline.rpush("foo", "éé")
             pipeline.hgetall("xxx")
+            pipeline.execute()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self._check_span(span, "SET RPUSH HGETALL")
+        self.assertEqual(
+            span.attributes.get(DB_STATEMENT),
+            "SET ? ?\nRPUSH ? ?\nHGETALL ?",
+        )
+        self.assertEqual(span.attributes.get("db.redis.pipeline_length"), 3)
+
+    def test_cluster_pipeline_span_metadata_regression_4084(self):
+        """Regression test for issue #4084 against a real cluster.
+
+        redis-py 6+ refactored ClusterPipeline so queued commands live on
+        ``_execution_strategy.command_queue`` and no longer populate
+        ``command_stack``. This previously produced a ClusterPipeline span
+        with an empty ``db.statement`` and a ``db.redis.pipeline_length`` of 0.
+        """
+        with self.redis_client.pipeline(transaction=False) as pipeline:
+            pipeline.set("blah", 32)
+            pipeline.rpush("foo", "éé")
+            pipeline.hgetall("xxx")
+
+            # On redis-py 6+ the queued commands are tracked on the execution
+            # strategy rather than command_stack; assert the regression path is
+            # genuinely exercised before checking the emitted span metadata.
+            if hasattr(pipeline, "_execution_strategy") and hasattr(
+                pipeline._execution_strategy, "command_queue"
+            ):
+                self.assertEqual(pipeline.command_stack, [])
+                self.assertEqual(
+                    len(pipeline._execution_strategy.command_queue), 3
+                )
+
             pipeline.execute()
 
         spans = self.memory_exporter.get_finished_spans()
