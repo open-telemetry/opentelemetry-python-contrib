@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import subprocess
 from logging import getLogger
@@ -18,16 +19,35 @@ logger = getLogger(__name__)
 # https://opentelemetry.io/docs/specs/semconv/resource/host/#non-privileged-machine-id-lookup
 _LINUX_MACHINE_ID_PATHS = ("/etc/machine-id", "/var/lib/dbus/machine-id")
 _BSD_HOSTID_PATH = "/etc/hostid"
-_BSD_KENV_COMMAND = ("kenv", "-q", "smbios.system.uuid")
-_MACOS_IOREG_COMMAND = ("ioreg", "-rd1", "-c", "IOPlatformExpertDevice")
-_WINDOWS_REGISTRY_COMMAND = (
-    "reg",
+_BSD_KENV_COMMAND = ("/bin/kenv", "-q", "smbios.system.uuid")
+_MACOS_IOREG_COMMAND = (
+    "/usr/sbin/ioreg",
+    "-rd1",
+    "-c",
+    "IOPlatformExpertDevice",
+)
+# Prefer the SystemRoot/WINDIR environment variables to locate the Windows
+# directory, falling back to the conventional install path only if neither is
+# set. SystemRoot and WINDIR normally point to the same directory.
+_WINDOWS_ROOT_ENV_VARS = ("SystemRoot", "WINDIR")
+_WINDOWS_ROOT_FALLBACK = r"C:\Windows"
+_WINDOWS_REGISTRY_QUERY_ARGS = (
     "query",
     r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography",
     "/v",
     "MachineGuid",
 )
 _COMMAND_TIMEOUT_SECONDS = 5
+
+
+def _windows_reg_path() -> str:
+    for env_var in _WINDOWS_ROOT_ENV_VARS:
+        root = os.environ.get(env_var)
+        if root:
+            break
+    else:
+        root = _WINDOWS_ROOT_FALLBACK
+    return os.path.join(root, "System32", "reg.exe")
 
 
 def _read_first_line(path: str) -> str | None:
@@ -97,7 +117,8 @@ def _get_macos_machine_id() -> str | None:
 
 
 def _get_windows_machine_id() -> str | None:
-    output = _run_command(_WINDOWS_REGISTRY_COMMAND)
+    command = (_windows_reg_path(), *_WINDOWS_REGISTRY_QUERY_ARGS)
+    output = _run_command(command)
     if not output:
         return None
     for line in output.splitlines():
@@ -111,16 +132,20 @@ def _get_windows_machine_id() -> str | None:
 
 def _get_host_id() -> str | None:
     system = platform.system()
-    if system == "Linux":
-        return _get_linux_machine_id()
-    if system == "Darwin":
-        return _get_macos_machine_id()
-    if system == "Windows":
-        return _get_windows_machine_id()
-    if system == "DragonFly" or system.endswith("BSD"):
-        return _get_bsd_machine_id()
-    logger.debug("Unsupported OS type for host.id detection: %s", system)
-    return None
+    match system:
+        case "Linux":
+            return _get_linux_machine_id()
+        case "Darwin":
+            return _get_macos_machine_id()
+        case "Windows":
+            return _get_windows_machine_id()
+        case _ if system == "DragonFly" or system.endswith("BSD"):
+            return _get_bsd_machine_id()
+        case _:
+            logger.debug(
+                "Unsupported OS type for host.id detection: %s", system
+            )
+            return None
 
 
 class HostIdResourceDetector(ResourceDetector):
@@ -130,11 +155,9 @@ class HostIdResourceDetector(ResourceDetector):
 
     def detect(self) -> Resource:
         try:
-            host_id = _get_host_id()
-            resource = Resource.get_empty()
-            if host_id:
-                resource = resource.merge(Resource({HOST_ID: host_id}))
-            return resource
+            if host_id := _get_host_id():
+                return Resource({HOST_ID: host_id})
+            return Resource.get_empty()
 
         # pylint: disable=broad-except
         except Exception as exception:
@@ -145,4 +168,4 @@ class HostIdResourceDetector(ResourceDetector):
             )
             if self.raise_on_error:
                 raise exception
-            return Resource.get_empty()
+        return Resource.get_empty()
