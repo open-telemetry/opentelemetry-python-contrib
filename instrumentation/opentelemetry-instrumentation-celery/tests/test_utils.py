@@ -28,6 +28,7 @@ class TestUtils(unittest.TestCase):
             "expires": "later",
             "hostname": "localhost",
             "id": "44b7f305",
+            "origin": "gen8@localhost",
             "reply_to": "44b7f305",
             "retries": 4,
             "timelimit": ("now", "later"),
@@ -56,6 +57,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(span.attributes.get("celery.eta"), "soon")
         self.assertEqual(span.attributes.get("celery.expires"), "later")
         self.assertEqual(span.attributes.get("celery.hostname"), "localhost")
+        self.assertEqual(span.attributes.get("celery.origin"), "gen8@localhost")
 
         self.assertEqual(span.attributes.get("celery.reply_to"), "44b7f305")
         self.assertEqual(span.attributes.get("celery.retries"), 4)
