@@ -750,9 +750,7 @@ class TestURLLib3Instrumentor(TestBase):
         self.assert_span(num_spans=0)
 
         # The remaining fields are honored on a captured request.
-        self.perform_request(
-            captured_url, headers={"X-Request": "secret"}
-        )
+        self.perform_request(captured_url, headers={"X-Request": "secret"})
         span = self.assert_span(num_spans=1)
         # captured_request_headers captured the request header, and
         # sensitive_headers redacted its value.
