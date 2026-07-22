@@ -35,10 +35,19 @@ class BaseInstrumentor(ABC):
     Since every third party library or framework is different and has different
     instrumentation needs, more methods can be added to the child classes as
     needed to provide practical instrumentation to the end user.
+
+    To enable schema-based validation of declarative configuration options,
+    set ``configuration`` to a dataclass type whose fields declare the
+    accepted options and their types.  The SDK declarative configuration
+    pipeline will run the raw YAML options through ``_dict_to_dataclass``
+    before forwarding them to ``instrument()``, applying the same type
+    coercion used for SDK component configuration.  Omit the attribute (or
+    set it to ``None``) to pass options through without validation.
     """
 
     _instance = None
     _is_instrumented_by_opentelemetry = False
+    configuration: type | None = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
