@@ -34,6 +34,7 @@ from opentelemetry.instrumentation.aiopg.aiopg_integration import (
 )
 from opentelemetry.instrumentation.aiopg.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
+from opentelemetry.metrics import MeterProvider
 from opentelemetry.trace import TracerProvider
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ def trace_integration(
     database_system: str,
     connection_attributes: typing.Dict = None,
     tracer_provider: typing.Optional[TracerProvider] = None,
+    meter_provider: typing.Optional[MeterProvider] = None,
 ):
     """Integrate with aiopg library.
     based on dbapi integration, where replaced sync wrap methods to async
@@ -54,6 +56,8 @@ def trace_integration(
             user in Connection object.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
             use. If omitted the current configured one is used.
+        meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
+            use. If omitted the current configured one is used.
     """
 
     wrap_connect(
@@ -62,6 +66,7 @@ def trace_integration(
         connection_attributes,
         __version__,
         tracer_provider,
+        meter_provider,
     )
 
 
@@ -71,6 +76,7 @@ def wrap_connect(
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
+    meter_provider: typing.Optional[MeterProvider] = None,
 ):
     """Integrate with aiopg library.
     https://github.com/aio-libs/aiopg
@@ -83,6 +89,8 @@ def wrap_connect(
             user in Connection object.
         version: Version of opentelemetry extension for aiopg.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
+            use. If omitted the current configured one is used.
+        meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
     """
 
@@ -99,6 +107,7 @@ def wrap_connect(
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
         return _ContextManager(  # pylint: disable=no-value-for-parameter
             db_integration.wrapped_connection(wrapped, args, kwargs)
@@ -125,6 +134,7 @@ def instrument_connection(
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
+    meter_provider: typing.Optional[MeterProvider] = None,
 ):
     """Enable instrumentation in a database connection.
 
@@ -137,6 +147,8 @@ def instrument_connection(
             user in a connection object.
         version: Version of opentelemetry extension for aiopg.
         tracer_provider: The :class:`opentelemetry.trace.TracerProvider` to
+            use. If omitted the current configured one is used.
+        meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
 
     Returns:
@@ -152,6 +164,7 @@ def instrument_connection(
         connection_attributes=connection_attributes,
         version=version,
         tracer_provider=tracer_provider,
+        meter_provider=meter_provider,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -179,6 +192,7 @@ def wrap_create_pool(
     connection_attributes: typing.Dict = None,
     version: str = "",
     tracer_provider: typing.Optional[TracerProvider] = None,
+    meter_provider: typing.Optional[MeterProvider] = None,
 ):
     # pylint: disable=unused-argument
     def wrap_create_pool_(
@@ -193,6 +207,7 @@ def wrap_create_pool(
             connection_attributes=connection_attributes,
             version=version,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
         return _PoolContextManager(
             db_integration.wrapped_pool(wrapped, args, kwargs)

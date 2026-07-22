@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import time
 import typing
 from collections.abc import Coroutine
 
@@ -109,30 +110,36 @@ class AsyncCursorTracer(CursorTracer):
         *args: typing.Tuple[typing.Any, typing.Any],
         **kwargs: typing.Dict[typing.Any, typing.Any],
     ):
-        name = ""
+        operation_name = ""
         if args:
-            name = self.get_operation_name(cursor, args)
+            operation_name = self.get_operation_name(cursor, args)
 
-        if not name:
-            name = (
+        span_name = operation_name
+        if not span_name:
+            span_name = (
                 self._db_api_integration.database
                 if self._db_api_integration.database
                 else self._db_api_integration.name
             )
 
         with self._db_api_integration._tracer.start_as_current_span(
-            name, kind=SpanKind.CLIENT
+            span_name, kind=SpanKind.CLIENT
         ) as span:
             if span.is_recording():
                 self._populate_span(span, cursor, *args)
+            start_time = time.perf_counter()
+            error = None
             try:
                 return await query_method(*args, **kwargs)
             except Exception as exc:
+                error = exc
                 if span.is_recording() and _report_new(
                     self._db_api_integration._sem_conv_opt_in_mode_db
                 ):
                     span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
                 raise
+            finally:
+                self._record_metrics(cursor, operation_name, start_time, error)
 
 
 def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
