@@ -9,7 +9,7 @@ system with an handler to convert log messages into OpenTelemetry logs.
 You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
 
 Trace context injection is opt-in. Pass ``inject_trace_context=True`` to add
-``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName``
+``span_id``, ``trace_id``, ``trace_flags``, and ``service_name``
 to every log record without changing the logging format:
 
 .. code-block:: python
@@ -50,6 +50,12 @@ from typing import Collection, Optional
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
+from opentelemetry.instrumentation.logging._deprecated import (
+    install as _install_deprecated_attrs,
+)
+from opentelemetry.instrumentation.logging._deprecated import (
+    uninstall as _uninstall_deprecated_attrs,
+)
 from opentelemetry.instrumentation.logging.constants import (
     _MODULE_DOC,
     DEFAULT_LOGGING_FORMAT,
@@ -141,6 +147,8 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         return _instruments
 
     def _instrument(self, **kwargs):
+        _install_deprecated_attrs()
+
         provider = kwargs.get("tracer_provider", None) or get_tracer_provider()
         old_factory = logging.getLogRecordFactory()
         LoggingInstrumentor._old_factory = old_factory
@@ -182,9 +190,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 return record
 
             if inject_context:
-                record.otelSpanID = "0"
-                record.otelTraceID = "0"
-                record.otelTraceSampled = False
+                record.span_id = "0"
+                record.trace_id = "0"
+                record.trace_flags = False
 
                 nonlocal service_name
                 if service_name is None:
@@ -196,16 +204,16 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                     else:
                         service_name = ""
 
-                record.otelServiceName = service_name
+                record.service_name = service_name
 
             span = get_current_span()
             if span != INVALID_SPAN:
                 ctx = span.get_span_context()
                 if ctx != INVALID_SPAN_CONTEXT:
                     if inject_context:
-                        record.otelSpanID = format(ctx.span_id, "016x")
-                        record.otelTraceID = format(ctx.trace_id, "032x")
-                        record.otelTraceSampled = ctx.trace_flags.sampled
+                        record.span_id = format(ctx.span_id, "016x")
+                        record.trace_id = format(ctx.trace_id, "032x")
+                        record.trace_flags = ctx.trace_flags.sampled
 
                     if callable(LoggingInstrumentor._log_hook):
                         try:
@@ -274,3 +282,5 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 LoggingInstrumentor._logging_handler
             )
             LoggingInstrumentor._logging_handler = None
+
+        _uninstall_deprecated_attrs()
