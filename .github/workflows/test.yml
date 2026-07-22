@@ -1278,8 +1278,8 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-resource-detector-containerid -- -ra
 
-  py310-test-resource-detector-host_ubuntu-latest:
-    name: resource-detector-host 3.10 Ubuntu
+  py310-test-resource-detector-host-oldest_ubuntu-latest:
+    name: resource-detector-host-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1295,10 +1295,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-resource-detector-host -- -ra
+        run: tox -e py310-test-resource-detector-host-oldest -- -ra
 
-  py311-test-resource-detector-host_ubuntu-latest:
-    name: resource-detector-host 3.11 Ubuntu
+  py310-test-resource-detector-host-latest_ubuntu-latest:
+    name: resource-detector-host-latest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-resource-detector-host-latest -- -ra
+
+  py311-test-resource-detector-host-oldest_ubuntu-latest:
+    name: resource-detector-host-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1314,10 +1333,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-resource-detector-host -- -ra
+        run: tox -e py311-test-resource-detector-host-oldest -- -ra
 
-  py312-test-resource-detector-host_ubuntu-latest:
-    name: resource-detector-host 3.12 Ubuntu
+  py311-test-resource-detector-host-latest_ubuntu-latest:
+    name: resource-detector-host-latest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-resource-detector-host-latest -- -ra
+
+  py312-test-resource-detector-host-oldest_ubuntu-latest:
+    name: resource-detector-host-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1333,10 +1371,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-resource-detector-host -- -ra
+        run: tox -e py312-test-resource-detector-host-oldest -- -ra
 
-  py313-test-resource-detector-host_ubuntu-latest:
-    name: resource-detector-host 3.13 Ubuntu
+  py312-test-resource-detector-host-latest_ubuntu-latest:
+    name: resource-detector-host-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-resource-detector-host-latest -- -ra
+
+  py313-test-resource-detector-host-oldest_ubuntu-latest:
+    name: resource-detector-host-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1352,10 +1409,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-resource-detector-host -- -ra
+        run: tox -e py313-test-resource-detector-host-oldest -- -ra
 
-  py314-test-resource-detector-host_ubuntu-latest:
-    name: resource-detector-host 3.14 Ubuntu
+  py313-test-resource-detector-host-latest_ubuntu-latest:
+    name: resource-detector-host-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-resource-detector-host-latest -- -ra
+
+  py314-test-resource-detector-host-oldest_ubuntu-latest:
+    name: resource-detector-host-oldest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1371,10 +1447,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py314-test-resource-detector-host -- -ra
+        run: tox -e py314-test-resource-detector-host-oldest -- -ra
 
-  pypy3-test-resource-detector-host_ubuntu-latest:
-    name: resource-detector-host pypy-3.10 Ubuntu
+  py314-test-resource-detector-host-latest_ubuntu-latest:
+    name: resource-detector-host-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-resource-detector-host-latest -- -ra
+
+  pypy3-test-resource-detector-host-oldest_ubuntu-latest:
+    name: resource-detector-host-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1390,7 +1485,26 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-resource-detector-host -- -ra
+        run: tox -e pypy3-test-resource-detector-host-oldest -- -ra
+
+  pypy3-test-resource-detector-host-latest_ubuntu-latest:
+    name: resource-detector-host-latest pypy-3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-resource-detector-host-latest -- -ra
 
   py310-test-resource-detector-azure-0_ubuntu-latest:
     name: resource-detector-azure-0 3.10 Ubuntu
@@ -13855,3 +13969,25 @@ jobs:
 
       - name: Run tests
         run: tox -e py314-test-opamp-client-lowest -- -ra
+
+  py312-test-resource-detector-host-latest_windows-latest:
+    name: resource-detector-host-latest 3.12 Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Configure git to support long filenames
+        run: git config --system core.longpaths true
+
+      - name: Run tests
+        run: tox -e py312-test-resource-detector-host-latest -- -ra

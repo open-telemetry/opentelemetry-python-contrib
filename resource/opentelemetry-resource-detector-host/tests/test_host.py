@@ -9,7 +9,7 @@ import subprocess
 import sys
 from importlib.metadata import entry_points
 from types import SimpleNamespace
-from unittest import skipUnless
+from unittest import TestCase, skipUnless
 from unittest.mock import MagicMock, patch
 
 from opentelemetry.resource.detector.host import (
@@ -20,10 +20,6 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv._incubating.attributes.host_attributes import (
     HOST_ID,
 )
-from opentelemetry.test.test_base import TestBase
-
-if sys.platform == "win32":
-    import winreg
 
 MODULE = "opentelemetry.resource.detector.host"
 
@@ -39,7 +35,7 @@ def _completed(stdout: str = "", return_code: int = 0) -> SimpleNamespace:
     return SimpleNamespace(stdout=stdout, stderr="", returncode=return_code)
 
 
-class HostIdResourceDetectorTest(TestBase):
+class HostIdResourceDetectorTest(TestCase):
     def _assert_only_host_id(self, resource: Resource, expected: str) -> None:
         attributes = resource.attributes
         self.assertEqual(dict(attributes), {HOST_ID: expected})
@@ -68,6 +64,8 @@ class HostIdResourceDetectorTest(TestBase):
         # type checker only analyzes the Windows-only winreg usage on Windows.
         if sys.platform != "win32":
             return
+
+        import winreg  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         # winreg reads the registry through the Win32 API, an independent
         # mechanism from the detector's reg.exe subprocess, so it is a valid
