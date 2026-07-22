@@ -1,0 +1,5 @@
+kafka-python>=2.0.3,<4.0.0  # 2.0.3 is the earliest version to support python > 3.11
+pytest~=7.4
+wrapt~=2.2.2
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-kafka-python
