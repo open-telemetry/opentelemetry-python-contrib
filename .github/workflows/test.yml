@@ -3387,63 +3387,6 @@ jobs:
       - name: Run tests
         run: tox -e py314-test-instrumentation-botocore-3 -- -ra
 
-  pypy3-test-instrumentation-botocore-0-wrapt1_ubuntu-latest:
-    name: instrumentation-botocore-0-wrapt1 pypy-3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-botocore-0-wrapt1 -- -ra
-
-  pypy3-test-instrumentation-botocore-0-wrapt2_ubuntu-latest:
-    name: instrumentation-botocore-0-wrapt2 pypy-3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-botocore-0-wrapt2 -- -ra
-
-  pypy3-test-instrumentation-botocore-1-wrapt1_ubuntu-latest:
-    name: instrumentation-botocore-1-wrapt1 pypy-3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-botocore-1-wrapt1 -- -ra
-
   pypy3-test-instrumentation-botocore-1-wrapt2_ubuntu-latest:
     name: instrumentation-botocore-1-wrapt2 pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
@@ -3462,25 +3405,6 @@ jobs:
 
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-botocore-1-wrapt2 -- -ra
-
-  pypy3-test-instrumentation-botocore-2_ubuntu-latest:
-    name: instrumentation-botocore-2 pypy-3.10 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python pypy-3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "pypy-3.10"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e pypy3-test-instrumentation-botocore-2 -- -ra
 
   pypy3-test-instrumentation-botocore-3_ubuntu-latest:
     name: instrumentation-botocore-3 pypy-3.10 Ubuntu
