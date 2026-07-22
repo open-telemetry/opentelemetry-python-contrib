@@ -185,28 +185,10 @@ def _generate_workflow(
 
 
 def generate_test_workflow(
-    tox_ini_path: Path,
-    workflow_directory_path: Path,
-    *operating_systems: str,
-    additional_jobs: dict[str, tuple[str, ...]] | None = None,
+    tox_ini_path: Path, workflow_directory_path: Path, *operating_systems
 ) -> None:
-    tox_envs = get_tox_envs(tox_ini_path)
-    job_datas = get_test_job_datas(tox_envs, list(operating_systems))
-
-    for tox_env, additional_operating_systems in (
-        additional_jobs or {}
-    ).items():
-        if tox_env not in tox_envs:
-            raise ValueError(f"Unknown tox environment: {tox_env}")
-        job_datas.extend(
-            get_test_job_datas(
-                [tox_env],
-                list(additional_operating_systems),
-            )
-        )
-
     _generate_workflow(
-        job_datas,
+        get_test_job_datas(get_tox_envs(tox_ini_path), operating_systems),
         "test",
         workflow_directory_path,
     )
