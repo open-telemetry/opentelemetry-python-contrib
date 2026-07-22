@@ -19,6 +19,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Version 1.44.0/0.65b0 (2026-07-16)
+
+### Added
+
+- Add `opentelemetry-instrumentation-structlog` instrumentation package and
+  shared `log_utils` helpers for emitting structlog events as OpenTelemetry
+  logs.
+  ([#4286](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4286))
+- `opentelemetry-instrumentation-celery`: add `use_span_links` option to link
+  task execution spans to producer spans instead of creating parent-child
+  relationships
+  ([#4537](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4537))
+- `opentelemetry-instrumentation-aws-lambda`: add SQS context propagation
+  support
+  ([#4668](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4668))
+- `opentelemetry-instrumentation-httpx`: add support for httpx2
+  ([#4730](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4730))
+- `opentelemetry-instrumentation-tortoiseorm`: Implement database semantic
+  convention stability migration support  through
+  `OTEL_SEMCONV_STABILITY_OPT_IN`
+  ([#4731](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4731))
+- `opentelemetry-instrumentation-asyncpg`: add database semantic convention
+  stability support through `OTEL_SEMCONV_STABILITY_OPT_IN`
+  ([#4733](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4733))
+- `opentelemetry-instrumentation-pymemcache`: add database semconv stability
+  migration support
+  ([#4739](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4739))
+- `opentelemetry-instrumentation-cassandra`: add semconv stability migration support
+  ([#4747](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4747))
+- `opentelemetry-instrumentation-pymongo`: add database semantic convention
+  stability support through `OTEL_SEMCONV_STABILITY_OPT_IN`
+  ([#4772](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4772))
+- `opentelemetry-instrumentation-aiopg`: add database semantic convention
+  stability support through `OTEL_SEMCONV_STABILITY_OPT_IN`
+  ([#4820](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4820))
+
+### Changed
+
+- opentelemetry-instrumentation-urllib3: remove multiple calls to
+  sanitize_method
+  ([#4718](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4718))
+
+### Removed
+
+- `opentelemetry-instrumentation-elasticsearch`: drop the package since all
+  supported `elasticsearch` versions have a native OTel instrumentation
+  ([#4759](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4759))
+
+### Fixed
+
+- `opentelemetry-instrumentation-grpc`: handle `NotImplementedError` from
+  `add_done_callback` in aio client instrumentation
+  ([#4429](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4429))
+- `opentelemetry-util-http`: recognize QUERY as known method in
+  `sanitize_method`
+  ([#4734](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4734))
+- `opentelemetry-instrumentation-pika`: prevent duplicate consumer spans
+  ([#4740](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4740))
+- `opentelemetry-instrumentation-pyramid`: avoid duplicate traversal
+  subscribers
+  ([#4741](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4741))
+- `opentelemetry-instrumentation-boto3sqs`: handle missing `Successful` key in
+  `send_message_batch` response when all messages fail
+  ([#4746](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4746))
+- `opentelemetry-instrumentation-logging`: export formatter-added attributes
+  ([#4764](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4764))
+- `opentelemetry-instrumentation-aiohttp-server`: fix span name and
+  `http.route` attribute according to http semantic conventions
+  ([#4768](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4768))
+- `opentelemetry-instrumentation-dbapi`: fix suppression for async queries
+  ([#4781](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4781))
+- `opentelemetry-instrumentation-redis`: don't fail commands when the
+  connection pool lacks `connection_kwargs`
+  ([#4782](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4782))
+- `opentelemetry-util-genai`, `instrumentation-genai/*`: ignore now deprecated
+  GenAI enums
+  ([#4814](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4814))
+
 ## Version 1.43.0/0.64b0 (2026-06-24)
 
 ### Added

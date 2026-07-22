@@ -1,0 +1,797 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+import sys
+import time
+import warnings
+from datetime import datetime, timezone
+from unittest.mock import Mock
+
+import structlog
+
+from opentelemetry._logs import SeverityNumber
+from opentelemetry.instrumentation.structlog import (
+    StructlogInstrumentor,
+    StructlogProcessor,
+)
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import (
+    InMemoryLogRecordExporter,
+    SimpleLogRecordProcessor,
+)
+from opentelemetry.semconv.attributes import exception_attributes
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import TraceFlags
+
+
+class TestStructlogProcessor(TestBase):
+    """Tests for the StructlogProcessor class."""
+
+    def setUp(self):
+        super().setUp()
+        # Set up in-memory log exporter
+        self.exporter = InMemoryLogRecordExporter()
+        self.logger_provider = LoggerProvider()
+        self.logger_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(self.exporter)
+        )
+
+        # Configure structlog with OTel processor
+        self.processor = StructlogProcessor(
+            logger_provider=self.logger_provider
+        )
+        structlog.configure(
+            processors=[
+                structlog.stdlib.add_log_level,
+                self.processor,
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+        self.logger = structlog.get_logger()
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+
+    def tearDown(self):
+        super().tearDown()
+        # Reset structlog configuration
+        structlog.reset_defaults()
+        self.exporter.clear()
+
+    def test_basic_log_emission(self):
+        """Test that basic logs are emitted correctly."""
+        self.logger.info("test message", user="alice", count=42)
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        self.assertEqual(log.log_record.body, "test message")
+        self.assertEqual(log.log_record.severity_text, "INFO")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.INFO)
+        self.assertIn("user", log.log_record.attributes)
+        self.assertEqual(log.log_record.attributes["user"], "alice")
+        self.assertIn("count", log.log_record.attributes)
+        self.assertEqual(log.log_record.attributes["count"], 42)
+
+    def test_debug_level(self):
+        """Test debug level mapping."""
+        self.logger.debug("debug message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        self.assertEqual(log.log_record.severity_text, "DEBUG")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.DEBUG)
+
+    def test_info_level(self):
+        """Test info level mapping."""
+        self.logger.info("info message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        self.assertEqual(log.log_record.severity_text, "INFO")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.INFO)
+
+    def test_warning_level(self):
+        """Test warning level mapping and normalization to WARN."""
+        self.logger.warning("warning message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        # Should be normalized to "WARN" per OTel spec
+        self.assertEqual(log.log_record.severity_text, "WARN")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.WARN)
+
+    def test_error_level(self):
+        """Test error level mapping."""
+        self.logger.error("error message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        self.assertEqual(log.log_record.severity_text, "ERROR")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.ERROR)
+
+    def test_error_level_without_add_log_level(self):
+        """Test level mapping from structlog method name."""
+        structlog.configure(
+            processors=[
+                self.processor,
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+        self.logger.error("error message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        self.assertEqual(log.log_record.severity_text, "ERROR")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.ERROR)
+
+    def test_unknown_level(self):
+        """Test unknown level mapping."""
+        log_record = self.processor._translate(
+            {"event": "message", "level": "notice"}
+        )
+
+        self.assertEqual(log_record.severity_text, "NOTICE")
+        self.assertEqual(
+            log_record.severity_number, SeverityNumber.UNSPECIFIED
+        )
+
+    def test_missing_level_without_method_name(self):
+        """Test missing level mapping without structlog method fallback."""
+        log_record = self.processor._translate({"event": "message"})
+
+        self.assertIsNone(log_record.severity_text)
+        self.assertEqual(
+            log_record.severity_number, SeverityNumber.UNSPECIFIED
+        )
+
+    def test_critical_level(self):
+        """Test critical level mapping."""
+        self.logger.critical("critical message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        self.assertEqual(log.log_record.severity_text, "FATAL")
+        self.assertEqual(log.log_record.severity_number, SeverityNumber.FATAL)
+
+    def test_exception_from_exc_info_tuple(self):
+        """Test exception extraction from exc_info tuple."""
+        try:
+            raise ValueError("test error")
+        except ValueError:
+            exc_info = sys.exc_info()
+            self.logger.error("error occurred", exc_info=exc_info)
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        attrs = log.log_record.attributes
+
+        self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "ValueError"
+        )
+
+        self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_MESSAGE], "test error"
+        )
+
+        self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
+        stacktrace = attrs[exception_attributes.EXCEPTION_STACKTRACE]
+        self.assertIn("ValueError", stacktrace)
+        self.assertIn("test error", stacktrace)
+
+    def test_exception_from_exc_info_true(self):
+        """Test exception extraction when exc_info=True."""
+        try:
+            raise RuntimeError("runtime error")
+        except RuntimeError:
+            self.logger.error("error occurred", exc_info=True)
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        attrs = log.log_record.attributes
+
+        self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "RuntimeError"
+        )
+
+        self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_MESSAGE], "runtime error"
+        )
+
+        self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
+
+    def test_exception_from_exception_instance(self):
+        """Test exception extraction when exc_info is an Exception instance."""
+        try:
+            raise KeyError("missing key")
+        except KeyError as exc:
+            self.logger.error("error occurred", exc_info=exc)
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        attrs = log.log_record.attributes
+
+        self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "KeyError"
+        )
+
+        self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
+
+        self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
+
+    def test_exception_from_string(self):
+        """Test exception from pre-rendered string (e.g., from ExceptionRenderer)."""
+        exception_string = "Traceback (most recent call last):\n  File test.py\nValueError: test"
+        self.logger.error("error occurred", exception=exception_string)
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        attrs = log.log_record.attributes
+
+        self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_STACKTRACE], exception_string
+        )
+
+    def test_trace_context_with_active_span(self):
+        """Test that trace context is captured with an active span."""
+        with self.tracer.start_as_current_span("test-span") as span:
+            self.logger.info("message in span")
+
+            logs = self.exporter.get_finished_logs()
+            self.assertEqual(len(logs), 1)
+
+            log = logs[0]
+            # Context should be set
+            self.assertIsNotNone(log.log_record.trace_id)
+            self.assertIsNotNone(log.log_record.span_id)
+
+            # Should match the current span
+            span_context = span.get_span_context()
+            self.assertEqual(log.log_record.trace_id, span_context.trace_id)
+            self.assertEqual(log.log_record.span_id, span_context.span_id)
+            self.assertEqual(
+                log.log_record.trace_flags,
+                TraceFlags(span_context.trace_flags),
+            )
+
+    def test_without_active_span(self):
+        """Test that logging works without an active span."""
+        self.logger.info("message without span")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        # Should still have a log record, just no trace context
+        self.assertEqual(log.log_record.body, "message without span")
+
+    def test_reserved_keys_filtered(self):
+        """Test that structlog reserved keys are filtered from attributes."""
+        # These keys should be filtered out
+        self.logger.info(
+            "test",
+            user="alice",
+            _record="should be filtered",
+            _logger="should be filtered",
+            _name="should be filtered",
+        )
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        attrs = log.log_record.attributes
+
+        # User attribute should be present
+        self.assertIn("user", attrs)
+        self.assertEqual(attrs["user"], "alice")
+
+        # Reserved keys should be filtered
+        self.assertNotIn("_record", attrs)
+        self.assertNotIn("_logger", attrs)
+        self.assertNotIn("_name", attrs)
+        self.assertNotIn("event", attrs)
+        self.assertNotIn("level", attrs)
+        self.assertNotIn("timestamp", attrs)
+
+    def test_custom_attributes_pass_through(self):
+        """Test that custom attributes are passed through correctly."""
+        self.logger.info(
+            "test",
+            user_id=123,
+            request_id="abc-def",
+            ip_address="192.168.1.1",
+            duration=1.5,
+            success=True,
+        )
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+
+        log = logs[0]
+        attrs = log.log_record.attributes
+
+        self.assertEqual(attrs["user_id"], 123)
+        self.assertEqual(attrs["request_id"], "abc-def")
+        self.assertEqual(attrs["ip_address"], "192.168.1.1")
+        self.assertEqual(attrs["duration"], 1.5)
+        self.assertEqual(attrs["success"], True)
+
+    @staticmethod
+    def test_flush():
+        """Test that flush calls force_flush on the provider."""
+        # Create a mock provider to verify flush is called
+        mock_provider = Mock()
+        mock_provider.force_flush = Mock()
+        processor = StructlogProcessor(logger_provider=mock_provider)
+
+        processor.flush()
+
+        # Give the thread a moment to execute
+        time.sleep(0.1)
+
+        # Verify force_flush was called
+        mock_provider.force_flush.assert_called_once()
+
+
+class TestStructlogProcessorTimestamps(TestBase):
+    """Tests for StructlogProcessor timestamp handling."""
+
+    def test_timestamp_from_unix_float(self):
+        """Test UNIX float timestamp parsing."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": 1713806404.5,
+            }
+        )
+
+        self.assertEqual(log_record.timestamp, 1713806404500000000)
+
+    def test_timestamp_from_utc_z_iso_string(self):
+        """Test UTC ISO timestamp parsing with Z suffix."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T17:20:04Z",
+            }
+        )
+
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
+        self.assertEqual(log_record.timestamp, expected)
+
+    def test_timestamp_from_offset_iso_string(self):
+        """Test offset-aware ISO timestamp parsing."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T10:20:04-07:00",
+            }
+        )
+
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
+        self.assertEqual(log_record.timestamp, expected)
+
+    def test_timestamp_from_naive_iso_string(self):
+        """Test naive ISO timestamps are ignored."""
+        log_record = StructlogProcessor()._translate(
+            {
+                "event": "test",
+                "level": "info",
+                "timestamp": "2024-04-22T17:20:04",
+            }
+        )
+
+        self.assertIsNone(log_record.timestamp)
+
+
+class TestStructlogInstrumentor(TestBase):
+    """Tests for the StructlogInstrumentor class."""
+
+    def setUp(self):
+        super().setUp()
+        # Store original structlog config
+        self.original_config = structlog.get_config()
+        # Set up in-memory log exporter
+        self.exporter = InMemoryLogRecordExporter()
+        self.logger_provider = LoggerProvider()
+        self.logger_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(self.exporter)
+        )
+
+    def tearDown(self):
+        super().tearDown()
+        # Uninstrument if needed
+        if StructlogInstrumentor()._is_instrumented_by_opentelemetry:
+            StructlogInstrumentor().uninstrument()
+        # Reset structlog
+        structlog.reset_defaults()
+        self.exporter.clear()
+
+    def test_instrument_adds_processor(self):
+        """Test that instrument() adds the OTel processor to the chain."""
+        # Configure structlog with a simple processor chain
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        # Get initial processor count
+        initial_processors = structlog.get_config()["processors"]
+        initial_count = len(initial_processors)
+
+        # Instrument
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        # Check that processor was added
+        new_processors = structlog.get_config()["processors"]
+        self.assertEqual(len(new_processors), initial_count + 1)
+
+        # Check that a StructlogProcessor is in the chain
+        has_otel_processor = any(
+            isinstance(p, StructlogProcessor) for p in new_processors
+        )
+        self.assertTrue(has_otel_processor)
+
+    def test_instrument_without_prior_structlog_configuration_emits_logs(self):
+        """Test instrument() emits logs before the app configures structlog."""
+        structlog.reset_defaults()
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        structlog.get_logger().info("zero config message")
+
+        logs = self.exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].log_record.body, "zero config message")
+
+    def test_uninstrument_removes_processor(self):
+        """Test that uninstrument() removes the OTel processor."""
+        # Configure structlog
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        # Instrument
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        # Verify processor was added
+        config_after_instrument = structlog.get_config()["processors"]
+        has_otel = any(
+            isinstance(p, StructlogProcessor) for p in config_after_instrument
+        )
+        self.assertTrue(has_otel)
+
+        # Uninstrument
+        StructlogInstrumentor().uninstrument()
+
+        # Verify processor was removed
+        config_after_uninstrument = structlog.get_config()["processors"]
+        has_otel = any(
+            isinstance(p, StructlogProcessor)
+            for p in config_after_uninstrument
+        )
+        self.assertFalse(has_otel)
+
+    def test_double_instrument_prevented(self):
+        """Test that double instrumentation is prevented by BaseInstrumentor."""
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        # First instrumentation
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        config_after_first = structlog.get_config()["processors"]
+        count_after_first = len(config_after_first)
+
+        # Second instrumentation (should be no-op)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        config_after_second = structlog.get_config()["processors"]
+        count_after_second = len(config_after_second)
+
+        # Should have same number of processors
+        self.assertEqual(count_after_first, count_after_second)
+
+    def test_custom_logger_provider(self):
+        """Test that custom logger_provider is passed to the processor."""
+        custom_provider = LoggerProvider()
+        custom_exporter = InMemoryLogRecordExporter()
+        custom_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(custom_exporter)
+        )
+
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        # Instrument with custom provider
+        StructlogInstrumentor().instrument(logger_provider=custom_provider)
+
+        # Log something
+        logger = structlog.get_logger()
+        logger.info("test message")
+
+        # Verify it went to the custom exporter
+        logs = custom_exporter.get_finished_logs()
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].log_record.body, "test message")
+
+    def test_configure_after_instrument_preserves_processor(self):
+        """Test that calling structlog.configure() after instrumentation preserves the processor."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        # Simulate user code calling structlog.configure after instrumentation
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        processors = structlog.get_config()["processors"]
+        has_otel_processor = any(
+            isinstance(p, StructlogProcessor) for p in processors
+        )
+        self.assertTrue(has_otel_processor)
+
+    def test_configure_after_instrument_accepts_positional_processors(self):
+        """Test that patched configure accepts positional processors."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        structlog.configure([structlog.dev.ConsoleRenderer()])
+
+        processors = structlog.get_config()["processors"]
+        self.assertIsInstance(processors[0], StructlogProcessor)
+
+    def test_configure_after_instrument_accepts_none_processors(self):
+        """Test that patched configure accepts processors=None."""
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        processors_before = structlog.get_config()["processors"]
+
+        structlog.configure(processors=None)
+
+        processors = structlog.get_config()["processors"]
+        self.assertEqual(processors, processors_before)
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+
+    def test_configure_once_after_instrument_allows_app_configuration(self):
+        """Test configure_once works after instrumentation configures structlog."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.stdlib.add_log_level,
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(captured_warnings, [])
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+
+    def test_configure_once_after_instrument_warns_on_repeat(self):
+        """Test configure_once still warns after app configuration."""
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        structlog.configure_once(
+            processors=[
+                structlog.processors.JSONRenderer(),
+            ]
+        )
+
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.dev.ConsoleRenderer(),
+                ]
+            )
+
+        self.assertEqual(len(captured_warnings), 1)
+        self.assertEqual(captured_warnings[0].category, RuntimeWarning)
+        self.assertEqual(
+            str(captured_warnings[0].message),
+            "Repeated configuration attempted.",
+        )
+        processors = structlog.get_config()["processors"]
+        self.assertFalse(
+            any(
+                isinstance(p, structlog.dev.ConsoleRenderer)
+                for p in processors
+            )
+        )
+
+    def test_configure_once_after_preconfigured_instrument_warns(self):
+        """Test preconfigured structlog keeps configure_once warning behavior."""
+        structlog.configure(
+            processors=[
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(len(captured_warnings), 1)
+        self.assertEqual(captured_warnings[0].category, RuntimeWarning)
+        self.assertEqual(
+            str(captured_warnings[0].message),
+            "Repeated configuration attempted.",
+        )
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.dev.ConsoleRenderer)
+                for p in processors
+            )
+        )
+        self.assertFalse(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+
+        structlog.reset_defaults()
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(captured_warnings, [])
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+
+    def test_uninstrument_restores_configure(self):
+        """Test that uninstrument() restores structlog configuration APIs."""
+        original_configure = structlog.configure
+        original_configure_once = structlog.configure_once
+        original_reset_defaults = structlog.reset_defaults
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        self.assertIsNot(structlog.configure, original_configure)
+        self.assertIsNot(structlog.configure_once, original_configure_once)
+        self.assertIsNot(structlog.reset_defaults, original_reset_defaults)
+
+        StructlogInstrumentor().uninstrument()
+        self.assertIs(structlog.configure, original_configure)
+        self.assertIs(structlog.configure_once, original_configure_once)
+        self.assertIs(structlog.reset_defaults, original_reset_defaults)
+
+    def test_uninstrument_restores_unconfigured_state(self):
+        """Test uninstrument restores configure_once for unconfigured apps."""
+        self.assertFalse(structlog.is_configured())
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        self.assertTrue(structlog.is_configured())
+
+        StructlogInstrumentor().uninstrument()
+
+        self.assertFalse(structlog.is_configured())
+        with warnings.catch_warnings(record=True) as captured_warnings:
+            warnings.simplefilter("always")
+            structlog.configure_once(
+                processors=[
+                    structlog.processors.JSONRenderer(),
+                ]
+            )
+
+        self.assertEqual(captured_warnings, [])
+        processors = structlog.get_config()["processors"]
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+        self.assertFalse(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+
+    def test_instrumentation_dependencies(self):
+        """Test that instrumentation_dependencies returns the correct value."""
+        instrumentor = StructlogInstrumentor()
+        deps = instrumentor.instrumentation_dependencies()
+        self.assertIn("structlog", " ".join(deps))

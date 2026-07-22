@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-redis`: extract `ClusterPipeline` commands from `_execution_strategy` in redis-py 6+ so pipeline span attributes include the queued commands instead of being empty
