@@ -261,52 +261,48 @@ class TestSQLite3SemconvStability(TestBase):
             "https://opentelemetry.io/schemas/1.11.0",
         )
 
+    @mock.patch.dict(
+        "os.environ",
+        {"OTEL_SEMCONV_STABILITY_OPT_IN": "database"},
+    )
     def test_new_semconv(self):
-        with mock.patch.dict(
-            "os.environ",
-            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database"},
-        ):
-            _OpenTelemetrySemanticConventionStability._initialized = False
-            SQLite3Instrumentor().instrument(
-                tracer_provider=self.tracer_provider
-            )
-            stmt = self._connect_and_execute()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        stmt = self._connect_and_execute()
 
-            spans = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(spans), 1)
-            span = spans[0]
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
 
-            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "sqlite")
-            self.assertEqual(span.attributes[DB_QUERY_TEXT], stmt)
-            self.assertNotIn(DB_SYSTEM, span.attributes)
-            self.assertNotIn(DB_STATEMENT, span.attributes)
-            self.assertEqual(
-                span.instrumentation_scope.schema_url,
-                "https://opentelemetry.io/schemas/1.25.0",
-            )
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], stmt)
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
         _OpenTelemetrySemanticConventionStability._initialized = False
 
+    @mock.patch.dict(
+        "os.environ",
+        {"OTEL_SEMCONV_STABILITY_OPT_IN": "database/dup"},
+    )
     def test_dup_semconv(self):
-        with mock.patch.dict(
-            "os.environ",
-            {"OTEL_SEMCONV_STABILITY_OPT_IN": "database/dup"},
-        ):
-            _OpenTelemetrySemanticConventionStability._initialized = False
-            SQLite3Instrumentor().instrument(
-                tracer_provider=self.tracer_provider
-            )
-            stmt = self._connect_and_execute()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        stmt = self._connect_and_execute()
 
-            spans = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(spans), 1)
-            span = spans[0]
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
 
-            self.assertEqual(span.attributes[DB_SYSTEM], "sqlite")
-            self.assertEqual(span.attributes[DB_STATEMENT], stmt)
-            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "sqlite")
-            self.assertEqual(span.attributes[DB_QUERY_TEXT], stmt)
-            self.assertEqual(
-                span.instrumentation_scope.schema_url,
-                "https://opentelemetry.io/schemas/1.25.0",
-            )
+        self.assertEqual(span.attributes[DB_SYSTEM], "sqlite")
+        self.assertEqual(span.attributes[DB_STATEMENT], stmt)
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "sqlite")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], stmt)
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
         _OpenTelemetrySemanticConventionStability._initialized = False
