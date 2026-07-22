@@ -12697,8 +12697,8 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-aiokafka -- -ra
 
-  py310-test-instrumentation-kafka-python_ubuntu-latest:
-    name: instrumentation-kafka-python 3.10 Ubuntu
+  py310-test-instrumentation-kafka-python-oldest_ubuntu-latest:
+    name: instrumentation-kafka-python-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12714,29 +12714,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-python -- -ra
+        run: tox -e py310-test-instrumentation-kafka-python-oldest -- -ra
 
-  py311-test-instrumentation-kafka-python_ubuntu-latest:
-    name: instrumentation-kafka-python 3.11 Ubuntu
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e py311-test-instrumentation-kafka-python -- -ra
-
-  py310-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng 3.10 Ubuntu
+  py310-test-instrumentation-kafka-python-latest_ubuntu-latest:
+    name: instrumentation-kafka-python-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12752,10 +12733,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py310-test-instrumentation-kafka-python-latest -- -ra
 
-  py311-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng 3.11 Ubuntu
+  py311-test-instrumentation-kafka-python-oldest_ubuntu-latest:
+    name: instrumentation-kafka-python-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12771,10 +12752,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py311-test-instrumentation-kafka-python-oldest -- -ra
 
-  py312-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng 3.12 Ubuntu
+  py311-test-instrumentation-kafka-python-latest_ubuntu-latest:
+    name: instrumentation-kafka-python-latest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-kafka-python-latest -- -ra
+
+  py312-test-instrumentation-kafka-python-oldest_ubuntu-latest:
+    name: instrumentation-kafka-python-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12790,10 +12790,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py312-test-instrumentation-kafka-python-oldest -- -ra
 
-  py313-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng 3.13 Ubuntu
+  py312-test-instrumentation-kafka-python-latest_ubuntu-latest:
+    name: instrumentation-kafka-python-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-kafka-python-latest -- -ra
+
+  py313-test-instrumentation-kafka-python-oldest_ubuntu-latest:
+    name: instrumentation-kafka-python-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12809,10 +12828,29 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py313-test-instrumentation-kafka-python-oldest -- -ra
 
-  py314-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng 3.14 Ubuntu
+  py313-test-instrumentation-kafka-python-latest_ubuntu-latest:
+    name: instrumentation-kafka-python-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-kafka-python-latest -- -ra
+
+  py314-test-instrumentation-kafka-python-oldest_ubuntu-latest:
+    name: instrumentation-kafka-python-oldest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12828,10 +12866,219 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py314-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py314-test-instrumentation-kafka-python-oldest -- -ra
 
-  pypy3-test-instrumentation-kafka-python_ubuntu-latest:
-    name: instrumentation-kafka-python pypy-3.10 Ubuntu
+  py314-test-instrumentation-kafka-python-latest_ubuntu-latest:
+    name: instrumentation-kafka-python-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-kafka-python-latest -- -ra
+
+  py310-test-instrumentation-kafka-pythonng-oldest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-oldest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-kafka-pythonng-oldest -- -ra
+
+  py310-test-instrumentation-kafka-pythonng-latest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-latest 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-kafka-pythonng-latest -- -ra
+
+  py311-test-instrumentation-kafka-pythonng-oldest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-oldest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-kafka-pythonng-oldest -- -ra
+
+  py311-test-instrumentation-kafka-pythonng-latest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-latest 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-kafka-pythonng-latest -- -ra
+
+  py312-test-instrumentation-kafka-pythonng-oldest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-oldest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-kafka-pythonng-oldest -- -ra
+
+  py312-test-instrumentation-kafka-pythonng-latest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-latest 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-kafka-pythonng-latest -- -ra
+
+  py313-test-instrumentation-kafka-pythonng-oldest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-oldest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-kafka-pythonng-oldest -- -ra
+
+  py313-test-instrumentation-kafka-pythonng-latest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-latest 3.13 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py313-test-instrumentation-kafka-pythonng-latest -- -ra
+
+  py314-test-instrumentation-kafka-pythonng-oldest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-oldest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-kafka-pythonng-oldest -- -ra
+
+  py314-test-instrumentation-kafka-pythonng-latest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-latest 3.14 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py314-test-instrumentation-kafka-pythonng-latest -- -ra
+
+  pypy3-test-instrumentation-kafka-python-oldest_ubuntu-latest:
+    name: instrumentation-kafka-python-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12847,10 +13094,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-kafka-python -- -ra
+        run: tox -e pypy3-test-instrumentation-kafka-python-oldest -- -ra
 
-  pypy3-test-instrumentation-kafka-pythonng_ubuntu-latest:
-    name: instrumentation-kafka-pythonng pypy-3.10 Ubuntu
+  pypy3-test-instrumentation-kafka-python-latest_ubuntu-latest:
+    name: instrumentation-kafka-python-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -12866,7 +13113,45 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e pypy3-test-instrumentation-kafka-python-latest -- -ra
+
+  pypy3-test-instrumentation-kafka-pythonng-oldest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-oldest pypy-3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-kafka-pythonng-oldest -- -ra
+
+  pypy3-test-instrumentation-kafka-pythonng-latest_ubuntu-latest:
+    name: instrumentation-kafka-pythonng-latest pypy-3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python pypy-3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "pypy-3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e pypy3-test-instrumentation-kafka-pythonng-latest -- -ra
 
   py310-test-instrumentation-confluent-kafka_ubuntu-latest:
     name: instrumentation-confluent-kafka 3.10 Ubuntu
