@@ -18,6 +18,39 @@ Usage
 
     FastAPIInstrumentor.instrument_app(app)
 
+Auto-instrumentation
+********************
+
+FastAPI can also be instrumented without code changes by using the
+``opentelemetry-instrument`` command from the
+`opentelemetry-instrumentation <https://pypi.org/project/opentelemetry-instrumentation/>`_
+package. For installation, runtime command, exporter configuration, and
+environment variables, see
+`Python zero-code instrumentation <https://opentelemetry.io/docs/zero-code/python/>`_.
+Install ``opentelemetry-instrumentation-fastapi`` in the same environment so
+the FastAPI integration is available to auto-instrumentation. FastAPI-specific
+options, such as excluded URLs and HTTP header capture, are documented below.
+
+Trace propagation
+*****************
+
+FastAPI instrumentation uses the underlying ASGI instrumentation, which extracts
+incoming context from request headers using the configured global OpenTelemetry
+propagator. WebSocket connections are instrumented as ASGI ``websocket`` scopes,
+with context extracted from the handshake headers. Propagation data inside
+WebSocket message payloads is not parsed automatically. For more information,
+see `Python context propagation <https://opentelemetry.io/docs/languages/python/propagation/>`_
+and `Python distro configuration <https://opentelemetry.io/docs/languages/python/distro/>`_.
+
+Logs
+****
+
+FastAPI instrumentation does not convert Python ``logging`` records to span
+events. For zero-code log export, see
+`Python logs auto-instrumentation <https://opentelemetry.io/docs/zero-code/python/logs-example/>`_.
+Use ``span.add_event(...)`` for application data that should be recorded as span
+events.
+
 Configuration
 -------------
 
