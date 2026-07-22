@@ -45,7 +45,11 @@ def _extract_conn_attributes(
         attributes, DbSystemValues.REDIS.value, db_sem_conv_opt_in_mode
     )
 
+    # redis-py may pass db=None explicitly (e.g. from_url); treat that as 0.
+    # dict.get("db", 0) only defaults when the key is missing, not when it is None.
     db = conn_kwargs.get("db", 0)
+    if db is None:
+        db = 0
     _set_db_redis_database_index(attributes, db, db_sem_conv_opt_in_mode)
     if "path" in conn_kwargs:
         _set_http_net_peer_name_client(
@@ -144,6 +148,8 @@ def _build_span_name(
             name = cmd_args[0]
     else:
         name = instance.connection_pool.connection_kwargs.get("db", 0)
+        if name is None:
+            name = 0
     return name
 
 
