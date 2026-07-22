@@ -231,7 +231,7 @@ class FastAPIInstrumentor(BaseInstrumentor):
 
     @staticmethod
     def instrument_app(
-        app: fastapi.FastAPI,
+        app: ASGIApp,
         server_request_hook: ServerRequestHook = None,
         client_request_hook: ClientRequestHook = None,
         client_response_hook: ClientResponseHook = None,
@@ -263,6 +263,15 @@ class FastAPIInstrumentor(BaseInstrumentor):
             http_capture_headers_sanitize_fields: Optional list of HTTP headers to sanitize.
             exclude_spans: Optionally exclude HTTP `send` and/or `receive` spans from the trace.
         """
+        # The application may be wrapped in one or more ASGI middlewares (e.g.
+        # ``CORSMiddleware``); unwrap it so we instrument the FastAPI instance.
+        app = _unwrap_middleware(app)
+        if not isinstance(app, Starlette):
+            _logger.warning(
+                "Skipping instrumentation: no FastAPI application found (got %s).",
+                type(app).__name__,
+            )
+            return
         if not hasattr(app, "_is_instrumented_by_opentelemetry"):
             app._is_instrumented_by_opentelemetry = False
 
@@ -416,7 +425,10 @@ class FastAPIInstrumentor(BaseInstrumentor):
             )
 
     @staticmethod
-    def uninstrument_app(app: fastapi.FastAPI):
+    def uninstrument_app(app: ASGIApp):
+        app = _unwrap_middleware(app)
+        if not isinstance(app, Starlette):
+            return
         original_build_middleware_stack = getattr(
             app, "_original_build_middleware_stack", None
         )
@@ -551,3 +563,27 @@ def _get_default_span_details(scope):
     else:  # fallback
         span_name = method
     return span_name, attributes
+
+
+def _unwrap_middleware(app: ASGIApp) -> ASGIApp:
+    """Return the underlying FastAPI application wrapped by ``app``.
+
+    ``instrument_app``/``uninstrument_app`` operate on the FastAPI application,
+    but callers may pass an application wrapped in one or more ASGI middlewares,
+    e.g. ``CORSMiddleware(app=fastapi_app)``. Middlewares store the application
+    they wrap in an ``app`` attribute by convention, so follow that chain,
+    stopping as soon as a ``Starlette`` instance (which ``FastAPI`` subclasses)
+    is reached. If none is found, the original ``app`` is returned unchanged so
+    the caller can report it.
+
+    ``Starlette`` is used rather than ``fastapi.FastAPI`` because the latter is
+    monkeypatched to a subclass while global instrumentation is active, which
+    would make pre-existing app instances fail an ``isinstance`` check.
+    """
+    original = app
+    while not isinstance(app, Starlette):
+        inner = getattr(app, "app", None)
+        if inner is None:
+            return original
+        app = inner
+    return app

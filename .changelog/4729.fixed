@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-fastapi`: support instrumenting a FastAPI app wrapped in ASGI middleware such as `CORSMiddleware`
