@@ -114,10 +114,6 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-kafka-python==0.66b0.dev",
     },
     {
-        "library": "kafka-python-ng >= 2.0, < 3.0",
-        "instrumentation": "opentelemetry-instrumentation-kafka-python==0.66b0.dev",
-    },
-    {
         "library": "mysql-connector-python >= 8.0, < 10.0",
         "instrumentation": "opentelemetry-instrumentation-mysql==0.66b0.dev",
     },

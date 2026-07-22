@@ -2191,15 +2191,6 @@ wheels = [
 ]
 
 [[package]]
-name = "kafka-python-ng"
-version = "2.2.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ce/04/1d65bdf3f0103a08710e226b851de4b357ac702f1cadabf6128bab7518a7/kafka_python_ng-2.2.3.tar.gz", hash = "sha256:f79f28e10ade9b5a9860b2ec15b7cc8dc510d5702f5a399430478cff5f93a05a", size = 330644, upload-time = "2024-10-02T16:56:58.639Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0f/61/22e778f642465a157c449782300d8817ebbc106794a8a7ebe88cbb846b05/kafka_python_ng-2.2.3-py2.py3-none-any.whl", hash = "sha256:adc6e82147c441ca4ae1f22e291fc08efab0d10971cbd4aa1481d2ffa38e9480", size = 232824, upload-time = "2024-10-02T16:56:56.932Z" },
-]
-
-[[package]]
 name = "kombu"
 version = "5.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3575,20 +3566,18 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-instruments-any = [
+instruments = [
     { name = "kafka-python" },
-    { name = "kafka-python-ng" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "kafka-python", marker = "extra == 'instruments-any'", specifier = ">=2.0,<4.0" },
-    { name = "kafka-python-ng", marker = "extra == 'instruments-any'", specifier = ">=2.0,<3.0" },
+    { name = "kafka-python", marker = "extra == 'instruments'", specifier = ">=2.0,<4.0" },
     { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
     { name = "opentelemetry-instrumentation", editable = "opentelemetry-instrumentation" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
 ]
-provides-extras = ["instruments", "instruments-any"]
+provides-extras = ["instruments"]
 
 [[package]]
 name = "opentelemetry-instrumentation-langchain"
@@ -4358,7 +4347,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-grpc", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-httpx", extra = ["instruments-any"] },
     { name = "opentelemetry-instrumentation-jinja2", extra = ["instruments"] },
-    { name = "opentelemetry-instrumentation-kafka-python", extra = ["instruments-any"] },
+    { name = "opentelemetry-instrumentation-kafka-python", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extra = ["instruments"] },
     { name = "opentelemetry-instrumentation-mysqlclient", extra = ["instruments"] },
@@ -4432,7 +4421,6 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", extras = ["instruments-any"], editable = "instrumentation/opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-jinja2", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-jinja2" },
     { name = "opentelemetry-instrumentation-kafka-python", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-kafka-python" },
-    { name = "opentelemetry-instrumentation-kafka-python", extras = ["instruments-any"], editable = "instrumentation/opentelemetry-instrumentation-kafka-python" },
     { name = "opentelemetry-instrumentation-logging", editable = "instrumentation/opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-instrumentation-mysql", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysql" },
     { name = "opentelemetry-instrumentation-mysqlclient", extras = ["instruments"], editable = "instrumentation/opentelemetry-instrumentation-mysqlclient" },

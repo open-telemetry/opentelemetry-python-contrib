@@ -258,7 +258,7 @@ This project uses [towncrier](https://towncrier.readthedocs.io/) to manage chang
 **Where to add fragments:**
 
 - **Coordinated packages** (most instrumentations, exporters, propagators): add to the root `.changelog/` directory
-- **Independently released packages** (`opentelemetry-opamp-client`, `opentelemetry-propagator-aws-xray`, `opentelemetry-resource-detector-azure`, `opentelemetry-sdk-extension-aws`): add to `<package>/.changelog/`
+- **Independently released packages** (`opentelemetry-opamp-client`, `opentelemetry-propagator-aws-xray`, `opentelemetry-resource-detector-azure`, `opentelemetry-resourcedetector-gcp`, `opentelemetry-sdk-extension-aws`): add to `<package>/.changelog/`
 
 **Creating a changelog fragment:**
 
