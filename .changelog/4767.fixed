@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-redis`: fix flaky `test_redis_query` by polling `FT.INFO` until RediSearch backfill completes after index creation

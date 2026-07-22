@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import time
 from time import time_ns
 
 import redis
@@ -664,6 +665,27 @@ class TestRedisearchInstrument(TestBase):
             fields=schema, definition=definition
         )
         assert "OK" in str(res)
+
+        # Wait for RediSearch to finish indexing existing documents.
+        # FT.CREATE returns "OK" once the index is registered, but the
+        # backfill scan of pre-existing keys happens asynchronously.
+        # Querying before it completes intermittently returns total=0.
+        timeout = 5.0
+        interval = 0.05
+        elapsed = 0.0
+        while elapsed < timeout:
+            info = self.redis_client.ft("idx:test_vss").info()
+            if (
+                not int(info.get("indexing", 1))
+                and float(info.get("percent_indexed", 0)) >= 1.0
+            ):
+                break
+            time.sleep(interval)
+            elapsed += interval
+        else:
+            raise RuntimeError(
+                "RediSearch index did not finish indexing within timeout"
+            )
 
     def test_redis_create_index(self):
         spans = self.memory_exporter.get_finished_spans()
