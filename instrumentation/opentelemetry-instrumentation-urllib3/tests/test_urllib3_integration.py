@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 import json
 import typing
 import unittest
@@ -711,6 +712,58 @@ class TestURLLib3Instrumentor(TestBase):
         self.assertEqual(
             span.attributes["http.response.header.x_secret"],
             ("[REDACTED]",),
+        )
+
+    def test_config_dataclass_fields_match_instrument_kwargs(self):
+        """The config dataclass field names must match the ``instrument()``
+        keyword arguments.
+
+        Declarative configuration forwards the config as
+        ``instrument(**dataclasses.asdict(config))``, and ``_instrument`` reads
+        each option with ``kwargs.get("<name>")``. A field whose name did not
+        match its kwarg would be silently ignored, so exercise every field end
+        to end and assert it actually takes effect.
+        """
+        excluded_url = "http://mock/status/201"
+        Entry.single_register(Entry.GET, excluded_url, status=201)
+
+        captured_url = "http://mock/capture_headers"
+        Entry.single_register(
+            Entry.GET,
+            captured_url,
+            body="Hello!",
+            headers={"X-Response": "response-value"},
+        )
+
+        config = URLLib3InstrumentorConfig(
+            excluded_urls=".*/201",
+            captured_request_headers=["X-Request"],
+            captured_response_headers=["X-Response"],
+            sensitive_headers=["X-Request"],
+        )
+
+        URLLib3Instrumentor().uninstrument()
+        URLLib3Instrumentor().instrument(**dataclasses.asdict(config))
+
+        # excluded_urls is honored: the excluded URL produces no span.
+        self.perform_request(excluded_url)
+        self.assert_span(num_spans=0)
+
+        # The remaining fields are honored on a captured request.
+        self.perform_request(
+            captured_url, headers={"X-Request": "secret"}
+        )
+        span = self.assert_span(num_spans=1)
+        # captured_request_headers captured the request header, and
+        # sensitive_headers redacted its value.
+        self.assertEqual(
+            span.attributes["http.request.header.x_request"],
+            ("[REDACTED]",),
+        )
+        # captured_response_headers captured the response header.
+        self.assertEqual(
+            span.attributes["http.response.header.x_response"],
+            ("response-value",),
         )
 
     def test_custom_headers_with_regex(self):
