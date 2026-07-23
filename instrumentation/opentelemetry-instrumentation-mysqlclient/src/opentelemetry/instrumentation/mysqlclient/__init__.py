@@ -155,6 +155,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -167,6 +168,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -180,6 +182,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
         enable_commenter=None,
         commenter_options=None,
         enable_attribute_commenter=None,
+        capture_parameters=False,
     ):
         """Enable instrumentation in a mysqlclient connection.
 
@@ -204,6 +207,9 @@ class MySQLClientInstrumentor(BaseInstrumentor):
                     - `mysql_client_version`: Adds the MySQL client version.
                     - `driver_paramstyle`: Adds the parameter style.
                     - `opentelemetry_values`: Includes traceparent values.
+            capture_parameters:
+                A flag to enable capturing prepared statement parameters as the
+                `db.query.parameter.<key>` span attributes. Default is `False`.
         Returns:
             An instrumented MySQL connection with OpenTelemetry support enabled.
         """
@@ -219,6 +225,7 @@ class MySQLClientInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             connect_module=MySQLdb,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     @staticmethod
