@@ -702,6 +702,58 @@ class TestAsgiApplication(AsyncAsgiTestBase):
             _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 10**9,
         )
 
+    def _assert_duration_metric(self, metric_name: str, max_duration: float):
+        """Find a histogram metric by name and assert its sum is below max_duration."""
+        metrics = self.get_sorted_metrics(SCOPE)
+        duration_found = False
+        for metric in metrics:
+            if metric.name == metric_name:
+                for point in metric.data.data_points:
+                    if isinstance(point, HistogramDataPoint):
+                        duration_found = True
+                        self.assertLess(point.sum, max_duration)
+        self.assertTrue(
+            duration_found, f"{metric_name} metric not found"
+        )
+
+    async def test_background_execution_metrics_duration(self):
+        """Test that http.server.duration excludes background task time."""
+        app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        self._assert_duration_metric(
+            "http.server.duration",
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
+        )
+
+    async def test_background_execution_metrics_duration_new_semconv(self):
+        """Test that http.server.request.duration excludes background task time."""
+        app = otel_asgi.OpenTelemetryMiddleware(background_execution_asgi)
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        self._assert_duration_metric(
+            "http.server.request.duration",
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S,
+        )
+
+    async def test_trailers_background_execution_metrics_duration(self):
+        """Test that http.server.duration excludes background task time for trailer responses."""
+        app = otel_asgi.OpenTelemetryMiddleware(
+            background_execution_trailers_asgi
+        )
+        self.seed_app(app)
+        await self.send_default_request()
+        await self.get_all_output()
+
+        self._assert_duration_metric(
+            "http.server.duration",
+            _SIMULATED_BACKGROUND_TASK_EXECUTION_TIME_S * 1000,
+        )
+
     async def test_override_span_name(self):
         """Test that default span_names can be overwritten by our callback function."""
         span_name = "Dymaxion"
