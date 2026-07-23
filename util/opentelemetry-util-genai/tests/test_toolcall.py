@@ -131,6 +131,24 @@ def test_server_tool_call_in_message():
     assert isinstance(msg.parts[1], ServerToolCallResponse)
 
 
+def test_tool_result_is_set_on_span_at_finish():
+    """gen_ai.tool.call.result must actually reach the span once the
+    invocation is stopped, not just be stored on the dataclass field."""
+    span_exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    handler = TelemetryHandler(tracer_provider=provider)
+
+    invocation = handler.start_tool("get_weather")
+    invocation.tool_result = {"temperature": 70}
+    invocation.stop()
+
+    (span,) = span_exporter.get_finished_spans()
+    assert (
+        span.attributes[GenAI.GEN_AI_TOOL_CALL_RESULT] == '{"temperature":70}'
+    )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 

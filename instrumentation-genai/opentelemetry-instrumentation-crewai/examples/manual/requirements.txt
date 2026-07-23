@@ -1,0 +1,5 @@
+crewai>=1.15.5
+
+opentelemetry-sdk~=1.36.0
+opentelemetry-exporter-otlp-proto-grpc~=1.36.0
+opentelemetry-instrumentation-crewai
