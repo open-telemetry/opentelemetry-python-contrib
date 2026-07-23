@@ -470,6 +470,48 @@ class TestStructlogInstrumentor(TestBase):
         )
         self.assertTrue(has_otel_processor)
 
+    def test_instrument_does_not_duplicate_existing_processor(self):
+        """Test instrument() reuses an existing OTel processor."""
+        existing_processor = StructlogProcessor(
+            logger_provider=self.logger_provider
+        )
+        structlog.configure(
+            processors=[
+                existing_processor,
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+
+        processors = structlog.get_config()["processors"]
+        otel_processors = [
+            p for p in processors if isinstance(p, StructlogProcessor)
+        ]
+        self.assertEqual(otel_processors, [existing_processor])
+
+    def test_uninstrument_preserves_existing_processor(self):
+        """Test uninstrument() preserves an app-configured OTel processor."""
+        existing_processor = StructlogProcessor(
+            logger_provider=self.logger_provider
+        )
+        structlog.configure(
+            processors=[
+                existing_processor,
+                structlog.dev.ConsoleRenderer(),
+            ]
+        )
+
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
+        StructlogInstrumentor().uninstrument()
+
+        processors = structlog.get_config()["processors"]
+        self.assertIn(existing_processor, processors)
+
     def test_instrument_without_prior_structlog_configuration_emits_logs(self):
         """Test instrument() emits logs before the app configures structlog."""
         structlog.reset_defaults()
