@@ -1,3 +1,12 @@
+## Version 1.13.0 (2026-07-22)
+
+### Added
+
+- Moved the Google Cloud resource detector package from the
+  opentelemetry-operations-python repository to the
+  opentelemetry-python-contrib repo.
+  ([#4749](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4749))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
