@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-django`: add instrumentation for all Django middlewares that automates the creation of spans
