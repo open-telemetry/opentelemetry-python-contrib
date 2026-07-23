@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-tortoiseorm`: Implement database semantic convention stability migration support  through `OTEL_SEMCONV_STABILITY_OPT_IN`

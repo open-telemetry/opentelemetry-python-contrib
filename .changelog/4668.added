@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-aws-lambda`: add SQS context propagation support

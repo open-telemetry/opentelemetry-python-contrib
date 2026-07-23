@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-boto3sqs`: handle missing `Successful` key in `send_message_batch` response when all messages fail
