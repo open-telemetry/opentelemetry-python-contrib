@@ -153,7 +153,9 @@ def instrument_connection(
         version=version,
         tracer_provider=tracer_provider,
     )
-    db_integration.get_connection_attributes(connection)
+    db_integration.get_connection_attributes(
+        getattr(connection, "_conn", connection)
+    )
     return get_traced_connection_proxy(connection, db_integration)
 
 

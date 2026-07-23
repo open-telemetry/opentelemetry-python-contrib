@@ -247,7 +247,14 @@ class TestAiopgInstrumentor(TestBase):
         self.assertIs(span.resource, resource)
 
     def test_instrument_connection(self):
-        cnx = async_call(aiopg.connect(database="test"))
+        cnx = async_call(
+            aiopg.connect(
+                database="testdatabase",
+                server_host="testhost",
+                server_port=123,
+                user="testuser",
+            )
+        )
         query = "SELECT * FROM test"
         cursor = async_call(cnx.cursor())
         async_call(cursor.execute(query))
@@ -261,6 +268,11 @@ class TestAiopgInstrumentor(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+        self.assertEqual(span.attributes[DB_USER], "testuser")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 123)
 
     def test_instrument_connection_new_semconv(self):
         with use_semconv_opt_in("database,http"):
@@ -657,6 +669,7 @@ class TestAiopgIntegration(TestBase):
         connection = mock.Mock()
         # Avoid get_attributes failing because can't concatenate mock
         connection.database = "-"
+        connection._conn = connection
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
@@ -667,6 +680,7 @@ class TestAiopgIntegration(TestBase):
         # Set connection.database to avoid a failure because mock can't
         # be concatenated
         connection.database = "-"
+        connection._conn = connection
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )

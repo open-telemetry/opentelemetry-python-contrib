@@ -103,6 +103,46 @@ class TestFunctionalAiopgConnect(TestBase):
             self.validate_spans("test")
 
 
+class TestFunctionalAiopgInstrumentConnection(TestBase):
+    def setUp(self):
+        super().setUp()
+
+        async def connect():
+            connection = await aiopg.connect(
+                dbname=POSTGRES_DB_NAME,
+                user=POSTGRES_USER,
+                password=POSTGRES_PASSWORD,
+                host=POSTGRES_HOST,
+                port=POSTGRES_PORT,
+            )
+            return AiopgInstrumentor().instrument_connection(
+                connection, tracer_provider=self.tracer_provider
+            )
+
+        self._connection = async_call(connect())
+        self._cursor = async_call(self._connection.cursor())
+
+    def tearDown(self):
+        self._cursor.close()
+        self._connection.close()
+        super().tearDown()
+
+    def test_execute(self):
+        """Should emit connection attributes for a manually instrumented connection."""
+        async_call(self._cursor.execute("SELECT 1"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.name, "SELECT")
+        self.assertEqual(span.kind, trace_api.SpanKind.CLIENT)
+        self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+        self.assertEqual(span.attributes[DB_NAME], POSTGRES_DB_NAME)
+        self.assertEqual(span.attributes[DB_USER], POSTGRES_USER)
+        self.assertEqual(span.attributes[NET_PEER_NAME], POSTGRES_HOST)
+        self.assertEqual(span.attributes[NET_PEER_PORT], POSTGRES_PORT)
+
+
 class TestFunctionalAiopgCreatePool(TestBase):
     def setUp(self):
         super().setUp()
