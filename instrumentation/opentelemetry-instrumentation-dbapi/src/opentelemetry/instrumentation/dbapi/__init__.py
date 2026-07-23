@@ -184,7 +184,9 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
     _report_new,
+    _report_old,
     _set_db_name,
+    _set_db_query_parameters,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -789,6 +791,7 @@ class CursorTracer(Generic[CursorT]):
         span: trace_api.Span,
         cursor: CursorT,
         *args: tuple[Any, ...],
+        is_batch: bool = False,
     ):
         if not span.is_recording():
             return
@@ -818,7 +821,17 @@ class CursorTracer(Generic[CursorT]):
             span.set_attribute(attribute_key, attribute_value)
 
         if self._db_api_integration.capture_parameters and len(args) > 1:
-            span.set_attribute("db.statement.parameters", str(args[1]))
+            parameters = args[1]
+            if _report_old(sem_conv_mode):
+                span.set_attribute("db.statement.parameters", str(parameters))
+            # db.query.parameter.<key> SHOULD NOT be captured on batch
+            # operations (e.g. executemany).
+            if not is_batch:
+                query_parameter_attributes = {}
+                _set_db_query_parameters(
+                    query_parameter_attributes, parameters, sem_conv_mode
+                )
+                span.set_attributes(query_parameter_attributes)
 
     def get_operation_name(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
         if not args:
@@ -904,6 +917,9 @@ class CursorTracer(Generic[CursorT]):
             return query_method(*args, **kwargs)
 
         operation_name = self.get_operation_name(cursor, args)
+        # Query parameters must not be captured for batch operations, which are
+        # executed through the cursor's executemany method.
+        is_batch = getattr(query_method, "__name__", None) == "executemany"
         name = operation_name
         if not name:
             name = (
@@ -922,17 +938,21 @@ class CursorTracer(Generic[CursorT]):
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
-                        self._populate_span(span, cursor, *args)
+                        self._populate_span(
+                            span, cursor, *args, is_batch=is_batch
+                        )
                     else:
                         # sqlcomment is only added to executed query
                         # so db.statement and/or db.query.text are set before add_sql_comment
-                        self._populate_span(span, cursor, *args)
+                        self._populate_span(
+                            span, cursor, *args, is_batch=is_batch
+                        )
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
                 else:
                     # no sqlcomment anywhere
-                    self._populate_span(span, cursor, *args)
+                    self._populate_span(span, cursor, *args, is_batch=is_batch)
             start_time = time.perf_counter()
             error: Exception | None = None
             try:
@@ -954,6 +974,9 @@ class CursorTracer(Generic[CursorT]):
             return await query_method(*args, **kwargs)
 
         operation_name = self.get_operation_name(cursor, args)
+        # Query parameters must not be captured for batch operations, which are
+        # executed through the cursor's executemany method.
+        is_batch = getattr(query_method, "__name__", None) == "executemany"
         name = operation_name
         if not name:
             name = (
@@ -972,17 +995,21 @@ class CursorTracer(Generic[CursorT]):
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
-                        self._populate_span(span, cursor, *args)
+                        self._populate_span(
+                            span, cursor, *args, is_batch=is_batch
+                        )
                     else:
                         # sqlcomment is only added to executed query
                         # so db.statement and/or db.query.text are set before add_sql_comment
-                        self._populate_span(span, cursor, *args)
+                        self._populate_span(
+                            span, cursor, *args, is_batch=is_batch
+                        )
                         args = self._update_args_with_added_sql_comment(
                             args, cursor
                         )
                 else:
                     # no sqlcomment anywhere
-                    self._populate_span(span, cursor, *args)
+                    self._populate_span(span, cursor, *args, is_batch=is_batch)
             start_time = time.perf_counter()
             error: Exception | None = None
             try:
