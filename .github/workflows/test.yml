@@ -4850,6 +4850,63 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-instrumentation-fastapi-latest -- -ra
 
+  py310-test-instrumentation-faust_ubuntu-latest:
+    name: instrumentation-faust 3.10 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-faust -- -ra
+
+  py311-test-instrumentation-faust_ubuntu-latest:
+    name: instrumentation-faust 3.11 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py311-test-instrumentation-faust -- -ra
+
+  py312-test-instrumentation-faust_ubuntu-latest:
+    name: instrumentation-faust 3.12 Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py312-test-instrumentation-faust -- -ra
+
   py310-test-instrumentation-flask-0_ubuntu-latest:
     name: instrumentation-flask-0 3.10 Ubuntu
     runs-on: ubuntu-latest

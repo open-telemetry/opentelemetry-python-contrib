@@ -29,6 +29,7 @@ celery>=4.0
 confluent-kafka>= 1.8.2,< 3.0.0
 flask~=2.0
 falcon~=2.0
+faust-streaming~=0.11
 grpcio~=1.27
 httpx>=0.18.0
 kafka-python>=2.0,<3.0
