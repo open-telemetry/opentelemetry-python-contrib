@@ -271,3 +271,35 @@ class TestPyMSSQLIntegration(TestBase):
             )
             self.assertEqual(span.attributes["net.peer.port"], 1433)
             self.assertEqual(span.attributes["server.port"], 1433)
+
+    @patch("opentelemetry.instrumentation.pymssql.dbapi.wrap_connect")
+    def test_instrument_capture_parameters_default(self, mock_wrap_connect):
+        PyMSSQLInstrumentor()._instrument()
+        _, kwargs = mock_wrap_connect.call_args
+        self.assertFalse(kwargs["capture_parameters"])
+
+    @patch("opentelemetry.instrumentation.pymssql.dbapi.wrap_connect")
+    def test_instrument_capture_parameters_enabled(self, mock_wrap_connect):
+        PyMSSQLInstrumentor()._instrument(capture_parameters=True)
+        _, kwargs = mock_wrap_connect.call_args
+        self.assertTrue(kwargs["capture_parameters"])
+
+    @patch("opentelemetry.instrumentation.pymssql.dbapi.instrument_connection")
+    def test_instrument_connection_capture_parameters_default(
+        self, mock_instrument_connection
+    ):
+        connection = Mock()
+        PyMSSQLInstrumentor().instrument_connection(connection)
+        _, kwargs = mock_instrument_connection.call_args
+        self.assertFalse(kwargs["capture_parameters"])
+
+    @patch("opentelemetry.instrumentation.pymssql.dbapi.instrument_connection")
+    def test_instrument_connection_capture_parameters_enabled(
+        self, mock_instrument_connection
+    ):
+        connection = Mock()
+        PyMSSQLInstrumentor().instrument_connection(
+            connection, capture_parameters=True
+        )
+        _, kwargs = mock_instrument_connection.call_args
+        self.assertTrue(kwargs["capture_parameters"])
