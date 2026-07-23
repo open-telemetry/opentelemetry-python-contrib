@@ -15,6 +15,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _set_db_name,
     _set_db_operation,
+    _set_db_query_parameters,
     _set_db_redis_database_index,
     _set_db_statement,
     _set_db_system,
@@ -26,6 +27,7 @@ from opentelemetry.instrumentation._semconv import (
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_REDIS_DATABASE_INDEX,
     DB_STATEMENT,
     DB_SYSTEM,
@@ -755,3 +757,70 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         )
         self.assertNotIn(DB_OPERATION, result)
         self.assertNotIn(DB_OPERATION_NAME, result)
+
+    def test_db_query_parameters_default_is_noop(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            ("jdoe", 42),
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertEqual(result, {})
+
+    def test_db_query_parameters_positional(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            ("jdoe", 42),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        self.assertEqual(
+            result,
+            {
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.0": "jdoe",
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.1": "42",
+            },
+        )
+
+    def test_db_query_parameters_named(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            {"userName": "jdoe", "age": 42},
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE_DUP,
+        )
+        self.assertEqual(
+            result,
+            {
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.userName": "jdoe",
+                f"{DB_QUERY_PARAMETER_TEMPLATE}.age": "42",
+            },
+        )
+
+    def test_db_query_parameters_are_strings(self):
+        result = {}
+        _set_db_query_parameters(
+            result,
+            (False, 0, None),
+            sem_conv_opt_in_mode=_StabilityMode.DATABASE,
+        )
+        # Every value is stringified, including falsy values.
+        self.assertEqual(result[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], "False")
+        self.assertEqual(result[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "0")
+        self.assertEqual(result[f"{DB_QUERY_PARAMETER_TEMPLATE}.2"], "None")
+
+    def test_db_query_parameters_scalar_string_not_iterated(self):
+        result = {}
+        _set_db_query_parameters(
+            result, "jdoe", sem_conv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        # A bare string is a single scalar parameter, not a sequence of
+        # single-character parameters, so nothing is captured.
+        self.assertEqual(result, {})
+
+    def test_db_query_parameters_none(self):
+        result = {}
+        _set_db_query_parameters(
+            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE
+        )
+        self.assertEqual(result, {})
