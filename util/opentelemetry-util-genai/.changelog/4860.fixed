@@ -1,0 +1,1 @@
+`opentelemetry-util-genai`: fix `ToolInvocation` not setting `gen_ai.tool.call.result` on the span, and JSON-encode `arguments`/`tool_result` instead of passing raw Python values
