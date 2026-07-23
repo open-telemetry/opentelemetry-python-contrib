@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-wsgi`, `opentelemetry-instrumentation-asgi`: `enrich_metric_attributes` with any Labeler-stored attributes in Context
