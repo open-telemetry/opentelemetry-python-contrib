@@ -462,7 +462,7 @@ class TestAsyncPGSemconvMigration(TestBase):
         self.assertNotIn(NET_PEER_PORT, span.attributes)
         self.assertNotIn(SERVER_ADDRESS, span.attributes)
 
-    def test_span_capture_parameters(self):
+    def _run_execute_capture(self, query, *query_args):
         apg = AsyncPGInstrumentor(capture_parameters=True)
         apg.instrument(tracer_provider=self.tracer_provider)
         conn = self._make_execute_conn()
@@ -471,13 +471,83 @@ class TestAsyncPGSemconvMigration(TestBase):
             execute = asyncpg.connection.Connection.execute.__get__(  # pylint: disable=no-value-for-parameter
                 conn, asyncpg.connection.Connection
             )
-            await execute("SELECT $1", "hello")
+            await execute(query, *query_args)
 
         asyncio.run(do_execute())
-        spans = self.memory_exporter.get_finished_spans()
+        return self.memory_exporter.get_finished_spans()
+
+    def test_span_capture_parameters(self):
+        spans = self._run_execute_capture("SELECT $1", "hello")
         self.assertEqual(len(spans), 1)
         self.assertIn("db.statement.parameters", spans[0].attributes)
         self.assertIn("hello", spans[0].attributes["db.statement.parameters"])
+
+    def test_capture_parameters_default_semconv(self):
+        spans = self._run_execute_capture("SELECT $1", "hello")
+        self.assertEqual(len(spans), 1)
+        attributes = spans[0].attributes
+        self.assertIn("db.statement.parameters", attributes)
+        self.assertIsInstance(attributes["db.statement.parameters"], str)
+        self.assertNotIn("db.query.parameter.0", attributes)
+
+    def test_capture_parameters_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            spans = self._run_execute_capture("SELECT $1", "hello")
+        self.assertEqual(len(spans), 1)
+        attributes = spans[0].attributes
+        self.assertEqual(attributes["db.query.parameter.0"], "hello")
+        self.assertIsInstance(attributes["db.query.parameter.0"], str)
+        self.assertNotIn("db.statement.parameters", attributes)
+
+    def test_capture_parameters_both_semconv(self):
+        with use_semconv_opt_in("database/dup"):
+            spans = self._run_execute_capture("SELECT $1", "hello")
+        self.assertEqual(len(spans), 1)
+        attributes = spans[0].attributes
+        self.assertIn("db.statement.parameters", attributes)
+        self.assertIsInstance(attributes["db.statement.parameters"], str)
+        self.assertEqual(attributes["db.query.parameter.0"], "hello")
+        self.assertIsInstance(attributes["db.query.parameter.0"], str)
+
+    def test_capture_parameters_batch_no_query_parameter_new_semconv(self):
+        conn, state = self._make_prepared_stmt_conn()
+        apg = AsyncPGInstrumentor(capture_parameters=True)
+        with use_semconv_opt_in("database"):
+            apg.instrument(tracer_provider=self.tracer_provider)
+            stmt = PreparedStatement(
+                conn, "INSERT INTO t (v) VALUES ($1)", state
+            )
+            asyncio.run(stmt.executemany([("a",), ("b",)]))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        attributes = spans[0].attributes
+        self.assertFalse(
+            any(k.startswith("db.query.parameter.") for k in attributes)
+        )
+
+    @staticmethod
+    def _make_prepared_stmt_conn():
+        async def bind_execute_mock(*args, **kwargs):
+            return [], b"SELECT 1", True
+
+        async def bind_execute_many_mock(*args, **kwargs):
+            return None
+
+        conn = mock.Mock()
+        conn._pool_release_ctr = 0
+        conn.is_closed = lambda: False
+        conn._protocol = mock.Mock()
+        conn._protocol.bind_execute = bind_execute_mock
+        conn._protocol.bind_execute_many = bind_execute_many_mock
+        params = mock.Mock()
+        params.database = "testdb"
+        params.user = "testuser"
+        conn._params = params
+
+        state = mock.Mock()
+        state.closed = False
+        return conn, state
 
     def _run_execute_error(self, semconv_mode):
         async def error_mock(*args, **kwargs):
