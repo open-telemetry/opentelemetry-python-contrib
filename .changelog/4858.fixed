@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: only record `messaging.kafka.partition` when the destination partition is known (explicit partition or keyed message), avoiding a wrong value for randomly-partitioned messages

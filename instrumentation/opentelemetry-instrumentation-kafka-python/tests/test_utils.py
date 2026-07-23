@@ -7,12 +7,14 @@ from unittest import TestCase, mock
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
+    _enrich_span,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind
 
 
@@ -214,27 +216,101 @@ class TestUtils(TestCase):
         )
         detach.assert_called_once_with(attach.return_value)
 
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor"
-    )
-    def test_kafka_properties_extractor(
+    @staticmethod
+    def _mock_producer() -> mock.MagicMock:
+        producer = mock.MagicMock()
+        producer.config = {
+            "key_serializer": None,
+            "value_serializer": None,
+            "max_block_ms": 1000,
+        }
+        producer._serialize.return_value = b"serialized"
+        producer._partition.return_value = 3
+        return producer
+
+    def test_extract_send_partition_explicit_is_used_verbatim(self):
+        """An explicitly pinned partition is recorded as-is, without asking
+        the producer to compute one."""
+        producer = self._mock_producer()
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(
+            producer, [self.topic_name], {"partition": 5}
+        )
+
+        self.assertEqual(partition, 5)
+        producer._partition.assert_not_called()
+
+    def test_extract_send_partition_explicit_zero_is_used_verbatim(self):
+        """Partition ``0`` is falsy but valid and must not be dropped."""
+        producer = self._mock_producer()
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(
+            producer, [self.topic_name], {"partition": 0}
+        )
+
+        self.assertEqual(partition, 0)
+        producer._partition.assert_not_called()
+
+    def test_extract_send_partition_with_key_is_deterministic(self):
+        """With a key, the partition is derived from the key hash and matches
+        what ``send()`` computes, so it is safe to record."""
+        producer = self._mock_producer()
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(
+            producer, [self.topic_name], {"key": b"user-1"}
+        )
+
+        self.assertEqual(partition, 3)
+        producer._partition.assert_called_once()
+
+    def test_extract_send_partition_without_key_or_partition_returns_none(
         self,
-        kafka_properties_extractor: mock.MagicMock,
     ):
-        kafka_properties_extractor._serialize.return_value = None
-        kafka_properties_extractor._partition.return_value = "partition"
-        assert (
-            KafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
-            )
-            == "partition"
+        """Without a key or explicit partition the DefaultPartitioner chooses
+        randomly, so no (potentially wrong) partition is estimated.
+
+        Regression test for
+        https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4625
+        """
+        producer = self._mock_producer()
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(
+            producer, [self.topic_name], {}
         )
-        kafka_properties_extractor._wait_on_metadata.side_effect = Exception(
-            "mocked error"
+
+        self.assertIsNone(partition)
+        producer._partition.assert_not_called()
+
+    def test_extract_send_partition_returns_none_on_error(self):
+        """Failures while computing the key-based partition are swallowed."""
+        producer = self._mock_producer()
+        producer._wait_on_metadata.side_effect = Exception("mocked error")
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(
+            producer, [self.topic_name], {"key": b"user-1"}
         )
-        assert (
-            KafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
-            )
-            is None
+
+        self.assertIsNone(partition)
+
+    def test_enrich_span_records_partition_when_present(self):
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+
+        _enrich_span(span, ["localhost:9092"], self.topic_name, 2)
+
+        span.set_attribute.assert_any_call(
+            SpanAttributes.MESSAGING_KAFKA_PARTITION, 2
+        )
+
+    def test_enrich_span_omits_partition_when_none(self):
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+
+        _enrich_span(span, ["localhost:9092"], self.topic_name, None)
+
+        recorded_attributes = {
+            call.args[0] for call in span.set_attribute.call_args_list
+        }
+        self.assertNotIn(
+            SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes
         )

@@ -57,14 +57,35 @@ class KafkaPropertiesExtractor:
 
     @staticmethod
     def extract_send_partition(instance, args, kwargs):
-        """extract partition `send` method arguments, using the `_partition` method in KafkaProducer class"""
+        """Extract the destination partition of a `send` call, when it can be
+        determined without changing where the message lands.
+
+        Only the partition that ``send()`` will actually use is recorded:
+
+        - When the caller pins ``partition`` explicitly, that value is used.
+        - When a ``key`` is provided, the partition is derived deterministically
+          from the key hash, so calling ``_partition()`` here yields the same
+          partition ``send()`` computes internally.
+        - When neither is provided, the ``DefaultPartitioner`` selects a
+          partition at random, and ``_partition()`` is called again inside
+          ``send()`` producing a different value. Returning that estimate would
+          record a partition the message never goes to, so ``None`` is returned
+          and the attribute is omitted instead. See
+          https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4625
+        """
+        partition = KafkaPropertiesExtractor._extract_argument(
+            "partition", 4, None, args, kwargs
+        )
+        if partition is not None:
+            return partition
+
+        key = KafkaPropertiesExtractor.extract_send_key(args, kwargs)
+        if key is None:
+            return None
+
         try:
             topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
-            key = KafkaPropertiesExtractor.extract_send_key(args, kwargs)
             value = KafkaPropertiesExtractor.extract_send_value(args, kwargs)
-            partition = KafkaPropertiesExtractor._extract_argument(
-                "partition", 4, None, args, kwargs
-            )
             key_bytes = instance._serialize(
                 instance.config["key_serializer"], topic, key
             )
@@ -126,12 +147,18 @@ _kafka_setter = KafkaContextSetter()
 
 
 def _enrich_span(
-    span, bootstrap_servers: List[str], topic: str, partition: int
+    span,
+    bootstrap_servers: List[str],
+    topic: str,
+    partition: Optional[int],
 ):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
         span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
-        span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+        if partition is not None:
+            span.set_attribute(
+                SpanAttributes.MESSAGING_KAFKA_PARTITION, partition
+            )
         span.set_attribute(
             SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
         )
