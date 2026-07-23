@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation`: `_set_status` no longer overrides an existing error span status

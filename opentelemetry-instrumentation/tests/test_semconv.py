@@ -23,6 +23,7 @@ from opentelemetry.instrumentation._semconv import (
     _set_status,
     _StabilityMode,
 )
+from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
     DB_OPERATION,
@@ -43,7 +44,7 @@ from opentelemetry.semconv.attributes.db_attributes import (
 from opentelemetry.semconv.attributes.network_attributes import (
     NETWORK_TRANSPORT,
 )
-from opentelemetry.trace.status import StatusCode
+from opentelemetry.trace.status import Status, StatusCode
 
 
 def stability_mode(mode):
@@ -520,6 +521,70 @@ class TestOpenTelemetrySemConvStabilityHTTP(TestCase):
         # Verify status code set for metrics independent of tracing decision
         self.assertIn("http.status_code", metrics_attributes)
         self.assertIn("http.response.status_code", metrics_attributes)
+
+    def _recording_span(self):
+        # A real recording SDK span (not a Mock), so the tests exercise the
+        # actual Span.set_status precedence in the SDK.
+        return TracerProvider().get_tracer(__name__).start_span("test")
+
+    def test_set_status_preserves_existing_error_status(self):
+        # An ERROR status with a description, set by the application or another
+        # instrumentation, must be preserved: _set_status must not overwrite it
+        # and drop the description on an error response. See issue #3713.
+        span = self._recording_span()
+        span.set_status(Status(StatusCode.ERROR, "original error description"))
+        _set_status(
+            span=span,
+            metrics_attributes={},
+            status_code=500,
+            status_code_str="500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.status.description, "original error description")
+
+    def test_set_status_sets_error_when_no_prior_status(self):
+        # With no status set (default UNSET), an error response records ERROR.
+        span = self._recording_span()
+        _set_status(
+            span=span,
+            metrics_attributes={},
+            status_code=500,
+            status_code_str="500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    def test_set_status_success_leaves_status_unset(self):
+        # A successful response maps to UNSET and leaves the span status
+        # untouched (the SDK ignores an UNSET status).
+        span = self._recording_span()
+        _set_status(
+            span=span,
+            metrics_attributes={},
+            status_code=200,
+            status_code_str="200",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+
+    def test_set_status_preserves_existing_ok_status(self):
+        # An OK status set by the application is final in the SDK and must be
+        # preserved even for an error response.
+        span = self._recording_span()
+        span.set_status(Status(StatusCode.OK))
+        _set_status(
+            span=span,
+            metrics_attributes={},
+            status_code=500,
+            status_code_str="500",
+            server_span=True,
+            sem_conv_opt_in_mode=_StabilityMode.DEFAULT,
+        )
+        self.assertEqual(span.status.status_code, StatusCode.OK)
 
 
 # pylint: disable=too-many-public-methods
