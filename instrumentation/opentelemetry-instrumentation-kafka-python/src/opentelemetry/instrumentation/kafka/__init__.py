@@ -90,7 +90,11 @@ from wrapt import wrap_function_wrapper
 from opentelemetry import trace
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.kafka.package import _instruments
-from opentelemetry.instrumentation.kafka.utils import _wrap_next, _wrap_send
+from opentelemetry.instrumentation.kafka.utils import (
+    _patch_cluster_id_capture,
+    _wrap_next,
+    _wrap_send,
+)
 from opentelemetry.instrumentation.kafka.version import __version__
 from opentelemetry.instrumentation.utils import unwrap
 
@@ -123,6 +127,20 @@ class KafkaInstrumentor(BaseInstrumentor):
             schema_url="https://opentelemetry.io/schemas/1.11.0",
         )
 
+        def _wrap_producer_init(func, instance, args, kwargs):
+            func(*args, **kwargs)
+            _patch_cluster_id_capture(instance)
+
+        def _wrap_consumer_init(func, instance, args, kwargs):
+            func(*args, **kwargs)
+            _patch_cluster_id_capture(instance)
+
+        wrap_function_wrapper(
+            kafka.KafkaProducer, "__init__", _wrap_producer_init
+        )
+        wrap_function_wrapper(
+            kafka.KafkaConsumer, "__init__", _wrap_consumer_init
+        )
         wrap_function_wrapper(
             kafka.KafkaProducer, "send", _wrap_send(tracer, produce_hook)
         )
@@ -133,5 +151,7 @@ class KafkaInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs):
+        unwrap(kafka.KafkaProducer, "__init__")
+        unwrap(kafka.KafkaConsumer, "__init__")
         unwrap(kafka.KafkaProducer, "send")
         unwrap(kafka.KafkaConsumer, "__next__")

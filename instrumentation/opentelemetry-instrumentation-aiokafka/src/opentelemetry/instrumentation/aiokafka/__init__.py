@@ -96,7 +96,7 @@ API
 from __future__ import annotations
 
 from inspect import iscoroutinefunction
-from typing import TYPE_CHECKING, Collection
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection
 
 import aiokafka
 from wrapt import (
@@ -129,6 +129,42 @@ if TYPE_CHECKING:
 
     class UninstrumentKwargs(TypedDict, total=False):
         pass
+
+
+def _patch_cluster_id_capture(client: aiokafka.AIOKafkaClient) -> None:
+    cluster = getattr(client, "cluster", None)
+    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
+        return
+    original_update = cluster.update_metadata
+
+    def _patched_update(metadata: Any) -> None:
+        cluster_id = getattr(metadata, "cluster_id", None)
+        if cluster_id:
+            cluster.cluster_id = cluster_id
+        original_update(metadata)
+
+    cluster.update_metadata = _patched_update
+    cluster._otel_cluster_id_patched = True
+
+
+async def _start_producer_wrapper(
+    func: Callable[..., Awaitable[None]],
+    instance: aiokafka.AIOKafkaProducer,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> None:
+    _patch_cluster_id_capture(instance.client)
+    await func(*args, **kwargs)
+
+
+async def _start_consumer_wrapper(
+    func: Callable[..., Awaitable[None]],
+    instance: aiokafka.AIOKafkaConsumer,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> None:
+    _patch_cluster_id_capture(instance._client)
+    await func(*args, **kwargs)
 
 
 class AIOKafkaInstrumentor(BaseInstrumentor):
@@ -167,6 +203,16 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
 
         wrap_function_wrapper(
             aiokafka.AIOKafkaProducer,
+            "start",
+            _start_producer_wrapper,
+        )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaConsumer,
+            "start",
+            _start_consumer_wrapper,
+        )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaProducer,
             "send",
             _wrap_send(tracer, async_produce_hook),
         )
@@ -182,6 +228,8 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]):
+        unwrap(aiokafka.AIOKafkaProducer, "start")
+        unwrap(aiokafka.AIOKafkaConsumer, "start")
         unwrap(aiokafka.AIOKafkaProducer, "send")
         unwrap(aiokafka.AIOKafkaConsumer, "getone")
         unwrap(aiokafka.AIOKafkaConsumer, "getmany")

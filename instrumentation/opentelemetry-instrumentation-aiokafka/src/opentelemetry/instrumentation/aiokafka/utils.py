@@ -79,6 +79,10 @@ if TYPE_CHECKING:
 
 _LOG = getLogger(__name__)
 
+# TODO(semconv #3819): once generated in opentelemetry-semantic-conventions,
+# use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
+_MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
+
 
 def _extract_bootstrap_servers(
     client: aiokafka.AIOKafkaClient,
@@ -88,6 +92,22 @@ def _extract_bootstrap_servers(
 
 def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
     return client._client_id
+
+
+def _extract_cluster_id_from_client(
+    client: aiokafka.AIOKafkaClient,
+) -> str | None:
+    """Read cluster ID from the aiokafka client's cached cluster metadata.
+
+    Returns None if metadata has not been received yet.
+    """
+    try:
+        cluster_id = getattr(
+            getattr(client, "cluster", None), "cluster_id", None
+        )
+        return cluster_id if cluster_id else None
+    except Exception:  # pylint: disable=broad-except
+        return None
 
 
 def _extract_consumer_group(
@@ -237,6 +257,7 @@ def _enrich_base_span(
     topic: str,
     partition: int | None,
     key: str | None,
+    cluster_id: str | None = None,
 ) -> None:
     span.set_attribute(
         messaging_attributes.MESSAGING_SYSTEM,
@@ -259,6 +280,9 @@ def _enrich_base_span(
             messaging_attributes.MESSAGING_KAFKA_MESSAGE_KEY, key
         )
 
+    if cluster_id is not None:
+        span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
+
 
 def _enrich_send_span(
     span: Span,
@@ -268,6 +292,7 @@ def _enrich_send_span(
     topic: str,
     partition: int | None,
     key: str | None,
+    cluster_id: str | None = None,
 ) -> None:
     if not span.is_recording():
         return
@@ -279,6 +304,7 @@ def _enrich_send_span(
         topic=topic,
         partition=partition,
         key=key,
+        cluster_id=cluster_id,
     )
 
     span.set_attribute(messaging_attributes.MESSAGING_OPERATION_NAME, "send")
@@ -298,6 +324,7 @@ def _enrich_getone_span(
     partition: int | None,
     key: str | None,
     offset: int,
+    cluster_id: str | None = None,
 ) -> None:
     if not span.is_recording():
         return
@@ -309,6 +336,7 @@ def _enrich_getone_span(
         topic=topic,
         partition=partition,
         key=key,
+        cluster_id=cluster_id,
     )
 
     if consumer_group is not None:
@@ -344,6 +372,7 @@ def _enrich_getmany_poll_span(
     client_id: str,
     consumer_group: str | None,
     message_count: int,
+    cluster_id: str | None = None,
 ) -> None:
     if not span.is_recording():
         return
@@ -356,6 +385,9 @@ def _enrich_getmany_poll_span(
         server_attributes.SERVER_ADDRESS, json.dumps(bootstrap_servers)
     )
     span.set_attribute(messaging_attributes.MESSAGING_CLIENT_ID, client_id)
+
+    if cluster_id is not None:
+        span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 
     if consumer_group is not None:
         span.set_attribute(
@@ -384,6 +416,7 @@ def _enrich_getmany_topic_span(
     topic: str,
     partition: int,
     message_count: int,
+    cluster_id: str | None = None,
 ) -> None:
     if not span.is_recording():
         return
@@ -395,6 +428,7 @@ def _enrich_getmany_topic_span(
         topic=topic,
         partition=partition,
         key=None,
+        cluster_id=cluster_id,
     )
 
     if consumer_group is not None:
@@ -420,7 +454,8 @@ def _get_span_name(operation: str, topic: str):
 
 
 def _wrap_send(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_produce_hook: ProduceHookT | None
+    tracer: Tracer,
+    async_produce_hook: ProduceHookT | None,
 ) -> Callable[..., Awaitable[asyncio.Future[RecordMetadata]]]:
     async def _traced_send(
         func: AIOKafkaSendProto,
@@ -439,6 +474,7 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
         client_id = _extract_client_id(instance.client)
         key = _deserialize_key(_extract_send_key(args, kwargs))
         partition = await _extract_send_partition(instance, args, kwargs)
+        cluster_id = _extract_cluster_id_from_client(instance.client)
         span_name = _get_span_name("send", topic)
         with tracer.start_as_current_span(
             span_name, kind=trace.SpanKind.PRODUCER
@@ -450,6 +486,7 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
                 topic=topic,
                 partition=partition,
                 key=key,
+                cluster_id=cluster_id,
             )
             propagate.inject(
                 headers,
@@ -461,8 +498,13 @@ def _wrap_send(  # type: ignore[reportUnusedFunction]
                     await async_produce_hook(span, args, kwargs)
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
-
-        return await func(*args, **kwargs)
+            result = await func(*args, **kwargs)
+            # After send(), broker has responded — refresh cluster ID in case
+            # metadata was not yet populated before the send started.
+            cluster_id = _extract_cluster_id_from_client(instance.client)
+            if cluster_id is not None and span.is_recording():
+                span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
+            return result
 
     return _traced_send
 
@@ -475,6 +517,7 @@ async def _create_consumer_span(
     bootstrap_servers: str | list[str],
     client_id: str,
     consumer_group: str | None,
+    cluster_id: str | None,
     args: tuple[aiokafka.TopicPartition, ...],
     kwargs: dict[str, Any],
 ) -> trace.Span:
@@ -495,6 +538,7 @@ async def _create_consumer_span(
             partition=record.partition,
             key=_deserialize_key(record.key),
             offset=record.offset,
+            cluster_id=cluster_id,
         )
         try:
             if async_consume_hook is not None:
@@ -508,7 +552,8 @@ async def _create_consumer_span(
 
 
 def _wrap_getone(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_consume_hook: ConsumeHookT | None
+    tracer: Tracer,
+    async_consume_hook: ConsumeHookT | None,
 ) -> Callable[..., Awaitable[aiokafka.ConsumerRecord[object, object]]]:
     async def _traced_getone(
         func: AIOKafkaGetOneProto,
@@ -522,6 +567,7 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
+            cluster_id = _extract_cluster_id_from_client(instance._client)
 
             extracted_context = propagate.extract(
                 record.headers, getter=_aiokafka_getter
@@ -534,6 +580,7 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
                 bootstrap_servers,
                 client_id,
                 consumer_group,
+                cluster_id,
                 args,
                 kwargs,
             )
@@ -543,7 +590,8 @@ def _wrap_getone(  # type: ignore[reportUnusedFunction]
 
 
 def _wrap_getmany(  # type: ignore[reportUnusedFunction]
-    tracer: Tracer, async_consume_hook: ConsumeHookT | None
+    tracer: Tracer,
+    async_consume_hook: ConsumeHookT | None,
 ) -> Callable[
     ...,
     Awaitable[
@@ -567,6 +615,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
             bootstrap_servers = _extract_bootstrap_servers(instance._client)
             client_id = _extract_client_id(instance._client)
             consumer_group = _extract_consumer_group(instance)
+            cluster_id = _extract_cluster_id_from_client(instance._client)
 
             span_name = _get_span_name(
                 "receive",
@@ -581,6 +630,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                     client_id=client_id,
                     consumer_group=consumer_group,
                     message_count=sum(len(r) for r in records.values()),
+                    cluster_id=cluster_id,
                 )
 
                 for topic, topic_records in records.items():
@@ -596,6 +646,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                             topic=topic.topic,
                             partition=topic.partition,
                             message_count=len(topic_records),
+                            cluster_id=cluster_id,
                         )
 
                         for record in topic_records:
@@ -610,6 +661,7 @@ def _wrap_getmany(  # type: ignore[reportUnusedFunction]
                                 bootstrap_servers,
                                 client_id,
                                 consumer_group,
+                                cluster_id,
                                 args,
                                 kwargs,
                             )
