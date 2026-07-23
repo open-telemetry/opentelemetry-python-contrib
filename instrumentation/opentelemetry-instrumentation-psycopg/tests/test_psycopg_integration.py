@@ -3,6 +3,7 @@
 # pylint: disable=no-member  # psycopg stubs reference string.templatelib on 3.14+
 
 import asyncio
+import contextlib
 import sys
 import types
 from unittest import IsolatedAsyncioTestCase, mock
@@ -12,9 +13,47 @@ import pytest
 from psycopg.sql import SQL, Composed
 
 import opentelemetry.instrumentation.psycopg
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.sdk import resources
+from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
+    DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class MockCursor:
@@ -126,6 +165,25 @@ class MockAsyncConnection(psycopg.AsyncConnection):
 
     async def __aexit__(self, *args):
         return mock.MagicMock(spec=types.MethodType)
+
+
+class MockConnectionInfo:
+    dbname = "test"
+    host = "localhost"
+    port = 5432
+    user = "testuser"
+
+
+class MockConnectionWithInfo(MockConnection):
+    info = MockConnectionInfo()
+
+
+class MockAsyncConnectionWithInfo(MockAsyncConnection):
+    info = MockConnectionInfo()
+
+    @staticmethod
+    async def connect(*args, **kwargs):
+        return MockAsyncConnectionWithInfo(**kwargs)
 
 
 class PostgresqlIntegrationTestMixin:
@@ -508,6 +566,68 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
             span.attributes["db.statement"], "SELECT {value} FROM foo;"
         )
 
+    def test_semconv_stable(self):
+        """database,http opt-in emits only stable attributes."""
+        with (
+            use_semconv_opt_in("database,http"),
+            mock.patch("psycopg.connect", MockConnectionWithInfo),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            cnx = psycopg.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    def test_semconv_dup(self):
+        """database/dup,http/dup opt-in emits both legacy and stable attributes."""
+        with (
+            use_semconv_opt_in("database/dup,http/dup"),
+            mock.patch("psycopg.connect", MockConnectionWithInfo),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            cnx = psycopg.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_STATEMENT], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 5432)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
+
 
 class TestPostgresqlIntegrationAsync(
     PostgresqlIntegrationTestMixin, TestBase, IsolatedAsyncioTestCase
@@ -717,3 +837,73 @@ class TestPostgresqlIntegrationAsync(
         self.assertEqual(
             span.attributes["db.statement"], "SELECT {value} FROM foo"
         )
+
+    async def test_semconv_stable_async(self):
+        """database,http opt-in emits only stable attributes."""
+        with (
+            use_semconv_opt_in("database,http"),
+            mock.patch(
+                "psycopg.AsyncConnection.connect",
+                MockAsyncConnectionWithInfo.connect,
+            ),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            acnx = await psycopg.AsyncConnection.connect("test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    async def test_semconv_dup_async(self):
+        """database/dup,http/dup opt-in emits both legacy and stable attributes."""
+        with (
+            use_semconv_opt_in("database/dup,http/dup"),
+            mock.patch(
+                "psycopg.AsyncConnection.connect",
+                MockAsyncConnectionWithInfo.connect,
+            ),
+        ):
+            PsycopgInstrumentor().instrument()
+
+            acnx = await psycopg.AsyncConnection.connect("test")
+            async with acnx as cnx:
+                async with cnx.cursor() as cursor:
+                    await cursor.execute("SELECT * FROM test")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "postgresql")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_STATEMENT], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 5432)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 5432)
