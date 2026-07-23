@@ -168,23 +168,14 @@ class AutoInstrumentedConsumer(Consumer):
         return super().close()
 
 
-class ProxiedProducer(Producer):
+class ProxiedProducer(wrapt.ObjectProxy):
+    # ObjectProxy transparently forwards every attribute and method not
+    # overridden below to the wrapped producer, so calls such as list_topics()
+    # or set_sasl_credentials() reach the underlying object instead of raising
+    # AttributeError / segfaulting on the C-extension type (see #4278).
     def __init__(self, producer: Producer, tracer: Tracer):
-        self._producer = producer
-        self._tracer = tracer
-        # Surface the wrapped producer's config (if any) so that
-        # KafkaPropertiesExtractor.extract_bootstrap_servers can read it
-        # through this proxy.
-        self.config = getattr(producer, "config", None)
-
-    def flush(self, timeout=-1):
-        return self._producer.flush(timeout)
-
-    def poll(self, timeout=-1):
-        return self._producer.poll(timeout)
-
-    def purge(self, in_queue=True, in_flight=True, blocking=True):
-        self._producer.purge(in_queue, in_flight, blocking)
+        super().__init__(producer)
+        self._self_tracer = tracer
 
     def produce(self, topic, value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         new_kwargs = kwargs.copy()
@@ -192,60 +183,63 @@ class ProxiedProducer(Producer):
         new_kwargs["value"] = value
 
         return ConfluentKafkaInstrumentor.wrap_produce(
-            self._producer.produce, self, self._tracer, args, new_kwargs
+            self.__wrapped__.produce, self, self._self_tracer, args, new_kwargs
         )
 
-    def original_producer(self):
-        return self._producer
+    def original_producer(self) -> Producer:
+        return self.__wrapped__
 
 
-class ProxiedConsumer(Consumer):
+class ProxiedConsumer(wrapt.ObjectProxy):
+    # See ProxiedProducer for the transparent-forwarding rationale.
     def __init__(self, consumer: Consumer, tracer: Tracer):
-        self._consumer = consumer
-        self._tracer = tracer
-        self._current_consume_span = None
-        self._current_context_token = None
-        # See ProxiedProducer.__init__ for rationale.
-        self.config = getattr(consumer, "config", None)
+        super().__init__(consumer)
+        self._self_tracer = tracer
+        self._self_current_consume_span = None
+        self._self_current_context_token = None
+
+    # The consume-tracking helpers in utils.py read and write these two
+    # attributes on the instance. Back them with ObjectProxy's `_self_`
+    # storage via properties so the state lives on the proxy rather than being
+    # forwarded onto the wrapped consumer, whose C-extension type does not
+    # accept arbitrary attributes.
+    @property
+    def _current_consume_span(self):
+        return self._self_current_consume_span
+
+    @_current_consume_span.setter
+    def _current_consume_span(self, value) -> None:
+        self._self_current_consume_span = value
+
+    @property
+    def _current_context_token(self):
+        return self._self_current_context_token
+
+    @_current_context_token.setter
+    def _current_context_token(self, value) -> None:
+        self._self_current_context_token = value
 
     def close(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_close(
-            self._consumer.close, self, args, kwargs
+            self.__wrapped__.close, self, args, kwargs
         )
-
-    def committed(self, partitions, timeout=-1):
-        return self._consumer.committed(partitions, timeout)
-
-    def commit(self, *args, **kwargs):
-        return self._consumer.commit(*args, **kwargs)
 
     def consume(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_consume(
-            self._consumer.consume,
+            self.__wrapped__.consume,
             self,
-            self._tracer,
+            self._self_tracer,
             args,
             kwargs,
         )
 
-    def get_watermark_offsets(self, partition, timeout=-1, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
-        return self._consumer.get_watermark_offsets(
-            partition, timeout, *args, **kwargs
-        )
-
-    def offsets_for_times(self, partitions, timeout=-1):
-        return self._consumer.offsets_for_times(partitions, timeout)
-
     def poll(self, timeout=-1):
         return ConfluentKafkaInstrumentor.wrap_poll(
-            self._consumer.poll, self, self._tracer, [timeout], {}
+            self.__wrapped__.poll, self, self._self_tracer, [timeout], {}
         )
 
-    def subscribe(self, topics, on_assign=lambda *args: None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
-        self._consumer.subscribe(topics, on_assign, *args, **kwargs)
-
-    def original_consumer(self):
-        return self._consumer
+    def original_consumer(self) -> Consumer:
+        return self.__wrapped__
 
 
 class ConfluentKafkaInstrumentor(BaseInstrumentor):
