@@ -5,7 +5,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from opentelemetry.resource.detector.gcp import _metadata
+from opentelemetry.resourcedetector.gcp_resource_detector import _metadata
 
 # Format described in
 # https://cloud.google.com/compute/docs/metadata/default-metadata-values#vm_instance_metadata

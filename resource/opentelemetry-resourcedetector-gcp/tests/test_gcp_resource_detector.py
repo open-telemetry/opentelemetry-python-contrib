@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 import requests
 
-from opentelemetry.resource.detector.gcp import (
+from opentelemetry.resourcedetector.gcp_resource_detector import (
     GoogleCloudResourceDetector,
     _metadata,
 )

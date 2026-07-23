@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from opentelemetry.resource.detector.gcp import _faas
+from opentelemetry.resourcedetector.gcp_resource_detector import _faas
 
 
 # Reset stuff before every test
