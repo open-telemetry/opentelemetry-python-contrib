@@ -592,6 +592,67 @@ class TestLoggingHandler(unittest.TestCase):
 
         logger.removeHandler(handler)
 
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_scope_attributes_passed_to_get_logger(self, mock_get_logger):
+        """scope_attributes are forwarded to get_logger on every emit."""
+        mock_get_logger.return_value = Mock()
+        scope_attrs = {
+            "service.name": "test-service",
+            "deployment.environment": "prod",
+        }
+        logger_provider = LoggerProvider()
+        logger = logging.getLogger("test_scope_attrs_passed")
+        handler = LoggingHandler(
+            level=logging.WARNING,
+            logger_provider=logger_provider,
+            scope_attributes=scope_attrs,
+        )
+        logger.addHandler(handler)
+        self.addCleanup(logger.removeHandler, handler)
+
+        logger.warning("Test scope attributes")
+
+        mock_get_logger.assert_called_once()
+        _, call_kwargs = mock_get_logger.call_args
+        self.assertEqual(call_kwargs.get("attributes"), scope_attrs)
+
+    def test_scope_attributes_appear_on_instrumentation_scope(self):
+        """scope_attributes end up on the instrumentation scope of emitted records."""
+        scope_attrs = {"service.name": "test-service"}
+        processor, logger, handler = set_up_test_logging(
+            logging.WARNING, scope_attributes=scope_attrs
+        )
+        self.addCleanup(logger.removeHandler, handler)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning("Test instrumentation scope")
+
+        record = processor.get_log_record(0)
+        self.assertIsNotNone(record.instrumentation_scope)
+        self.assertEqual(
+            record.instrumentation_scope.attributes["service.name"],
+            "test-service",
+        )
+
+    @patch("opentelemetry.instrumentation.logging.handler.get_logger")
+    def test_scope_attributes_none_by_default(self, mock_get_logger):
+        """Without scope_attributes, get_logger is called with attributes=None."""
+        mock_get_logger.return_value = Mock()
+        logger_provider = LoggerProvider()
+        logger = logging.getLogger("test_scope_attrs_none")
+        handler = LoggingHandler(
+            level=logging.WARNING,
+            logger_provider=logger_provider,
+        )
+        logger.addHandler(handler)
+        self.addCleanup(logger.removeHandler, handler)
+
+        logger.warning("Test no scope attributes")
+
+        mock_get_logger.assert_called_once()
+        _, call_kwargs = mock_get_logger.call_args
+        self.assertIsNone(call_kwargs.get("attributes"))
+
     def test_logging_handler_without_env_var_uses_default_limit(self):
         """Test that without OTEL_ATTRIBUTE_COUNT_LIMIT, default limit (128) should apply."""
         processor, logger, _ = set_up_test_logging(logging.WARNING)
@@ -764,7 +825,11 @@ class GetLogLevelTestCase(unittest.TestCase):
 
 
 def set_up_test_logging(
-    level, formatter=None, root_logger=False, log_code_attributes=False
+    level,
+    formatter=None,
+    root_logger=False,
+    log_code_attributes=False,
+    scope_attributes=None,
 ):
     logger_provider = LoggerProvider()
     processor = FakeProcessor()
@@ -774,6 +839,7 @@ def set_up_test_logging(
         level=level,
         logger_provider=logger_provider,
         log_code_attributes=log_code_attributes,
+        scope_attributes=scope_attributes,
     )
     if formatter:
         handler.setFormatter(formatter)

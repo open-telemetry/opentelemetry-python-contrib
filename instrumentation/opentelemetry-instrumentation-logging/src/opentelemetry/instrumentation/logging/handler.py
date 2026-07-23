@@ -124,11 +124,12 @@ class LoggingHandler(logging.Handler):
         level: int = logging.NOTSET,
         logger_provider: LoggerProvider | None = None,
         log_code_attributes: bool = False,
+        scope_attributes: Mapping[str, AnyValue] | None = None,
     ) -> None:
         super().__init__(level=level)
         self._logger_provider = logger_provider or get_logger_provider()
-
         self._log_code_attributes = log_code_attributes
+        self._scope_attributes = scope_attributes
 
     def _get_attributes(
         self, record: logging.LogRecord
@@ -212,7 +213,9 @@ class LoggingHandler(logging.Handler):
         token = self._is_emitting.set(True)
         try:
             logger = get_logger(
-                record.name, logger_provider=self._logger_provider
+                record.name,
+                logger_provider=self._logger_provider,
+                attributes=self._scope_attributes,
             )
             if not isinstance(logger, NoOpLogger):
                 logger.emit(self._translate(record))
