@@ -371,6 +371,8 @@ Below is a checklist of things to be mindful of when implementing a new instrume
   - Contributions related to outdated HTTP semantic conventions (conventions prior to becoming [stable](https://github.com/open-telemetry/semantic-conventions/tree/v1.23.0)) will likely be discouraged, as they increase complexity and the potential for misconceptions.
 - Contains a name that is not already claimed in [Pypi](https://pypi.org/). Contact a maintainer, bring the issue up in the weekly Python SIG or create a ticket in Pypi if a desired name has already been taken.
 - Extends from [BaseInstrumentor](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/opentelemetry-instrumentation/src/opentelemetry/instrumentation/instrumentor.py#L35)
+- Uses a canonical instrumentation name when obtaining a tracer or meter
+  - The name should be the top-level instrumentation package name as a fixed string, e.g. `"opentelemetry.instrumentation.requests"`. Do **not** use `__name__`, which varies by submodule and produces inconsistent tracer names across files within the same instrumentation.
 - Supports auto-instrumentation
   - Add an entry point (ex. <https://github.com/open-telemetry/opentelemetry-python-contrib/blob/2518a4ac07cb62ad6587dd8f6cbb5f8663a7e179/instrumentation/opentelemetry-instrumentation-requests/pyproject.toml#L44>)
   - Run `python scripts/generate_instrumentation_bootstrap.py` after adding a new instrumentation package.
