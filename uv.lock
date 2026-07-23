@@ -78,6 +78,7 @@ members = [
     "opentelemetry-propagator-aws-xray",
     "opentelemetry-propagator-ot-trace",
     "opentelemetry-python-contrib",
+    "opentelemetry-sampler-jaeger-remote",
     "opentelemetry-util-genai",
     "opentelemetry-util-http",
 ]
@@ -4375,6 +4376,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-wsgi" },
     { name = "opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace" },
+    { name = "opentelemetry-sampler-jaeger-remote" },
     { name = "opentelemetry-sdk" },
     { name = "opentelemetry-semantic-conventions" },
     { name = "opentelemetry-test-utils" },
@@ -4449,6 +4451,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-wsgi", editable = "instrumentation/opentelemetry-instrumentation-wsgi" },
     { name = "opentelemetry-propagator-aws-xray", editable = "propagator/opentelemetry-propagator-aws-xray" },
     { name = "opentelemetry-propagator-ot-trace", editable = "propagator/opentelemetry-propagator-ot-trace" },
+    { name = "opentelemetry-sampler-jaeger-remote", editable = "sampler/opentelemetry-sampler-jaeger-remote" },
     { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
     { name = "opentelemetry-semantic-conventions", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-semantic-conventions&branch=main" },
     { name = "opentelemetry-test-utils", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=tests%2Fopentelemetry-test-utils&branch=main" },
@@ -4463,6 +4466,35 @@ dev = [
     { name = "tox" },
     { name = "tox-uv", specifier = ">=1" },
 ]
+
+[[package]]
+name = "opentelemetry-sampler-jaeger-remote"
+source = { editable = "sampler/opentelemetry-sampler-jaeger-remote" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+]
+
+[package.optional-dependencies]
+grpc = [
+    { name = "grpcio" },
+    { name = "protobuf" },
+]
+http = [
+    { name = "urllib3" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "grpcio", marker = "python_full_version == '3.13.*' and extra == 'grpc'", specifier = ">=1.66.2,<2.0.0" },
+    { name = "grpcio", marker = "python_full_version < '3.13' and extra == 'grpc'", specifier = ">=1.63.2,<2.0.0" },
+    { name = "grpcio", marker = "python_full_version >= '3.14' and extra == 'grpc'", specifier = ">=1.75.1,<2.0.0" },
+    { name = "opentelemetry-api", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-api&branch=main" },
+    { name = "opentelemetry-sdk", git = "https://github.com/open-telemetry/opentelemetry-python?subdirectory=opentelemetry-sdk&branch=main" },
+    { name = "protobuf", marker = "extra == 'grpc'", specifier = ">=5.27.0,<8.0" },
+    { name = "urllib3", marker = "extra == 'http'", specifier = ">=1.26.5,<3.0" },
+]
+provides-extras = ["grpc", "http"]
 
 [[package]]
 name = "opentelemetry-sdk"

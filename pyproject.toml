@@ -62,6 +62,7 @@ dependencies = [
   "opentelemetry-instrumentation-wsgi",
   "opentelemetry-propagator-ot-trace",
   "opentelemetry-propagator-aws-xray",
+  "opentelemetry-sampler-jaeger-remote",
   "opentelemetry-util-http",
   "opentelemetry-util-genai",
   "opentelemetry-instrumentation-vertexai[instruments]",
@@ -134,6 +135,7 @@ opentelemetry-instrumentation-urllib3 = { workspace = true }
 opentelemetry-instrumentation-wsgi = { workspace = true }
 opentelemetry-propagator-ot-trace = { workspace = true }
 opentelemetry-propagator-aws-xray = { workspace = true }
+opentelemetry-sampler-jaeger-remote = { workspace = true }
 opentelemetry-util-http = { workspace = true }
 opentelemetry-util-genai = { workspace = true }
 opentelemetry-instrumentation-vertexai = { workspace = true }
@@ -148,6 +150,7 @@ members = [
   "opentelemetry-instrumentation",
   "opentelemetry-distro",
   "propagator/*",
+  "sampler/*",
   "util/*",
 ]
 
@@ -155,7 +158,11 @@ members = [
 # https://docs.astral.sh/ruff/configuration/
 target-version = "py310"
 line-length = 79
-extend-exclude = ["_template", "*_pb2*.py*"]
+extend-exclude = [
+  "_template",
+  "*_pb2*.py*",
+  "sampler/opentelemetry-sampler-jaeger-remote/src/opentelemetry/sampler/jaeger/remote/proto_json/**",
+]
 output-format = "concise"
 
 [tool.ruff.lint]
@@ -216,6 +223,7 @@ include = [
   "opamp/opentelemetry-opamp-client",
   "sdk-extension/opentelemetry-sdk-extension-aws/src/opentelemetry/sdk/extension/aws/trace",
   "opentelemetry-instrumentation/src/opentelemetry/instrumentation/_labeler",
+  "sampler/opentelemetry-sampler-jaeger-remote"
 ]
 # We should also add type hints to the test suite - It helps on finding bugs.
 # We are excluding for now because it's easier, and more important to add to the instrumentation packages.
@@ -237,6 +245,9 @@ exclude = [
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
+  "sampler/opentelemetry-sampler-jaeger-remote/tests/**/*.py",
+  "sampler/opentelemetry-sampler-jaeger-remote/src/opentelemetry/**/proto/**",
+  "sampler/opentelemetry-sampler-jaeger-remote/src/opentelemetry/**/proto_json/**"
 ]
 
 [tool.towncrier]
