@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+from importlib.metadata import entry_points
 from unittest.mock import Mock
 
 import pytest
@@ -187,3 +188,13 @@ def test_detects_gae_flex(
     )
 
     assert dict(GoogleCloudResourceDetector().detect().attributes) == snapshot
+
+
+def test_entry_points():
+    eps = entry_points(group="opentelemetry_resource_detector")
+    ep_map = {ep.name: ep for ep in eps}
+    assert "gcp" in ep_map
+    assert "gcp_resource_detector" in ep_map
+    assert ep_map["gcp"].load() is GoogleCloudResourceDetector
+    assert ep_map["gcp_resource_detector"].load() is GoogleCloudResourceDetector
+

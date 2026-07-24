@@ -32,6 +32,7 @@ dependencies = [
 
 [project.entry-points.opentelemetry_resource_detector]
 gcp = "opentelemetry.resourcedetector.gcp_resource_detector:GoogleCloudResourceDetector"
+gcp_resource_detector = "opentelemetry.resourcedetector.gcp_resource_detector:GoogleCloudResourceDetector"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resourcedetector-gcp"
