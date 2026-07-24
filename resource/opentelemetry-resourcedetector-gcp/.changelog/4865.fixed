@@ -1,0 +1,1 @@
+Add back `gcp_resource_detector` entry point name for backward compatibility.
