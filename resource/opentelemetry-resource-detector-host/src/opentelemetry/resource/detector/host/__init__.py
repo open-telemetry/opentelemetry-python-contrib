@@ -72,10 +72,10 @@ def _run_command(command: tuple[str, ...]) -> str | None:
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as exception:
-        logger.debug("Failed to run %s: %s", command[0], exception)
+        logger.warning("Failed to run %s: %s", command[0], exception)
         return None
     if completed.returncode != 0:
-        logger.debug(
+        logger.warning(
             "Command %s exited with code %s", command[0], completed.returncode
         )
         return None
@@ -142,7 +142,7 @@ def _get_host_id() -> str | None:
         case _ if system == "DragonFly" or system.endswith("BSD"):
             return _get_bsd_machine_id()
         case _:
-            logger.debug(
+            logger.warning(
                 "Unsupported OS type for host.id detection: %s", system
             )
             return None
@@ -157,7 +157,6 @@ class HostIdResourceDetector(ResourceDetector):
         try:
             if host_id := _get_host_id():
                 return Resource({HOST_ID: host_id})
-            return Resource.get_empty()
 
         # pylint: disable=broad-except
         except Exception as exception:

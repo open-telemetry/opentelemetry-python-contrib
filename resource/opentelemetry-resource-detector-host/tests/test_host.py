@@ -41,19 +41,31 @@ class HostIdResourceDetectorTest(TestCase):
         self.assertEqual(dict(attributes), {HOST_ID: expected})
         self.assertIsInstance(attributes[HOST_ID], str)
 
-    def _assert_real_host_id(self) -> None:
-        resource = HostIdResourceDetector().detect()
-        self.assertIn(HOST_ID, resource.attributes)
-        host_id = resource.attributes[HOST_ID]
-        self.assertIsInstance(host_id, str)
-        self.assertTrue(host_id)
-
     @skipUnless(
         platform.system() == "Linux",
         "Linux specific host.id end-to-end detection",
     )
     def test_linux_end_to_end(self) -> None:
-        self._assert_real_host_id()
+        # Read the machine-id directly as an independent oracle for the exact
+        # value the detector should return.
+        expected = None
+        for path in ("/etc/machine-id", "/var/lib/dbus/machine-id"):
+            try:
+                with open(path, encoding="utf8") as machine_id_file:
+                    expected = machine_id_file.read().strip()
+            except OSError:
+                continue
+            if expected:
+                break
+
+        resource = HostIdResourceDetector().detect()
+        if expected:
+            # A machine-id is a 32 character lowercase hexadecimal string.
+            self.assertRegex(expected, r"^[0-9a-f]{32}$")
+            self.assertEqual(resource.attributes[HOST_ID], expected)
+        else:
+            # No machine-id on this host, so the detector must report nothing.
+            self.assertNotIn(HOST_ID, resource.attributes)
 
     @skipUnless(
         platform.system() == "Windows",
