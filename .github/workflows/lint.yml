@@ -157,6 +157,25 @@ jobs:
       - name: Run tests
         run: tox -e lint-resource-detector-containerid
 
+  lint-resource-detector-hostid:
+    name: resource-detector-hostid
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-resource-detector-hostid
+
   lint-resource-detector-azure:
     name: resource-detector-azure
     runs-on: ubuntu-latest
