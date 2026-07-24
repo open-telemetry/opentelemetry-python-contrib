@@ -264,7 +264,7 @@ stream. Reading that stream inside the hook consumes it before the application
 can read the response body.
 
 To inspect or log response payload chunks, wrap the HTTPX transport and yield
-chunks as the application consumes them:
+chunks from the response object instead of reading the hook's stream directly:
 
 .. code-block:: python
 
