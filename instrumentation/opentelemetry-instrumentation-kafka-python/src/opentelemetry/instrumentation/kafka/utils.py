@@ -56,7 +56,7 @@ class KafkaPropertiesExtractor:
         )
 
     @staticmethod
-    def extract_send_partition(future) -> Optional[int]:
+    def extract_send_partition(future) -> int | None:
         """Return the partition a message was actually assigned to.
 
         ``KafkaProducer.send()`` resolves the destination partition internally
@@ -116,9 +116,9 @@ _kafka_setter = KafkaContextSetter()
 
 def _enrich_span(
     span,
-    bootstrap_servers: List[str],
+    bootstrap_servers: list[str],
     topic: str,
-    partition: Optional[int],
+    partition: int | None,
 ):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
