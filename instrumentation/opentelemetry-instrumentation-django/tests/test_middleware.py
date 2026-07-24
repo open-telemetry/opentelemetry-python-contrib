@@ -58,6 +58,7 @@ from .views import (
     excluded_noarg2,
     response_with_custom_header,
     route_span_name,
+    streaming_view,
     traced,
     traced_template,
 )
@@ -1136,3 +1137,69 @@ class TestMiddlewareSpanActivationTiming(WsgiTestBase):
             for metric in sm.metrics
         )
         self.assertTrue(histogram_found)
+
+
+class TestMiddlewareStreamingResponse(WsgiTestBase):
+    """Test span end timing relative to StreamingHttpResponse consumption."""
+
+    @classmethod
+    def setUpClass(cls):
+        conf.settings.configure(ROOT_URLCONF=modules[__name__])
+        super().setUpClass()
+
+    def setUp(self):
+        super().setUp()
+        setup_test_environment()
+        _django_instrumentor.instrument()
+
+    def tearDown(self):
+        super().tearDown()
+        teardown_test_environment()
+        _django_instrumentor.uninstrument()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        conf.settings = conf.LazySettings()
+
+    def test_span_ends_before_streaming_content_consumed(self):
+        """Reproduces the bug: span ends before the stream is actually sent."""
+        events = []
+
+        def view(request):
+            return streaming_view(request, events)
+
+        route = re_path(r"^streaming/", view)
+        urlpatterns.append(route)
+        self.addCleanup(urlpatterns.remove, route)
+
+        original_end = Span.end
+
+        def patched_end(self, *args, **kwargs):
+            events.append("span_closed")
+            return original_end(self, *args, **kwargs)
+
+        with patch.object(Span, "end", patched_end):
+            response = Client().get("/streaming/")
+            spans_before_consumption = (
+                self.memory_exporter.get_finished_spans()
+            )
+            # Now actually consume the stream, simulating a real WSGI server
+            list(response.streaming_content)
+
+        self.assertEqual(
+            len(spans_before_consumption),
+            0,
+            "Span should not be finished yet: stream not yet consumed",
+        )
+        self.assertIn("span_closed", events)
+        self.assertIn("generator_started", events)
+
+        # THIS is the assertion that proves the bug:
+        # the generator should start BEFORE the span closes.
+        self.assertLess(
+            events.index("generator_started"),
+            events.index("span_closed"),
+            "Span ended before streaming content was consumed: "
+            f"event order was {events}",
+        )

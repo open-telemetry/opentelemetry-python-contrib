@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 
 
 def traced(request):  # pylint: disable=unused-argument
@@ -79,3 +79,13 @@ async def async_with_custom_header(request):
     response.headers["custom-test-header-1"] = "test-header-value-1"
     response.headers["custom-test-header-2"] = "test-header-value-2"
     return response
+
+
+def streaming_view(request, events):  # pylint: disable=unused-argument
+    def stream_generator():
+        events.append("generator_started")
+        yield b"chunk1"
+        yield b"chunk2"
+        events.append("generator_finished")
+
+    return StreamingHttpResponse(stream_generator())
