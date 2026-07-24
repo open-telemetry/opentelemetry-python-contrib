@@ -4,15 +4,19 @@
 
 from unittest import TestCase, mock
 
+from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
+
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
+    _enrich_span,
     _get_span_name,
     _kafka_getter,
     _kafka_setter,
     _wrap_next,
     _wrap_send,
 )
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import SpanKind
 
 
@@ -96,8 +100,10 @@ class TestUtils(TestCase):
         )
 
         extract_bootstrap_servers.assert_called_once_with(kafka_producer)
+        # The partition is read back from the future returned by send(), not
+        # estimated from the call arguments.
         extract_send_partition.assert_called_once_with(
-            kafka_producer, self.args, self.kwargs
+            original_send_callback.return_value
         )
         tracer.start_as_current_span.assert_called_once_with(
             expected_span_name, kind=SpanKind.PRODUCER
@@ -214,27 +220,73 @@ class TestUtils(TestCase):
         )
         detach.assert_called_once_with(attach.return_value)
 
-    @mock.patch(
-        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor"
-    )
-    def test_kafka_properties_extractor(
-        self,
-        kafka_properties_extractor: mock.MagicMock,
-    ):
-        kafka_properties_extractor._serialize.return_value = None
-        kafka_properties_extractor._partition.return_value = "partition"
-        assert (
-            KafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
-            )
-            == "partition"
+    def test_extract_send_partition_reads_actual_partition_from_future(self):
+        """The partition is read back from the future returned by ``send()``,
+        which reflects where the message was actually routed.
+
+        Regression test for
+        https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4625
+        """
+        future = mock.MagicMock()
+        future._produce_future.topic_partition = ("test_topic", 7)
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(future)
+
+        self.assertEqual(partition, 7)
+
+    def test_extract_send_partition_zero(self):
+        """Partition ``0`` is falsy but valid and must not be dropped."""
+        future = mock.MagicMock()
+        future._produce_future.topic_partition = ("test_topic", 0)
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(future)
+
+        self.assertEqual(partition, 0)
+
+    def test_extract_send_partition_matches_real_kafka_future(self):
+        """Guards against kafka-python changing the internal attribute the
+        extractor relies on."""
+        produce_future = FutureProduceResult(("test_topic", 4))
+        future = FutureRecordMetadata(
+            produce_future, 0, None, None, -1, -1, -1
         )
-        kafka_properties_extractor._wait_on_metadata.side_effect = Exception(
-            "mocked error"
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(future)
+
+        self.assertEqual(partition, 4)
+
+    def test_extract_send_partition_returns_none_when_unavailable(self):
+        """If the future does not expose the expected internals, the attribute
+        is omitted rather than raising."""
+
+        class _NoInternals:
+            pass
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(
+            _NoInternals()
         )
-        assert (
-            KafkaPropertiesExtractor.extract_send_partition(
-                kafka_properties_extractor, self.args, self.kwargs
-            )
-            is None
+
+        self.assertIsNone(partition)
+
+    def test_enrich_span_records_partition_when_present(self):
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+
+        _enrich_span(span, ["localhost:9092"], self.topic_name, 2)
+
+        span.set_attribute.assert_any_call(
+            SpanAttributes.MESSAGING_KAFKA_PARTITION, 2
+        )
+
+    def test_enrich_span_omits_partition_when_none(self):
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+
+        _enrich_span(span, ["localhost:9092"], self.topic_name, None)
+
+        recorded_attributes = {
+            call.args[0] for call in span.set_attribute.call_args_list
+        }
+        self.assertNotIn(
+            SpanAttributes.MESSAGING_KAFKA_PARTITION, recorded_attributes
         )

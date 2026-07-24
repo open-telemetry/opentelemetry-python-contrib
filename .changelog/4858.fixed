@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: record the actual `messaging.kafka.partition` read back from the producer `send()` future, instead of a pre-computed estimate that did not match the delivered partition for randomly-partitioned messages
