@@ -256,6 +256,62 @@ Or if you are using the transport classes directly:
         response_hook=async_response_hook
     )
 
+Logging response payloads
+-------------------------
+
+The ``response`` value passed to ``response_hook`` contains the response
+stream. Reading that stream inside the hook consumes it before the application
+can read the response body.
+
+To inspect or log response payload chunks, wrap the HTTPX transport and yield
+chunks as the application consumes them:
+
+.. code-block:: python
+
+    import httpx
+    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport
+
+    class LoggingResponse(httpx.Response):
+        def iter_bytes(self, *args, **kwargs):
+            for chunk in super().iter_bytes(*args, **kwargs):
+                print(chunk)
+                yield chunk
+
+    class LoggingTransport(httpx.BaseTransport):
+        def __init__(self, transport):
+            self._transport = transport
+
+        def handle_request(self, request):
+            response = self._transport.handle_request(request)
+            return LoggingResponse(
+                status_code=response.status_code,
+                headers=response.headers,
+                stream=response.stream,
+                extensions=response.extensions,
+            )
+
+        def close(self):
+            self._transport.close()
+
+    def response_hook(span, request, response):
+        status_code, headers, stream, extensions = response
+        span.set_attribute("http.response.status_code", status_code)
+        # Do not read stream here; LoggingResponse logs chunks safely.
+
+    transport = LoggingTransport(httpx.HTTPTransport())
+    telemetry_transport = SyncOpenTelemetryTransport(
+        transport,
+        response_hook=response_hook,
+    )
+
+    with httpx.Client(transport=telemetry_transport) as client:
+        response = client.get("https://example.com")
+        response.read()
+
+For request payloads, prefer logging or redacting the body before it is passed
+to HTTPX. Avoid recording secrets, credentials, or personally identifiable
+information in span attributes or logs.
+
 
 References
 ----------
