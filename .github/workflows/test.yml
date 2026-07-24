@@ -1278,8 +1278,8 @@ jobs:
       - name: Run tests
         run: tox -e pypy3-test-resource-detector-containerid -- -ra
 
-  py310-test-resource-detector-host-oldest_ubuntu-latest:
-    name: resource-detector-host-oldest 3.10 Ubuntu
+  py310-test-resource-detector-hostid-oldest_ubuntu-latest:
+    name: resource-detector-hostid-oldest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1295,10 +1295,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-resource-detector-host-oldest -- -ra
+        run: tox -e py310-test-resource-detector-hostid-oldest -- -ra
 
-  py310-test-resource-detector-host-latest_ubuntu-latest:
-    name: resource-detector-host-latest 3.10 Ubuntu
+  py310-test-resource-detector-hostid-latest_ubuntu-latest:
+    name: resource-detector-hostid-latest 3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1314,10 +1314,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-resource-detector-host-latest -- -ra
+        run: tox -e py310-test-resource-detector-hostid-latest -- -ra
 
-  py311-test-resource-detector-host-oldest_ubuntu-latest:
-    name: resource-detector-host-oldest 3.11 Ubuntu
+  py311-test-resource-detector-hostid-oldest_ubuntu-latest:
+    name: resource-detector-hostid-oldest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1333,10 +1333,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-resource-detector-host-oldest -- -ra
+        run: tox -e py311-test-resource-detector-hostid-oldest -- -ra
 
-  py311-test-resource-detector-host-latest_ubuntu-latest:
-    name: resource-detector-host-latest 3.11 Ubuntu
+  py311-test-resource-detector-hostid-latest_ubuntu-latest:
+    name: resource-detector-hostid-latest 3.11 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1352,10 +1352,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py311-test-resource-detector-host-latest -- -ra
+        run: tox -e py311-test-resource-detector-hostid-latest -- -ra
 
-  py312-test-resource-detector-host-oldest_ubuntu-latest:
-    name: resource-detector-host-oldest 3.12 Ubuntu
+  py312-test-resource-detector-hostid-oldest_ubuntu-latest:
+    name: resource-detector-hostid-oldest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1371,10 +1371,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-resource-detector-host-oldest -- -ra
+        run: tox -e py312-test-resource-detector-hostid-oldest -- -ra
 
-  py312-test-resource-detector-host-latest_ubuntu-latest:
-    name: resource-detector-host-latest 3.12 Ubuntu
+  py312-test-resource-detector-hostid-latest_ubuntu-latest:
+    name: resource-detector-hostid-latest 3.12 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1390,10 +1390,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py312-test-resource-detector-host-latest -- -ra
+        run: tox -e py312-test-resource-detector-hostid-latest -- -ra
 
-  py313-test-resource-detector-host-oldest_ubuntu-latest:
-    name: resource-detector-host-oldest 3.13 Ubuntu
+  py313-test-resource-detector-hostid-oldest_ubuntu-latest:
+    name: resource-detector-hostid-oldest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1409,10 +1409,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-resource-detector-host-oldest -- -ra
+        run: tox -e py313-test-resource-detector-hostid-oldest -- -ra
 
-  py313-test-resource-detector-host-latest_ubuntu-latest:
-    name: resource-detector-host-latest 3.13 Ubuntu
+  py313-test-resource-detector-hostid-latest_ubuntu-latest:
+    name: resource-detector-hostid-latest 3.13 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1428,10 +1428,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py313-test-resource-detector-host-latest -- -ra
+        run: tox -e py313-test-resource-detector-hostid-latest -- -ra
 
-  py314-test-resource-detector-host-oldest_ubuntu-latest:
-    name: resource-detector-host-oldest 3.14 Ubuntu
+  py314-test-resource-detector-hostid-oldest_ubuntu-latest:
+    name: resource-detector-hostid-oldest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1447,10 +1447,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py314-test-resource-detector-host-oldest -- -ra
+        run: tox -e py314-test-resource-detector-hostid-oldest -- -ra
 
-  py314-test-resource-detector-host-latest_ubuntu-latest:
-    name: resource-detector-host-latest 3.14 Ubuntu
+  py314-test-resource-detector-hostid-latest_ubuntu-latest:
+    name: resource-detector-hostid-latest 3.14 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1466,10 +1466,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py314-test-resource-detector-host-latest -- -ra
+        run: tox -e py314-test-resource-detector-hostid-latest -- -ra
 
-  pypy3-test-resource-detector-host-oldest_ubuntu-latest:
-    name: resource-detector-host-oldest pypy-3.10 Ubuntu
+  pypy3-test-resource-detector-hostid-oldest_ubuntu-latest:
+    name: resource-detector-hostid-oldest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1485,10 +1485,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-resource-detector-host-oldest -- -ra
+        run: tox -e pypy3-test-resource-detector-hostid-oldest -- -ra
 
-  pypy3-test-resource-detector-host-latest_ubuntu-latest:
-    name: resource-detector-host-latest pypy-3.10 Ubuntu
+  pypy3-test-resource-detector-hostid-latest_ubuntu-latest:
+    name: resource-detector-hostid-latest pypy-3.10 Ubuntu
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1504,7 +1504,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e pypy3-test-resource-detector-host-latest -- -ra
+        run: tox -e pypy3-test-resource-detector-hostid-latest -- -ra
 
   py310-test-resource-detector-azure-0_ubuntu-latest:
     name: resource-detector-azure-0 3.10 Ubuntu

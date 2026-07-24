@@ -3,8 +3,8 @@ OpenTelemetry Host ID Resource Detector
 
 |pypi|
 
-.. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-host.svg
-   :target: https://pypi.org/project/opentelemetry-resource-detector-host/
+.. |pypi| image:: https://badge.fury.io/py/opentelemetry-resource-detector-hostid.svg
+   :target: https://pypi.org/project/opentelemetry-resource-detector-hostid/
 
 This library provides a custom `Resource Detector <https://opentelemetry.io/docs/specs/otel/resource/sdk/#detecting-resource-information-from-the-environment>`_
 that sets the ``host.id`` resource attribute for a physical or virtual host, following the
@@ -15,17 +15,17 @@ Installation
 
 ::
 
-    pip install opentelemetry-resource-detector-host
+    pip install opentelemetry-resource-detector-hostid
 
 ---------------------------
 
-Usage example for ``opentelemetry-resource-detector-host``
+Usage example for ``opentelemetry-resource-detector-hostid``
 
 .. code-block:: python
 
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.resource.detector.host import (
+    from opentelemetry.resource.detector.hostid import (
         HostIdResourceDetector,
     )
     from opentelemetry.sdk.resources import get_aggregated_resources

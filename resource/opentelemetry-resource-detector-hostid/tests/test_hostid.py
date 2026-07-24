@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from unittest import TestCase, skipUnless
 from unittest.mock import MagicMock, patch
 
-from opentelemetry.resource.detector.host import (
+from opentelemetry.resource.detector.hostid import (
     HostIdResourceDetector,
     _windows_reg_path,
 )
@@ -21,7 +21,7 @@ from opentelemetry.semconv._incubating.attributes.host_attributes import (
     HOST_ID,
 )
 
-MODULE = "opentelemetry.resource.detector.host"
+MODULE = "opentelemetry.resource.detector.hostid"
 
 _IOREG_OUTPUT = """+-o IOPlatformExpertDevice  <class IOPlatformExpertDevice>
     {
@@ -260,7 +260,7 @@ class HostIdResourceDetectorTest(TestCase):
 
     def test_host_id_entrypoint(self) -> None:
         (entrypoint,) = entry_points(
-            group="opentelemetry_resource_detector", name="host_id"
+            group="opentelemetry_resource_detector", name="hostid"
         )
         detector = entrypoint.load()()
         self.assertIsInstance(detector, HostIdResourceDetector)

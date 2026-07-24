@@ -1,1 +1,1 @@
-`opentelemetry-resource-detector-host`: add detector setting `host.id` from the non-privileged machine id
+`opentelemetry-resource-detector-hostid`: add detector setting `host.id` from the non-privileged machine id
