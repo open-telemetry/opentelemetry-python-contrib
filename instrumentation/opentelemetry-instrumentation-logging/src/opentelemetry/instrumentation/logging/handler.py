@@ -21,10 +21,10 @@ from opentelemetry._logs import (
 from opentelemetry.context import get_current
 from opentelemetry.instrumentation.log_utils import std_to_otel
 from opentelemetry.semconv._incubating.attributes import (
-    code_attributes,
     event_attributes,
 )
 from opentelemetry.semconv.attributes import (
+    code_attributes,
     exception_attributes,
     otel_attributes,
 )
@@ -151,6 +151,7 @@ class LoggingHandler(logging.Handler):
         event_name: str | None = attributes.pop(
             otel_attributes.OTEL_EVENT_NAME, None
         )
+        # TODO: Remove the deprecated branch path before marking logs stable
         deprecated_event_name: str | None = attributes.pop(
             event_attributes.EVENT_NAME, None
         )
