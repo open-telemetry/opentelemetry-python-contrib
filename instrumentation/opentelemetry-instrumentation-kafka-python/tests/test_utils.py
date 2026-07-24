@@ -4,6 +4,8 @@
 
 from unittest import TestCase, mock
 
+from kafka.producer.future import FutureProduceResult, FutureRecordMetadata
+
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
@@ -98,8 +100,10 @@ class TestUtils(TestCase):
         )
 
         extract_bootstrap_servers.assert_called_once_with(kafka_producer)
+        # The partition is read back from the future returned by send(), not
+        # estimated from the call arguments.
         extract_send_partition.assert_called_once_with(
-            kafka_producer, self.args, self.kwargs
+            original_send_callback.return_value
         )
         tracer.start_as_current_span.assert_called_once_with(
             expected_span_name, kind=SpanKind.PRODUCER
@@ -216,78 +220,50 @@ class TestUtils(TestCase):
         )
         detach.assert_called_once_with(attach.return_value)
 
-    @staticmethod
-    def _mock_producer() -> mock.MagicMock:
-        producer = mock.MagicMock()
-        producer.config = {
-            "key_serializer": None,
-            "value_serializer": None,
-            "max_block_ms": 1000,
-        }
-        producer._serialize.return_value = b"serialized"
-        producer._partition.return_value = 3
-        return producer
-
-    def test_extract_send_partition_explicit_is_used_verbatim(self):
-        """An explicitly pinned partition is recorded as-is, without asking
-        the producer to compute one."""
-        producer = self._mock_producer()
-
-        partition = KafkaPropertiesExtractor.extract_send_partition(
-            producer, [self.topic_name], {"partition": 5}
-        )
-
-        self.assertEqual(partition, 5)
-        producer._partition.assert_not_called()
-
-    def test_extract_send_partition_explicit_zero_is_used_verbatim(self):
-        """Partition ``0`` is falsy but valid and must not be dropped."""
-        producer = self._mock_producer()
-
-        partition = KafkaPropertiesExtractor.extract_send_partition(
-            producer, [self.topic_name], {"partition": 0}
-        )
-
-        self.assertEqual(partition, 0)
-        producer._partition.assert_not_called()
-
-    def test_extract_send_partition_with_key_is_deterministic(self):
-        """With a key, the partition is derived from the key hash and matches
-        what ``send()`` computes, so it is safe to record."""
-        producer = self._mock_producer()
-
-        partition = KafkaPropertiesExtractor.extract_send_partition(
-            producer, [self.topic_name], {"key": b"user-1"}
-        )
-
-        self.assertEqual(partition, 3)
-        producer._partition.assert_called_once()
-
-    def test_extract_send_partition_without_key_or_partition_returns_none(
-        self,
-    ):
-        """Without a key or explicit partition the DefaultPartitioner chooses
-        randomly, so no (potentially wrong) partition is estimated.
+    def test_extract_send_partition_reads_actual_partition_from_future(self):
+        """The partition is read back from the future returned by ``send()``,
+        which reflects where the message was actually routed.
 
         Regression test for
         https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4625
         """
-        producer = self._mock_producer()
+        future = mock.MagicMock()
+        future._produce_future.topic_partition = ("test_topic", 7)
 
-        partition = KafkaPropertiesExtractor.extract_send_partition(
-            producer, [self.topic_name], {}
+        partition = KafkaPropertiesExtractor.extract_send_partition(future)
+
+        self.assertEqual(partition, 7)
+
+    def test_extract_send_partition_zero(self):
+        """Partition ``0`` is falsy but valid and must not be dropped."""
+        future = mock.MagicMock()
+        future._produce_future.topic_partition = ("test_topic", 0)
+
+        partition = KafkaPropertiesExtractor.extract_send_partition(future)
+
+        self.assertEqual(partition, 0)
+
+    def test_extract_send_partition_matches_real_kafka_future(self):
+        """Guards against kafka-python changing the internal attribute the
+        extractor relies on."""
+        produce_future = FutureProduceResult(("test_topic", 4))
+        future = FutureRecordMetadata(
+            produce_future, 0, None, None, -1, -1, -1
         )
 
-        self.assertIsNone(partition)
-        producer._partition.assert_not_called()
+        partition = KafkaPropertiesExtractor.extract_send_partition(future)
 
-    def test_extract_send_partition_returns_none_on_error(self):
-        """Failures while computing the key-based partition are swallowed."""
-        producer = self._mock_producer()
-        producer._wait_on_metadata.side_effect = Exception("mocked error")
+        self.assertEqual(partition, 4)
+
+    def test_extract_send_partition_returns_none_when_unavailable(self):
+        """If the future does not expose the expected internals, the attribute
+        is omitted rather than raising."""
+
+        class _NoInternals:
+            pass
 
         partition = KafkaPropertiesExtractor.extract_send_partition(
-            producer, [self.topic_name], {"key": b"user-1"}
+            _NoInternals()
         )
 
         self.assertIsNone(partition)
