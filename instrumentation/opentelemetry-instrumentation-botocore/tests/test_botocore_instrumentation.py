@@ -7,7 +7,7 @@ from unittest.mock import ANY, Mock, call, patch
 from urllib.parse import urlparse
 
 import botocore.session
-from botocore.exceptions import ParamValidationError
+from botocore.exceptions import ClientError, ParamValidationError
 from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry import trace as trace_api
@@ -166,6 +166,44 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertIn(EXCEPTION_STACKTRACE, event.attributes)
         self.assertIn(EXCEPTION_TYPE, event.attributes)
         self.assertIn(EXCEPTION_MESSAGE, event.attributes)
+
+    @mock_aws
+    def test_client_error_with_http_error_status(self):
+        """ClientError with HTTP 4xx sets span status to ERROR."""
+        s3 = self._make_client("s3")
+
+        with self.assertRaises(ClientError):
+            s3.get_object(Bucket="non-existent-bucket", Key="non-existent-key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+
+    @mock_aws
+    def test_client_error_304_not_modified(self):
+        """S3 IfNoneMatch returning 304 sets span status to OK."""
+        s3 = self._make_client("s3")
+        s3.create_bucket(
+            Bucket="test-bucket",
+            CreateBucketConfiguration={"LocationConstraint": self.region},
+        )
+        etag = s3.put_object(Bucket="test-bucket", Key="key", Body=b"data")[
+            "ETag"
+        ]
+
+        with self.assertRaises(ClientError):
+            s3.get_object(
+                Bucket="test-bucket", Key="key", IfNoneMatch=etag
+            )
+
+        spans = self.memory_exporter.get_finished_spans()
+        # Filter to the GetObject span
+        get_spans = [s for s in spans if s.name == "S3.GetObject"]
+        self.assertEqual(1, len(get_spans))
+        self.assertIs(
+            get_spans[0].status.status_code, trace_api.StatusCode.OK
+        )
 
     @mock_aws
     def test_s3_client(self):
