@@ -123,21 +123,23 @@ This will create a virtual environment in the `.venv` directory and install all 
 
 #### Virtual Environment Including Local Core Repository
 
-If you want to utilize a local version of the [OpenTelemetry Python Core Repository](https://github.com/open-telemetry/opentelemetry-python) in addition to your local clone of this repository, you have to replace the core `git` dependencies from the [`pyproject.toml`](./pyproject.toml) with [uv path dependencies](https://docs.astral.sh/uv/concepts/projects/dependencies/#path).
+If you also have a local clone of [`opentelemetry-python`](https://github.com/open-telemetry/opentelemetry-python) and want `uv` to use your local clone to resolve core dependencies, you can run the following commands after **activating the virtual environment created in the previous step**. 
 
-You can also utilize [`scripts/generate_pyproject_for_local_core_dependency.py`](./scripts/generate_pyproject_for_local_core_dependency.py). Simply point it at the `pyproject.toml` file of your local contrib and core repository and replace the `tool.uv.sources` section in 
-the contrib [`pyproject.toml`](./pyproject.toml) with the output of the script.
+Note you may have to replace `../opentelemetry-python` with the path to your local clone.
 
-```console
-$ python3 scripts/generate_pyproject_for_local_core_dependency.py -icontrib ./pyproject.toml -icore ../opentelemetry-python/pyproject.toml
-[tool.uv.sources]
-opentelemetry-api = { path = "../opentelemetry-python/opentelemetry-sdk", editable = true }
-...
-opentelemetry-instrumentation = { workspace = true }
-...
+```sh
+uv sync --project ../opentelemetry-python --active --inexact
 ```
 
-> Note: The output will use absolute paths instead of relative ones
+How you activate the virtual environment is platform specific. Some examples:
+```sh
+source .venv/bin/activate # Linux
+```
+
+```ps1
+.venv\Scripts\activate.ps1 # Windows Powershell
+.venv\Scripts\activate.bat # Windows CMD
+```
 
 ### Troubleshooting
 
