@@ -282,6 +282,79 @@ class TestBoto3SQSInstrumentation(TestBase):
         )
         self._assert_injected_span(message_attrs, span)
 
+    def test_send_message_batch(self):
+        expected_message_ids = {"1": "msg-1", "2": "msg-2"}
+        mock_response = {
+            "Successful": [
+                {"Id": "1", "MessageId": "msg-1", "MD5OfMessageBody": "11"},
+                {"Id": "2", "MessageId": "msg-2", "MD5OfMessageBody": "22"},
+            ],
+            "Failed": [],
+        }
+        entries = [
+            {"Id": "1", "MessageBody": "hello 1"},
+            {"Id": "2", "MessageBody": "hello 2"},
+        ]
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message_batch(
+                QueueUrl=self._queue_url, Entries=entries
+            )
+
+        spans = self.get_finished_spans()
+        self.assertEqual(2, len(spans))
+        spans_by_entry_id = {
+            span.attributes[SpanAttributes.MESSAGING_CONVERSATION_ID]: span
+            for span in spans
+        }
+        for entry in entries:
+            entry_id = entry["Id"]
+            span = spans_by_entry_id[entry_id]
+            self.assertEqual(f"{self._queue_name} send", span.name)
+            self.assertEqual(SpanKind.PRODUCER, span.kind)
+            self.assertEqual(
+                {
+                    SpanAttributes.MESSAGING_CONVERSATION_ID: entry_id,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: expected_message_ids[
+                        entry_id
+                    ],
+                    **self._default_span_attrs(),
+                },
+                span.attributes,
+            )
+            self._assert_injected_span(entry["MessageAttributes"], span)
+
+    def test_send_message_batch_all_failed(self):
+        mock_response = {
+            "Failed": [
+                {
+                    "Id": "1",
+                    "SenderFault": True,
+                    "Code": "InvalidParameterValue",
+                    "Message": "boom",
+                }
+            ]
+        }
+        entries = [{"Id": "1", "MessageBody": "hello 1"}]
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message_batch(
+                QueueUrl=self._queue_url, Entries=entries
+            )
+
+        span = self._get_only_span()
+        self.assertEqual(f"{self._queue_name} send", span.name)
+        self.assertEqual(SpanKind.PRODUCER, span.kind)
+        self.assertEqual(
+            {
+                SpanAttributes.MESSAGING_CONVERSATION_ID: "1",
+                **self._default_span_attrs(),
+            },
+            span.attributes,
+        )
+        self.assertNotIn(SpanAttributes.MESSAGING_MESSAGE_ID, span.attributes)
+        self._assert_injected_span(entries[0]["MessageAttributes"], span)
+
     def test_receive_message(self):
         msg_def = {
             "1": {"receipt": "01", "trace_id": 10, "span_id": 1},

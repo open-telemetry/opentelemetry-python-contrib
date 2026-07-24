@@ -950,6 +950,9 @@ class CursorTracer(Generic[CursorT]):
         *args: tuple[Any, ...],
         **kwargs: dict[Any, Any],
     ):
+        if not is_instrumentation_enabled():
+            return await query_method(*args, **kwargs)
+
         operation_name = self.get_operation_name(cursor, args)
         name = operation_name
         if not name:

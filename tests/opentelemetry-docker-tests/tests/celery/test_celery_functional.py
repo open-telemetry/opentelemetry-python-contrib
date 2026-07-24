@@ -535,3 +535,36 @@ def test_custom_tracer_provider(celery_app, memory_exporter):
 
     span = spans_list[0]
     assert span.resource == resource
+
+
+def test_use_span_links(celery_app, tracer_provider, memory_exporter):
+    @celery_app.task
+    def fn_task():
+        return 42
+
+    CeleryInstrumentor().uninstrument()
+    CeleryInstrumentor().instrument(
+        tracer_provider=tracer_provider, use_span_links=True
+    )
+
+    result = fn_task.apply_async()
+    assert result.get(timeout=ASYNC_GET_TIMEOUT) == 42
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 2
+
+    run_span = next(
+        s for s in spans if s.attributes.get("celery.action") == "run"
+    )
+    async_span = next(
+        s for s in spans if s.attributes.get("celery.action") == "apply_async"
+    )
+
+    # The run span should not be a child of the async span when using links.
+    assert run_span.parent is None
+    assert run_span.context.trace_id != async_span.context.trace_id
+
+    assert len(run_span.links) == 1
+    link = run_span.links[0]
+    assert link.context.span_id == async_span.context.span_id
+    assert link.context.trace_id == async_span.context.trace_id

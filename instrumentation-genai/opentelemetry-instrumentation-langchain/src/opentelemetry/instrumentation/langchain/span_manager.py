@@ -68,12 +68,12 @@ class _SpanManager:
         span = self._create_span(
             run_id=run_id,
             parent_run_id=parent_run_id,
-            span_name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",
+            span_name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_model}",  # pyright: ignore[reportDeprecated]
             kind=SpanKind.CLIENT,
         )
         span.set_attribute(
             GenAI.GEN_AI_OPERATION_NAME,
-            GenAI.GenAiOperationNameValues.CHAT.value,
+            GenAI.GenAiOperationNameValues.CHAT.value,  # pyright: ignore[reportDeprecated]
         )
         if request_model:
             span.set_attribute(GenAI.GEN_AI_REQUEST_MODEL, request_model)

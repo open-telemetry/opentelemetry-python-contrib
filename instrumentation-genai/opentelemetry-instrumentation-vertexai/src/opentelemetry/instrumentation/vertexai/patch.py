@@ -152,7 +152,7 @@ class MethodWrappers:
         params = _extract_params(*args, **kwargs)
         request_attributes = get_genai_request_attributes(True, params)
         with self.tracer.start_as_current_span(
-            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_attributes.get(GenAI.GEN_AI_REQUEST_MODEL, '')}".strip(),
+            name=f"{GenAI.GenAiOperationNameValues.CHAT.value} {request_attributes.get(GenAI.GEN_AI_REQUEST_MODEL, '')}".strip(),  # pyright: ignore[reportDeprecated]
             kind=SpanKind.CLIENT,
         ) as span:
 
