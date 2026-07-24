@@ -1,3 +1,16 @@
+## Version 1.14.0 (2026-07-24)
+
+### Changed
+
+- Update package namespace to
+  `opentelemetry.resourcedetector.gcp_resource_detector`.
+  ([#4861](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4861))
+
+### Fixed
+
+- Add back `gcp_resource_detector` entry point name for backward compatibility.
+  ([#4865](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4865))
+
 ## Version 1.13.0 (2026-07-22)
 
 ### Added
