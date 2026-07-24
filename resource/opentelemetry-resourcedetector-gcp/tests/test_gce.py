@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from opentelemetry.resource.detector.gcp import (
+from opentelemetry.resourcedetector.gcp_resource_detector import (
     _gce,
     _metadata,
 )

@@ -31,14 +31,14 @@ dependencies = [
 ]
 
 [project.entry-points.opentelemetry_resource_detector]
-gcp = "opentelemetry.resource.detector.gcp:GoogleCloudResourceDetector"
+gcp = "opentelemetry.resourcedetector.gcp_resource_detector:GoogleCloudResourceDetector"
 
 [project.urls]
 Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resourcedetector-gcp"
 Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
 
 [tool.hatch.version]
-path = "src/opentelemetry/resource/detector/gcp/version.py"
+path = "src/opentelemetry/resourcedetector/gcp_resource_detector/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

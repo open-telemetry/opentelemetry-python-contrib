@@ -6,7 +6,7 @@ import dataclasses
 import pytest
 from syrupy.assertion import SnapshotAssertion
 
-from opentelemetry.resource.detector.gcp._mapping import (
+from opentelemetry.resourcedetector.gcp_resource_detector._mapping import (
     get_monitored_resource,
 )
 from opentelemetry.sdk.resources import Attributes, LabelValue, Resource

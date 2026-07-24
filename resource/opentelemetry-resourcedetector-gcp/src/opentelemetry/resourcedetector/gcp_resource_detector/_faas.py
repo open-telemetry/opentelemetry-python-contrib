@@ -6,7 +6,7 @@
 
 import os
 
-from opentelemetry.resource.detector.gcp import _metadata
+from opentelemetry.resourcedetector.gcp_resource_detector import _metadata
 
 _CLOUD_RUN_CONFIG_ENV = "K_CONFIGURATION"
 _CLOUD_FUNCTION_TARGET_ENV = "FUNCTION_TARGET"
