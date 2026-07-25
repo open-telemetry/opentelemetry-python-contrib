@@ -267,7 +267,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                         entry["MessageAttributes"], setter=boto3sqs_setter
                     )
             retval = wrapped(*args, **kwargs)
-            for successful_messages in retval["Successful"]:
+            for successful_messages in retval.get("Successful", []):
                 message_identifier = successful_messages["Id"]
                 message_span = ids_to_spans.get(message_identifier)
                 if message_span:

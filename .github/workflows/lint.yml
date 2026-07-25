@@ -176,6 +176,25 @@ jobs:
       - name: Run tests
         run: tox -e lint-resource-detector-azure
 
+  lint-resourcedetector-gcp:
+    name: resourcedetector-gcp
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-resourcedetector-gcp
+
   lint-sdk-extension-aws:
     name: sdk-extension-aws
     runs-on: ubuntu-latest
@@ -423,25 +442,6 @@ jobs:
       - name: Run tests
         run: tox -e lint-instrumentation-click
 
-  lint-instrumentation-elasticsearch:
-    name: instrumentation-elasticsearch
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout repo @ SHA - ${{ github.sha }}
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-
-      - name: Install tox
-        run: pip install tox-uv
-
-      - name: Run tests
-        run: tox -e lint-instrumentation-elasticsearch
-
   lint-instrumentation-falcon:
     name: instrumentation-falcon
     runs-on: ubuntu-latest
@@ -574,6 +574,25 @@ jobs:
 
       - name: Run tests
         run: tox -e lint-instrumentation-starlette
+
+  lint-instrumentation-structlog:
+    name: instrumentation-structlog
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo @ SHA - ${{ github.sha }}
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e lint-instrumentation-structlog
 
   lint-instrumentation-jinja2:
     name: instrumentation-jinja2

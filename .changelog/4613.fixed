@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-aiokafka`, `opentelemetry-instrumentation-confluent-kafka`, `opentelemetry-instrumentation-kafka-python`: fix malformed RST formatting in module docstrings

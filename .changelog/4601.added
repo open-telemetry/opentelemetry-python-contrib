@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-botocore`: loosen aiobotocore version constraints to allow for 3.x

@@ -180,6 +180,35 @@ class TestTornadoInstrumentation(TornadoTest, WsgiTestBase):
 
         self.memory_exporter.clear()
 
+    def test_unknown_method_span_name(self):
+        response = self.fetch(
+            "/", method="UNKNOWN", allow_nonstandard_methods=True
+        )
+        self.assertEqual(response.code, 405)
+        spans = self.memory_exporter.get_finished_spans()
+
+        self.assertEqual(len(spans), 2)
+
+        server, client = self.sorted_spans(spans)
+
+        self.assertEqual(server.name, "HTTP /")
+        self.assertSpanHasAttributes(
+            server,
+            {
+                HTTP_METHOD: "_OTHER",
+            },
+        )
+
+        self.assertEqual(client.name, "HTTP")
+        self.assertSpanHasAttributes(
+            client,
+            {
+                HTTP_METHOD: "_OTHER",
+            },
+        )
+
+        self.memory_exporter.clear()
+
     def test_not_recording(self):
         mock_tracer = Mock()
         mock_span = Mock()

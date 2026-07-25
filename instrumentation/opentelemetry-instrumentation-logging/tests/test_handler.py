@@ -29,6 +29,12 @@ from opentelemetry.trace import (
 )
 
 
+class MutatingFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        record.my_special_attr = "my-special-attr-value"
+        return super().format(record)
+
+
 # pylint: disable=too-many-public-methods
 class TestLoggingHandler(unittest.TestCase):
     def test_handler_default_log_level(self):
@@ -426,6 +432,20 @@ class TestLoggingHandler(unittest.TestCase):
         )
 
         logger.removeHandler(handler)
+
+    def test_formatter_added_attributes_are_exported(self):
+        processor, logger, handler = set_up_test_logging(
+            logging.WARNING,
+            formatter=MutatingFormatter("%(message)s"),
+        )
+        logger.warning("Test message")
+
+        record = processor.get_log_record(0)
+        logger.removeHandler(handler)
+        self.assertEqual(
+            record.log_record.attributes.get("my_special_attr"),
+            "my-special-attr-value",
+        )
 
     def test_log_body_is_always_string_with_formatter(self):
         processor, logger, handler = set_up_test_logging(
