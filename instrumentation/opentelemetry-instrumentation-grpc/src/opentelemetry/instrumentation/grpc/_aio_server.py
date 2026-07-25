@@ -10,6 +10,7 @@ try:
 except ImportError:
     from wrapt import ObjectProxy as BaseObjectProxy
 
+from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
 )
@@ -71,6 +72,9 @@ class OpenTelemetryAioServerInterceptor(
     """
 
     async def intercept_service(self, continuation, handler_call_details):
+        if not is_instrumentation_enabled():
+            return await continuation(handler_call_details)
+
         if self._filter is not None and not self._filter(handler_call_details):
             return await continuation(handler_call_details)
 
