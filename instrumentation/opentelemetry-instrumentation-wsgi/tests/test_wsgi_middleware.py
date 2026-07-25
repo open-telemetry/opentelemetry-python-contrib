@@ -10,6 +10,7 @@ from unittest import mock
 from urllib.parse import urlsplit
 
 import opentelemetry.instrumentation.wsgi as otel_wsgi
+from opentelemetry import baggage
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation._semconv import (
     HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
@@ -196,6 +197,7 @@ _recommended_metrics_attrs_both = {
 SCOPE = "opentelemetry.instrumentation.wsgi"
 
 
+# pylint: disable=too-many-public-methods
 class TestWsgiApplication(WsgiTestBase):
     def setUp(self):
         super().setUp()
@@ -334,6 +336,29 @@ class TestWsgiApplication(WsgiTestBase):
         app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
         response = app(self.environ, self.start_response)
         self.validate_response(response, old_sem_conv=True, new_sem_conv=True)
+
+    def test_baggage_extracted_and_active_in_wrapped_app(self):
+        baggage_in_wrapped_app = {}
+
+        def wsgi_capture_baggage(environ, start_response):
+            baggage_in_wrapped_app.update(baggage.get_all())
+            return simple_wsgi(environ, start_response)
+
+        self.environ["HTTP_BAGGAGE"] = "key1=value1,key2=value2,key3=1%2F3"
+        app = otel_wsgi.OpenTelemetryMiddleware(wsgi_capture_baggage)
+        response = app(self.environ, self.start_response)
+        self.validate_response(response)
+        self.assertEqual(
+            baggage_in_wrapped_app,
+            {"key1": "value1", "key2": "value2", "key3": "1/3"},
+        )
+
+    def test_baggage_detached_after_response_is_consumed(self):
+        self.environ["HTTP_BAGGAGE"] = "key1=value1"
+        app = otel_wsgi.OpenTelemetryMiddleware(simple_wsgi)
+        response = app(self.environ, self.start_response)
+        self.validate_response(response)
+        self.assertEqual(dict(baggage.get_all()), {})
 
     def test_hooks(self):
         hook_headers = (
