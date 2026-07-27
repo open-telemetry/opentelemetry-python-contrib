@@ -44,15 +44,9 @@ def _extract_cluster_id(instance: Any) -> Optional[str]:
     """Read cluster_id from librdkafka's internal metadata cache. Non-blocking."""
     if instance is None:
         return None
-    cached = getattr(instance, "_otel_cluster_id", None)
-    if cached:
-        return cached
     try:
         cluster_metadata = instance.list_topics(timeout=0)
-        cluster_id = getattr(cluster_metadata, "cluster_id", None)
-        if cluster_id:
-            instance._otel_cluster_id = cluster_id
-        return cluster_id or None
+        return getattr(cluster_metadata, "cluster_id", None) or None
     except Exception:  # pylint: disable=broad-except
         return None
 

@@ -32,7 +32,7 @@ from opentelemetry.test.test_base import TestBase
 from .utils import MockConsumer, MockedMessage, MockedProducer
 
 
-class TestConfluentKafka(TestBase):
+class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
     def test_instrument_api(self) -> None:
         from confluent_kafka import Consumer, Producer  # noqa: PLC0415
 
@@ -499,7 +499,9 @@ class TestConfluentKafka(TestBase):
             span.attributes["messaging.kafka.cluster.id"], "test-cluster-abc"
         )
 
-    def test_cluster_id_not_set_on_producer_span_when_unavailable(self) -> None:
+    def test_cluster_id_not_set_on_producer_span_when_unavailable(
+        self,
+    ) -> None:
         instrumentation = ConfluentKafkaInstrumentor()
         producer = MockedProducer(
             [],
@@ -540,23 +542,23 @@ class TestConfluentKafka(TestBase):
             "test-cluster-xyz",
         )
 
-    def test_cluster_id_cached_on_instance(self) -> None:
+    def test_cluster_id_reflects_current_value(self) -> None:
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
             _extract_cluster_id,
         )
 
         producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
-        producer._mock_cluster_id = "cached-cluster-id"
+        producer._mock_cluster_id = "cluster-before-migration"
 
-        result = _extract_cluster_id(producer)
-        self.assertEqual(result, "cached-cluster-id")
-        # After first fetch, cached on instance — list_topics no longer needed
-        self.assertEqual(producer._otel_cluster_id, "cached-cluster-id")
+        self.assertEqual(
+            _extract_cluster_id(producer), "cluster-before-migration"
+        )
 
-        # Change mock to verify cache is read, not list_topics
-        producer._mock_cluster_id = "different-id"
-        result2 = _extract_cluster_id(producer)
-        self.assertEqual(result2, "cached-cluster-id")
+        # Simulate cluster migration at same bootstrap URL — new cluster ID must be visible.
+        producer._mock_cluster_id = "cluster-after-migration"
+        self.assertEqual(
+            _extract_cluster_id(producer), "cluster-after-migration"
+        )
 
     def test_extract_cluster_id_returns_none_for_none_instance(self) -> None:
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
