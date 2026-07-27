@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Literal
 
-from opentelemetry.resource.detector.gcp import (
+from opentelemetry.resourcedetector.gcp_resource_detector import (
     _gce,
     _metadata,
 )
