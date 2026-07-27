@@ -90,6 +90,10 @@ libraries = [
         "instrumentation": "opentelemetry-instrumentation-fastapi==0.66b0.dev",
     },
     {
+        "library": "faust-streaming >= 0.10, < 1.0",
+        "instrumentation": "opentelemetry-instrumentation-faust==0.66b0.dev",
+    },
+    {
         "library": "flask >= 1.0",
         "instrumentation": "opentelemetry-instrumentation-flask==0.66b0.dev",
     },

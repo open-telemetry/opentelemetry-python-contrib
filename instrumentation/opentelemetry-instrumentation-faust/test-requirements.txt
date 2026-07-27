@@ -1,0 +1,4 @@
+faust-streaming==0.11.3
+pytest==7.4.4
+-e opentelemetry-instrumentation
+-e instrumentation/opentelemetry-instrumentation-faust

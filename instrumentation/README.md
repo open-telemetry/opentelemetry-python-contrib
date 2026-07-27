@@ -22,6 +22,7 @@
 | [opentelemetry-instrumentation-exceptions](./opentelemetry-instrumentation-exceptions) | exceptions | No | development
 | [opentelemetry-instrumentation-falcon](./opentelemetry-instrumentation-falcon) | falcon >= 1.4.1, < 5.0.0 | Yes | migration
 | [opentelemetry-instrumentation-fastapi](./opentelemetry-instrumentation-fastapi) | fastapi ~= 0.92 | Yes | migration
+| [opentelemetry-instrumentation-faust](./opentelemetry-instrumentation-faust) | faust-streaming >= 0.10, < 1.0 | No | development
 | [opentelemetry-instrumentation-flask](./opentelemetry-instrumentation-flask) | flask >= 1.0 | Yes | migration
 | [opentelemetry-instrumentation-grpc](./opentelemetry-instrumentation-grpc) | grpcio >= 1.42.0 | No | development
 | [opentelemetry-instrumentation-httpx](./opentelemetry-instrumentation-httpx) | httpx >= 0.18.0,httpx2 >= 2.0.0 | Yes | migration
