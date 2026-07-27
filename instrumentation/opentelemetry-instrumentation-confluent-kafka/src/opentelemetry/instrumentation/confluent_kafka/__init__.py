@@ -117,7 +117,6 @@ from .utils import (
     _create_new_consume_span,
     _end_current_consume_span,
     _enrich_span,
-    _fetch_cluster_id_background,
     _get_real_instance,
     _get_span_name,
     _kafka_setter,
@@ -145,13 +144,6 @@ class AutoInstrumentedProducer(Producer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.config = _capture_config(args, kwargs)
-        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
-            self
-        )
-        if bootstrap_servers:
-            _fetch_cluster_id_background(
-                bootstrap_servers, self.config, instance=self
-            )
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def produce(self, topic, value=None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg,useless-super-delegation
@@ -163,13 +155,6 @@ class AutoInstrumentedConsumer(Consumer):
         super().__init__(*args, **kwargs)
         self.config = _capture_config(args, kwargs)
         self._current_consume_span = None
-        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
-            self
-        )
-        if bootstrap_servers:
-            _fetch_cluster_id_background(
-                bootstrap_servers, self.config, instance=self
-            )
 
     # This method is deliberately implemented in order to allow wrapt to wrap this function
     def poll(self, timeout=-1):  # pylint: disable=useless-super-delegation
@@ -192,13 +177,6 @@ class ProxiedProducer(Producer):
         # KafkaPropertiesExtractor.extract_bootstrap_servers can read it
         # through this proxy.
         self.config = getattr(producer, "config", None)
-        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
-            self
-        )
-        if bootstrap_servers:
-            _fetch_cluster_id_background(
-                bootstrap_servers, self.config, instance=producer
-            )
 
     def flush(self, timeout=-1):
         return self._producer.flush(timeout)
@@ -230,13 +208,6 @@ class ProxiedConsumer(Consumer):
         self._current_context_token = None
         # See ProxiedProducer.__init__ for rationale.
         self.config = getattr(consumer, "config", None)
-        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
-            self
-        )
-        if bootstrap_servers:
-            _fetch_cluster_id_background(
-                bootstrap_servers, self.config, instance=consumer
-            )
 
     def close(self, *args, **kwargs):
         return ConfluentKafkaInstrumentor.wrap_close(

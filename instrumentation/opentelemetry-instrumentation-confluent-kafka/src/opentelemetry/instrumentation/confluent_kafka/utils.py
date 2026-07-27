@@ -1,10 +1,10 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-import threading
-import time
+from __future__ import annotations
+
 from logging import getLogger
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from opentelemetry import context, propagate
 from opentelemetry.propagators import textmap
@@ -30,13 +30,6 @@ _LOG = getLogger(__name__)
 # use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
 _MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
 
-_CLUSTER_ID_TTL_SECONDS = 60 * 60
-
-_kafka_cluster_id_cache: Dict[str, object] = {}
-_kafka_cluster_id_lock = threading.Lock()
-# Auth config stored from the first fetch per broker key; used for TTL re-fetches.
-_kafka_cluster_id_config_cache: Dict[str, Optional[Dict[str, str]]] = {}
-
 
 def _get_real_instance(instance: Any) -> Any:
     """Unwrap Proxied* wrappers to get the underlying confluent-kafka Producer/Consumer."""
@@ -47,96 +40,21 @@ def _get_real_instance(instance: Any) -> Any:
     )
 
 
-def _bootstrap_cache_key(bootstrap_servers: Optional[str]) -> str:
-    if not bootstrap_servers:
-        return ""
-    parts = [s.strip() for s in bootstrap_servers.split(",") if s.strip()]
-    return ",".join(sorted(parts))
-
-
-def _fetch_cluster_id_background(
-    bootstrap_servers: Optional[str],
-    base_config: Optional[Dict[str, str]] = None,
-    instance: Optional[Any] = None,
-) -> None:
-    """Fetch cluster UUID in a daemon thread. Uses instance.list_topics() when available; falls back to AdminClient."""
-    if not bootstrap_servers:
-        return
-    cache_key = _bootstrap_cache_key(bootstrap_servers)
-    if not cache_key:
-        return
-
-    with _kafka_cluster_id_lock:
-        if base_config is not None:
-            _kafka_cluster_id_config_cache.setdefault(cache_key, base_config)
-        resolved_config = (
-            _kafka_cluster_id_config_cache.get(cache_key) or base_config
-        )
-
-        existing = _kafka_cluster_id_cache.get(cache_key)
-        if isinstance(existing, tuple):
-            if time.monotonic() - existing[1] <= _CLUSTER_ID_TTL_SECONDS:
-                return  # still fresh; stale value stays until re-fetch succeeds
-            # TTL expired — leave stale tuple in cache so callers get the old value
-            # while the background refresh runs, then the refresh will overwrite it.
-        elif existing is not None:
-            return  # "" sentinel — first fetch already in progress
-        else:
-            _kafka_cluster_id_cache[cache_key] = (
-                ""  # mark first fetch in-flight
-            )
-
-    def _run() -> None:
-        try:
-            if instance is not None:
-                cluster_metadata = instance.list_topics(timeout=10)
-            else:
-                from confluent_kafka.admin import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
-                    AdminClient,
-                )
-
-                admin = AdminClient(
-                    {
-                        **(resolved_config or {}),
-                        "bootstrap.servers": bootstrap_servers,
-                    }
-                )
-                try:
-                    cluster_metadata = admin.list_topics(timeout=10)
-                finally:
-                    # confluent_kafka.AdminClient has no explicit close(); deleting the reference
-                    # allows librdkafka to release native resources via __del__ rather than waiting for GC.
-                    del admin
-            cluster_id = getattr(cluster_metadata, "cluster_id", None)
-            if cluster_id:
-                with _kafka_cluster_id_lock:
-                    _kafka_cluster_id_cache[cache_key] = (
-                        cluster_id,
-                        time.monotonic(),
-                    )
-            else:
-                with _kafka_cluster_id_lock:
-                    _kafka_cluster_id_cache.pop(cache_key, None)
-        except Exception:  # pylint: disable=broad-except
-            with _kafka_cluster_id_lock:
-                _kafka_cluster_id_cache.pop(cache_key, None)
-
-    thread = threading.Thread(
-        target=_run, daemon=True, name="otel-confluent-kafka-cluster-id"
-    )
-    try:
-        thread.start()
-    except Exception:  # pylint: disable=broad-except
-        with _kafka_cluster_id_lock:
-            _kafka_cluster_id_cache.pop(cache_key, None)
-
-
-def _get_cluster_id(bootstrap_servers: Optional[str]) -> Optional[str]:
-    if not bootstrap_servers:
+def _extract_cluster_id(instance: Any) -> Optional[str]:
+    """Read cluster_id from librdkafka's internal metadata cache. Non-blocking."""
+    if instance is None:
         return None
-    cache_key = _bootstrap_cache_key(bootstrap_servers)
-    val = _kafka_cluster_id_cache.get(cache_key)
-    return val[0] if isinstance(val, tuple) else None
+    cached = getattr(instance, "_otel_cluster_id", None)
+    if cached:
+        return cached
+    try:
+        cluster_metadata = instance.list_topics(timeout=0)
+        cluster_id = getattr(cluster_metadata, "cluster_id", None)
+        if cluster_id:
+            instance._otel_cluster_id = cluster_id
+        return cluster_id or None
+    except Exception:  # pylint: disable=broad-except
+        return None
 
 
 class KafkaPropertiesExtractor:
@@ -296,8 +214,7 @@ def _enrich_span(
 
     _set_bootstrap_servers_attributes(span, bootstrap_servers)
 
-    _fetch_cluster_id_background(bootstrap_servers, instance=instance)
-    cluster_id = _get_cluster_id(bootstrap_servers)
+    cluster_id = _extract_cluster_id(instance)
     if cluster_id:
         span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 

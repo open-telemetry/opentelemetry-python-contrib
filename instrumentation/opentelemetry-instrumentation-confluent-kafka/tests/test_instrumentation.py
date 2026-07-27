@@ -482,3 +482,85 @@ class TestConfluentKafka(TestBase):
         )
         self.assertEqual(process_span.attributes[SERVER_ADDRESS], "broker-1")
         self.assertEqual(process_span.attributes[SERVER_PORT], 9092)
+
+    def test_cluster_id_set_on_producer_span(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer(
+            [],
+            {"bootstrap.servers": "localhost:29092"},
+        )
+        producer._mock_cluster_id = "test-cluster-abc"
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", key="k", value="v")
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertEqual(
+            span.attributes["messaging.kafka.cluster.id"], "test-cluster-abc"
+        )
+
+    def test_cluster_id_not_set_on_producer_span_when_unavailable(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        producer = MockedProducer(
+            [],
+            {"bootstrap.servers": "localhost:29092"},
+        )
+        # _mock_cluster_id defaults to None, so list_topics() returns None
+
+        producer = instrumentation.instrument_producer(producer)
+        producer.produce(topic="topic-1", key="k", value="v")
+
+        span = self.memory_exporter.get_finished_spans()[0]
+        self.assertNotIn("messaging.kafka.cluster.id", span.attributes)
+
+    def test_cluster_id_set_on_consumer_poll_span(self) -> None:
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "g",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        consumer._mock_cluster_id = "test-cluster-xyz"
+
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()  # end the in-flight process span
+
+        process_span = next(
+            s
+            for s in self.memory_exporter.get_finished_spans()
+            if s.name == "topic-1 process"
+        )
+        self.assertEqual(
+            process_span.attributes["messaging.kafka.cluster.id"],
+            "test-cluster-xyz",
+        )
+
+    def test_cluster_id_cached_on_instance(self) -> None:
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _extract_cluster_id,
+        )
+
+        producer = MockedProducer([], {"bootstrap.servers": "localhost:29092"})
+        producer._mock_cluster_id = "cached-cluster-id"
+
+        result = _extract_cluster_id(producer)
+        self.assertEqual(result, "cached-cluster-id")
+        # After first fetch, cached on instance — list_topics no longer needed
+        self.assertEqual(producer._otel_cluster_id, "cached-cluster-id")
+
+        # Change mock to verify cache is read, not list_topics
+        producer._mock_cluster_id = "different-id"
+        result2 = _extract_cluster_id(producer)
+        self.assertEqual(result2, "cached-cluster-id")
+
+    def test_extract_cluster_id_returns_none_for_none_instance(self) -> None:
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _extract_cluster_id,
+        )
+
+        self.assertIsNone(_extract_cluster_id(None))
