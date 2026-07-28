@@ -7,7 +7,6 @@ from typing import Any, Collection, Dict, Optional, Union
 
 import pika
 import wrapt
-from packaging import version
 from pika.adapters import BlockingConnection
 from pika.adapters.blocking_connection import (
     BlockingChannel,
@@ -17,6 +16,7 @@ from pika.channel import Channel
 from pika.connection import Connection
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._packaging import version
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.pika import utils
 from opentelemetry.instrumentation.pika.package import _instruments
