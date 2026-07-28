@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from opentelemetry.resource.detector.gcp import _gae
+from opentelemetry.resourcedetector.gcp_resource_detector import _gae
 
 
 # Reset stuff before every test
