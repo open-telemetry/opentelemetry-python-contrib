@@ -126,10 +126,12 @@ from collections.abc import Sequence
 from typing import Collection
 
 import sqlalchemy
-from packaging.version import parse as parse_version
 from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
+from opentelemetry.instrumentation._packaging.version import (
+    parse as parse_version,
+)
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
