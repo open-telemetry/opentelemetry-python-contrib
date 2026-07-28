@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opentelemetry-resource-detector-host"
+dynamic = ["version"]
+description = "Host resource detector for OpenTelemetry"
+readme = "README.rst"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+  { name = "OpenTelemetry Authors", email = "cncf-opentelemetry-contributors@lists.cncf.io" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = ["opentelemetry-sdk ~= 1.21"]
+
+[project.entry-points.opentelemetry_resource_detector]
+host = "opentelemetry.resource.detector.host:HostIdResourceDetector"
+
+[project.urls]
+Homepage = "https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/resource/opentelemetry-resource-detector-host"
+Repository = "https://github.com/open-telemetry/opentelemetry-python-contrib"
+
+[tool.hatch.version]
+path = "src/opentelemetry/resource/detector/host/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.rst", "/CHANGELOG.md"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opentelemetry"]
+
+[tool.towncrier]
+directory = ".changelog"
+filename = "CHANGELOG.md"
+start_string = "<!-- changelog start -->\n"
+template = "../../scripts/changelog_template.j2"
+issue_format = "[#{issue}](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/{issue})"
+wrap = true
+issue_pattern = "^(\\d+)"
+
+[[tool.towncrier.type]]
+directory = "added"
+name = "Added"
+showcontent = true
