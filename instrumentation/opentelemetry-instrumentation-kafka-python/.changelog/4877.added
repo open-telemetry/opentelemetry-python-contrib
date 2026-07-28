@@ -1,0 +1,1 @@
+Add the ``messaging.consumer.group.name`` attribute to consumer spans.

@@ -166,6 +166,7 @@ class TestUtils(TestCase):
             bootstrap_servers,
             self.args,
             self.kwargs,
+            kafka_consumer.config.get.return_value,
         )
 
     @mock.patch("opentelemetry.trace.set_span_in_context")
@@ -193,6 +194,7 @@ class TestUtils(TestCase):
             bootstrap_servers,
             self.args,
             self.kwargs,
+            "consumer-group",
         )
 
         expected_span_name = _get_span_name("receive", record.topic)
@@ -213,6 +215,10 @@ class TestUtils(TestCase):
             span, record, self.args, self.kwargs
         )
         detach.assert_called_once_with(attach.return_value)
+
+        span.set_attribute.assert_called_once_with(
+            "messaging.consumer.group.name", "consumer-group"
+        )
 
     @mock.patch(
         "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor"
@@ -237,4 +243,16 @@ class TestUtils(TestCase):
                 kafka_properties_extractor, self.args, self.kwargs
             )
             is None
+        )
+
+    def test_extract_consumer_group(self):
+        consumer = mock.Mock()
+        consumer.config = {"group_id": "orders"}
+        self.assertEqual(
+            KafkaPropertiesExtractor.extract_consumer_group(consumer), "orders"
+        )
+
+        consumer_without_config = object()
+        self.assertIsNone(
+            KafkaPropertiesExtractor.extract_consumer_group(consumer_without_config)
         )

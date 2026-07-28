@@ -9,6 +9,7 @@ from kafka.record.abc import ABCRecord
 
 from opentelemetry import context, propagate, trace
 from opentelemetry.propagators import textmap
+from opentelemetry.semconv._incubating.attributes import messaging_attributes
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.span import Span
@@ -20,6 +21,13 @@ class KafkaPropertiesExtractor:
     @staticmethod
     def extract_bootstrap_servers(instance):
         return instance.config.get("bootstrap_servers")
+
+    @staticmethod
+    def extract_consumer_group(instance):
+        try:
+            return instance.config.get("group_id")
+        except AttributeError:
+            return None
 
     @staticmethod
     def _extract_argument(key, position, default_value, args, kwargs):
@@ -184,6 +192,7 @@ def _create_consumer_span(
     bootstrap_servers,
     args,
     kwargs,
+    consumer_group=None,
 ):
     span_name = _get_span_name("receive", record.topic)
     with tracer.start_as_current_span(
@@ -194,6 +203,11 @@ def _create_consumer_span(
         new_context = trace.set_span_in_context(span, extracted_context)
         token = context.attach(new_context)
         _enrich_span(span, bootstrap_servers, record.topic, record.partition)
+        if span.is_recording() and consumer_group is not None:
+            span.set_attribute(
+                messaging_attributes.MESSAGING_CONSUMER_GROUP_NAME,
+                consumer_group,
+            )
         try:
             if callable(consume_hook):
                 consume_hook(span, record, args, kwargs)
@@ -214,6 +228,9 @@ def _wrap_next(
             bootstrap_servers = (
                 KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
             )
+            consumer_group = KafkaPropertiesExtractor.extract_consumer_group(
+                instance
+            )
 
             extracted_context = propagate.extract(
                 record.headers, getter=_kafka_getter
@@ -226,6 +243,7 @@ def _wrap_next(
                 bootstrap_servers,
                 args,
                 kwargs,
+                consumer_group,
             )
         return record
 
