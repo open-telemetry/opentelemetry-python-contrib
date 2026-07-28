@@ -76,6 +76,51 @@ class TestUtils(TestCase):
             extract_bootstrap_servers,
         )
 
+    @mock.patch("opentelemetry.propagate.inject")
+    @mock.patch("opentelemetry.instrumentation.kafka.utils._enrich_span")
+    def test_send_runs_before_producer_span_closes(
+        self,
+        enrich_span: mock.MagicMock,
+        inject: mock.MagicMock,
+    ) -> None:
+        events = []
+
+        class SpanContext:
+            def __enter__(self):
+                events.append("enter")
+                return mock.MagicMock()
+
+            def __exit__(self, *args):
+                events.append("exit")
+
+        tracer = mock.MagicMock()
+        tracer.start_as_current_span.return_value = SpanContext()
+        producer = mock.MagicMock()
+        send = mock.MagicMock(
+            side_effect=lambda *args, **kwargs: events.append("send")
+        )
+
+        with mock.patch.object(
+            KafkaPropertiesExtractor,
+            "extract_send_headers",
+            return_value=self.headers,
+        ), mock.patch.object(
+            KafkaPropertiesExtractor,
+            "extract_send_topic",
+            return_value=self.topic_name,
+        ), mock.patch.object(
+            KafkaPropertiesExtractor,
+            "extract_bootstrap_servers",
+            return_value=[],
+        ), mock.patch.object(
+            KafkaPropertiesExtractor,
+            "extract_send_partition",
+            return_value=0,
+        ):
+            _wrap_send(tracer, None)(send, producer, self.args, self.kwargs)
+
+        self.assertLess(events.index("send"), events.index("exit"))
+
     def wrap_send_helper(
         self,
         inject: mock.MagicMock,
