@@ -6,7 +6,7 @@
 
 import os
 
-from opentelemetry.resource.detector.gcp import (
+from opentelemetry.resourcedetector.gcp_resource_detector import (
     _faas,
     _gce,
     _metadata,

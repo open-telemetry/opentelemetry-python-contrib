@@ -5,8 +5,8 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Tuple
 
-from opentelemetry.resource.detector.gcp import _constants
-from opentelemetry.resource.detector.gcp._constants import (
+from opentelemetry.resourcedetector.gcp_resource_detector import _constants
+from opentelemetry.resourcedetector.gcp_resource_detector._constants import (
     ResourceAttributes,
 )
 from opentelemetry.sdk.resources import Attributes, Resource
