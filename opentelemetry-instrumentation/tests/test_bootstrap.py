@@ -94,6 +94,24 @@ class TestBootstrap(TestCase):
         )
         self.mock_pip_check.assert_called_once()
 
+    def test_migrated_genai_instrumentations_are_available(self):
+        instrumentation_names = {
+            library["instrumentation"] for library in libraries
+        }
+
+        self.assertTrue(
+            {
+                "opentelemetry-instrumentation-genai-anthropic",
+                "opentelemetry-instrumentation-google-genai",
+                "opentelemetry-instrumentation-genai-langchain",
+                "opentelemetry-instrumentation-genai-openai",
+                "opentelemetry-instrumentation-genai-openai-agents",
+            }.issubset(instrumentation_names)
+        )
+        self.assertNotIn(
+            "opentelemetry-instrumentation-openai-v2", instrumentation_names
+        )
+
     @patch("sys.argv", ["bootstrap", "-a", "install"])
     def test_can_override_available_default_instrumentations(self):
         with patch(

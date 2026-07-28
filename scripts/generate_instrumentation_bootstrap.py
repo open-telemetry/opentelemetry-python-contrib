@@ -65,6 +65,10 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-openai-agents-v2",
+    # OpenAI instrumentation was migrated to the opentelemetry-python-genai
+    # repository. Keep the legacy contrib package out of bootstrap results so
+    # environments receive the maintained package name below instead.
+    "opentelemetry-instrumentation-openai-v2",
     # Anthropic instrumentation is currently excluded because it is still in early
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
@@ -77,10 +81,36 @@ packages_to_exclude = [
 
 # Static version specifiers for instrumentations that are released independently
 independent_packages = {
-    "opentelemetry-instrumentation-openai-v2": "",
     "opentelemetry-instrumentation-vertexai": ">=2.0b0",
     "opentelemetry-instrumentation-google-genai": "",
 }
+
+# These instrumentations are now released from the opentelemetry-python-genai
+# repository. They are intentionally listed here rather than discovered from
+# the contrib workspace, because bootstrap must continue to offer them after
+# their legacy packages are removed from this repository.
+external_instrumentations = [
+    {
+        "library": "anthropic >= 0.51.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-anthropic",
+    },
+    {
+        "library": "google-genai >= 1.32.0",
+        "instrumentation": "opentelemetry-instrumentation-google-genai",
+    },
+    {
+        "library": "langchain >= 0.3.21",
+        "instrumentation": "opentelemetry-instrumentation-genai-langchain",
+    },
+    {
+        "library": "openai >= 1.26.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai",
+    },
+    {
+        "library": "openai-agents >= 0.3.3",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai-agents",
+    },
+]
 
 
 def main():
@@ -110,6 +140,17 @@ def main():
                     values=[ast.Str(target_pkg), ast.Str(pkg["requirement"])],
                 )
             )
+
+    for external in external_instrumentations:
+        libraries.elts.append(
+            ast.Dict(
+                keys=[ast.Str("library"), ast.Str("instrumentation")],
+                values=[
+                    ast.Str(external["library"]),
+                    ast.Str(external["instrumentation"]),
+                ],
+            )
+        )
 
     tree = ast.parse(_source_tmpl)
     tree.body[0].value = libraries

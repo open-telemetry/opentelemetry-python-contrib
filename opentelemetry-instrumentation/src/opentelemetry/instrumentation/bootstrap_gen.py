@@ -6,10 +6,6 @@
 
 libraries = [
     {
-        "library": "openai >= 1.26.0",
-        "instrumentation": "opentelemetry-instrumentation-openai-v2",
-    },
-    {
         "library": "google-cloud-aiplatform >= 1.64",
         "instrumentation": "opentelemetry-instrumentation-vertexai>=2.0b0",
     },
@@ -200,6 +196,26 @@ libraries = [
     {
         "library": "urllib3 >= 1.0.0, < 3.0.0",
         "instrumentation": "opentelemetry-instrumentation-urllib3==0.66b0.dev",
+    },
+    {
+        "library": "anthropic >= 0.51.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-anthropic",
+    },
+    {
+        "library": "google-genai >= 1.32.0",
+        "instrumentation": "opentelemetry-instrumentation-google-genai",
+    },
+    {
+        "library": "langchain >= 0.3.21",
+        "instrumentation": "opentelemetry-instrumentation-genai-langchain",
+    },
+    {
+        "library": "openai >= 1.26.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai",
+    },
+    {
+        "library": "openai-agents >= 0.3.3",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai-agents",
     },
 ]
 default_instrumentations = [
