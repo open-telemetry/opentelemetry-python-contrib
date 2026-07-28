@@ -477,6 +477,66 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-resource-detector-azure-1 -- -ra
 
+  py310-test-resourcedetector-gcp-0:
+    name: resourcedetector-gcp-0 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-resourcedetector-gcp-0 -- -ra
+
+  py310-test-resourcedetector-gcp-1:
+    name: resourcedetector-gcp-1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-resourcedetector-gcp-1 -- -ra
+
   py310-test-sdk-extension-aws-0:
     name: sdk-extension-aws-0 
     runs-on: ubuntu-latest
@@ -3027,6 +3087,126 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-httpx-1-wrapt2 -- -ra
 
+  py310-test-instrumentation-httpx-2-wrapt1:
+    name: instrumentation-httpx-2-wrapt1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-2-wrapt1 -- -ra
+
+  py310-test-instrumentation-httpx-2-wrapt2:
+    name: instrumentation-httpx-2-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-2-wrapt2 -- -ra
+
+  py310-test-instrumentation-httpx-3-wrapt1:
+    name: instrumentation-httpx-3-wrapt1 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-3-wrapt1 -- -ra
+
+  py310-test-instrumentation-httpx-3-wrapt2:
+    name: instrumentation-httpx-3-wrapt2 
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout contrib repo @ SHA - ${{ env.CONTRIB_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python-contrib
+          ref: ${{ env.CONTRIB_REPO_SHA }}
+
+      - name: Checkout core repo @ SHA - ${{ env.CORE_REPO_SHA }}
+        uses: actions/checkout@v4
+        with:
+          repository: open-telemetry/opentelemetry-python
+          ref: ${{ env.CORE_REPO_SHA }}
+          path: opentelemetry-python
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Install tox
+        run: pip install tox-uv
+
+      - name: Run tests
+        run: tox -e py310-test-instrumentation-httpx-3-wrapt2 -- -ra
+
   py310-test-util-http:
     name: util-http 
     runs-on: ubuntu-latest
@@ -3477,8 +3657,8 @@ jobs:
       - name: Run tests
         run: tox -e py310-test-instrumentation-aiokafka -- -ra
 
-  py310-test-instrumentation-kafka-python:
-    name: instrumentation-kafka-python 
+  py310-test-instrumentation-kafka-python-oldest:
+    name: instrumentation-kafka-python-oldest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -3505,10 +3685,10 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-python -- -ra
+        run: tox -e py310-test-instrumentation-kafka-python-oldest -- -ra
 
-  py310-test-instrumentation-kafka-pythonng:
-    name: instrumentation-kafka-pythonng 
+  py310-test-instrumentation-kafka-python-latest:
+    name: instrumentation-kafka-python-latest 
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -3535,7 +3715,7 @@ jobs:
         run: pip install tox-uv
 
       - name: Run tests
-        run: tox -e py310-test-instrumentation-kafka-pythonng -- -ra
+        run: tox -e py310-test-instrumentation-kafka-python-latest -- -ra
 
   py310-test-instrumentation-confluent-kafka:
     name: instrumentation-confluent-kafka 
