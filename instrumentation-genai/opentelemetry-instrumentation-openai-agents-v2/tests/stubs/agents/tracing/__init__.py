@@ -18,6 +18,7 @@ SPAN_TYPE_AGENT = "agent"
 SPAN_TYPE_FUNCTION = "function"
 SPAN_TYPE_GENERATION = "generation"
 SPAN_TYPE_RESPONSE = "response"
+SPAN_TYPE_MCP_TOOLS = "mcp_tools"
 
 __all__ = [
     "TraceProvider",
@@ -32,6 +33,7 @@ __all__ = [
     "GenerationSpanData",
     "FunctionSpanData",
     "ResponseSpanData",
+    "MCPListToolsSpanData",
 ]
 
 
@@ -78,6 +80,16 @@ class ResponseSpanData:
     @property
     def type(self) -> str:
         return SPAN_TYPE_RESPONSE
+
+
+@dataclass
+class MCPListToolsSpanData:
+    server: str | None = None
+    result: list[str] | None = None
+
+    @property
+    def type(self) -> str:
+        return SPAN_TYPE_MCP_TOOLS
 
 
 class _ProcessorFanout(TracingProcessor):

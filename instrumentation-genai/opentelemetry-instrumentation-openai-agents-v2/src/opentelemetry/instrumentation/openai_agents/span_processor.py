@@ -57,6 +57,14 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
         tracing_module, "TranscriptionSpanData", Any
     )  # type: ignore[assignment]
 
+try:
+    from agents.tracing.span_data import MCPListToolsSpanData
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - old SDKs
+    MCPListToolsSpanData = globals().get("tracing_module", Any)
+    MCPListToolsSpanData = getattr(
+        MCPListToolsSpanData, "MCPListToolsSpanData", Any
+    )
+
 from opentelemetry.context import attach, detach
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv._incubating.attributes import (
@@ -1548,6 +1556,8 @@ class GenAISemanticProcessor(TracingProcessor):
             return GenAIOperationName.GUARDRAIL
         if _is_instance_of(span_data, HandoffSpanData):
             return GenAIOperationName.HANDOFF
+        if _is_instance_of(span_data, MCPListToolsSpanData):
+            return GenAIOperationName.EXECUTE_TOOL
         return "unknown"
 
     def _extract_genai_attributes(
@@ -1608,6 +1618,27 @@ class GenAISemanticProcessor(TracingProcessor):
             yield from self._get_attributes_from_guardrail_span_data(span_data)
         elif _is_instance_of(span_data, HandoffSpanData):
             yield from self._get_attributes_from_handoff_span_data(span_data)
+        elif _is_instance_of(span_data, MCPListToolsSpanData):
+            yield from self._get_attributes_from_mcp_list_tools_span_data(
+                span_data
+            )
+
+    def _get_attributes_from_mcp_list_tools_span_data(
+        self, span_data: MCPListToolsSpanData
+    ) -> Iterator[tuple[str, AttributeValue]]:
+        """Extract GenAI tool attributes from an MCP tools/list span."""
+        yield GEN_AI_OPERATION_NAME, GenAIOperationName.EXECUTE_TOOL
+
+        if span_data.server:
+            yield GEN_AI_TOOL_NAME, span_data.server
+        yield GEN_AI_TOOL_TYPE, GenAIToolType.EXTENSION
+
+        if (
+            self.include_sensitive_data
+            and self._content_mode.capture_in_span
+            and span_data.result is not None
+        ):
+            yield GEN_AI_TOOL_CALL_RESULT, safe_json_dumps(span_data.result)
 
     def _get_attributes_from_generation_span_data(
         self, span_data: GenerationSpanData, payload: ContentPayload

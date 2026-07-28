@@ -18,6 +18,7 @@ from agents.tracing import (
     AgentSpanData,
     FunctionSpanData,
     GenerationSpanData,
+    MCPListToolsSpanData,
     ResponseSpanData,
 )
 
@@ -175,6 +176,12 @@ def test_operation_and_span_naming(processor_setup):
     function_data = FunctionSpanData()
     assert (
         processor._get_operation_name(function_data)
+        == sp.GenAIOperationName.EXECUTE_TOOL
+    )
+
+    mcp_tools_data = MCPListToolsSpanData(server="calendar")
+    assert (
+        processor._get_operation_name(mcp_tools_data)
         == sp.GenAIOperationName.EXECUTE_TOOL
     )
 
@@ -360,6 +367,25 @@ def test_attribute_builders(processor_setup):
     assert function_attrs[sp.GEN_AI_TOOL_CALL_ARGUMENTS] == {"city": "seattle"}
     assert function_attrs[sp.GEN_AI_TOOL_CALL_RESULT] == {"temperature": 70}
     assert function_attrs[sp.GEN_AI_OUTPUT_TYPE] == sp.GenAIOutputType.JSON
+
+    mcp_attrs = _collect(
+        processor._get_attributes_from_mcp_list_tools_span_data(
+            MCPListToolsSpanData(
+                server="calendar",
+                result=["list_events", "create_event"],
+            )
+        )
+    )
+    assert (
+        mcp_attrs[sp.GEN_AI_OPERATION_NAME]
+        == sp.GenAIOperationName.EXECUTE_TOOL
+    )
+    assert mcp_attrs[sp.GEN_AI_TOOL_NAME] == "calendar"
+    assert mcp_attrs[sp.GEN_AI_TOOL_TYPE] == sp.GenAIToolType.EXTENSION
+    assert json.loads(mcp_attrs[sp.GEN_AI_TOOL_CALL_RESULT]) == [
+        "list_events",
+        "create_event",
+    ]
 
 
 def test_extract_genai_attributes_unknown_type(processor_setup):
