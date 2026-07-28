@@ -324,6 +324,8 @@ class _DjangoMiddleware:
         if not _is_asgi_supported and is_asgi_request:
             return response
 
+        is_streaming_response = bool(getattr(response, "streaming", False))
+
         activation = request.META.pop(self._environ_activation_key, None)
         span = request.META.pop(self._environ_span_key, None)
         active_requests_count_attrs = request.META.pop(
@@ -394,43 +396,61 @@ class _DjangoMiddleware:
                 except Exception:  # pylint: disable=broad-exception-caught
                     _logger.exception("Exception raised by response_hook")
 
-        if request_start_time is not None:
-            duration_s = default_timer() - request_start_time
-            if self._duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(
-                    duration_attrs, _StabilityMode.DEFAULT
-                )
-                # http.target to be included in old semantic conventions
-                target = duration_attrs.get(HTTP_TARGET)
-                if target:
-                    duration_attrs_old[HTTP_TARGET] = target
-                self._duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0),
-                    duration_attrs_old,
-                )
-            if self._duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(
-                    duration_attrs, _StabilityMode.HTTP
-                )
-                self._duration_histogram_new.record(
-                    max(duration_s, 0),
-                    duration_attrs_new,
-                )
-        self._active_request_counter.add(-1, active_requests_count_attrs)
+        def finish_response() -> None:
+            if request_start_time is not None:
+                duration_s = default_timer() - request_start_time
+                if self._duration_histogram_old:
+                    duration_attrs_old = _parse_duration_attrs(
+                        duration_attrs, _StabilityMode.DEFAULT
+                    )
+                    # http.target to be included in old semantic conventions
+                    target = duration_attrs.get(HTTP_TARGET)
+                    if target:
+                        duration_attrs_old[HTTP_TARGET] = target
+                    self._duration_histogram_old.record(
+                        max(round(duration_s * 1000), 0),
+                        duration_attrs_old,
+                    )
+                if self._duration_histogram_new:
+                    duration_attrs_new = _parse_duration_attrs(
+                        duration_attrs, _StabilityMode.HTTP
+                    )
+                    self._duration_histogram_new.record(
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                    )
+            self._active_request_counter.add(-1, active_requests_count_attrs)
 
-        if activation and span:
-            if exception:
-                activation.__exit__(
-                    type(exception),
-                    exception,
-                    getattr(exception, "__traceback__", None),
-                )
-            else:
-                activation.__exit__(None, None, None)
+            if activation and span:
+                if exception:
+                    activation.__exit__(
+                        type(exception),
+                        exception,
+                        getattr(exception, "__traceback__", None),
+                    )
+                else:
+                    activation.__exit__(None, None, None)
 
-        if request.META.get(self._environ_token, None) is not None:
-            detach(request.META.get(self._environ_token))
-            request.META.pop(self._environ_token)
+            if request.META.get(self._environ_token, None) is not None:
+                detach(request.META.get(self._environ_token))
+                request.META.pop(self._environ_token)
+
+        if is_streaming_response:
+            original_close = response.close
+            response_closed = False
+
+            def close_response() -> None:
+                nonlocal response_closed
+                try:
+                    original_close()
+                finally:
+                    if not response_closed:
+                        response_closed = True
+                        finish_response()
+
+            response.close = close_response
+        else:
+            finish_response()
 
         return response
 

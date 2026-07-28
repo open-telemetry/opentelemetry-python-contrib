@@ -9,8 +9,8 @@ from timeit import default_timer
 from unittest.mock import Mock, patch
 
 from django import VERSION, conf
-from django.http import HttpRequest, HttpResponse
-from django.test.client import Client
+from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
+from django.test.client import Client, RequestFactory
 from django.test.utils import setup_test_environment, teardown_test_environment
 
 from opentelemetry import trace
@@ -1117,6 +1117,26 @@ class TestMiddlewareSpanActivationTiming(WsgiTestBase):
             for metric in sm.metrics
         )
         self.assertTrue(histogram_found)
+
+    def test_streaming_response_span_ends_when_response_closes(self):
+        """Streaming responses keep the server span open until close()."""
+        request = RequestFactory().get("/traced/")
+        middleware = _DjangoMiddleware(
+            lambda _request: StreamingHttpResponse(iter([b"chunk"]))
+        )
+
+        response = middleware(request)
+
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
+        response.close()
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertIsNotNone(spans[0].end_time)
+
+        response.close()
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
 
     def test_metrics_recorded_with_exception(self):
         """Metrics recorded even when request raises exception."""
