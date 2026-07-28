@@ -13,8 +13,9 @@ from subprocess import (
 )
 from typing import Optional
 
-from packaging.requirements import Requirement
-
+from opentelemetry.instrumentation._packaging.requirements import (
+    Requirement,
+)
 from opentelemetry.instrumentation.bootstrap_gen import (
     default_instrumentations as gen_default_instrumentations,
 )
