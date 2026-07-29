@@ -1,0 +1,3 @@
+`opentelemetry-instrumentation-fastapi`: document automatic setup, standard
+OpenTelemetry environment variables, propagation, WebSocket coverage, and
+logging correlation.
