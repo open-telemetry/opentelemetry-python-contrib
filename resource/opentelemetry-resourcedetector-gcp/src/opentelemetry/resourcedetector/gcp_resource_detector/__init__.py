@@ -3,14 +3,14 @@
 
 from typing import Mapping
 
-from opentelemetry.resource.detector.gcp import (
+from opentelemetry.resourcedetector.gcp_resource_detector import (
     _faas,
     _gae,
     _gce,
     _gke,
     _metadata,
 )
-from opentelemetry.resource.detector.gcp._constants import (
+from opentelemetry.resourcedetector.gcp_resource_detector._constants import (
     ResourceAttributes,
 )
 from opentelemetry.sdk.resources import Resource, ResourceDetector

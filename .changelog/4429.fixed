@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-grpc`: handle `NotImplementedError` from `add_done_callback` in aio client instrumentation

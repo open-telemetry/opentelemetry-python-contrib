@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from opentelemetry.resource.detector.gcp import _gke
+from opentelemetry.resourcedetector.gcp_resource_detector import _gke
 
 
 def test_detects_on_gke(monkeypatch: pytest.MonkeyPatch) -> None:
