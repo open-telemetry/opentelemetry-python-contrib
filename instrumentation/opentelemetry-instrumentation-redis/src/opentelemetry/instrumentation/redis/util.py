@@ -46,8 +46,7 @@ def _extract_conn_attributes(
     )
 
     # redis-py may pass db=None explicitly (e.g. from_url); treat that as 0.
-    # dict.get("db", 0) only defaults when the key is missing, not when it is None.
-    db = conn_kwargs.get("db", 0)
+    db = conn_kwargs.get("db")
     if db is None:
         db = 0
     _set_db_redis_database_index(attributes, db, db_sem_conv_opt_in_mode)
@@ -147,10 +146,10 @@ def _build_span_name(
         else:
             name = cmd_args[0]
     else:
-        name = instance.connection_pool.connection_kwargs.get("db", 0)
+        name = instance.connection_pool.connection_kwargs.get("db")
         if name is None:
             name = 0
-    return name
+    return str(name)
 
 
 def _add_create_attributes(span: Span, args: tuple[Any, ...]):

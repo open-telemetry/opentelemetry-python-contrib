@@ -352,12 +352,13 @@ class TestRedis(TestBase):
         )
 
     def test_attributes_db_none(self):
-        """db=None in connection kwargs should default to index 0 (issue #1905)."""
+        """db=None in connection kwargs should default to index 0."""
         redis_client = redis.Redis()
         redis_client.connection_pool.connection_kwargs["db"] = None
 
-        with mock.patch.object(redis_client, "connection"):
-            redis_client.set("key", "value")
+        with self.assertNoLogs("opentelemetry.attributes", level="WARNING"):
+            with mock.patch.object(redis_client, "connection"):
+                redis_client.set("key", "value")
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
