@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from starlette.background import BackgroundTask
-from starlette.routing import Match
+from starlette.routing import BaseRoute, Match
 from starlette.types import Receive, Scope, Send
 
 import opentelemetry.instrumentation.fastapi as otel_fastapi
@@ -390,6 +390,25 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             self.assertIn("GET /api/items/{item_id}", server_span.name)
         finally:
             self._instrumentor.uninstrument_app(app)
+
+    def test_custom_route_preserves_templated_path(self):
+        class CustomPathRoute(BaseRoute):
+            path = "/widgets/{widget_id}"
+
+            def matches(self, scope: Scope) -> tuple[Match, Scope]:
+                return Match.FULL, scope
+
+        app = fastapi.FastAPI()
+        app.router.routes = [CustomPathRoute()]
+        scope = cast(
+            Scope,
+            {"type": "http", "app": app, "path": "/widgets/42"},
+        )
+
+        with patch.object(otel_fastapi, "iter_route_contexts", None):
+            self.assertEqual(
+                "/widgets/{widget_id}", otel_fastapi._get_route_details(scope)
+            )
 
     def test_host_fastapi_call(self):
         client = TestClient(self._app, base_url="https://testserver2:443")
