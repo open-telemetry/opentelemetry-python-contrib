@@ -12,12 +12,12 @@ Usage
     from starlette.responses import PlainTextResponse
     from starlette.routing import Route
 
+
     def home(request):
         return PlainTextResponse("hi")
 
-    app = applications.Starlette(
-        routes=[Route("/foobar", home)]
-    )
+
+    app = applications.Starlette(routes=[Route("/foobar", home)])
     StarletteInstrumentor.instrument_app(app)
 
 Configuration
@@ -55,19 +55,37 @@ For example,
     from opentelemetry.trace import Span
     from typing import Any
 
+
     def server_request_hook(span: Span, scope: dict[str, Any]):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_request_hook", "some-value"
+            )
 
-    def client_request_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+
+    def client_request_hook(
+        span: Span, scope: dict[str, Any], message: dict[str, Any]
+    ):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_client_request_hook", "some-value"
+            )
 
-    def client_response_hook(span: Span, scope: dict[str, Any], message: dict[str, Any]):
+
+    def client_response_hook(
+        span: Span, scope: dict[str, Any], message: dict[str, Any]
+    ):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_response_hook", "some-value"
+            )
 
-    StarletteInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+
+    StarletteInstrumentor().instrument(
+        server_request_hook=server_request_hook,
+        client_request_hook=client_request_hook,
+        client_response_hook=client_response_hook,
+    )
 
 Capture HTTP request and response headers
 *****************************************

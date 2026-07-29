@@ -18,7 +18,7 @@ Usage
     # Call instrument() to wrap all database connections
     PsycopgInstrumentor().instrument()
 
-    cnx = psycopg.connect(database='Database')
+    cnx = psycopg.connect(database="Database")
 
     cursor = cnx.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
@@ -32,7 +32,7 @@ Usage
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 
     # Alternatively, use instrument_connection for an individual connection
-    cnx = psycopg.connect(database='Database')
+    cnx = psycopg.connect(database="Database")
     instrumented_cnx = PsycopgInstrumentor().instrument_connection(cnx)
     cursor = instrumented_cnx.cursor()
     cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")

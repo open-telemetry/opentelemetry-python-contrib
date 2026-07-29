@@ -21,9 +21,11 @@ Usage
 
     AsyncClickInstrumentor().instrument()
 
+
     @asyncclick.command()
     async def hello():
-        asyncclick.echo(f'Hello world!')
+        asyncclick.echo(f"Hello world!")
+
 
     if __name__ == "__main__":
         asyncio.run(hello())
