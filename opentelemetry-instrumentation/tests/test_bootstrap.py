@@ -58,6 +58,33 @@ class TestBootstrap(TestCase):
         self.pip_check_patcher.stop()
         self.pip_install_patcher.stop()
 
+    def test_migrated_genai_instrumentations_are_detected(self):
+        migrated = {
+            "anthropic >= 0.51.0":
+            "opentelemetry-instrumentation-genai-anthropic>=1.0b0",
+            "google-genai >= 1.32.0, < 3":
+            "opentelemetry-instrumentation-google-genai>=1.0b1",
+            "langchain >= 0.3.21":
+            "opentelemetry-instrumentation-genai-langchain>=1.0b0",
+            "openai >= 1.26.0":
+            "opentelemetry-instrumentation-genai-openai>=1.0b0",
+            "openai-agents >= 0.3.3":
+            "opentelemetry-instrumentation-genai-openai-agents>=1.0b0",
+        }
+        generated = {
+            library["library"]: library["instrumentation"]
+            for library in libraries
+        }
+
+        self.assertEqual(
+            {key: generated[key] for key in migrated},
+            migrated,
+        )
+        self.assertNotIn(
+            "opentelemetry-instrumentation-openai-v2",
+            generated.values(),
+        )
+
     @patch("sys.argv", ["bootstrap", "-a", "pipenv"])
     def test_run_unknown_cmd(self):
         with self.assertRaises(SystemExit):

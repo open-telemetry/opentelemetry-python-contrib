@@ -73,14 +73,45 @@ packages_to_exclude = [
     # development. This filter will get removed once it is further along in its
     # development lifecycle and ready to be included by default.
     "opentelemetry-instrumentation-claude-agent-sdk",
+    # OpenAI instrumentation was migrated to the Python GenAI repository. Keep
+    # the legacy package out of bootstrap requirements so auto-instrumentation
+    # installs the maintained package below instead.
+    "opentelemetry-instrumentation-openai-v2",
 ]
 
 # Static version specifiers for instrumentations that are released independently
 independent_packages = {
-    "opentelemetry-instrumentation-openai-v2": "",
     "opentelemetry-instrumentation-vertexai": ">=2.0b0",
     "opentelemetry-instrumentation-google-genai": "",
 }
+
+# These instrumentations are released from opentelemetry-python-genai rather
+# than this repository, so they cannot be discovered by get_instrumentation_packages.
+# Keep the library requirements aligned with the migrated packages' supported
+# client versions while allowing their independently managed releases to move
+# forward.
+migrated_genai_instrumentations = [
+    {
+        "library": "anthropic >= 0.51.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-anthropic>=1.0b0",
+    },
+    {
+        "library": "google-genai >= 1.32.0, < 3",
+        "instrumentation": "opentelemetry-instrumentation-google-genai>=1.0b1",
+    },
+    {
+        "library": "langchain >= 0.3.21",
+        "instrumentation": "opentelemetry-instrumentation-genai-langchain>=1.0b0",
+    },
+    {
+        "library": "openai >= 1.26.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai>=1.0b0",
+    },
+    {
+        "library": "openai-agents >= 0.3.3",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai-agents>=1.0b0",
+    },
+]
 
 
 def main():
@@ -110,6 +141,14 @@ def main():
                     values=[ast.Str(target_pkg), ast.Str(pkg["requirement"])],
                 )
             )
+
+    for pkg in migrated_genai_instrumentations:
+        libraries.elts.append(
+            ast.Dict(
+                keys=[ast.Str("library"), ast.Str("instrumentation")],
+                values=[ast.Str(pkg["library"]), ast.Str(pkg["instrumentation"])],
+            )
+        )
 
     tree = ast.parse(_source_tmpl)
     tree.body[0].value = libraries
