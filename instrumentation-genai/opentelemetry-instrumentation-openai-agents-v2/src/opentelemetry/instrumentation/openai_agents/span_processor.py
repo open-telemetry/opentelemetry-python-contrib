@@ -27,6 +27,8 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Sequence
 from urllib.parse import urlparse
 
+from opentelemetry.util.genai.handler import TelemetryHandler
+from opentelemetry.util.genai.invocation import MCPInvocation
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 try:
@@ -447,6 +449,7 @@ class GenAISemanticProcessor(TracingProcessor):
     def __init__(
         self,
         tracer: Optional[Tracer] = None,
+        telemetry_handler: TelemetryHandler | None = None,
         system_name: str = "openai",
         include_sensitive_data: bool = True,
         content_mode: ContentCaptureMode = ContentCaptureMode.SPAN_AND_EVENT,
@@ -478,6 +481,7 @@ class GenAISemanticProcessor(TracingProcessor):
             server_port: Server port (can be overridden by env var or base_url)
         """
         self._tracer = tracer
+        self._telemetry_handler = telemetry_handler or TelemetryHandler()
         self.system_name = normalize_provider(system_name) or system_name
         self._content_mode = content_mode
         self.include_sensitive_data = include_sensitive_data and (
@@ -525,6 +529,7 @@ class GenAISemanticProcessor(TracingProcessor):
         # Span tracking
         self._root_spans: dict[str, OtelSpan] = {}
         self._otel_spans: dict[str, OtelSpan] = {}
+        self._mcp_invocations: dict[str, MCPInvocation] = {}
         self._tokens: dict[str, object] = {}
         self._span_parents: dict[str, Optional[str]] = {}
         self._agent_content: dict[str, Dict[str, list[Any]]] = {}
@@ -1367,6 +1372,14 @@ class GenAISemanticProcessor(TracingProcessor):
             else self._root_spans.get(span.trace_id)
         )
         context = set_span_in_context(parent_span) if parent_span else None
+        if _is_instance_of(span.span_data, MCPListToolsSpanData):
+            self._mcp_invocations[span.span_id] = (
+                self._telemetry_handler.start_mcp(
+                    MCP_METHOD_TOOLS_LIST,
+                    parent_context=context,
+                )
+            )
+            return
 
         # Get operation details for span naming
         operation_name = self._get_operation_name(span.span_data)
@@ -1391,32 +1404,25 @@ class GenAISemanticProcessor(TracingProcessor):
         # Generate spec-compliant span name
         span_name = get_span_name(operation_name, model, agent_name, tool_name)
 
-        is_mcp_list_tools = _is_instance_of(
-            span.span_data, MCPListToolsSpanData
-        )
-        if is_mcp_list_tools:
-            attributes = {MCP_METHOD_NAME: MCP_METHOD_TOOLS_LIST}
-        else:
-            attributes = {
-                GEN_AI_PROVIDER_NAME: self.system_name,
-                GEN_AI_SYSTEM_KEY: self.system_name,
-                GEN_AI_OPERATION_NAME: operation_name,
-            }
+        attributes = {
+            GEN_AI_PROVIDER_NAME: self.system_name,
+            GEN_AI_SYSTEM_KEY: self.system_name,
+            GEN_AI_OPERATION_NAME: operation_name,
+        }
         # Legacy emission removed
 
-        if not is_mcp_list_tools:
-            agent_name_override = self.agent_name or self._agent_name_default
-            agent_id_override = self.agent_id or self._agent_id_default
-            agent_desc_override = (
-                self.agent_description or self._agent_description_default
-            )
-            if agent_name_override:
-                attributes[GEN_AI_AGENT_NAME] = agent_name_override
-            if agent_id_override:
-                attributes[GEN_AI_AGENT_ID] = agent_id_override
-            if agent_desc_override:
-                attributes[GEN_AI_AGENT_DESCRIPTION] = agent_desc_override
-            attributes.update(self._get_server_attributes())
+        agent_name_override = self.agent_name or self._agent_name_default
+        agent_id_override = self.agent_id or self._agent_id_default
+        agent_desc_override = (
+            self.agent_description or self._agent_description_default
+        )
+        if agent_name_override:
+            attributes[GEN_AI_AGENT_NAME] = agent_name_override
+        if agent_id_override:
+            attributes[GEN_AI_AGENT_ID] = agent_id_override
+        if agent_desc_override:
+            attributes[GEN_AI_AGENT_DESCRIPTION] = agent_desc_override
+        attributes.update(self._get_server_attributes())
 
         otel_span = self._tracer.start_span(
             name=span_name,
@@ -1429,6 +1435,20 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def on_span_end(self, span: Span[Any]) -> None:
         """Finalize span with attributes, events, and metrics."""
+        if invocation := self._mcp_invocations.pop(span.span_id, None):
+            if error := getattr(span, "error", None):
+                invocation.fail(
+                    RuntimeError(
+                        error.get("message", "MCP operation failed")
+                        if isinstance(error, dict)
+                        else str(error)
+                    )
+                )
+            else:
+                invocation.stop()
+            self._span_parents.pop(span.span_id, None)
+            return
+
         if token := self._tokens.pop(span.span_id, None):
             detach(token)
 
@@ -1530,6 +1550,9 @@ class GenAISemanticProcessor(TracingProcessor):
             )
             otel_span.end()
 
+        for invocation in self._mcp_invocations.values():
+            invocation.fail(RuntimeError("Application shutdown"))
+
         for trace_id, root_span in list(self._root_spans.items()):
             root_span.set_status(
                 Status(StatusCode.ERROR, "Application shutdown")
@@ -1537,6 +1560,7 @@ class GenAISemanticProcessor(TracingProcessor):
             root_span.end()
 
         self._otel_spans.clear()
+        self._mcp_invocations.clear()
         self._root_spans.clear()
         self._tokens.clear()
         self._span_parents.clear()
@@ -1586,10 +1610,6 @@ class GenAISemanticProcessor(TracingProcessor):
     ) -> Iterator[tuple[str, AttributeValue]]:
         """Yield (attr, value) pairs for GenAI semantic conventions."""
         span_data = span.span_data
-
-        if _is_instance_of(span_data, MCPListToolsSpanData):
-            yield MCP_METHOD_NAME, MCP_METHOD_TOOLS_LIST
-            return
 
         # Base attributes
         yield GEN_AI_PROVIDER_NAME, self.system_name

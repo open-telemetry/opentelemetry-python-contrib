@@ -18,6 +18,8 @@ from opentelemetry.semconv._incubating.attributes import (
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import get_tracer
+from opentelemetry.util.genai.completion_hook import load_completion_hook
+from opentelemetry.util.genai.handler import TelemetryHandler
 
 from .package import _instruments
 from .span_processor import (
@@ -136,6 +138,13 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
             return
 
         tracer_provider = kwargs.get("tracer_provider")
+        telemetry_handler = TelemetryHandler(
+            tracer_provider=tracer_provider,
+            meter_provider=kwargs.get("meter_provider"),
+            logger_provider=kwargs.get("logger_provider"),
+            completion_hook=kwargs.get("completion_hook")
+            or load_completion_hook(),
+        )
         tracer = get_tracer(
             __name__,
             "",
@@ -169,6 +178,7 @@ class OpenAIAgentsInstrumentor(BaseInstrumentor):
 
         processor = GenAISemanticProcessor(
             tracer=tracer,
+            telemetry_handler=telemetry_handler,
             system_name=system,
             include_sensitive_data=content_mode
             != ContentCaptureMode.NO_CONTENT,

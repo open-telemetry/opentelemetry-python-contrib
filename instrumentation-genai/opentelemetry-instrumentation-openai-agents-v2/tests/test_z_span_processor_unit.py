@@ -106,7 +106,11 @@ def processor_setup():
     exporter = InMemorySpanExporter()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     tracer = provider.get_tracer(__name__)
-    processor = sp.GenAISemanticProcessor(tracer=tracer, system_name="openai")
+    processor = sp.GenAISemanticProcessor(
+        tracer=tracer,
+        telemetry_handler=sp.TelemetryHandler(tracer_provider=provider),
+        system_name="openai",
+    )
     yield processor, exporter
     processor.shutdown()
     exporter.clear()

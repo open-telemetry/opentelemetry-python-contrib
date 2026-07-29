@@ -85,7 +85,12 @@ class GenAIInvocation(ABC):
         self._context_token: ContextToken | None = None
         self._monotonic_start_s: float | None = None
 
-    def _start(self, attributes: dict[str, Any] | None = None) -> None:
+    def _start(
+        self,
+        attributes: dict[str, Any] | None = None,
+        *,
+        context: Context | None = None,
+    ) -> None:
         """Start the invocation span and attach it to the current context.
 
         Args:
@@ -95,6 +100,7 @@ class GenAIInvocation(ABC):
             name=self._span_name,
             kind=self._span_kind,
             attributes=attributes,
+            context=context,
         )
         self._span_context = set_span_in_context(self.span)
         self._monotonic_start_s = timeit.default_timer()
