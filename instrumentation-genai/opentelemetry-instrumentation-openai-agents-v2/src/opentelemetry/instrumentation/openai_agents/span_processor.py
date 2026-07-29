@@ -37,22 +37,25 @@ try:
         GenerationSpanData,
         GuardrailSpanData,
         HandoffSpanData,
-        MCPListToolsSpanData,
         ResponseSpanData,
         SpeechSpanData,
         TranscriptionSpanData,
+    )
+
+    tracing_span_data_module = importlib.import_module(
+        "agents.tracing.span_data"
     )
 except ModuleNotFoundError:  # pragma: no cover - test stubs
     tracing_module = importlib.import_module("agents.tracing")
     Span = getattr(tracing_module, "Span")
     Trace = getattr(tracing_module, "Trace")
     TracingProcessor = getattr(tracing_module, "TracingProcessor")
+    tracing_span_data_module = tracing_module
     AgentSpanData = getattr(tracing_module, "AgentSpanData", Any)  # type: ignore[assignment]
     FunctionSpanData = getattr(tracing_module, "FunctionSpanData", Any)  # type: ignore[assignment]
     GenerationSpanData = getattr(tracing_module, "GenerationSpanData", Any)  # type: ignore[assignment]
     GuardrailSpanData = getattr(tracing_module, "GuardrailSpanData", Any)  # type: ignore[assignment]
     HandoffSpanData = getattr(tracing_module, "HandoffSpanData", Any)  # type: ignore[assignment]
-    MCPListToolsSpanData = getattr(tracing_module, "MCPListToolsSpanData", Any)  # type: ignore[assignment]
     ResponseSpanData = getattr(tracing_module, "ResponseSpanData", Any)  # type: ignore[assignment]
     SpeechSpanData = getattr(tracing_module, "SpeechSpanData", Any)  # type: ignore[assignment]
     TranscriptionSpanData = getattr(
@@ -63,6 +66,9 @@ from opentelemetry.context import attach, detach
 from opentelemetry.metrics import Histogram, get_meter
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAIAttributes,
+)
+from opentelemetry.semconv._incubating.attributes import (
+    mcp_attributes as MCPAttributes,
 )
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as ServerAttributes,
@@ -76,6 +82,10 @@ from opentelemetry.trace import (
     set_span_in_context,
 )
 from opentelemetry.util.types import AttributeValue
+
+MCPListToolsSpanData: type[Any] = getattr(
+    tracing_span_data_module, "MCPListToolsSpanData", type(None)
+)
 
 # Import all semantic convention constants
 # ---- GenAI semantic convention helpers (embedded from constants.py) ----
@@ -246,8 +256,8 @@ GEN_AI_HANDOFF_FROM_AGENT = "gen_ai.handoff.from_agent"
 GEN_AI_HANDOFF_TO_AGENT = "gen_ai.handoff.to_agent"
 GEN_AI_EMBEDDINGS_DIMENSION_COUNT = "gen_ai.embeddings.dimension.count"
 GEN_AI_TOKEN_TYPE = _attr("GEN_AI_TOKEN_TYPE", "gen_ai.token.type")
-MCP_METHOD_NAME = "mcp.method.name"
-MCP_METHOD_TOOLS_LIST = "tools/list"
+MCP_METHOD_NAME = MCPAttributes.MCP_METHOD_NAME
+MCP_METHOD_TOOLS_LIST = MCPAttributes.McpMethodNameValues.TOOLS_LIST.value
 
 # ---- Normalization utilities (embedded from utils.py) ----
 
