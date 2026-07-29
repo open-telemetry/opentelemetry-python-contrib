@@ -18,6 +18,7 @@ from agents.tracing import (
     AgentSpanData,
     FunctionSpanData,
     GenerationSpanData,
+    MCPListToolsSpanData,
     ResponseSpanData,
 )
 
@@ -178,6 +179,14 @@ def test_operation_and_span_naming(processor_setup):
         == sp.GenAIOperationName.EXECUTE_TOOL
     )
 
+    mcp_list_tools = MCPListToolsSpanData(
+        server="Time", result=["get_current_time"]
+    )
+    assert (
+        processor._get_operation_name(mcp_list_tools)
+        == sp.MCP_METHOD_TOOLS_LIST
+    )
+
     response_data = ResponseSpanData()
     assert (
         processor._get_operation_name(response_data)
@@ -192,6 +201,7 @@ def test_operation_and_span_naming(processor_setup):
 
     assert processor._get_span_kind(GenerationSpanData()) is SpanKind.CLIENT
     assert processor._get_span_kind(FunctionSpanData()) is SpanKind.INTERNAL
+    assert processor._get_span_kind(mcp_list_tools) is SpanKind.CLIENT
 
     assert (
         sp.get_span_name(sp.GenAIOperationName.CHAT, model="gpt-4o")
@@ -380,6 +390,36 @@ def test_extract_genai_attributes_unknown_type(processor_setup):
     assert attrs[sp.GEN_AI_PROVIDER_NAME] == "openai"
     assert attrs[sp.GEN_AI_SYSTEM_KEY] == "openai"
     assert sp.GEN_AI_OPERATION_NAME not in attrs
+
+
+def test_mcp_list_tools_span_uses_mcp_semantic_conventions(processor_setup):
+    processor, exporter = processor_setup
+    trace = FakeTrace(name="workflow", trace_id="trace-mcp")
+    processor.on_trace_start(trace)
+
+    mcp_span = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-list-tools",
+        span_data=MCPListToolsSpanData(
+            server="Time", result=["get_current_time"]
+        ),
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:01Z",
+    )
+    processor.on_span_start(mcp_span)
+    processor.on_span_end(mcp_span)
+    processor.on_trace_end(trace)
+
+    finished = next(
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == sp.MCP_METHOD_TOOLS_LIST
+    )
+    assert finished.kind is SpanKind.CLIENT
+    assert finished.attributes[sp.MCP_METHOD_NAME] == sp.MCP_METHOD_TOOLS_LIST
+    assert sp.GEN_AI_PROVIDER_NAME not in finished.attributes
+    assert sp.GEN_AI_OPERATION_NAME not in finished.attributes
+    assert sp.GEN_AI_TOOL_NAME not in finished.attributes
 
 
 def test_span_status_helper():

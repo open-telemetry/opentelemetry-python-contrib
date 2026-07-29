@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-agents-v2`: Map MCP tool discovery to a `tools/list` client span

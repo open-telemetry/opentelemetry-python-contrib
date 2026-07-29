@@ -31,6 +31,7 @@ __all__ = [
     "AgentSpanData",
     "GenerationSpanData",
     "FunctionSpanData",
+    "MCPListToolsSpanData",
     "ResponseSpanData",
 ]
 
@@ -78,6 +79,16 @@ class ResponseSpanData:
     @property
     def type(self) -> str:
         return SPAN_TYPE_RESPONSE
+
+
+@dataclass
+class MCPListToolsSpanData:
+    server: str | None = None
+    result: list[str] | None = None
+
+    @property
+    def type(self) -> str:
+        return "mcp_tools"
 
 
 class _ProcessorFanout(TracingProcessor):
