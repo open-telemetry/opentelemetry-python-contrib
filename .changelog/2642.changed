@@ -1,0 +1,2 @@
+`opentelemetry-instrumentation-logging`: document log-record enrichment,
+configuration, and trace-context correlation behavior.
