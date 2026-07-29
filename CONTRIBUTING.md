@@ -120,6 +120,39 @@ uv sync
 
 This will create a virtual environment in the `.venv` directory and install all the necessary dependencies.
 
+#### Testing against a local `opentelemetry-python` checkout
+
+When a change crosses the boundary between this repository and the
+[`opentelemetry-python`](https://github.com/open-telemetry/opentelemetry-python)
+repository, install the core packages from a sibling checkout into the same
+environment. This keeps the normal `uv` workspace intact while making edits in
+the core checkout immediately visible to contrib tests.
+
+Clone both repositories next to one another, then run `uv sync` from this
+repository before installing the local core packages:
+
+```console
+git clone https://github.com/open-telemetry/opentelemetry-python.git ../opentelemetry-python
+uv sync
+uv pip install --editable \
+  ../opentelemetry-python/opentelemetry-api \
+  ../opentelemetry-python/opentelemetry-sdk \
+  ../opentelemetry-python/opentelemetry-semantic-conventions \
+  ../opentelemetry-python/exporter/opentelemetry-exporter-otlp \
+  ../opentelemetry-python/tests/opentelemetry-test-utils
+```
+
+On Windows PowerShell, use the same commands with `..\opentelemetry-python\...`
+paths. Repeat the `uv pip install --editable` command after `uv sync` or when
+switching branches if the dependency resolver reinstalls the packaged core
+versions. Confirm that the overlay is active with:
+
+```console
+uv pip list | grep opentelemetry
+```
+
+(`Select-String opentelemetry` can be used instead of `grep` in PowerShell.)
+
 ### Troubleshooting
 
 Some packages may require additional system-wide dependencies to be installed. For example, you may need to install `libpq-dev` to run the postgresql client libraries instrumentation tests or `libsnappy-dev` to run the prometheus exporter tests. If you encounter a build error, please check the installation instructions for the package you are trying to run tests for.
