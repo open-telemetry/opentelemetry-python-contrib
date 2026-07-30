@@ -67,6 +67,7 @@ API
 from importlib import import_module
 from typing import Collection
 
+from typing_extensions import deprecated
 from wrapt import wrap_function_wrapper
 
 from opentelemetry._logs import get_logger
@@ -96,8 +97,22 @@ from .patch_responses import (
     responses_create,
 )
 
+_DEPRECATION_REASON = (
+    "opentelemetry-instrumentation-openai-v2 is deprecated. Use the "
+    "opentelemetry-instrumentation-genai-openai package instead. This package "
+    "only receives security patches."
+)
 
+
+@deprecated(_DEPRECATION_REASON)
 class OpenAIInstrumentor(BaseInstrumentor):
+    """OpenTelemetry instrumentation for the OpenAI Python client.
+
+    .. deprecated:: 2.5b0
+        Use the ``opentelemetry-instrumentation-genai-openai`` package instead.
+        This package only receives security patches.
+    """
+
     def __init__(self):
         self._meter = None
 

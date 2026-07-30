@@ -12,6 +12,8 @@ import logging
 import os
 from typing import Any, Collection
 
+from typing_extensions import deprecated
+
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.semconv._incubating.attributes import (
     gen_ai_attributes as GenAI,
@@ -40,6 +42,12 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+_DEPRECATION_REASON = (
+    "opentelemetry-instrumentation-openai-agents-v2 is deprecated. Use the "
+    "opentelemetry-instrumentation-genai-openai-agents package instead. This "
+    "package only receives security patches."
+)
 
 _CONTENT_CAPTURE_ENV = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 _SYSTEM_OVERRIDE_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SYSTEM"
@@ -124,8 +132,14 @@ def _resolve_bool(value: Any, default: bool) -> bool:
     return default
 
 
+@deprecated(_DEPRECATION_REASON)
 class OpenAIAgentsInstrumentor(BaseInstrumentor):
-    """Instrumentation that bridges OpenAI Agents tracing to OpenTelemetry."""
+    """Instrumentation that bridges OpenAI Agents tracing to OpenTelemetry.
+
+    .. deprecated:: 0.2.0
+        Use the ``opentelemetry-instrumentation-genai-openai-agents`` package
+        instead. This package only receives security patches.
+    """
 
     def __init__(self) -> None:
         super().__init__()
