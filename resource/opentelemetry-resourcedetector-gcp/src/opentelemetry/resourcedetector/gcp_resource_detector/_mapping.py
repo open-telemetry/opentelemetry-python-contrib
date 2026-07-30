@@ -5,6 +5,8 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Tuple
 
+from typing_extensions import deprecated
+
 from opentelemetry.resourcedetector.gcp_resource_detector import _constants
 from opentelemetry.resourcedetector.gcp_resource_detector._constants import (
     ResourceAttributes,
@@ -131,6 +133,10 @@ class MonitoredResourceData:
     labels: Mapping[str, str]
 
 
+@deprecated(
+    "get_monitored_resource is deprecated and will be removed in a future release. "
+    "Deprecated since version 1.15.0."
+)
 def get_monitored_resource(
     resource: Resource,
 ) -> Optional[MonitoredResourceData]:
