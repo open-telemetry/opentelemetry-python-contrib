@@ -15,6 +15,7 @@ from opentelemetry.util.genai.invocation import (
     GenAIInvocation,
     MCPInvocation,
 )
+from opentelemetry.util.genai.types import Error
 
 
 def test_mcp_invocation_uses_mcp_semantic_conventions() -> None:
@@ -42,3 +43,19 @@ def test_mcp_invocation_uses_mcp_semantic_conventions() -> None:
         MCP.MCP_PROTOCOL_VERSION: "2025-06-18",
         MCP.MCP_SESSION_ID: "session-1",
     }
+
+
+def test_mcp_invocation_preserves_reported_error_type() -> None:
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    handler = TelemetryHandler(tracer_provider=provider)
+
+    invocation = handler.start_mcp(MCP.McpMethodNameValues.TOOLS_LIST.value)
+    invocation.fail(Error(message="server timed out", type="timeout"))
+
+    spans = exporter.get_finished_spans()
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.attributes["error.type"] == "timeout"
+    assert span.status.description == "server timed out"

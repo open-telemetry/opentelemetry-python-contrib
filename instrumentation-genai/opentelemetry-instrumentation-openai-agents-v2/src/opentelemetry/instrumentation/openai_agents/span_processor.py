@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 
 from opentelemetry.util.genai.handler import TelemetryHandler
 from opentelemetry.util.genai.invocation import MCPInvocation
+from opentelemetry.util.genai.types import Error
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
 
 try:
@@ -1438,10 +1439,19 @@ class GenAISemanticProcessor(TracingProcessor):
         if invocation := self._mcp_invocations.pop(span.span_id, None):
             if error := getattr(span, "error", None):
                 invocation.fail(
-                    RuntimeError(
-                        error.get("message", "MCP operation failed")
-                        if isinstance(error, dict)
-                        else str(error)
+                    Error(
+                        message=(
+                            error.get("message", "MCP operation failed")
+                            if isinstance(error, dict)
+                            else str(error)
+                        ),
+                        type=(
+                            error.get("type")
+                            or error.get("name")
+                            or "MCPError"
+                            if isinstance(error, dict)
+                            else type(error).__qualname__
+                        ),
                     )
                 )
             else:

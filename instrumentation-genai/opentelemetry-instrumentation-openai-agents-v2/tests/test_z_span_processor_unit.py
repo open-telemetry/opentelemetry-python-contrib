@@ -426,6 +426,32 @@ def test_mcp_list_tools_span_uses_mcp_semantic_conventions(processor_setup):
     assert sp.GEN_AI_TOOL_NAME not in finished.attributes
 
 
+def test_mcp_list_tools_span_preserves_reported_error_type(processor_setup):
+    processor, exporter = processor_setup
+    trace = FakeTrace(name="workflow", trace_id="trace-mcp-error")
+    processor.on_trace_start(trace)
+
+    mcp_span = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-list-tools-error",
+        span_data=MCPListToolsSpanData(server="Time"),
+        started_at="2025-01-01T00:00:00Z",
+        ended_at="2025-01-01T00:00:01Z",
+        error={"type": "timeout", "message": "server timed out"},
+    )
+    processor.on_span_start(mcp_span)
+    processor.on_span_end(mcp_span)
+    processor.on_trace_end(trace)
+
+    finished = next(
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == sp.MCP_METHOD_TOOLS_LIST
+    )
+    assert finished.attributes["error.type"] == "timeout"
+    assert finished.status.description == "server timed out"
+
+
 def test_span_status_helper():
     status = sp._get_span_status(
         SimpleNamespace(error={"message": "boom", "data": "bad"})

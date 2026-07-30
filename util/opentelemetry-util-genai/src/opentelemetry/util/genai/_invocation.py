@@ -116,7 +116,11 @@ class GenAIInvocation(ABC):
 
     def _apply_error_attributes(self, error: Error) -> None:
         """Apply error status and error.type attribute to the span, events, and metrics."""
-        error_type = error.type.__qualname__
+        error_type = (
+            error.type
+            if isinstance(error.type, str)
+            else error.type.__qualname__
+        )
         self.span.set_status(Status(StatusCode.ERROR, error.message))
         self.attributes[error_attributes.ERROR_TYPE] = error_type
         self.metric_attributes[error_attributes.ERROR_TYPE] = error_type

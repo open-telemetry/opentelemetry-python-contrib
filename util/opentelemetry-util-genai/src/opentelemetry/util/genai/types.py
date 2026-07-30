@@ -227,7 +227,7 @@ class OutputMessage:
 @dataclass
 class Error:
     message: str
-    type: Type[BaseException]
+    type: Type[BaseException] | str
 
 
 def __getattr__(name: str) -> object:
