@@ -8,17 +8,20 @@ These rules are additive to the shared instrumentation rules in the repo-root
 
 ## 0. Instrumentations Maintained Elsewhere
 
-GenAI instrumentations no longer live in this repository and are **not** updated here. They
-have moved to the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
-repository and receive all fixes and updates there:
+Development and releases for these GenAI instrumentations have moved to the
+[opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
+repository. Direct new development and fixes there, not here:
 
 - `opentelemetry-instrumentation-genai-anthropic` (anthropic)
 - `opentelemetry-instrumentation-genai-claude-agent-sdk` (claude-agent-sdk)
 - `opentelemetry-instrumentation-genai-langchain` (langchain)
 - `opentelemetry-instrumentation-genai-weaviate-client` (weaviate-client)
+- `opentelemetry-instrumentation-genai-openai` (openai; only security patches in this repo, as `opentelemetry-instrumentation-openai-v2`)
+- `opentelemetry-instrumentation-genai-openai-agents` (openai-agents; only security patches in this repo, as `opentelemetry-instrumentation-openai-agents-v2`)
 
-Do not add, modify, or attempt to fix these instrumentations in this repository. Direct any changes
-to the `opentelemetry-python-genai` repo instead.
+Do not add, modify, or attempt to fix these instrumentations in this repository beyond security
+patches for the packages that still live here. Direct any other changes to the
+`opentelemetry-python-genai` repo instead.
 
 ## 1. Instrumentation Layer Boundary
 
