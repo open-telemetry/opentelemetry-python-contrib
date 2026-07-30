@@ -57,20 +57,11 @@ class KafkaPropertiesExtractor:
 
     @staticmethod
     def extract_send_partition(future) -> int | None:
-        """Return the partition a message was actually assigned to.
+        """Extract the assigned partition from the future returned by `send`.
 
-        ``KafkaProducer.send()`` resolves the destination partition internally
-        (running the partitioner exactly once) and exposes it on the returned
-        ``FutureRecordMetadata`` via ``_produce_future.topic_partition``. Reading
-        it back from the future is accurate for every case — explicit partition,
-        key-based, and the random keyless case.
-
-        The previous implementation estimated the partition *before* ``send()``
-        by calling ``instance._partition()`` itself; with the default
-        partitioner and no key that runs a random choice, which ``send()`` then
-        redoes, so the recorded value frequently did not match where the message
-        actually landed. See
-        https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4625
+        `send()` resolves the partition internally (randomly for keyless
+        messages), so it must be read back from the future rather than
+        recomputed with the partitioner.
         """
         try:
             return future._produce_future.topic_partition[1]
