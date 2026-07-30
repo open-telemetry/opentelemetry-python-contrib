@@ -224,30 +224,37 @@ class AsyncioInstrumentor(BaseInstrumentor):
 
     def trace_to_thread(self, func: callable):
         """
-        Trace a function, but if already instrumented, skip double-wrapping.
+        Wrap a function so that its execution in the worker thread is
+        measured and, if enabled, traced.
         """
-        if _is_instrumented(func):
-            return func
-
-        start = default_timer()
         func_name = getattr(func, "__name__", None)
         if func_name is None and isinstance(func, functools.partial):
             func_name = func.func.__name__
-        span = (
-            self._tracer.start_span(f"{ASYNCIO_PREFIX} to_thread-" + func_name)
-            if func_name in self._to_thread_name_to_trace
-            else None
-        )
-        attr = {"type": "to_thread", "name": func_name}
-        exception = None
-        try:
-            attr["state"] = "finished"
-            return func
-        except Exception:
-            attr["state"] = "exception"
-            raise
-        finally:
-            self.record_process(start, attr, span, exception)
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start = default_timer()
+            span = (
+                self._tracer.start_span(
+                    f"{ASYNCIO_PREFIX} to_thread-" + func_name
+                )
+                if func_name in self._to_thread_name_to_trace
+                else None
+            )
+            attr = {"type": "to_thread", "name": func_name}
+            exception = None
+            try:
+                result = func(*args, **kwargs)
+                attr["state"] = "finished"
+                return result
+            except Exception as exc:
+                exception = exc
+                attr["state"] = "exception"
+                raise
+            finally:
+                self.record_process(start, attr, span, exception)
+
+        return wrapper
 
     def trace_item(self, coro_or_future):
         """Trace a coroutine or future item."""
