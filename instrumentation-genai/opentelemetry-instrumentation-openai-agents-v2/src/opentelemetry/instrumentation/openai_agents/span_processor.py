@@ -1562,7 +1562,7 @@ class GenAISemanticProcessor(TracingProcessor):
             )
             otel_span.end()
 
-        for invocation in self._mcp_invocations.values():
+        for invocation in reversed(self._mcp_invocations.values()):
             invocation.fail(RuntimeError("Application shutdown"))
 
         for trace_id, root_span in list(self._root_spans.items()):
@@ -2247,7 +2247,7 @@ class GenAISemanticProcessor(TracingProcessor):
             )
             if invocation_trace_id == trace_id
         ]
-        for span_id in mcp_spans_to_remove:
+        for span_id in reversed(mcp_spans_to_remove):
             if invocation := self._mcp_invocations.pop(span_id, None):
                 invocation.fail(
                     RuntimeError("Trace ended before span completion")

@@ -27,7 +27,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.semconv._incubating.attributes import (
     server_attributes as _server_attributes,
 )
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind, get_current_span
 from opentelemetry.trace.status import StatusCode
 
 
@@ -476,6 +476,39 @@ def test_mcp_list_tools_span_ends_when_trace_finishes_early(processor_setup):
     assert mcp_span.span_id not in processor._mcp_invocations
     assert mcp_span.span_id not in processor._mcp_invocation_trace_ids
     assert mcp_span.span_id not in processor._span_parents
+
+
+@pytest.mark.parametrize("finish_with_shutdown", [False, True])
+def test_nested_mcp_spans_cleanup_in_lifo_order(
+    processor_setup, finish_with_shutdown
+):
+    processor, _ = processor_setup
+    trace = FakeTrace(name="workflow", trace_id="trace-mcp-nested")
+    processor.on_trace_start(trace)
+    original_current_span = get_current_span()
+
+    parent = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-parent",
+        span_data=MCPListToolsSpanData(server="Parent"),
+        started_at="2025-01-01T00:00:00Z",
+    )
+    child = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-child",
+        parent_id=parent.span_id,
+        span_data=MCPListToolsSpanData(server="Child"),
+        started_at="2025-01-01T00:00:01Z",
+    )
+    processor.on_span_start(parent)
+    processor.on_span_start(child)
+
+    if finish_with_shutdown:
+        processor.shutdown()
+    else:
+        processor.on_trace_end(trace)
+
+    assert get_current_span() is original_current_span
 
 
 def test_span_status_helper():

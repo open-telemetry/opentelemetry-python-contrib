@@ -17,7 +17,14 @@ from opentelemetry.util.genai.metrics import InvocationMetricsRecorder
 
 
 class MCPInvocation(GenAIInvocation):
-    """Represents a Model Context Protocol request or notification."""
+    """Represent an MCP client operation.
+
+    Follows the `MCP client semantic conventions
+    <https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/mcp.md#client>`_.
+    ``mcp.method.name`` is always set. ``mcp.protocol.version`` is set only
+    when ``protocol_version`` is provided, and ``mcp.session.id`` is set only
+    when ``session_id`` is provided.
+    """
 
     def __init__(
         self,
@@ -29,7 +36,6 @@ class MCPInvocation(GenAIInvocation):
         *,
         protocol_version: str | None = None,
         session_id: str | None = None,
-        resource_uri: str | None = None,
         parent_context: Context | None = None,
     ) -> None:
         super().__init__(
@@ -44,7 +50,6 @@ class MCPInvocation(GenAIInvocation):
         self.method_name = method_name
         self.protocol_version = protocol_version
         self.session_id = session_id
-        self.resource_uri = resource_uri
         self._start(
             self._get_attributes(),
             context=parent_context,
@@ -54,7 +59,6 @@ class MCPInvocation(GenAIInvocation):
         optional_attrs = (
             (MCP.MCP_PROTOCOL_VERSION, self.protocol_version),
             (MCP.MCP_SESSION_ID, self.session_id),
-            (MCP.MCP_RESOURCE_URI, self.resource_uri),
         )
         return {
             MCP.MCP_METHOD_NAME: self.method_name,

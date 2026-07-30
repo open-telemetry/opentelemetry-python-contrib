@@ -234,7 +234,6 @@ class TelemetryHandler:
         *,
         protocol_version: str | None = None,
         session_id: str | None = None,
-        resource_uri: str | None = None,
         parent_context: Context | None = None,
     ) -> MCPInvocation:
         """Create and start an MCP tools/list client invocation."""
@@ -246,7 +245,6 @@ class TelemetryHandler:
             MCP.McpMethodNameValues.TOOLS_LIST.value,
             protocol_version=protocol_version,
             session_id=session_id,
-            resource_uri=resource_uri,
             parent_context=parent_context,
         )
 
