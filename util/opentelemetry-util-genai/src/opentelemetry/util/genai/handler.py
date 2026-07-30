@@ -46,6 +46,9 @@ from opentelemetry._logs import (
 )
 from opentelemetry.context import Context
 from opentelemetry.metrics import MeterProvider, get_meter
+from opentelemetry.semconv._incubating.attributes import (
+    mcp_attributes as MCP,
+)
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import (
     SpanKind,
@@ -226,22 +229,21 @@ class TelemetryHandler:
             tool_description=tool_description,
         )
 
-    def start_mcp(
+    def start_mcp_tools_list(
         self,
-        method_name: str,
         *,
         protocol_version: str | None = None,
         session_id: str | None = None,
         resource_uri: str | None = None,
         parent_context: Context | None = None,
     ) -> MCPInvocation:
-        """Create and start an MCP request or notification invocation."""
+        """Create and start an MCP tools/list client invocation."""
         return MCPInvocation(
             self._tracer,
             self._metrics_recorder,
             self._logger,
             self._completion_hook,
-            method_name,
+            MCP.McpMethodNameValues.TOOLS_LIST.value,
             protocol_version=protocol_version,
             session_id=session_id,
             resource_uri=resource_uri,

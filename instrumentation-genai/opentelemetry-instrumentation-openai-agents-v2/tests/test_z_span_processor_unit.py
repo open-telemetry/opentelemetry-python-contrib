@@ -452,6 +452,32 @@ def test_mcp_list_tools_span_preserves_reported_error_type(processor_setup):
     assert finished.status.description == "server timed out"
 
 
+def test_mcp_list_tools_span_ends_when_trace_finishes_early(processor_setup):
+    processor, exporter = processor_setup
+    trace = FakeTrace(name="workflow", trace_id="trace-mcp-incomplete")
+    processor.on_trace_start(trace)
+
+    mcp_span = FakeSpan(
+        trace_id=trace.trace_id,
+        span_id="mcp-list-tools-incomplete",
+        span_data=MCPListToolsSpanData(server="Time"),
+        started_at="2025-01-01T00:00:00Z",
+    )
+    processor.on_span_start(mcp_span)
+    processor.on_trace_end(trace)
+
+    finished = next(
+        span
+        for span in exporter.get_finished_spans()
+        if span.name == sp.MCP_METHOD_TOOLS_LIST
+    )
+    assert finished.status.status_code is StatusCode.ERROR
+    assert finished.status.description == "Trace ended before span completion"
+    assert mcp_span.span_id not in processor._mcp_invocations
+    assert mcp_span.span_id not in processor._mcp_invocation_trace_ids
+    assert mcp_span.span_id not in processor._span_parents
+
+
 def test_span_status_helper():
     status = sp._get_span_status(
         SimpleNamespace(error={"message": "boom", "data": "bad"})

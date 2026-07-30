@@ -24,8 +24,7 @@ def test_mcp_invocation_uses_mcp_semantic_conventions() -> None:
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     handler = TelemetryHandler(tracer_provider=provider)
 
-    invocation = handler.start_mcp(
-        MCP.McpMethodNameValues.TOOLS_LIST.value,
+    invocation = handler.start_mcp_tools_list(
         protocol_version="2025-06-18",
         session_id="session-1",
     )
@@ -51,7 +50,7 @@ def test_mcp_invocation_preserves_reported_error_type() -> None:
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     handler = TelemetryHandler(tracer_provider=provider)
 
-    invocation = handler.start_mcp(MCP.McpMethodNameValues.TOOLS_LIST.value)
+    invocation = handler.start_mcp_tools_list()
     invocation.fail(Error(message="server timed out", type="timeout"))
 
     spans = exporter.get_finished_spans()

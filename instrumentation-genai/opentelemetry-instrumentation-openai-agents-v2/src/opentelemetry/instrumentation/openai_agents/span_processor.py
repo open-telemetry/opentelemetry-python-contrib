@@ -531,6 +531,7 @@ class GenAISemanticProcessor(TracingProcessor):
         self._root_spans: dict[str, OtelSpan] = {}
         self._otel_spans: dict[str, OtelSpan] = {}
         self._mcp_invocations: dict[str, MCPInvocation] = {}
+        self._mcp_invocation_trace_ids: dict[str, str] = {}
         self._tokens: dict[str, object] = {}
         self._span_parents: dict[str, Optional[str]] = {}
         self._agent_content: dict[str, Dict[str, list[Any]]] = {}
@@ -1344,11 +1345,11 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def on_trace_end(self, trace: Trace) -> None:
         """End root span when trace ends."""
+        self._cleanup_spans_for_trace(trace.trace_id)
         if root_span := self._root_spans.pop(trace.trace_id, None):
             if root_span.is_recording():
                 root_span.set_status(Status(StatusCode.OK))
             root_span.end()
-        self._cleanup_spans_for_trace(trace.trace_id)
 
     def on_span_start(self, span: Span[Any]) -> None:
         """Start child span for agent span."""
@@ -1375,11 +1376,11 @@ class GenAISemanticProcessor(TracingProcessor):
         context = set_span_in_context(parent_span) if parent_span else None
         if _is_instance_of(span.span_data, MCPListToolsSpanData):
             self._mcp_invocations[span.span_id] = (
-                self._telemetry_handler.start_mcp(
-                    MCP_METHOD_TOOLS_LIST,
+                self._telemetry_handler.start_mcp_tools_list(
                     parent_context=context,
                 )
             )
+            self._mcp_invocation_trace_ids[span.span_id] = span.trace_id
             return
 
         # Get operation details for span naming
@@ -1437,6 +1438,7 @@ class GenAISemanticProcessor(TracingProcessor):
     def on_span_end(self, span: Span[Any]) -> None:
         """Finalize span with attributes, events, and metrics."""
         if invocation := self._mcp_invocations.pop(span.span_id, None):
+            self._mcp_invocation_trace_ids.pop(span.span_id, None)
             if error := getattr(span, "error", None):
                 invocation.fail(
                     Error(
@@ -1571,6 +1573,7 @@ class GenAISemanticProcessor(TracingProcessor):
 
         self._otel_spans.clear()
         self._mcp_invocations.clear()
+        self._mcp_invocation_trace_ids.clear()
         self._root_spans.clear()
         self._tokens.clear()
         self._span_parents.clear()
@@ -2237,6 +2240,21 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _cleanup_spans_for_trace(self, trace_id: str) -> None:
         """Clean up spans for a trace to prevent memory leaks."""
+        mcp_spans_to_remove = [
+            span_id
+            for span_id, invocation_trace_id in (
+                self._mcp_invocation_trace_ids.items()
+            )
+            if invocation_trace_id == trace_id
+        ]
+        for span_id in mcp_spans_to_remove:
+            if invocation := self._mcp_invocations.pop(span_id, None):
+                invocation.fail(
+                    RuntimeError("Trace ended before span completion")
+                )
+            self._mcp_invocation_trace_ids.pop(span_id, None)
+            self._span_parents.pop(span_id, None)
+
         spans_to_remove = [
             span_id
             for span_id in self._otel_spans.keys()
