@@ -1,10 +1,24 @@
 # GenAI Instrumentation — Agent and Contributor Guidelines
 
-Instrumentation packages here wrap specific libraries (OpenAI, Anthropic, etc.) and bridge
+Instrumentation packages here wrap specific libraries (OpenAI, Google GenAI, etc.) and bridge
 them to the shared telemetry layer in `util/opentelemetry-util-genai`.
 
 These rules are additive to the shared instrumentation rules in the repo-root
 [AGENTS.md](../AGENTS.md).
+
+## 0. Instrumentations Maintained Elsewhere
+
+Some GenAI instrumentations no longer live in this repository and are **not** updated here. They
+have moved to the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
+repository and receive all fixes and updates there:
+
+- `opentelemetry-instrumentation-genai-anthropic` (anthropic)
+- `opentelemetry-instrumentation-genai-claude-agent-sdk` (claude-agent-sdk)
+- `opentelemetry-instrumentation-genai-langchain` (langchain)
+- `opentelemetry-instrumentation-genai-weaviate-client` (weaviate-client)
+
+Do not add, modify, or attempt to fix these instrumentations in this repository. Direct any changes
+to the `opentelemetry-python-genai` repo instead.
 
 ## 1. Instrumentation Layer Boundary
 
