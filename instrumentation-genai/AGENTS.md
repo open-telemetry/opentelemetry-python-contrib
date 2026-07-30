@@ -8,7 +8,7 @@ These rules are additive to the shared instrumentation rules in the repo-root
 
 ## 0. Instrumentations Maintained Elsewhere
 
-Some GenAI instrumentations no longer live in this repository and are **not** updated here. They
+GenAI instrumentations no longer live in this repository and are **not** updated here. They
 have moved to the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
 repository and receive all fixes and updates there:
 
