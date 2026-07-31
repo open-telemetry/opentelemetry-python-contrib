@@ -32,7 +32,9 @@ from opentelemetry.test.test_base import TestBase
 from .utils import MockConsumer, MockedMessage, MockedProducer
 
 
-class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
+class TestConfluentKafka(TestBase):
+    # pylint: disable=too-many-public-methods
+
     def test_instrument_api(self) -> None:
         from confluent_kafka import Consumer, Producer  # noqa: PLC0415
 
