@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -816,6 +805,8 @@ class TestWsgiAttributes(unittest.TestCase):
         self.environ["REQUEST_URI"] = (
             "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing"  # Might happen in a CONNECT request
         )
+        self.environ["PATH_INFO"] = "/3/library/urllib.parse.html"
+        self.environ["QUERY_STRING"] = "highlight=params"
         expected_old = {
             HTTP_HOST: "127.0.0.1:8080",
             HTTP_TARGET: "http://docs.python.org:80/3/library/urllib.parse.html?highlight=params#url-parsing",
@@ -824,6 +815,34 @@ class TestWsgiAttributes(unittest.TestCase):
             URL_PATH: "/3/library/urllib.parse.html",
             URL_QUERY: "highlight=params",
         }
+        self.assertGreaterEqual(
+            otel_wsgi.collect_request_attributes(self.environ).items(),
+            expected_old.items(),
+        )
+        self.assertGreaterEqual(
+            otel_wsgi.collect_request_attributes(
+                self.environ,
+                _StabilityMode.HTTP,
+            ).items(),
+            expected_new.items(),
+        )
+
+    def test_request_attributes_with_invalid_request_uri_uses_wsgi_environ(
+        self,
+    ):
+        # Previously raised ValueError when REQUEST_URI was parsed.
+        self.environ["REQUEST_URI"] = "http://example.com[invalid"
+        self.environ["PATH_INFO"] = "/safe/path"
+        self.environ["QUERY_STRING"] = "a=b"
+
+        expected_old = {
+            HTTP_TARGET: self.environ["REQUEST_URI"],
+        }
+        expected_new = {
+            URL_PATH: "/safe/path",
+            URL_QUERY: "a=b",
+        }
+
         self.assertGreaterEqual(
             otel_wsgi.collect_request_attributes(self.environ).items(),
             expected_old.items(),

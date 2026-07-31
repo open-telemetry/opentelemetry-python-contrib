@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 """OpenAI Agents instrumentation for OpenTelemetry."""
 
 # pylint: disable=too-many-locals

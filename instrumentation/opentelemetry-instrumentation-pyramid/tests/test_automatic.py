@@ -1,21 +1,11 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 from timeit import default_timer
 from unittest.mock import patch
 
 from pyramid.config import Configurator
+from pyramid.config.adapters import AdaptersConfiguratorMixin
 
 from opentelemetry import trace
 from opentelemetry.instrumentation._semconv import (
@@ -156,6 +146,37 @@ class TestAutomatic(InstrumentationTest, WsgiTestBase):
         self.assertEqual(
             config.registry.__name__, __name__.rsplit(".", maxsplit=1)[0]
         )
+
+    def test_before_traversal_subscriber_not_duplicated_after_commit(self):
+        registrations = []
+
+        def library_that_commits(config):
+            config.add_route("example", "/example")
+            config.commit()
+
+        def another_library(config):
+            pass
+
+        original_add_subscriber = AdaptersConfiguratorMixin.add_subscriber
+
+        def counting_add_subscriber(config, subscriber, iface=None, **kwargs):
+            if getattr(subscriber, "__name__", "") == "_before_traversal":
+                registrations.append(subscriber)
+
+            return original_add_subscriber(
+                config, subscriber, iface=iface, **kwargs
+            )
+
+        with patch.object(
+            AdaptersConfiguratorMixin,
+            "add_subscriber",
+            counting_add_subscriber,
+        ):
+            config = Configurator()
+            config.include(library_that_commits)
+            config.include(another_library)
+
+        self.assertEqual(len(registrations), 1)
 
     def test_redirect_response_is_not_an_error(self):
         tween_list = "pyramid.tweens.excview_tween_factory"
@@ -480,9 +501,11 @@ class _SemConvTestBase(InstrumentationTest, WsgiTestBase):
 
     def _verify_duration_point(self, point):
         self.assertIn(HTTP_REQUEST_METHOD, point.attributes)
+        self.assertIn(HTTP_RESPONSE_STATUS_CODE, point.attributes)
         self.assertIn(URL_SCHEME, point.attributes)
         self.assertNotIn(HTTP_METHOD, point.attributes)
         self.assertNotIn(HTTP_SCHEME, point.attributes)
+        self.assertNotIn(HTTP_STATUS_CODE, point.attributes)
 
     def _verify_metric_duration(self, metric):
         if "duration" in metric.name:
@@ -545,7 +568,11 @@ class TestSemConvDefault(_SemConvTestBase):
                 if isinstance(point, HistogramDataPoint):
                     self.assertIn("http.method", point.attributes)
                     self.assertIn("http.scheme", point.attributes)
+                    self.assertIn(HTTP_STATUS_CODE, point.attributes)
                     self.assertNotIn(HTTP_REQUEST_METHOD, point.attributes)
+                    self.assertNotIn(
+                        HTTP_RESPONSE_STATUS_CODE, point.attributes
+                    )
 
 
 class TestSemConvNew(_SemConvTestBase):

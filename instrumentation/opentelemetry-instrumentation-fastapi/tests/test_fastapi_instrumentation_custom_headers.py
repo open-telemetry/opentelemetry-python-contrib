@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from collections.abc import Mapping
 from typing import Tuple
 from unittest.mock import patch

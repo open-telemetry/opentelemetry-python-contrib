@@ -1,29 +1,54 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 from unittest import mock
 
 import mysql.connector
 
 import opentelemetry.instrumentation.mysql
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_NAME,
     DB_STATEMENT,
+    DB_SYSTEM,
+    DB_USER,
+)
+from opentelemetry.semconv._incubating.attributes.net_attributes import (
+    NET_PEER_NAME,
+    NET_PEER_PORT,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.test.test_base import TestBase
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 def connect_and_execute_query():
@@ -40,6 +65,7 @@ def make_mysql_connection_mock():
     cnx.database = "test"
     cnx.server_host = "localhost"
     cnx.server_port = 3306
+    cnx.user = "testuser"
 
     cursor = mock.MagicMock()
     cursor._cnx = cnx
@@ -194,9 +220,10 @@ class TestMysqlIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -225,13 +252,14 @@ class TestMysqlIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_with_options(
@@ -260,9 +288,10 @@ class TestMysqlIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -333,9 +362,10 @@ class TestMysqlIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -363,13 +393,14 @@ class TestMysqlIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_level='123',dbapi_threadsafety='123',driver_paramstyle='test',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
 
     def test_instrument_with_dbapi_sqlcomment_enabled_with_options(
@@ -397,9 +428,10 @@ class TestMysqlIntegration(TestBase):
             span = spans_list[0]
             span_id = format(span.get_span_context().span_id, "016x")
             trace_id = format(span.get_span_context().trace_id, "032x")
+            trace_flags = format(span.get_span_context().trace_flags, "02x")
             self.assertEqual(
                 mock_cursor.execute.call_args[0][0],
-                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-01'*/;",
+                f"Select 1 /*db_driver='mysql.connector%%3Afoobar',dbapi_threadsafety='123',mysql_client_version='foobaz',traceparent='00-{trace_id}-{span_id}-{trace_flags}'*/;",
             )
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
@@ -446,3 +478,59 @@ class TestMysqlIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    @mock.patch("mysql.connector.connect")
+    def test_semconv_stable(self, mock_connect):
+        """database,http opt-in emits only stable attributes."""
+        with use_semconv_opt_in("database,http"):
+            mock_connect.return_value = make_mysql_connection_mock()
+            MySQLInstrumentor().instrument()
+
+            connect_and_execute_query()
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 3306)
+            self.assertNotIn(DB_SYSTEM, span.attributes)
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_STATEMENT, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    @mock.patch("mysql.connector.connect")
+    def test_semconv_dup(self, mock_connect):
+        """database/dup,http/dup opt-in emits both legacy and stable attributes."""
+        with use_semconv_opt_in("database/dup,http/dup"):
+            mock_connect.return_value = make_mysql_connection_mock()
+            MySQLInstrumentor().instrument()
+
+            connect_and_execute_query()
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "mysql")
+            self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
+            self.assertEqual(span.attributes[DB_NAME], "test")
+            self.assertEqual(span.attributes[DB_NAMESPACE], "test")
+            self.assertEqual(
+                span.attributes[DB_STATEMENT], "SELECT * FROM test"
+            )
+            self.assertEqual(
+                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
+            )
+            self.assertEqual(span.attributes[DB_USER], "testuser")
+            self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
+            self.assertEqual(span.attributes[NET_PEER_PORT], 3306)
+            self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
+            self.assertEqual(span.attributes[SERVER_PORT], 3306)

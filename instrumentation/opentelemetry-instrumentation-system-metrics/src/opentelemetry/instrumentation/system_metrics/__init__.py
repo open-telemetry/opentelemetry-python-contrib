@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 # pylint: disable=too-many-lines
 
 """
@@ -41,6 +30,7 @@ following metrics are configured:
         "process.cpu.utilization": None,
         "process.memory.usage": None,
         "process.memory.virtual": None,
+        "process.disk.io": ["read", "write"],
         "process.open_file_descriptor.count": None,
         "process.thread.count": None,
         "process.runtime.memory": ["rss", "vms"],
@@ -145,6 +135,7 @@ _DEFAULT_CONFIG: dict[str, list[str] | None] = {
     "process.memory.virtual": None,
     "process.open_file_descriptor.count": None,
     "process.thread.count": None,
+    "process.disk.io": ["read", "write"],
     "process.runtime.memory": ["rss", "vms"],
     "process.runtime.cpu.time": ["user", "system"],
     "process.runtime.gc_count": None,
@@ -219,6 +210,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         self._cpu_utilization_labels = self._labels.copy()
         self._memory_usage_labels = self._labels.copy()
         self._memory_virtual_labels = self._labels.copy()
+        self._process_disk_io_labels = self._labels.copy()
         self._open_file_descriptor_count_labels = self._labels.copy()
         self._thread_count_labels = self._labels.copy()
 
@@ -468,6 +460,14 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
                 name="process.thread.count",
                 callbacks=[self._get_thread_count],
                 description="Process threads count.",
+            )
+
+        if "process.disk.io" in self._config:
+            self._meter.create_observable_counter(
+                name="process.disk.io",
+                callbacks=[self._get_process_disk_io],
+                description="Disk bytes transferred for the process.",
+                unit="By",
             )
 
         # FIXME: process.runtime keys are deprecated and will be removed in subsequent releases.
@@ -919,6 +919,27 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         yield Observation(
             self._proc.num_threads(), self._thread_count_labels.copy()
         )
+
+    def _get_process_disk_io(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        """Observer callback for process disk IO"""
+        try:
+            proc_disk = self._proc.io_counters()
+        except (AttributeError, NotImplementedError, PermissionError):
+            # io_counters() is not available on all platforms (e.g. macOS)
+            return
+        for metric in self._config["process.disk.io"]:
+            if metric == "read":
+                self._process_disk_io_labels["direction"] = "read"
+                yield Observation(
+                    proc_disk.read_bytes, self._process_disk_io_labels.copy()
+                )
+            elif metric == "write":
+                self._process_disk_io_labels["direction"] = "write"
+                yield Observation(
+                    proc_disk.write_bytes, self._process_disk_io_labels.copy()
+                )
 
     # runtime callbacks
 

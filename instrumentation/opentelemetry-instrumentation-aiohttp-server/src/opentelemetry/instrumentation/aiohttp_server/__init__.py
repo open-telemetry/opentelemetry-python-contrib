@@ -1,16 +1,5 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 """
 The opentelemetry-instrumentation-aiohttp-server package allows tracing HTTP
@@ -258,28 +247,29 @@ def get_default_span_name(request: web.Request) -> str:
     Returns:
         The span name as "{method} {canonical_name}" of a resource if possible or just "{method}".
     """
+    path = _get_canonical_path(request)
+    method = sanitize_method(request.method)
+    if method == "_OTHER":
+        method = "HTTP"
+    if path:
+        return f"{method} {path}"
+    return f"{method}"
+
+
+def _get_canonical_path(request: web.Request) -> str:
+    """Returns the canonical path from the request handler.
+    Args:
+        request: the request object itself.
+    Returns:
+        a string containing the canonical path
+    """
+
     try:
         resource = request.match_info.route.resource
         path = resource.canonical
     except AttributeError:
         path = ""
-
-    if path:
-        return f"{request.method} {path}"
-    return f"{request.method}"
-
-
-def _get_view_func(request: web.Request) -> str:
-    """Returns the name of the request handler.
-    Args:
-        request: the request object itself.
-    Returns:
-        a string containing the name of the handler function
-    """
-    try:
-        return request.match_info.handler.__name__
-    except AttributeError:
-        return "unknown"
+    return path
 
 
 def collect_request_attributes(
@@ -334,7 +324,7 @@ def collect_request_attributes(
     _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
     # http.route for both old and new
-    result[HTTP_ROUTE] = _get_view_func(request)
+    result[HTTP_ROUTE] = _get_canonical_path(request)
 
     if _report_old(sem_conv_opt_in_mode):
         http_host_value_list = (
@@ -561,7 +551,7 @@ def create_instrumented_application(
 
 
 class AioHttpServerInstrumentor(BaseInstrumentor):
-    # pylint: disable=protected-access,attribute-defined-outside-init
+    # pylint: disable=protected-access
     """An instrumentor for aiohttp.web.Application
 
     See `BaseInstrumentor`

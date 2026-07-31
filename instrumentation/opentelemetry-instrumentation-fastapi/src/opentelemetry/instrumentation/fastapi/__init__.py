@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Usage
@@ -190,9 +179,18 @@ from weakref import WeakSet as _WeakSet
 
 import fastapi
 from starlette.applications import Starlette
+from starlette.background import BackgroundTask
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.routing import Match, Route
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+try:
+    # FastAPI >= 0.137.2 exposes a public helper that flattens routes added via
+    # include_router() (nested under _IncludedRouter in 0.137) into matchable
+    # RouteContext objects. Older versions don't have it; see _flatten_routes.
+    from fastapi.routing import iter_route_contexts
+except ImportError:
+    iter_route_contexts = None
 
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url,
@@ -399,6 +397,16 @@ class FastAPIInstrumentor(BaseInstrumentor):
                 app,
             )
 
+            if not hasattr(BackgroundTask, "_otel_original_call"):
+                BackgroundTask._otel_original_call = BackgroundTask.__call__
+
+                async def traced_call(self):
+                    span_name = f"BackgroundTask {getattr(self.func, '__name__', self.func.__class__.__name__)}"
+                    with tracer.start_as_current_span(span_name):
+                        return await BackgroundTask._otel_original_call(self)
+
+                BackgroundTask.__call__ = traced_call
+
             app._is_instrumented_by_opentelemetry = True
             if app not in _InstrumentedFastAPI._instrumented_fastapi_apps:
                 _InstrumentedFastAPI._instrumented_fastapi_apps.add(app)
@@ -416,6 +424,11 @@ class FastAPIInstrumentor(BaseInstrumentor):
             app.build_middleware_stack = original_build_middleware_stack
             del app._original_build_middleware_stack
         app.middleware_stack = app.build_middleware_stack()
+
+        if hasattr(BackgroundTask, "_otel_original_call"):
+            BackgroundTask.__call__ = BackgroundTask._otel_original_call
+            del BackgroundTask._otel_original_call
+
         app._is_instrumented_by_opentelemetry = False
 
         # Remove the app from the set of instrumented apps to avoid calling uninstrument twice
@@ -457,6 +470,30 @@ class _InstrumentedFastAPI(fastapi.FastAPI):
         _InstrumentedFastAPI._instrumented_fastapi_apps.add(self)
 
 
+def _flatten_routes(routes):
+    """
+    Yield the matchable routes from an app's route list.
+
+    FastAPI 0.137 nests routes added via include_router() under _IncludedRouter
+    tree nodes, which expose no ``path`` attribute. They have to be flattened
+    into their effective route contexts (each providing matches() and the full
+    templated path) before they can be matched against a scope.
+
+    FastAPI >= 0.137.2 provides the public iter_route_contexts() for this, which
+    also wraps plain routes uniformly. On older versions fall back to the
+    private _IncludedRouter.effective_route_contexts(), and on FastAPI < 0.137
+    (no _IncludedRouter) the routes are already matchable as-is.
+    """
+    if iter_route_contexts is not None:
+        yield from iter_route_contexts(routes)
+        return
+    for starlette_route in routes:
+        if hasattr(starlette_route, "effective_route_contexts"):
+            yield from starlette_route.effective_route_contexts()
+        else:
+            yield starlette_route
+
+
 def _get_route_details(scope):
     """
     Function to retrieve Starlette route from scope.
@@ -473,7 +510,7 @@ def _get_route_details(scope):
     app = scope["app"]
     route = None
 
-    for starlette_route in app.routes:
+    for starlette_route in _flatten_routes(app.routes):
         match, _ = (
             Route.matches(starlette_route, scope)
             if isinstance(starlette_route, Route)

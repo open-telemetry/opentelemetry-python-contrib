@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 from tests.test_utils import DEFAULT_MODEL, USER_ONLY_PROMPT
 

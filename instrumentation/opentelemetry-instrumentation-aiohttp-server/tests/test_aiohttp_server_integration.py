@@ -1,16 +1,5 @@
-# Copyright 2020, OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
@@ -258,6 +247,30 @@ async def test_url_params_instrumentation(
         assert request_path == span.attributes[HTTP_TARGET]
         full_url = f"http://{server.host}:{server.port}{request_path}"
         assert full_url == span.attributes[HTTP_URL]
+
+
+@pytest.mark.asyncio
+async def test_span_name_handler_unknown_method(
+    tracer,
+    server_fixture,
+):
+    _, memory_exporter = tracer
+    server, _ = server_fixture
+
+    assert len(memory_exporter.get_finished_spans()) == 0
+
+    async with aiohttp.ClientSession(
+        base_url=f"http://{server.host}:{server.port}"
+    ) as session:
+        # PURGE is accepted by aiohttp but not recognized by sanitize_method.
+        async with session.request("PURGE", "/test-path") as response:
+            assert response.status == HTTPStatus.METHOD_NOT_ALLOWED
+
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    assert "_OTHER" == spans[0].attributes[HTTP_METHOD]
+    assert "HTTP" == spans[0].name
 
 
 @pytest.mark.asyncio
@@ -574,11 +587,11 @@ async def test_semantic_conventions_metrics_old_default(
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
-    app.router.add_get("/test-path", default_handler)
+    app.router.add_get("/test-path/{param}", default_handler)
     server = await aiohttp_server(app)
     client_session = aiohttp.ClientSession()
     try:
-        url = f"http://{server.host}:{server.port}/test-path?query=test"
+        url = f"http://{server.host}:{server.port}/test-path/test-param?query=test"
         async with client_session.get(  # pylint: disable=not-async-context-manager
             url, headers={"User-Agent": "test-agent"}
         ) as response:
@@ -598,11 +611,14 @@ async def test_semantic_conventions_metrics_old_default(
         assert span.attributes.get(HTTP_SCHEME) == "http"
         assert span.attributes.get(NET_HOST_NAME) == server.host
         assert span.attributes.get(NET_HOST_PORT) == server.port
-        assert span.attributes.get(HTTP_TARGET) == "/test-path?query=test"
+        assert (
+            span.attributes.get(HTTP_TARGET)
+            == "/test-path/test-param?query=test"
+        )
         assert span.attributes.get(HTTP_USER_AGENT) == "test-agent"
         assert span.attributes.get(HTTP_FLAVOR) == "1.1"
         assert span.attributes.get(HTTP_STATUS_CODE) == 200
-        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
+        assert span.attributes.get(HTTP_ROUTE) == "/test-path/{param}"
         # New semconv span attributes NOT present
         assert HTTP_REQUEST_METHOD not in span.attributes
         assert URL_SCHEME not in span.attributes
@@ -647,11 +663,11 @@ async def test_semantic_conventions_metrics_new(
 
     AioHttpServerInstrumentor().instrument()
     app = aiohttp.web.Application()
-    app.router.add_get("/test-path", default_handler)
+    app.router.add_get("/test-path/{param}", default_handler)
     server = await aiohttp_server(app)
     client_session = aiohttp.ClientSession()
     try:
-        url = f"http://{server.host}:{server.port}/test-path?query=test"
+        url = f"http://{server.host}:{server.port}/test-path/test-param?query=test"
         async with client_session.get(  # pylint: disable=not-async-context-manager
             url, headers={"User-Agent": "test-agent"}
         ) as response:
@@ -671,12 +687,12 @@ async def test_semantic_conventions_metrics_new(
         assert span.attributes.get(URL_SCHEME) == "http"
         assert span.attributes.get(SERVER_ADDRESS) == server.host
         assert span.attributes.get(SERVER_PORT) == server.port
-        assert span.attributes.get(URL_PATH) == "/test-path"
+        assert span.attributes.get(URL_PATH) == "/test-path/test-param"
         assert span.attributes.get(URL_QUERY) == "query=test"
         assert span.attributes.get(USER_AGENT_ORIGINAL) == "test-agent"
         assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
-        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
+        assert span.attributes.get(HTTP_ROUTE) == "/test-path/{param}"
         # Old semconv span attributes NOT present
         assert HTTP_METHOD not in span.attributes
         assert HTTP_SCHEME not in span.attributes
@@ -766,7 +782,7 @@ async def test_semantic_conventions_metrics_both(
         assert span.attributes.get(NETWORK_PROTOCOL_VERSION) == "1.1"
         assert span.attributes.get(HTTP_STATUS_CODE) == 200
         assert span.attributes.get(HTTP_RESPONSE_STATUS_CODE) == 200
-        assert span.attributes.get(HTTP_ROUTE) == "default_handler"
+        assert span.attributes.get(HTTP_ROUTE) == "/test-path"
 
         metrics = test_base.get_sorted_metrics(SCOPE)
         assert len(metrics) == 3  # Both duration metrics + active requests

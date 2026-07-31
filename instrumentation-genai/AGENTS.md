@@ -1,10 +1,24 @@
 # GenAI Instrumentation — Agent and Contributor Guidelines
 
-Instrumentation packages here wrap specific libraries (OpenAI, Anthropic, etc.) and bridge
+Instrumentation packages here wrap specific libraries (OpenAI, Google GenAI, etc.) and bridge
 them to the shared telemetry layer in `util/opentelemetry-util-genai`.
 
 These rules are additive to the shared instrumentation rules in the repo-root
 [AGENTS.md](../AGENTS.md).
+
+## 0. Instrumentations Maintained Elsewhere
+
+GenAI instrumentations no longer live in this repository and are **not** updated here. They
+have moved to the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
+repository and receive all fixes and updates there:
+
+- `opentelemetry-instrumentation-genai-anthropic` (anthropic)
+- `opentelemetry-instrumentation-genai-claude-agent-sdk` (claude-agent-sdk)
+- `opentelemetry-instrumentation-genai-langchain` (langchain)
+- `opentelemetry-instrumentation-genai-weaviate-client` (weaviate-client)
+
+Do not add, modify, or attempt to fix these instrumentations in this repository. Direct any changes
+to the `opentelemetry-python-genai` repo instead.
 
 ## 1. Instrumentation Layer Boundary
 
@@ -18,6 +32,13 @@ This layer is responsible only for:
 
 Everything else (span creation, metric recording, event emission, context propagation)
 belongs in `util/opentelemetry-util-genai`.
+
+For GenAI streaming wrappers, prefer the shared `SyncStreamWrapper` and `AsyncStreamWrapper`
+helpers from `opentelemetry.util.genai.stream` instead of reimplementing iteration,
+close/context-manager, and finalization behavior in provider packages.
+
+Put provider-specific chunk parsing and telemetry finalization in private hook methods or a
+narrow mixin. Do not make async stream wrappers inherit from sync stream wrappers.
 
 ## 2. TelemetryHandler Initialization
 
@@ -60,6 +81,11 @@ except Exception as exc:
     invocation.fail(exc)
     raise
 ```
+
+Content capture decisions must come from the shared handler, not from instrumentation-local
+environment checks or duplicated helper logic. Evaluate the handler's content-capture API once
+when creating wrappers (for example, `capture_content = handler.should_capture_content()`) and
+pass that value through invocation/request helpers.
 
 ## 4. Semantic conventions
 

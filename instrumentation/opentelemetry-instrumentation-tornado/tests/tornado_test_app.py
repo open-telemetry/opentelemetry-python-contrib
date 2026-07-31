@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 # pylint: disable=W0223,R0201
 import asyncio
 import time
@@ -119,6 +122,17 @@ class RaiseHTTPErrorHandler(tornado.web.RequestHandler):
         raise tornado.web.HTTPError(403)
 
 
+class ParametrizedHandler(tornado.web.RequestHandler):
+    async def get(self, message: str):
+        self.write(message)
+        self.set_status(200)
+
+
+class NoGroupHandler(tornado.web.RequestHandler):
+    async def get(self):
+        self.set_status(200)
+
+
 class EchoWebSocketHandler(tornado.websocket.WebSocketHandler):
     async def on_message(self, message):
         with self.application.tracer.start_as_current_span("audit_message"):
@@ -143,6 +157,8 @@ def make_app(tracer):
             (r"/raise_403", RaiseHTTPErrorHandler),
             (r"/slow", SlowHandler),
             (r"/echo_socket", EchoWebSocketHandler),
+            (r"/parametrized/(.*)/", ParametrizedHandler),
+            (r"/nogroup/[0-9]/", NoGroupHandler),
         ]
     )
     app.tracer = tracer

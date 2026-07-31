@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 MOCK_LAMBDA_ALB_EVENT = {
     "requestContext": {
         "elb": {

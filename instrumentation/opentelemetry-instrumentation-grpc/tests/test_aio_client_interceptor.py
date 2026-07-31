@@ -1,17 +1,7 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 from unittest import IsolatedAsyncioTestCase
+from unittest.mock import patch
 
 import grpc
 
@@ -340,3 +330,33 @@ class TestAioClientInterceptor(TestBase, IsolatedAsyncioTestCase):
 
             spans = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans), 0)
+
+    async def test_unary_unary_add_done_callback_not_implemented(self):
+        """Span should still be finished when add_done_callback raises NotImplementedError."""
+
+        def _raise_not_implemented(self_call, callback):
+            raise NotImplementedError
+
+        with patch.object(
+            grpc.aio.UnaryUnaryCall,
+            "add_done_callback",
+            _raise_not_implemented,
+        ):
+            response = await simple_method(self._stub)
+            assert response.response_data == "data"
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+
+        self.assertEqual(span.name, "/GRPCTestServer/SimpleMethod")
+        self.assertIs(span.kind, trace.SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            span,
+            {
+                RPC_METHOD: "SimpleMethod",
+                RPC_SERVICE: "GRPCTestServer",
+                RPC_SYSTEM: "grpc",
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.OK.value[0],
+            },
+        )

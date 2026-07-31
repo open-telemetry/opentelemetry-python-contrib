@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Cassandra instrumentation supporting `cassandra-driver`_ and `scylla-driver`_, it can be enabled by
@@ -44,6 +33,15 @@ import cassandra.cluster
 from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
+from opentelemetry.instrumentation._semconv import (
+    _get_schema_url_for_signal_types,
+    _OpenTelemetrySemanticConventionStability,
+    _OpenTelemetryStabilitySignalType,
+    _set_db_name,
+    _set_db_statement,
+    _set_db_system,
+    _set_http_net_peer_name_client,
+)
 from opentelemetry.instrumentation.cassandra.package import (
     _instruments_any,
     _instruments_cassandra_driver,
@@ -52,17 +50,11 @@ from opentelemetry.instrumentation.cassandra.package import (
 from opentelemetry.instrumentation.cassandra.version import __version__
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
 from opentelemetry.instrumentation.utils import unwrap
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_NAME,
-    DB_STATEMENT,
-    DB_SYSTEM,
-)
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-)
 
 
-def _instrument(tracer_provider, include_db_statement=False):
+def _instrument(
+    tracer_provider, include_db_statement=False, sem_conv_opt_in_mode=None
+):
     """Instruments the cassandra-driver/scylla-driver module
 
     Wraps cassandra.cluster.Session.execute_async().
@@ -71,7 +63,9 @@ def _instrument(tracer_provider, include_db_statement=False):
         __name__,
         __version__,
         tracer_provider,
-        schema_url="https://opentelemetry.io/schemas/1.11.0",
+        schema_url=_get_schema_url_for_signal_types(
+            [_OpenTelemetryStabilitySignalType.DATABASE]
+        ),
     )
     name = "Cassandra"
 
@@ -80,17 +74,18 @@ def _instrument(tracer_provider, include_db_statement=False):
             name, kind=trace.SpanKind.CLIENT
         ) as span:
             if span.is_recording():
-                span.set_attribute(DB_NAME, instance.keyspace)
-                span.set_attribute(DB_SYSTEM, "cassandra")
-                span.set_attribute(
-                    NET_PEER_NAME,
+                attrs = {}
+                _set_db_system(attrs, "cassandra", sem_conv_opt_in_mode)
+                _set_db_name(attrs, instance.keyspace, sem_conv_opt_in_mode)
+                _set_http_net_peer_name_client(
+                    attrs,
                     instance.cluster.contact_points,
+                    sem_conv_opt_in_mode,
                 )
-
                 if include_db_statement:
                     query = args[0]
-                    span.set_attribute(DB_STATEMENT, str(query))
-
+                    _set_db_statement(attrs, str(query), sem_conv_opt_in_mode)
+                span.set_attributes(attrs)
             response = func(*args, **kwargs)
             return response
 
@@ -119,9 +114,14 @@ class CassandraInstrumentor(BaseInstrumentor):
         return _instruments_any
 
     def _instrument(self, **kwargs):
+        _OpenTelemetrySemanticConventionStability._initialize()
+        sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            _OpenTelemetryStabilitySignalType.DATABASE,
+        )
         _instrument(
             tracer_provider=kwargs.get("tracer_provider"),
             include_db_statement=kwargs.get("include_db_statement"),
+            sem_conv_opt_in_mode=sem_conv_opt_in_mode,
         )
 
     def _uninstrument(self, **kwargs):

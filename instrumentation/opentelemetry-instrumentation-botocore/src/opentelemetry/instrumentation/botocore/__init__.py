@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Instrument `botocore`_ and `aiobotocore`_ to trace service requests.
@@ -151,6 +140,7 @@ from opentelemetry.instrumentation.utils import (
     suppress_http_instrumentation,
     unwrap,
 )
+from opentelemetry.metrics import Instrument
 from opentelemetry.propagators.aws.aws_xray_propagator import (
     TRACE_HEADER_KEY,
     AwsXRayPropagator,
@@ -192,7 +182,15 @@ class BotocoreInstrumentor(BaseInstrumentor):
         return _instruments_botocore
 
     def _instrument(self, **kwargs):
-        # pylint: disable=attribute-defined-outside-init
+        # tracers are lazy initialized per-extension in _get_tracer
+        self._tracers = {}
+        # loggers are lazy initialized per-extension in _get_logger
+        self._loggers = {}
+        # meters are lazy initialized per-extension in _get_meter
+        self._meters = {}
+        # metrics are lazy initialized per-extension in _get_metrics
+        self._metrics: Dict[str, Dict[str, Instrument]] = {}
+
         self.request_hook = kwargs.get("request_hook")
         self.response_hook = kwargs.get("response_hook")
 

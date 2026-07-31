@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 #
 """
 Some utils used by the redis integration
@@ -20,14 +9,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from opentelemetry.semconv._incubating.attributes.db_attributes import (
-    DB_REDIS_DATABASE_INDEX,
-    DB_SYSTEM,
+from opentelemetry.instrumentation._semconv import (
+    _set_db_redis_database_index,
+    _set_db_system,
+    _set_http_net_peer_name_client,
+    _set_http_peer_port_client,
+    _set_net_transport,
 )
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
-    NET_TRANSPORT,
+from opentelemetry.semconv.attributes.network_attributes import (
+    NetworkTransportValues,
 )
 from opentelemetry.semconv.trace import (
     DbSystemValues,
@@ -46,20 +36,44 @@ if TYPE_CHECKING:
 _FIELD_TYPES = ["NUMERIC", "TEXT", "GEO", "TAG", "VECTOR"]
 
 
-def _extract_conn_attributes(conn_kwargs):
+def _extract_conn_attributes(
+    conn_kwargs, db_sem_conv_opt_in_mode, http_sem_conv_opt_in_mode
+):
     """Transform redis conn info into dict"""
-    attributes = {
-        DB_SYSTEM: DbSystemValues.REDIS.value,
-    }
+    attributes = {}
+    _set_db_system(
+        attributes, DbSystemValues.REDIS.value, db_sem_conv_opt_in_mode
+    )
+
     db = conn_kwargs.get("db", 0)
-    attributes[DB_REDIS_DATABASE_INDEX] = db
+    _set_db_redis_database_index(attributes, db, db_sem_conv_opt_in_mode)
     if "path" in conn_kwargs:
-        attributes[NET_PEER_NAME] = conn_kwargs.get("path", "")
-        attributes[NET_TRANSPORT] = NetTransportValues.OTHER.value
+        _set_http_net_peer_name_client(
+            attributes, conn_kwargs.get("path", ""), http_sem_conv_opt_in_mode
+        )
+        _set_net_transport(
+            attributes,
+            NetTransportValues.OTHER.value,
+            NetworkTransportValues.UNIX.value,
+            http_sem_conv_opt_in_mode,
+        )
     else:
-        attributes[NET_PEER_NAME] = conn_kwargs.get("host", "localhost")
-        attributes[NET_PEER_PORT] = conn_kwargs.get("port", 6379)
-        attributes[NET_TRANSPORT] = NetTransportValues.IP_TCP.value
+        _set_http_net_peer_name_client(
+            attributes,
+            conn_kwargs.get("host", "localhost"),
+            http_sem_conv_opt_in_mode,
+        )
+        _set_http_peer_port_client(
+            attributes,
+            conn_kwargs.get("port", 6379),
+            http_sem_conv_opt_in_mode,
+        )
+        _set_net_transport(
+            attributes,
+            NetTransportValues.IP_TCP.value,
+            NetworkTransportValues.TCP.value,
+            http_sem_conv_opt_in_mode,
+        )
 
     return attributes
 
@@ -99,12 +113,21 @@ def _value_or_none(values, n):
 
 
 def _set_connection_attributes(
-    span: Span, conn: RedisInstance | AsyncRedisInstance
+    span: Span,
+    conn: RedisInstance | AsyncRedisInstance,
+    db_sem_conv_opt_in_mode,
+    http_sem_conv_opt_in_mode,
 ) -> None:
-    if not span.is_recording() or not hasattr(conn, "connection_pool"):
+    if (
+        not span.is_recording()
+        or not hasattr(conn, "connection_pool")
+        or not hasattr(conn.connection_pool, "connection_kwargs")
+    ):
         return
     for key, value in _extract_conn_attributes(
-        conn.connection_pool.connection_kwargs
+        conn.connection_pool.connection_kwargs,
+        db_sem_conv_opt_in_mode,
+        http_sem_conv_opt_in_mode,
     ).items():
         span.set_attribute(key, value)
 
@@ -184,11 +207,25 @@ def _build_span_meta_data_for_pipeline(
     instance: PipelineInstance | AsyncPipelineInstance,
 ) -> tuple[list[Any], str, str]:
     try:
-        command_stack = (
-            instance.command_stack
-            if hasattr(instance, "command_stack")
-            else instance._command_stack
-        )
+        # redis-py 6+ ClusterPipeline no longer updates ``command_stack``;
+        # queued commands are tracked on the execution strategy instead. The
+        # sync cluster strategy exposes them via a public ``command_queue``
+        # property, while the async cluster strategy only has the private
+        # ``_command_queue`` attribute. Fall back to ``command_stack`` /
+        # ``_command_stack`` for non-cluster pipelines and older redis-py.
+        execution_strategy = getattr(instance, "_execution_strategy", None)
+        if execution_strategy is not None and hasattr(
+            execution_strategy, "command_queue"
+        ):
+            command_stack = execution_strategy.command_queue
+        elif execution_strategy is not None and hasattr(
+            execution_strategy, "_command_queue"
+        ):
+            command_stack = execution_strategy._command_queue
+        elif hasattr(instance, "command_stack"):
+            command_stack = instance.command_stack
+        else:
+            command_stack = instance._command_stack
 
         cmds = [
             _format_command_args(c.args if hasattr(c, "args") else c[0])

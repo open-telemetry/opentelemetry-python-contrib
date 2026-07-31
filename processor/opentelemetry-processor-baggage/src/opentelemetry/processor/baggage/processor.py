@@ -1,18 +1,7 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence, Union
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.context import Context
@@ -21,6 +10,9 @@ from opentelemetry.trace import Span
 
 # A BaggageKeyPredicate is a function that takes a baggage key and returns a boolean
 BaggageKeyPredicateT = Callable[[str], bool]
+BaggageKeyPredicates = Union[
+    BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]
+]
 
 # A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
 ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # noqa: E731 # pylint:disable=invalid-name
@@ -50,13 +42,16 @@ class BaggageSpanProcessor(SpanProcessor):
 
     """
 
-    def __init__(self, baggage_key_predicate: BaggageKeyPredicateT) -> None:
-        self._baggage_key_predicate = baggage_key_predicate
+    def __init__(self, baggage_key_predicate: BaggageKeyPredicates) -> None:
+        if callable(baggage_key_predicate):
+            self._predicates = [baggage_key_predicate]
+        else:
+            self._predicates = list(baggage_key_predicate)
 
     def on_start(
         self, span: "Span", parent_context: Optional[Context] = None
     ) -> None:
         baggage = get_all_baggage(parent_context)
         for key, value in baggage.items():
-            if self._baggage_key_predicate(key):
+            if any(predicate(key) for predicate in self._predicates):
                 span.set_attribute(key, value)

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import wsgiref.util as wsgiref_util
 from logging import getLogger
@@ -42,6 +31,7 @@ from opentelemetry.semconv._incubating.attributes.error_attributes import (
     ERROR_TYPE,
 )
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
+    HTTP_RESPONSE_STATUS_CODE,
     HTTP_STATUS_CODE,
 )
 from opentelemetry.semconv.attributes.http_attributes import HTTP_ROUTE
@@ -54,6 +44,7 @@ from opentelemetry.util.http import get_excluded_urls, redact_url
 
 TWEEN_NAME = "opentelemetry.instrumentation.pyramid.trace_tween_factory"
 SETTING_TRACE_ENABLED = "opentelemetry-pyramid.trace_enabled"
+_SETTING_CALLBACKS_REGISTERED = "opentelemetry-pyramid.callbacks_registered"
 
 _ENVIRON_STARTTIME_KEY = "opentelemetry-pyramid.starttime_key"
 _ENVIRON_SPAN_KEY = "opentelemetry-pyramid.span_key"
@@ -71,6 +62,10 @@ _sem_conv_opt_in_mode = _StabilityMode.DEFAULT
 def includeme(config):
     config.add_settings({SETTING_TRACE_ENABLED: True})
 
+    if config.get_settings().get(_SETTING_CALLBACKS_REGISTERED):
+        return
+
+    config.add_settings({_SETTING_CALLBACKS_REGISTERED: True})
     config.add_subscriber(_before_traversal, BeforeTraversal)
     _insert_tween(config)
 
@@ -265,9 +260,8 @@ def trace_tween_factory(handler, registry):
             status = getattr(response, "status", status)
             status_code = otel_wsgi._parse_status_code(status)
             if status_code is not None:
-                duration_attrs[HTTP_STATUS_CODE] = (
-                    otel_wsgi._parse_status_code(status)
-                )
+                duration_attrs[HTTP_STATUS_CODE] = status_code
+                duration_attrs[HTTP_RESPONSE_STATUS_CODE] = status_code
 
             # Record metrics for old semconv (milliseconds)
             if duration_histogram_old:

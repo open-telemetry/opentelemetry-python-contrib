@@ -1,0 +1,94 @@
+interactions:
+- request:
+    body: |-
+      {
+        "input": "Hello",
+        "model": "this-model-does-not-exist"
+      }
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '56'
+      Content-Type:
+      - application/json
+      Host:
+      - api.openai.com
+      User-Agent:
+      - OpenAI/Python 1.109.1
+      X-Stainless-Arch:
+      - arm64
+      X-Stainless-Async:
+      - 'false'
+      X-Stainless-Lang:
+      - python
+      X-Stainless-OS:
+      - MacOS
+      X-Stainless-Package-Version:
+      - 1.109.1
+      X-Stainless-Runtime:
+      - CPython
+      X-Stainless-Runtime-Version:
+      - 3.12.12
+      authorization:
+      - Bearer test_openai_api_key
+      x-stainless-read-timeout:
+      - '600'
+      x-stainless-retry-count:
+      - '0'
+    method: POST
+    uri: https://api.openai.com/v1/responses
+  response:
+    body:
+      string: |-
+        {
+          "error": {
+            "message": "The requested model 'this-model-does-not-exist' does not exist.",
+            "type": "invalid_request_error",
+            "param": "model",
+            "code": "model_not_found"
+          }
+        }
+    headers:
+      CF-RAY:
+      - 9ee06c562f5c0f7d-EWR
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '191'
+      Content-Type:
+      - application/json
+      Date:
+      - Sat, 18 Apr 2026 03:01:08 GMT
+      Server:
+      - cloudflare
+      Set-Cookie: test_set_cookie
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      alt-svc:
+      - h3=":443"; ma=86400
+      cf-cache-status:
+      - DYNAMIC
+      openai-organization: test_openai_org_id
+      openai-processing-ms:
+      - '107'
+      openai-project:
+      - proj_s74VWObPgWXRchv2sHdrOTPY
+      openai-version:
+      - '2020-10-01'
+      set-cookie:
+      - __cf_bm=sImUBrv0bwxemWtgUZK8rUGOArohh1idXm1s6ve.9PM-1776481268.1848395-1.0.1.1-wfALia92HJtSuU5STTxRZGW0Cd1tZtPVOpbKTSFoiJLjLOcwVrsTA4C4j2yaYyhAqXvYCG9Ns.EIIhy5ZQv_PNuB11_p2HjTGRNJGtclgs_deByUIWyOSuE2JuY9zxD.;
+        HttpOnly; Secure; Path=/; Domain=api.openai.com; Expires=Sat, 18 Apr 2026
+        03:31:08 GMT
+      x-request-id:
+      - req_48f6dc739d654972b34e069edb97d2dc
+    status:
+      code: 400
+      message: Bad Request
+version: 1

@@ -1,6 +1,7 @@
 # Used to generate test-requirements.{oldest,latest}.txt with uv pip compile
 pytest~=7.4
-requests~=2.32
+requests~=2.33.1
+urllib3~=2.7.0
 httpx~=0.28
 -e opentelemetry-instrumentation
 -e instrumentation/opentelemetry-instrumentation-asgi

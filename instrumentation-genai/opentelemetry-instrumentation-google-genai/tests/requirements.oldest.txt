@@ -25,7 +25,7 @@ opentelemetry-api==1.40.0
 opentelemetry-sdk==1.40.0
 opentelemetry-semantic-conventions==0.61b0
 opentelemetry-instrumentation==0.61b0
--e util/opentelemetry-util-genai[upload]
+opentelemetry-util-genai[upload]==0.4b.0
 
 fsspec==2025.9.0
 

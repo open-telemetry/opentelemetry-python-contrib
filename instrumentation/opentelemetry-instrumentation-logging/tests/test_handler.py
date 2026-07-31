@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import logging
 import os
@@ -20,6 +9,7 @@ from unittest.mock import Mock, patch
 from opentelemetry._logs import NoOpLoggerProvider, SeverityNumber
 from opentelemetry._logs import get_logger as APIGetLogger
 from opentelemetry.attributes import BoundedAttributes
+from opentelemetry.instrumentation.logging import _get_log_level
 from opentelemetry.instrumentation.logging.handler import (
     LoggingHandler,
     _setup_logging_handler,
@@ -31,12 +21,20 @@ from opentelemetry.sdk._logs import (
     ReadableLogRecord,
 )
 from opentelemetry.sdk.environment_variables import OTEL_ATTRIBUTE_COUNT_LIMIT
-from opentelemetry.semconv._incubating.attributes import code_attributes
-from opentelemetry.semconv.attributes import exception_attributes
+from opentelemetry.semconv.attributes import (
+    code_attributes,
+    exception_attributes,
+)
 from opentelemetry.trace import (
     INVALID_SPAN_CONTEXT,
     set_span_in_context,
 )
+
+
+class MutatingFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        record.my_special_attr = "my-special-attr-value"
+        return super().format(record)
 
 
 # pylint: disable=too-many-public-methods
@@ -437,6 +435,20 @@ class TestLoggingHandler(unittest.TestCase):
 
         logger.removeHandler(handler)
 
+    def test_formatter_added_attributes_are_exported(self):
+        processor, logger, handler = set_up_test_logging(
+            logging.WARNING,
+            formatter=MutatingFormatter("%(message)s"),
+        )
+        logger.warning("Test message")
+
+        record = processor.get_log_record(0)
+        logger.removeHandler(handler)
+        self.assertEqual(
+            record.log_record.attributes.get("my_special_attr"),
+            "my-special-attr-value",
+        )
+
     def test_log_body_is_always_string_with_formatter(self):
         processor, logger, handler = set_up_test_logging(
             logging.WARNING,
@@ -450,6 +462,44 @@ class TestLoggingHandler(unittest.TestCase):
         self.assertIsInstance(record.log_record.body, str)
 
         logger.removeHandler(handler)
+
+    def test_simple_log_record_processor_custom_single_obj(self):
+        """
+        Tests that logging a single non-string object uses getMessage
+        """
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        # NOTE: the behaviour of `record.getMessage` is detailed in the
+        # `logging.Logger.debug` documentation:
+        # > The msg is the message format string, and the args are the arguments
+        # > which are merged into msg using the string formatting operator. [...]
+        # > No % formatting operation is performed on msg when no args are supplied.
+
+        # This test uses the presence of '%s' in the first arg to determine if
+        # formatting was applied
+
+        # string msg with no args - getMessage bypasses formatting and sets the string directly
+        logger.warning("a string with a percent-s: %s")  # pylint: disable=logging-too-few-args
+
+        # string msg with args - getMessage formats args into the msg
+        logger.warning("a string with a percent-s: %s", "and arg")
+        # non-string msg with args - getMessage stringifies msg and formats args into it
+        logger.warning(["a non-string with a percent-s", "%s"], "and arg")
+        # non-string msg with no args - getMessage stringifies the object and bypasses formatting
+        logger.warning(["a non-string with a percent-s", "%s"])
+
+        logger.removeHandler(handler)
+
+        assert processor.emit_count() == 4
+        expected = [
+            ("a string with a percent-s: %s"),
+            ("a string with a percent-s: and arg"),
+            ("['a non-string with a percent-s', 'and arg']"),
+            ("['a non-string with a percent-s', '%s']"),
+        ]
+        for index, msg in enumerate(expected):
+            record = processor.get_log_record(index)
+            self.assertEqual(record.log_record.body, msg)
 
     @patch.dict(os.environ, {"OTEL_SDK_DISABLED": "true"})
     def test_handler_root_logger_with_disabled_sdk_does_not_go_into_recursion_error(
@@ -573,6 +623,92 @@ class TestLoggingHandler(unittest.TestCase):
             f"Should have 22 dropped attributes, got {record.dropped_attributes}",
         )
 
+    # --- event_name promotion tests (issue #4743) ---
+
+    def test_otel_event_name_promoted_to_event_name_field(self):
+        """otel.event.name in extra is promoted to LogRecord.event_name, not left as an attribute."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={"otel.event.name": "my.event"},
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "my.event")
+        self.assertNotIn("otel.event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
+
+    def test_deprecated_event_name_promoted_as_fallback(self):
+        """event.name (deprecated) is promoted to LogRecord.event_name when otel.event.name is absent."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={"event.name": "legacy.event"},
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "legacy.event")
+        self.assertNotIn("event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
+
+    def test_otel_event_name_takes_precedence_over_deprecated_event_name(self):
+        """otel.event.name wins over event.name when both are present."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={
+                    "otel.event.name": "stable.event",
+                    "event.name": "legacy.event",
+                },
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "stable.event")
+        self.assertNotIn("otel.event.name", record.log_record.attributes)
+        self.assertNotIn("event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
+
+    def test_event_name_is_none_when_not_provided(self):
+        """event_name is None when neither otel.event.name nor event.name is passed."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning("plain log, no event name")
+
+        record = processor.get_log_record(0)
+        self.assertIsNone(record.log_record.event_name)
+
+        logger.removeHandler(handler)
+
+    def test_other_extra_attributes_unaffected_by_event_name_promotion(self):
+        """Unrelated extra attributes still land in the attributes dict normally."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={
+                    "otel.event.name": "my.event",
+                    "http.status_code": 200,
+                },
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "my.event")
+        self.assertEqual(record.log_record.attributes["http.status_code"], 200)
+        self.assertNotIn("otel.event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
+
 
 # pylint: disable=invalid-name
 class SetupLoggingHandlerTestCase(unittest.TestCase):
@@ -667,6 +803,52 @@ class SetupLoggingHandlerTestCase(unittest.TestCase):
             )
 
             root_logger.removeHandler(logging_handlers[0])
+
+    def test_setup_logging_handler_with_level(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(
+                logger_provider=logger_provider, level=logging.ERROR
+            )
+            self.assertEqual(handler.level, logging.ERROR)
+            logging.getLogger().removeHandler(handler)
+
+    def test_setup_logging_handler_default_level_is_notset(self):
+        logger_provider = LoggerProvider()
+        with ResetGlobalLoggingState():
+            handler = _setup_logging_handler(logger_provider=logger_provider)
+            self.assertEqual(handler.level, logging.NOTSET)
+            logging.getLogger().removeHandler(handler)
+
+
+class GetLogLevelTestCase(unittest.TestCase):
+    def test_get_log_level_none_returns_none(self):
+        self.assertIsNone(_get_log_level(None))
+
+    def test_get_log_level_notset(self):
+        self.assertEqual(_get_log_level("notset"), logging.NOTSET)
+
+    def test_get_log_level_notset_with_whitespace(self):
+        self.assertEqual(_get_log_level(" NOTSET "), logging.NOTSET)
+
+    def test_get_log_level_debug(self):
+        self.assertEqual(_get_log_level(" DeBug "), logging.DEBUG)
+
+    def test_get_log_level_info(self):
+        self.assertEqual(_get_log_level(" info "), logging.INFO)
+
+    def test_get_log_level_warning(self):
+        self.assertEqual(_get_log_level(" warnING "), logging.WARNING)
+
+    def test_get_log_level_error(self):
+        self.assertEqual(_get_log_level(" eRroR"), logging.ERROR)
+
+    def test_get_log_level_invalid_falls_back_to_notset(self):
+        with self.assertLogs(
+            "opentelemetry.instrumentation.logging", level="WARNING"
+        ) as cm:
+            self.assertEqual(_get_log_level("foobar"), logging.NOTSET)
+        self.assertTrue(any("foobar" in line for line in cm.output))
 
 
 def set_up_test_logging(

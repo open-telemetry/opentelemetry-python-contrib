@@ -21,15 +21,12 @@
 > - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
+> - opentelemetry-resourcedetector-gcp
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
-> - opentelemetry-instrumentation-anthropic
-> - opentelemetry-instrumentation-claude-agent-sdk
 > - opentelemetry-instrumentation-google-genai
-> - opentelemetry-instrumentation-langchain
-> - opentelemetry-instrumentation-weaviate
 > - opentelemetry-util-genai
 >
 > These libraries are also excluded from the general release.
@@ -46,11 +43,7 @@ To keep the process lightweight, it's OK to approve the PRs you generate and mer
 
 ### Backporting
 
-Creating manual backports of pull request(s) requires the `backport` label to be added in order to have a green CI. Even if there where
-no changes on a repo the patch release preparation workflow requires an empty `## Unreleased` header in `CHANGELOG.md`.
-
-Backport of pull request(s) can be automated by a workflow only if there where no changes that will create conflicts in the release
-branch, unfortunately every `CHANGELOG.md` change will create one.
+Creating manual backports of pull request(s) requires the `backport` label to be added in order to have a green CI.
 
 To use the workflow to backport pull request(s) to the release branch:
   * Run the [Backport workflow](https://github.com/open-telemetry/opentelemetry-python-contrib/actions/workflows/backport.yml).
@@ -60,8 +53,6 @@ To use the workflow to backport pull request(s) to the release branch:
   * Add the label `backport` to the generated pull request.
   * In case label automation doesn't work, just close and reopen the PR so that the workflow will take into account the label automation we have in place.
   * Review and merge the backport pull request that it generates.
-* Merge a pull request to the release branch updating the `CHANGELOG.md`.
-  * The heading for the unreleased entries should be `## Unreleased`.
 
 ### Preparing a patch release
 
@@ -102,17 +93,13 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
+> - opentelemetry-resourcedetector-gcp
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
 > - opentelemetry-instrumentation-vertexai
-> - opentelemetry-instrumentation-anthropic
-> - opentelemetry-instrumentation-claude-agent-sdk
 > - opentelemetry-instrumentation-google-genai
-> - opentelemetry-instrumentation-langchain
-> - opentelemetry-instrumentation-weaviate
 > - opentelemetry-util-genai
-> - opentelemetry-exporter-credential-provider-gcp
 >
 > These libraries are also excluded from the general patch release.
 

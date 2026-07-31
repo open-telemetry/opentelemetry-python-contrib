@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import threading
 import time
@@ -102,6 +91,24 @@ class TestCeleryInstrumentation(TestBase):
         self.assertNotEqual(consumer.parent, producer.context)
         self.assertEqual(consumer.parent.span_id, producer.context.span_id)
         self.assertEqual(consumer.context.trace_id, producer.context.trace_id)
+
+    def test_task_clears_start_time_cache(self):
+        """Test that the `task_id_to_start_time` cache is cleared after a task finishes,
+        to prevent memory leaks."""
+        instrumentor = CeleryInstrumentor()
+        instrumentor.instrument()
+
+        result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1  # 1 minutes from now
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        self.assertTrue(result.ready())
+        self.assertEqual(result.result, 3)
+        self.assertEqual(instrumentor.task_id_to_start_time, {})
 
     def test_task_raises(self):
         CeleryInstrumentor().instrument()
@@ -232,6 +239,63 @@ class TestCeleryInstrumentation(TestBase):
         self.assertTrue(result)
 
         unwrap(utils, "retrieve_context")
+
+    def test_task_use_span_links(self):
+        CeleryInstrumentor().instrument(use_span_links=True)
+
+        result = task_add.delay(1, 2)
+
+        timeout = time.time() + 60 * 1  # 1 minute from now
+        while not result.ready():
+            if time.time() > timeout:
+                break
+            time.sleep(0.05)
+
+        spans = self.sorted_spans(self.memory_exporter.get_finished_spans())
+        self.assertEqual(len(spans), 2)
+
+        consumer, producer = spans
+
+        self.assertEqual(consumer.name, "run/tests.celery_test_tasks.task_add")
+        self.assertEqual(consumer.kind, SpanKind.CONSUMER)
+        self.assertSpanHasAttributes(
+            consumer,
+            {
+                "celery.action": "run",
+                "celery.state": "SUCCESS",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
+                "celery.task_name": "tests.celery_test_tasks.task_add",
+            },
+        )
+
+        self.assertEqual(consumer.status.status_code, StatusCode.UNSET)
+        self.assertEqual(0, len(consumer.events))
+
+        self.assertEqual(
+            producer.name, "apply_async/tests.celery_test_tasks.task_add"
+        )
+        self.assertEqual(producer.kind, SpanKind.PRODUCER)
+        self.assertSpanHasAttributes(
+            producer,
+            {
+                "celery.action": "apply_async",
+                "celery.task_name": "tests.celery_test_tasks.task_add",
+                SpanAttributes.MESSAGING_DESTINATION_KIND: "queue",
+                SpanAttributes.MESSAGING_DESTINATION: "celery",
+            },
+        )
+
+        # Verify that consumer span is not a child of producer span when using links
+        self.assertIsNone(consumer.parent)
+        self.assertNotEqual(
+            consumer.context.trace_id, producer.context.trace_id
+        )
+
+        # Verify that consumer span has a link to the producer span
+        self.assertEqual(len(consumer.links), 1)
+        link = consumer.links[0]
+        self.assertEqual(link.context.span_id, producer.context.span_id)
+        self.assertEqual(link.context.trace_id, producer.context.trace_id)
 
 
 class TestCelerySignatureTask(TestBase):

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 from timeit import default_timer
@@ -835,6 +824,41 @@ class TestProgrammatic(InstrumentationTest, WsgiTestBase):
             self.assertEqual(
                 span_arg.context.span_id, finished_span.context.span_id
             )
+
+    def test_active_requests_counter_decremented_on_error(self):
+        """Regression test for https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4431.
+        http.server.active_requests must be decremented even when the view
+        raises an exception, so it does not permanently leak.
+        """
+        self.client.get("/hello/123")
+
+        resp = self.client.get("/hello/500")
+        self.assertEqual(500, resp.status_code)
+
+        metrics_list = self.memory_metrics_reader.get_metrics_data()
+        active_requests_value = None
+        for resource_metric in metrics_list.resource_metrics:
+            for scope_metric in resource_metric.scope_metrics:
+                for metric in scope_metric.metrics:
+                    if metric.name != "http.server.active_requests":
+                        continue
+                    points = [
+                        p.value
+                        for p in metric.data.data_points
+                        if isinstance(p, NumberDataPoint)
+                    ]
+                    if points:
+                        active_requests_value = points[-1]
+
+        self.assertIsNotNone(
+            active_requests_value,
+            "http.server.active_requests metric not found",
+        )
+        self.assertEqual(
+            0,
+            active_requests_value,
+            f"active_requests counter leaked: expected 0 but got {active_requests_value}",
+        )
 
 
 class TestProgrammaticHooks(InstrumentationTest, WsgiTestBase):

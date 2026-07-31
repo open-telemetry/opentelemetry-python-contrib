@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 from opentelemetry.metrics import Histogram, Meter
 from opentelemetry.semconv._incubating.metrics import gen_ai_metrics
 

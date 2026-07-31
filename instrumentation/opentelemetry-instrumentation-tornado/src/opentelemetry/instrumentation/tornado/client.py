@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 import functools
 from time import time_ns
@@ -87,8 +76,11 @@ def fetch_async(  # pylint: disable=too-many-locals
     args, kwargs = _normalize_request(args, kwargs)
     request = args[0]
 
+    span_name = sanitize_method(request.method)
+    if span_name == "_OTHER":
+        span_name = "HTTP"
     span = tracer.start_span(
-        request.method,
+        span_name,
         kind=trace.SpanKind.CLIENT,
         start_time=start_time,
     )
@@ -220,7 +212,7 @@ def _create_metric_attributes_old(response):
     metric_attributes = {
         HTTP_STATUS_CODE: response.code,
         HTTP_URL: redact_url(response.request.url),
-        HTTP_METHOD: response.request.method,
+        HTTP_METHOD: sanitize_method(response.request.method),
     }
     return metric_attributes
 
@@ -230,7 +222,7 @@ def _create_metric_attributes_new(response):
     metric_attributes = {
         HTTP_RESPONSE_STATUS_CODE: response.code,
         URL_FULL: redact_url(response.request.url),
-        HTTP_REQUEST_METHOD: response.request.method,
+        HTTP_REQUEST_METHOD: sanitize_method(response.request.method),
     }
 
     # Add server address and port if available

@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=no-name-in-module
 
@@ -33,7 +22,7 @@ from opentelemetry.semconv.trace import (
     SpanAttributes,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import SpanKind, TraceFlags
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
 
 
@@ -217,7 +206,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         trace_parent = msg_attrs["traceparent"]["StringValue"]
         ctx = span.get_span_context()
         self.assertEqual(
-            self._to_trace_parent(ctx.trace_id, ctx.span_id),
+            self._to_trace_parent(ctx.trace_id, ctx.span_id, ctx.trace_flags),
             trace_parent.lower(),
         )
 
@@ -230,8 +219,10 @@ class TestBoto3SQSInstrumentation(TestBase):
         }
 
     @staticmethod
-    def _to_trace_parent(trace_id: int, span_id: int) -> str:
-        return f"00-{format_trace_id(trace_id)}-{format_span_id(span_id)}-01".lower()
+    def _to_trace_parent(
+        trace_id: int, span_id: int, trace_flags: TraceFlags
+    ) -> str:
+        return f"00-{format_trace_id(trace_id)}-{format_span_id(span_id)}-{trace_flags:02x}".lower()
 
     def _get_only_span(self):
         spans = self.get_finished_spans()
@@ -254,7 +245,9 @@ class TestBoto3SQSInstrumentation(TestBase):
         self, message: Dict[str, Any], trace_id: int, span_id: int
     ):
         message["MessageAttributes"]["traceparent"] = {
-            "StringValue": self._to_trace_parent(trace_id, span_id),
+            "StringValue": self._to_trace_parent(
+                trace_id, span_id, TraceFlags.get_default()
+            ),
             "DataType": "String",
         }
 
@@ -288,6 +281,79 @@ class TestBoto3SQSInstrumentation(TestBase):
             span.attributes,
         )
         self._assert_injected_span(message_attrs, span)
+
+    def test_send_message_batch(self):
+        expected_message_ids = {"1": "msg-1", "2": "msg-2"}
+        mock_response = {
+            "Successful": [
+                {"Id": "1", "MessageId": "msg-1", "MD5OfMessageBody": "11"},
+                {"Id": "2", "MessageId": "msg-2", "MD5OfMessageBody": "22"},
+            ],
+            "Failed": [],
+        }
+        entries = [
+            {"Id": "1", "MessageBody": "hello 1"},
+            {"Id": "2", "MessageBody": "hello 2"},
+        ]
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message_batch(
+                QueueUrl=self._queue_url, Entries=entries
+            )
+
+        spans = self.get_finished_spans()
+        self.assertEqual(2, len(spans))
+        spans_by_entry_id = {
+            span.attributes[SpanAttributes.MESSAGING_CONVERSATION_ID]: span
+            for span in spans
+        }
+        for entry in entries:
+            entry_id = entry["Id"]
+            span = spans_by_entry_id[entry_id]
+            self.assertEqual(f"{self._queue_name} send", span.name)
+            self.assertEqual(SpanKind.PRODUCER, span.kind)
+            self.assertEqual(
+                {
+                    SpanAttributes.MESSAGING_CONVERSATION_ID: entry_id,
+                    SpanAttributes.MESSAGING_MESSAGE_ID: expected_message_ids[
+                        entry_id
+                    ],
+                    **self._default_span_attrs(),
+                },
+                span.attributes,
+            )
+            self._assert_injected_span(entry["MessageAttributes"], span)
+
+    def test_send_message_batch_all_failed(self):
+        mock_response = {
+            "Failed": [
+                {
+                    "Id": "1",
+                    "SenderFault": True,
+                    "Code": "InvalidParameterValue",
+                    "Message": "boom",
+                }
+            ]
+        }
+        entries = [{"Id": "1", "MessageBody": "hello 1"}]
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message_batch(
+                QueueUrl=self._queue_url, Entries=entries
+            )
+
+        span = self._get_only_span()
+        self.assertEqual(f"{self._queue_name} send", span.name)
+        self.assertEqual(SpanKind.PRODUCER, span.kind)
+        self.assertEqual(
+            {
+                SpanAttributes.MESSAGING_CONVERSATION_ID: "1",
+                **self._default_span_attrs(),
+            },
+            span.attributes,
+        )
+        self.assertNotIn(SpanAttributes.MESSAGING_MESSAGE_ID, span.attributes)
+        self._assert_injected_span(entries[0]["MessageAttributes"], span)
 
     def test_receive_message(self):
         msg_def = {

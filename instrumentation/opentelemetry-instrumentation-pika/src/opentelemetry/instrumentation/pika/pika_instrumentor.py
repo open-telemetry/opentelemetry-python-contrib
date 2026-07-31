@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 # pylint: disable=unnecessary-dunder-call
 
 from logging import getLogger
@@ -53,7 +42,6 @@ def _consumer_callback_attribute_name() -> str:
 class PikaInstrumentor(BaseInstrumentor):  # type: ignore
     CONSUMER_CALLBACK_ATTR = _consumer_callback_attribute_name()
 
-    # pylint: disable=attribute-defined-outside-init
     @staticmethod
     def _instrument_channel_consumers(
         channel: Union[BlockingChannel, Channel],
@@ -69,6 +57,8 @@ class PikaInstrumentor(BaseInstrumentor):  # type: ignore
             callback_attr = PikaInstrumentor.CONSUMER_CALLBACK_ATTR
             consumer_callback = getattr(consumer_info, callback_attr, None)
             if consumer_callback is None:
+                continue
+            if hasattr(consumer_callback, "_original_callback"):
                 continue
             decorated_callback = utils._decorate_callback(
                 consumer_callback,

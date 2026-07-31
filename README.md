@@ -108,6 +108,8 @@ We meet weekly on Thursday at 9AM PT. The meeting is subject to change depending
 
 Meeting notes are available as a public [Google doc](https://docs.google.com/document/d/18w8zOBm_mbety0OqlPwxc7dvnfu641EgmrO4AdJef0U/edit?tab=t.0).
 
+The meeting is open for all to join. We invite everyone to join our meeting, regardless of your experience level. Whether you're a seasoned OpenTelemetry developer, just starting your journey, or simply curious about the work we do, you're more than welcome to participate!
+
 ### Maintainers
 
 - [Aaron Abbott](https://github.com/aabmass), Google
@@ -122,7 +124,7 @@ For more information about the maintainer role, see the [community repository](h
 - [Emídio Neto](https://github.com/emdneto), Independent
 - [Héctor Hernández](https://github.com/hectorhdzg), Microsoft
 - [Keith Decker](https://github.com/keith-decker), Cisco/Splunk
-- [Liudmila Molkova](https://github.com/lmolkova), Grafana Labs
+- [Liudmila Molkova](https://github.com/lmolkova), Google
 - [Lukas Hering](https://github.com/herin049), Oracle
 - [Mike Goldsmith](https://github.com/MikeGoldsmith), Honeycomb
 - [Pablo Collins](https://github.com/pmcollins), Splunk

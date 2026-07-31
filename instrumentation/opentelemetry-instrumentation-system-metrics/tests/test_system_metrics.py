@@ -1,16 +1,5 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 import os
 
 # pylint: disable=protected-access,too-many-lines
@@ -121,6 +110,7 @@ class TestSystemMetrics(TestBase):
             "process.cpu.time",
             "process.cpu.utilization",
             "process.memory.usage",
+            "process.disk.io",
             "process.memory.virtual",
             "process.thread.count",
             f"process.runtime.{self.implementation}.memory",
@@ -162,6 +152,7 @@ class TestSystemMetrics(TestBase):
             "process.memory.virtual": None,
             "process.open_file_descriptor.count": None,
             "process.thread.count": None,
+            "process.disk.io": ["read", "write"],
         }
 
         reader = InMemoryMetricReader()
@@ -180,6 +171,7 @@ class TestSystemMetrics(TestBase):
             "process.memory.virtual",
             "process.cpu.time",
             "process.thread.count",
+            "process.disk.io",
             "process.context_switches",
             "process.cpu.utilization",
         ]
@@ -897,6 +889,28 @@ class TestSystemMetrics(TestBase):
 
         expected = [_SystemMetricsResult({}, 42)]
         self._test_metrics("process.thread.count", expected)
+
+    @mock.patch("psutil.Process.io_counters")
+    def test_process_disk_io(self, mock_process_io_counters):
+        PIOCounters = namedtuple("PIOCounters", ["read_bytes", "write_bytes"])
+
+        mock_process_io_counters.configure_mock(
+            **{"return_value": PIOCounters(read_bytes=1024, write_bytes=2048)}
+        )
+
+        expected = [
+            _SystemMetricsResult({"direction": "read"}, 1024),
+            _SystemMetricsResult({"direction": "write"}, 2048),
+        ]
+        self._test_metrics("process.disk.io", expected)
+
+    @mock.patch("psutil.Process.io_counters")
+    def test_process_disk_io_not_implemented_error(
+        self, mock_process_io_counters
+    ):
+        mock_process_io_counters.side_effect = NotImplementedError
+
+        self._assert_metrics_not_found("process.disk.io")
 
     @mock.patch("psutil.Process.cpu_percent")
     @mock.patch("psutil.cpu_count")

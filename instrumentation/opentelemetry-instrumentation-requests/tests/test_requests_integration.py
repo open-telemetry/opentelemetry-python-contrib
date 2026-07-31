@@ -1,24 +1,14 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=too-many-lines
 
 import abc
 from unittest import mock
 
-import httpretty
 import requests
+from mocket import Mocket, Mocketizer
+from mocket.mocks.mockhttp import Entry
 from requests.adapters import BaseAdapter
 from requests.models import Response
 
@@ -142,8 +132,9 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.exclude_patch.start()
 
         RequestsInstrumentor().instrument()
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(Entry.GET, self.URL, body="Hello!")
 
     # pylint: disable=invalid-name
     def tearDown(self):
@@ -151,7 +142,7 @@ class RequestsIntegrationTestBase(abc.ABC):
         self.env_patch.stop()
         _OpenTelemetrySemanticConventionStability._initialized = False
         RequestsInstrumentor().uninstrument()
-        httpretty.disable()
+        self.mocketizer.exit()
 
     def assert_span(self, exporter=None, num_spans=1):
         if exporter is None:
@@ -188,7 +179,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 200,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
 
@@ -200,8 +191,8 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_basic_new_semconv(self):
         url_with_port = "http://mock:80/status/200"
-        httpretty.register_uri(
-            httpretty.GET, url_with_port, status=200, body="Hello!"
+        Entry.single_register(
+            Entry.GET, url_with_port, status=200, body="Hello!"
         )
         result = self.perform_request(url_with_port)
         self.assertEqual(result.text, "Hello!")
@@ -225,7 +216,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
 
@@ -237,8 +228,8 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_basic_both_semconv(self):
         url_with_port = "http://mock:80/status/200"
-        httpretty.register_uri(
-            httpretty.GET, url_with_port, status=200, body="Hello!"
+        Entry.single_register(
+            Entry.GET, url_with_port, status=200, body="Hello!"
         )
         result = self.perform_request(url_with_port)
         self.assertEqual(result.text, "Hello!")
@@ -268,7 +259,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 SERVER_PORT: 80,
                 NETWORK_PEER_PORT: 80,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
 
@@ -278,9 +269,12 @@ class RequestsIntegrationTestBase(abc.ABC):
             span, opentelemetry.instrumentation.requests
         )
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    @mock.patch(
+        "mocket.mocks.mockhttp.Entry.METHODS",
+        Entry.METHODS + ("NONSTANDARD",),
+    )
     def test_nonstandard_http_method(self):
-        httpretty.register_uri("NONSTANDARD", self.URL, status=405)
+        Entry.single_register("NONSTANDARD", self.URL, status=405)
         session = requests.Session()
         session.request("NONSTANDARD", self.URL)
         span = self.assert_span()
@@ -292,15 +286,18 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "_OTHER",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 405,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
 
         self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
 
-    @mock.patch("httpretty.http.HttpBaseClass.METHODS", ("NONSTANDARD",))
+    @mock.patch(
+        "mocket.mocks.mockhttp.Entry.METHODS",
+        Entry.METHODS + ("NONSTANDARD",),
+    )
     def test_nonstandard_http_method_new_semconv(self):
-        httpretty.register_uri("NONSTANDARD", self.URL, status=405)
+        Entry.single_register("NONSTANDARD", self.URL, status=405)
         session = requests.Session()
         session.request("NONSTANDARD", self.URL)
         span = self.assert_span()
@@ -317,7 +314,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PROTOCOL_VERSION: "1.1",
                 ERROR_TYPE: "405",
                 HTTP_REQUEST_METHOD_ORIGINAL: "NONSTANDARD",
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
         self.assertIs(span.status.status_code, trace.StatusCode.ERROR)
@@ -342,8 +339,8 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_excluded_urls_explicit(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_404,
             status=404,
         )
@@ -357,8 +354,8 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_excluded_urls_from_env(self):
         url = "http://localhost/env_excluded_arg/123"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url,
             status=200,
         )
@@ -384,8 +381,8 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_404,
             status=404,
         )
@@ -403,8 +400,8 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic_new_semconv(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_404,
             status=404,
         )
@@ -423,8 +420,8 @@ class RequestsIntegrationTestBase(abc.ABC):
 
     def test_not_foundbasic_both_semconv(self):
         url_404 = "http://mock/status/404"
-        httpretty.register_uri(
-            httpretty.GET,
+        Entry.single_register(
+            Entry.GET,
             url_404,
             status=404,
         )
@@ -509,7 +506,7 @@ class RequestsIntegrationTestBase(abc.ABC):
 
             span = self.assert_span()
 
-            headers = dict(httpretty.last_request().headers)
+            headers = dict(Mocket.last_request().headers)
             self.assertIn(MockTextMapPropagator.TRACE_ID_KEY, headers)
             self.assertEqual(
                 str(span.get_span_context().trace_id),
@@ -552,7 +549,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 200,
                 "http.response.body": "Hello!",
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
 
@@ -583,7 +580,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             {
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -594,8 +591,8 @@ class RequestsIntegrationTestBase(abc.ABC):
     )
     def test_requests_exception_new_semconv(self, *_, **__):
         url_with_port = "http://mock:80/status/200"
-        httpretty.register_uri(
-            httpretty.GET, url_with_port, status=200, body="Hello!"
+        Entry.single_register(
+            Entry.GET, url_with_port, status=200, body="Hello!"
         )
         with self.assertRaises(requests.RequestException):
             self.perform_request(url_with_port)
@@ -611,7 +608,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 NETWORK_PEER_PORT: 80,
                 NETWORK_PEER_ADDRESS: "mock",
                 ERROR_TYPE: "RequestException",
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -634,7 +631,7 @@ class RequestsIntegrationTestBase(abc.ABC):
             {
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -658,7 +655,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 HTTP_METHOD: "GET",
                 HTTP_URL: self.URL,
                 HTTP_STATUS_CODE: 500,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -698,7 +695,7 @@ class RequestsIntegrationTestBase(abc.ABC):
                 "http.method": "GET",
                 "http.url": self.URL,
                 "http.status_code": 210,
-                USER_AGENT_ORIGINAL: "python-requests/2.32.3",
+                USER_AGENT_ORIGINAL: f"python-requests/{requests.__version__}",
             },
         )
 
@@ -714,6 +711,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         new_url = (
             "http://username:password@mock/status/200?AWSAccessKeyId=secret"
         )
+        Entry.single_register(Entry.GET, new_url, body="Hello!")
         self.perform_request(new_url)
         span = self.assert_span()
 
@@ -743,7 +741,7 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
             "X-Another-Header": "another-value",
             "X-Excluded-Header": "excluded-value",
         }
-        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+        Entry.single_register(Entry.GET, self.URL, body="Hello!")
         result = requests.get(self.URL, headers=headers, timeout=5)
         self.assertEqual(result.text, "Hello!")
 
@@ -774,8 +772,9 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
             "X-Another-Header": "another-value",
             "X-Excluded-Header": "excluded-value",
         }
-        httpretty.register_uri(
-            httpretty.GET, self.URL, body="Hello!", adding_headers=headers
+        Mocket.reset()
+        Entry.single_register(
+            Entry.GET, self.URL, body="Hello!", headers=headers
         )
         result = requests.get(self.URL, timeout=5)
         self.assertEqual(result.text, "Hello!")
@@ -797,11 +796,12 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         RequestsInstrumentor().uninstrument()
         RequestsInstrumentor().instrument()
         headers = {"X-Request-Header": "request-value"}
-        httpretty.register_uri(
-            httpretty.GET,
+        Mocket.reset()
+        Entry.single_register(
+            Entry.GET,
             self.URL,
             body="Hello!",
-            adding_headers={"X-Response-Header": "response-value"},
+            headers={"X-Response-Header": "response-value"},
         )
         result = requests.get(self.URL, headers=headers, timeout=5)
         self.assertEqual(result.text, "Hello!")
@@ -835,11 +835,12 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
             "Set-Cookie": "session=abc123",
             "X-Secret": "secret",
         }
-        httpretty.register_uri(
-            httpretty.GET,
+        Mocket.reset()
+        Entry.single_register(
+            Entry.GET,
             self.URL,
             body="Hello!",
-            adding_headers=response_headers,
+            headers=response_headers,
         )
         result = requests.get(self.URL, headers=request_headers, timeout=5)
         self.assertEqual(result.text, "Hello!")
@@ -883,11 +884,12 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
             "X-Custom-Response-B": "value-B",
             "X-Other-Response-Header": "other-value",
         }
-        httpretty.register_uri(
-            httpretty.GET,
+        Mocket.reset()
+        Entry.single_register(
+            Entry.GET,
             self.URL,
             body="Hello!",
-            adding_headers=response_headers,
+            headers=response_headers,
         )
         result = requests.get(self.URL, headers=request_headers, timeout=5)
         self.assertEqual(result.text, "Hello!")
@@ -929,11 +931,12 @@ class TestRequestsIntegration(RequestsIntegrationTestBase, TestBase):
         RequestsInstrumentor().instrument()
         request_headers = {"X-ReQuESt-HeaDER": "custom-value"}
         response_headers = {"X-ReSPoNse-HeaDER": "custom-value"}
-        httpretty.register_uri(
-            httpretty.GET,
+        Mocket.reset()
+        Entry.single_register(
+            Entry.GET,
             self.URL,
             body="Hello!",
-            adding_headers=response_headers,
+            headers=response_headers,
         )
         result = requests.get(self.URL, headers=request_headers, timeout=5)
         self.assertEqual(result.text, "Hello!")
@@ -984,15 +987,16 @@ class TestRequestsIntergrationMetric(TestBase):
         _OpenTelemetrySemanticConventionStability._initialized = False
         RequestsInstrumentor().instrument(meter_provider=self.meter_provider)
 
-        httpretty.enable()
-        httpretty.register_uri(httpretty.GET, self.URL, body="Hello!")
+        self.mocketizer = Mocketizer(strict_mode=True)
+        self.mocketizer.enter()
+        Entry.single_register(Entry.GET, self.URL, body="Hello!")
 
     def tearDown(self):
         super().tearDown()
         self.env_patch.stop()
         _OpenTelemetrySemanticConventionStability._initialized = False
         RequestsInstrumentor().uninstrument()
-        httpretty.disable()
+        self.mocketizer.exit()
 
     @staticmethod
     def perform_request(url: str) -> requests.Response:
