@@ -57,6 +57,7 @@ For more information, see:
 
 .. code:: python
 
+    import psycopg2
     from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
     Psycopg2Instrumentor().instrument(enable_commenter=True)
@@ -155,7 +156,7 @@ import threading
 import typing
 import weakref
 from importlib.metadata import PackageNotFoundError, distribution
-from typing import Collection
+from typing import Any, Collection
 
 import psycopg2
 from psycopg2.extensions import (
@@ -247,7 +248,7 @@ class Psycopg2Instrumentor(BaseInstrumentor):
         connection: PgConnection,
         tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
         enable_commenter: bool = False,
-        commenter_options: dict = None,
+        commenter_options: dict[Any, Any] | None = None,
         enable_attribute_commenter: bool = False,
     ) -> PgConnection:
         """Enable instrumentation in a psycopg2 connection.
@@ -360,7 +361,7 @@ def _new_cursor_factory(
     base_factory: typing.Optional[typing.Type[pg_cursor]] = None,
     tracer_provider: typing.Optional[trace_api.TracerProvider] = None,
     enable_commenter: bool = False,
-    commenter_options: dict = None,
+    commenter_options: dict[Any, Any] | None = None,
     enable_attribute_commenter: bool = False,
 ):
     if not db_api:

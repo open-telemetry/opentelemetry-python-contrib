@@ -58,6 +58,7 @@ For more information, see:
 
 .. code:: python
 
+    import psycopg
     from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 
     PsycopgInstrumentor().instrument(enable_commenter=True)
@@ -245,7 +246,7 @@ class PsycopgInstrumentor(BaseInstrumentor):
         connection: ConnectionT,
         tracer_provider: TracerProvider | None = None,
         enable_commenter: bool = False,
-        commenter_options: dict = None,
+        commenter_options: dict[Any, Any] | None = None,
         enable_attribute_commenter: bool = False,
     ) -> ConnectionT:
         """Enable instrumentation in a psycopg connection.
