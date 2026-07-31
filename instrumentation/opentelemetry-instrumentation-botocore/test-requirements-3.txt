@@ -1,9 +1,8 @@
 asgiref==3.8.1
 aws-xray-sdk==2.12.1
-boto3==1.35.16
-botocore==1.35.16
-aiobotocore==2.15.0
-aiohttp==3.9.3 #TODO: https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4645 - fix issue with aiohttp in a better way.
+boto3==1.43.0
+botocore==1.43.0
+aiobotocore==3.7.0
 certifi==2024.7.4
 cffi==1.17.0
 charset-normalizer==3.3.2
@@ -27,10 +26,10 @@ pytz==2024.1
 PyYAML==6.0.1
 requests==2.33.1
 responses==0.25.0
-s3transfer==0.10.0
+s3transfer==0.17.0
 six==1.16.0
 tomli==2.0.1
-typing_extensions==4.12.2
+typing_extensions==4.15.0
 urllib3==1.26.19
 Werkzeug==3.0.6
 wrapt==1.16.0

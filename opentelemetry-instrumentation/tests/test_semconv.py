@@ -668,6 +668,13 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
         self.assertIn(DB_QUERY_TEXT, result)
         self.assertEqual(result[DB_QUERY_TEXT], "SELECT * FROM users")
 
+    def test_db_statement_empty(self):
+        result = {}
+        _set_db_statement(
+            result, "", sem_conv_opt_in_mode=_StabilityMode.DEFAULT
+        )
+        self.assertEqual(result[DB_STATEMENT], "")
+
     def test_db_statement_none_value(self):
         result = {}
         _set_db_statement(

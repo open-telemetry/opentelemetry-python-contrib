@@ -9,19 +9,25 @@ import threading
 import traceback
 from contextvars import ContextVar
 from time import time_ns
-from typing import Callable, Mapping
+from typing import Callable
 
 from opentelemetry._logs import (
     LoggerProvider,
     LogRecord,
     NoOpLogger,
-    SeverityNumber,
     get_logger,
     get_logger_provider,
 )
 from opentelemetry.context import get_current
-from opentelemetry.semconv._incubating.attributes import code_attributes
-from opentelemetry.semconv.attributes import exception_attributes
+from opentelemetry.instrumentation.log_utils import std_to_otel
+from opentelemetry.semconv._incubating.attributes import (
+    event_attributes,
+)
+from opentelemetry.semconv.attributes import (
+    code_attributes,
+    exception_attributes,
+    otel_attributes,
+)
 from opentelemetry.util.types import AnyValue
 
 _internal_logger = logging.getLogger(__name__ + ".internal")
@@ -132,10 +138,25 @@ class LoggingHandler(logging.Handler):
 
     def _get_attributes(
         self, record: logging.LogRecord
-    ) -> Mapping[str, AnyValue]:
+    ) -> tuple[dict[str, AnyValue], str | None]:
         attributes = {
             k: v for k, v in vars(record).items() if k not in _RESERVED_ATTRS
         }
+
+        # Promote otel.event.name (stable) or event.name (deprecated) to the
+        # first-class LogRecord.event_name field instead of leaving it as a
+        # plain attribute.  otel.event.name takes precedence; event.name is a
+        # deprecated fallback per the OTel semantic conventions.
+        # Both keys are always popped so neither leaks into attributes.
+        event_name: str | None = attributes.pop(
+            otel_attributes.OTEL_EVENT_NAME, None
+        )
+        # TODO: Remove the deprecated branch path before marking logs stable
+        deprecated_event_name: str | None = attributes.pop(
+            event_attributes.EVENT_NAME, None
+        )
+        if event_name is None:
+            event_name = deprecated_event_name
 
         if self._log_code_attributes:
             # Add standard code attributes for logs.
@@ -158,17 +179,17 @@ class LoggingHandler(logging.Handler):
                 attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
                     "".join(traceback.format_exception(*record.exc_info))
                 )
-        return attributes
+        return attributes, event_name
 
     def _translate(self, record: logging.LogRecord) -> LogRecord:
         timestamp = int(record.created * 1e9)
         observered_timestamp = time_ns()
-        attributes = self._get_attributes(record)
         severity_number = std_to_otel(record.levelno)
         if self.formatter:
             body = self.format(record)
         else:
             body = record.getMessage()
+        attributes, event_name = self._get_attributes(record)
 
         # Map Python log level names to OTel severity text as defined in
         # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#displaying-severity
@@ -188,6 +209,7 @@ class LoggingHandler(logging.Handler):
             severity_number=severity_number,
             body=body,
             attributes=attributes,
+            event_name=event_name,
         )
 
     def emit(self, record: logging.LogRecord) -> None:
@@ -230,63 +252,3 @@ class LoggingHandler(logging.Handler):
             # details see https://github.com/open-telemetry/opentelemetry-python/pull/4636.
             thread = threading.Thread(target=self._logger_provider.force_flush)  # type: ignore[reportAttributeAccessIssue]
             thread.start()
-
-
-_STD_TO_OTEL = {
-    10: SeverityNumber.DEBUG,
-    11: SeverityNumber.DEBUG2,
-    12: SeverityNumber.DEBUG3,
-    13: SeverityNumber.DEBUG4,
-    14: SeverityNumber.DEBUG4,
-    15: SeverityNumber.DEBUG4,
-    16: SeverityNumber.DEBUG4,
-    17: SeverityNumber.DEBUG4,
-    18: SeverityNumber.DEBUG4,
-    19: SeverityNumber.DEBUG4,
-    20: SeverityNumber.INFO,
-    21: SeverityNumber.INFO2,
-    22: SeverityNumber.INFO3,
-    23: SeverityNumber.INFO4,
-    24: SeverityNumber.INFO4,
-    25: SeverityNumber.INFO4,
-    26: SeverityNumber.INFO4,
-    27: SeverityNumber.INFO4,
-    28: SeverityNumber.INFO4,
-    29: SeverityNumber.INFO4,
-    30: SeverityNumber.WARN,
-    31: SeverityNumber.WARN2,
-    32: SeverityNumber.WARN3,
-    33: SeverityNumber.WARN4,
-    34: SeverityNumber.WARN4,
-    35: SeverityNumber.WARN4,
-    36: SeverityNumber.WARN4,
-    37: SeverityNumber.WARN4,
-    38: SeverityNumber.WARN4,
-    39: SeverityNumber.WARN4,
-    40: SeverityNumber.ERROR,
-    41: SeverityNumber.ERROR2,
-    42: SeverityNumber.ERROR3,
-    43: SeverityNumber.ERROR4,
-    44: SeverityNumber.ERROR4,
-    45: SeverityNumber.ERROR4,
-    46: SeverityNumber.ERROR4,
-    47: SeverityNumber.ERROR4,
-    48: SeverityNumber.ERROR4,
-    49: SeverityNumber.ERROR4,
-    50: SeverityNumber.FATAL,
-    51: SeverityNumber.FATAL2,
-    52: SeverityNumber.FATAL3,
-    53: SeverityNumber.FATAL4,
-}
-
-
-def std_to_otel(levelno: int) -> SeverityNumber:
-    """
-    Map python log levelno as defined in https://docs.python.org/3/library/logging.html#logging-levels
-    to OTel log severity number as defined here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#field-severitynumber
-    """
-    if levelno < 10:
-        return SeverityNumber.UNSPECIFIED
-    if levelno > 53:
-        return SeverityNumber.FATAL4
-    return _STD_TO_OTEL[levelno]

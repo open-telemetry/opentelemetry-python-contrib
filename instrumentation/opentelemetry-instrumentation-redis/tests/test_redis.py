@@ -22,6 +22,9 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetrySemanticConventionStability,
 )
 from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.redis.util import (
+    _build_span_meta_data_for_pipeline,
+)
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_REDIS_DATABASE_INDEX,
@@ -230,6 +233,58 @@ class TestRedis(TestBase):
         span = spans[0]
         self.assertEqual(span.attributes.get(custom_attribute_name), "GET")
 
+    def test_request_hook_exception(self):
+        def request_hook(_span, _conn, _args, _kwargs):
+            raise ValueError("hook error")
+
+        redis_client = redis.Redis()
+        connection = redis.connection.Connection()
+        redis_client.connection = connection
+
+        RedisInstrumentor().uninstrument()
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, request_hook=request_hook
+        )
+
+        with self.assertLogs(
+            "opentelemetry.instrumentation.redis", level="WARNING"
+        ) as log_ctx:
+            with mock.patch.object(connection, "send_command"):
+                with mock.patch.object(
+                    redis_client, "parse_response", return_value="ok"
+                ):
+                    redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertTrue(any("request_hook" in msg for msg in log_ctx.output))
+
+    def test_response_hook_exception(self):
+        def response_hook(_span, _conn, _response):
+            raise ValueError("hook error")
+
+        redis_client = redis.Redis()
+        connection = redis.connection.Connection()
+        redis_client.connection = connection
+
+        RedisInstrumentor().uninstrument()
+        RedisInstrumentor().instrument(
+            tracer_provider=self.tracer_provider, response_hook=response_hook
+        )
+
+        with self.assertLogs(
+            "opentelemetry.instrumentation.redis", level="WARNING"
+        ) as log_ctx:
+            with mock.patch.object(connection, "send_command"):
+                with mock.patch.object(
+                    redis_client, "parse_response", return_value="ok"
+                ):
+                    redis_client.get("key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertTrue(any("response_hook" in msg for msg in log_ctx.output))
+
     def test_query_sanitizer_enabled(self):
         redis_client = redis.Redis()
         connection = redis.connection.Connection()
@@ -346,6 +401,42 @@ class TestRedis(TestBase):
             span.attributes[NET_TRANSPORT],
             NetTransportValues.OTHER.value,
         )
+
+    def test_connection_pool_without_connection_kwargs(self):
+        redis_client = redis.Redis()
+        redis_client.connection_pool = mock.Mock(spec=["disconnect"])
+
+        with mock.patch.object(redis_client, "connection"):
+            redis_client.set("key", "value")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(span.events, ())
+        # The base db.statement is still recorded; connection-derived
+        # attributes are simply absent when they cannot be extracted.
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(NET_PEER_NAME, span.attributes)
+
+    def test_connection_pool_without_connection_kwargs_async(self):
+        redis_client = redis.asyncio.Redis()
+        redis_client.connection_pool = mock.Mock(spec=["disconnect"])
+
+        with mock.patch.object(redis_client, "connection", AsyncMock()):
+            asyncio.run(redis_client.set("key", "value"))
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.status.status_code, trace.StatusCode.UNSET)
+        self.assertEqual(span.events, ())
+        self.assertIn(DB_STATEMENT, span.attributes)
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(NET_PEER_NAME, span.attributes)
 
     def test_connection_error(self):
         server = fakeredis.FakeServer()
@@ -647,6 +738,42 @@ class TestRedisAsync(TestBase, IsolatedAsyncioTestCase):
         # after un-instrumenting the query should not be recorder
         await self.client.set("key", "value")
         spans = self.assert_span_count(0)
+
+    @pytest.mark.asyncio
+    async def test_request_hook_exception(self):
+        def request_hook(_span, _conn, _args, _kwargs):
+            raise ValueError("hook error")
+
+        self.instrumentor.instrument(
+            tracer_provider=self.tracer_provider, request_hook=request_hook
+        )
+
+        with self.assertLogs(
+            "opentelemetry.instrumentation.redis", level="WARNING"
+        ) as log_ctx:
+            await self.client.set("key", "value")
+
+        self.assert_span_count(1)
+        self.assertTrue(any("request_hook" in msg for msg in log_ctx.output))
+        self.instrumentor.uninstrument()
+
+    @pytest.mark.asyncio
+    async def test_response_hook_exception(self):
+        def response_hook(_span, _conn, _response):
+            raise ValueError("hook error")
+
+        self.instrumentor.instrument(
+            tracer_provider=self.tracer_provider, response_hook=response_hook
+        )
+
+        with self.assertLogs(
+            "opentelemetry.instrumentation.redis", level="WARNING"
+        ) as log_ctx:
+            await self.client.set("key", "value")
+
+        self.assert_span_count(1)
+        self.assertTrue(any("response_hook" in msg for msg in log_ctx.output))
+        self.instrumentor.uninstrument()
 
     @pytest.mark.asyncio
     async def test_span_name_empty_pipeline(self):
@@ -1525,3 +1652,100 @@ class TestRedisSemconvConfiguration(TestBase):
                 call_args[1]["schema_url"],
                 "https://opentelemetry.io/schemas/1.25.0",
             )
+
+
+class _FakeCommand:
+    def __init__(self, *args):
+        self.args = args
+
+
+class _FakeExecutionStrategy:
+    def __init__(self, commands):
+        self.command_queue = commands
+
+
+class _FakeClusterPipeline:
+    """Mimics redis-py 6+ ClusterPipeline: queued commands live on
+    ``_execution_strategy.command_queue`` while ``command_stack`` stays empty."""
+
+    def __init__(self, commands):
+        self.command_stack = []
+        self._execution_strategy = _FakeExecutionStrategy(commands)
+
+
+class _FakeAsyncExecutionStrategy:
+    """Mimics redis-py 6+ async cluster strategy: unlike the sync strategy
+    (public ``command_queue`` property), it only exposes the private
+    ``_command_queue`` attribute."""
+
+    def __init__(self, commands):
+        self._command_queue = commands
+
+
+class _FakeAsyncClusterPipeline:
+    """Mimics redis-py 6+ async ClusterPipeline: queued commands live on
+    ``_execution_strategy._command_queue`` and there is no ``command_stack``."""
+
+    def __init__(self, commands):
+        self._execution_strategy = _FakeAsyncExecutionStrategy(commands)
+
+
+class _FakeLegacyPipeline:
+    def __init__(self, commands):
+        self.command_stack = commands
+
+
+class TestBuildSpanMetaDataForPipeline(TestBase):
+    def test_cluster_pipeline_reads_execution_strategy(self):
+        # Regression test for issue #4084: redis-py 6+ ClusterPipeline no
+        # longer populates command_stack, so commands must be read from
+        # _execution_strategy.command_queue.
+        commands = [_FakeCommand("SET", "k1", "v1"), _FakeCommand("GET", "k1")]
+        instance = _FakeClusterPipeline(commands)
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(len(command_stack), 2)
+        self.assertEqual(resource, "SET ? ?\nGET ?")
+        self.assertEqual(span_name, "SET GET")
+
+    def test_async_cluster_pipeline_reads_private_command_queue(self):
+        # Regression test for issue #4084 on the async path: the redis-py 6+
+        # async cluster strategy exposes only the private ``_command_queue``
+        # (no public ``command_queue`` property), so reading only
+        # ``command_queue`` left the async ClusterPipeline span empty.
+        commands = [_FakeCommand("SET", "k1", "v1"), _FakeCommand("GET", "k1")]
+        instance = _FakeAsyncClusterPipeline(commands)
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(len(command_stack), 2)
+        self.assertEqual(resource, "SET ? ?\nGET ?")
+        self.assertEqual(span_name, "SET GET")
+
+    def test_legacy_pipeline_still_reads_command_stack(self):
+        commands = [_FakeCommand("SET", "k1", "v1")]
+        instance = _FakeLegacyPipeline(commands)
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(len(command_stack), 1)
+        self.assertEqual(resource, "SET ? ?")
+        self.assertEqual(span_name, "SET")
+
+    def test_empty_cluster_pipeline_falls_back_to_redis_span_name(self):
+        instance = _FakeClusterPipeline([])
+
+        command_stack, resource, span_name = (
+            _build_span_meta_data_for_pipeline(instance)
+        )
+
+        self.assertEqual(command_stack, [])
+        self.assertEqual(resource, "")
+        self.assertEqual(span_name, "redis")

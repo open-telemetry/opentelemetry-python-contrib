@@ -21,12 +21,20 @@ from opentelemetry.sdk._logs import (
     ReadableLogRecord,
 )
 from opentelemetry.sdk.environment_variables import OTEL_ATTRIBUTE_COUNT_LIMIT
-from opentelemetry.semconv._incubating.attributes import code_attributes
-from opentelemetry.semconv.attributes import exception_attributes
+from opentelemetry.semconv.attributes import (
+    code_attributes,
+    exception_attributes,
+)
 from opentelemetry.trace import (
     INVALID_SPAN_CONTEXT,
     set_span_in_context,
 )
+
+
+class MutatingFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        record.my_special_attr = "my-special-attr-value"
+        return super().format(record)
 
 
 # pylint: disable=too-many-public-methods
@@ -427,6 +435,20 @@ class TestLoggingHandler(unittest.TestCase):
 
         logger.removeHandler(handler)
 
+    def test_formatter_added_attributes_are_exported(self):
+        processor, logger, handler = set_up_test_logging(
+            logging.WARNING,
+            formatter=MutatingFormatter("%(message)s"),
+        )
+        logger.warning("Test message")
+
+        record = processor.get_log_record(0)
+        logger.removeHandler(handler)
+        self.assertEqual(
+            record.log_record.attributes.get("my_special_attr"),
+            "my-special-attr-value",
+        )
+
     def test_log_body_is_always_string_with_formatter(self):
         processor, logger, handler = set_up_test_logging(
             logging.WARNING,
@@ -600,6 +622,92 @@ class TestLoggingHandler(unittest.TestCase):
             22,
             f"Should have 22 dropped attributes, got {record.dropped_attributes}",
         )
+
+    # --- event_name promotion tests (issue #4743) ---
+
+    def test_otel_event_name_promoted_to_event_name_field(self):
+        """otel.event.name in extra is promoted to LogRecord.event_name, not left as an attribute."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={"otel.event.name": "my.event"},
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "my.event")
+        self.assertNotIn("otel.event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
+
+    def test_deprecated_event_name_promoted_as_fallback(self):
+        """event.name (deprecated) is promoted to LogRecord.event_name when otel.event.name is absent."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={"event.name": "legacy.event"},
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "legacy.event")
+        self.assertNotIn("event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
+
+    def test_otel_event_name_takes_precedence_over_deprecated_event_name(self):
+        """otel.event.name wins over event.name when both are present."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={
+                    "otel.event.name": "stable.event",
+                    "event.name": "legacy.event",
+                },
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "stable.event")
+        self.assertNotIn("otel.event.name", record.log_record.attributes)
+        self.assertNotIn("event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
+
+    def test_event_name_is_none_when_not_provided(self):
+        """event_name is None when neither otel.event.name nor event.name is passed."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning("plain log, no event name")
+
+        record = processor.get_log_record(0)
+        self.assertIsNone(record.log_record.event_name)
+
+        logger.removeHandler(handler)
+
+    def test_other_extra_attributes_unaffected_by_event_name_promotion(self):
+        """Unrelated extra attributes still land in the attributes dict normally."""
+        processor, logger, handler = set_up_test_logging(logging.WARNING)
+
+        with self.assertLogs(level=logging.WARNING):
+            logger.warning(
+                "something happened",
+                extra={
+                    "otel.event.name": "my.event",
+                    "http.status_code": 200,
+                },
+            )
+
+        record = processor.get_log_record(0)
+        self.assertEqual(record.log_record.event_name, "my.event")
+        self.assertEqual(record.log_record.attributes["http.status_code"], 200)
+        self.assertNotIn("otel.event.name", record.log_record.attributes)
+
+        logger.removeHandler(handler)
 
 
 # pylint: disable=invalid-name

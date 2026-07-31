@@ -1,1 +1,0 @@
-`opentelemetry-instrumentation-django`: Remove duplicate query logging in SQLCommenter middleware that broke Django's `assertNumQueries`

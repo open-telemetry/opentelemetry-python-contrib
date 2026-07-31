@@ -247,28 +247,29 @@ def get_default_span_name(request: web.Request) -> str:
     Returns:
         The span name as "{method} {canonical_name}" of a resource if possible or just "{method}".
     """
+    path = _get_canonical_path(request)
+    method = sanitize_method(request.method)
+    if method == "_OTHER":
+        method = "HTTP"
+    if path:
+        return f"{method} {path}"
+    return f"{method}"
+
+
+def _get_canonical_path(request: web.Request) -> str:
+    """Returns the canonical path from the request handler.
+    Args:
+        request: the request object itself.
+    Returns:
+        a string containing the canonical path
+    """
+
     try:
         resource = request.match_info.route.resource
         path = resource.canonical
     except AttributeError:
         path = ""
-
-    if path:
-        return f"{request.method} {path}"
-    return f"{request.method}"
-
-
-def _get_view_func(request: web.Request) -> str:
-    """Returns the name of the request handler.
-    Args:
-        request: the request object itself.
-    Returns:
-        a string containing the name of the handler function
-    """
-    try:
-        return request.match_info.handler.__name__
-    except AttributeError:
-        return "unknown"
+    return path
 
 
 def collect_request_attributes(
@@ -323,7 +324,7 @@ def collect_request_attributes(
     _set_http_flavor_version(result, flavor, sem_conv_opt_in_mode)
 
     # http.route for both old and new
-    result[HTTP_ROUTE] = _get_view_func(request)
+    result[HTTP_ROUTE] = _get_canonical_path(request)
 
     if _report_old(sem_conv_opt_in_mode):
         http_host_value_list = (

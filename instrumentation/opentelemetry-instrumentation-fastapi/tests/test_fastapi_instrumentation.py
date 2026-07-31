@@ -358,6 +358,39 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
                 span.attributes[HTTP_URL],
             )
 
+    def test_included_router_route_details(self):
+        """
+        Regression test for
+        https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4699
+
+        FastAPI 0.137 added intermediate ``_IncludedRouter`` objects to
+        ``app.routes`` that do not expose a ``path`` attribute. Resolving the
+        route details for a request to an ``include_router``-added route must
+        not raise ``AttributeError`` and must still report the templated route.
+        """
+        app = fastapi.FastAPI()
+        router = fastapi.APIRouter()
+
+        @router.get("/items/{item_id}")
+        async def _read_item(item_id: str):
+            return {"item_id": item_id}
+
+        app.include_router(router, prefix="/api")
+        self._instrumentor.instrument_app(app)
+        try:
+            client = TestClient(app)
+            resp = client.get("/api/items/123")
+            self.assertEqual(200, resp.status_code)
+            spans = self.memory_exporter.get_finished_spans()
+            self.assertTrue(spans)
+            server_span = spans[-1]
+            self.assertEqual(
+                "/api/items/{item_id}", server_span.attributes[HTTP_ROUTE]
+            )
+            self.assertIn("GET /api/items/{item_id}", server_span.name)
+        finally:
+            self._instrumentor.uninstrument_app(app)
+
     def test_host_fastapi_call(self):
         client = TestClient(self._app, base_url="https://testserver2:443")
         client.get("/")
