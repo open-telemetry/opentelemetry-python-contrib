@@ -398,6 +398,14 @@ class TestBaseManualFastAPI(TestBaseFastAPI):
             def matches(self, scope: Scope) -> tuple[Match, Scope]:
                 return Match.FULL, scope
 
+            def url_path_for(self, name: str, /, **path_params: Any) -> Any:
+                raise NotImplementedError()
+
+            async def handle(
+                self, scope: Scope, receive: Receive, send: Send
+            ) -> None:
+                raise NotImplementedError()
+
         app = fastapi.FastAPI()
         app.router.routes = [CustomPathRoute()]
         scope = cast(
