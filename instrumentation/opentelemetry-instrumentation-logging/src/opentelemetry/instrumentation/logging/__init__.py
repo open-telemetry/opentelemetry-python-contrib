@@ -134,6 +134,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
     """
 
     _old_factory = None
+    _our_factory = None
     _log_hook = None
     _logging_handler = None
 
@@ -217,6 +218,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
             return record
 
+        LoggingInstrumentor._our_factory = record_factory
         logging.setLogRecordFactory(record_factory)
 
         # Here we need to handle 3 scenarios:
@@ -265,9 +267,28 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             LoggingInstrumentor._logging_handler = handler
 
     def _uninstrument(self, **kwargs):
-        if LoggingInstrumentor._old_factory:
-            logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
-            LoggingInstrumentor._old_factory = None
+        # `logging.setLogRecordFactory` is a single global slot that callers
+        # chain by closing over whatever factory preceded them. Restoring
+        # `_old_factory` unconditionally would therefore unlink every factory
+        # installed after ours, so only restore while we are still the head of
+        # the chain. Otherwise we leave the chain alone: a node cannot be
+        # removed from the middle without the cooperation of the factory that
+        # wrapped it.
+        if LoggingInstrumentor._our_factory is not None:
+            if (
+                logging.getLogRecordFactory()
+                is LoggingInstrumentor._our_factory
+            ):
+                logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
+            else:
+                _logger.warning(
+                    "Another log record factory was installed after "
+                    "LoggingInstrumentor. Leaving the log record factory chain "
+                    "untouched to avoid unlinking it; log records may continue "
+                    "to carry OpenTelemetry attributes."
+                )
+        LoggingInstrumentor._old_factory = None
+        LoggingInstrumentor._our_factory = None
 
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(
