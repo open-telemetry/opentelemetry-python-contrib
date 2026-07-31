@@ -12,6 +12,7 @@ from opentelemetry.resourcedetector.gcp_resource_detector._mapping import (
 from opentelemetry.sdk.resources import Attributes, LabelValue, Resource
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.parametrize(
     "otel_attributes",
     [
@@ -228,6 +229,7 @@ def test_get_monitored_resource(
     assert as_dict == snapshot
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.parametrize(
     ("value", "expect"),
     [
@@ -248,3 +250,9 @@ def test_non_string_values(value: LabelValue, expect: str):
 
     value_as_gcm_label = monitored_resource_data.labels["node_id"]
     assert value_as_gcm_label == expect
+
+
+def test_get_monitored_resource_deprecated():
+    resource = Resource({})
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        get_monitored_resource(resource)
