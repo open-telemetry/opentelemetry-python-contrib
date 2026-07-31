@@ -28,6 +28,7 @@ dependencies = [
   "opentelemetry-api ~= 1.30",
   "opentelemetry-sdk ~= 1.30",
   "requests ~= 2.24",
+  "typing-extensions >= 4.5.0",
 ]
 
 [project.entry-points.opentelemetry_resource_detector]
