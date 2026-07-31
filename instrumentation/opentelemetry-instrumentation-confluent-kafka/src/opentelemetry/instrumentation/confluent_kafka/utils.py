@@ -40,15 +40,38 @@ def _get_real_instance(instance: Any) -> Any:
     )
 
 
-def _extract_cluster_id(instance: Any) -> Optional[str]:
-    """Read cluster_id from librdkafka's internal metadata cache. Non-blocking."""
+# Process-wide cache keyed by bootstrap.servers string; populated by producer spans so
+# consumer spans can report cluster_id without calling list_topics() themselves.
+_cluster_id_by_bootstrap: dict[str, str] = {}
+
+
+def _extract_cluster_id(
+    instance: Any, bootstrap_servers: Optional[str] = None
+) -> Optional[str]:
+    """Read cluster_id for span enrichment.
+
+    Producers call list_topics(timeout=0) — reads librdkafka's in-process metadata
+    cache, no I/O — and the result is stored in _cluster_id_by_bootstrap.
+    Consumers never call list_topics(); they look up that cache by bootstrap
+    address.  Calling list_topics() on a consumer is unsafe due to librdkafka
+    UAF bug #4214.
+    """
     if instance is None:
         return None
-    try:
-        cluster_metadata = instance.list_topics(timeout=0)
-        return getattr(cluster_metadata, "cluster_id", None) or None
-    except Exception:  # pylint: disable=broad-except
-        return None
+    if hasattr(instance, "flush"):
+        # Producer: list_topics() is safe here.
+        try:
+            cluster_metadata = instance.list_topics(timeout=0)
+            cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
+            if cluster_id and bootstrap_servers:
+                _cluster_id_by_bootstrap[bootstrap_servers] = cluster_id
+            return cluster_id
+        except Exception:  # pylint: disable=broad-except
+            return None
+    # Consumer: never call list_topics() — librdkafka UAF bug #4214.
+    if bootstrap_servers:
+        return _cluster_id_by_bootstrap.get(bootstrap_servers)
+    return None
 
 
 class KafkaPropertiesExtractor:
@@ -208,7 +231,7 @@ def _enrich_span(
 
     _set_bootstrap_servers_attributes(span, bootstrap_servers)
 
-    cluster_id = _extract_cluster_id(instance)
+    cluster_id = _extract_cluster_id(instance, bootstrap_servers)
     if cluster_id:
         span.set_attribute(_MESSAGING_KAFKA_CLUSTER_ID, cluster_id)
 

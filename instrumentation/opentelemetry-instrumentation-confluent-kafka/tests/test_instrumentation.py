@@ -516,6 +516,15 @@ class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
         self.assertNotIn("messaging.kafka.cluster.id", span.attributes)
 
     def test_cluster_id_set_on_consumer_poll_span(self) -> None:
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _cluster_id_by_bootstrap,
+        )
+
+        # Consumers never call list_topics() (librdkafka UAF bug #4214); they read
+        # the bootstrap cache populated by producer spans on the same broker address.
+        _cluster_id_by_bootstrap["localhost:29092"] = "test-cluster-xyz"
+        self.addCleanup(_cluster_id_by_bootstrap.clear)
+
         instrumentation = ConfluentKafkaInstrumentor()
         consumer = MockConsumer(
             [MockedMessage("topic-1", 0, 0, [])],
@@ -525,7 +534,6 @@ class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
                 "auto.offset.reset": "earliest",
             },
         )
-        consumer._mock_cluster_id = "test-cluster-xyz"
 
         self.memory_exporter.clear()
         consumer = instrumentation.instrument_consumer(consumer)
@@ -541,6 +549,63 @@ class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
             process_span.attributes["messaging.kafka.cluster.id"],
             "test-cluster-xyz",
         )
+
+    def test_cluster_id_not_set_on_consumer_span_when_bootstrap_cache_empty(
+        self,
+    ) -> None:
+        from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
+            _cluster_id_by_bootstrap,
+        )
+
+        # No prior producer spans → cache is empty → consumer spans omit cluster_id.
+        _cluster_id_by_bootstrap.clear()
+        self.addCleanup(_cluster_id_by_bootstrap.clear)
+
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "g",
+                "auto.offset.reset": "earliest",
+            },
+        )
+        consumer._mock_cluster_id = "should-be-ignored"
+
+        self.memory_exporter.clear()
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()
+
+        process_span = next(
+            s
+            for s in self.memory_exporter.get_finished_spans()
+            if s.name == "topic-1 process"
+        )
+        self.assertNotIn("messaging.kafka.cluster.id", process_span.attributes)
+
+    def test_consumer_does_not_call_list_topics(self) -> None:
+        """list_topics() must never be called on consumers — librdkafka UAF bug #4214."""
+        instrumentation = ConfluentKafkaInstrumentor()
+        consumer = MockConsumer(
+            [MockedMessage("topic-1", 0, 0, [])],
+            {
+                "bootstrap.servers": "localhost:29092",
+                "group.id": "g",
+                "auto.offset.reset": "earliest",
+            },
+        )
+
+        def _fail_if_called(*args, **kwargs):
+            raise AssertionError(
+                "list_topics() called on a consumer — librdkafka UAF bug #4214"
+            )
+
+        consumer.list_topics = _fail_if_called
+
+        consumer = instrumentation.instrument_consumer(consumer)
+        consumer.poll()
+        consumer.poll()
 
     def test_cluster_id_reflects_current_value(self) -> None:
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
