@@ -584,7 +584,8 @@ class TestConfluentKafka(TestBase):  # pylint: disable=too-many-public-methods
         )
         self.assertNotIn("messaging.kafka.cluster.id", process_span.attributes)
 
-    def test_consumer_does_not_call_list_topics(self) -> None:
+    @staticmethod
+    def test_consumer_does_not_call_list_topics() -> None:
         """list_topics() must never be called on consumers — librdkafka UAF bug #4214."""
         instrumentation = ConfluentKafkaInstrumentor()
         consumer = MockConsumer(
