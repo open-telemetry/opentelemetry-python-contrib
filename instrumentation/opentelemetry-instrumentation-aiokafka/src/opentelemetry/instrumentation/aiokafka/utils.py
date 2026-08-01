@@ -83,6 +83,7 @@ _LOG = getLogger(__name__)
 # use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
 _MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
 
+
 def _extract_bootstrap_servers(
     client: aiokafka.AIOKafkaClient,
 ) -> str | list[str]:
