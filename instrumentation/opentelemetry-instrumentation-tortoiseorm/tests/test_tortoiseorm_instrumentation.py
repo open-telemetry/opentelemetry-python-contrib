@@ -69,6 +69,11 @@ class TestTortoiseORMInstrumentor(TestBase):
         return asyncio.run(coro)
 
     # pylint: disable-next=no-self-use
+    def _assert_no_db_query_parameters(self, attributes):
+        for attribute in attributes:
+            self.assertFalse(attribute.startswith("db.query.parameter."))
+
+    # pylint: disable-next=no-self-use
     async def _init_tortoise(self):
         await Tortoise.init(
             db_url="sqlite://:memory:",
@@ -186,6 +191,75 @@ class TestTortoiseORMInstrumentor(TestBase):
             "Test Parameterized",
             insert_span.attributes["db.statement.parameters"],
         )
+        self._assert_no_db_query_parameters(insert_span.attributes)
+
+    def test_capture_parameters_new_semconv(self):
+        TortoiseORMInstrumentor().uninstrument()
+
+        with use_semconv_opt_in("database"):
+            TortoiseORMInstrumentor().instrument(capture_parameters=True)
+
+            async def run():
+                await self._init_tortoise()
+                await MockModel.create(name="Test Parameterized")
+
+            self._async_call(run())
+
+        spans = self.memory_exporter.get_finished_spans()
+        insert_span = next(s for s in spans if s.name == "INSERT")
+        self.assertNotIn("db.statement.parameters", insert_span.attributes)
+        self.assertEqual(
+            insert_span.attributes["db.query.parameter.0"],
+            "Test Parameterized",
+        )
+        self.assertIsInstance(
+            insert_span.attributes["db.query.parameter.0"], str
+        )
+
+    def test_capture_parameters_dup_semconv(self):
+        TortoiseORMInstrumentor().uninstrument()
+
+        with use_semconv_opt_in("database/dup"):
+            TortoiseORMInstrumentor().instrument(capture_parameters=True)
+
+            async def run():
+                await self._init_tortoise()
+                await MockModel.create(name="Test Parameterized")
+
+            self._async_call(run())
+
+        spans = self.memory_exporter.get_finished_spans()
+        insert_span = next(s for s in spans if s.name == "INSERT")
+        self.assertIn("db.statement.parameters", insert_span.attributes)
+        self.assertIn(
+            "Test Parameterized",
+            insert_span.attributes["db.statement.parameters"],
+        )
+        self.assertEqual(
+            insert_span.attributes["db.query.parameter.0"],
+            "Test Parameterized",
+        )
+        self.assertIsInstance(
+            insert_span.attributes["db.query.parameter.0"], str
+        )
+
+    def test_capture_parameters_execute_many(self):
+        TortoiseORMInstrumentor().uninstrument()
+        TortoiseORMInstrumentor().instrument(capture_parameters=True)
+
+        async def run():
+            await self._init_tortoise()
+            connection = Tortoise.get_connection("default")
+            await connection.execute_many(
+                "INSERT INTO mockmodel (name) VALUES (?)",
+                [["Test Batch 1"], ["Test Batch 2"]],
+            )
+
+        self._async_call(run())
+        spans = self.memory_exporter.get_finished_spans()
+        insert_span = next(s for s in spans if s.name == "INSERT")
+        self.assertNotIn("db.statement.parameters", insert_span.attributes)
+        self._assert_no_db_query_parameters(insert_span.attributes)
 
     def test_uninstrument(self):
         TortoiseORMInstrumentor().uninstrument()
