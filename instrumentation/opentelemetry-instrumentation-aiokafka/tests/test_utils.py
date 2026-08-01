@@ -3,11 +3,11 @@
 # pylint: disable=unnecessary-dunder-call
 from __future__ import annotations
 
+import time
 from unittest import IsolatedAsyncioTestCase, mock
 
 import aiokafka
 
-from opentelemetry.instrumentation.aiokafka import _patch_cluster_id_capture
 from opentelemetry.instrumentation.aiokafka.utils import (
     _MESSAGING_KAFKA_CLUSTER_ID,
     AIOKafkaContextGetter,
@@ -17,6 +17,7 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _create_consumer_span,
     _extract_cluster_id_from_client,
     _extract_send_partition,
+    _fetch_and_cache_cluster_id,
     _get_span_name,
     _wrap_getmany,
     _wrap_getone,
@@ -117,7 +118,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         produce_hook = mock.AsyncMock()
         original_send_callback = mock.AsyncMock()
         kafka_producer = mock.MagicMock()
-        kafka_producer.client.cluster.cluster_id = None
+        kafka_producer.client._otel_cluster_id = None
         expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
@@ -184,7 +185,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         consume_hook = mock.AsyncMock()
         original_getone_callback = mock.AsyncMock()
         kafka_consumer = mock.MagicMock()
-        kafka_consumer._client.cluster.cluster_id = None
+        kafka_consumer._client._otel_cluster_id = None
 
         wrapped_getone = _wrap_getone(tracer, consume_hook)
         record = await wrapped_getone(
@@ -266,7 +267,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             }
         )
         kafka_consumer = mock.MagicMock()
-        kafka_consumer._client.cluster.cluster_id = None
+        kafka_consumer._client._otel_cluster_id = None
         _create_consumer_span.return_value = mock.MagicMock()
 
         wrapped_getmany = _wrap_getmany(tracer, consume_hook)
@@ -385,7 +386,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         producer.client._bootstrap_servers = "broker1:9092,broker2:9092"
         producer.client._client_id = "test-client"
         producer.client._wait_on_metadata = mock.AsyncMock()
-        producer.client.cluster.cluster_id = "test-cluster-uuid"
+        producer.client._otel_cluster_id = "test-cluster-uuid"
         producer._key_serializer = None
         producer._value_serializer = None
         producer._partition.return_value = 0
@@ -418,7 +419,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         producer.client._bootstrap_servers = "unknown-broker:9092"
         producer.client._client_id = "test-client"
         producer.client._wait_on_metadata = mock.AsyncMock()
-        producer.client.cluster.cluster_id = None
+        producer.client._otel_cluster_id = None
         producer._key_serializer = None
         producer._value_serializer = None
         producer._partition.return_value = 0
@@ -431,86 +432,123 @@ class TestUtils(IsolatedAsyncioTestCase):
         ]
         self.assertNotIn(_MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
 
-    def test_patch_cluster_id_capture_sets_cluster_id_from_metadata(
-        self,
-    ) -> None:
-        """_patch_cluster_id_capture intercepts update_metadata and sets cluster_id."""
-        cluster = mock.MagicMock(spec=[])
-        cluster.cluster_id = None
-        update_calls: list[object] = []
-
-        def original_update(metadata: object) -> None:
-            update_calls.append(metadata)
-
-        cluster.update_metadata = original_update
-        client = mock.MagicMock()
-        client.cluster = cluster
-
-        _patch_cluster_id_capture(client)
-
-        metadata = mock.MagicMock()
-        metadata.cluster_id = "test-cluster-uuid"
-        cluster.update_metadata(metadata)
-
-        self.assertEqual(cluster.cluster_id, "test-cluster-uuid")
-        self.assertEqual(update_calls, [metadata])
-
-    def test_patch_cluster_id_capture_is_idempotent(self) -> None:
-        """Calling _patch_cluster_id_capture twice does not double-wrap."""
-        cluster = mock.MagicMock(spec=[])
-        update_calls: list[object] = []
-        cluster.update_metadata = update_calls.append
-        client = mock.MagicMock()
-        client.cluster = cluster
-
-        _patch_cluster_id_capture(client)
-        _patch_cluster_id_capture(client)
-
-        metadata = mock.MagicMock()
-        metadata.cluster_id = "id-1"
-        cluster.update_metadata(metadata)
-
-        # original called exactly once despite two patch calls
-        self.assertEqual(len(update_calls), 1)
-
-    @staticmethod
-    def test_patch_cluster_id_capture_ignores_none_cluster() -> None:
-        """_patch_cluster_id_capture is a no-op when client has no cluster."""
-        client = mock.MagicMock(spec=[])  # no attributes
-        _patch_cluster_id_capture(client)  # must not raise
-
     def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
-        """Returns cluster ID from client.cluster.cluster_id when available."""
+        """Returns cluster ID from _otel_cluster_id when available."""
         client = mock.MagicMock()
-        client.cluster.cluster_id = "abc-uuid-1234"
+        client._otel_cluster_id = "abc-uuid-1234"
         self.assertEqual(
             _extract_cluster_id_from_client(client), "abc-uuid-1234"
         )
 
-    def test_extract_cluster_id_from_client_returns_none_when_cluster_id_none(
+    def test_extract_cluster_id_from_client_returns_none_when_not_set(
         self,
     ) -> None:
-        """Returns None when cluster_id is None (metadata not yet received)."""
+        """Returns None when _otel_cluster_id is not set on the client."""
         client = mock.MagicMock()
-        client.cluster.cluster_id = None
+        client._otel_cluster_id = None
         self.assertIsNone(_extract_cluster_id_from_client(client))
 
-    def test_extract_cluster_id_from_client_returns_none_when_no_cluster_attr(
+    def test_extract_cluster_id_from_client_returns_none_when_no_attr(
         self,
     ) -> None:
-        """Returns None when client has no cluster attribute."""
+        """Returns None when client has no _otel_cluster_id attribute."""
         client = mock.MagicMock(spec=[])  # no attributes
         self.assertIsNone(_extract_cluster_id_from_client(client))
 
-    def test_extract_cluster_id_from_client_returns_none_on_exception(
+    def test_extract_cluster_id_from_client_returns_none_on_empty_string(
         self,
     ) -> None:
-        """Returns None if attribute access raises unexpectedly."""
+        """Returns None when _otel_cluster_id is an empty string."""
         client = mock.MagicMock()
-        type(client).cluster = mock.PropertyMock(
-            side_effect=RuntimeError("boom")
-        )
+        client._otel_cluster_id = ""
         self.assertIsNone(_extract_cluster_id_from_client(client))
+
+    async def test_fetch_and_cache_cluster_id_caches_on_success(self) -> None:
+        """Successfully fetched cluster_id is cached on the client."""
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        response = mock.MagicMock()
+        response.cluster_id = "abc-cluster-id"
+        client.send = mock.AsyncMock(return_value=response)
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client._otel_cluster_id, "abc-cluster-id")
+        client.send.assert_awaited_once()
+
+    async def test_fetch_and_cache_cluster_id_skips_if_already_cached(
+        self,
+    ) -> None:
+        """Does not send a request when cluster_id is already cached."""
+        client = mock.MagicMock()
+        client._otel_cluster_id = "already-cached"
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        client.send.assert_not_awaited()
+
+    async def test_fetch_and_cache_cluster_id_skips_during_backoff(
+        self,
+    ) -> None:
+        """Does not send a request during the failure backoff window."""
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = time.monotonic()
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        client.send.assert_not_awaited()
+
+    async def test_fetch_and_cache_cluster_id_force_update_when_no_node(
+        self,
+    ) -> None:
+        """force_metadata_update is called when get_random_node returns None."""
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = None
+        client.force_metadata_update = mock.AsyncMock()
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        client.force_metadata_update.assert_awaited_once()
+        client.send.assert_not_awaited()
+
+    async def test_fetch_and_cache_cluster_id_empty_response_records_failure(
+        self,
+    ) -> None:
+        """Empty cluster_id in broker response records a failure time."""
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        response = mock.MagicMock()
+        response.cluster_id = ""
+        client.send = mock.AsyncMock(return_value=response)
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
+
+    async def test_fetch_and_cache_cluster_id_exception_records_failure(
+        self,
+    ) -> None:
+        """send() exception records a failure time."""
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        client.send = mock.AsyncMock(side_effect=OSError("connection refused"))
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
 
     async def test_kafka_properties_extractor(self):
         aiokafka_instance_mock = mock.Mock()

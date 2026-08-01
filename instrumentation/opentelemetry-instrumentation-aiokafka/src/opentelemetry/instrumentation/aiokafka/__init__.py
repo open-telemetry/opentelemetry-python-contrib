@@ -106,6 +106,7 @@ from wrapt import (
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
+    _fetch_and_cache_cluster_id,
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
@@ -131,30 +132,14 @@ if TYPE_CHECKING:
         pass
 
 
-def _patch_cluster_id_capture(client: aiokafka.AIOKafkaClient) -> None:
-    cluster = getattr(client, "cluster", None)
-    if cluster is None or getattr(cluster, "_otel_cluster_id_patched", False):
-        return
-    original_update = cluster.update_metadata
-
-    def _patched_update(metadata: Any) -> None:
-        cluster_id = getattr(metadata, "cluster_id", None)
-        if cluster_id:
-            cluster.cluster_id = cluster_id
-        original_update(metadata)
-
-    cluster.update_metadata = _patched_update
-    cluster._otel_cluster_id_patched = True
-
-
 async def _start_producer_wrapper(
     func: Callable[..., Awaitable[None]],
     instance: aiokafka.AIOKafkaProducer,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> None:
-    _patch_cluster_id_capture(instance.client)
     await func(*args, **kwargs)
+    await _fetch_and_cache_cluster_id(instance.client)
 
 
 async def _start_consumer_wrapper(
@@ -163,8 +148,8 @@ async def _start_consumer_wrapper(
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
 ) -> None:
-    _patch_cluster_id_capture(instance._client)
     await func(*args, **kwargs)
+    await _fetch_and_cache_cluster_id(instance._client)
 
 
 class AIOKafkaInstrumentor(BaseInstrumentor):
