@@ -97,14 +97,12 @@ from .patch_responses import (
     responses_create,
 )
 
-_DEPRECATION_REASON = (
+
+@deprecated(
     "opentelemetry-instrumentation-openai-v2 is deprecated. Use the "
     "opentelemetry-instrumentation-genai-openai package instead. This package "
     "only receives security patches."
 )
-
-
-@deprecated(_DEPRECATION_REASON)
 class OpenAIInstrumentor(BaseInstrumentor):
     """OpenTelemetry instrumentation for the OpenAI Python client.
 

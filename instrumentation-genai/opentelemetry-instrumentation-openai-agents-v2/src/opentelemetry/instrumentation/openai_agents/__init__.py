@@ -43,12 +43,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-_DEPRECATION_REASON = (
-    "opentelemetry-instrumentation-openai-agents-v2 is deprecated. Use the "
-    "opentelemetry-instrumentation-genai-openai-agents package instead. This "
-    "package only receives security patches."
-)
-
 _CONTENT_CAPTURE_ENV = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 _SYSTEM_OVERRIDE_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_SYSTEM"
 _CAPTURE_CONTENT_ENV = "OTEL_INSTRUMENTATION_OPENAI_AGENTS_CAPTURE_CONTENT"
@@ -132,7 +126,11 @@ def _resolve_bool(value: Any, default: bool) -> bool:
     return default
 
 
-@deprecated(_DEPRECATION_REASON)
+@deprecated(
+    "opentelemetry-instrumentation-openai-agents-v2 is deprecated. Use the "
+    "opentelemetry-instrumentation-genai-openai-agents package instead. This "
+    "package only receives security patches."
+)
 class OpenAIAgentsInstrumentor(BaseInstrumentor):
     """Instrumentation that bridges OpenAI Agents tracing to OpenTelemetry.
 
