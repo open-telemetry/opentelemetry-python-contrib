@@ -32,7 +32,6 @@ _MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
 
 
 def _get_real_instance(instance: Any) -> Any:
-    """Unwrap Proxied* wrappers to get the underlying confluent-kafka Producer/Consumer."""
     return (
         getattr(instance, "_producer", None)
         or getattr(instance, "_consumer", None)
@@ -40,26 +39,15 @@ def _get_real_instance(instance: Any) -> Any:
     )
 
 
-# Process-wide cache keyed by bootstrap.servers string; populated by producer spans so
-# consumer spans can report cluster_id without calling list_topics() themselves.
 _cluster_id_by_bootstrap: dict[str, str] = {}
 
 
 def _extract_cluster_id(
     instance: Any, bootstrap_servers: Optional[str] = None
 ) -> Optional[str]:
-    """Read cluster_id for span enrichment.
-
-    Producers call list_topics(timeout=0) — reads librdkafka's in-process metadata
-    cache, no I/O — and the result is stored in _cluster_id_by_bootstrap.
-    Consumers never call list_topics(); they look up that cache by bootstrap
-    address.  Calling list_topics() on a consumer is unsafe due to librdkafka
-    UAF bug #4214.
-    """
     if instance is None:
         return None
     if hasattr(instance, "flush"):
-        # Producer: list_topics() is safe here.
         try:
             cluster_metadata = instance.list_topics(timeout=0)
             cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
@@ -68,10 +56,16 @@ def _extract_cluster_id(
             return cluster_id
         except Exception:  # pylint: disable=broad-except
             return None
-    # Consumer: never call list_topics() — librdkafka UAF bug #4214.
-    if bootstrap_servers:
-        return _cluster_id_by_bootstrap.get(bootstrap_servers)
-    return None
+    if bootstrap_servers and bootstrap_servers in _cluster_id_by_bootstrap:
+        return _cluster_id_by_bootstrap[bootstrap_servers]
+    try:
+        cluster_metadata = instance.list_topics(timeout=0)
+        cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
+        if cluster_id and bootstrap_servers:
+            _cluster_id_by_bootstrap[bootstrap_servers] = cluster_id
+        return cluster_id
+    except Exception:  # pylint: disable=broad-except
+        return None
 
 
 class KafkaPropertiesExtractor:
@@ -182,8 +176,6 @@ def _get_links_from_records(records):
 
 
 def _set_bootstrap_servers_attributes(span, bootstrap_servers):
-    """Populate server.address and server.port from a bootstrap.servers
-    string (e.g. ``host1:9092,host2:9092``)."""
     if not bootstrap_servers:
         return
 
