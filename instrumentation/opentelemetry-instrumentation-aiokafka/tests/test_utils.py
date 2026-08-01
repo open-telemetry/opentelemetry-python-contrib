@@ -1,6 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-# pylint: disable=unnecessary-dunder-call
+# pylint: disable=unnecessary-dunder-call,too-many-public-methods
 from __future__ import annotations
 
 import time
@@ -8,6 +8,7 @@ from unittest import IsolatedAsyncioTestCase, mock
 
 import aiokafka
 
+from opentelemetry.instrumentation.aiokafka import _fetch_and_cache_cluster_id
 from opentelemetry.instrumentation.aiokafka.utils import (
     _MESSAGING_KAFKA_CLUSTER_ID,
     AIOKafkaContextGetter,
@@ -17,7 +18,6 @@ from opentelemetry.instrumentation.aiokafka.utils import (
     _create_consumer_span,
     _extract_cluster_id_from_client,
     _extract_send_partition,
-    _fetch_and_cache_cluster_id,
     _get_span_name,
     _wrap_getmany,
     _wrap_getone,
@@ -488,7 +488,7 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         await _fetch_and_cache_cluster_id(client)
 
-        client.send.assert_not_awaited()
+        self.assertEqual(client.send.await_count, 0)
 
     async def test_fetch_and_cache_cluster_id_skips_during_backoff(
         self,
@@ -501,7 +501,7 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         await _fetch_and_cache_cluster_id(client)
 
-        client.send.assert_not_awaited()
+        self.assertEqual(client.send.await_count, 0)
 
     async def test_fetch_and_cache_cluster_id_force_update_when_no_node(
         self,
@@ -516,8 +516,8 @@ class TestUtils(IsolatedAsyncioTestCase):
 
         await _fetch_and_cache_cluster_id(client)
 
-        client.force_metadata_update.assert_awaited_once()
-        client.send.assert_not_awaited()
+        self.assertEqual(client.force_metadata_update.await_count, 1)
+        self.assertEqual(client.send.await_count, 0)
 
     async def test_fetch_and_cache_cluster_id_empty_response_records_failure(
         self,

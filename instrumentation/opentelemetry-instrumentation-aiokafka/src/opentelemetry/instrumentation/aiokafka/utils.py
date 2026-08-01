@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-import time
 from logging import getLogger
 from typing import (
     TYPE_CHECKING,
@@ -84,16 +83,6 @@ _LOG = getLogger(__name__)
 # use messaging_attributes.MESSAGING_KAFKA_CLUSTER_ID instead of this literal.
 _MESSAGING_KAFKA_CLUSTER_ID = "messaging.kafka.cluster.id"
 
-_CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
-
-try:
-    from aiokafka.protocol.metadata import (  # type: ignore[reportMissingImports]
-        MetadataRequest_v5 as _MetadataRequestV5,
-    )
-except ImportError:
-    _MetadataRequestV5 = None  # type: ignore[assignment,misc]
-
-
 def _extract_bootstrap_servers(
     client: aiokafka.AIOKafkaClient,
 ) -> str | list[str]:
@@ -110,50 +99,6 @@ def _extract_cluster_id_from_client(
     """Return the cached cluster ID, or None if not yet resolved."""
     cluster_id: str | None = getattr(client, "_otel_cluster_id", None)
     return cluster_id if cluster_id else None
-
-
-async def _fetch_and_cache_cluster_id(
-    client: aiokafka.AIOKafkaClient,
-) -> None:
-    """Fetch cluster ID via a MetadataRequest and cache it on the client.
-
-    Called once after start() completes. Subsequent calls return immediately
-    once the value is cached. Failed attempts are retried after
-    _CLUSTER_ID_FAILURE_BACKOFF_SECS to avoid hammering an unreachable broker.
-    """
-    if getattr(client, "_otel_cluster_id", None):
-        return
-
-    failure_time: float | None = getattr(
-        client, "_otel_cluster_id_failure_time", None
-    )
-    if (
-        failure_time is not None
-        and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS
-    ):
-        return
-
-    if _MetadataRequestV5 is None:
-        return
-
-    try:
-        node_id = client.get_random_node()
-        if node_id is None:
-            await client.force_metadata_update()
-            node_id = client.get_random_node()
-        if node_id is None:
-            return
-        response = await client.send(
-            node_id,
-            _MetadataRequestV5(topics=[], allow_auto_topic_creation=False),
-        )
-        cluster_id: str = getattr(response, "cluster_id", "") or ""
-        if cluster_id:
-            client._otel_cluster_id = cluster_id  # type: ignore[attr-defined]
-        else:
-            client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
-    except Exception:  # pylint: disable=broad-except
-        client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
 
 
 def _extract_consumer_group(

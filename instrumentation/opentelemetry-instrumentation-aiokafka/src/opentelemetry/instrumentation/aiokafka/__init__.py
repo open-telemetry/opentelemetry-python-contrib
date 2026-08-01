@@ -95,18 +95,16 @@ API
 
 from __future__ import annotations
 
+import time
 from inspect import iscoroutinefunction
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, cast
 
 import aiokafka
-from wrapt import (
-    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
-)
+from wrapt import wrap_function_wrapper
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
 from opentelemetry.instrumentation.aiokafka.utils import (
-    _fetch_and_cache_cluster_id,
     _wrap_getmany,
     _wrap_getone,
     _wrap_send,
@@ -130,6 +128,60 @@ if TYPE_CHECKING:
 
     class UninstrumentKwargs(TypedDict, total=False):
         pass
+
+
+_CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
+
+try:
+    from aiokafka.protocol.metadata import (
+        MetadataRequest_v5 as _MetadataRequestV5,
+    )
+except ImportError:
+    _MetadataRequestV5 = None
+
+
+async def _fetch_and_cache_cluster_id(
+    client: aiokafka.AIOKafkaClient,
+) -> None:
+    """Fetch cluster ID via a MetadataRequest and cache it on the client.
+
+    Called once after start() completes. Subsequent calls return immediately
+    once the value is cached. Failed attempts are retried after
+    _CLUSTER_ID_FAILURE_BACKOFF_SECS to avoid hammering an unreachable broker.
+    """
+    if getattr(client, "_otel_cluster_id", None):
+        return
+
+    failure_time: float | None = getattr(
+        client, "_otel_cluster_id_failure_time", None
+    )
+    if (
+        failure_time is not None
+        and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS
+    ):
+        return
+
+    if _MetadataRequestV5 is None:
+        return
+
+    try:
+        node_id: int | None = cast(int | None, client.get_random_node())
+        if node_id is None:
+            await client.force_metadata_update()
+            node_id = cast(int | None, client.get_random_node())
+        if node_id is None:
+            return
+        response: object = await cast(Any, client).send(
+            node_id,
+            _MetadataRequestV5(topics=[], allow_auto_topic_creation=False),
+        )
+        cluster_id: str = getattr(response, "cluster_id", "") or ""
+        if cluster_id:
+            client._otel_cluster_id = cluster_id  # type: ignore[attr-defined]
+        else:
+            client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
+    except Exception:  # pylint: disable=broad-except
+        client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
 
 
 async def _start_producer_wrapper(
