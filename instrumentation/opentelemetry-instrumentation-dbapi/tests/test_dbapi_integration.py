@@ -24,6 +24,7 @@ from opentelemetry.sdk import resources
 from opentelemetry.semconv._incubating.attributes import net_attributes
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_OPERATION,
     DB_STATEMENT,
     DB_SYSTEM,
     DB_USER,
@@ -1533,6 +1534,184 @@ class TestDBApiIntegration(TestBase):
             "Test stored procedure",
         )
 
+    def test_commit(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        mock_connection.commit()
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "COMMIT")
+        self.assertEqual(span.attributes[DB_OPERATION], "COMMIT")
+
+    def test_commit_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                enable_transaction_spans=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, {}
+            )
+            mock_connection.commit()
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "COMMIT")
+            self.assertEqual(span.attributes[DB_OPERATION_NAME], "COMMIT")
+
+    def test_commit_both_semconv(self):
+        with use_semconv_opt_in("database/dup"):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                enable_transaction_spans=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, {}
+            )
+            mock_connection.commit()
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "COMMIT")
+            self.assertEqual(span.attributes[DB_OPERATION], "COMMIT")
+            self.assertEqual(span.attributes[DB_OPERATION_NAME], "COMMIT")
+
+    def test_rollback(self):
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        mock_connection.rollback()
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.name, "ROLLBACK")
+        self.assertEqual(span.attributes[DB_OPERATION], "ROLLBACK")
+
+    def test_rollback_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                enable_transaction_spans=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, {}
+            )
+            mock_connection.rollback()
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "ROLLBACK")
+            self.assertEqual(span.attributes[DB_OPERATION_NAME], "ROLLBACK")
+
+    def test_rollback_both_semconv(self):
+        with use_semconv_opt_in("database/dup"):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                enable_transaction_spans=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, {}
+            )
+            mock_connection.rollback()
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "ROLLBACK")
+            self.assertEqual(span.attributes[DB_OPERATION], "ROLLBACK")
+            self.assertEqual(span.attributes[DB_OPERATION_NAME], "ROLLBACK")
+
+    def test_commit_with_suppress_instrumentation(self):
+        """Test that commit doesn't create a span when instrumentation is suppressed"""
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        with suppress_instrumentation():
+            mock_connection.commit()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_rollback_with_suppress_instrumentation(self):
+        """Test that rollback doesn't create a span when instrumentation is suppressed"""
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+            enable_transaction_spans=True,
+        )
+        mock_connection = db_integration.wrapped_connection(
+            mock_connect, {}, {}
+        )
+        with suppress_instrumentation():
+            mock_connection.rollback()
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_commit_failed_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                enable_transaction_spans=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, {}
+            )
+            with self.assertRaises(Exception):
+                mock_connection.commit(throw_exception=True)
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "COMMIT")
+            self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+            self.assertEqual(span.attributes[ERROR_TYPE], "Exception")
+            self.assertEqual(len(span.events), 1)
+            self.assertEqual(span.events[0].name, "exception")
+
+    def test_rollback_failed_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                enable_transaction_spans=True,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, {}
+            )
+            with self.assertRaises(Exception):
+                mock_connection.rollback(throw_exception=True)
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertEqual(span.name, "ROLLBACK")
+            self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
+            self.assertEqual(span.attributes[ERROR_TYPE], "Exception")
+            self.assertEqual(len(span.events), 1)
+            self.assertEqual(span.events[0].name, "exception")
+
     @mock.patch("opentelemetry.instrumentation.dbapi")
     def test_wrap_connect(self, mock_dbapi):
         dbapi.wrap_connect(self.tracer, mock_dbapi, "connect", "-")
@@ -1849,6 +2028,18 @@ class MockConnection:
     # pylint: disable=no-self-use
     def cursor(self):
         return MockCursor()
+
+    # pylint: disable=no-self-use
+    def commit(self, throw_exception=False):
+        if throw_exception:
+            # pylint: disable=broad-exception-raised
+            raise Exception("Test Exception")
+
+    # pylint: disable=no-self-use
+    def rollback(self, throw_exception=False):
+        if throw_exception:
+            # pylint: disable=broad-exception-raised
+            raise Exception("Test Exception")
 
 
 class MockCursor:

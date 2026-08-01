@@ -185,6 +185,7 @@ from opentelemetry.instrumentation._semconv import (
     _OpenTelemetryStabilitySignalType,
     _report_new,
     _set_db_name,
+    _set_db_operation,
     _set_db_statement,
     _set_db_system,
     _set_db_user,
@@ -252,6 +253,7 @@ def trace_integration(
     enable_attribute_commenter: bool = False,
     commenter_options: dict[str, Any] | None = None,
     meter_provider: MeterProvider | None = None,
+    enable_transaction_spans: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -273,6 +275,7 @@ def trace_integration(
         commenter_options: Configurations for tags to be appended at the sql query.
         meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
+        enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
     """
     wrap_connect(
         __name__,
@@ -288,10 +291,11 @@ def trace_integration(
         enable_attribute_commenter=enable_attribute_commenter,
         commenter_options=commenter_options,
         meter_provider=meter_provider,
+        enable_transaction_spans=enable_transaction_spans,
     )
 
 
-# pylint: disable-next=too-many-positional-arguments
+# pylint: disable-next=too-many-positional-arguments,too-many-locals
 def wrap_connect(
     name: str,
     connect_module: Callable[..., Any],
@@ -306,6 +310,7 @@ def wrap_connect(
     commenter_options: dict[str, Any] | None = None,
     enable_attribute_commenter: bool = False,
     meter_provider: MeterProvider | None = None,
+    enable_transaction_spans: bool = False,
 ):
     """Integrate with DB API library.
     https://www.python.org/dev/peps/pep-0249/
@@ -327,6 +332,7 @@ def wrap_connect(
         enable_attribute_commenter: Flag to enable/disable sqlcomment inclusion in `db.statement` and/or `db.query.text` span attribute. Only available if enable_commenter=True.
         meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
+        enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
 
     """
     db_api_integration_factory = (
@@ -352,6 +358,7 @@ def wrap_connect(
             connect_module=connect_module,
             enable_attribute_commenter=enable_attribute_commenter,
             meter_provider=meter_provider,
+            enable_transaction_spans=enable_transaction_spans,
         )
         return db_integration.wrapped_connection(wrapped, args, kwargs)
 
@@ -391,6 +398,7 @@ def instrument_connection(
     enable_attribute_commenter: bool = False,
     db_api_integration_factory: type[DatabaseApiIntegration] | None = None,
     meter_provider: MeterProvider | None = None,
+    enable_transaction_spans: bool = False,
 ) -> TracedConnectionProxy[ConnectionT]:
     """Enable instrumentation in a database connection.
 
@@ -414,6 +422,7 @@ def instrument_connection(
             from the connection itself (as done by the pymssql intrumentor).
         meter_provider: The :class:`opentelemetry.metrics.MeterProvider` to
             use. If omitted the current configured one is used.
+        enable_transaction_spans: Experimental flag to enable transaction (commit/rollback) spans. Defaults to False.
 
     Returns:
         An instrumented connection.
@@ -438,6 +447,7 @@ def instrument_connection(
         connect_module=connect_module,
         enable_attribute_commenter=enable_attribute_commenter,
         meter_provider=meter_provider,
+        enable_transaction_spans=enable_transaction_spans,
     )
     db_integration.get_connection_attributes(connection)
     return get_traced_connection_proxy(connection, db_integration)
@@ -462,6 +472,7 @@ def uninstrument_connection(
 
 
 class DatabaseApiIntegration:
+    # pylint: disable-next=too-many-positional-arguments
     def __init__(
         self,
         name: str,
@@ -475,6 +486,7 @@ class DatabaseApiIntegration:
         connect_module: Callable[..., Any] | None = None,
         enable_attribute_commenter: bool = False,
         meter_provider: MeterProvider | None = None,
+        enable_transaction_spans: bool = False,
     ):
         # Initialize semantic conventions opt-in if needed
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -529,6 +541,7 @@ class DatabaseApiIntegration:
         self.enable_commenter = enable_commenter
         self.commenter_options = commenter_options
         self.enable_attribute_commenter = enable_attribute_commenter
+        self.enable_transaction_spans = enable_transaction_spans
         self.database_system = database_system
         self.connection_props: dict[str, Any] = {}
         self.span_attributes: dict[str, Any] = {}
@@ -656,6 +669,15 @@ class DatabaseApiIntegration:
             )
             self._server_port = port
 
+    def common_span_attributes(self) -> dict[str, Any]:
+        """Build common database connection attributes for a client span."""
+        sem_conv_mode = self._sem_conv_opt_in_mode_db
+        span_attrs = {}
+        _set_db_system(span_attrs, self.database_system, sem_conv_mode)
+        _set_db_name(span_attrs, self.database, sem_conv_mode)
+        span_attrs.update(self.span_attributes)
+        return span_attrs
+
 
 # pylint: disable=abstract-method,no-member
 class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
@@ -664,22 +686,71 @@ class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
         self,
         connection: ConnectionT,
         db_api_integration: DatabaseApiIntegration | None = None,
+        wrap_cursors: bool = True,
     ):
         BaseObjectProxy.__init__(self, connection)
         self._self_db_api_integration = db_api_integration
+        self._self_wrap_cursors = wrap_cursors
 
     def __getattribute__(self, name: str):
-        if object.__getattribute__(self, name):
+        # Try to get the attribute from the proxy first
+        try:
             return object.__getattribute__(self, name)
-
-        return object.__getattribute__(
-            object.__getattribute__(self, "_connection"), name
-        )
+        except AttributeError:
+            # If not found on proxy, try the wrapped connection
+            return object.__getattribute__(
+                object.__getattribute__(self, "__wrapped__"), name
+            )
 
     def cursor(self, *args: Any, **kwargs: Any):
-        return get_traced_cursor_proxy(
-            self.__wrapped__.cursor(*args, **kwargs),
-            self._self_db_api_integration,
+        cursor = self.__wrapped__.cursor(*args, **kwargs)
+
+        # For databases like psycopg/psycopg2 that use cursor_factory,
+        # cursor tracing is already handled by the factory, so skip wrapping
+        if not self._self_wrap_cursors:
+            return cursor
+
+        # For standard dbapi connections, wrap the cursor
+        return get_traced_cursor_proxy(cursor, self._self_db_api_integration)
+
+    def _traced_tx_operation(
+        self,
+        operation_name: str,
+        operation_method: Callable[..., None],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        """Execute a traced transaction operation (commit, rollback)."""
+        if not is_instrumentation_enabled():
+            return operation_method(*args, **kwargs)
+
+        if not self._self_db_api_integration.enable_transaction_spans:
+            return operation_method(*args, **kwargs)
+
+        integration = self._self_db_api_integration
+        sem_conv_mode = integration._sem_conv_opt_in_mode_db
+        with integration._tracer.start_as_current_span(
+            operation_name, kind=trace_api.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span_attrs = integration.common_span_attributes()
+                _set_db_operation(span_attrs, operation_name, sem_conv_mode)
+                span.set_attributes(span_attrs)
+            try:
+                return operation_method(*args, **kwargs)
+            except Exception as exc:
+                if span.is_recording() and _report_new(sem_conv_mode):
+                    span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
+                raise
+
+    def commit(self, *args: Any, **kwargs: Any):
+        return self._traced_tx_operation(
+            "COMMIT", self.__wrapped__.commit, *args, **kwargs
+        )
+
+    def rollback(self, *args: Any, **kwargs: Any):
+        return self._traced_tx_operation(
+            "ROLLBACK", self.__wrapped__.rollback, *args, **kwargs
         )
 
     def __enter__(self):
@@ -690,13 +761,98 @@ class TracedConnectionProxy(BaseObjectProxy, Generic[ConnectionT]):
         self.__wrapped__.__exit__(*args, **kwargs)
 
 
+class AsyncTracedConnectionProxy(TracedConnectionProxy[ConnectionT]):
+    async def _traced_tx_operation_async(
+        self,
+        operation_name: str,
+        operation_method: Callable[..., Awaitable[None]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        """Execute a traced async transaction operation (commit, rollback)."""
+        if not is_instrumentation_enabled():
+            return await operation_method(*args, **kwargs)
+
+        if not self._self_db_api_integration.enable_transaction_spans:
+            return await operation_method(*args, **kwargs)
+
+        integration = self._self_db_api_integration
+        sem_conv_mode = integration._sem_conv_opt_in_mode_db
+        with integration._tracer.start_as_current_span(
+            operation_name, kind=trace_api.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                span_attrs = integration.common_span_attributes()
+                _set_db_operation(span_attrs, operation_name, sem_conv_mode)
+                span.set_attributes(span_attrs)
+            try:
+                return await operation_method(*args, **kwargs)
+            except Exception as exc:
+                if span.is_recording() and _report_new(sem_conv_mode):
+                    span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
+                raise
+
+    async def commit(self, *args: Any, **kwargs: Any):
+        """Async commit for async connections (e.g., psycopg.AsyncConnection)."""
+        return await self._traced_tx_operation_async(
+            "COMMIT", self.__wrapped__.commit, *args, **kwargs
+        )
+
+    async def rollback(self, *args: Any, **kwargs: Any):
+        """Async rollback for async connections (e.g., psycopg.AsyncConnection)."""
+        return await self._traced_tx_operation_async(
+            "ROLLBACK", self.__wrapped__.rollback, *args, **kwargs
+        )
+
+    # Async context manager support
+    async def __aenter__(self):
+        if hasattr(self.__wrapped__, "__aenter__"):
+            await self.__wrapped__.__aenter__()
+        return self
+
+    async def __aexit__(self, *args: Any, **kwargs: Any):
+        if hasattr(self.__wrapped__, "__aexit__"):
+            return await self.__wrapped__.__aexit__(*args, **kwargs)
+
+
 def get_traced_connection_proxy(
     connection: ConnectionT,
     db_api_integration: DatabaseApiIntegration | None,
     *args: Any,
+    wrap_cursors: bool = True,
     **kwargs: Any,
 ) -> TracedConnectionProxy[ConnectionT]:
-    return TracedConnectionProxy(connection, db_api_integration)
+    """Get a traced connection proxy for sync connections.
+
+    Args:
+        connection: The database connection to wrap.
+        db_api_integration: The database API integration instance.
+        wrap_cursors: Whether to wrap cursors returned by connection.cursor().
+            Set to False for databases like psycopg/psycopg2 that handle cursor
+            tracing via cursor_factory. Defaults to True.
+    """
+    return TracedConnectionProxy(connection, db_api_integration, wrap_cursors)
+
+
+def get_traced_async_connection_proxy(
+    connection: ConnectionT,
+    db_api_integration: DatabaseApiIntegration | None,
+    *args: Any,
+    wrap_cursors: bool = True,
+    **kwargs: Any,
+) -> AsyncTracedConnectionProxy[ConnectionT]:
+    """Get a traced connection proxy for async connections.
+
+    Args:
+        connection: The async database connection to wrap.
+        db_api_integration: The database API integration instance.
+        wrap_cursors: Whether to wrap cursors returned by connection.cursor().
+            Set to False for databases like psycopg/psycopg2 that handle cursor
+            tracing via cursor_factory. Defaults to True.
+    """
+    return AsyncTracedConnectionProxy(
+        connection, db_api_integration, wrap_cursors
+    )
 
 
 def _t_string_to_str(template: Template) -> str:
@@ -792,30 +948,12 @@ class CursorTracer(Generic[CursorT]):
     ):
         if not span.is_recording():
             return
+
         statement = self.get_statement(cursor, args)
         sem_conv_mode = self._db_api_integration._sem_conv_opt_in_mode_db
-        span_attrs = {}
-
-        _set_db_system(
-            span_attrs,
-            self._db_api_integration.database_system,
-            sem_conv_mode,
-        )
-        _set_db_name(
-            span_attrs,
-            self._db_api_integration.database,
-            sem_conv_mode,
-        )
+        span_attrs = self._db_api_integration.common_span_attributes()
         _set_db_statement(span_attrs, statement, sem_conv_mode)
-
-        # Set all collected attributes
         span.set_attributes(span_attrs)
-
-        for (
-            attribute_key,
-            attribute_value,
-        ) in self._db_api_integration.span_attributes.items():
-            span.set_attribute(attribute_key, attribute_value)
 
         if self._db_api_integration.capture_parameters and len(args) > 1:
             span.set_attribute("db.statement.parameters", str(args[1]))
