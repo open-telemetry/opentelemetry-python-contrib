@@ -96,7 +96,6 @@ def _extract_client_id(client: aiokafka.AIOKafkaClient) -> str:
 def _extract_cluster_id_from_client(
     client: aiokafka.AIOKafkaClient,
 ) -> str | None:
-    """Return the cached cluster ID, or None if not yet resolved."""
     cluster_id: str | None = getattr(client, "_otel_cluster_id", None)
     return cluster_id if cluster_id else None
 

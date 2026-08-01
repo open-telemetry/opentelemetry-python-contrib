@@ -433,7 +433,6 @@ class TestUtils(IsolatedAsyncioTestCase):
         self.assertNotIn(_MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
 
     def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
-        """Returns cluster ID from _otel_cluster_id when available."""
         client = mock.MagicMock()
         client._otel_cluster_id = "abc-uuid-1234"
         self.assertEqual(
@@ -443,7 +442,6 @@ class TestUtils(IsolatedAsyncioTestCase):
     def test_extract_cluster_id_from_client_returns_none_when_not_set(
         self,
     ) -> None:
-        """Returns None when _otel_cluster_id is not set on the client."""
         client = mock.MagicMock()
         client._otel_cluster_id = None
         self.assertIsNone(_extract_cluster_id_from_client(client))
@@ -451,20 +449,17 @@ class TestUtils(IsolatedAsyncioTestCase):
     def test_extract_cluster_id_from_client_returns_none_when_no_attr(
         self,
     ) -> None:
-        """Returns None when client has no _otel_cluster_id attribute."""
         client = mock.MagicMock(spec=[])  # no attributes
         self.assertIsNone(_extract_cluster_id_from_client(client))
 
     def test_extract_cluster_id_from_client_returns_none_on_empty_string(
         self,
     ) -> None:
-        """Returns None when _otel_cluster_id is an empty string."""
         client = mock.MagicMock()
         client._otel_cluster_id = ""
         self.assertIsNone(_extract_cluster_id_from_client(client))
 
     async def test_fetch_and_cache_cluster_id_caches_on_success(self) -> None:
-        """Successfully fetched cluster_id is cached on the client."""
         client = mock.MagicMock()
         client._otel_cluster_id = None
         client._otel_cluster_id_failure_time = None
@@ -481,7 +476,6 @@ class TestUtils(IsolatedAsyncioTestCase):
     async def test_fetch_and_cache_cluster_id_skips_if_already_cached(
         self,
     ) -> None:
-        """Does not send a request when cluster_id is already cached."""
         client = mock.MagicMock()
         client._otel_cluster_id = "already-cached"
         client.send = mock.AsyncMock()
@@ -493,7 +487,6 @@ class TestUtils(IsolatedAsyncioTestCase):
     async def test_fetch_and_cache_cluster_id_skips_during_backoff(
         self,
     ) -> None:
-        """Does not send a request during the failure backoff window."""
         client = mock.MagicMock()
         client._otel_cluster_id = None
         client._otel_cluster_id_failure_time = time.monotonic()
@@ -506,7 +499,6 @@ class TestUtils(IsolatedAsyncioTestCase):
     async def test_fetch_and_cache_cluster_id_force_update_when_no_node(
         self,
     ) -> None:
-        """force_metadata_update is called when get_random_node returns None."""
         client = mock.MagicMock()
         client._otel_cluster_id = None
         client._otel_cluster_id_failure_time = None
@@ -522,7 +514,6 @@ class TestUtils(IsolatedAsyncioTestCase):
     async def test_fetch_and_cache_cluster_id_empty_response_records_failure(
         self,
     ) -> None:
-        """Empty cluster_id in broker response records a failure time."""
         client = mock.MagicMock()
         client._otel_cluster_id = None
         client._otel_cluster_id_failure_time = None
@@ -539,7 +530,6 @@ class TestUtils(IsolatedAsyncioTestCase):
     async def test_fetch_and_cache_cluster_id_exception_records_failure(
         self,
     ) -> None:
-        """send() exception records a failure time."""
         client = mock.MagicMock()
         client._otel_cluster_id = None
         client._otel_cluster_id_failure_time = None

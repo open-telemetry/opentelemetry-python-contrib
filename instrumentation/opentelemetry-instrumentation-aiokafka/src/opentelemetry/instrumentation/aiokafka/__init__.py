@@ -143,12 +143,6 @@ except ImportError:
 async def _fetch_and_cache_cluster_id(
     client: aiokafka.AIOKafkaClient,
 ) -> None:
-    """Fetch cluster ID via a MetadataRequest and cache it on the client.
-
-    Called once after start() completes. Subsequent calls return immediately
-    once the value is cached. Failed attempts are retried after
-    _CLUSTER_ID_FAILURE_BACKOFF_SECS to avoid hammering an unreachable broker.
-    """
     if getattr(client, "_otel_cluster_id", None):
         return
 
