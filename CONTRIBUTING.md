@@ -42,7 +42,7 @@ If you are using AI agents to assist with contributions, please read [AGENTS.md]
   - [Guideline for instrumentations](#guideline-for-instrumentations)
     - [Update supported instrumentation package versions](#update-supported-instrumentation-package-versions)
   - [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
-    - [Get Involved](#get-involved)
+  - [Get Involved](#get-involved)
   - [Expectations from contributors](#expectations-from-contributors)
     - [Guidelines for native OpenTelemetry instrumentation](#guidelines-for-native-opentelemetry-instrumentation)
   - [Updating supported Python versions](#updating-supported-python-versions)
@@ -428,15 +428,17 @@ Example PRs: [#2976](https://github.com/open-telemetry/opentelemetry-python-cont
 
 ## Guideline for GenAI instrumentations
 
-Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) systems will be placed in the [instrumentation-genai](./instrumentation-genai) folder. This section covers contributions related to those instrumentations. Please note that the [guidelines for instrumentations](#guideline-for-instrumentations) and [expectations from contributors](#expectations-from-contributors) still apply.
+[Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) instrumentations are **no longer developed in this repository**. They live in the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai) repository - please contribute new instrumentations, features, bug fixes, and issues there.
 
-### Get Involved
+The packages still present in the [instrumentation-genai](./instrumentation-genai) folder are deprecated, receive security patches only, and will be removed from this repository in the future.
+
+## Get Involved
 
 * Reviewing PRs: If you would like to be tagged as reviewer in new PRs related to these instrumentations, please submit a PR to add your GitHub handle to [component_owners.yml](https://github.com/open-telemetry/opentelemetry-python-contrib/blob/main/.github/component_owners.yml) under the corresponding instrumentation folder(s).
 
 * Approving PRs: If you would like to be able to approve PRs related to these instrumentations, you must join [opentelemetry-python-contrib-approvers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-approvers) team. Please ask one of the [Python contrib maintainers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-maintainers) to be accepted into the team.
 
-* Tracking and Creating Issues: For tracking issues related to Generative AI, please filter or add the label [gen-ai](https://github.com/open-telemetry/opentelemetry-python-contrib/issues?q=is%3Aopen+is%3Aissue+label%3Agen-ai) when creating or searching issues. If you do not see an issue related to an instrumentation you would like to contribute to, please create a new tracking issue so the community is aware of its progress.
+* Tracking and Creating Issues: If you do not see an issue related to an instrumentation you would like to contribute to, please create a new tracking issue so the community is aware of its progress.
 
 ## Expectations from contributors
 
