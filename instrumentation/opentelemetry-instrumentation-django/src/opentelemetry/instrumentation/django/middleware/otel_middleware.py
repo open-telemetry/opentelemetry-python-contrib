@@ -259,7 +259,7 @@ class _DjangoMiddleware:
             for key, value in attributes.items():
                 span.set_attribute(key, value)
 
-        activation = use_span(span, end_on_exit=True)
+        activation = use_span(span, end_on_exit=False)
         activation.__enter__()  # pylint: disable=unnecessary-dunder-call
         request_start_time = default_timer()
         request.META[self._environ_timer_key] = request_start_time
@@ -394,29 +394,40 @@ class _DjangoMiddleware:
                 except Exception:  # pylint: disable=broad-exception-caught
                     _logger.exception("Exception raised by response_hook")
 
-        if request_start_time is not None:
-            duration_s = default_timer() - request_start_time
-            if self._duration_histogram_old:
-                duration_attrs_old = _parse_duration_attrs(
-                    duration_attrs, _StabilityMode.DEFAULT
-                )
-                # http.target to be included in old semantic conventions
-                target = duration_attrs.get(HTTP_TARGET)
-                if target:
-                    duration_attrs_old[HTTP_TARGET] = target
-                self._duration_histogram_old.record(
-                    max(round(duration_s * 1000), 0),
-                    duration_attrs_old,
-                )
-            if self._duration_histogram_new:
-                duration_attrs_new = _parse_duration_attrs(
-                    duration_attrs, _StabilityMode.HTTP
-                )
-                self._duration_histogram_new.record(
-                    max(duration_s, 0),
-                    duration_attrs_new,
-                )
-        self._active_request_counter.add(-1, active_requests_count_attrs)
+        finalized = False
+
+        def finalize_response():
+            nonlocal finalized
+            if finalized:
+                return
+            finalized = True
+
+            if request_start_time is not None:
+                duration_s = default_timer() - request_start_time
+                if self._duration_histogram_old:
+                    duration_attrs_old = _parse_duration_attrs(
+                        duration_attrs, _StabilityMode.DEFAULT
+                    )
+                    # http.target to be included in old semantic conventions
+                    target = duration_attrs.get(HTTP_TARGET)
+                    if target:
+                        duration_attrs_old[HTTP_TARGET] = target
+                    self._duration_histogram_old.record(
+                        max(round(duration_s * 1000), 0),
+                        duration_attrs_old,
+                    )
+                if self._duration_histogram_new:
+                    duration_attrs_new = _parse_duration_attrs(
+                        duration_attrs, _StabilityMode.HTTP
+                    )
+                    self._duration_histogram_new.record(
+                        max(duration_s, 0),
+                        duration_attrs_new,
+                    )
+            self._active_request_counter.add(-1, active_requests_count_attrs)
+
+            if span:
+                span.end()
 
         if activation and span:
             if exception:
@@ -431,6 +442,16 @@ class _DjangoMiddleware:
         if request.META.get(self._environ_token, None) is not None:
             detach(request.META.get(self._environ_token))
             request.META.pop(self._environ_token)
+
+        original_close = response.close
+
+        def close():
+            try:
+                return original_close()
+            finally:
+                finalize_response()
+
+        response.close = close
 
         return response
 
