@@ -100,7 +100,9 @@ from inspect import iscoroutinefunction
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, cast
 
 import aiokafka
-from wrapt import wrap_function_wrapper  # type: ignore[reportUnknownVariableType]
+from wrapt import (
+    wrap_function_wrapper,  # type: ignore[reportUnknownVariableType]
+)
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.aiokafka.package import _instruments
