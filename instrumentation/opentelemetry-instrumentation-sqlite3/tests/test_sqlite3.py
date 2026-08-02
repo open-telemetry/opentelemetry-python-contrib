@@ -1,16 +1,38 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import sqlite3
 from sqlite3 import dbapi2
+from unittest import mock
 
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_STATEMENT,
 )
 from opentelemetry.test.test_base import TestBase
+
+
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
 
 
 class TestSQLite3(TestBase):
@@ -217,3 +239,160 @@ class TestSQLite3Integration(TestBase):
             span.status.description,
             "OperationalError: no such table: nonexistent_table",
         )
+
+
+class TestSQLite3CaptureParameters(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        SQLite3Instrumentor().uninstrument()
+
+    def _connect(self):
+        cnx = sqlite3.connect(":memory:")
+        self.addCleanup(cnx.close)
+        return cnx
+
+    def test_capture_positional_parameters_new_semconv(self):
+        """Positional (?) params are captured as db.query.parameter.<index>."""
+        with use_semconv_opt_in("database"):
+            SQLite3Instrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                capture_parameters=True,
+            )
+            cnx = self._connect()
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("CREATE TABLE test (id integer, name text)")
+            self.memory_exporter.clear()
+            cursor.execute(
+                "INSERT INTO test (id, name) VALUES (?, ?)",
+                (1, "foo"),
+            )
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            key_0 = f"{DB_QUERY_PARAMETER_TEMPLATE}.0"
+            key_1 = f"{DB_QUERY_PARAMETER_TEMPLATE}.1"
+            self.assertIn(key_0, span.attributes)
+            self.assertIn(key_1, span.attributes)
+            self.assertEqual(span.attributes[key_0], "1")
+            self.assertEqual(span.attributes[key_1], "foo")
+            self.assertIsInstance(span.attributes[key_0], str)
+            self.assertIsInstance(span.attributes[key_1], str)
+            # New semconv replaces the legacy attribute.
+            self.assertNotIn("db.statement.parameters", span.attributes)
+
+    def test_capture_named_parameters_new_semconv(self):
+        """Named (:name) params are captured as db.query.parameter.<name>."""
+        with use_semconv_opt_in("database"):
+            SQLite3Instrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+                capture_parameters=True,
+            )
+            cnx = self._connect()
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("CREATE TABLE test (id integer, name text)")
+            self.memory_exporter.clear()
+            cursor.execute(
+                "INSERT INTO test (id, name) VALUES (:id, :name)",
+                {"id": 2, "name": "bar"},
+            )
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            key_id = f"{DB_QUERY_PARAMETER_TEMPLATE}.id"
+            key_name = f"{DB_QUERY_PARAMETER_TEMPLATE}.name"
+            self.assertIn(key_id, span.attributes)
+            self.assertIn(key_name, span.attributes)
+            self.assertEqual(span.attributes[key_id], "2")
+            self.assertEqual(span.attributes[key_name], "bar")
+            self.assertIsInstance(span.attributes[key_id], str)
+            self.assertIsInstance(span.attributes[key_name], str)
+            self.assertNotIn("db.statement.parameters", span.attributes)
+
+    def test_capture_parameters_default_semconv(self):
+        """Default semconv still captures db.statement.parameters."""
+        SQLite3Instrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            capture_parameters=True,
+        )
+        cnx = self._connect()
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute("CREATE TABLE test (id integer, name text)")
+        self.memory_exporter.clear()
+        cursor.execute(
+            "INSERT INTO test (id, name) VALUES (?, ?)",
+            (1, "foo"),
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+
+        self.assertIn("db.statement.parameters", span.attributes)
+        self.assertEqual(
+            span.attributes["db.statement.parameters"], "(1, 'foo')"
+        )
+        self.assertIsInstance(span.attributes["db.statement.parameters"], str)
+        # db.query.parameter.<key> belongs to the new semconv only.
+        self.assertFalse(
+            any(
+                key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
+                for key in span.attributes
+            )
+        )
+
+    def test_capture_parameters_disabled_by_default(self):
+        """No parameters captured when capture_parameters is not set."""
+        with use_semconv_opt_in("database"):
+            SQLite3Instrumentor().instrument(
+                tracer_provider=self.tracer_provider,
+            )
+            cnx = self._connect()
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("CREATE TABLE test (id integer, name text)")
+            self.memory_exporter.clear()
+            cursor.execute(
+                "INSERT INTO test (id, name) VALUES (?, ?)",
+                (1, "foo"),
+            )
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            self.assertNotIn("db.statement.parameters", span.attributes)
+            self.assertFalse(
+                any(
+                    key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
+                    for key in span.attributes
+                )
+            )
+
+    def test_capture_parameters_instrument_connection_new_semconv(self):
+        """instrument_connection threads capture_parameters through."""
+        with use_semconv_opt_in("database"):
+            cnx = SQLite3Instrumentor.instrument_connection(
+                self._connect(),
+                tracer_provider=self.tracer_provider,
+                capture_parameters=True,
+            )
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("CREATE TABLE test (id integer)")
+            self.memory_exporter.clear()
+            cursor.execute("INSERT INTO test (id) VALUES (?)", (7,))
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+            key_0 = f"{DB_QUERY_PARAMETER_TEMPLATE}.0"
+            self.assertIn(key_0, span.attributes)
+            self.assertEqual(span.attributes[key_0], "7")
+            self.assertIsInstance(span.attributes[key_0], str)

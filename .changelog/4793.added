@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-sqlite3`: add `capture_parameters` option to capture query parameters as `db.query.parameter.<key>` (new semconv) or `db.statement.parameters` (old semconv)
