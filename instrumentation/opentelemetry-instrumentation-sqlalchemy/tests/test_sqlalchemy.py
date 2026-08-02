@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
 import logging
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -42,6 +43,22 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_SYSTEM_NAME,
 )
 from opentelemetry.test.test_base import TestBase
+
+
+def test_packaging_is_not_runtime_dependency():
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    dependencies_block = (
+        pyproject.read_text(encoding="utf-8")
+        .split("dependencies = [", 1)[1]
+        .split("]", 1)[0]
+    )
+    dependency_names = [
+        dependency.strip().strip('",').split(" ", 1)[0]
+        for dependency in dependencies_block.splitlines()
+        if dependency.strip().startswith('"')
+    ]
+
+    assert "packaging" not in dependency_names
 
 
 class TestSqlalchemyInstrumentation(TestBase):
