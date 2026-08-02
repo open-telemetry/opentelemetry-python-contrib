@@ -3,9 +3,11 @@
 
 import sqlite3
 from sqlite3 import dbapi2
+from unittest import mock
 
 from opentelemetry import trace as trace_api
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+from opentelemetry.instrumentation.sqlite3.version import __version__
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_STATEMENT,
@@ -216,4 +218,93 @@ class TestSQLite3Integration(TestBase):
         self.assertEqual(
             span.status.description,
             "OperationalError: no such table: nonexistent_table",
+        )
+
+    def test_capture_parameters(self):
+        """Should capture parameters when enabled."""
+        SQLite3Instrumentor().instrument(
+            tracer_provider=self.tracer_provider,
+            capture_parameters=True,
+        )
+        cnx = self._connect()
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+        self.memory_exporter.clear()
+
+        cursor.execute("INSERT INTO test (id) VALUES (:id)", {"id": 1})
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"],
+            "{'id': 1}",
+        )
+
+    def test_parameters_not_captured_by_default(self):
+        """Should not capture parameters by default."""
+        SQLite3Instrumentor().instrument(tracer_provider=self.tracer_provider)
+        cnx = self._connect()
+        cursor = cnx.cursor()
+        self.addCleanup(cursor.close)
+        cursor.execute("CREATE TABLE IF NOT EXISTS test (id integer)")
+        self.memory_exporter.clear()
+
+        cursor.execute("INSERT INTO test (id) VALUES (:id)", {"id": 1})
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        self.assertNotIn(
+            "db.statement.parameters", spans_list[0].attributes
+        )
+
+
+@mock.patch("opentelemetry.instrumentation.sqlite3.dbapi")
+class TestSQLite3InstrumentorParameters(TestBase):
+    def tearDown(self):
+        super().tearDown()
+        with self.disable_logging():
+            SQLite3Instrumentor().uninstrument()
+
+    def test_instrument_defaults(self, mock_dbapi):
+        SQLite3Instrumentor().instrument()
+
+        self.assertEqual(mock_dbapi.wrap_connect.call_count, 2)
+        self.assertEqual(
+            [call.args[1] for call in mock_dbapi.wrap_connect.call_args_list],
+            [sqlite3, dbapi2],
+        )
+        for call in mock_dbapi.wrap_connect.call_args_list:
+            self.assertEqual(
+                call.args[0], "opentelemetry.instrumentation.sqlite3"
+            )
+            self.assertEqual(call.args[2:], ("connect", "sqlite", {}))
+            self.assertEqual(call.kwargs["version"], __version__)
+            self.assertIsNone(call.kwargs["tracer_provider"])
+            self.assertFalse(call.kwargs["capture_parameters"])
+
+    def test_instrument_capture_parameters(self, mock_dbapi):
+        SQLite3Instrumentor().instrument(capture_parameters=True)
+
+        self.assertEqual(mock_dbapi.wrap_connect.call_count, 2)
+        for call in mock_dbapi.wrap_connect.call_args_list:
+            self.assertTrue(call.kwargs["capture_parameters"])
+
+    def test_instrument_connection_capture_parameters(self, mock_dbapi):
+        connection = sqlite3.connect(":memory:")
+        self.addCleanup(connection.close)
+
+        SQLite3Instrumentor.instrument_connection(
+            connection,
+            capture_parameters=True,
+        )
+
+        mock_dbapi.instrument_connection.assert_called_once_with(
+            "opentelemetry.instrumentation.sqlite3",
+            connection,
+            "sqlite",
+            {},
+            version=__version__,
+            tracer_provider=None,
+            capture_parameters=True,
         )

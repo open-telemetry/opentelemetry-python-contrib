@@ -41,6 +41,20 @@ Usage
     cursor.close()
     instrumented_connection.close()
 
+Capture parameters
+******************
+By default, only statements are captured, without the associated query
+parameters. To capture query parameters in the span attribute
+``db.statement.parameters``, enable ``capture_parameters``.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
+
+    SQLite3Instrumentor().instrument(
+        capture_parameters=True,
+    )
+
 API
 ---
 """
@@ -78,6 +92,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
         https://docs.python.org/3/library/sqlite3.html
         """
         tracer_provider = kwargs.get("tracer_provider")
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         for module in self._TO_WRAP:
             dbapi.wrap_connect(
@@ -88,6 +103,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
                 _CONNECTION_ATTRIBUTES,
                 version=__version__,
                 tracer_provider=tracer_provider,
+                capture_parameters=capture_parameters,
             )
 
     def _uninstrument(self, **kwargs: Any) -> None:
@@ -99,6 +115,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
     def instrument_connection(
         connection: SQLite3Connection,
         tracer_provider: TracerProvider | None = None,
+        capture_parameters: bool = False,
     ) -> SQLite3Connection:
         """Enable instrumentation in a SQLite connection.
 
@@ -106,6 +123,8 @@ class SQLite3Instrumentor(BaseInstrumentor):
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            capture_parameters: Configure if db.statement.parameters should be
+                captured.
 
         Returns:
             An instrumented SQLite connection that supports
@@ -119,6 +138,7 @@ class SQLite3Instrumentor(BaseInstrumentor):
             _CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            capture_parameters=capture_parameters,
         )
 
     @staticmethod
