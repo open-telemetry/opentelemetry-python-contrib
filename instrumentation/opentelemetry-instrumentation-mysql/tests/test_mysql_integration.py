@@ -193,6 +193,7 @@ class TestMysqlIntegration(TestBase):
             enable_commenter=True,
             commenter_options={"foo": True},
             enable_attribute_commenter=True,
+            capture_parameters=True,
         )
         cursor = cnx.cursor()
         cursor.execute("SELECT * FROM test")
@@ -200,6 +201,20 @@ class TestMysqlIntegration(TestBase):
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
+        self.assertEqual(kwargs["capture_parameters"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.instrument_connection")
+    @mock.patch("mysql.connector")
+    # pylint: disable=unused-argument
+    def test_instrument_connection_defaults_capture_parameters_dbapi_kwargs(
+        self,
+        mock_connect,
+        mock_instrument_connection,
+    ):
+        cnx = mysql.connector.connect(database="test")
+        MySQLInstrumentor().instrument_connection(cnx)
+        kwargs = mock_instrument_connection.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
         mock_connect_module, mock_connection, mock_cursor = (
@@ -324,6 +339,26 @@ class TestMysqlIntegration(TestBase):
                 "Select 1;",
             )
 
+    def test_instrument_connection_with_capture_parameters(self):
+        mock_connect_module, mock_connection, _ = make_mysql_commenter_mocks()
+
+        with mock.patch(
+            "opentelemetry.instrumentation.mysql.mysql.connector",
+            mock_connect_module,
+        ):
+            cnx_proxy = MySQLInstrumentor().instrument_connection(
+                mock_connection,
+                capture_parameters=True,
+            )
+            cnx_proxy.cursor().execute("Select %s;", ("param1Value", False))
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes["db.statement.parameters"],
+                "('param1Value', False)",
+            )
+
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     @mock.patch("mysql.connector")
     # pylint: disable=unused-argument
@@ -336,11 +371,25 @@ class TestMysqlIntegration(TestBase):
             enable_commenter=True,
             commenter_options={"foo": True},
             enable_attribute_commenter=True,
+            capture_parameters=True,
         )
         kwargs = mock_wrap_connect.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
+        self.assertEqual(kwargs["capture_parameters"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("mysql.connector")
+    # pylint: disable=unused-argument
+    def test_instrument_defaults_capture_parameters_dbapi_kwargs(
+        self,
+        mock_connect,
+        mock_wrap_connect,
+    ):
+        MySQLInstrumentor().instrument()
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
 
     def test_instrument_with_dbapi_sqlcomment_enabled(
         self,
@@ -460,6 +509,25 @@ class TestMysqlIntegration(TestBase):
             self.assertEqual(
                 span.attributes[DB_STATEMENT],
                 "Select 1;",
+            )
+
+    def test_instrument_with_capture_parameters(self):
+        mock_connect_module, _, _ = make_mysql_commenter_mocks()
+
+        with mock.patch(
+            "opentelemetry.instrumentation.mysql.mysql.connector",
+            mock_connect_module,
+        ):
+            MySQLInstrumentor()._instrument(capture_parameters=True)
+            cnx = mock_connect_module.connect(database="test")
+            cursor = cnx.cursor()
+            cursor.execute("Select %s;", ("param1Value", False))
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            span = spans_list[0]
+            self.assertEqual(
+                span.attributes["db.statement.parameters"],
+                "('param1Value', False)",
             )
 
     @mock.patch("mysql.connector.connect")

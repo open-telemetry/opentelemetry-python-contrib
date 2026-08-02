@@ -134,6 +134,17 @@ will also be configured by this setting.
 Warning:
     Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
+Capture Parameters
+******************
+You can optionally enable capture of query parameters in the
+``db.statement.parameters`` span attribute.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.mysql import MySQLInstrumentor
+
+    MySQLInstrumentor().instrument(capture_parameters=True)
+
 API
 ---
 """
@@ -171,6 +182,7 @@ class MySQLInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -183,6 +195,7 @@ class MySQLInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     def _uninstrument(self, **kwargs):
@@ -197,6 +210,7 @@ class MySQLInstrumentor(BaseInstrumentor):
         enable_commenter=None,
         commenter_options=None,
         enable_attribute_commenter=None,
+        capture_parameters=False,
     ):
         """Enable instrumentation in a MySQL connection.
 
@@ -214,6 +228,8 @@ class MySQLInstrumentor(BaseInstrumentor):
                 Optional configurations for tags to be appended at the sql query.
             enable_attribute_commenter:
                 Optional flag to enable/disable addition of sqlcomment to span attribute (default False). Requires enable_commenter=True.
+            capture_parameters:
+                Optional flag to enable/disable capture of query parameters (default False).
 
         Returns:
             An instrumented MySQL connection with OpenTelemetry tracing enabled.
@@ -229,6 +245,7 @@ class MySQLInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             connect_module=mysql.connector,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     def uninstrument_connection(self, connection):
