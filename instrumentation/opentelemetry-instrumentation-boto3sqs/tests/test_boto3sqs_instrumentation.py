@@ -16,10 +16,14 @@ from opentelemetry.instrumentation.boto3sqs import (
     Boto3SQSInstrumentor,
     Boto3SQSSetter,
 )
-from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
-    MessagingOperationValues,
-    SpanAttributes,
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION_NAME,
+    MESSAGING_OPERATION_TYPE,
+    MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+    MessagingSystemValues,
 )
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, TraceFlags
@@ -210,12 +214,12 @@ class TestBoto3SQSInstrumentation(TestBase):
             trace_parent.lower(),
         )
 
-    def _default_span_attrs(self):
+    def _default_span_attrs(self, operation_name, operation_type):
         return {
-            SpanAttributes.MESSAGING_SYSTEM: "aws.sqs",
-            SpanAttributes.MESSAGING_DESTINATION: self._queue_name,
-            SpanAttributes.MESSAGING_DESTINATION_KIND: MessagingDestinationKindValues.QUEUE.value,
-            SpanAttributes.MESSAGING_URL: self._queue_url,
+            MESSAGING_SYSTEM: MessagingSystemValues.AWS_SQS.value,
+            MESSAGING_DESTINATION_NAME: self._queue_name,
+            MESSAGING_OPERATION_NAME: operation_name,
+            MESSAGING_OPERATION_TYPE: operation_type.value,
         }
 
     @staticmethod
@@ -275,8 +279,10 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(
             {
-                SpanAttributes.MESSAGING_MESSAGE_ID: message_id,
-                **self._default_span_attrs(),
+                MESSAGING_MESSAGE_ID: message_id,
+                **self._default_span_attrs(
+                    "send", MessagingOperationTypeValues.PUBLISH
+                ),
             },
             span.attributes,
         )
@@ -303,22 +309,20 @@ class TestBoto3SQSInstrumentation(TestBase):
 
         spans = self.get_finished_spans()
         self.assertEqual(2, len(spans))
-        spans_by_entry_id = {
-            span.attributes[SpanAttributes.MESSAGING_CONVERSATION_ID]: span
-            for span in spans
+        spans_by_message_id = {
+            span.attributes[MESSAGING_MESSAGE_ID]: span for span in spans
         }
         for entry in entries:
-            entry_id = entry["Id"]
-            span = spans_by_entry_id[entry_id]
+            message_id = expected_message_ids[entry["Id"]]
+            span = spans_by_message_id[message_id]
             self.assertEqual(f"{self._queue_name} send", span.name)
             self.assertEqual(SpanKind.PRODUCER, span.kind)
             self.assertEqual(
                 {
-                    SpanAttributes.MESSAGING_CONVERSATION_ID: entry_id,
-                    SpanAttributes.MESSAGING_MESSAGE_ID: expected_message_ids[
-                        entry_id
-                    ],
-                    **self._default_span_attrs(),
+                    MESSAGING_MESSAGE_ID: message_id,
+                    **self._default_span_attrs(
+                        "send", MessagingOperationTypeValues.PUBLISH
+                    ),
                 },
                 span.attributes,
             )
@@ -346,13 +350,12 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(f"{self._queue_name} send", span.name)
         self.assertEqual(SpanKind.PRODUCER, span.kind)
         self.assertEqual(
-            {
-                SpanAttributes.MESSAGING_CONVERSATION_ID: "1",
-                **self._default_span_attrs(),
-            },
+            self._default_span_attrs(
+                "send", MessagingOperationTypeValues.PUBLISH
+            ),
             span.attributes,
         )
-        self.assertNotIn(SpanAttributes.MESSAGING_MESSAGE_ID, span.attributes)
+        self.assertNotIn(MESSAGING_MESSAGE_ID, span.attributes)
         self._assert_injected_span(entries[0]["MessageAttributes"], span)
 
     def test_receive_message(self):
@@ -386,10 +389,9 @@ class TestBoto3SQSInstrumentation(TestBase):
         self.assertEqual(f"{self._queue_name} receive", span.name)
         self.assertEqual(SpanKind.CONSUMER, span.kind)
         self.assertEqual(
-            {
-                SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.RECEIVE.value,
-                **self._default_span_attrs(),
-            },
+            self._default_span_attrs(
+                "receive", MessagingOperationTypeValues.RECEIVE
+            ),
             span.attributes,
         )
 
@@ -411,9 +413,10 @@ class TestBoto3SQSInstrumentation(TestBase):
             # processing span attributes
             self.assertEqual(
                 {
-                    SpanAttributes.MESSAGING_MESSAGE_ID: msg_id,
-                    SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.PROCESS.value,
-                    **self._default_span_attrs(),
+                    MESSAGING_MESSAGE_ID: msg_id,
+                    **self._default_span_attrs(
+                        "process", MessagingOperationTypeValues.PROCESS
+                    ),
                 },
                 span.attributes,
             )
