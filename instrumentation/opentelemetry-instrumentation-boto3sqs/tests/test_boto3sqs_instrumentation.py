@@ -25,6 +25,10 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MessagingOperationTypeValues,
     MessagingSystemValues,
 )
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace import SpanKind, TraceFlags
 from opentelemetry.trace.span import Span, format_span_id, format_trace_id
@@ -220,6 +224,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             MESSAGING_DESTINATION_NAME: self._queue_name,
             MESSAGING_OPERATION_NAME: operation_name,
             MESSAGING_OPERATION_TYPE: operation_type.value,
+            SERVER_ADDRESS: "sqs.us-east-1.amazonaws.com",
         }
 
     @staticmethod
@@ -287,6 +292,23 @@ class TestBoto3SQSInstrumentation(TestBase):
             span.attributes,
         )
         self._assert_injected_span(message_attrs, span)
+
+    def test_send_message_custom_endpoint_with_port(self):
+        message_id = "123456789"
+        mock_response = {
+            "MD5OfMessageBody": "1234",
+            "MessageId": message_id,
+        }
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message(
+                QueueUrl=f"http://localhost:4566/123456789012/{self._queue_name}",
+                MessageBody="hello msg",
+            )
+
+        span = self._get_only_span()
+        self.assertEqual("localhost", span.attributes[SERVER_ADDRESS])
+        self.assertEqual(4566, span.attributes[SERVER_PORT])
 
     def test_send_message_batch(self):
         expected_message_ids = {"1": "msg-1", "2": "msg-2"}

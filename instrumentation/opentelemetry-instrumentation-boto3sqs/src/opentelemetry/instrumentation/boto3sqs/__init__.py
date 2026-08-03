@@ -20,6 +20,7 @@ Usage
 
 import logging
 from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
+from urllib.parse import urlparse
 
 import boto3.session
 import botocore.client
@@ -40,6 +41,10 @@ from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
     MESSAGING_SYSTEM,
     MessagingOperationTypeValues,
     MessagingSystemValues,
+)
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
@@ -137,6 +142,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _enrich_span(
         span: Span,
         queue_name: str,
+        queue_url: str,
         operation_name: str,
         operation_type: MessagingOperationTypeValues,
         message_id: Optional[str] = None,
@@ -149,6 +155,12 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         span.set_attribute(MESSAGING_DESTINATION_NAME, queue_name)
         span.set_attribute(MESSAGING_OPERATION_NAME, operation_name)
         span.set_attribute(MESSAGING_OPERATION_TYPE, operation_type.value)
+
+        parsed_url = urlparse(queue_url)
+        if parsed_url.hostname:
+            span.set_attribute(SERVER_ADDRESS, parsed_url.hostname)
+            if parsed_url.port:
+                span.set_attribute(SERVER_PORT, parsed_url.port)
 
         if message_id:
             span.set_attribute(MESSAGING_MESSAGE_ID, message_id)
@@ -176,6 +188,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
     def _create_processing_span(
         self,
         queue_name: str,
+        queue_url: str,
         receipt_handle: str,
         message: Dict[str, Any],
     ) -> None:
@@ -195,6 +208,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             Boto3SQSInstrumentor._enrich_span(
                 span,
                 queue_name,
+                queue_url,
                 "process",
                 MessagingOperationTypeValues.PROCESS,
                 message_id=message_id,
@@ -218,6 +232,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 Boto3SQSInstrumentor._enrich_span(
                     span,
                     queue_name,
+                    queue_url,
                     "send",
                     MessagingOperationTypeValues.PUBLISH,
                 )
@@ -257,6 +272,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 Boto3SQSInstrumentor._enrich_span(
                     span,
                     queue_name,
+                    queue_url,
                     "send",
                     MessagingOperationTypeValues.PUBLISH,
                 )
@@ -302,6 +318,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 Boto3SQSInstrumentor._enrich_span(
                     span,
                     queue_name,
+                    queue_url,
                     "receive",
                     MessagingOperationTypeValues.RECEIVE,
                 )
@@ -321,7 +338,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                         receipt_handle
                     )
                     self._create_processing_span(
-                        queue_name, receipt_handle, message
+                        queue_name, queue_url, receipt_handle, message
                     )
                 retval["Messages"] = Boto3SQSInstrumentor.ContextableList(
                     messages
