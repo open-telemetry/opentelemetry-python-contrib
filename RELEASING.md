@@ -21,6 +21,7 @@
 > - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
+> - opentelemetry-resourcedetector-gcp
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
@@ -92,6 +93,7 @@ The workflow will create a pull request that should be merged in order to procee
 > - opentelemetry-opamp-client
 > - opentelemetry-propagator-aws-xray
 > - opentelemetry-resource-detector-azure
+> - opentelemetry-resourcedetector-gcp
 > - opentelemetry-sdk-extension-aws
 > - opentelemetry-instrumentation-openai-v2
 > - opentelemetry-instrumentation-openai-agents-v2
