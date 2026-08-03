@@ -1,0 +1,1 @@
+Deprecate the `get_monitored_resource` function in `opentelemetry-resourcedetector-gcp` as it does not belong in this package.
