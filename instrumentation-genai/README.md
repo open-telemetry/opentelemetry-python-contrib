@@ -2,9 +2,9 @@
 > [!WARNING]
 > GenAI instrumentations have been moved to the
 > [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
-> repository, which is now their home for new development and releases. The
-> instrumentations in this repository only receive security
-> patches and will be removed from here in the future.
+> repository, which is now their home for new development and releases. The copies that
+> still live in this directory only receive security patches and will be removed from
+> here in the future.
 
 | Instrumentation | Supported Packages | Metrics support | Semconv status |
 | --------------- | ------------------ | --------------- | -------------- |

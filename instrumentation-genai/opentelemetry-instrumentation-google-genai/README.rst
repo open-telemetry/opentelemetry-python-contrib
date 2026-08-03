@@ -3,7 +3,7 @@ OpenTelemetry Google GenAI SDK Instrumentation
 
 .. warning::
 
-   **The code in this repository is deprecated.** The package keeps its name,
+   **This copy of the instrumentation is deprecated.** The package keeps its name,
    `opentelemetry-instrumentation-google-genai <https://pypi.org/project/opentelemetry-instrumentation-google-genai/>`_,
    but is now developed and released from
    `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-google-genai <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-google-genai>`_.
