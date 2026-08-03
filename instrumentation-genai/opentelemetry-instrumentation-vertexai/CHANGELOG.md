@@ -1,7 +1,7 @@
 # Changelog
 
 > [!WARNING]
-> This package is deprecated and will not be replaced — it only receives security patches and will be removed inthe future.
+> This package is deprecated and will not be replaced — it only receives security patches and will be removed in the future.
 > Google [deprecated the generative AI modules of the Vertex AI SDK](https://cloud.google.com/vertex-ai/generative-ai/docs/deprecations/genai-vertexai-sdk)
 > that this package instruments.
 
