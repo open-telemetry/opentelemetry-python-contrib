@@ -176,7 +176,7 @@ import functools
 import types
 from collections.abc import Callable, Collection
 from timeit import default_timer
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response

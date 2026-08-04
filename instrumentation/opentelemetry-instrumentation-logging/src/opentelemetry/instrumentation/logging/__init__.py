@@ -47,7 +47,6 @@ When running the above example you will see the following output:
 import logging  # pylint: disable=import-self
 from collections.abc import Collection
 from os import environ
-from typing import Optional
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
