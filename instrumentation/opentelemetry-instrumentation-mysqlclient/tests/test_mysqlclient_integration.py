@@ -92,7 +92,7 @@ class TestMySQLClientIntegration(TestBase):
     @mock.patch("opentelemetry.instrumentation.dbapi.instrument_connection")
     @mock.patch("MySQLdb.connect")
     # pylint: disable=unused-argument
-    def test_instrument_connection_enable_commenter_dbapi_kwargs(
+    def test_instrument_connection_dbapi_kwargs(
         self,
         mock_connect,
         mock_instrument_connection,
@@ -103,6 +103,7 @@ class TestMySQLClientIntegration(TestBase):
             enable_commenter=True,
             commenter_options={"foo": True},
             enable_attribute_commenter=True,
+            capture_parameters=True,
         )
         cursor = cnx.cursor()
         cursor.execute("Select 1;")
@@ -110,6 +111,20 @@ class TestMySQLClientIntegration(TestBase):
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
+        self.assertEqual(kwargs["capture_parameters"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.instrument_connection")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_instrument_connection_capture_parameters_default(
+        self,
+        mock_connect,
+        mock_instrument_connection,
+    ):
+        cnx = MySQLdb.connect(database="test")
+        MySQLClientInstrumentor().instrument_connection(cnx)
+        kwargs = mock_instrument_connection.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
         mock_connect_module = mock.MagicMock(
@@ -289,7 +304,7 @@ class TestMySQLClientIntegration(TestBase):
     @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
     @mock.patch("MySQLdb.connect")
     # pylint: disable=unused-argument
-    def test_instrument_enable_commenter_dbapi_kwargs(
+    def test_instrument_dbapi_kwargs(
         self,
         mock_connect,
         mock_wrap_connect,
@@ -298,11 +313,25 @@ class TestMySQLClientIntegration(TestBase):
             enable_commenter=True,
             commenter_options={"foo": True},
             enable_attribute_commenter=True,
+            capture_parameters=True,
         )
         kwargs = mock_wrap_connect.call_args[1]
         self.assertEqual(kwargs["enable_commenter"], True)
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
+        self.assertEqual(kwargs["capture_parameters"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.wrap_connect")
+    @mock.patch("MySQLdb.connect")
+    # pylint: disable=unused-argument
+    def test_instrument_capture_parameters_default(
+        self,
+        mock_connect,
+        mock_wrap_connect,
+    ):
+        MySQLClientInstrumentor()._instrument()
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
 
     def test_instrument_with_dbapi_sqlcomment_enabled(
         self,
