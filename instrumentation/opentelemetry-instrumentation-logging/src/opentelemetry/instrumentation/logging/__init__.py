@@ -9,7 +9,7 @@ system with an handler to convert log messages into OpenTelemetry logs.
 You can disable this setting `OTEL_PYTHON_LOG_AUTO_INSTRUMENTATION` to `false`.
 
 Trace context injection is opt-in. Pass ``inject_trace_context=True`` to add
-``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName``
+``span_id``, ``trace_id``, ``trace_flags``, and ``otelServiceName``
 to every log record without changing the logging format:
 
 .. code-block:: python
@@ -40,7 +40,7 @@ When running the above example you will see the following output:
 
 ::
 
-    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_sampled=False] - OTel test
+    2025-03-05 09:40:04,398 WARNING [root] [example.py:7] [trace_id=0 span_id=0 resource.service.name= trace_flags=00] - OTel test
 
 """
 
@@ -182,9 +182,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 return record
 
             if inject_context:
-                record.otelSpanID = "0"
-                record.otelTraceID = "0"
-                record.otelTraceSampled = False
+                record.span_id = "0"
+                record.trace_id = "0"
+                record.trace_flags = "00"
 
                 nonlocal service_name
                 if service_name is None:
@@ -203,9 +203,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 ctx = span.get_span_context()
                 if ctx != INVALID_SPAN_CONTEXT:
                     if inject_context:
-                        record.otelSpanID = format(ctx.span_id, "016x")
-                        record.otelTraceID = format(ctx.trace_id, "032x")
-                        record.otelTraceSampled = ctx.trace_flags.sampled
+                        record.span_id = format(ctx.span_id, "016x")
+                        record.trace_id = format(ctx.trace_id, "032x")
+                        record.trace_flags = format(ctx.trace_flags, "02x")
 
                     if callable(LoggingInstrumentor._log_hook):
                         try:

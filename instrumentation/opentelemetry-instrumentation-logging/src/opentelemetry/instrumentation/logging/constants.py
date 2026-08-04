@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(otelTraceID)s span_id=%(otelSpanID)s resource.service.name=%(otelServiceName)s trace_sampled=%(otelTraceSampled)s] - %(message)s"
+DEFAULT_LOGGING_FORMAT = "%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] [trace_id=%(trace_id)s span_id=%(span_id)s resource.service.name=%(otelServiceName)s trace_flags=%(trace_flags)s] - %(message)s"
 
 
 _MODULE_DOC = """
@@ -24,14 +24,14 @@ The OpenTelemetry ``logging`` integration can also be configured to inject traci
 
 The integration registers a custom log record factory with the the standard library logging module that automatically inject
 tracing context into log record objects. Optionally, the integration can also call ``logging.basicConfig()`` to set a logging
-format with placeholders for span ID, trace ID and service name.
+format with placeholders for span ID, trace ID, trace flags and service name.
 
 The following keys are injected into log record objects by the factory:
 
-- ``otelSpanID``
-- ``otelTraceID``
+- ``span_id``
+- ``trace_id``
 - ``otelServiceName``
-- ``otelTraceSampled``
+- ``trace_flags``
 
 The integration uses the following logging format by default:
 
@@ -43,7 +43,7 @@ Trace context injection is opt-in and can be enabled in two ways:
 
 - Pass ``inject_trace_context=True`` to inject trace context attributes into every log record without modifying
   the logging format. Use this when you manage the logging format yourself but still want
-  ``otelSpanID``, ``otelTraceID``, ``otelTraceSampled``, and ``otelServiceName`` available on each record.
+  ``span_id``, ``trace_id``, ``trace_flags``, and ``otelServiceName`` available on each record.
 - Set ``OTEL_PYTHON_LOG_CORRELATION`` to ``true`` (or pass ``set_logging_format=True``) to inject the same
   trace context attributes and call ``logging.basicConfig()`` with a format string that includes them.
 
@@ -144,7 +144,7 @@ adding the following placeholders to your logging format:
 
 .. code-block::
 
-    %(otelSpanID)s %(otelTraceID)s %(otelServiceName)s %(otelTraceSampled)s
+    %(span_id)s %(trace_id)s %(otelServiceName)s %(trace_flags)s
 
 
 
@@ -169,7 +169,7 @@ API
 Note
 -----
 
-If you set a logging format with trace context placeholders (e.g. ``%(otelSpanID)s``) but do not enable
+If you set a logging format with trace context placeholders (e.g. ``%(span_id)s``) but do not enable
 trace context injection via ``inject_trace_context=True`` or ``set_logging_format=True``, the placeholders
 will not be populated. Any log statements emitted before injection is enabled will result in ``KeyError``
 exceptions, which the logging module silently swallows. Enable this integration as early as possible to
