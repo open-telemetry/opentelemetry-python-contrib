@@ -103,6 +103,7 @@ class AiopgInstrumentor(BaseInstrumentor):
         """
 
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         wrappers.wrap_connect(
             __name__,
@@ -110,6 +111,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
 
         wrappers.wrap_create_pool(
@@ -118,6 +120,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
 
     # pylint:disable=no-self-use
@@ -127,13 +130,17 @@ class AiopgInstrumentor(BaseInstrumentor):
         wrappers.unwrap_create_pool()
 
     # pylint:disable=no-self-use
-    def instrument_connection(self, connection, tracer_provider=None):
+    def instrument_connection(
+        self, connection, tracer_provider=None, meter_provider=None
+    ):
         """Enable instrumentation in a aiopg connection.
 
         Args:
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            meter_provider: The optional meter provider to use. If omitted the
+                current globally configured one is used.
 
         Returns:
             An instrumented connection.
@@ -145,6 +152,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
 
     def uninstrument_connection(self, connection):
