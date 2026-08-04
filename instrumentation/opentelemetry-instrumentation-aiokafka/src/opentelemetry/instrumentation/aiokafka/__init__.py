@@ -187,7 +187,10 @@ async def _start_producer_wrapper(
     kwargs: dict[str, Any],
 ) -> None:
     await func(*args, **kwargs)
-    await _fetch_and_cache_cluster_id(instance.client)
+    try:
+        await _fetch_and_cache_cluster_id(instance.client)
+    except Exception:  # pylint: disable=broad-except
+        pass
 
 
 async def _start_consumer_wrapper(
@@ -197,7 +200,10 @@ async def _start_consumer_wrapper(
     kwargs: dict[str, Any],
 ) -> None:
     await func(*args, **kwargs)
-    await _fetch_and_cache_cluster_id(instance._client)
+    try:
+        await _fetch_and_cache_cluster_id(instance._client)
+    except Exception:  # pylint: disable=broad-except
+        pass
 
 
 class AIOKafkaInstrumentor(BaseInstrumentor):
