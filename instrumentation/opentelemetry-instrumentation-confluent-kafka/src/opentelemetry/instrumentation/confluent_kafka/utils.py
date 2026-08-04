@@ -61,7 +61,7 @@ def _extract_cluster_id(
     if bootstrap_servers and bootstrap_servers in _cluster_id_by_bootstrap:
         return _cluster_id_by_bootstrap[bootstrap_servers]
     try:
-        cluster_metadata = instance.list_topics(timeout=0)
+        cluster_metadata = instance.list_topics(timeout=1.0)
         cluster_id = getattr(cluster_metadata, "cluster_id", None) or None
         if cluster_id and bootstrap_servers:
             _cluster_id_by_bootstrap[bootstrap_servers] = cluster_id
