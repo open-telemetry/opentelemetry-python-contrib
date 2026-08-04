@@ -61,7 +61,7 @@ from opentelemetry.util._importlib_metadata import entry_points
 
 def run_with_test_server(
     runnable: typing.Callable, url: str, handler: typing.Callable
-) -> typing.Tuple[str, int]:
+) -> tuple[str, int]:
     async def do_request():
         app = aiohttp.web.Application()
         parsed_url = urllib.parse.urlparse(url)
@@ -131,7 +131,7 @@ class TestAioHttpIntegration(TestBase):
         status_code: int = HTTPStatus.OK,
         request_handler: typing.Callable = None,
         **kwargs,
-    ) -> typing.Tuple[str, int]:
+    ) -> tuple[str, int]:
         """Helper to start an aiohttp test server and send an actual HTTP request to it."""
 
         async def default_handler(request):
@@ -399,10 +399,7 @@ class TestAioHttpIntegration(TestBase):
 
         def response_hook(
             span: Span,
-            params: typing.Union[
-                aiohttp.TraceRequestEndParams,
-                aiohttp.TraceRequestExceptionParams,
-            ],
+            params: aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
         ):
             span.set_attribute("response_hook_attr", "value")
 
@@ -1279,7 +1276,7 @@ class TestAioHttpClientInstrumentor(TestBase):
     @staticmethod
     # pylint:disable=unused-argument
     async def default_handler(request):
-        return aiohttp.web.Response(status=int(200))
+        return aiohttp.web.Response(status=200)
 
     @staticmethod
     def get_default_request(url: str = URL):
@@ -1581,10 +1578,7 @@ class TestAioHttpClientInstrumentor(TestBase):
 
         def response_hook(
             span: Span,
-            params: typing.Union[
-                aiohttp.TraceRequestEndParams,
-                aiohttp.TraceRequestExceptionParams,
-            ],
+            params: aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
         ):
             span.set_attribute("response_hook_attr", "value")
 

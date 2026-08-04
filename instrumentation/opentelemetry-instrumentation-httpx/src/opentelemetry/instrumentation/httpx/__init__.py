@@ -1054,7 +1054,7 @@ class _AsyncOpenTelemetryTransportBase:
 
     async def __aexit__(
         self,
-        exc_type: typing.Type[BaseException] | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
@@ -1489,9 +1489,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         async_request_hook: AsyncRequestHook,
         async_response_hook: AsyncResponseHook,
         excluded_urls: ExcludeList | None,
-        captured_request_headers: typing.Optional[list[str]] = None,
-        captured_response_headers: typing.Optional[list[str]] = None,
-        sensitive_headers: typing.Optional[list[str]] = None,
+        captured_request_headers: list[str] | None = None,
+        captured_response_headers: list[str] | None = None,
+        sensitive_headers: list[str] | None = None,
     ):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)

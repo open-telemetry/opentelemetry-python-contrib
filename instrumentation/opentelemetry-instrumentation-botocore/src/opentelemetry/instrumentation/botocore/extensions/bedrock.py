@@ -701,7 +701,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
             span.set_attribute(
                 GEN_AI_USAGE_INPUT_TOKENS, response_body["inputTextTokenCount"]
             )
-        if "results" in response_body and response_body["results"]:
+        if response_body.get("results"):
             result = response_body["results"][0]
             if "tokenCount" in result:
                 span.set_attribute(
@@ -900,7 +900,7 @@ class _BedrockRuntimeExtension(_AwsSdkExtension):
         instrumentor_context: _BotocoreInstrumentorContext,
         capture_content: bool,
     ):
-        if "generations" in response_body and response_body["generations"]:
+        if response_body.get("generations"):
             generations = response_body["generations"][0]
             if "text" in generations:
                 span.set_attribute(

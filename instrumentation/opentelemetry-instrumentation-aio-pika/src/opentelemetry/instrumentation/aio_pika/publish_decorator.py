@@ -1,6 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import aiormq
 from aio_pika import Exchange
@@ -18,7 +18,7 @@ class PublishDecorator:
 
     def _get_publish_span(
         self, message: AbstractMessage, routing_key: str
-    ) -> Optional[Span]:
+    ) -> Span | None:
         builder = SpanBuilder(self._tracer)
         builder.set_as_producer()
         builder.set_destination(f"{self._exchange.name},{routing_key}")
@@ -29,7 +29,7 @@ class PublishDecorator:
     def decorate(self, publish: Callable) -> Callable:
         async def decorated_publish(
             message: AbstractMessage, routing_key: str, **kwargs
-        ) -> Optional[aiormq.abc.ConfirmationFrameType]:
+        ) -> aiormq.abc.ConfirmationFrameType | None:
             span = self._get_publish_span(message, routing_key)
             if not span:
                 return await publish(message, routing_key, **kwargs)

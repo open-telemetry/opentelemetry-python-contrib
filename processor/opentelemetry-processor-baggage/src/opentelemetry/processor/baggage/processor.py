@@ -1,7 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Callable, Optional, Sequence, Union
+from collections.abc import Callable, Sequence
+from typing import Union
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.context import Context
@@ -15,7 +16,7 @@ BaggageKeyPredicates = Union[
 ]
 
 # A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
-ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # noqa: E731 # pylint:disable=invalid-name
+ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # pylint:disable=invalid-name
 
 
 class BaggageSpanProcessor(SpanProcessor):
@@ -49,7 +50,7 @@ class BaggageSpanProcessor(SpanProcessor):
             self._predicates = list(baggage_key_predicate)
 
     def on_start(
-        self, span: "Span", parent_context: Optional[Context] = None
+        self, span: "Span", parent_context: Context | None = None
     ) -> None:
         baggage = get_all_baggage(parent_context)
         for key, value in baggage.items():

@@ -169,7 +169,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
 
         def _distribution(name):
             if name == "cassandra-driver":
-                return None
+                return
             raise PackageNotFoundError
 
         mock_distribution.side_effect = _distribution
@@ -194,7 +194,7 @@ class TestCassandraInstrumentationDependencies(TestCase):
 
         def _distribution(name):
             if name == "scylla-driver":
-                return None
+                return
             raise PackageNotFoundError
 
         mock_distribution.side_effect = _distribution

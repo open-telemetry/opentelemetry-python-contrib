@@ -140,7 +140,8 @@ API
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Collection, TypeVar
+from collections.abc import Callable, Collection
+from typing import Any, TypeVar
 
 import psycopg  # pylint: disable=import-self
 from psycopg.sql import Composable  # pylint: disable=no-name-in-module

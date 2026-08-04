@@ -7,15 +7,12 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from os import environ
 from typing import (
     TYPE_CHECKING,
-    Iterable,
     Literal,
-    Mapping,
-    Sequence,
-    Union,
     cast,
     overload,
 )
@@ -223,11 +220,8 @@ def is_content_enabled(mode: Literal[_StabilityMode.DEFAULT]) -> bool: ...
 
 
 def is_content_enabled(
-    mode: Union[
-        Literal[_StabilityMode.DEFAULT],
-        Literal[_StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
-    ],
-) -> Union[bool, ContentCapturingMode]:
+    mode: Literal[_StabilityMode.DEFAULT, _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
+) -> bool | ContentCapturingMode:
     if mode == _StabilityMode.DEFAULT:
         capture_content = environ.get(
             OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"

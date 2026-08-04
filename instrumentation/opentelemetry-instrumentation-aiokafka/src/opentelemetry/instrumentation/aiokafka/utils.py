@@ -6,18 +6,12 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+from collections.abc import Awaitable, Callable, MutableSequence, Sequence
 from logging import getLogger
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Dict,
-    MutableSequence,
-    Optional,
     Protocol,
-    Sequence,
-    Tuple,
     cast,
 )
 
@@ -62,20 +56,20 @@ if TYPE_CHECKING:
         ) -> asyncio.Future[RecordMetadata]: ...
 
     ProduceHookT = Callable[
-        [Span, Tuple[Any, ...], Dict[str, Any]], Awaitable[None]
+        [Span, tuple[Any, ...], dict[str, Any]], Awaitable[None]
     ]
 
     ConsumeHookT = Callable[
         [
             Span,
             aiokafka.ConsumerRecord[object, object],
-            Tuple[aiokafka.TopicPartition, ...],
-            Dict[str, Any],
+            tuple[aiokafka.TopicPartition, ...],
+            dict[str, Any],
         ],
         Awaitable[None],
     ]
 
-    HeadersT = Sequence[Tuple[str, Optional[bytes]]]
+    HeadersT = Sequence[tuple[str, bytes | None]]
 
 _LOG = getLogger(__name__)
 
@@ -135,8 +129,8 @@ def _extract_send_headers(
 
 
 def _move_headers_to_kwargs(
-    args: Tuple[Any], kwargs: Dict[str, Any]
-) -> Tuple[Tuple[Any], Dict[str, Any]]:
+    args: tuple[Any], kwargs: dict[str, Any]
+) -> tuple[tuple[Any], dict[str, Any]]:
     """Move headers from args to kwargs"""
     if len(args) > 5:
         kwargs["headers"] = args[5]

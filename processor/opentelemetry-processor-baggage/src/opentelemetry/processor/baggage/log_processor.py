@@ -1,7 +1,8 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.processor.baggage.processor import BaggageKeyPredicateT

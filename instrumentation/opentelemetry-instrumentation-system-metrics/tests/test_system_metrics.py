@@ -826,7 +826,7 @@ class TestSystemMetrics(TestBase):
         PMem = namedtuple("PMem", ["rss", "vms"])
 
         mock_process_memory_info.configure_mock(
-            **{"return_value": PMem(rss=1, vms=2)}
+            return_value=PMem(rss=1, vms=2)
         )
 
         expected = [
@@ -839,7 +839,7 @@ class TestSystemMetrics(TestBase):
         PMem = namedtuple("PMem", ["rss", "vms"])
 
         mock_process_memory_info.configure_mock(
-            **{"return_value": PMem(rss=1, vms=2)}
+            return_value=PMem(rss=1, vms=2)
         )
 
         expected = [
@@ -852,7 +852,7 @@ class TestSystemMetrics(TestBase):
         PCPUTimes = namedtuple("PCPUTimes", ["user", "system"])
 
         mock_process_cpu_times.configure_mock(
-            **{"return_value": PCPUTimes(user=1.1, system=2.2)}
+            return_value=PCPUTimes(user=1.1, system=2.2)
         )
 
         expected = [
@@ -866,7 +866,7 @@ class TestSystemMetrics(TestBase):
         PCtxSwitches = namedtuple("PCtxSwitches", ["voluntary", "involuntary"])
 
         mock_process_num_ctx_switches.configure_mock(
-            **{"return_value": PCtxSwitches(voluntary=1, involuntary=2)}
+            return_value=PCtxSwitches(voluntary=1, involuntary=2)
         )
 
         expected = [
@@ -885,7 +885,7 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.Process.num_threads")
     def test_thread_count(self, mock_process_thread_num):
-        mock_process_thread_num.configure_mock(**{"return_value": 42})
+        mock_process_thread_num.configure_mock(return_value=42)
 
         expected = [_SystemMetricsResult({}, 42)]
         self._test_metrics("process.thread.count", expected)
@@ -895,7 +895,7 @@ class TestSystemMetrics(TestBase):
         PIOCounters = namedtuple("PIOCounters", ["read_bytes", "write_bytes"])
 
         mock_process_io_counters.configure_mock(
-            **{"return_value": PIOCounters(read_bytes=1024, write_bytes=2048)}
+            return_value=PIOCounters(read_bytes=1024, write_bytes=2048)
         )
 
         expected = [
@@ -916,7 +916,7 @@ class TestSystemMetrics(TestBase):
     @mock.patch("psutil.cpu_count")
     def test_cpu_utilization(self, mock_cpu_count, mock_process_cpu_percent):
         mock_cpu_count.return_value = 1
-        mock_process_cpu_percent.configure_mock(**{"return_value": 42})
+        mock_process_cpu_percent.configure_mock(return_value=42)
 
         expected = [_SystemMetricsResult({}, 0.42)]
         self._test_metrics("process.cpu.utilization", expected)
@@ -924,7 +924,7 @@ class TestSystemMetrics(TestBase):
     @skipIf(sys.platform == "win32", "No file descriptors on Windows")
     @mock.patch("psutil.Process.num_fds")
     def test_open_file_descriptor_count(self, mock_process_num_fds):
-        mock_process_num_fds.configure_mock(**{"return_value": 3})
+        mock_process_num_fds.configure_mock(return_value=3)
 
         expected = [_SystemMetricsResult({}, 3)]
         self._test_metrics(
@@ -938,7 +938,7 @@ class TestSystemMetrics(TestBase):
         PMem = namedtuple("PMem", ["rss", "vms"])
 
         mock_process_memory_info.configure_mock(
-            **{"return_value": PMem(rss=1, vms=2)}
+            return_value=PMem(rss=1, vms=2)
         )
 
         expected = [
@@ -954,7 +954,7 @@ class TestSystemMetrics(TestBase):
         PCPUTimes = namedtuple("PCPUTimes", ["user", "system"])
 
         mock_process_cpu_times.configure_mock(
-            **{"return_value": PCPUTimes(user=1.1, system=2.2)}
+            return_value=PCPUTimes(user=1.1, system=2.2)
         )
 
         expected = [
@@ -970,7 +970,7 @@ class TestSystemMetrics(TestBase):
         python_implementation().lower() == "pypy", "not supported for pypy"
     )
     def test_runtime_get_count(self, mock_gc_get_count):
-        mock_gc_get_count.configure_mock(**{"return_value": (1, 2, 3)})
+        mock_gc_get_count.configure_mock(return_value=(1, 2, 3))
 
         expected_gc_count = [
             _SystemMetricsResult({"count": "0"}, 1),
@@ -988,13 +988,11 @@ class TestSystemMetrics(TestBase):
     )
     def test_runtime_get_gc_collections(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
-            **{
-                "return_value": [
+            return_value=[
                     {"collections": 10, "collected": 100, "uncollectable": 1},
                     {"collections": 20, "collected": 200, "uncollectable": 2},
                     {"collections": 30, "collected": 300, "uncollectable": 3},
                 ]
-            }
         )
         expected_gc_collections = [
             _SystemMetricsResult(
@@ -1018,13 +1016,11 @@ class TestSystemMetrics(TestBase):
     )
     def test_runtime_get_gc_collected_objects(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
-            **{
-                "return_value": [
+            return_value=[
                     {"collections": 10, "collected": 100, "uncollectable": 1},
                     {"collections": 20, "collected": 200, "uncollectable": 2},
                     {"collections": 30, "collected": 300, "uncollectable": 3},
                 ]
-            }
         )
         expected_gc_collected_objects = [
             _SystemMetricsResult(
@@ -1048,13 +1044,11 @@ class TestSystemMetrics(TestBase):
     )
     def test_runtime_get_gc_uncollectable_objects(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
-            **{
-                "return_value": [
+            return_value=[
                     {"collections": 10, "collected": 100, "uncollectable": 1},
                     {"collections": 20, "collected": 200, "uncollectable": 2},
                     {"collections": 30, "collected": 300, "uncollectable": 3},
                 ]
-            }
         )
         expected_gc_uncollectable_objects = [
             _SystemMetricsResult(
@@ -1077,7 +1071,7 @@ class TestSystemMetrics(TestBase):
         PCtxSwitches = namedtuple("PCtxSwitches", ["voluntary", "involuntary"])
 
         mock_process_num_ctx_switches.configure_mock(
-            **{"return_value": PCtxSwitches(voluntary=1, involuntary=2)}
+            return_value=PCtxSwitches(voluntary=1, involuntary=2)
         )
 
         expected = [
@@ -1100,7 +1094,7 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.Process.num_threads")
     def test_runtime_thread_count(self, mock_process_thread_num):
-        mock_process_thread_num.configure_mock(**{"return_value": 42})
+        mock_process_thread_num.configure_mock(return_value=42)
 
         expected = [_SystemMetricsResult({}, 42)]
         self._test_metrics(
@@ -1109,7 +1103,7 @@ class TestSystemMetrics(TestBase):
 
     @mock.patch("psutil.Process.cpu_percent")
     def test_runtime_cpu_utilization(self, mock_process_cpu_percent):
-        mock_process_cpu_percent.configure_mock(**{"return_value": 42})
+        mock_process_cpu_percent.configure_mock(return_value=42)
 
         expected = [_SystemMetricsResult({}, 0.42)]
         self._test_metrics(

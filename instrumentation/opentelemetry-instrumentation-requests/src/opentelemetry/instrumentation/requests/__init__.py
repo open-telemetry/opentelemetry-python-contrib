@@ -174,8 +174,9 @@ from __future__ import annotations
 
 import functools
 import types
+from collections.abc import Callable, Collection
 from timeit import default_timer
-from typing import Any, Callable, Collection, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from requests.models import PreparedRequest, Response

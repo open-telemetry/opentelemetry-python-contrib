@@ -45,8 +45,9 @@ When running the above example you will see the following output:
 """
 
 import logging  # pylint: disable=import-self
+from collections.abc import Collection
 from os import environ
-from typing import Collection, Optional
+from typing import Optional
 
 from opentelemetry._logs import get_logger_provider
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor
@@ -73,7 +74,7 @@ from opentelemetry.trace import (
     get_tracer_provider,
 )
 
-__doc__ = _MODULE_DOC  # noqa: A001
+__doc__ = _MODULE_DOC
 
 LEVELS = {
     "debug": logging.DEBUG,
@@ -85,7 +86,7 @@ LEVELS = {
 _logger = logging.getLogger(__name__)
 
 
-def _get_log_level(level_name: Optional[str]) -> Optional[int]:
+def _get_log_level(level_name: str | None) -> int | None:
     if level_name is None:
         return None
     result = logging.getLevelName(level_name.upper().strip())

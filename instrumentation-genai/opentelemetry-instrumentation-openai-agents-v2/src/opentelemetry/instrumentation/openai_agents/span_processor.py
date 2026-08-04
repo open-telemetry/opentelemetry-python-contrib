@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import importlib
 import logging
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Iterator, Optional, Sequence
+from typing import Any
 from urllib.parse import urlparse
 
 from opentelemetry.util.genai.utils import gen_ai_json_dumps
@@ -43,9 +44,9 @@ try:
     )
 except ModuleNotFoundError:  # pragma: no cover - test stubs
     tracing_module = importlib.import_module("agents.tracing")
-    Span = getattr(tracing_module, "Span")
-    Trace = getattr(tracing_module, "Trace")
-    TracingProcessor = getattr(tracing_module, "TracingProcessor")
+    Span = tracing_module.Span
+    Trace = tracing_module.Trace
+    TracingProcessor = tracing_module.TracingProcessor
     AgentSpanData = getattr(tracing_module, "AgentSpanData", Any)  # type: ignore[assignment]
     FunctionSpanData = getattr(tracing_module, "FunctionSpanData", Any)  # type: ignore[assignment]
     GenerationSpanData = getattr(tracing_module, "GenerationSpanData", Any)  # type: ignore[assignment]
@@ -248,7 +249,7 @@ GEN_AI_TOKEN_TYPE = _attr("GEN_AI_TOKEN_TYPE", "gen_ai.token.type")
 # ---- Normalization utilities (embedded from utils.py) ----
 
 
-def normalize_provider(provider: Optional[str]) -> Optional[str]:
+def normalize_provider(provider: str | None) -> str | None:
     """Normalize provider name to spec-compliant value."""
     if not provider:
         return None
@@ -258,7 +259,7 @@ def normalize_provider(provider: Optional[str]) -> Optional[str]:
     return provider  # passthrough if unknown (forward compat)
 
 
-def validate_tool_type(tool_type: Optional[str]) -> str:
+def validate_tool_type(tool_type: str | None) -> str:
     """Validate and normalize tool type."""
     if not tool_type:
         return GenAIToolType.FUNCTION  # default
@@ -270,7 +271,7 @@ def validate_tool_type(tool_type: Optional[str]) -> str:
     )
 
 
-def normalize_output_type(output_type: Optional[str]) -> str:
+def normalize_output_type(output_type: str | None) -> str:
     """Normalize output type to spec-compliant value."""
     if not output_type:
         return GenAIOutputType.TEXT  # default
@@ -297,8 +298,6 @@ def normalize_output_type(output_type: Optional[str]) -> str:
     return GenAIOutputType.TEXT  # default for unknown
 
 
-if TYPE_CHECKING:
-    pass
 
 # Legacy attributes removed
 
@@ -334,9 +333,9 @@ class ContentCaptureMode(Enum):
 class ContentPayload:
     """Container for normalized content associated with a span."""
 
-    input_messages: Optional[list[dict[str, Any]]] = None
-    output_messages: Optional[list[dict[str, Any]]] = None
-    system_instructions: Optional[list[dict[str, str]]] = None
+    input_messages: list[dict[str, Any]] | None = None
+    output_messages: list[dict[str, Any]] | None = None
+    system_instructions: list[dict[str, str]] | None = None
     tool_arguments: Any = None
     tool_result: Any = None
 
@@ -354,7 +353,7 @@ def _is_instance_of(value: Any, classes: Any) -> bool:
     return False
 
 
-def _infer_server_attributes(base_url: Optional[str]) -> dict[str, Any]:
+def _infer_server_attributes(base_url: str | None) -> dict[str, Any]:
     """Return server.address / server.port attributes if base_url provided."""
     out: dict[str, Any] = {}
     if not base_url:
@@ -395,9 +394,9 @@ def _get_span_status(span: Span[Any]) -> Status:
 
 def get_span_name(
     operation_name: str,
-    model: Optional[str] = None,
-    agent_name: Optional[str] = None,
-    tool_name: Optional[str] = None,
+    model: str | None = None,
+    agent_name: str | None = None,
+    tool_name: str | None = None,
 ) -> str:
     """Generate spec-compliant span name based on operation type."""
     base_name = operation_name
@@ -432,23 +431,23 @@ class GenAISemanticProcessor(TracingProcessor):
     # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
-        tracer: Optional[Tracer] = None,
+        tracer: Tracer | None = None,
         system_name: str = "openai",
         include_sensitive_data: bool = True,
         content_mode: ContentCaptureMode = ContentCaptureMode.SPAN_AND_EVENT,
-        base_url: Optional[str] = None,
-        agent_name: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        agent_description: Optional[str] = None,
-        server_address: Optional[str] = None,
-        server_port: Optional[int] = None,
+        base_url: str | None = None,
+        agent_name: str | None = None,
+        agent_id: str | None = None,
+        agent_description: str | None = None,
+        server_address: str | None = None,
+        server_port: int | None = None,
         metrics_enabled: bool = True,
-        agent_name_default: Optional[str] = None,
-        agent_id_default: Optional[str] = None,
-        agent_description_default: Optional[str] = None,
-        base_url_default: Optional[str] = None,
-        server_address_default: Optional[str] = None,
-        server_port_default: Optional[int] = None,
+        agent_name_default: str | None = None,
+        agent_id_default: str | None = None,
+        agent_description_default: str | None = None,
+        base_url_default: str | None = None,
+        server_address_default: str | None = None,
+        server_port_default: int | None = None,
     ):
         """Initialize processor with metrics support.
 
@@ -512,14 +511,14 @@ class GenAISemanticProcessor(TracingProcessor):
         self._root_spans: dict[str, OtelSpan] = {}
         self._otel_spans: dict[str, OtelSpan] = {}
         self._tokens: dict[str, object] = {}
-        self._span_parents: dict[str, Optional[str]] = {}
-        self._agent_content: dict[str, Dict[str, list[Any]]] = {}
+        self._span_parents: dict[str, str | None] = {}
+        self._agent_content: dict[str, dict[str, list[Any]]] = {}
 
         # Metrics configuration
         self._metrics_enabled = metrics_enabled
         self._meter = None
-        self._duration_histogram: Optional[Histogram] = None
-        self._token_usage_histogram: Optional[Histogram] = None
+        self._duration_histogram: Histogram | None = None
+        self._token_usage_histogram: Histogram | None = None
         if self._metrics_enabled:
             self._init_metrics()
 
@@ -630,7 +629,7 @@ class GenAISemanticProcessor(TracingProcessor):
         span: Span[Any],
         otel_span: OtelSpan,
         payload: ContentPayload,
-        agent_content: Optional[Dict[str, list[Any]]] = None,
+        agent_content: dict[str, list[Any]] | None = None,
     ) -> None:
         """Intentionally skip emitting gen_ai.* events to avoid payload duplication."""
         if (
@@ -887,7 +886,7 @@ class GenAISemanticProcessor(TracingProcessor):
         """
         messages: list[dict[str, Any]] = []
         parts: list[dict[str, Any]] = []
-        finish_reason: Optional[str] = None
+        finish_reason: str | None = None
 
         # Response span: prefer consolidated output_text
         response = getattr(span_data, "response", None)
@@ -1087,7 +1086,7 @@ class GenAISemanticProcessor(TracingProcessor):
 
         elif _is_instance_of(span_data, FunctionSpanData) and capture_tools:
 
-            def _serialize_tool_value(value: Any) -> Optional[str]:
+            def _serialize_tool_value(value: Any) -> str | None:
                 if value is None:
                     return None
                 if isinstance(value, (dict, list)):
@@ -1104,8 +1103,8 @@ class GenAISemanticProcessor(TracingProcessor):
         return payload
 
     def _find_agent_parent_span_id(
-        self, span_id: Optional[str]
-    ) -> Optional[str]:
+        self, span_id: str | None
+    ) -> str | None:
         """Return nearest ancestor span id that represents an agent."""
         current = span_id
         visited: set[str] = set()
@@ -1263,7 +1262,7 @@ class GenAISemanticProcessor(TracingProcessor):
             return
         if hasattr(usage, "total_tokens"):
             try:
-                setattr(usage, "total_tokens", None)
+                usage.total_tokens = None
             except Exception:  # pragma: no cover - defensive
                 try:
                     delattr(usage, "total_tokens")
@@ -1518,7 +1517,6 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def force_flush(self) -> None:
         """Force flush (no-op for this processor)."""
-        pass
 
     def _get_operation_name(self, span_data: Any) -> str:
         """Determine operation name from span data type."""
@@ -1554,7 +1552,7 @@ class GenAISemanticProcessor(TracingProcessor):
         self,
         span: Span[Any],
         payload: ContentPayload,
-        agent_content: Optional[Dict[str, list[Any]]] = None,
+        agent_content: dict[str, list[Any]] | None = None,
     ) -> Iterator[tuple[str, AttributeValue]]:
         """Yield (attr, value) pairs for GenAI semantic conventions."""
         span_data = span.span_data
@@ -1823,7 +1821,7 @@ class GenAISemanticProcessor(TracingProcessor):
     def _get_attributes_from_agent_span_data(
         self,
         span_data: AgentSpanData,
-        agent_content: Optional[Dict[str, list[Any]]] = None,
+        agent_content: dict[str, list[Any]] | None = None,
     ) -> Iterator[tuple[str, AttributeValue]]:
         """Extract attributes from agent span."""
         yield GEN_AI_OPERATION_NAME, self._get_operation_name(span_data)
@@ -2192,15 +2190,15 @@ class GenAISemanticProcessor(TracingProcessor):
 
 
 __all__ = [
-    "GenAIProvider",
-    "GenAIOperationName",
-    "GenAIToolType",
-    "GenAIOutputType",
-    "GenAIEvaluationAttributes",
     "ContentCaptureMode",
     "ContentPayload",
+    "GenAIEvaluationAttributes",
+    "GenAIOperationName",
+    "GenAIOutputType",
+    "GenAIProvider",
     "GenAISemanticProcessor",
-    "normalize_provider",
+    "GenAIToolType",
     "normalize_output_type",
+    "normalize_provider",
     "validate_tool_type",
 ]

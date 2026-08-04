@@ -4,7 +4,7 @@
 """Shared test utilities for OpenAI instrumentation tests."""
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.semconv._incubating.attributes import (
@@ -78,13 +78,13 @@ def assert_all_attributes(
     latest_experimental_enabled: bool,
     response_id: str = None,
     response_model: str = None,
-    input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
     operation_name: str = "chat",
     server_address: str = "api.openai.com",
     server_port: int = 443,
-    request_service_tier: Optional[str] = None,
-    response_service_tier: Optional[str] = None,
+    request_service_tier: str | None = None,
+    response_service_tier: str | None = None,
 ):
     assert span.name == f"{operation_name} {request_model}"
     assert (

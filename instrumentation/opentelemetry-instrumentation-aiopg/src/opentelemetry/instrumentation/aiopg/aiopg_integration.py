@@ -40,8 +40,8 @@ class AiopgIntegration(DatabaseApiIntegration):
     async def wrapped_connection(
         self,
         connect_method: typing.Callable[..., typing.Any],
-        args: typing.Tuple[typing.Any, typing.Any],
-        kwargs: typing.Dict[typing.Any, typing.Any],
+        args: tuple[typing.Any, typing.Any],
+        kwargs: dict[typing.Any, typing.Any],
     ):
         """Add object proxy to connection object."""
         connection = await connect_method(*args, **kwargs)
@@ -107,8 +107,8 @@ class AsyncCursorTracer(CursorTracer):
         self,
         cursor,
         query_method: typing.Callable[..., typing.Any],
-        *args: typing.Tuple[typing.Any, typing.Any],
-        **kwargs: typing.Dict[typing.Any, typing.Any],
+        *args: tuple[typing.Any, typing.Any],
+        **kwargs: dict[typing.Any, typing.Any],
     ):
         operation_name = self.get_operation_name(cursor, args)
 

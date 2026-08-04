@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import types
+from collections.abc import Callable
 from logging import getLogger
 from time import time
 from timeit import default_timer
-from typing import Callable
 
 from django import VERSION as django_version
 from django.http import HttpRequest, HttpResponse
@@ -148,7 +148,7 @@ class _DjangoMiddleware:
         if method == "_OTHER":
             return "HTTP"
         try:
-            if getattr(request, "resolver_match"):
+            if request.resolver_match:
                 match = request.resolver_match
             else:
                 match = resolve(request.path)

@@ -3,13 +3,13 @@
 
 import os
 import re
-from typing import Iterable, Optional, Set
+from collections.abc import Iterable
 
 ALLOWED = True
 DENIED = False
 
 
-def _parse_env_list(s: str) -> Set[str]:
+def _parse_env_list(s: str) -> set[str]:
     result = set()
     for entry in s.split(","):
         stripped_entry = entry.strip()
@@ -20,7 +20,7 @@ def _parse_env_list(s: str) -> Set[str]:
 
 
 class _CompoundMatcher:
-    def __init__(self, entries: Set[str]):
+    def __init__(self, entries: set[str]):
         self._match_all = "*" in entries
         self._entries = entries
         self._regex_matcher = None
@@ -59,8 +59,8 @@ class _CompoundMatcher:
 class AllowList:
     def __init__(
         self,
-        includes: Optional[Iterable[str]] = None,
-        excludes: Optional[Iterable[str]] = None,
+        includes: Iterable[str] | None = None,
+        excludes: Iterable[str] | None = None,
     ):
         self._includes = _CompoundMatcher(set(includes or []))
         self._excludes = _CompoundMatcher(set(excludes or []))
@@ -77,7 +77,7 @@ class AllowList:
 
     @staticmethod
     def from_env(
-        includes_env_var: str, excludes_env_var: Optional[str] = None
+        includes_env_var: str, excludes_env_var: str | None = None
     ):
         includes = _parse_env_list(os.getenv(includes_env_var) or "")
         excludes = set()

@@ -288,9 +288,9 @@ API
 
 """
 
+from collections.abc import Collection
 from logging import getLogger
 from os import environ
-from typing import Collection
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
