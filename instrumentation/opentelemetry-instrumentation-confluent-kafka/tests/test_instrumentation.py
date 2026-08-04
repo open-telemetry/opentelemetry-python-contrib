@@ -550,7 +550,7 @@ class TestConfluentKafka(TestBase):
             "test-cluster-xyz",
         )
 
-    def test_cluster_id_set_on_consumer_span_via_list_topics_when_cache_empty(
+    def test_cluster_id_not_set_on_consumer_span_when_cache_empty(
         self,
     ) -> None:
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
@@ -569,7 +569,6 @@ class TestConfluentKafka(TestBase):
                 "auto.offset.reset": "earliest",
             },
         )
-        consumer._mock_cluster_id = "cluster-from-list-topics"
 
         self.memory_exporter.clear()
         consumer = instrumentation.instrument_consumer(consumer)
@@ -581,9 +580,9 @@ class TestConfluentKafka(TestBase):
             for s in self.memory_exporter.get_finished_spans()
             if s.name == "topic-1 process"
         )
-        self.assertEqual(
-            process_span.attributes["messaging.kafka.cluster.id"],
-            "cluster-from-list-topics",
+        self.assertNotIn(
+            "messaging.kafka.cluster.id",
+            process_span.attributes,
         )
 
     def test_cluster_id_reflects_current_value(self) -> None:
@@ -636,7 +635,7 @@ class TestConfluentKafka(TestBase):
             mock_lt.assert_not_called()
         self.assertEqual(result2, "initial-cluster")
 
-    def test_cluster_id_consumer_uses_bootstrap_cache_after_first_call(
+    def test_cluster_id_consumer_reads_bootstrap_cache_only(
         self,
     ) -> None:
         from unittest.mock import patch  # noqa: PLC0415
@@ -657,23 +656,23 @@ class TestConfluentKafka(TestBase):
                 "auto.offset.reset": "earliest",
             },
         )
-        consumer._mock_cluster_id = "initial-cluster"
 
-        # First call: cache miss → calls list_topics(timeout=1.0) and populates cache.
-        result = _extract_cluster_id(consumer, "localhost:29092")
-        self.assertEqual(result, "initial-cluster")
-        self.assertEqual(
-            _cluster_id_by_bootstrap.get("localhost:29092"), "initial-cluster"
-        )
+        # Cache empty → returns None without calling list_topics.
+        with patch.object(
+            consumer, "list_topics", wraps=consumer.list_topics
+        ) as mock_lt:
+            result = _extract_cluster_id(consumer, "localhost:29092")
+            mock_lt.assert_not_called()
+        self.assertIsNone(result)
 
-        # Second call: bootstrap cache hit → list_topics must not be called again.
-        consumer._mock_cluster_id = "different-cluster"
+        # Cache pre-populated (e.g. by a producer) → returns cached value.
+        _cluster_id_by_bootstrap["localhost:29092"] = "producer-cluster"
         with patch.object(
             consumer, "list_topics", wraps=consumer.list_topics
         ) as mock_lt:
             result2 = _extract_cluster_id(consumer, "localhost:29092")
             mock_lt.assert_not_called()
-        self.assertEqual(result2, "initial-cluster")
+        self.assertEqual(result2, "producer-cluster")
 
     def test_extract_cluster_id_returns_none_for_none_instance(self) -> None:
         from opentelemetry.instrumentation.confluent_kafka.utils import (  # noqa: PLC0415
