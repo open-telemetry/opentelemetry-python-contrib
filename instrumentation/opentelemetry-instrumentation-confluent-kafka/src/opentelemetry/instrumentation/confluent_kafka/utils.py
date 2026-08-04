@@ -222,6 +222,8 @@ def _enrich_span(
 
     if operation:
         span.set_attribute(MESSAGING_OPERATION, operation.value)
+    else:
+        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
 
     _set_bootstrap_servers_attributes(span, bootstrap_servers)
 
