@@ -142,6 +142,19 @@ will also be configured by this setting.
 Warning:
     Capture of sqlcomment in ``db.statement``/``db.query.text`` may have high cardinality without platform normalization. See `Semantic Conventions for database spans <https://opentelemetry.io/docs/specs/semconv/database/database-spans/#generating-a-summary-of-the-query-text>`_ for more information.
 
+Capture parameters
+******************
+By default, only statements are captured, without the associated query parameters.
+To capture query parameters, enable ``capture_parameters``.
+
+.. code:: python
+
+    from opentelemetry.instrumentation.pymysql import PyMySQLInstrumentor
+
+    PyMySQLInstrumentor().instrument(
+        capture_parameters=True,
+    )
+
 API
 ---
 """
@@ -178,6 +191,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -190,6 +204,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -203,6 +218,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         enable_commenter=None,
         commenter_options=None,
         enable_attribute_commenter=None,
+        capture_parameters=False,
     ):
         """Enable instrumentation in a PyMySQL connection.
 
@@ -221,6 +237,8 @@ class PyMySQLInstrumentor(BaseInstrumentor):
                 You can specify various options, such as enabling driver information, database version logging,
                 traceparent propagation, and other customizable metadata enhancements.
                 See *SQLCommenter Configurations* above for more information.
+            capture_parameters:
+                A flag to enable query parameter capture.
         Returns:
             An instrumented connection.
         """
@@ -236,6 +254,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             connect_module=pymysql,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     @staticmethod
