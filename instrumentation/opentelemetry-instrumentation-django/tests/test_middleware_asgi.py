@@ -72,6 +72,7 @@ from .views import (
     async_excluded_noarg,
     async_excluded_noarg2,
     async_route_span_name,
+    async_streaming,
     async_traced,
     async_traced_template,
     async_with_custom_header,
@@ -87,6 +88,7 @@ else:
 
 urlpatterns = [
     re_path(r"^traced/", async_traced),
+    re_path(r"^streaming/", async_streaming),
     re_path(r"^traced_custom_header/", async_with_custom_header),
     re_path(r"^route/(?P<year>[0-9]{4})/template/$", async_traced_template),
     re_path(r"^error/", async_error),
@@ -245,6 +247,44 @@ class TestMiddlewareAsgi(SimpleTestCase, TestBase):
             "http://testserver/traced/",
         )
         self.assertEqual(span.attributes[HTTP_ROUTE], "^traced/")
+        self.assertEqual(span.attributes[HTTP_SCHEME], "http")
+        self.assertEqual(span.attributes[HTTP_STATUS_CODE], 200)
+
+    async def test_streaming_response_span_closes_after_response_close(self):
+        response = await self.async_client.get("/streaming/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        if hasattr(response.streaming_content, "__aiter__"):
+            streaming_content = response.streaming_content.__aiter__()
+            self.assertEqual(
+                await streaming_content.__anext__(), b"streaming "
+            )
+        else:
+            streaming_content = iter(response.streaming_content)
+            self.assertEqual(next(streaming_content), b"streaming ")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        response.close()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        response.close()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.name, "GET ^streaming/")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes[HTTP_METHOD], "GET")
+        self.assertEqual(
+            span.attributes[HTTP_URL],
+            "http://testserver/streaming/",
+        )
+        self.assertEqual(span.attributes[HTTP_ROUTE], "^streaming/")
         self.assertEqual(span.attributes[HTTP_SCHEME], "http")
         self.assertEqual(span.attributes[HTTP_STATUS_CODE], 200)
 

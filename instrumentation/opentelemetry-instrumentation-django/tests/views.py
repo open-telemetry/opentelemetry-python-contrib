@@ -1,11 +1,16 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-from django.http import HttpResponse
+from django import VERSION
+from django.http import HttpResponse, StreamingHttpResponse
 
 
 def traced(request):  # pylint: disable=unused-argument
     return HttpResponse()
+
+
+def streaming(request):  # pylint: disable=unused-argument
+    return StreamingHttpResponse(iter([b"streaming ", b"response"]))
 
 
 def traced_template(request, year):  # pylint: disable=unused-argument
@@ -48,6 +53,17 @@ def response_with_custom_header(request):
 
 async def async_traced(request):  # pylint: disable=unused-argument
     return HttpResponse()
+
+
+async def async_streaming(request):  # pylint: disable=unused-argument
+    if VERSION < (4, 2):
+        return StreamingHttpResponse(iter([b"streaming ", b"response"]))
+
+    async def streaming_content():
+        yield b"streaming "
+        yield b"response"
+
+    return StreamingHttpResponse(streaming_content())
 
 
 async def async_traced_template(request, year):  # pylint: disable=unused-argument

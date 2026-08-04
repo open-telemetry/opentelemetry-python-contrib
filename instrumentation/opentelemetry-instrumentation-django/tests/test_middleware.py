@@ -58,6 +58,7 @@ from .views import (
     excluded_noarg2,
     response_with_custom_header,
     route_span_name,
+    streaming,
     traced,
     traced_template,
 )
@@ -77,6 +78,7 @@ else:
 
 urlpatterns = [
     re_path(r"^traced/", traced),
+    re_path(r"^streaming/", streaming),
     re_path(r"^traced_custom_header/", response_with_custom_header),
     re_path(r"^route/(?P<year>[0-9]{4})/template/$", traced_template),
     re_path(r"^error/", error),
@@ -239,6 +241,39 @@ class TestMiddleware(WsgiTestBase):
         )
         if DJANGO_2_2:
             self.assertEqual(span.attributes["http.route"], "^traced/")
+        self.assertEqual(span.attributes["http.scheme"], "http")
+        self.assertEqual(span.attributes["http.status_code"], 200)
+
+    def test_streaming_response_span_closes_after_response_close(self):
+        response = Client().get("/streaming/")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        streaming_content = iter(response.streaming_content)
+        self.assertEqual(next(streaming_content), b"streaming ")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 0)
+
+        response.close()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        response.close()
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+
+        span = spans[0]
+        self.assertEqual(span.name, "GET ^streaming/" if DJANGO_2_2 else "GET")
+        self.assertEqual(span.kind, SpanKind.SERVER)
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+        self.assertEqual(span.attributes["http.method"], "GET")
+        self.assertEqual(
+            span.attributes["http.url"],
+            "http://testserver/streaming/",
+        )
+        if DJANGO_2_2:
+            self.assertEqual(span.attributes["http.route"], "^streaming/")
         self.assertEqual(span.attributes["http.scheme"], "http")
         self.assertEqual(span.attributes["http.status_code"], 200)
 
