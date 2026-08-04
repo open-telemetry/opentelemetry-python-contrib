@@ -20,7 +20,7 @@ to every log record without changing the logging format:
 
     LoggingInstrumentor().instrument(inject_trace_context=True)
 
-    logging.warning('OTel test')
+    logging.warning("OTel test")
 
 Alternatively, set ``set_logging_format=True`` (or the environment variable
 ``OTEL_PYTHON_LOG_CORRELATION=true``) to inject those same attributes and
@@ -34,7 +34,7 @@ call ``logging.basicConfig()`` with a format string that includes them:
 
     LoggingInstrumentor().instrument(set_logging_format=True)
 
-    logging.warning('OTel test')
+    logging.warning("OTel test")
 
 When running the above example you will see the following output:
 
