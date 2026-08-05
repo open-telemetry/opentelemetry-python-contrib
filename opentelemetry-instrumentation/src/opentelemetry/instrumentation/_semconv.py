@@ -9,8 +9,9 @@ from enum import Enum
 from typing import Container, Mapping, MutableMapping
 from urllib.parse import urlparse
 
-from packaging import version as package_version
-
+from opentelemetry.instrumentation._packaging import (
+    version as package_version,
+)
 from opentelemetry.instrumentation.utils import http_status_to_status_code
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
