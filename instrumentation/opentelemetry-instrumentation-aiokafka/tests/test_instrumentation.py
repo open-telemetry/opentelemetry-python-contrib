@@ -551,7 +551,7 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         await producer.stop()
 
         self.assertEqual(
-            producer.client._otel_cluster_id, "test-cluster-start"
+            getattr(producer.client, "_otel_cluster_id"), "test-cluster-start"
         )
 
     async def test_start_consumer_wrapper_fetches_cluster_id(self) -> None:
@@ -568,5 +568,5 @@ class TestAIOKafkaInstrumentation(TestBase, IsolatedAsyncioTestCase):
         await consumer.stop()
 
         self.assertEqual(
-            consumer._client._otel_cluster_id, "test-cluster-start"
+            getattr(consumer._client, "_otel_cluster_id"), "test-cluster-start"
         )
