@@ -24,9 +24,11 @@ Run instrumented actor
     broker = RabbitmqBroker()
     remoulade.set_broker(broker)
 
+
     @remoulade.actor
     def multiply(x, y):
         return x * y
+
 
     broker.declare_actor(multiply)
 
