@@ -30,6 +30,4 @@ def _safe_invoke(function: Callable, *args):
         function_name = function.__name__
         function(*args)
     except Exception as ex:  # pylint:disable=broad-except
-        _logger.error(
-            "Error when invoking function '%s'", function_name, exc_info=ex
-        )
+        _logger.error("Error when invoking function '%s'", function_name, exc_info=ex)

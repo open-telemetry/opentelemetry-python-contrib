@@ -25,9 +25,7 @@ Usage
     async def connect():
         cnx = await aiopg.connect(dsn)
         cursor = await cnx.cursor()
-        await cursor.execute(
-            "CREATE TABLE IF NOT EXISTS test (testField INTEGER)"
-        )
+        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
         await cursor.execute("INSERT INTO test (testField) VALUES (123)")
         cursor.close()
         cnx.close()
@@ -37,9 +35,7 @@ Usage
         pool = await aiopg.create_pool(dsn)
         cnx = await pool.acquire()
         cursor = await cnx.cursor()
-        await cursor.execute(
-            "CREATE TABLE IF NOT EXISTS test (testField INTEGER)"
-        )
+        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
         await cursor.execute("INSERT INTO test (testField) VALUES (123)")
         cursor.close()
         cnx.close()
@@ -62,9 +58,7 @@ Usage
         cnx = await aiopg.connect(dsn)
         instrumented_cnx = AiopgInstrumentor().instrument_connection(cnx)
         cursor = await instrumented_cnx.cursor()
-        await cursor.execute(
-            "CREATE TABLE IF NOT EXISTS test (testField INTEGER)"
-        )
+        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
         await cursor.execute("INSERT INTO test (testField) VALUES (123)")
         cursor.close()
         instrumented_cnx.close()
@@ -130,9 +124,7 @@ class AiopgInstrumentor(BaseInstrumentor):
         wrappers.unwrap_create_pool()
 
     # pylint:disable=no-self-use
-    def instrument_connection(
-        self, connection, tracer_provider=None, meter_provider=None
-    ):
+    def instrument_connection(self, connection, tracer_provider=None, meter_provider=None):
         """Enable instrumentation in a aiopg connection.
 
         Args:

@@ -89,9 +89,7 @@ class ConverseStreamWrapper(BaseObjectProxy):
                     self._content_block.setdefault("text", "")
                     self._content_block["text"] += delta["text"]
                 elif "toolUse" in delta:
-                    if (
-                        input_buf := delta["toolUse"].get("input")
-                    ) is not None:
+                    if (input_buf := delta["toolUse"].get("input")) is not None:
                         self._tool_json_input_buf += input_buf
             return
 
@@ -100,13 +98,9 @@ class ConverseStreamWrapper(BaseObjectProxy):
             if self._record_message:
                 if self._tool_json_input_buf:
                     try:
-                        self._content_block["toolUse"]["input"] = json.loads(
-                            self._tool_json_input_buf
-                        )
+                        self._content_block["toolUse"]["input"] = json.loads(self._tool_json_input_buf)
                     except json.JSONDecodeError:
-                        self._content_block["toolUse"]["input"] = (
-                            self._tool_json_input_buf
-                        )
+                        self._content_block["toolUse"]["input"] = self._tool_json_input_buf
                 self._message["content"].append(self._content_block)
                 self._content_block = {}
                 self._tool_json_input_buf = ""
@@ -236,9 +230,7 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
             self._process_invocation_metrics(invocation_metrics)
 
             # transform the shape of the message to match other models
-            self._response["output"] = {
-                "message": {"content": [{"text": chunk["outputText"]}]}
-            }
+            self._response["output"] = {"message": {"content": [{"text": chunk["outputText"]}]}}
             self._complete_stream(self._response)
 
     def _process_amazon_nova_chunk(self, chunk):
@@ -272,9 +264,7 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
                     self._content_block["text"] += delta["text"]
                 elif "toolUse" in delta:
                     self._content_block.setdefault("toolUse", {})
-                    self._content_block["toolUse"]["input"] = json.loads(
-                        delta["toolUse"]["input"]
-                    )
+                    self._content_block["toolUse"]["input"] = json.loads(delta["toolUse"]["input"])
             return
 
         if "contentBlockStop" in chunk:
@@ -333,10 +323,7 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
             # {'type': 'content_block_start', 'index': 1, 'content_block': {'type': 'tool_use', 'id': 'id', 'name': 'func_name', 'input': {}}}
             if self._record_message:
                 block = chunk.get("content_block", {})
-                if (
-                    block.get("type") == "text"
-                    or block.get("type") == "tool_use"
-                ):
+                if block.get("type") == "text" or block.get("type") == "tool_use":
                     self._content_block = block
             return
 
@@ -355,9 +342,7 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
             # {'type': 'content_block_stop', 'index': 0}
             if self._tool_json_input_buf:
                 try:
-                    self._content_block["input"] = json.loads(
-                        self._tool_json_input_buf
-                    )
+                    self._content_block["input"] = json.loads(self._tool_json_input_buf)
                 except json.JSONDecodeError:
                     self._content_block["input"] = self._tool_json_input_buf
             self._message["content"].append(self._content_block)
@@ -367,17 +352,13 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
 
         if message_type == "message_delta":
             # {'type': 'message_delta', 'delta': {'stop_reason': 'end_turn', 'stop_sequence': None}, 'usage': {'output_tokens': 123}}
-            if (
-                stop_reason := chunk.get("delta", {}).get("stop_reason")
-            ) is not None:
+            if (stop_reason := chunk.get("delta", {}).get("stop_reason")) is not None:
                 self._response["stopReason"] = stop_reason
             return
 
         if message_type == "message_stop":
             # {'type': 'message_stop', 'amazon-bedrock-invocationMetrics': {'inputTokenCount': 18, 'outputTokenCount': 123, 'invocationLatency': 5250, 'firstByteLatency': 290}}
-            if invocation_metrics := chunk.get(
-                "amazon-bedrock-invocationMetrics"
-            ):
+            if invocation_metrics := chunk.get("amazon-bedrock-invocationMetrics"):
                 self._process_invocation_metrics(invocation_metrics)
 
             if self._record_message:
@@ -396,26 +377,18 @@ def estimate_token_count(message: str) -> int:
 
 
 def genai_capture_message_content() -> bool:
-    capture_content = environ.get(
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-    )
+    capture_content = environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false")
     return capture_content.lower() == "true"
 
 
-def extract_tool_calls(
-    message: dict[str, Any], capture_content: bool
-) -> Sequence[dict[str, Any]] | None:
+def extract_tool_calls(message: dict[str, Any], capture_content: bool) -> Sequence[dict[str, Any]] | None:
     content = message.get("content")
     if not content:
         return None
 
     tool_uses = [item["toolUse"] for item in content if "toolUse" in item]
     if not tool_uses:
-        tool_uses = [
-            item
-            for item in content
-            if isinstance(item, dict) and item.get("type") == "tool_use"
-        ]
+        tool_uses = [item for item in content if isinstance(item, dict) and item.get("type") == "tool_use"]
         tool_id_key = "id"
     else:
         tool_id_key = "toolUseId"
@@ -440,9 +413,7 @@ def extract_tool_calls(
     return tool_calls
 
 
-def extract_tool_results(
-    message: dict[str, Any], capture_content: bool
-) -> Iterator[dict[str, Any]]:
+def extract_tool_results(message: dict[str, Any], capture_content: bool) -> Iterator[dict[str, Any]]:
     content = message.get("content")
     if not content:
         return
@@ -452,14 +423,10 @@ def extract_tool_results(
         return
 
     # Converse format
-    tool_results = [
-        item["toolResult"] for item in content if "toolResult" in item
-    ]
+    tool_results = [item["toolResult"] for item in content if "toolResult" in item]
     # InvokeModel anthropic.claude format
     if not tool_results:
-        tool_results = [
-            item for item in content if item.get("type") == "tool_result"
-        ]
+        tool_results = [item for item in content if item.get("type") == "tool_result"]
         tool_id_key = "tool_use_id"
     else:
         tool_id_key = "toolUseId"
@@ -480,9 +447,7 @@ def extract_tool_results(
         yield body
 
 
-def message_to_event(
-    message: dict[str, Any], capture_content: bool
-) -> Iterator[LogRecord]:
+def message_to_event(message: dict[str, Any], capture_content: bool) -> Iterator[LogRecord]:
     attributes = {GEN_AI_SYSTEM: GenAiSystemValues.AWS_BEDROCK.value}
     role = message.get("role")
     content = message.get("content")
@@ -513,17 +478,13 @@ def message_to_event(
 
 
 class _Choice:
-    def __init__(
-        self, message: dict[str, Any], finish_reason: str, index: int
-    ):
+    def __init__(self, message: dict[str, Any], finish_reason: str, index: int):
         self.message = message
         self.finish_reason = finish_reason
         self.index = index
 
     @classmethod
-    def from_converse(
-        cls, response: dict[str, Any], capture_content: bool
-    ) -> _Choice:
+    def from_converse(cls, response: dict[str, Any], capture_content: bool) -> _Choice:
         # be defensive about malformed responses, refer to #3958 for more context
         output = response.get("output", {})
         orig_message = output.get("message", {})
@@ -541,9 +502,7 @@ class _Choice:
         return cls(message, response["stopReason"], index=0)
 
     @classmethod
-    def from_invoke_amazon_titan(
-        cls, response: dict[str, Any], capture_content: bool
-    ) -> _Choice:
+    def from_invoke_amazon_titan(cls, response: dict[str, Any], capture_content: bool) -> _Choice:
         result = response["results"][0]
         if capture_content:
             message = {"content": result["outputText"]}
@@ -552,9 +511,7 @@ class _Choice:
         return cls(message, result["completionReason"], index=0)
 
     @classmethod
-    def from_invoke_anthropic_claude(
-        cls, response: dict[str, Any], capture_content: bool
-    ) -> _Choice:
+    def from_invoke_anthropic_claude(cls, response: dict[str, Any], capture_content: bool) -> _Choice:
         message = {"role": response["role"]}
         if tool_calls := extract_tool_calls(response, capture_content):
             message["tool_calls"] = tool_calls
@@ -563,9 +520,7 @@ class _Choice:
         return cls(message, response["stop_reason"], index=0)
 
     @classmethod
-    def from_invoke_cohere_command_r(
-        cls, response: dict[str, Any], capture_content: bool
-    ) -> _Choice:
+    def from_invoke_cohere_command_r(cls, response: dict[str, Any], capture_content: bool) -> _Choice:
         if capture_content:
             message = {"content": response["text"]}
         else:
@@ -573,9 +528,7 @@ class _Choice:
         return cls(message, response["finish_reason"], index=0)
 
     @classmethod
-    def from_invoke_cohere_command(
-        cls, response: dict[str, Any], capture_content: bool
-    ) -> _Choice:
+    def from_invoke_cohere_command(cls, response: dict[str, Any], capture_content: bool) -> _Choice:
         result = response["generations"][0]
         if capture_content:
             message = {"content": result["text"]}
@@ -584,9 +537,7 @@ class _Choice:
         return cls(message, result["finish_reason"], index=0)
 
     @classmethod
-    def from_invoke_meta_llama(
-        cls, response: dict[str, Any], capture_content: bool
-    ) -> _Choice:
+    def from_invoke_meta_llama(cls, response: dict[str, Any], capture_content: bool) -> _Choice:
         if capture_content:
             message = {"content": response["generation"]}
         else:
@@ -594,9 +545,7 @@ class _Choice:
         return cls(message, response["stop_reason"], index=0)
 
     @classmethod
-    def from_invoke_mistral_mistral(
-        cls, response: dict[str, Any], capture_content: bool
-    ) -> _Choice:
+    def from_invoke_mistral_mistral(cls, response: dict[str, Any], capture_content: bool) -> _Choice:
         result = response["outputs"][0]
         if capture_content:
             message = {"content": result["text"]}

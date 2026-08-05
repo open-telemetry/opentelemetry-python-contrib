@@ -136,9 +136,7 @@ class StructlogProcessor:
             The unmodified event_dict (passthrough for other processors).
         """
         logger_name = getattr(logger, "name", __name__)
-        otel_logger = get_logger(
-            logger_name, logger_provider=self._logger_provider
-        )
+        otel_logger = get_logger(logger_name, logger_provider=self._logger_provider)
 
         # Skip emission if we have a no-op logger
         if not isinstance(otel_logger, NoOpLogger):
@@ -162,11 +160,7 @@ class StructlogProcessor:
             Dictionary of attributes to attach to the LogRecord.
         """
         # Start with all non-reserved keys
-        attributes = {
-            k: v
-            for k, v in event_dict.items()
-            if k not in _STRUCTLOG_RESERVED_KEYS
-        }
+        attributes = {k: v for k, v in event_dict.items() if k not in _STRUCTLOG_RESERVED_KEYS}
 
         # Handle exception information
         exc_info = event_dict.get("exc_info")
@@ -183,32 +177,22 @@ class StructlogProcessor:
         if isinstance(exc_info, tuple) and len(exc_info) == 3:
             exctype, value, tb = exc_info
             if exctype is not None:
-                attributes[exception_attributes.EXCEPTION_TYPE] = (
-                    exctype.__name__
-                )
+                attributes[exception_attributes.EXCEPTION_TYPE] = exctype.__name__
             if value is not None and value.args:
-                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(
-                    value.args[0]
-                )
+                attributes[exception_attributes.EXCEPTION_MESSAGE] = str(value.args[0])
             if tb is not None:
-                attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
-                    "".join(traceback.format_exception(*exc_info))
-                )
+                attributes[exception_attributes.EXCEPTION_STACKTRACE] = "".join(traceback.format_exception(*exc_info))
 
         # Handle pre-rendered exception string (from structlog's ExceptionRenderer)
         exception_str = event_dict.get("exception")
         if isinstance(exception_str, str):
             # If we don't already have a stacktrace from exc_info, use this
             if exception_attributes.EXCEPTION_STACKTRACE not in attributes:
-                attributes[exception_attributes.EXCEPTION_STACKTRACE] = (
-                    exception_str
-                )
+                attributes[exception_attributes.EXCEPTION_STACKTRACE] = exception_str
 
         return attributes
 
-    def _translate(
-        self, event_dict: dict, method_name: str | None = None
-    ) -> LogRecord:
+    def _translate(self, event_dict: dict, method_name: str | None = None) -> LogRecord:
         """
         Translate a structlog event dictionary into an OpenTelemetry LogRecord.
 
@@ -233,24 +217,16 @@ class StructlogProcessor:
             level_str = method_name
 
         level_name = level_str.lower() if isinstance(level_str, str) else None
-        levelno = (
-            _STRUCTLOG_LEVEL_TO_LEVELNO.get(level_name)
-            if level_name is not None
-            else None
-        )
+        levelno = _STRUCTLOG_LEVEL_TO_LEVELNO.get(level_name) if level_name is not None else None
 
         if levelno is None:
             severity_number = SeverityNumber.UNSPECIFIED
-            severity_text = (
-                level_str.upper() if isinstance(level_str, str) else None
-            )
+            severity_text = level_str.upper() if isinstance(level_str, str) else None
         else:
             severity_number = std_to_otel(levelno)
             # Normalize severity text to OTel canonical names where structlog
             # level names differ: "warning" -> "WARN", "critical"/"fatal" -> "FATAL"
-            severity_text = _STRUCTLOG_TO_OTEL_SEVERITY_TEXT.get(
-                level_name, level_str.upper()
-            )
+            severity_text = _STRUCTLOG_TO_OTEL_SEVERITY_TEXT.get(level_name, level_str.upper())
 
         # Get the message body
         body = event_dict.get("event")
@@ -275,9 +251,7 @@ class StructlogProcessor:
         """
         Flush the logger provider.
         """
-        if hasattr(self._logger_provider, "force_flush") and callable(
-            self._logger_provider.force_flush
-        ):
+        if hasattr(self._logger_provider, "force_flush") and callable(self._logger_provider.force_flush):
             self._logger_provider.force_flush()
 
 
@@ -336,12 +310,8 @@ class StructlogInstrumentor(BaseInstrumentor):
 
         # Store original configuration functions for later restoration.
         StructlogInstrumentor._original_configure = structlog.configure
-        StructlogInstrumentor._original_configure_once = (
-            structlog.configure_once
-        )
-        StructlogInstrumentor._original_reset_defaults = (
-            structlog.reset_defaults
-        )
+        StructlogInstrumentor._original_configure_once = structlog.configure_once
+        StructlogInstrumentor._original_reset_defaults = structlog.reset_defaults
         StructlogInstrumentor._is_configured_by_app = structlog.is_configured()
 
         # Get current structlog configuration
@@ -357,9 +327,7 @@ class StructlogInstrumentor(BaseInstrumentor):
         current_processors.insert(insert_position, processor)
 
         # Reconfigure structlog with the new processor chain
-        StructlogInstrumentor._original_configure(
-            processors=current_processors
-        )
+        StructlogInstrumentor._original_configure(processors=current_processors)
 
         # Store reference for uninstrumentation
         StructlogInstrumentor._processor = processor
@@ -368,9 +336,7 @@ class StructlogInstrumentor(BaseInstrumentor):
             processors = list(processors)
             if not any(isinstance(p, StructlogProcessor) for p in processors):
                 insert_position = max(len(processors) - 1, 0)
-                processors.insert(
-                    insert_position, StructlogInstrumentor._processor
-                )
+                processors.insert(insert_position, StructlogInstrumentor._processor)
             return processors
 
         def ensure_processor_in_args(
@@ -397,9 +363,7 @@ class StructlogInstrumentor(BaseInstrumentor):
             # configured structlog yet, allow its first configure_once() call
             # and inject the OTel processor into that chain.
             if StructlogInstrumentor._is_configured_by_app:
-                return StructlogInstrumentor._original_configure_once(
-                    *args, **kwargs
-                )
+                return StructlogInstrumentor._original_configure_once(*args, **kwargs)
 
             StructlogInstrumentor._is_configured_by_app = True
             args, kwargs = ensure_processor_in_args(args, kwargs)
@@ -422,22 +386,14 @@ class StructlogInstrumentor(BaseInstrumentor):
         current_processors = list(config.get("processors", []))
 
         # Remove all StructlogProcessor instances
-        new_processors = [
-            p
-            for p in current_processors
-            if not isinstance(p, StructlogProcessor)
-        ]
+        new_processors = [p for p in current_processors if not isinstance(p, StructlogProcessor)]
         configured_by_app = StructlogInstrumentor._is_configured_by_app
 
         # Restore the original structlog.configure before reconfiguring so
         # the patched version does not re-insert the processor.
         structlog.configure = StructlogInstrumentor._original_configure
-        structlog.configure_once = (
-            StructlogInstrumentor._original_configure_once
-        )
-        structlog.reset_defaults = (
-            StructlogInstrumentor._original_reset_defaults
-        )
+        structlog.configure_once = StructlogInstrumentor._original_configure_once
+        structlog.reset_defaults = StructlogInstrumentor._original_reset_defaults
 
         if configured_by_app:
             # Reconfigure structlog without the processor while preserving the

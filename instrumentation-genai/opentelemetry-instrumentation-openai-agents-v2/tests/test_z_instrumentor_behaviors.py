@@ -60,10 +60,7 @@ def test_default_agent_configuration():
         assert processor is not None
         assert processor._agent_name_default == "OpenAI Agent"
         assert processor._agent_id_default == "agent"
-        assert (
-            processor._agent_description_default
-            == "OpenAI Agents instrumentation"
-        )
+        assert processor._agent_description_default == "OpenAI Agents instrumentation"
         assert processor.base_url == "https://api.openai.com"
         assert processor.server_address == "api.openai.com"
         assert processor.server_port == 443

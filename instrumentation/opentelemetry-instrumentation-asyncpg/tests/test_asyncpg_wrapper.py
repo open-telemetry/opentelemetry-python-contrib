@@ -78,9 +78,7 @@ class TestAsyncPGInstrumentation(TestBase):
         AsyncPGInstrumentor().uninstrument()
         for method_name in ["execute", "fetch"]:
             method = getattr(Connection, method_name, None)
-            self.assertFalse(
-                hasattr(method, "_opentelemetry_ext_asyncpg_applied")
-            )
+            self.assertFalse(hasattr(method, "_opentelemetry_ext_asyncpg_applied"))
 
     def test_duplicated_instrumentation_works(self):
         first = AsyncPGInstrumentor()
@@ -97,9 +95,7 @@ class TestAsyncPGInstrumentation(TestBase):
         AsyncPGInstrumentor().uninstrument()
         for method_name in ["execute", "fetch"]:
             method = getattr(Connection, method_name, None)
-            self.assertFalse(
-                hasattr(method, "_opentelemetry_ext_asyncpg_applied")
-            )
+            self.assertFalse(hasattr(method, "_opentelemetry_ext_asyncpg_applied"))
 
     def test_cursor_instrumentation(self):
         def assert_wrapped(assert_fnc):
@@ -156,9 +152,7 @@ class TestAsyncPGInstrumentation(TestBase):
         self.assertTrue(spans[0].status.is_ok)
 
         # Now test that the StopAsyncIteration of the cursor does not get recorded as an ERROR
-        crs_iter = cursor.CursorIterator(
-            conn, "SELECT * FROM test", state, [], Record, 1, 1
-        )
+        crs_iter = cursor.CursorIterator(conn, "SELECT * FROM test", state, [], Record, 1, 1)
 
         with pytest.raises(StopAsyncIteration):
             asyncio.run(anext(crs_iter))
@@ -169,9 +163,7 @@ class TestAsyncPGInstrumentation(TestBase):
 
     def test_no_op_tracer_provider(self):
         AsyncPGInstrumentor().uninstrument()
-        AsyncPGInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        AsyncPGInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
 
         # Mock out all interaction with postgres
         async def bind_mock(*args, **kwargs):
@@ -201,9 +193,7 @@ class TestAsyncPGInstrumentation(TestBase):
         self.assertEqual(len(spans), 0)
 
     def test_prepared_statement_instrumentation(self):
-        methods = [
-            m for m in _PREPARED_STMT_METHODS if hasattr(PreparedStatement, m)
-        ]
+        methods = [m for m in _PREPARED_STMT_METHODS if hasattr(PreparedStatement, m)]
 
         for method_name in methods:
             with self.subTest(method=method_name, phase="before"):
@@ -286,12 +276,8 @@ class TestAsyncPGInstrumentation(TestBase):
                 self.assertEqual(len(spans), 1)
                 self.assertEqual(spans[0].name, expected_name)
                 self.assertTrue(spans[0].status.is_ok)
-                self.assertEqual(
-                    spans[0].attributes.get("db.statement"), query
-                )
-                self.assertEqual(
-                    spans[0].attributes.get("db.system"), "postgresql"
-                )
+                self.assertEqual(spans[0].attributes.get("db.statement"), query)
+                self.assertEqual(spans[0].attributes.get("db.system"), "postgresql")
 
                 apg.uninstrument()
 
@@ -445,9 +431,7 @@ class TestAsyncPGSemconvMigration(TestBase):
         self.assertEqual(span.attributes[SERVER_PORT], 5432)
 
     def test_span_unix_socket_default_semconv(self):
-        conn = self._make_execute_conn(
-            addr="/var/run/postgresql/.s.PGSQL.5432"
-        )
+        conn = self._make_execute_conn(addr="/var/run/postgresql/.s.PGSQL.5432")
         spans = self._run_execute(conn)
 
         self.assertEqual(len(spans), 1)
@@ -456,9 +440,7 @@ class TestAsyncPGSemconvMigration(TestBase):
             span.attributes[NET_PEER_NAME],
             "/var/run/postgresql/.s.PGSQL.5432",
         )
-        self.assertEqual(
-            span.attributes[NET_TRANSPORT], NetTransportValues.OTHER.value
-        )
+        self.assertEqual(span.attributes[NET_TRANSPORT], NetTransportValues.OTHER.value)
         self.assertNotIn(NET_PEER_PORT, span.attributes)
         self.assertNotIn(SERVER_ADDRESS, span.attributes)
 

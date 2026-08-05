@@ -22,12 +22,8 @@ def _get_modules():
     """Lazy import to avoid module conflicts."""
     import importlib
 
-    sp = importlib.import_module(
-        "opentelemetry.instrumentation.openai_agents.span_processor"
-    )
-    init_module = importlib.import_module(
-        "opentelemetry.instrumentation.openai_agents"
-    )
+    sp = importlib.import_module("opentelemetry.instrumentation.openai_agents.span_processor")
+    init_module = importlib.import_module("opentelemetry.instrumentation.openai_agents")
     return sp, init_module
 
 
@@ -100,18 +96,11 @@ class TestResolveSystem:
         )
 
         candidate = next(
-            (
-                member
-                for member in GenAI.GenAiSystemValues
-                if member.name.lower() != member.value
-            ),
+            (member for member in GenAI.GenAiSystemValues if member.name.lower() != member.value),
             None,
         )
         assert candidate is not None
-        assert (
-            init_module._resolve_system(candidate.name.lower())
-            == candidate.value
-        )
+        assert init_module._resolve_system(candidate.name.lower()) == candidate.value
 
     def test_resolve_system_matches_with_whitespace(self):
         _, init_module = _get_modules()
@@ -140,16 +129,12 @@ class TestResolveBool:
     def test_resolve_bool_parses_true_strings(self):
         _, init_module = _get_modules()
         for value in ["true", "TRUE", "1", "yes", "on", "  YES  "]:
-            assert init_module._resolve_bool(value, False) is True, (
-                f"Failed for {value}"
-            )
+            assert init_module._resolve_bool(value, False) is True, f"Failed for {value}"
 
     def test_resolve_bool_parses_false_strings(self):
         _, init_module = _get_modules()
         for value in ["false", "FALSE", "0", "no", "off", "  NO  "]:
-            assert init_module._resolve_bool(value, True) is False, (
-                f"Failed for {value}"
-            )
+            assert init_module._resolve_bool(value, True) is False, f"Failed for {value}"
 
     def test_resolve_bool_returns_default_for_unknown(self):
         _, init_module = _get_modules()
@@ -162,9 +147,7 @@ class TestResolveContentMode:
 
     def test_resolve_content_mode_returns_value_for_enum(self):
         sp, init_module = _get_modules()
-        result = init_module._resolve_content_mode(
-            sp.ContentCaptureMode.SPAN_ONLY
-        )
+        result = init_module._resolve_content_mode(sp.ContentCaptureMode.SPAN_ONLY)
         assert result == sp.ContentCaptureMode.SPAN_ONLY
 
     def test_resolve_content_mode_for_bool_true(self):
@@ -191,17 +174,13 @@ class TestResolveContentMode:
         sp, init_module = _get_modules()
         for value in ["span_only", "span-only", "span"]:
             result = init_module._resolve_content_mode(value)
-            assert result == sp.ContentCaptureMode.SPAN_ONLY, (
-                f"Failed for {value}"
-            )
+            assert result == sp.ContentCaptureMode.SPAN_ONLY, f"Failed for {value}"
 
     def test_resolve_content_mode_event_only_variants(self):
         sp, init_module = _get_modules()
         for value in ["event_only", "event-only", "event"]:
             result = init_module._resolve_content_mode(value)
-            assert result == sp.ContentCaptureMode.EVENT_ONLY, (
-                f"Failed for {value}"
-            )
+            assert result == sp.ContentCaptureMode.EVENT_ONLY, f"Failed for {value}"
 
     def test_resolve_content_mode_span_and_event_variants(self):
         sp, init_module = _get_modules()
@@ -215,17 +194,13 @@ class TestResolveContentMode:
             "yes",
         ]:
             result = init_module._resolve_content_mode(value)
-            assert result == sp.ContentCaptureMode.SPAN_AND_EVENT, (
-                f"Failed for {value}"
-            )
+            assert result == sp.ContentCaptureMode.SPAN_AND_EVENT, f"Failed for {value}"
 
     def test_resolve_content_mode_no_content_variants(self):
         sp, init_module = _get_modules()
         for value in ["no_content", "false", "0", "no", "none"]:
             result = init_module._resolve_content_mode(value)
-            assert result == sp.ContentCaptureMode.NO_CONTENT, (
-                f"Failed for {value}"
-            )
+            assert result == sp.ContentCaptureMode.NO_CONTENT, f"Failed for {value}"
 
 
 # ============================================================================
@@ -353,9 +328,7 @@ class TestInferOutputType:
         TracerProvider, _, _ = _get_otel_test_fixtures()
         provider = TracerProvider()
         tracer = provider.get_tracer(__name__)
-        return sp.GenAISemanticProcessor(
-            tracer=tracer, system_name="openai", metrics_enabled=False
-        )
+        return sp.GenAISemanticProcessor(tracer=tracer, system_name="openai", metrics_enabled=False)
 
     def test_infer_output_type_function_span(self):
         _, FunctionSpanData, _, _ = _get_span_data_classes()
@@ -397,9 +370,7 @@ class TestInferOutputType:
     def test_infer_output_type_json_like_keys(self):
         _, _, GenerationSpanData, _ = _get_span_data_classes()
         processor = self._make_processor()
-        span_data = GenerationSpanData(
-            output=[{"schema": {}, "properties": {}}]
-        )
+        span_data = GenerationSpanData(output=[{"schema": {}, "properties": {}}])
         assert processor._infer_output_type(span_data) == "json"
 
 
@@ -542,16 +513,10 @@ class TestNormalizeMessagesToRoleParts:
         assert "tool_call" in assistant_part_types
         assert "tool_call_response" in assistant_part_types
 
-        tool_call = next(
-            p for p in normalized[0]["parts"] if p["type"] == "tool_call"
-        )
+        tool_call = next(p for p in normalized[0]["parts"] if p["type"] == "tool_call")
         assert tool_call["arguments"] == "readacted"
 
-        tool_response = next(
-            p
-            for p in normalized[0]["parts"]
-            if p["type"] == "tool_call_response"
-        )
+        tool_response = next(p for p in normalized[0]["parts"] if p["type"] == "tool_call_response")
         assert tool_response["result"] == "readacted"
 
         assert normalized[1]["role"] == "tool"
@@ -585,9 +550,7 @@ class TestHelperFunctions:
 
         sp, _ = _get_modules()
 
-        status = sp._get_span_status(
-            SimpleNamespace(error={"message": "boom", "data": "bad"})
-        )
+        status = sp._get_span_status(SimpleNamespace(error={"message": "boom", "data": "bad"}))
         assert status.status_code is StatusCode.ERROR
         assert status.description == "boom: bad"
 
@@ -668,10 +631,7 @@ class TestProcessorConfiguration:
         assert processor.server_address == "api.example.com"
         assert processor.server_port == 8443
         server_attrs = processor._get_server_attributes()
-        assert (
-            server_attrs[sp.ServerAttributes.SERVER_ADDRESS]
-            == "api.example.com"
-        )
+        assert server_attrs[sp.ServerAttributes.SERVER_ADDRESS] == "api.example.com"
         assert server_attrs[sp.ServerAttributes.SERVER_PORT] == 8443
         processor.shutdown()
 
@@ -700,9 +660,7 @@ class TestRecordMetrics:
         duration_histogram = _Histogram()
         token_histogram = _Histogram()
 
-        processor = sp.GenAISemanticProcessor(
-            tracer=tracer, system_name="openai", metrics_enabled=False
-        )
+        processor = sp.GenAISemanticProcessor(tracer=tracer, system_name="openai", metrics_enabled=False)
         processor._metrics_enabled = True
         processor._duration_histogram = duration_histogram
         processor._token_usage_histogram = token_histogram
@@ -730,10 +688,7 @@ class TestRecordMetrics:
         assert duration_attrs["error.type"] == "timeout"
 
         assert len(token_histogram.records) == 2
-        token_types = {
-            token_attrs[sp.GEN_AI_TOKEN_TYPE]
-            for _, token_attrs in token_histogram.records
-        }
+        token_types = {token_attrs[sp.GEN_AI_TOKEN_TYPE] for _, token_attrs in token_histogram.records}
         assert token_types == {"input", "output"}
 
     def test_record_metrics_swallows_exceptions(self):
@@ -748,9 +703,7 @@ class TestRecordMetrics:
             def record(self, value, attributes) -> None:
                 raise RuntimeError("boom")
 
-        processor = sp.GenAISemanticProcessor(
-            tracer=tracer, system_name="openai", metrics_enabled=False
-        )
+        processor = sp.GenAISemanticProcessor(tracer=tracer, system_name="openai", metrics_enabled=False)
         processor._metrics_enabled = True
         processor._duration_histogram = _BoomHistogram()
 
@@ -771,9 +724,7 @@ class TestVersionModule:
     def test_version_importable(self):
         import importlib
 
-        version_module = importlib.import_module(
-            "opentelemetry.instrumentation.openai_agents.version"
-        )
+        version_module = importlib.import_module("opentelemetry.instrumentation.openai_agents.version")
         assert isinstance(version_module.__version__, str)
         assert version_module.__version__
 
@@ -791,9 +742,7 @@ class TestNormalizeToTextParts:
         TracerProvider, _, _ = _get_otel_test_fixtures()
         provider = TracerProvider()
         tracer = provider.get_tracer(__name__)
-        return sp.GenAISemanticProcessor(
-            tracer=tracer, system_name="openai", metrics_enabled=False
-        )
+        return sp.GenAISemanticProcessor(tracer=tracer, system_name="openai", metrics_enabled=False)
 
     def test_normalize_string_content(self):
         processor = self._make_processor()
@@ -810,9 +759,7 @@ class TestNormalizeToTextParts:
 
     def test_normalize_list_with_dict_missing_text_and_other_types(self):
         processor = self._make_processor()
-        parts = processor._normalize_to_text_parts(
-            [{"nope": "missing"}, 123, "ok"]
-        )
+        parts = processor._normalize_to_text_parts([{"nope": "missing"}, 123, "ok"])
         assert [part["content"] for part in parts] == [
             "{'nope': 'missing'}",
             "123",
@@ -855,9 +802,7 @@ class TestCollectSystemInstructions:
         TracerProvider, _, _ = _get_otel_test_fixtures()
         provider = TracerProvider()
         tracer = provider.get_tracer(__name__)
-        return sp.GenAISemanticProcessor(
-            tracer=tracer, system_name="openai", metrics_enabled=False
-        )
+        return sp.GenAISemanticProcessor(tracer=tracer, system_name="openai", metrics_enabled=False)
 
     def test_collect_system_role_message(self):
         processor = self._make_processor()
@@ -891,7 +836,5 @@ class TestCollectSystemInstructions:
 
     def test_collect_skips_non_dict_messages(self):
         processor = self._make_processor()
-        collected = processor._collect_system_instructions(
-            ["not-a-dict", {"role": "system", "content": "hi"}]
-        )
+        collected = processor._collect_system_instructions(["not-a-dict", {"role": "system", "content": "hi"}])
         assert collected[0]["content"] == "hi"

@@ -78,16 +78,10 @@ class TestHTTPAppWithCustomHeaders(TestBase):
 
     def test_http_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
             "http.request.header.regex_test_header_1": ("Regex Test Value 1",),
-            "http.request.header.regex_test_header_2": (
-                "RegexTestValue2,RegexTestValue3",
-            ),
+            "http.request.header.regex_test_header_2": ("RegexTestValue2,RegexTestValue3",),
             "http.request.header.my_secret_header": ("[REDACTED]",),
         }
         resp = self.client.get(
@@ -104,17 +98,13 @@ class TestHTTPAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_http_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.request.header.custom_test_header_3": ("test-header-value-3",),
         }
         resp = self.client.get(
             "/foobar",
@@ -130,21 +120,15 @@ class TestHTTPAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
 
     def test_http_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
             "http.response.header.my_custom_regex_header_1": (
                 "my-custom-regex-value-1",
                 "my-custom-regex-value-2",
@@ -160,25 +144,19 @@ class TestHTTPAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_http_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
         resp = self.client.get("/foobar")
         self.assertEqual(200, resp.status_code)
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 3)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
@@ -236,12 +214,8 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
 
     def test_web_socket_custom_request_headers_in_span_attributes(self):
         expected = {
-            "http.request.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.request.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.request.header.custom_test_header_1": ("test-header-value-1",),
+            "http.request.header.custom_test_header_2": ("test-header-value-2",),
         }
 
         with self.client.websocket_connect(
@@ -257,9 +231,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
@@ -272,9 +244,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
     )
     def test_web_socket_custom_request_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.request.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.request.header.custom_test_header_3": ("test-header-value-3",),
         }
 
         with self.client.websocket_connect(
@@ -290,21 +260,15 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)
 
     def test_web_socket_custom_response_headers_in_span_attributes(self):
         expected = {
-            "http.response.header.custom_test_header_1": (
-                "test-header-value-1",
-            ),
-            "http.response.header.custom_test_header_2": (
-                "test-header-value-2",
-            ),
+            "http.response.header.custom_test_header_1": ("test-header-value-1",),
+            "http.response.header.custom_test_header_2": ("test-header-value-2",),
         }
 
         with self.client.websocket_connect("/foobar_web") as websocket:
@@ -314,17 +278,13 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         self.assertSpanHasAttributes(server_span, expected)
 
     def test_web_socket_custom_response_headers_not_in_span_attributes(self):
         not_expected = {
-            "http.response.header.custom_test_header_3": (
-                "test-header-value-3",
-            ),
+            "http.response.header.custom_test_header_3": ("test-header-value-3",),
         }
 
         with self.client.websocket_connect("/foobar_web") as websocket:
@@ -334,9 +294,7 @@ class TestWebSocketAppWithCustomHeaders(TestBase):
         span_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(span_list), 5)
 
-        server_span = [
-            span for span in span_list if span.kind == trace.SpanKind.SERVER
-        ][0]
+        server_span = [span for span in span_list if span.kind == trace.SpanKind.SERVER][0]
 
         for key, _ in not_expected.items():
             self.assertNotIn(key, server_span.attributes)

@@ -14,9 +14,7 @@ import redis.connection
 
 from opentelemetry.trace import Span
 
-RequestHook = Callable[
-    [Span, redis.connection.Connection, list[Any], dict[str, Any]], None
-]
+RequestHook = Callable[[Span, redis.connection.Connection, list[Any], dict[str, Any]], None]
 ResponseHook = Callable[[Span, redis.connection.Connection, Any], None]
 
 AsyncPipelineInstance = TypeVar(
@@ -24,15 +22,11 @@ AsyncPipelineInstance = TypeVar(
     redis.asyncio.client.Pipeline,
     redis.asyncio.cluster.ClusterPipeline,
 )
-AsyncRedisInstance = TypeVar(
-    "AsyncRedisInstance", redis.asyncio.Redis, redis.asyncio.RedisCluster
-)
+AsyncRedisInstance = TypeVar("AsyncRedisInstance", redis.asyncio.Redis, redis.asyncio.RedisCluster)
 PipelineInstance = TypeVar(
     "PipelineInstance",
     redis.client.Pipeline,
     redis.cluster.ClusterPipeline,
 )
-RedisInstance = TypeVar(
-    "RedisInstance", redis.client.Redis, redis.cluster.RedisCluster
-)
+RedisInstance = TypeVar("RedisInstance", redis.client.Redis, redis.cluster.RedisCluster)
 R = TypeVar("R")
