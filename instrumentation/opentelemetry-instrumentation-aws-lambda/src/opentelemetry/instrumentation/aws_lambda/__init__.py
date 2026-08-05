@@ -337,6 +337,7 @@ def _instrument(
 ):
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
+    # pylint: disable=too-many-branches
     def _instrumented_lambda_handler_call(
         call_wrapped, instance, args, kwargs
     ):

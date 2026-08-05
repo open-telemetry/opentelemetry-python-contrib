@@ -90,12 +90,21 @@ class _OpInvoke(_LambdaOperation):
 # Lambda extension
 ################################################################################
 
+def _is_operation(op: Any) -> bool:
+    try:
+        return (
+            inspect.isclass(op)
+            and issubclass(op, _LambdaOperation)
+            and not inspect.isabstract(op)
+        )
+    except TypeError:
+        return False
+
+
 _OPERATION_MAPPING: dict[str, _LambdaOperation] = {
     op.operation_name(): op
     for op in globals().values()
-    if inspect.isclass(op)
-    and issubclass(op, _LambdaOperation)
-    and not inspect.isabstract(op)
+    if _is_operation(op)
 }
 
 
