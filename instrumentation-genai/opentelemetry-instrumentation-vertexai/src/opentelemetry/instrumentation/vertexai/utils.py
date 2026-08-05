@@ -220,7 +220,9 @@ def is_content_enabled(mode: Literal[_StabilityMode.DEFAULT]) -> bool: ...
 
 
 def is_content_enabled(
-    mode: Literal[_StabilityMode.DEFAULT, _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
+    mode: Literal[
+        _StabilityMode.DEFAULT, _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+    ],
 ) -> bool | ContentCapturingMode:
     if mode == _StabilityMode.DEFAULT:
         capture_content = environ.get(

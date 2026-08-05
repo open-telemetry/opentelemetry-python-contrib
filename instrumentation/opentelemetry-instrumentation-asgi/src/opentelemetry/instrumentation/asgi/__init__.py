@@ -313,9 +313,7 @@ from opentelemetry.util.http import (
 
 
 class ASGIGetter(Getter[dict]):
-    def get(
-        self, carrier: dict, key: str
-    ) -> list[str] | None:
+    def get(self, carrier: dict, key: str) -> list[str] | None:
         """Getter implementation to retrieve a HTTP header value from the ASGI
         scope.
 

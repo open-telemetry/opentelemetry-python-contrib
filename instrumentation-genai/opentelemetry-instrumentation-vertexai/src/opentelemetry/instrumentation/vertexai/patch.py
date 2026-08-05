@@ -125,7 +125,9 @@ class MethodWrappers:
         tracer: Tracer,
         logger: Logger,
         capture_content: bool | ContentCapturingMode,
-        sem_conv_opt_in_mode: Literal[_StabilityMode.DEFAULT, _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL],
+        sem_conv_opt_in_mode: Literal[
+            _StabilityMode.DEFAULT, _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+        ],
         completion_hook: CompletionHook,
     ) -> None:
         self.tracer = tracer

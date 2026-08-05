@@ -17,7 +17,8 @@ def create_response(
     output_tokens: int | None = None,
     cached_tokens: int | None = None,
     model_version: str | None = None,
-    usage_metadata: genai_types.GenerateContentResponseUsageMetadata | None = None,
+    usage_metadata: genai_types.GenerateContentResponseUsageMetadata
+    | None = None,
     **kwargs,
 ) -> genai_types.GenerateContentResponse:
     # Build up the "candidates" subfield

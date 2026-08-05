@@ -183,13 +183,13 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.start_hook(span, event)
             except (
-                Exception
+                Exception  # pylint: disable=broad-exception-caught
             ) as hook_exception:
                 _LOG.exception(hook_exception)
 
             # Add Span to dictionary
             self._span_dict[_get_span_dict_key(event)] = span
-        except Exception as ex:
+        except Exception as ex:  # pylint: disable=broad-exception-caught
             if span is not None and span.is_recording():
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
                 if _report_new(self._semconv_opt_in_mode):
@@ -208,7 +208,7 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.success_hook(span, event)
             except (
-                Exception
+                Exception  # pylint: disable=broad-exception-caught
             ) as hook_exception:
                 _LOG.exception(hook_exception)
         span.end()
@@ -234,7 +234,7 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.failed_hook(span, event)
             except (
-                Exception
+                Exception  # pylint: disable=broad-exception-caught
             ) as hook_exception:
                 _LOG.exception(hook_exception)
         span.end()

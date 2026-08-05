@@ -46,10 +46,22 @@ def test_instrumentation_info(celery_app, memory_exporter):
     assert run_span.parent.span_id == async_span.context.span_id
     assert run_span.context.trace_id == async_span.context.trace_id
 
-    assert async_span.instrumentation_info.name == f"apply_async/{opentelemetry.instrumentation.celery.__name__}"
-    assert async_span.instrumentation_info.version == f"apply_async/{opentelemetry.instrumentation.celery.__version__}"
-    assert run_span.instrumentation_info.name == f"run/{opentelemetry.instrumentation.celery.__name__}"
-    assert run_span.instrumentation_info.version == f"run/{opentelemetry.instrumentation.celery.__version__}"
+    assert (
+        async_span.instrumentation_info.name
+        == f"apply_async/{opentelemetry.instrumentation.celery.__name__}"
+    )
+    assert (
+        async_span.instrumentation_info.version
+        == f"apply_async/{opentelemetry.instrumentation.celery.__version__}"
+    )
+    assert (
+        run_span.instrumentation_info.name
+        == f"run/{opentelemetry.instrumentation.celery.__name__}"
+    )
+    assert (
+        run_span.instrumentation_info.version
+        == f"run/{opentelemetry.instrumentation.celery.__version__}"
+    )
 
 
 def test_fn_task_run(celery_app, memory_exporter):

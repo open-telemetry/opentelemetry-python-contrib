@@ -76,9 +76,7 @@ class AllowList:
         return self._includes.matches(x) and not self._excludes.matches(x)
 
     @staticmethod
-    def from_env(
-        includes_env_var: str, excludes_env_var: str | None = None
-    ):
+    def from_env(includes_env_var: str, excludes_env_var: str | None = None):
         includes = _parse_env_list(os.getenv(includes_env_var) or "")
         excludes = set()
         if excludes_env_var:

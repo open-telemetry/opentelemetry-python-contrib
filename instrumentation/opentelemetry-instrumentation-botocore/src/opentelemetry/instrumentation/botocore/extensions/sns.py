@@ -137,12 +137,20 @@ class _OpPublishBatch(_OpPublish):
 # SNS extension
 ################################################################################
 
+
+def _is_operation(op: object) -> bool:
+    try:
+        return (
+            inspect.isclass(op)
+            and issubclass(op, _SnsOperation)
+            and not inspect.isabstract(op)
+        )
+    except TypeError:
+        return False
+
+
 _OPERATION_MAPPING: dict[str, _SnsOperation] = {
-    op.operation_name(): op
-    for op in globals().values()
-    if inspect.isclass(op)
-    and issubclass(op, _SnsOperation)
-    and not inspect.isabstract(op)
+    op.operation_name(): op for op in globals().values() if _is_operation(op)
 }
 
 

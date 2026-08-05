@@ -333,7 +333,10 @@ class InvokeModelWithResponseStreamWrapper(BaseObjectProxy):
             # {'type': 'content_block_start', 'index': 1, 'content_block': {'type': 'tool_use', 'id': 'id', 'name': 'func_name', 'input': {}}}
             if self._record_message:
                 block = chunk.get("content_block", {})
-                if block.get("type") == "text" or block.get("type") == "tool_use":
+                if (
+                    block.get("type") == "text"
+                    or block.get("type") == "tool_use"
+                ):
                     self._content_block = block
             return
 

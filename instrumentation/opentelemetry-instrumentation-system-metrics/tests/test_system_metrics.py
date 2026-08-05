@@ -989,10 +989,10 @@ class TestSystemMetrics(TestBase):
     def test_runtime_get_gc_collections(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
             return_value=[
-                    {"collections": 10, "collected": 100, "uncollectable": 1},
-                    {"collections": 20, "collected": 200, "uncollectable": 2},
-                    {"collections": 30, "collected": 300, "uncollectable": 3},
-                ]
+                {"collections": 10, "collected": 100, "uncollectable": 1},
+                {"collections": 20, "collected": 200, "uncollectable": 2},
+                {"collections": 30, "collected": 300, "uncollectable": 3},
+            ]
         )
         expected_gc_collections = [
             _SystemMetricsResult(
@@ -1017,10 +1017,10 @@ class TestSystemMetrics(TestBase):
     def test_runtime_get_gc_collected_objects(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
             return_value=[
-                    {"collections": 10, "collected": 100, "uncollectable": 1},
-                    {"collections": 20, "collected": 200, "uncollectable": 2},
-                    {"collections": 30, "collected": 300, "uncollectable": 3},
-                ]
+                {"collections": 10, "collected": 100, "uncollectable": 1},
+                {"collections": 20, "collected": 200, "uncollectable": 2},
+                {"collections": 30, "collected": 300, "uncollectable": 3},
+            ]
         )
         expected_gc_collected_objects = [
             _SystemMetricsResult(
@@ -1045,10 +1045,10 @@ class TestSystemMetrics(TestBase):
     def test_runtime_get_gc_uncollectable_objects(self, mock_gc_get_stats):
         mock_gc_get_stats.configure_mock(
             return_value=[
-                    {"collections": 10, "collected": 100, "uncollectable": 1},
-                    {"collections": 20, "collected": 200, "uncollectable": 2},
-                    {"collections": 30, "collected": 300, "uncollectable": 3},
-                ]
+                {"collections": 10, "collected": 100, "uncollectable": 1},
+                {"collections": 20, "collected": 200, "uncollectable": 2},
+                {"collections": 30, "collected": 300, "uncollectable": 3},
+            ]
         )
         expected_gc_uncollectable_objects = [
             _SystemMetricsResult(

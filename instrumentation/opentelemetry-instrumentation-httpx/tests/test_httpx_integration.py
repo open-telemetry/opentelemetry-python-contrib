@@ -767,7 +767,9 @@ class BaseTestCases:
         @abc.abstractmethod
         def create_client(
             self,
-            transport: SyncOpenTelemetryTransport | AsyncOpenTelemetryTransport | None = None,
+            transport: SyncOpenTelemetryTransport
+            | AsyncOpenTelemetryTransport
+            | None = None,
             **kwargs,
         ):
             pass
@@ -1425,7 +1427,9 @@ class BaseTestCases:
         @abc.abstractmethod
         def create_client(
             self,
-            transport: SyncOpenTelemetryTransport | AsyncOpenTelemetryTransport | None = None,
+            transport: SyncOpenTelemetryTransport
+            | AsyncOpenTelemetryTransport
+            | None = None,
             **kwargs,
         ):
             pass

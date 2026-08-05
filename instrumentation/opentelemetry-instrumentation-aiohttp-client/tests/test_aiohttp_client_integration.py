@@ -399,7 +399,8 @@ class TestAioHttpIntegration(TestBase):
 
         def response_hook(
             span: Span,
-            params: aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
+            params: aiohttp.TraceRequestEndParams
+            | aiohttp.TraceRequestExceptionParams,
         ):
             span.set_attribute("response_hook_attr", "value")
 
@@ -1578,7 +1579,8 @@ class TestAioHttpClientInstrumentor(TestBase):
 
         def response_hook(
             span: Span,
-            params: aiohttp.TraceRequestEndParams | aiohttp.TraceRequestExceptionParams,
+            params: aiohttp.TraceRequestEndParams
+            | aiohttp.TraceRequestExceptionParams,
         ):
             span.set_attribute("response_hook_attr", "value")
 

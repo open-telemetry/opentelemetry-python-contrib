@@ -753,7 +753,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                         self.assertAlmostEqual(
                             duration_s * 0.1, point.sum, places=1
                         )
-                    elif metric.name == "http.server.response.body.size" or metric.name == "http.server.request.body.size":
+                    elif metric.name in (
+                        "http.server.response.body.size",
+                        "http.server.request.body.size",
+                    ):
                         self.assertEqual(25, point.sum)
                 if isinstance(point, NumberDataPoint):
                     self.assertDictEqual(
@@ -807,7 +810,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             expected_duration_attributes_new,
                             dict(point.attributes),
                         )
-                    elif metric.name == "http.server.response.body.size" or metric.name == "http.server.request.body.size":
+                    elif metric.name in (
+                        "http.server.response.body.size",
+                        "http.server.request.body.size",
+                    ):
                         self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_new,
@@ -819,7 +825,10 @@ class TestFastAPIManualInstrumentation(TestBaseManualFastAPI):
                             expected_duration_attributes_old,
                             dict(point.attributes),
                         )
-                    elif metric.name == "http.server.response.size" or metric.name == "http.server.request.size":
+                    elif metric.name in (
+                        "http.server.response.size",
+                        "http.server.request.size",
+                    ):
                         self.assertEqual(25, point.sum)
                         self.assertDictEqual(
                             expected_duration_attributes_old,

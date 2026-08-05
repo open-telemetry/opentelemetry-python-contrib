@@ -298,7 +298,6 @@ def normalize_output_type(output_type: str | None) -> str:
     return GenAIOutputType.TEXT  # default for unknown
 
 
-
 # Legacy attributes removed
 
 logger = logging.getLogger(__name__)
@@ -1102,9 +1101,7 @@ class GenAISemanticProcessor(TracingProcessor):
 
         return payload
 
-    def _find_agent_parent_span_id(
-        self, span_id: str | None
-    ) -> str | None:
+    def _find_agent_parent_span_id(self, span_id: str | None) -> str | None:
         """Return nearest ancestor span id that represents an agent."""
         current = span_id
         visited: set[str] = set()

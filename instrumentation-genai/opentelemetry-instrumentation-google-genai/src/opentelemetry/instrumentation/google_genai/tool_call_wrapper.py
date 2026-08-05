@@ -208,7 +208,11 @@ def _wrap_tool_function(
 
 
 def wrapped(
-    tool_or_tools: ToolFunction | ToolOrDict | ToolListUnion | ToolListUnionDict | None,
+    tool_or_tools: ToolFunction
+    | ToolOrDict
+    | ToolListUnion
+    | ToolListUnionDict
+    | None,
     otel_wrapper: OTelWrapper,
     **kwargs,
 ):
