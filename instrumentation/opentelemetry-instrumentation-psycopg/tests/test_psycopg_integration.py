@@ -1,6 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-# pylint: disable=no-member  # psycopg stubs reference string.templatelib on 3.14+
+# pylint: disable=no-member,too-many-lines  # psycopg stubs reference string.templatelib on 3.14+
 
 import asyncio
 import contextlib
