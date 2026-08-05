@@ -18,9 +18,11 @@ Usage
 
     ClickInstrumentor().instrument()
 
+
     @click.command()
     def hello():
-       click.echo(f'Hello world!')
+        click.echo(f"Hello world!")
+
 
     if __name__ == "__main__":
         hello()

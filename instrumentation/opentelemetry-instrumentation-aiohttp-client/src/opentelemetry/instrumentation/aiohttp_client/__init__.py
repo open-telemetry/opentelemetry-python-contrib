@@ -61,17 +61,28 @@ Utilize request/response hooks to execute custom logic to be performed before/af
 .. code-block:: python
 
    def request_hook(span: Span, params: aiohttp.TraceRequestStartParams):
-      if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+       if span and span.is_recording():
+           span.set_attribute(
+               "custom_user_attribute_from_request_hook", "some-value"
+           )
 
-   def response_hook(span: Span, params: typing.Union[
-                aiohttp.TraceRequestEndParams,
-                aiohttp.TraceRequestExceptionParams,
-            ]):
-        if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
 
-   AioHttpClientInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+   def response_hook(
+       span: Span,
+       params: typing.Union[
+           aiohttp.TraceRequestEndParams,
+           aiohttp.TraceRequestExceptionParams,
+       ],
+   ):
+       if span and span.is_recording():
+           span.set_attribute(
+               "custom_user_attribute_from_response_hook", "some-value"
+           )
+
+
+   AioHttpClientInstrumentor().instrument(
+       request_hook=request_hook, response_hook=response_hook
+   )
 
 Exclude lists
 *************

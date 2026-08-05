@@ -22,9 +22,11 @@ When using the instrumentor, all clients will automatically trace requests.
     with httpx.Client() as client:
         response = client.get(url)
 
+
     async def get(url):
         async with httpx.AsyncClient() as client:
             response = await client.get(url)
+
 
     asyncio.run(get(url))
 
@@ -42,9 +44,11 @@ When instrumenting ``httpx2`` clients, use ``HTTPX2ClientInstrumentor``:
     with httpx2.Client() as client:
         response = client.get(url)
 
+
     async def get(url):
         async with httpx2.AsyncClient() as client:
             response = await client.get(url)
+
 
     asyncio.run(get(url))
 
@@ -67,10 +71,12 @@ use the `instrument_client` method.
         HTTPXClientInstrumentor.instrument_client(client)
         response = client.get(url)
 
+
     async def get(url):
         async with httpx.AsyncClient() as client:
             HTTPXClientInstrumentor.instrument_client(client)
             response = await client.get(url)
+
 
     asyncio.run(get(url))
 
@@ -130,9 +136,11 @@ If you don't want to use the instrumentor class, you can use the transport class
     transport = httpx.AsyncHTTPTransport()
     telemetry_transport = AsyncOpenTelemetryTransport(transport)
 
+
     async def get(url):
         async with httpx.AsyncClient(transport=telemetry_transport) as client:
             response = await client.get(url)
+
 
     asyncio.run(get(url))
 
@@ -142,7 +150,9 @@ For ``httpx2`` transports, use ``SyncOpenTelemetryTransportHttpx2`` and
 .. code-block:: python
 
     import httpx2
-    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransportHttpx2
+    from opentelemetry.instrumentation.httpx import (
+        SyncOpenTelemetryTransportHttpx2,
+    )
 
     transport = httpx2.HTTPTransport()
     telemetry_transport = SyncOpenTelemetryTransportHttpx2(transport)
@@ -167,29 +177,34 @@ The hooks can be configured as follows:
 
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
+
     def request_hook(span, request):
         # method, url, headers, stream, extensions = request
         pass
+
 
     def response_hook(span, request, response):
         # method, url, headers, stream, extensions = request
         # status_code, headers, stream, extensions = response
         pass
 
+
     async def async_request_hook(span, request):
         # method, url, headers, stream, extensions = request
         pass
+
 
     async def async_response_hook(span, request, response):
         # method, url, headers, stream, extensions = request
         # status_code, headers, stream, extensions = response
         pass
 
+
     HTTPXClientInstrumentor().instrument(
         request_hook=request_hook,
         response_hook=response_hook,
         async_request_hook=async_request_hook,
-        async_response_hook=async_response_hook
+        async_response_hook=async_response_hook,
     )
 
 
@@ -199,38 +214,44 @@ Or if you are using the transport classes directly:
 .. code-block:: python
 
     import httpx
-    from opentelemetry.instrumentation.httpx import SyncOpenTelemetryTransport, AsyncOpenTelemetryTransport
+    from opentelemetry.instrumentation.httpx import (
+        SyncOpenTelemetryTransport,
+        AsyncOpenTelemetryTransport,
+    )
+
 
     def request_hook(span, request):
         # method, url, headers, stream, extensions = request
         pass
+
 
     def response_hook(span, request, response):
         # method, url, headers, stream, extensions = request
         # status_code, headers, stream, extensions = response
         pass
 
+
     async def async_request_hook(span, request):
         # method, url, headers, stream, extensions = request
         pass
+
 
     async def async_response_hook(span, request, response):
         # method, url, headers, stream, extensions = request
         # status_code, headers, stream, extensions = response
         pass
 
+
     transport = httpx.HTTPTransport()
     telemetry_transport = SyncOpenTelemetryTransport(
-        transport,
-        request_hook=request_hook,
-        response_hook=response_hook
+        transport, request_hook=request_hook, response_hook=response_hook
     )
 
     async_transport = httpx.AsyncHTTPTransport()
     async_telemetry_transport = AsyncOpenTelemetryTransport(
         async_transport,
         request_hook=async_request_hook,
-        response_hook=async_response_hook
+        response_hook=async_response_hook,
     )
 
 
