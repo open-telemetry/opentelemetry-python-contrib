@@ -15,27 +15,35 @@ Usage
     import asyncio
     import aiopg
     from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
+
     # Call instrument() to wrap all database connections
     AiopgInstrumentor().instrument()
 
-    dsn = 'user=user password=password host=127.0.0.1'
+    dsn = "user=user password=password host=127.0.0.1"
+
 
     async def connect():
         cnx = await aiopg.connect(dsn)
         cursor = await cnx.cursor()
-        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+        await cursor.execute(
+            "CREATE TABLE IF NOT EXISTS test (testField INTEGER)"
+        )
         await cursor.execute("INSERT INTO test (testField) VALUES (123)")
         cursor.close()
         cnx.close()
+
 
     async def create_pool():
         pool = await aiopg.create_pool(dsn)
         cnx = await pool.acquire()
         cursor = await cnx.cursor()
-        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+        await cursor.execute(
+            "CREATE TABLE IF NOT EXISTS test (testField INTEGER)"
+        )
         await cursor.execute("INSERT INTO test (testField) VALUES (123)")
         cursor.close()
         cnx.close()
+
 
     asyncio.run(connect())
     asyncio.run(create_pool())
@@ -46,17 +54,21 @@ Usage
     import aiopg
     from opentelemetry.instrumentation.aiopg import AiopgInstrumentor
 
-    dsn = 'user=user password=password host=127.0.0.1'
+    dsn = "user=user password=password host=127.0.0.1"
+
 
     # Alternatively, use instrument_connection for an individual connection
     async def go():
         cnx = await aiopg.connect(dsn)
         instrumented_cnx = AiopgInstrumentor().instrument_connection(cnx)
         cursor = await instrumented_cnx.cursor()
-        await cursor.execute("CREATE TABLE IF NOT EXISTS test (testField INTEGER)")
+        await cursor.execute(
+            "CREATE TABLE IF NOT EXISTS test (testField INTEGER)"
+        )
         await cursor.execute("INSERT INTO test (testField) VALUES (123)")
         cursor.close()
         instrumented_cnx.close()
+
 
     asyncio.run(go())
 
@@ -91,6 +103,7 @@ class AiopgInstrumentor(BaseInstrumentor):
         """
 
         tracer_provider = kwargs.get("tracer_provider")
+        meter_provider = kwargs.get("meter_provider")
 
         wrappers.wrap_connect(
             __name__,
@@ -98,6 +111,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
 
         wrappers.wrap_create_pool(
@@ -106,6 +120,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
 
     # pylint:disable=no-self-use
@@ -115,13 +130,17 @@ class AiopgInstrumentor(BaseInstrumentor):
         wrappers.unwrap_create_pool()
 
     # pylint:disable=no-self-use
-    def instrument_connection(self, connection, tracer_provider=None):
+    def instrument_connection(
+        self, connection, tracer_provider=None, meter_provider=None
+    ):
         """Enable instrumentation in a aiopg connection.
 
         Args:
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            meter_provider: The optional meter provider to use. If omitted the
+                current globally configured one is used.
 
         Returns:
             An instrumented connection.
@@ -133,6 +152,7 @@ class AiopgInstrumentor(BaseInstrumentor):
             self._CONNECTION_ATTRIBUTES,
             version=__version__,
             tracer_provider=tracer_provider,
+            meter_provider=meter_provider,
         )
 
     def uninstrument_connection(self, connection):

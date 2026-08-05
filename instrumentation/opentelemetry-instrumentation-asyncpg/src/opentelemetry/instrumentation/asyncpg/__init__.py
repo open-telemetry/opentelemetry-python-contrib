@@ -25,12 +25,14 @@ Run instrumented code:
     # You can optionally pass a custom TracerProvider to AsyncPGInstrumentor.instrument()
     AsyncPGInstrumentor().instrument()
 
+
     async def main():
-        conn = await asyncpg.connect(user='user', password='password')
+        conn = await asyncpg.connect(user="user", password="password")
 
         await conn.fetch('''SELECT 42;''')
 
         await conn.close()
+
 
     asyncio.run(main())
 

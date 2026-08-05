@@ -1,11 +1,23 @@
 OpenTelemetry OpenAI Instrumentation
 ====================================
 
-.. note::
+.. warning::
 
-   This package is being migrated as ``opentelemetry-instrumentation-genai-openai`` to
-   `opentelemetry-python-genai/instrumentation/opentelemetry-instrumentation-genai-openai <https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/instrumentation/opentelemetry-instrumentation-genai-openai>`_.
-   Future development will happen there.
+   **This package is deprecated.** Use the
+   `opentelemetry-instrumentation-genai-openai <https://pypi.org/project/opentelemetry-instrumentation-genai-openai/>`_
+   package instead. ``opentelemetry-instrumentation-openai-v2`` now only
+   receives security patches. Please
+   migrate by replacing it with ``opentelemetry-instrumentation-genai-openai``:
+
+   .. code-block:: console
+
+       pip uninstall opentelemetry-instrumentation-openai-v2
+       pip install opentelemetry-instrumentation-genai-openai
+
+   The replacement package contains **breaking changes** relative to this one.
+   Review the
+   `CHANGELOG <https://github.com/open-telemetry/opentelemetry-python-genai/blob/main/instrumentation/opentelemetry-instrumentation-genai-openai/CHANGELOG.md>`_
+   before upgrading.
 
 |pypi|
 

@@ -54,11 +54,13 @@ Usage
 
     app = falcon.App()
 
+
     class HelloWorldResource(object):
         def on_get(self, req, resp):
-            resp.text = 'Hello World'
+            resp.text = "Hello World"
 
-    app.add_route('/hello', HelloWorldResource())
+
+    app.add_route("/hello", HelloWorldResource())
 
 
 Request and Response hooks
@@ -71,13 +73,18 @@ The hooks can be configured as follows:
 
     from opentelemetry.instrumentation.falcon import FalconInstrumentor
 
+
     def request_hook(span, req):
         pass
+
 
     def response_hook(span, req, resp):
         pass
 
-    FalconInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+
+    FalconInstrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook
+    )
 
 Capture HTTP request and response headers
 *****************************************
