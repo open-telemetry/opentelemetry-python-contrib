@@ -30,8 +30,9 @@ Run instrumented task
             channel = await connection.channel()
             queue = await channel.declare_queue("hello")
             await channel.default_exchange.publish(
-                Message(b"Hello World!"),
-                routing_key=queue.name)
+                Message(b"Hello World!"), routing_key=queue.name
+            )
+
 
     if __name__ == "__main__":
         asyncio.run(main())

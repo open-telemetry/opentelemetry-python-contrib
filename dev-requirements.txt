@@ -13,4 +13,4 @@ requests==2.33.1
 ruamel.yaml==0.17.21
 flaky==3.7.0
 pre-commit==3.7.0
-ruff==0.14.1
+ruff==0.16.0
