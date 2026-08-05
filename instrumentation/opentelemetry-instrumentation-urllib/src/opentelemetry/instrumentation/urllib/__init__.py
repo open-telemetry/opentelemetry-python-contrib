@@ -16,7 +16,7 @@ Usage
     # URLLibInstrumentor().instrument()
 
     URLLibInstrumentor().instrument()
-    req = request.Request('https://postman-echo.com/post', method="POST")
+    req = request.Request("https://postman-echo.com/post", method="POST")
     r = request.urlopen(req)
 
 Configuration

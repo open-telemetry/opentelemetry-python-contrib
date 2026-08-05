@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-logging`: Promote otel.event.name to LogRecord.event_name in _translate

@@ -12,8 +12,10 @@ Usage
     import urllib3
     from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 
+
     def strip_query_params(url: str) -> str:
         return url.split("?")[0]
+
 
     URLLib3Instrumentor().instrument(
         # Remove all query params from the URL attribute on the span.

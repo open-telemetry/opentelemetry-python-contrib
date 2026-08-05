@@ -35,9 +35,9 @@ Usage Client
     grpc_client_instrumentor = GrpcInstrumentorClient()
     grpc_client_instrumentor.instrument()
 
+
     def run():
         with grpc.insecure_channel("localhost:50051") as channel:
-
             stub = helloworld_pb2_grpc.GreeterStub(channel)
             response = stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
 
@@ -78,9 +78,12 @@ Usage Server
     grpc_server_instrumentor = GrpcInstrumentorServer()
     grpc_server_instrumentor.instrument()
 
+
     class Greeter(helloworld_pb2_grpc.GreeterServicer):
         def SayHello(self, request, context):
-            return helloworld_pb2.HelloReply(message="Hello, %s!" % request.name)
+            return helloworld_pb2.HelloReply(
+                message="Hello, %s!" % request.name
+            )
 
 
     def serve():
@@ -104,8 +107,9 @@ You can also add the interceptor manually, rather than using
 
     from opentelemetry.instrumentation.grpc import server_interceptor
 
-    server = grpc.server(futures.ThreadPoolExecutor(),
-                         interceptors = [server_interceptor()])
+    server = grpc.server(
+        futures.ThreadPoolExecutor(), interceptors=[server_interceptor()]
+    )
 
 Usage Aio Client
 ----------------
@@ -137,11 +141,13 @@ Usage Aio Client
     grpc_client_instrumentor = GrpcAioInstrumentorClient()
     grpc_client_instrumentor.instrument()
 
+
     async def run():
         async with grpc.aio.insecure_channel("localhost:50051") as channel:
-
             stub = helloworld_pb2_grpc.GreeterStub(channel)
-            response = await stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
+            response = await stub.SayHello(
+                helloworld_pb2.HelloRequest(name="YOU")
+            )
 
         print("Greeter client received: " + response.message)
 
@@ -190,9 +196,12 @@ Usage Aio Server
     grpc_server_instrumentor = GrpcAioInstrumentorServer()
     grpc_server_instrumentor.instrument()
 
+
     class Greeter(helloworld_pb2_grpc.GreeterServicer):
         async def SayHello(self, request, context):
-            return helloworld_pb2.HelloReply(message="Hello, %s!" % request.name)
+            return helloworld_pb2.HelloReply(
+                message="Hello, %s!" % request.name
+            )
 
 
     async def serve():
@@ -216,7 +225,7 @@ You can also add the interceptor manually, rather than using
 
     from opentelemetry.instrumentation.grpc import aio_server_interceptor
 
-    server = grpc.aio.server(interceptors = [aio_server_interceptor()])
+    server = grpc.aio.server(interceptors=[aio_server_interceptor()])
 
 Filters
 -------
