@@ -3,7 +3,7 @@
 
 from collections.abc import Iterable
 from re import compile as re_compile
-from typing import Any, Optional
+from typing import Any
 
 from opentelemetry.baggage import get_all, set_baggage
 from opentelemetry.context import Context

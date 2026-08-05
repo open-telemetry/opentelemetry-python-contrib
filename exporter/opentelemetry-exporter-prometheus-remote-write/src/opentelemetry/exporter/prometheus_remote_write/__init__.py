@@ -6,7 +6,6 @@ import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from itertools import chain
-from typing import Dict
 
 import requests
 import snappy

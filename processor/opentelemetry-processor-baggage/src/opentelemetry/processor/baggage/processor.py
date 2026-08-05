@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable, Sequence
-from typing import Union
 
 from opentelemetry.baggage import get_all as get_all_baggage
 from opentelemetry.context import Context
@@ -11,9 +10,7 @@ from opentelemetry.trace import Span
 
 # A BaggageKeyPredicate is a function that takes a baggage key and returns a boolean
 BaggageKeyPredicateT = Callable[[str], bool]
-BaggageKeyPredicates = Union[
-    BaggageKeyPredicateT, Sequence[BaggageKeyPredicateT]
-]
+BaggageKeyPredicates = BaggageKeyPredicateT | Sequence[BaggageKeyPredicateT]
 
 # A BaggageKeyPredicate that always returns True, allowing all baggage keys to be added to spans
 ALLOW_ALL_BAGGAGE_KEYS: BaggageKeyPredicateT = lambda _: True  # pylint:disable=invalid-name

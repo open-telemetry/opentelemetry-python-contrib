@@ -168,8 +168,7 @@ from __future__ import annotations
 
 import functools
 import types
-import typing
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from http import client
 from timeit import default_timer
 from typing import Any
@@ -236,10 +235,8 @@ from opentelemetry.util.types import Attributes
 
 _excluded_urls_from_env = get_excluded_urls("URLLIB")
 
-_RequestHookT = typing.Optional[typing.Callable[[Span, Request], None]]
-_ResponseHookT = typing.Optional[
-    typing.Callable[[Span, Request, client.HTTPResponse], None]
-]
+_RequestHookT = Callable[[Span, Request], None] | None
+_ResponseHookT = Callable[[Span, Request, client.HTTPResponse], None] | None
 
 
 class URLLibInstrumentor(BaseInstrumentor):

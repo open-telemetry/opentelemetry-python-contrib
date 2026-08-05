@@ -229,7 +229,7 @@ import functools
 import wsgiref.util as wsgiref_util
 from collections.abc import Callable, Iterable
 from timeit import default_timer
-from typing import TYPE_CHECKING, Any, Dict, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from opentelemetry import context, trace
 from opentelemetry.instrumentation._semconv import (

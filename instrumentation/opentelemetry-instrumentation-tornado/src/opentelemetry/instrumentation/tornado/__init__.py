@@ -157,7 +157,6 @@ from functools import partial
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
-from typing import Dict
 
 import tornado.web
 import tornado.websocket

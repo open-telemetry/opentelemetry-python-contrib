@@ -178,7 +178,7 @@ import collections.abc
 import inspect
 import io
 import typing
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from inspect import BoundArguments
 from timeit import default_timer
@@ -256,9 +256,9 @@ class RequestInfo:
     body: bytes | typing.IO[typing.Any] | typing.Iterable[bytes] | str | None
 
 
-_UrlFilterT = typing.Optional[typing.Callable[[str], str]]
-_RequestHookT = typing.Optional[
-    typing.Callable[
+_UrlFilterT = Callable[[str], str] | None
+_RequestHookT = (
+    Callable[
         [
             Span,
             urllib3.connectionpool.HTTPConnectionPool,
@@ -266,9 +266,10 @@ _RequestHookT = typing.Optional[
         ],
         None,
     ]
-]
-_ResponseHookT = typing.Optional[
-    typing.Callable[
+    | None
+)
+_ResponseHookT = (
+    Callable[
         [
             Span,
             urllib3.connectionpool.HTTPConnectionPool,
@@ -276,7 +277,8 @@ _ResponseHookT = typing.Optional[
         ],
         None,
     ]
-]
+    | None
+)
 
 
 class URLLib3Instrumentor(BaseInstrumentor):

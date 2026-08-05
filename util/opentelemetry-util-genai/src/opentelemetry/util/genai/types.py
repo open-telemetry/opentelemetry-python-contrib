@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from opentelemetry.util.genai._inference_invocation import (  # pylint: disable=useless-import-alias
@@ -190,20 +190,20 @@ class GenericToolDefinition:
     type: str
 
 
-ToolDefinition = Union[FunctionToolDefinition, GenericToolDefinition]
+ToolDefinition = FunctionToolDefinition | GenericToolDefinition
 
-MessagePart = Union[
-    Text,
-    ToolCallRequest,
-    ToolCallResponse,
-    ServerToolCall,
-    ServerToolCallResponse,
-    Blob,
-    File,
-    Uri,
-    Reasoning,
-    GenericPart,  # For provider-specific types; prefer standard types above
-]
+MessagePart = (
+    Text
+    | ToolCallRequest
+    | ToolCallResponse
+    | ServerToolCall
+    | ServerToolCallResponse
+    | Blob
+    | File
+    | Uri
+    | Reasoning
+    | GenericPart  # For provider-specific types; prefer standard types above
+)
 
 
 FinishReason = Literal[

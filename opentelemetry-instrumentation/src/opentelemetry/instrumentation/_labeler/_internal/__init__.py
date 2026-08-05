@@ -5,7 +5,7 @@ import logging
 import threading
 from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from opentelemetry.context import attach, create_key, get_value, set_value
 from opentelemetry.util.types import AttributeValue
