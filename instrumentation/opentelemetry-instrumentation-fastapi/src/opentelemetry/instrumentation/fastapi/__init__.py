@@ -12,9 +12,11 @@ Usage
 
     app = fastapi.FastAPI()
 
+
     @app.get("/foobar")
     async def foobar():
         return {"message": "hello world"}
+
 
     FastAPIInstrumentor.instrument_app(app)
 
@@ -39,7 +41,9 @@ You can also pass comma delimited regexes directly to the ``instrument_app`` met
 
 .. code-block:: python
 
-    FastAPIInstrumentor.instrument_app(app, excluded_urls="client/.*/info,healthcheck")
+    FastAPIInstrumentor.instrument_app(
+        app, excluded_urls="client/.*/info,healthcheck"
+    )
 
 Request/Response hooks
 **********************
@@ -57,19 +61,33 @@ right after a span is created for a request and right before the span is finishe
     from opentelemetry.trace import Span
     from starlette.types import Message, Scope
 
+
     def server_request_hook(span: Span, scope: Scope):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_request_hook", "some-value"
+            )
+
 
     def client_request_hook(span: Span, scope: Scope, message: Message):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_client_request_hook", "some-value"
+            )
+
 
     def client_response_hook(span: Span, scope: Scope, message: Message):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_response_hook", "some-value"
+            )
 
-    FastAPIInstrumentor().instrument(server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+
+    FastAPIInstrumentor().instrument(
+        server_request_hook=server_request_hook,
+        client_request_hook=client_request_hook,
+        client_response_hook=client_response_hook,
+    )
 
 Capture HTTP request and response headers
 *****************************************
