@@ -9,8 +9,10 @@
 """Implementation of the invocation-side open-telemetry interceptor."""
 
 import logging
+import time
 from collections import OrderedDict
 from typing import Callable, MutableMapping
+from urllib.parse import urlparse
 
 import grpc
 
@@ -20,15 +22,72 @@ from opentelemetry.instrumentation.grpc._utilities import RpcInfo
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagate import inject
 from opentelemetry.propagators.textmap import Setter
+from opentelemetry.semconv._incubating.attributes.error_attributes import (
+    ERROR_TYPE,
+)
 from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_GRPC_STATUS_CODE,
     RPC_METHOD,
+    RPC_RESPONSE_STATUS_CODE,
     RPC_SERVICE,
     RPC_SYSTEM,
+    RPC_SYSTEM_NAME,
+    RpcSystemNameValues,
+)
+from opentelemetry.semconv._incubating.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv._incubating.metrics.rpc_metrics import (
+    RPC_CLIENT_CALL_DURATION,
 )
 from opentelemetry.trace.status import Status, StatusCode
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_RPC_METHOD = "_OTHER"
+
+_RPC_DURATION_BUCKET_BOUNDARIES = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1,
+    2.5,
+    5,
+    7.5,
+    10,
+)
+
+
+def _create_duration_histogram(meter):
+    return meter.create_histogram(
+        name=RPC_CLIENT_CALL_DURATION,
+        description="Measures the duration of an outgoing Remote Procedure Call (RPC).",
+        unit="s",
+        explicit_bucket_boundaries_advisory=_RPC_DURATION_BUCKET_BOUNDARIES,
+    )
+
+
+def _parse_target(target):
+    if not target:
+        return None, None
+    if ":///" in target:
+        target = target.split("///", 1)[1]
+    try:
+        parsed = urlparse(f"//{target}")
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return None, None
+    if not host:
+        return None, None
+    return host, port
 
 
 class _CarrierSetter(Setter):
@@ -77,12 +136,22 @@ class OpenTelemetryClientInterceptor(
     grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
 ):
     def __init__(
-        self, tracer, filter_=None, request_hook=None, response_hook=None
+        self,
+        tracer,
+        filter_=None,
+        request_hook=None,
+        response_hook=None,
+        meter=None,
+        target=None,
     ):
         self._tracer = tracer
         self._filter = filter_
         self._request_hook = request_hook
         self._response_hook = response_hook
+        self._duration_histogram = (
+            _create_duration_histogram(meter) if meter else None
+        )
+        self._server_address, self._server_port = _parse_target(target)
 
     def _start_span(self, method, **kwargs):
         service, meth = method.lstrip("/").split("/", 1)
@@ -101,12 +170,15 @@ class OpenTelemetryClientInterceptor(
         )
 
     # pylint:disable=no-self-use
-    def _trace_result(self, span, rpc_info, result):
+    def _trace_result(self, span, rpc_info, result, method, start_time):
         # If the RPC is called asynchronously, add a callback to end the span
         # when the future is done, else end the span immediately
         if isinstance(result, grpc.Future):
             result.add_done_callback(
                 _make_future_done_callback(span, rpc_info)
+            )
+            result.add_done_callback(
+                self._make_future_duration_callback(method, start_time)
             )
             return result
         response = result
@@ -120,7 +192,38 @@ class OpenTelemetryClientInterceptor(
         if self._response_hook:
             self._call_response_hook(span, response)
         span.end()
+        self._record_duration(method, start_time, grpc.StatusCode.OK)
         return result
+
+    def _build_metric_attributes(self, method, status_code):
+        full_method = method.lstrip("/") if method else _DEFAULT_RPC_METHOD
+        attrs = {
+            RPC_SYSTEM_NAME: RpcSystemNameValues.GRPC.value,
+            RPC_METHOD: full_method,
+            RPC_RESPONSE_STATUS_CODE: status_code.name,
+        }
+        if self._server_address:
+            attrs[SERVER_ADDRESS] = self._server_address
+            if self._server_port is not None:
+                attrs[SERVER_PORT] = self._server_port
+        if status_code != grpc.StatusCode.OK:
+            attrs[ERROR_TYPE] = status_code.name
+        return attrs
+
+    def _record_duration(self, method, start_time, status_code):
+        if self._duration_histogram is None:
+            return
+        elapsed = time.perf_counter() - start_time
+        attrs = self._build_metric_attributes(method, status_code)
+        self._duration_histogram.record(elapsed, attributes=attrs)
+
+    def _make_future_duration_callback(self, method, start_time):
+        def callback(response_future):
+            code = response_future.code()
+            status_code = code if code is not None else grpc.StatusCode.OK
+            self._record_duration(method, start_time, status_code)
+
+        return callback
 
     def _intercept(self, request, metadata, client_info, invoker):
         if not is_instrumentation_enabled():
@@ -130,6 +233,9 @@ class OpenTelemetryClientInterceptor(
             mutable_metadata = OrderedDict()
         else:
             mutable_metadata = OrderedDict(metadata)
+
+        start_time = time.perf_counter()
+
         with self._start_span(
             client_info.full_method,
             end_on_exit=False,
@@ -152,10 +258,13 @@ class OpenTelemetryClientInterceptor(
                 result = invoker(request, metadata)
             except Exception as exc:
                 if isinstance(exc, grpc.RpcError):
+                    status_code = exc.code()
                     span.set_attribute(
                         RPC_GRPC_STATUS_CODE,
-                        exc.code().value[0],
+                        status_code.value[0],
                     )
+                else:
+                    status_code = grpc.StatusCode.UNKNOWN
                 span.set_status(
                     Status(
                         status_code=StatusCode.ERROR,
@@ -163,11 +272,20 @@ class OpenTelemetryClientInterceptor(
                     )
                 )
                 span.record_exception(exc)
+                self._record_duration(
+                    client_info.full_method, start_time, status_code
+                )
                 raise exc
             finally:
                 if result is None:
                     span.end()
-        return self._trace_result(span, rpc_info, result)
+        return self._trace_result(
+            span,
+            rpc_info,
+            result,
+            client_info.full_method,
+            start_time,
+        )
 
     def _call_request_hook(self, span, request):
         if not callable(self._request_hook):
@@ -195,6 +313,9 @@ class OpenTelemetryClientInterceptor(
         else:
             mutable_metadata = OrderedDict(metadata)
 
+        start_time = time.perf_counter()
+        status_code = grpc.StatusCode.OK
+
         with self._start_span(client_info.full_method) as span:
             inject(mutable_metadata, setter=_carrier_setter)
             metadata = tuple(mutable_metadata.items())
@@ -210,9 +331,14 @@ class OpenTelemetryClientInterceptor(
             try:
                 yield from invoker(request_or_iterator, metadata)
             except grpc.RpcError as err:
+                status_code = err.code()
                 span.set_status(Status(StatusCode.ERROR))
-                span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
+                span.set_attribute(RPC_GRPC_STATUS_CODE, status_code.value[0])
                 raise err
+            finally:
+                self._record_duration(
+                    client_info.full_method, start_time, status_code
+                )
 
     def intercept_stream(
         self, request_or_iterator, metadata, client_info, invoker
