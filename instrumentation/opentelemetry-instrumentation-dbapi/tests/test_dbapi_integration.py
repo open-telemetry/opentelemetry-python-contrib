@@ -124,6 +124,24 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.attributes[NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
+    def test_suppress_instrumentation_async(self):
+        execute = mock.AsyncMock(return_value="result")
+        db_integration = dbapi.DatabaseApiIntegration(
+            "instrumenting_module_test_name",
+            "testcomponent",
+        )
+
+        with suppress_instrumentation():
+            result = asyncio.run(
+                dbapi.CursorTracer(db_integration).traced_execution_async(
+                    MockCursor(), execute, "SELECT 1"
+                )
+            )
+
+        self.assertEqual(result, "result")
+        execute.assert_awaited_once_with("SELECT 1")
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
     def test_span_succeeded_new_semconv(self):
         with use_semconv_opt_in("database,http"):
             connection_props = _get_default_connection_props()

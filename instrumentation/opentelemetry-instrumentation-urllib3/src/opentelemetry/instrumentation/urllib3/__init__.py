@@ -12,8 +12,10 @@ Usage
     import urllib3
     from opentelemetry.instrumentation.urllib3 import URLLib3Instrumentor
 
+
     def strip_query_params(url: str) -> str:
         return url.split("?")[0]
+
 
     URLLib3Instrumentor().instrument(
         # Remove all query params from the URL attribute on the span.
@@ -406,11 +408,10 @@ class URLLib3Instrumentor(BaseInstrumentor):
         _uninstrument()
 
 
-def _get_span_name(method: str) -> str:
-    method = sanitize_method(method.strip())
-    if method == "_OTHER":
-        method = "HTTP"
-    return method
+def _get_span_name(sanitized_method: str) -> str:
+    if sanitized_method == "_OTHER":
+        return "HTTP"
+    return sanitized_method
 
 
 # pylint: disable=too-many-locals,too-many-positional-arguments
@@ -457,13 +458,14 @@ def _instrument(
         # avoid modifying original headers on inject
         headers = headers.copy() if headers is not None else {}
 
-        span_name = _get_span_name(method)
+        sanitized_method = sanitize_method(method)
+        span_name = _get_span_name(sanitized_method)
         span_attributes = {}
 
         _set_http_method(
             span_attributes,
             method,
-            sanitize_method(method),
+            sanitized_method,
             sem_conv_opt_in_mode,
         )
         _set_http_url(span_attributes, url, sem_conv_opt_in_mode)
@@ -519,6 +521,7 @@ def _instrument(
                 instance,
                 response,
                 method,
+                sanitized_method,
                 sem_conv_opt_in_mode,
             )
 
@@ -625,6 +628,7 @@ def _set_metric_attributes(
     instance: urllib3.connectionpool.HTTPConnectionPool,
     response: urllib3.response.HTTPResponse,
     method: str,
+    sanitized_method: str,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
     _set_http_host_client(
@@ -634,7 +638,7 @@ def _set_metric_attributes(
     _set_http_method(
         metric_attributes,
         method,
-        sanitize_method(method),
+        sanitized_method,
         sem_conv_opt_in_mode,
     )
     _set_http_net_peer_name_client(

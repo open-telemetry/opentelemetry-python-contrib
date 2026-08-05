@@ -218,7 +218,8 @@ def sanitize_method(method: str | None) -> str | None:
     if (
         environ.get(OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS)
         or
-        # Based on https://www.rfc-editor.org/rfc/rfc7231#section-4.1 and https://www.rfc-editor.org/rfc/rfc5789#section-2.
+        # Based on https://www.rfc-editor.org/rfc/rfc9110.html#name-methods, https://www.rfc-editor.org/rfc/rfc5789#section-2
+        # and https://datatracker.ietf.org/doc/rfc10008/.
         method
         in [
             "GET",
@@ -230,6 +231,7 @@ def sanitize_method(method: str | None) -> str | None:
             "OPTIONS",
             "TRACE",
             "PATCH",
+            "QUERY",
         ]
     ):
         return method

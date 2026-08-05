@@ -25,9 +25,11 @@ Usage
 
     FlaskInstrumentor().instrument_app(app)
 
+
     @app.route("/")
     def hello():
         return "Hello!"
+
 
     if __name__ == "__main__":
         app.run(debug=True)
@@ -53,7 +55,9 @@ You can also pass comma delimited regexes directly to the ``instrument_app`` met
 
 .. code-block:: python
 
-    FlaskInstrumentor().instrument_app(app, excluded_urls="client/.*/info,healthcheck")
+    FlaskInstrumentor().instrument_app(
+        app, excluded_urls="client/.*/info,healthcheck"
+    )
 
 Request/Response hooks
 **********************
@@ -76,15 +80,24 @@ For example,
 
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
+
     def request_hook(span: Span, environ: WSGIEnvironment):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_request_hook", "some-value"
+            )
+
 
     def response_hook(span: Span, status: str, response_headers: List):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_response_hook", "some-value"
+            )
 
-    FlaskInstrumentor().instrument(request_hook=request_hook, response_hook=response_hook)
+
+    FlaskInstrumentor().instrument(
+        request_hook=request_hook, response_hook=response_hook
+    )
 
 Flask Request object reference: https://flask.palletsprojects.com/en/2.1.x/api/#flask.Request
 

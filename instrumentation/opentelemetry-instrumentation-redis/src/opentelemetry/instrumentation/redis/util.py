@@ -118,7 +118,11 @@ def _set_connection_attributes(
     db_sem_conv_opt_in_mode,
     http_sem_conv_opt_in_mode,
 ) -> None:
-    if not span.is_recording() or not hasattr(conn, "connection_pool"):
+    if (
+        not span.is_recording()
+        or not hasattr(conn, "connection_pool")
+        or not hasattr(conn.connection_pool, "connection_kwargs")
+    ):
         return
     for key, value in _extract_conn_attributes(
         conn.connection_pool.connection_kwargs,
@@ -203,11 +207,25 @@ def _build_span_meta_data_for_pipeline(
     instance: PipelineInstance | AsyncPipelineInstance,
 ) -> tuple[list[Any], str, str]:
     try:
-        command_stack = (
-            instance.command_stack
-            if hasattr(instance, "command_stack")
-            else instance._command_stack
-        )
+        # redis-py 6+ ClusterPipeline no longer updates ``command_stack``;
+        # queued commands are tracked on the execution strategy instead. The
+        # sync cluster strategy exposes them via a public ``command_queue``
+        # property, while the async cluster strategy only has the private
+        # ``_command_queue`` attribute. Fall back to ``command_stack`` /
+        # ``_command_stack`` for non-cluster pipelines and older redis-py.
+        execution_strategy = getattr(instance, "_execution_strategy", None)
+        if execution_strategy is not None and hasattr(
+            execution_strategy, "command_queue"
+        ):
+            command_stack = execution_strategy.command_queue
+        elif execution_strategy is not None and hasattr(
+            execution_strategy, "_command_queue"
+        ):
+            command_stack = execution_strategy._command_queue
+        elif hasattr(instance, "command_stack"):
+            command_stack = instance.command_stack
+        else:
+            command_stack = instance._command_stack
 
         cmds = [
             _format_command_args(c.args if hasattr(c, "args") else c[0])

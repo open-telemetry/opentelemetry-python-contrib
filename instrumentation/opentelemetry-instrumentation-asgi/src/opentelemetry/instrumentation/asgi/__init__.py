@@ -17,9 +17,11 @@ Usage (Quart)
     app = Quart(__name__)
     app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
 
+
     @app.route("/")
     async def hello():
         return "Hello!"
+
 
     if __name__ == "__main__":
         app.run(debug=True)
@@ -36,7 +38,7 @@ Modify the application's ``asgi.py`` file as shown below.
     from django.core.asgi import get_asgi_application
     from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'asgi_example.settings')
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "asgi_example.settings")
 
     application = get_asgi_application()
     application = OpenTelemetryMiddleware(application)
@@ -75,33 +77,57 @@ For example,
     from asgiref.typing import Scope, ASGIReceiveEvent, ASGISendEvent
     from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 
-    async def application(scope: Scope, receive: ASGIReceiveEvent, send: ASGISendEvent):
-        await send({
-            'type': 'http.response.start',
-            'status': 200,
-            'headers': [
-                [b'content-type', b'text/plain'],
-            ],
-        })
 
-        await send({
-            'type': 'http.response.body',
-            'body': b'Hello, world!',
-        })
+    async def application(
+        scope: Scope, receive: ASGIReceiveEvent, send: ASGISendEvent
+    ):
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    [b"content-type", b"text/plain"],
+                ],
+            }
+        )
+
+        await send(
+            {
+                "type": "http.response.body",
+                "body": b"Hello, world!",
+            }
+        )
+
 
     def server_request_hook(span: Span, scope: Scope):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_request_hook", "some-value"
+            )
+
 
     def client_request_hook(span: Span, scope: Scope, message: dict[str, Any]):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_client_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_client_request_hook", "some-value"
+            )
 
-    def client_response_hook(span: Span, scope: Scope, message: dict[str, Any]):
+
+    def client_response_hook(
+        span: Span, scope: Scope, message: dict[str, Any]
+    ):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_response_hook", "some-value"
+            )
 
-    OpenTelemetryMiddleware(application, server_request_hook=server_request_hook, client_request_hook=client_request_hook, client_response_hook=client_response_hook)
+
+    OpenTelemetryMiddleware(
+        application,
+        server_request_hook=server_request_hook,
+        client_request_hook=client_request_hook,
+        client_response_hook=client_response_hook,
+    )
 
 Capture HTTP request and response headers
 *****************************************

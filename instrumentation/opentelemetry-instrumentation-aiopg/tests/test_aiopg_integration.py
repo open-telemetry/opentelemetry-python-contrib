@@ -1,7 +1,9 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
+import contextlib
 import logging
+from types import SimpleNamespace
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -10,6 +12,10 @@ import psycopg2
 
 import opentelemetry.instrumentation.aiopg
 from opentelemetry import trace as trace_api
+from opentelemetry.instrumentation._semconv import (
+    OTEL_SEMCONV_STABILITY_OPT_IN,
+    _OpenTelemetrySemanticConventionStability,
+)
 from opentelemetry.instrumentation.aiopg import AiopgInstrumentor, wrappers
 from opentelemetry.instrumentation.aiopg.aiopg_integration import (
     AiopgIntegration,
@@ -27,6 +33,21 @@ from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_NAME,
     NET_PEER_PORT,
 )
+from opentelemetry.semconv._incubating.metrics.db_metrics import (
+    DB_CLIENT_OPERATION_DURATION,
+    DB_CLIENT_RESPONSE_RETURNED_ROWS,
+)
+from opentelemetry.semconv.attributes.db_attributes import (
+    DB_NAMESPACE,
+    DB_OPERATION_NAME,
+    DB_QUERY_TEXT,
+    DB_SYSTEM_NAME,
+)
+from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
 from opentelemetry.test.test_base import TestBase
 
 
@@ -34,15 +55,32 @@ def async_call(coro):
     return asyncio.run(coro)
 
 
+@contextlib.contextmanager
+def use_semconv_opt_in(sem_conv_mode):
+    env_patch = mock.patch.dict(
+        "os.environ",
+        {OTEL_SEMCONV_STABILITY_OPT_IN: sem_conv_mode},
+    )
+    _OpenTelemetrySemanticConventionStability._initialized = False
+    env_patch.start()
+    try:
+        yield
+    finally:
+        env_patch.stop()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+
 class TestAiopgInstrumentor(TestBase):
     def setUp(self):
         super().setUp()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.origin_aiopg_connect = aiopg.connect
         self.origin_aiopg_create_pool = aiopg.create_pool
         aiopg.connect = mock_connect
         aiopg.create_pool = mock_create_pool
 
     def tearDown(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
         super().tearDown()
         aiopg.connect = self.origin_aiopg_connect
         aiopg.create_pool = self.origin_aiopg_create_pool
@@ -78,6 +116,34 @@ class TestAiopgInstrumentor(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    def test_instrumentor_connect_new_semconv(self):
+        with use_semconv_opt_in("database,http"):
+            AiopgInstrumentor().instrument()
+
+            cnx = async_call(
+                aiopg.connect(
+                    database="testdatabase",
+                    server_host="testhost",
+                    server_port=123,
+                )
+            )
+            cursor = async_call(cnx.cursor())
+            async_call(cursor.execute("SELECT * FROM test"))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 123)
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(DB_NAME, span.attributes)
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertNotIn(NET_PEER_NAME, span.attributes)
+        self.assertNotIn(NET_PEER_PORT, span.attributes)
 
     def test_instrumentor_connect_ctx_manager(self):
         async def _ctx_manager_connect():
@@ -187,8 +253,33 @@ class TestAiopgInstrumentor(TestBase):
 
         self.assertIs(span.resource, resource)
 
-    def test_instrument_connection(self):
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_custom_meter_provider_connect(self):
+        meter_provider, metrics_reader = self.create_meter_provider()
+        AiopgInstrumentor().instrument(meter_provider=meter_provider)
+
         cnx = async_call(aiopg.connect(database="test"))
+        cursor = async_call(cnx.cursor())
+        async_call(cursor.execute("SELECT * FROM test", rowcount=3))
+
+        metric_names = {
+            metric.name
+            for resource_metrics in metrics_reader.get_metrics_data().resource_metrics
+            for scope_metrics in resource_metrics.scope_metrics
+            for metric in scope_metrics.metrics
+        }
+        self.assertIn(DB_CLIENT_OPERATION_DURATION, metric_names)
+        self.assertIn(DB_CLIENT_RESPONSE_RETURNED_ROWS, metric_names)
+
+    def test_instrument_connection(self):
+        cnx = async_call(
+            aiopg.connect(
+                database="testdatabase",
+                server_host="testhost",
+                server_port=123,
+                user="testuser",
+            )
+        )
         query = "SELECT * FROM test"
         cursor = async_call(cnx.cursor())
         async_call(cursor.execute(query))
@@ -202,6 +293,32 @@ class TestAiopgInstrumentor(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+        self.assertEqual(span.attributes[DB_USER], "testuser")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 123)
+
+    def test_instrument_connection_new_semconv(self):
+        with use_semconv_opt_in("database,http"):
+            cnx = async_call(
+                aiopg.connect(
+                    database="testdatabase",
+                    server_host="testhost",
+                    server_port=123,
+                )
+            )
+            cnx = AiopgInstrumentor().instrument_connection(cnx)
+            cursor = async_call(cnx.cursor())
+            async_call(cursor.execute("SELECT * FROM test"))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(DB_STATEMENT, span.attributes)
 
     def test_instrument_connection_after_instrument(self):
         cnx = async_call(aiopg.connect(database="test"))
@@ -280,7 +397,12 @@ class TestAiopgInstrumentor(TestBase):
 class TestAiopgIntegration(TestBase):
     def setUp(self):
         super().setUp()
+        _OpenTelemetrySemanticConventionStability._initialized = False
         self.tracer = self.tracer_provider.get_tracer(__name__)
+
+    def tearDown(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        super().tearDown()
 
     def test_span_succeeded(self):
         connection_props = {
@@ -339,12 +461,11 @@ class TestAiopgIntegration(TestBase):
             "host": "server_host",
             "user": "user",
         }
-        mock_tracer = mock.Mock()
-        mock_span = mock.Mock()
-        mock_span.is_recording.return_value = False
-        mock_tracer.start_span.return_value = mock_span
         db_integration = AiopgIntegration(
-            mock_tracer, "testcomponent", connection_attributes
+            __name__,
+            "testcomponent",
+            connection_attributes,
+            tracer_provider=trace_api.NoOpTracerProvider(),
         )
         mock_connection = async_call(
             db_integration.wrapped_connection(
@@ -353,10 +474,108 @@ class TestAiopgIntegration(TestBase):
         )
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.execute("Test query", ("param1Value", False)))
-        self.assertFalse(mock_span.is_recording())
-        self.assertTrue(mock_span.is_recording.called)
-        self.assertFalse(mock_span.set_attribute.called)
-        self.assertFalse(mock_span.set_status.called)
+        self.assertEqual(len(self.memory_exporter.get_finished_spans()), 0)
+
+    def test_span_succeeded_new_semconv(self):
+        connection_props = {
+            "database": "testdatabase",
+            "server_host": "testhost",
+            "server_port": 123,
+            "user": "testuser",
+        }
+        connection_attributes = {
+            "database": "database",
+            "port": "server_port",
+            "host": "server_host",
+            "user": "user",
+        }
+        with use_semconv_opt_in("database,http"):
+            db_integration = AiopgIntegration(
+                __name__, "testcomponent", connection_attributes
+            )
+            mock_connection = async_call(
+                db_integration.wrapped_connection(
+                    mock_connect, {}, connection_props
+                )
+            )
+            cursor = async_call(mock_connection.cursor())
+            async_call(cursor.execute("Test query"))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(
+            span.instrumentation_scope.schema_url,
+            "https://opentelemetry.io/schemas/1.25.0",
+        )
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 123)
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(DB_NAME, span.attributes)
+        self.assertNotIn(DB_STATEMENT, span.attributes)
+        self.assertNotIn(DB_USER, span.attributes)
+        self.assertNotIn(NET_PEER_NAME, span.attributes)
+        self.assertNotIn(NET_PEER_PORT, span.attributes)
+
+    def test_span_succeeded_both_semconv(self):
+        connection_props = {
+            "database": "testdatabase",
+            "server_host": "testhost",
+            "server_port": 123,
+            "user": "testuser",
+        }
+        connection_attributes = {
+            "database": "database",
+            "port": "server_port",
+            "host": "server_host",
+            "user": "user",
+        }
+        with use_semconv_opt_in("database/dup,http/dup"):
+            db_integration = AiopgIntegration(
+                __name__, "testcomponent", connection_attributes
+            )
+            mock_connection = async_call(
+                db_integration.wrapped_connection(
+                    mock_connect, {}, connection_props
+                )
+            )
+            cursor = async_call(mock_connection.cursor())
+            async_call(cursor.execute("Test query"))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes[DB_SYSTEM], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAME], "testdatabase")
+        self.assertEqual(span.attributes[DB_STATEMENT], "Test query")
+        self.assertEqual(span.attributes[DB_USER], "testuser")
+        self.assertEqual(span.attributes[NET_PEER_NAME], "testhost")
+        self.assertEqual(span.attributes[NET_PEER_PORT], 123)
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+        self.assertEqual(span.attributes[DB_NAMESPACE], "testdatabase")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+        self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(span.attributes[SERVER_PORT], 123)
+
+    def test_executemany_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = AiopgIntegration(__name__, "testcomponent")
+            mock_connection = async_call(
+                db_integration.wrapped_connection(mock_connect, {}, {})
+            )
+            cursor = async_call(mock_connection.cursor())
+            async_call(cursor.executemany("Test query"))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes[DB_SYSTEM_NAME], "testcomponent")
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+        self.assertNotIn(DB_SYSTEM, span.attributes)
+        self.assertNotIn(DB_STATEMENT, span.attributes)
 
     def test_span_failed(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
@@ -375,6 +594,23 @@ class TestAiopgIntegration(TestBase):
         self.assertEqual(
             span.status.description, "ProgrammingError: Test Exception"
         )
+
+    def test_span_failed_new_semconv(self):
+        with use_semconv_opt_in("database"):
+            db_integration = AiopgIntegration(__name__, "testcomponent")
+            mock_connection = async_call(
+                db_integration.wrapped_connection(mock_connect, {}, {})
+            )
+            cursor = async_call(mock_connection.cursor())
+            with self.assertRaises(psycopg2.ProgrammingError):
+                async_call(cursor.execute("Test query", throw_exception=True))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+        span = spans_list[0]
+        self.assertEqual(span.attributes[DB_QUERY_TEXT], "Test query")
+        self.assertEqual(span.attributes[ERROR_TYPE], "ProgrammingError")
+        self.assertIs(span.status.status_code, trace_api.StatusCode.ERROR)
 
     def test_executemany(self):
         db_integration = AiopgIntegration(self.tracer, "testcomponent")
@@ -458,6 +694,7 @@ class TestAiopgIntegration(TestBase):
         connection = mock.Mock()
         # Avoid get_attributes failing because can't concatenate mock
         connection.database = "-"
+        connection._conn = connection
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
@@ -468,6 +705,7 @@ class TestAiopgIntegration(TestBase):
         # Set connection.database to avoid a failure because mock can't
         # be concatenated
         connection.database = "-"
+        connection._conn = connection
         connection2 = wrappers.instrument_connection(
             self.tracer, connection, "-"
         )
@@ -479,6 +717,127 @@ class TestAiopgIntegration(TestBase):
         with self.assertLogs(level=logging.WARNING):
             connection4 = wrappers.uninstrument_connection(connection)
         self.assertIs(connection4, connection)
+
+
+class TestAiopgMetrics(TestBase):
+    def setUp(self):
+        super().setUp()
+        _OpenTelemetrySemanticConventionStability._initialized = False
+
+    def tearDown(self):
+        _OpenTelemetrySemanticConventionStability._initialized = False
+        super().tearDown()
+
+    def _get_metric(self, name):
+        return next(
+            (
+                metric
+                for metric in self.get_sorted_metrics()
+                if metric.name == name
+            ),
+            None,
+        )
+
+    def test_metrics_not_emitted_in_default_mode(self):
+        db_integration = AiopgIntegration(__name__, "testcomponent")
+        mock_connection = async_call(
+            db_integration.wrapped_connection(mock_connect, (), {})
+        )
+        cursor = async_call(mock_connection.cursor())
+        async_call(cursor.execute("SELECT 1", rowcount=3))
+
+        self.assertIsNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
+        self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_operation_duration_recorded(self):
+        connection_props = {
+            "database": "testdatabase",
+            "server_host": "testhost",
+            "server_port": 123,
+            "user": "testuser",
+        }
+        connection_attributes = {
+            "database": "database",
+            "port": "server_port",
+            "host": "server_host",
+            "user": "user",
+        }
+        db_integration = AiopgIntegration(
+            __name__, "testcomponent", connection_attributes
+        )
+        mock_connection = async_call(
+            db_integration.wrapped_connection(
+                mock_connect, (), connection_props
+            )
+        )
+        cursor = async_call(mock_connection.cursor())
+        async_call(cursor.execute("SELECT * FROM users"))
+
+        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+        self.assertIsNotNone(duration_metric)
+        self.assertEqual(duration_metric.unit, "s")
+        points = list(duration_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        attributes = dict(points[0].attributes)
+        self.assertEqual(attributes[DB_SYSTEM_NAME], "testcomponent")
+        self.assertEqual(attributes[DB_NAMESPACE], "testdatabase")
+        self.assertEqual(attributes[DB_OPERATION_NAME], "SELECT")
+        self.assertEqual(attributes[SERVER_ADDRESS], "testhost")
+        self.assertEqual(attributes[SERVER_PORT], 123)
+        self.assertNotIn(ERROR_TYPE, attributes)
+        self.assertEqual(points[0].count, 1)
+        self.assertGreaterEqual(points[0].sum, 0.0)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_operation_duration_error_type(self):
+        db_integration = AiopgIntegration(__name__, "testcomponent")
+        mock_connection = async_call(
+            db_integration.wrapped_connection(mock_connect, (), {})
+        )
+        cursor = async_call(mock_connection.cursor())
+        with self.assertRaises(psycopg2.ProgrammingError):
+            async_call(cursor.execute("SELECT 1", throw_exception=True))
+
+        duration_metric = self._get_metric(DB_CLIENT_OPERATION_DURATION)
+        self.assertIsNotNone(duration_metric)
+        points = list(duration_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        attributes = dict(points[0].attributes)
+        self.assertEqual(attributes[ERROR_TYPE], "ProgrammingError")
+        self.assertEqual(attributes[DB_OPERATION_NAME], "SELECT")
+        self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_returned_rows_recorded_for_executemany(self):
+        db_integration = AiopgIntegration(__name__, "testcomponent")
+        mock_connection = async_call(
+            db_integration.wrapped_connection(mock_connect, (), {})
+        )
+        cursor = async_call(mock_connection.cursor())
+        async_call(
+            cursor.executemany("INSERT INTO users VALUES (1)", rowcount=3)
+        )
+
+        rows_metric = self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS)
+        self.assertIsNotNone(rows_metric)
+        self.assertEqual(rows_metric.unit, "{row}")
+        points = list(rows_metric.data.data_points)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0].sum, 3)
+        self.assertEqual(points[0].count, 1)
+
+    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database"})
+    def test_returned_rows_skipped_when_rowcount_unknown(self):
+        db_integration = AiopgIntegration(__name__, "testcomponent")
+        mock_connection = async_call(
+            db_integration.wrapped_connection(mock_connect, (), {})
+        )
+        cursor = async_call(mock_connection.cursor())
+        async_call(cursor.execute("CREATE TABLE users (id INT)"))
+
+        self.assertIsNone(self._get_metric(DB_CLIENT_RESPONSE_RETURNED_ROWS))
+        self.assertIsNotNone(self._get_metric(DB_CLIENT_OPERATION_DURATION))
 
 
 # pylint: disable=unused-argument
@@ -534,6 +893,12 @@ class MockPsycopg2Connection:
         self.server_port = server_port
         self.server_host = server_host
         self.user = user
+        self.info = SimpleNamespace(
+            dbname=database,
+            port=server_port,
+            host=server_host,
+            user=user,
+        )
 
 
 class MockConnection:
@@ -555,18 +920,30 @@ class MockConnection:
 
 
 class MockCursor:
-    # pylint: disable=unused-argument, no-self-use
-    async def execute(self, query, params=None, throw_exception=False):
+    def __init__(self):
+        self.rowcount = -1
+
+    # pylint: disable=unused-argument
+    async def execute(
+        self, query, params=None, throw_exception=False, rowcount=-1
+    ):
+        self.rowcount = rowcount
         if throw_exception:
             raise psycopg2.ProgrammingError("Test Exception")
 
-    # pylint: disable=unused-argument, no-self-use
-    async def executemany(self, query, params=None, throw_exception=False):
+    # pylint: disable=unused-argument
+    async def executemany(
+        self, query, params=None, throw_exception=False, rowcount=-1
+    ):
+        self.rowcount = rowcount
         if throw_exception:
             raise psycopg2.ProgrammingError("Test Exception")
 
-    # pylint: disable=unused-argument, no-self-use
-    async def callproc(self, query, params=None, throw_exception=False):
+    # pylint: disable=unused-argument
+    async def callproc(
+        self, query, params=None, throw_exception=False, rowcount=-1
+    ):
+        self.rowcount = rowcount
         if throw_exception:
             raise psycopg2.ProgrammingError("Test Exception")
 

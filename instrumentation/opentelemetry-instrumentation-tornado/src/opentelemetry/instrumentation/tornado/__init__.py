@@ -17,9 +17,11 @@ Usage
     # apply tornado instrumentation
     TornadoInstrumentor().instrument()
 
+
     class Handler(tornado.web.RequestHandler):
         def get(self):
             self.set_status(200)
+
 
     app = tornado.web.Application([(r"/", Handler)])
     app.listen(8080)
@@ -65,11 +67,13 @@ created span and some other contextual information. Example:
 
     from opentelemetry.instrumentation.tornado import TornadoInstrumentor
 
+
     # will be called for each incoming request to Tornado
     # web server. `handler` is an instance of
     # `tornado.web.RequestHandler`.
     def server_request_hook(span, handler):
         pass
+
 
     # will be called just before sending out a request with
     # `tornado.httpclient.AsyncHTTPClient.fetch`.
@@ -77,11 +81,13 @@ created span and some other contextual information. Example:
     def client_request_hook(span, request):
         pass
 
+
     # will be called after a outgoing request made with
     # `tornado.httpclient.AsyncHTTPClient.fetch` finishes.
     # `response`` is an instance of ``Future[tornado.httpclient.HTTPResponse]`.
     def client_response_hook(span, future):
         pass
+
 
     # apply tornado instrumentation with hooks
     TornadoInstrumentor().instrument(

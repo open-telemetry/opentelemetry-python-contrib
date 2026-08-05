@@ -3,9 +3,14 @@
 
 # pylint: disable=too-many-locals,too-many-lines
 
+from unittest.mock import AsyncMock
+
 import pytest
 from openai import APIConnectionError, AsyncOpenAI, NotFoundError
 
+from opentelemetry.instrumentation.openai_v2.patch import (
+    AsyncLegacyChatStreamWrapper,
+)
 from opentelemetry.semconv._incubating.attributes import (
     error_attributes as ErrorAttributes,
 )
@@ -967,10 +972,7 @@ async def test_async_chat_completion_streaming_not_complete(
                 response_stream_id = chunk.id
             idx += 1
 
-        if latest_experimental_enabled:
-            await response.close()
-        else:
-            response.close()
+        await response.close()
     spans = span_exporter.get_finished_spans()
     assert_all_attributes(
         spans[0],
@@ -1011,6 +1013,92 @@ async def test_async_chat_completion_streaming_not_complete(
         assert_message_in_logs(
             logs[1], "gen_ai.choice", choice_event, spans[0]
         )
+
+
+@pytest.mark.asyncio()
+async def test_async_chat_completion_streaming_close_awaits_underlying_stream(
+    span_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
+):
+    # Closing the legacy async stream wrapper must await the underlying
+    # AsyncStream.close so the httpx response/connection is released instead of
+    # leaking.
+    # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4710
+    if is_experimental_mode():
+        pytest.skip("legacy stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+    }
+
+    with vcr.use_cassette(
+        "test_async_chat_completion_streaming_not_complete.yaml"
+    ):
+        response = await async_openai_client.chat.completions.create(**kwargs)
+        assert isinstance(response, AsyncLegacyChatStreamWrapper)
+
+        async for _ in response:
+            # consume one chunk, then exit early (mirrors cancellation)
+            break
+
+        # Wrap the real close so the underlying connection is still released
+        # while asserting it was awaited.
+        underlying_close = AsyncMock(wraps=response.stream.close)
+        response.stream.close = underlying_close
+
+        # close() must be awaitable and must await the underlying stream close.
+        await response.close()
+
+    underlying_close.assert_awaited_once()
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+
+@pytest.mark.asyncio()
+async def test_async_chat_completion_streaming_context_manager_awaits_close(
+    span_exporter,
+    async_openai_client,
+    instrument_with_content,
+    vcr,
+):
+    # Exiting the legacy async stream wrapper as an async context manager must
+    # await the underlying AsyncStream.close so the httpx response/connection is
+    # released instead of leaking.
+    # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/4710
+    if is_experimental_mode():
+        pytest.skip("legacy stream wrapper only")
+
+    kwargs = {
+        "model": DEFAULT_MODEL,
+        "messages": USER_ONLY_PROMPT,
+        "stream": True,
+    }
+
+    with vcr.use_cassette(
+        "test_async_chat_completion_streaming_not_complete.yaml"
+    ):
+        response = await async_openai_client.chat.completions.create(**kwargs)
+        assert isinstance(response, AsyncLegacyChatStreamWrapper)
+
+        # Wrap the real close so the underlying connection is still released
+        # while asserting it was awaited.
+        underlying_close = AsyncMock(wraps=response.stream.close)
+        response.stream.close = underlying_close
+
+        async with response:
+            async for _ in response:
+                # consume one chunk, then exit early
+                break
+
+    underlying_close.assert_awaited_once()
+
+    spans = span_exporter.get_finished_spans()
+    assert len(spans) == 1
 
 
 @pytest.mark.asyncio()
