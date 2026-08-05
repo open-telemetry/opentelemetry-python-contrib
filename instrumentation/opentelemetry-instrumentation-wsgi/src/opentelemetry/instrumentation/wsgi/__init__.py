@@ -15,9 +15,11 @@ Usage (Flask)
     app = Flask(__name__)
     app.wsgi_app = OpenTelemetryMiddleware(app.wsgi_app)
 
+
     @app.route("/")
     def hello():
         return "Hello!"
+
 
     if __name__ == "__main__":
         app.run(debug=True)
@@ -34,7 +36,7 @@ Modify the application's ``wsgi.py`` file as shown below.
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
     from django.core.wsgi import get_wsgi_application
 
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'application.settings')
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "application.settings")
 
     application = get_wsgi_application()
     application = OpenTelemetryMiddleware(application)
@@ -48,11 +50,10 @@ Usage (Web.py)
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
     from cheroot import wsgi
 
-    urls = ('/', 'index')
+    urls = ("/", "index")
 
 
     class index:
-
         def GET(self):
             return "Hello, world!"
 
@@ -90,19 +91,37 @@ For example,
     from wsgiref.types import WSGIEnvironment, StartResponse
     from opentelemetry.instrumentation.wsgi import OpenTelemetryMiddleware
 
+
     def app(environ: WSGIEnvironment, start_response: StartResponse):
-        start_response("200 OK", [("Content-Type", "text/plain"), ("Content-Length", "13")])
+        start_response(
+            "200 OK",
+            [("Content-Type", "text/plain"), ("Content-Length", "13")],
+        )
         return [b"Hello, World!"]
+
 
     def request_hook(span: Span, environ: WSGIEnvironment):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_request_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_request_hook", "some-value"
+            )
 
-    def response_hook(span: Span, environ: WSGIEnvironment, status: str, response_headers: list[tuple[str, str]]):
+
+    def response_hook(
+        span: Span,
+        environ: WSGIEnvironment,
+        status: str,
+        response_headers: list[tuple[str, str]],
+    ):
         if span and span.is_recording():
-            span.set_attribute("custom_user_attribute_from_response_hook", "some-value")
+            span.set_attribute(
+                "custom_user_attribute_from_response_hook", "some-value"
+            )
 
-    OpenTelemetryMiddleware(app, request_hook=request_hook, response_hook=response_hook)
+
+    OpenTelemetryMiddleware(
+        app, request_hook=request_hook, response_hook=response_hook
+    )
 
 Capture HTTP request and response headers
 *****************************************
