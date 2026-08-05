@@ -157,6 +157,7 @@ target-version = "py310"
 line-length = 79
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
+extension = { added = "markdown", changed = "markdown", deprecated = "markdown", removed = "markdown", fixed = "markdown" }
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/linter/#rule-selection
@@ -190,6 +191,9 @@ known-third-party = [
   "redis_opentracing",
   "opencensus",
 ]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
