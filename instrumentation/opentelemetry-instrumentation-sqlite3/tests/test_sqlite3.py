@@ -255,6 +255,35 @@ class TestSQLite3Integration(TestBase):
             "OperationalError: no such table: nonexistent_table",
         )
 
+    def test_semconv_default(self):
+        """No opt-in emits only legacy attributes."""
+        with use_semconv_opt_in(""):
+            SQLite3Instrumentor().instrument(
+                tracer_provider=self.tracer_provider
+            )
+            cnx = self._connect()
+            cursor = cnx.cursor()
+            self.addCleanup(cursor.close)
+            cursor.execute("SELECT 1")
+
+            spans_list = self.memory_exporter.get_finished_spans()
+            self.assertEqual(len(spans_list), 1)
+            span = spans_list[0]
+
+            self.assertEqual(span.attributes[DB_SYSTEM], "sqlite")
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT 1")
+            self.assertNotIn(DB_SYSTEM_NAME, span.attributes)
+            self.assertNotIn(DB_QUERY_TEXT, span.attributes)
+            # sqlite3 does not capture connection attributes, so neither
+            # legacy nor stable database/peer attributes are emitted.
+            self.assertNotIn(DB_NAME, span.attributes)
+            self.assertNotIn(DB_NAMESPACE, span.attributes)
+            self.assertNotIn(DB_USER, span.attributes)
+            self.assertNotIn(NET_PEER_NAME, span.attributes)
+            self.assertNotIn(NET_PEER_PORT, span.attributes)
+            self.assertNotIn(SERVER_ADDRESS, span.attributes)
+            self.assertNotIn(SERVER_PORT, span.attributes)
+
     def test_semconv_stable(self):
         """database,http opt-in emits only stable attributes."""
         with use_semconv_opt_in("database,http"):
