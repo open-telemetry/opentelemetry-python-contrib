@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pymssql`: add `capture_parameters` option to capture query parameters as the `db.statement.parameters` span attribute

@@ -45,6 +45,9 @@ API
 The `instrument` method accepts the following keyword args:
 
 * tracer_provider (``TracerProvider``) - an optional tracer provider
+* capture_parameters (``bool``) - an optional flag to enable capturing of
+  query parameters as the ``db.statement.parameters`` span attribute
+  (default ``False``)
 
 For example:
 
@@ -157,6 +160,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         https://github.com/pymssql/pymssql/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -165,6 +169,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             _DATABASE_SYSTEM,
             version=__version__,
             tracer_provider=tracer_provider,
+            capture_parameters=capture_parameters,
             # pymssql does not keep the connection attributes in its connection object;
             # instead, we get the attributes from the connect method (which is done
             # via PyMSSQLDatabaseApiIntegration.wrapped_connection)
@@ -176,13 +181,20 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(pymssql, "connect")
 
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(
+        connection,
+        tracer_provider=None,
+        capture_parameters: bool = False,
+    ):
         """Enable instrumentation in a pymssql connection.
 
         Args:
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            capture_parameters: Optional flag to enable capturing of query
+                parameters as the ``db.statement.parameters`` span attribute
+                (default False).
 
         Returns:
             An instrumented connection.
@@ -194,6 +206,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             _DATABASE_SYSTEM,
             version=__version__,
             tracer_provider=tracer_provider,
+            capture_parameters=capture_parameters,
             db_api_integration_factory=_PyMSSQLDatabaseApiIntegration,
         )
 
