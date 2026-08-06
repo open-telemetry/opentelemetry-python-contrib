@@ -178,6 +178,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         enable_attribute_commenter = kwargs.get(
             "enable_attribute_commenter", False
         )
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -190,6 +191,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             enable_commenter=enable_sqlcommenter,
             commenter_options=commenter_options,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     def _uninstrument(self, **kwargs):  # pylint: disable=no-self-use
@@ -203,6 +205,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
         enable_commenter=None,
         commenter_options=None,
         enable_attribute_commenter=None,
+        capture_parameters=False,
     ):
         """Enable instrumentation in a PyMySQL connection.
 
@@ -221,6 +224,9 @@ class PyMySQLInstrumentor(BaseInstrumentor):
                 You can specify various options, such as enabling driver information, database version logging,
                 traceparent propagation, and other customizable metadata enhancements.
                 See *SQLCommenter Configurations* above for more information.
+            capture_parameters:
+                A flag to enable the capture of query parameters in the
+                `db.statement.parameters` span attribute. Defaults to `False`.
         Returns:
             An instrumented connection.
         """
@@ -236,6 +242,7 @@ class PyMySQLInstrumentor(BaseInstrumentor):
             commenter_options=commenter_options,
             connect_module=pymysql,
             enable_attribute_commenter=enable_attribute_commenter,
+            capture_parameters=capture_parameters,
         )
 
     @staticmethod
