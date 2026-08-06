@@ -834,7 +834,8 @@ class CursorTracer(Generic[CursorT]):
         # `query` can be an empty string. See #2643
         if query and isinstance(query, str):
             # Strip leading comments so we get the operation name.
-            return self._leading_comment_remover.sub("", query).split()[0]
+            tokens = self._leading_comment_remover.sub("", query).split()
+            return tokens[0] if tokens else ""
         return ""
 
     def get_statement(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use

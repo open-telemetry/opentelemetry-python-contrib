@@ -124,6 +124,31 @@ class TestDBApiIntegration(TestBase):
         self.assertEqual(span.attributes[NET_PEER_PORT], 123)
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
+    def test_operation_name_no_tokens_after_comment_strip(self):
+        # Regression for the #2643 family: a query that is truthy but has no
+        # tokens left after leading-comment or whitespace stripping (e.g. a
+        # comment-only or whitespace-only statement) must not raise IndexError.
+        connection_props = _get_default_connection_props()
+        connection_attributes = _get_default_connection_attributes()
+        for query in ("/* comment only */", "   "):
+            db_integration = dbapi.DatabaseApiIntegration(
+                "instrumenting_module_test_name",
+                "testcomponent",
+                connection_attributes,
+            )
+            mock_connection = db_integration.wrapped_connection(
+                mock_connect, {}, connection_props
+            )
+            cursor = mock_connection.cursor()
+            # Must not raise IndexError.
+            cursor.execute(query)
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 2)
+        for span in spans_list:
+            # With no operation token the span name falls back to the db name;
+            # the key assertion is that instrumentation did not raise IndexError.
+            self.assertEqual(span.name, "testdatabase")
+
     def test_suppress_instrumentation_async(self):
         execute = mock.AsyncMock(return_value="result")
         db_integration = dbapi.DatabaseApiIntegration(

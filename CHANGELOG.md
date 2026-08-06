@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- changelog start -->
 
+## Unreleased
+
+### Fixed
+
+- `opentelemetry-instrumentation-dbapi`: fix `IndexError` in `get_operation_name`
+  when a SQL statement is comment-only or whitespace-only (empty after leading
+  comment stripping); such a statement now yields an empty operation name instead
+  of crashing the instrumented call
+  ([#4934](https://github.com/open-telemetry/opentelemetry-python-contrib/pull/4934))
+
 ## Version 1.44.0/0.65b0 (2026-07-16)
 
 ### Added
