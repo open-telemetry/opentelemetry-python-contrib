@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # type: ignore
 
+from __future__ import annotations
+
+from dataclasses import dataclass
 from logging import WARNING
 from unittest import TestCase
 from unittest.mock import patch
@@ -42,6 +45,21 @@ class TestInstrumentor(TestCase):
 
     def test_singleton(self):
         self.assertIs(self.Instrumentor(), self.Instrumentor())
+
+    def test_configuration_defaults_to_none(self):
+        self.assertIsNone(BaseInstrumentor.configuration)
+        self.assertIsNone(self.Instrumentor().configuration)
+
+    def test_configuration_can_be_overridden(self):
+        @dataclass
+        class SampleConfig:
+            excluded_urls: str | None = None
+
+        class ConfiguredInstrumentor(self.Instrumentor):
+            configuration = SampleConfig
+
+        self.assertIs(ConfiguredInstrumentor.configuration, SampleConfig)
+        self.assertIsNone(self.Instrumentor.configuration)
 
     @patch("opentelemetry.instrumentation.instrumentor._LOG")
     @patch(
