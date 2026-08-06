@@ -206,6 +206,7 @@ include = [
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
   "instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi",
+  "instrumentation/opentelemetry-instrumentation-httpx",
   "instrumentation/opentelemetry-instrumentation-threading",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "util/opentelemetry-util-genai",
@@ -225,6 +226,7 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]
