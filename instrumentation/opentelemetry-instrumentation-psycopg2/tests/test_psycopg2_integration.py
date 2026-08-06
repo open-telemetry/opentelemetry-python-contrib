@@ -61,9 +61,7 @@ class MockConnection:
 class TestPostgresqlIntegration(TestBase):
     def setUp(self):
         super().setUp()
-        self.cursor_mock = mock.patch(
-            "opentelemetry.instrumentation.psycopg2.pg_cursor", MockCursor
-        )
+        self.cursor_mock = mock.patch("opentelemetry.instrumentation.psycopg2.pg_cursor", MockCursor)
         self.connection_mock = mock.patch("psycopg2.connect", MockConnection)
 
         self.cursor_mock.start()
@@ -93,9 +91,7 @@ class TestPostgresqlIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.psycopg2
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.psycopg2)
 
         # check that no spans are generated after uninstrument
         Psycopg2Instrumentor().uninstrument()
@@ -528,9 +524,7 @@ class TestPostgresqlIntegration(TestBase):
         )
 
     def test_no_op_tracer_provider(self):
-        Psycopg2Instrumentor().instrument(
-            tracer_provider=trace.NoOpTracerProvider()
-        )
+        Psycopg2Instrumentor().instrument(tracer_provider=trace.NoOpTracerProvider())
         cnx = psycopg2.connect(database="test")
         cursor = cnx.cursor()
         query = "SELECT * FROM test"
