@@ -15,13 +15,21 @@ from wrapt import ObjectProxy
 from opentelemetry import context, propagate, trace
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.propagators.textmap import CarrierT, Getter
-from opentelemetry.semconv._incubating.attributes.net_attributes import (
-    NET_PEER_NAME,
-    NET_PEER_PORT,
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_DESTINATION_TEMPORARY,
+    MESSAGING_MESSAGE_CONVERSATION_ID,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION_TYPE,
+    MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY,
+    MESSAGING_RABBITMQ_MESSAGE_DELIVERY_TAG,
+    MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+    MessagingSystemValues,
 )
-from opentelemetry.semconv.trace import (
-    MessagingOperationValues,
-    SpanAttributes,
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
 )
 from opentelemetry.trace import SpanKind, Tracer
 from opentelemetry.trace.span import Span
@@ -77,7 +85,9 @@ def _decorate_callback(
             ),
             span_kind=SpanKind.CONSUMER,
             task_name=task_name,
-            operation=MessagingOperationValues.RECEIVE,
+            operation=MessagingOperationTypeValues.RECEIVE,
+            routing_key=method.routing_key,
+            delivery_tag=method.delivery_tag,
         )
         try:
             with trace.use_span(span, end_on_exit=True):
@@ -119,6 +129,7 @@ def _decorate_basic_publish(
             span_kind=SpanKind.PRODUCER,
             task_name="(temporary)",
             operation=None,
+            routing_key=routing_key,
         )
         if not span:
             return original_function(
@@ -145,7 +156,9 @@ def _get_span(
     task_name: str,
     destination: str,
     span_kind: SpanKind,
-    operation: Optional[MessagingOperationValues] = None,
+    operation: Optional[MessagingOperationTypeValues] = None,
+    routing_key: Optional[str] = None,
+    delivery_tag: Optional[int] = None,
 ) -> Optional[Span]:
     if not is_instrumentation_enabled():
         return None
@@ -155,12 +168,20 @@ def _get_span(
         kind=span_kind,
     )
     if span.is_recording():
-        _enrich_span(span, channel, properties, destination, operation)
+        _enrich_span(
+            span,
+            channel,
+            properties,
+            destination,
+            operation,
+            routing_key,
+            delivery_tag,
+        )
     return span
 
 
 def _generate_span_name(
-    task_name: str, operation: Optional[MessagingOperationValues]
+    task_name: str, operation: Optional[MessagingOperationTypeValues]
 ) -> str:
     if not operation:
         return f"{task_name} send"
@@ -172,30 +193,40 @@ def _enrich_span(
     channel: Optional[Channel],
     properties: BasicProperties,
     task_destination: str,
-    operation: Optional[MessagingOperationValues] = None,
+    operation: Optional[MessagingOperationTypeValues] = None,
+    routing_key: Optional[str] = None,
+    delivery_tag: Optional[int] = None,
 ) -> None:
-    span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq")
+    span.set_attribute(MESSAGING_SYSTEM, MessagingSystemValues.RABBITMQ.value)
     if operation:
-        span.set_attribute(SpanAttributes.MESSAGING_OPERATION, operation.value)
+        span.set_attribute(MESSAGING_OPERATION_TYPE, operation.value)
     else:
-        span.set_attribute(SpanAttributes.MESSAGING_TEMP_DESTINATION, True)
-    span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, task_destination)
-    if properties.message_id:
+        span.set_attribute(MESSAGING_DESTINATION_TEMPORARY, True)
+    span.set_attribute(MESSAGING_DESTINATION_NAME, task_destination)
+    if routing_key:
         span.set_attribute(
-            SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id
+            MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY, routing_key
         )
+    if properties.message_id:
+        span.set_attribute(MESSAGING_MESSAGE_ID, properties.message_id)
     if properties.correlation_id:
         span.set_attribute(
-            SpanAttributes.MESSAGING_CONVERSATION_ID, properties.correlation_id
+            MESSAGING_MESSAGE_CONVERSATION_ID, properties.correlation_id
+        )
+    if delivery_tag is not None:
+        span.set_attribute(
+            MESSAGING_RABBITMQ_MESSAGE_DELIVERY_TAG, delivery_tag
         )
     if not channel:
         return
     if not hasattr(channel.connection, "params"):
-        span.set_attribute(NET_PEER_NAME, channel.connection._impl.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection._impl.params.port)
+        span.set_attribute(
+            SERVER_ADDRESS, channel.connection._impl.params.host
+        )
+        span.set_attribute(SERVER_PORT, channel.connection._impl.params.port)
     else:
-        span.set_attribute(NET_PEER_NAME, channel.connection.params.host)
-        span.set_attribute(NET_PEER_PORT, channel.connection.params.port)
+        span.set_attribute(SERVER_ADDRESS, channel.connection.params.host)
+        span.set_attribute(SERVER_PORT, channel.connection.params.port)
 
 
 # pylint:disable=abstract-method
@@ -249,7 +280,9 @@ class ReadyMessagesDequeProxy(ObjectProxy):
                     ),
                     span_kind=SpanKind.CONSUMER,
                     task_name=self._self_queue_consumer_generator.consumer_tag,
-                    operation=MessagingOperationValues.RECEIVE,
+                    operation=MessagingOperationTypeValues.RECEIVE,
+                    routing_key=method.routing_key,
+                    delivery_tag=method.delivery_tag,
                 )
                 try:
                     if message_ctx_token:
