@@ -309,12 +309,18 @@ def _instrument(
 
     # pylint: disable-msg=too-many-locals,too-many-branches
     @functools.wraps(wrapped_send)
-    def instrumented_send(self: Session, request: PreparedRequest, **kwargs: Any):
+    def instrumented_send(
+        self: Session, request: PreparedRequest, **kwargs: Any
+    ):
         if excluded_urls and excluded_urls.url_disabled(request.url):
             return wrapped_send(self, request, **kwargs)
 
         def get_or_create_headers():
-            request.headers = request.headers if request.headers is not None else CaseInsensitiveDict()
+            request.headers = (
+                request.headers
+                if request.headers is not None
+                else CaseInsensitiveDict()
+            )
             return request.headers
 
         if not is_http_instrumentation_enabled():
@@ -368,10 +374,16 @@ def _instrument(
             if parsed_url.scheme:
                 if _report_old(sem_conv_opt_in_mode):
                     # TODO: Support opt-in for url.scheme in new semconv
-                    _set_http_scheme(metric_labels, parsed_url.scheme, sem_conv_opt_in_mode)
+                    _set_http_scheme(
+                        metric_labels, parsed_url.scheme, sem_conv_opt_in_mode
+                    )
             if parsed_url.hostname:
-                _set_http_host_client(metric_labels, parsed_url.hostname, sem_conv_opt_in_mode)
-                _set_http_net_peer_name_client(metric_labels, parsed_url.hostname, sem_conv_opt_in_mode)
+                _set_http_host_client(
+                    metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
+                )
+                _set_http_net_peer_name_client(
+                    metric_labels, parsed_url.hostname, sem_conv_opt_in_mode
+                )
                 if _report_new(sem_conv_opt_in_mode):
                     _set_http_host_client(
                         span_attributes,
@@ -381,16 +393,22 @@ def _instrument(
                     # Use semconv library when available
                     span_attributes[NETWORK_PEER_ADDRESS] = parsed_url.hostname
             if parsed_url.port:
-                _set_http_peer_port_client(metric_labels, parsed_url.port, sem_conv_opt_in_mode)
+                _set_http_peer_port_client(
+                    metric_labels, parsed_url.port, sem_conv_opt_in_mode
+                )
                 if _report_new(sem_conv_opt_in_mode):
-                    _set_http_peer_port_client(span_attributes, parsed_url.port, sem_conv_opt_in_mode)
+                    _set_http_peer_port_client(
+                        span_attributes, parsed_url.port, sem_conv_opt_in_mode
+                    )
                     # Use semconv library when available
                     span_attributes[NETWORK_PEER_PORT] = parsed_url.port
         except ValueError:
             pass
 
         with (
-            tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=span_attributes) as span,
+            tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            ) as span,
             set_ip_on_next_http_connection(span),
         ):
             exception = None
@@ -402,7 +420,9 @@ def _instrument(
             with suppress_http_instrumentation():
                 start_time = default_timer()
                 try:
-                    result = wrapped_send(self, request, **kwargs)  # *** PROCEED
+                    result = wrapped_send(
+                        self, request, **kwargs
+                    )  # *** PROCEED
                 except Exception as exc:  # pylint: disable=W0703
                     exception = exc
                     result = getattr(exc, "response", None)
@@ -423,7 +443,9 @@ def _instrument(
                     if version:
                         # Only HTTP/1 is supported by requests
                         version_text = "1.1" if version == 11 else "1.0"
-                        _set_http_network_protocol_version(metric_labels, version_text, sem_conv_opt_in_mode)
+                        _set_http_network_protocol_version(
+                            metric_labels, version_text, sem_conv_opt_in_mode
+                        )
                         if _report_new(sem_conv_opt_in_mode):
                             _set_http_network_protocol_version(
                                 span_attributes,
@@ -466,7 +488,9 @@ def _instrument(
                     _client_duration_attrs_new,
                     _StabilityMode.HTTP,
                 )
-                duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+                duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
             if exception is not None:
                 raise exception.with_traceback(exception.__traceback__)
@@ -547,7 +571,9 @@ class RequestsInstrumentor(BaseInstrumentor):
         )
         excluded_urls = kwargs.get("excluded_urls")
         meter_provider = kwargs.get("meter_provider")
-        duration_histogram_boundaries = kwargs.get("duration_histogram_boundaries")
+        duration_histogram_boundaries = kwargs.get(
+            "duration_histogram_boundaries"
+        )
         meter = get_meter(
             __name__,
             __version__,
@@ -578,11 +604,21 @@ class RequestsInstrumentor(BaseInstrumentor):
             duration_histogram_new,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            excluded_urls=(_excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls)),
+            excluded_urls=(
+                _excluded_urls_from_env
+                if excluded_urls is None
+                else parse_excluded_urls(excluded_urls)
+            ),
             sem_conv_opt_in_mode=semconv_opt_in_mode,
-            captured_request_headers=get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST),
-            captured_response_headers=get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE),
-            sensitive_headers=get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS),
+            captured_request_headers=get_custom_headers(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+            ),
+            captured_response_headers=get_custom_headers(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+            ),
+            sensitive_headers=get_custom_headers(
+                OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+            ),
         )
 
     def _uninstrument(self, **kwargs: Any):

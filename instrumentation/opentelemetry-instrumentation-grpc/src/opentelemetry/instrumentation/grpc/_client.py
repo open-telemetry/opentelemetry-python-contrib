@@ -68,11 +68,17 @@ def _safe_invoke(function: Callable, *args):
         function_name = function.__name__
         function(*args)
     except Exception as ex:  # pylint:disable=broad-except
-        logger.error("Error when invoking function '%s'", function_name, exc_info=ex)
+        logger.error(
+            "Error when invoking function '%s'", function_name, exc_info=ex
+        )
 
 
-class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor):
-    def __init__(self, tracer, filter_=None, request_hook=None, response_hook=None):
+class OpenTelemetryClientInterceptor(
+    grpcext.UnaryClientInterceptor, grpcext.StreamClientInterceptor
+):
+    def __init__(
+        self, tracer, filter_=None, request_hook=None, response_hook=None
+    ):
         self._tracer = tracer
         self._filter = filter_
         self._request_hook = request_hook
@@ -99,7 +105,9 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
         # If the RPC is called asynchronously, add a callback to end the span
         # when the future is done, else end the span immediately
         if isinstance(result, grpc.Future):
-            result.add_done_callback(_make_future_done_callback(span, rpc_info))
+            result.add_done_callback(
+                _make_future_done_callback(span, rpc_info)
+            )
             return result
         response = result
         # Handle the case when the RPC is initiated via the with_call
@@ -179,7 +187,9 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
     # For RPCs that stream responses, the result can be a generator. To record
     # the span across the generated responses and detect any errors, we wrap
     # the result in a new generator that yields the response values.
-    def _intercept_server_stream(self, request_or_iterator, metadata, client_info, invoker):
+    def _intercept_server_stream(
+        self, request_or_iterator, metadata, client_info, invoker
+    ):
         if not metadata:
             mutable_metadata = OrderedDict()
         else:
@@ -204,7 +214,9 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
                 span.set_attribute(RPC_GRPC_STATUS_CODE, err.code().value[0])
                 raise err
 
-    def intercept_stream(self, request_or_iterator, metadata, client_info, invoker):
+    def intercept_stream(
+        self, request_or_iterator, metadata, client_info, invoker
+    ):
         if not is_instrumentation_enabled():
             return invoker(request_or_iterator, metadata)
 
@@ -212,6 +224,10 @@ class OpenTelemetryClientInterceptor(grpcext.UnaryClientInterceptor, grpcext.Str
             return invoker(request_or_iterator, metadata)
 
         if client_info.is_server_stream and not client_info.is_client_stream:
-            return self._intercept_server_stream(request_or_iterator, metadata, client_info, invoker)
+            return self._intercept_server_stream(
+                request_or_iterator, metadata, client_info, invoker
+            )
 
-        return self._intercept(request_or_iterator, metadata, client_info, invoker)
+        return self._intercept(
+            request_or_iterator, metadata, client_info, invoker
+        )

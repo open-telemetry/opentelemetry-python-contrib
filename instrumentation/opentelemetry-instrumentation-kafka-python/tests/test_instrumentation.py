@@ -15,13 +15,19 @@ class TestKafka(TestCase):
 
         instrumentation.instrument()
         self.assertTrue(isinstance(KafkaProducer.send, BoundFunctionWrapper))
-        self.assertTrue(isinstance(KafkaConsumer.__next__, BoundFunctionWrapper))
+        self.assertTrue(
+            isinstance(KafkaConsumer.__next__, BoundFunctionWrapper)
+        )
 
         instrumentation.uninstrument()
         self.assertFalse(isinstance(KafkaProducer.send, BoundFunctionWrapper))
-        self.assertFalse(isinstance(KafkaConsumer.__next__, BoundFunctionWrapper))
+        self.assertFalse(
+            isinstance(KafkaConsumer.__next__, BoundFunctionWrapper)
+        )
 
     def test_instrumentation_dependencies(self) -> None:
         instrumentation = KafkaInstrumentor()
 
-        self.assertEqual(instrumentation.instrumentation_dependencies(), _instruments)
+        self.assertEqual(
+            instrumentation.instrumentation_dependencies(), _instruments
+        )

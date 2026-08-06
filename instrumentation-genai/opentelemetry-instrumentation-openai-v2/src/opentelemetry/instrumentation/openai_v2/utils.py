@@ -46,7 +46,9 @@ _OpenAIOmit = getattr(openai, "Omit", None)
 
 
 def is_content_enabled() -> bool:
-    capture_content = environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false")
+    capture_content = environ.get(
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
+    )
 
     return capture_content.lower() == "true"
 
@@ -116,7 +118,9 @@ def get_property_value(obj, property_name):
 
 
 def message_to_event(message, capture_content):
-    attributes = {GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value}
+    attributes = {
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+    }
     role = get_property_value(message, "role")
     content = get_property_value(message, "content")
 
@@ -140,7 +144,9 @@ def message_to_event(message, capture_content):
 
 
 def choice_to_event(choice, capture_content):
-    attributes = {GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value}
+    attributes = {
+        GenAIAttributes.GEN_AI_SYSTEM: GenAIAttributes.GenAiSystemValues.OPENAI.value
+    }
 
     body = {
         "index": choice.index,
@@ -148,7 +154,13 @@ def choice_to_event(choice, capture_content):
     }
 
     if choice.message:
-        message = {"role": (choice.message.role if choice.message and choice.message.role else None)}
+        message = {
+            "role": (
+                choice.message.role
+                if choice.message and choice.message.role
+                else None
+            )
+        }
         tool_calls = extract_tool_calls(choice.message, capture_content)
         if tool_calls:
             message["tool_calls"] = tool_calls
@@ -215,7 +227,9 @@ def get_llm_request_attributes(
     if latest_experimental_enabled:
         attributes.update(
             {
-                GenAIAttributes.GEN_AI_PROVIDER_NAME: (GenAIAttributes.GenAiProviderNameValues.OPENAI.value),
+                GenAIAttributes.GEN_AI_PROVIDER_NAME: (
+                    GenAIAttributes.GenAiProviderNameValues.OPENAI.value
+                ),
             }
         )
     else:
@@ -229,11 +243,20 @@ def get_llm_request_attributes(
     if operation_name == GenAIAttributes.GenAiOperationNameValues.CHAT.value:
         attributes.update(
             {
-                GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get("temperature"),
-                GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("p") or kwargs.get("top_p"),
-                GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get("max_tokens"),
-                GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get("presence_penalty"),
-                GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get("frequency_penalty"),
+                GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE: kwargs.get(
+                    "temperature"
+                ),
+                GenAIAttributes.GEN_AI_REQUEST_TOP_P: kwargs.get("p")
+                or kwargs.get("top_p"),
+                GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS: kwargs.get(
+                    "max_tokens"
+                ),
+                GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY: kwargs.get(
+                    "presence_penalty"
+                ),
+                GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY: kwargs.get(
+                    "frequency_penalty"
+                ),
                 GenAIAttributes.GEN_AI_REQUEST_SEED: kwargs.get("seed"),
             }
         )
@@ -241,12 +264,16 @@ def get_llm_request_attributes(
         if (choice_count := kwargs.get("n")) is not None:
             # Only add non default, meaningful values
             if isinstance(choice_count, int) and choice_count != 1:
-                attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = choice_count
+                attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
+                    choice_count
+                )
 
         if (stop_sequences := kwargs.get("stop")) is not None:
             if isinstance(stop_sequences, str):
                 stop_sequences = [stop_sequences]
-            attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = stop_sequences
+            attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
+                stop_sequences
+            )
 
         request_response_format_attr_key = (
             GenAIAttributes.GEN_AI_OUTPUT_TYPE
@@ -256,8 +283,12 @@ def get_llm_request_attributes(
         if (response_format := kwargs.get("response_format")) is not None:
             # response_format may be string or object with a string in the `type` key
             if isinstance(response_format, Mapping):
-                if (response_format_type := response_format.get("type")) is not None:
-                    attributes[request_response_format_attr_key] = response_format_type
+                if (
+                    response_format_type := response_format.get("type")
+                ) is not None:
+                    attributes[request_response_format_attr_key] = (
+                        response_format_type
+                    )
             elif isinstance(response_format, str):
                 attributes[request_response_format_attr_key] = response_format
 
@@ -273,10 +304,15 @@ def get_llm_request_attributes(
             if latest_experimental_enabled
             else GenAIAttributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER
         )
-        attributes[request_service_tier_attr_key] = service_tier if service_tier != "auto" else None
+        attributes[request_service_tier_attr_key] = (
+            service_tier if service_tier != "auto" else None
+        )
 
     # Add embeddings-specific attributes
-    elif operation_name == GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value:
+    elif (
+        operation_name
+        == GenAIAttributes.GenAiOperationNameValues.EMBEDDINGS.value
+    ):
         # Add embedding dimensions if specified
         if (dimensions := kwargs.get("dimensions")) is not None:
             # TODO: move to GEN_AI_EMBEDDINGS_DIMENSION_COUNT when 1.39.0 is baseline
@@ -284,7 +320,9 @@ def get_llm_request_attributes(
 
         # Add encoding format if specified
         if "encoding_format" in kwargs:
-            attributes[GenAIAttributes.GEN_AI_REQUEST_ENCODING_FORMATS] = [kwargs["encoding_format"]]
+            attributes[GenAIAttributes.GEN_AI_REQUEST_ENCODING_FORMATS] = [
+                kwargs["encoding_format"]
+            ]
 
     address, port = get_server_address_and_port(client_instance)
     if address:
@@ -325,18 +363,26 @@ def create_chat_invocation(
     if (choice_count := get_value(kwargs.get("n"))) is not None:
         # Only add non default, meaningful values
         if isinstance(choice_count, int) and choice_count != 1:
-            invocation.attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = choice_count
+            invocation.attributes[
+                GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT
+            ] = choice_count
 
-    if (response_format := get_value(kwargs.get("response_format"))) is not None:
+    if (
+        response_format := get_value(kwargs.get("response_format"))
+    ) is not None:
         # response_format may be string or object with a string in the `type` key
         if isinstance(response_format, Mapping):
-            if (response_format_type := get_value(response_format.get("type"))) is not None:
-                invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = _openai_response_format_to_output_type(
-                    response_format_type
+            if (
+                response_format_type := get_value(response_format.get("type"))
+            ) is not None:
+                invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                    _openai_response_format_to_output_type(
+                        response_format_type
+                    )
                 )
         elif isinstance(response_format, str):
-            invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = _openai_response_format_to_output_type(
-                response_format
+            invocation.attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
+                _openai_response_format_to_output_type(response_format)
             )
 
     # service_tier can be passed directly or in extra_body (in SDK 1.26.0 it's via extra_body)
@@ -346,11 +392,17 @@ def create_chat_invocation(
         if isinstance(extra_body, Mapping):
             service_tier = get_value(extra_body.get("service_tier"))
     if service_tier is not None and service_tier != "auto":
-        invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = service_tier
+        invocation.attributes[OpenAIAttributes.OPENAI_REQUEST_SERVICE_TIER] = (
+            service_tier
+        )
 
     if capture_content:  # optimization
-        invocation.input_messages = _prepare_input_messages(kwargs.get("messages", []))
-        invocation.tool_definitions = _prepare_tool_definitions(kwargs.get("tools"))
+        invocation.input_messages = _prepare_input_messages(
+            kwargs.get("messages", [])
+        )
+        invocation.tool_definitions = _prepare_tool_definitions(
+            kwargs.get("tools")
+        )
     return invocation
 
 
@@ -363,13 +415,16 @@ def get_value(v: Any):
 def handle_span_exception(span, error: BaseException):
     span.set_status(Status(StatusCode.ERROR, str(error)))
     if span.is_recording():
-        span.set_attribute(ErrorAttributes.ERROR_TYPE, type(error).__qualname__)
+        span.set_attribute(
+            ErrorAttributes.ERROR_TYPE, type(error).__qualname__
+        )
     span.end()
 
 
 def _is_text_part(content: Any) -> bool:
     return isinstance(content, str) or (
-        isinstance(content, Iterable) and all(isinstance(part, str) for part in content)
+        isinstance(content, Iterable)
+        and all(isinstance(part, str) for part in content)
     )
 
 
@@ -391,7 +446,9 @@ def _prepare_input_messages(messages) -> list[InputMessage]:
 
         elif role == "tool":
             tool_call_id = get_property_value(message, "tool_call_id")
-            chat_message.parts.append(ToolCallResponse(id=tool_call_id, response=content))
+            chat_message.parts.append(
+                ToolCallResponse(id=tool_call_id, response=content)
+            )
 
         else:
             # system, developer, user, fallback
@@ -418,7 +475,9 @@ def extract_tool_calls_new(tool_calls) -> list[ToolCallRequest]:
                     arguments = arguments_str
 
         # TODO: support custom
-        parts.append(ToolCallRequest(id=call_id, name=func_name, arguments=arguments))
+        parts.append(
+            ToolCallRequest(id=call_id, name=func_name, arguments=arguments)
+        )
     return parts
 
 
@@ -456,7 +515,11 @@ def _prepare_output_messages(choices) -> list[OutputMessage]:
 
             message = OutputMessage(
                 finish_reason=choice.finish_reason or "error",
-                role=(choice.message.role if choice.message and choice.message.role else ""),
+                role=(
+                    choice.message.role
+                    if choice.message and choice.message.role
+                    else ""
+                ),
                 parts=parts,
             )
             output_messages.append(message)

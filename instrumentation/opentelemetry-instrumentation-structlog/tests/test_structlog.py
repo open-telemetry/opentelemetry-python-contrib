@@ -32,10 +32,14 @@ class TestStructlogProcessor(TestBase):
         # Set up in-memory log exporter
         self.exporter = InMemoryLogRecordExporter()
         self.logger_provider = LoggerProvider()
-        self.logger_provider.add_log_record_processor(SimpleLogRecordProcessor(self.exporter))
+        self.logger_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(self.exporter)
+        )
 
         # Configure structlog with OTel processor
-        self.processor = StructlogProcessor(logger_provider=self.logger_provider)
+        self.processor = StructlogProcessor(
+            logger_provider=self.logger_provider
+        )
         structlog.configure(
             processors=[
                 structlog.stdlib.add_log_level,
@@ -132,17 +136,23 @@ class TestStructlogProcessor(TestBase):
 
     def test_unknown_level(self):
         """Test unknown level mapping."""
-        log_record = self.processor._translate({"event": "message", "level": "notice"})
+        log_record = self.processor._translate(
+            {"event": "message", "level": "notice"}
+        )
 
         self.assertEqual(log_record.severity_text, "NOTICE")
-        self.assertEqual(log_record.severity_number, SeverityNumber.UNSPECIFIED)
+        self.assertEqual(
+            log_record.severity_number, SeverityNumber.UNSPECIFIED
+        )
 
     def test_missing_level_without_method_name(self):
         """Test missing level mapping without structlog method fallback."""
         log_record = self.processor._translate({"event": "message"})
 
         self.assertIsNone(log_record.severity_text)
-        self.assertEqual(log_record.severity_number, SeverityNumber.UNSPECIFIED)
+        self.assertEqual(
+            log_record.severity_number, SeverityNumber.UNSPECIFIED
+        )
 
     def test_critical_level(self):
         """Test critical level mapping."""
@@ -170,10 +180,14 @@ class TestStructlogProcessor(TestBase):
         attrs = log.log_record.attributes
 
         self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_TYPE], "ValueError")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "ValueError"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_MESSAGE], "test error")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_MESSAGE], "test error"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
         stacktrace = attrs[exception_attributes.EXCEPTION_STACKTRACE]
@@ -194,10 +208,14 @@ class TestStructlogProcessor(TestBase):
         attrs = log.log_record.attributes
 
         self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_TYPE], "RuntimeError")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "RuntimeError"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_MESSAGE], "runtime error")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_MESSAGE], "runtime error"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
 
@@ -215,7 +233,9 @@ class TestStructlogProcessor(TestBase):
         attrs = log.log_record.attributes
 
         self.assertIn(exception_attributes.EXCEPTION_TYPE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_TYPE], "KeyError")
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_TYPE], "KeyError"
+        )
 
         self.assertIn(exception_attributes.EXCEPTION_MESSAGE, attrs)
 
@@ -233,7 +253,9 @@ class TestStructlogProcessor(TestBase):
         attrs = log.log_record.attributes
 
         self.assertIn(exception_attributes.EXCEPTION_STACKTRACE, attrs)
-        self.assertEqual(attrs[exception_attributes.EXCEPTION_STACKTRACE], exception_string)
+        self.assertEqual(
+            attrs[exception_attributes.EXCEPTION_STACKTRACE], exception_string
+        )
 
     def test_trace_context_with_active_span(self):
         """Test that trace context is captured with an active span."""
@@ -362,7 +384,10 @@ class TestStructlogProcessorTimestamps(TestBase):
             }
         )
 
-        expected = int(datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp() * 1e9)
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
         self.assertEqual(log_record.timestamp, expected)
 
     def test_timestamp_from_offset_iso_string(self):
@@ -375,7 +400,10 @@ class TestStructlogProcessorTimestamps(TestBase):
             }
         )
 
-        expected = int(datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp() * 1e9)
+        expected = int(
+            datetime(2024, 4, 22, 17, 20, 4, tzinfo=timezone.utc).timestamp()
+            * 1e9
+        )
         self.assertEqual(log_record.timestamp, expected)
 
     def test_timestamp_from_naive_iso_string(self):
@@ -401,7 +429,9 @@ class TestStructlogInstrumentor(TestBase):
         # Set up in-memory log exporter
         self.exporter = InMemoryLogRecordExporter()
         self.logger_provider = LoggerProvider()
-        self.logger_provider.add_log_record_processor(SimpleLogRecordProcessor(self.exporter))
+        self.logger_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(self.exporter)
+        )
 
     def tearDown(self):
         super().tearDown()
@@ -426,21 +456,27 @@ class TestStructlogInstrumentor(TestBase):
         initial_count = len(initial_processors)
 
         # Instrument
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         # Check that processor was added
         new_processors = structlog.get_config()["processors"]
         self.assertEqual(len(new_processors), initial_count + 1)
 
         # Check that a StructlogProcessor is in the chain
-        has_otel_processor = any(isinstance(p, StructlogProcessor) for p in new_processors)
+        has_otel_processor = any(
+            isinstance(p, StructlogProcessor) for p in new_processors
+        )
         self.assertTrue(has_otel_processor)
 
     def test_instrument_without_prior_structlog_configuration_emits_logs(self):
         """Test instrument() emits logs before the app configures structlog."""
         structlog.reset_defaults()
 
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         structlog.get_logger().info("zero config message")
 
@@ -458,11 +494,15 @@ class TestStructlogInstrumentor(TestBase):
         )
 
         # Instrument
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         # Verify processor was added
         config_after_instrument = structlog.get_config()["processors"]
-        has_otel = any(isinstance(p, StructlogProcessor) for p in config_after_instrument)
+        has_otel = any(
+            isinstance(p, StructlogProcessor) for p in config_after_instrument
+        )
         self.assertTrue(has_otel)
 
         # Uninstrument
@@ -470,7 +510,10 @@ class TestStructlogInstrumentor(TestBase):
 
         # Verify processor was removed
         config_after_uninstrument = structlog.get_config()["processors"]
-        has_otel = any(isinstance(p, StructlogProcessor) for p in config_after_uninstrument)
+        has_otel = any(
+            isinstance(p, StructlogProcessor)
+            for p in config_after_uninstrument
+        )
         self.assertFalse(has_otel)
 
     def test_double_instrument_prevented(self):
@@ -482,12 +525,16 @@ class TestStructlogInstrumentor(TestBase):
         )
 
         # First instrumentation
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         config_after_first = structlog.get_config()["processors"]
         count_after_first = len(config_after_first)
 
         # Second instrumentation (should be no-op)
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         config_after_second = structlog.get_config()["processors"]
         count_after_second = len(config_after_second)
 
@@ -498,7 +545,9 @@ class TestStructlogInstrumentor(TestBase):
         """Test that custom logger_provider is passed to the processor."""
         custom_provider = LoggerProvider()
         custom_exporter = InMemoryLogRecordExporter()
-        custom_provider.add_log_record_processor(SimpleLogRecordProcessor(custom_exporter))
+        custom_provider.add_log_record_processor(
+            SimpleLogRecordProcessor(custom_exporter)
+        )
 
         structlog.configure(
             processors=[
@@ -520,7 +569,9 @@ class TestStructlogInstrumentor(TestBase):
 
     def test_configure_after_instrument_preserves_processor(self):
         """Test that calling structlog.configure() after instrumentation preserves the processor."""
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         # Simulate user code calling structlog.configure after instrumentation
         structlog.configure(
@@ -530,12 +581,16 @@ class TestStructlogInstrumentor(TestBase):
         )
 
         processors = structlog.get_config()["processors"]
-        has_otel_processor = any(isinstance(p, StructlogProcessor) for p in processors)
+        has_otel_processor = any(
+            isinstance(p, StructlogProcessor) for p in processors
+        )
         self.assertTrue(has_otel_processor)
 
     def test_configure_after_instrument_accepts_positional_processors(self):
         """Test that patched configure accepts positional processors."""
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         structlog.configure([structlog.dev.ConsoleRenderer()])
 
@@ -549,18 +604,24 @@ class TestStructlogInstrumentor(TestBase):
                 structlog.dev.ConsoleRenderer(),
             ]
         )
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         processors_before = structlog.get_config()["processors"]
 
         structlog.configure(processors=None)
 
         processors = structlog.get_config()["processors"]
         self.assertEqual(processors, processors_before)
-        self.assertTrue(any(isinstance(p, StructlogProcessor) for p in processors))
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
 
     def test_configure_once_after_instrument_allows_app_configuration(self):
         """Test configure_once works after instrumentation configures structlog."""
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         with warnings.catch_warnings(record=True) as captured_warnings:
             warnings.simplefilter("always")
@@ -573,12 +634,21 @@ class TestStructlogInstrumentor(TestBase):
 
         self.assertEqual(captured_warnings, [])
         processors = structlog.get_config()["processors"]
-        self.assertTrue(any(isinstance(p, StructlogProcessor) for p in processors))
-        self.assertTrue(any(isinstance(p, structlog.processors.JSONRenderer) for p in processors))
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
 
     def test_configure_once_after_instrument_warns_on_repeat(self):
         """Test configure_once still warns after app configuration."""
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         structlog.configure_once(
             processors=[
                 structlog.processors.JSONRenderer(),
@@ -600,7 +670,12 @@ class TestStructlogInstrumentor(TestBase):
             "Repeated configuration attempted.",
         )
         processors = structlog.get_config()["processors"]
-        self.assertFalse(any(isinstance(p, structlog.dev.ConsoleRenderer) for p in processors))
+        self.assertFalse(
+            any(
+                isinstance(p, structlog.dev.ConsoleRenderer)
+                for p in processors
+            )
+        )
 
     def test_configure_once_after_preconfigured_instrument_warns(self):
         """Test preconfigured structlog keeps configure_once warning behavior."""
@@ -609,7 +684,9 @@ class TestStructlogInstrumentor(TestBase):
                 structlog.dev.ConsoleRenderer(),
             ]
         )
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
 
         with warnings.catch_warnings(record=True) as captured_warnings:
             warnings.simplefilter("always")
@@ -626,9 +703,21 @@ class TestStructlogInstrumentor(TestBase):
             "Repeated configuration attempted.",
         )
         processors = structlog.get_config()["processors"]
-        self.assertTrue(any(isinstance(p, StructlogProcessor) for p in processors))
-        self.assertTrue(any(isinstance(p, structlog.dev.ConsoleRenderer) for p in processors))
-        self.assertFalse(any(isinstance(p, structlog.processors.JSONRenderer) for p in processors))
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.dev.ConsoleRenderer)
+                for p in processors
+            )
+        )
+        self.assertFalse(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
 
         structlog.reset_defaults()
         with warnings.catch_warnings(record=True) as captured_warnings:
@@ -641,8 +730,15 @@ class TestStructlogInstrumentor(TestBase):
 
         self.assertEqual(captured_warnings, [])
         processors = structlog.get_config()["processors"]
-        self.assertTrue(any(isinstance(p, StructlogProcessor) for p in processors))
-        self.assertTrue(any(isinstance(p, structlog.processors.JSONRenderer) for p in processors))
+        self.assertTrue(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
 
     def test_uninstrument_restores_configure(self):
         """Test that uninstrument() restores structlog configuration APIs."""
@@ -650,7 +746,9 @@ class TestStructlogInstrumentor(TestBase):
         original_configure_once = structlog.configure_once
         original_reset_defaults = structlog.reset_defaults
 
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         self.assertIsNot(structlog.configure, original_configure)
         self.assertIsNot(structlog.configure_once, original_configure_once)
         self.assertIsNot(structlog.reset_defaults, original_reset_defaults)
@@ -664,7 +762,9 @@ class TestStructlogInstrumentor(TestBase):
         """Test uninstrument restores configure_once for unconfigured apps."""
         self.assertFalse(structlog.is_configured())
 
-        StructlogInstrumentor().instrument(logger_provider=self.logger_provider)
+        StructlogInstrumentor().instrument(
+            logger_provider=self.logger_provider
+        )
         self.assertTrue(structlog.is_configured())
 
         StructlogInstrumentor().uninstrument()
@@ -680,8 +780,15 @@ class TestStructlogInstrumentor(TestBase):
 
         self.assertEqual(captured_warnings, [])
         processors = structlog.get_config()["processors"]
-        self.assertTrue(any(isinstance(p, structlog.processors.JSONRenderer) for p in processors))
-        self.assertFalse(any(isinstance(p, StructlogProcessor) for p in processors))
+        self.assertTrue(
+            any(
+                isinstance(p, structlog.processors.JSONRenderer)
+                for p in processors
+            )
+        )
+        self.assertFalse(
+            any(isinstance(p, StructlogProcessor) for p in processors)
+        )
 
     def test_instrumentation_dependencies(self):
         """Test that instrumentation_dependencies returns the correct value."""

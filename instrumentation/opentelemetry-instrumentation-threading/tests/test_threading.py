@@ -34,7 +34,9 @@ class TestThreading(TestBase):
         self.run_threading_test(threading.Thread(target=self.fake_func))
 
     def test_trace_context_propagation_in_timer(self):
-        self.run_threading_test(threading.Timer(interval=1, function=self.fake_func))
+        self.run_threading_test(
+            threading.Timer(interval=1, function=self.fake_func)
+        )
 
     def run_threading_test(self, thread: threading.Thread):
         with self.get_root_span() as span:
@@ -44,7 +46,9 @@ class TestThreading(TestBase):
 
             # check result
             self.assertEqual(len(self._mock_span_contexts), 1)
-            self.assertEqual(self._mock_span_contexts[0], expected_span_context)
+            self.assertEqual(
+                self._mock_span_contexts[0], expected_span_context
+            )
 
     def test_trace_context_propagation_in_thread_pool_with_multiple_workers(
         self,
@@ -58,7 +62,9 @@ class TestThreading(TestBase):
             with self._tracer.start_as_current_span(f"trace_{num}") as span:
                 expected_span_context = span.get_span_context()
                 expected_span_contexts.append(expected_span_context)
-                future = executor.submit(self.get_current_span_context_for_test)
+                future = executor.submit(
+                    self.get_current_span_context_for_test
+                )
                 futures_list.append(future)
 
         result_span_contexts = [future.result() for future in futures_list]
@@ -72,8 +78,12 @@ class TestThreading(TestBase):
             # test propagation of the same trace context across multiple tasks
             with self._tracer.start_as_current_span("task") as task_span:
                 expected_task_context = task_span.get_span_context()
-                future1 = executor.submit(self.get_current_span_context_for_test)
-                future2 = executor.submit(self.get_current_span_context_for_test)
+                future1 = executor.submit(
+                    self.get_current_span_context_for_test
+                )
+                future2 = executor.submit(
+                    self.get_current_span_context_for_test
+                )
 
                 # check result
                 self.assertEqual(future1.result(), expected_task_context)
@@ -82,14 +92,18 @@ class TestThreading(TestBase):
             # test propagation of different trace contexts across tasks in sequence
             with self._tracer.start_as_current_span("task1") as task1_span:
                 expected_task1_context = task1_span.get_span_context()
-                future1 = executor.submit(self.get_current_span_context_for_test)
+                future1 = executor.submit(
+                    self.get_current_span_context_for_test
+                )
 
                 # check result
                 self.assertEqual(future1.result(), expected_task1_context)
 
             with self._tracer.start_as_current_span("task2") as task2_span:
                 expected_task2_context = task2_span.get_span_context()
-                future2 = executor.submit(self.get_current_span_context_for_test)
+                future2 = executor.submit(
+                    self.get_current_span_context_for_test
+                )
 
                 # check result
                 self.assertEqual(future2.result(), expected_task2_context)
@@ -120,7 +134,9 @@ class TestThreading(TestBase):
 
     def calculate(self, num: float) -> None:
         with self._tracer.start_as_current_span("calculate"):
-            square_thread = threading.Thread(target=self.print_square, args=(num,))
+            square_thread = threading.Thread(
+                target=self.print_square, args=(num,)
+            )
             cube_thread = threading.Thread(target=self.print_cube, args=(num,))
             square_thread.start()
             square_thread.join()
@@ -150,7 +166,9 @@ class TestThreading(TestBase):
         #  threadA -> methodA -> threadB -> methodB
         #
 
-        square_thread = threading.Thread(target=self.print_square_with_thread, args=(10,))
+        square_thread = threading.Thread(
+            target=self.print_square_with_thread, args=(10,)
+        )
 
         with self._tracer.start_as_current_span("root"):
             square_thread.start()
@@ -292,7 +310,9 @@ class TestThreading(TestBase):
                 with _tracer.start_as_current_span("square"):
                     pass
 
-        square_thread = ThreadWithCustomRun(target=self.print_square, args=(10,))
+        square_thread = ThreadWithCustomRun(
+            target=self.print_square, args=(10,)
+        )
         with self._tracer.start_as_current_span("run_1"):
             square_thread.run()
         with self._tracer.start_as_current_span("run_2"):

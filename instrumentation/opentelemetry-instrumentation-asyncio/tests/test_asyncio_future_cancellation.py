@@ -15,7 +15,9 @@ SCOPE = "opentelemetry.instrumentation.asyncio"
 
 
 class TestTraceFuture(TestBase):
-    @patch.dict("os.environ", {OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"})
+    @patch.dict(
+        "os.environ", {OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"}
+    )
     def setUp(self):
         super().setUp()
         self._tracer = get_tracer(
@@ -48,7 +50,11 @@ class TestTraceFuture(TestBase):
         self.assertEqual(len(metrics), 2)
 
         self.assertEqual(metrics[0].name, "asyncio.process.created")
-        self.assertEqual(metrics[0].data.data_points[0].attributes["state"], "cancelled")
+        self.assertEqual(
+            metrics[0].data.data_points[0].attributes["state"], "cancelled"
+        )
 
         self.assertEqual(metrics[1].name, "asyncio.process.duration")
-        self.assertEqual(metrics[1].data.data_points[0].attributes["state"], "cancelled")
+        self.assertEqual(
+            metrics[1].data.data_points[0].attributes["state"], "cancelled"
+        )

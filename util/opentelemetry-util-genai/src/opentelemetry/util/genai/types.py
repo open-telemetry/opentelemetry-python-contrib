@@ -206,7 +206,9 @@ MessagePart = (
 )
 
 
-FinishReason = Literal["content_filter", "error", "length", "stop", "tool_calls"]
+FinishReason = Literal[
+    "content_filter", "error", "length", "stop", "tool_calls"
+]
 
 
 @dataclass()

@@ -228,7 +228,9 @@ class CommandTracer(monitoring.CommandListener):
                 )
             )
             if _report_new(self._semconv_opt_in_mode):
-                span.set_attribute(ERROR_TYPE, event.failure.get("codeName", "UnknownError"))
+                span.set_attribute(
+                    ERROR_TYPE, event.failure.get("codeName", "UnknownError")
+                )
             try:
                 self.failed_hook(span, event)
             except (
@@ -240,7 +242,9 @@ class CommandTracer(monitoring.CommandListener):
     def _pop_span(self, event: CommandEvent) -> Span | None:
         return self._span_dict.pop(_get_span_dict_key(event), None)
 
-    def _get_statement_by_command_name(self, command_name: str, event: CommandEvent) -> str:
+    def _get_statement_by_command_name(
+        self, command_name: str, event: CommandEvent
+    ) -> str:
         statement = command_name
         command_attribute = COMMAND_TO_ATTRIBUTE_MAPPING.get(command_name)
         command = event.command.get(command_attribute)
@@ -300,7 +304,9 @@ class PymongoInstrumentor(BaseInstrumentor):
                 __name__,
                 __version__,
                 tracer_provider,
-                schema_url=_get_schema_url_for_signal_types([_OpenTelemetryStabilitySignalType.DATABASE]),
+                schema_url=_get_schema_url_for_signal_types(
+                    [_OpenTelemetryStabilitySignalType.DATABASE]
+                ),
             )
 
             self._commandtracer_instance = CommandTracer(

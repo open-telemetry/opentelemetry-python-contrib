@@ -10,5 +10,7 @@ from opentelemetry.util.genai.instruments import (
 
 class Instruments:
     def __init__(self, meter: Meter):
-        self.operation_duration_histogram: Histogram = create_duration_histogram(meter)
+        self.operation_duration_histogram: Histogram = (
+            create_duration_histogram(meter)
+        )
         self.token_usage_histogram: Histogram = create_token_histogram(meter)

@@ -89,7 +89,9 @@ class TestJinja2Instrumentor(TestBase):
     def test_generate_inline_template_with_root(self):
         with self.tracer.start_as_current_span("root"):
             template = jinja2.environment.Template("Hello {{name}}!")
-            self.assertEqual("".join(template.generate(name="Jinja")), "Hello Jinja!")
+            self.assertEqual(
+                "".join(template.generate(name="Jinja")), "Hello Jinja!"
+            )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 3)
@@ -103,7 +105,9 @@ class TestJinja2Instrumentor(TestBase):
 
     def test_generate_inline_template(self):
         template = jinja2.environment.Template("Hello {{name}}!")
-        self.assertEqual("".join(template.generate(name="Jinja")), "Hello Jinja!")
+        self.assertEqual(
+            "".join(template.generate(name="Jinja")), "Hello Jinja!"
+        )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
@@ -130,7 +134,9 @@ class TestJinja2Instrumentor(TestBase):
             loader = jinja2.loaders.FileSystemLoader(TMPL_DIR)
             env = jinja2.Environment(loader=loader, autoescape=True)
             template = env.get_template("template.html")
-            self.assertEqual(template.render(name="Jinja"), "Message: Hello Jinja!")
+            self.assertEqual(
+                template.render(name="Jinja"), "Message: Hello Jinja!"
+            )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 6)
@@ -149,7 +155,9 @@ class TestJinja2Instrumentor(TestBase):
         loader = jinja2.loaders.FileSystemLoader(TMPL_DIR)
         env = jinja2.Environment(loader=loader, autoescape=True)
         template = env.get_template("template.html")
-        self.assertEqual(template.render(name="Jinja"), "Message: Hello Jinja!")
+        self.assertEqual(
+            template.render(name="Jinja"), "Message: Hello Jinja!"
+        )
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 5)
@@ -171,7 +179,9 @@ class TestJinja2Instrumentor(TestBase):
             load2.attributes,
             {
                 "jinja2.template_name": "template.html",
-                "jinja2.template_path": os.path.join(TMPL_DIR, "template.html"),
+                "jinja2.template_path": os.path.join(
+                    TMPL_DIR, "template.html"
+                ),
             },
         )
         self.assertEqual(
@@ -202,7 +212,9 @@ class TestJinja2Instrumentor(TestBase):
     def test_no_op_tracer_provider(self):
         self.memory_exporter.clear()
         Jinja2Instrumentor().uninstrument()
-        Jinja2Instrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+        Jinja2Instrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
         template = jinja2.environment.Template("Hello {{name}}!")
         self.assertEqual(template.render(name="Jinja"), "Hello Jinja!")
         spans = self.memory_exporter.get_finished_spans()

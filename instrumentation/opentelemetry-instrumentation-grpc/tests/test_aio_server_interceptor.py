@@ -55,7 +55,9 @@ class Servicer(GRPCTestServerServicer):
             )
 
 
-async def run_with_test_server(runnable, servicer=Servicer(), interceptors=None):
+async def run_with_test_server(
+    runnable, servicer=Servicer(), interceptors=None
+):
     server = grpc.aio.server(interceptors=interceptors)
 
     add_GRPCTestServerServicer_to_server(servicer, server)
@@ -97,7 +99,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             self.assertIs(span.kind, trace.SpanKind.SERVER)
 
             # Check version and name in span's instrumentation info
-            self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+            self.assertEqualSpanInstrumentationScope(
+                span, opentelemetry.instrumentation.grpc
+            )
 
             # Check attributes
             self.assertSpanHasAttributes(
@@ -142,7 +146,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             msg = request.SerializeToString()
             return await channel.unary_unary(rpc_call)(msg)
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -152,7 +158,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -205,7 +213,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(parent_span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            parent_span, opentelemetry.instrumentation.grpc
+        )
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -222,7 +232,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
 
         # Check the child span
         self.assertEqual(child_span.name, "child")
-        self.assertEqual(parent_span.context.trace_id, child_span.context.trace_id)
+        self.assertEqual(
+            parent_span.context.trace_id, child_span.context.trace_id
+        )
 
     async def test_create_span_streaming(self):
         """Check that the interceptor wraps calls with spans server-side, on a
@@ -235,7 +247,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             async for response in channel.unary_stream(rpc_call)(msg):
                 print(response)
 
-        await run_with_test_server(request, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            request, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
@@ -245,7 +259,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -300,7 +316,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(parent_span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(parent_span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            parent_span, opentelemetry.instrumentation.grpc
+        )
 
         # Check attributes
         self.assertSpanHasAttributes(
@@ -317,7 +335,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
 
         # Check the child span
         self.assertEqual(child_span.name, "child")
-        self.assertEqual(parent_span.context.trace_id, child_span.context.trace_id)
+        self.assertEqual(
+            parent_span.context.trace_id, child_span.context.trace_id
+        )
 
     async def test_span_lifetime(self):
         """Verify that the interceptor captures sub spans within the given
@@ -369,7 +389,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             await request(channel)
             await request(channel)
 
-        await run_with_test_server(sequential_requests, interceptors=[aio_server_interceptor()])
+        await run_with_test_server(
+            sequential_requests, interceptors=[aio_server_interceptor()]
+        )
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
@@ -495,7 +517,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         # make sure this span errored, with the right status and detail
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
@@ -541,7 +565,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
             with testcase.assertRaises(grpc.RpcError) as cm:
                 await channel.unary_unary(rpc_call)(msg)
 
-            self.assertEqual(cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION)
+            self.assertEqual(
+                cm.exception.code(), grpc.StatusCode.FAILED_PRECONDITION
+            )
             self.assertEqual(cm.exception.details(), failure_message)
 
         await run_with_test_server(
@@ -558,7 +584,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         # make sure this span errored, with the right status and detail
         self.assertEqual(span.status.status_code, StatusCode.UNSET)
@@ -573,7 +601,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 RPC_METHOD: "SimpleMethod",
                 RPC_SERVICE: "GRPCTestServer",
                 RPC_SYSTEM: "grpc",
-                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[0],
+                RPC_GRPC_STATUS_CODE: grpc.StatusCode.FAILED_PRECONDITION.value[
+                    0
+                ],
             },
         )
 
@@ -592,10 +622,14 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
                 return await channel.unary_unary(rpc_call)(msg)
 
             class MockInterceptor(grpc.aio.ServerInterceptor):
-                async def intercept_service(self, continuation, handler_call_details):
+                async def intercept_service(
+                    self, continuation, handler_call_details
+                ):
                     return await continuation(handler_call_details)
 
-            await run_with_test_server(request, interceptors=(MockInterceptor(),))
+            await run_with_test_server(
+                request, interceptors=(MockInterceptor(),)
+            )
 
         finally:
             grpc_server_instrumentor.uninstrument()
@@ -608,7 +642,9 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         self.assertIs(span.kind, trace.SpanKind.SERVER)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         # Check attributes
         self.assertSpanHasAttributes(

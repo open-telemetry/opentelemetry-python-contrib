@@ -68,7 +68,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
         self.mocketizer.exit()
 
     # Return Sequence with one histogram
-    def create_histogram_data_points(self, sum_data_point, attributes, explicit_bounds=None):
+    def create_histogram_data_points(
+        self, sum_data_point, attributes, explicit_bounds=None
+    ):
         return [
             self.create_histogram_data_point(
                 sum_data_point,
@@ -94,7 +96,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 client_response_size,
             ) = metrics[:3]
 
-            self.assertEqual(client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION)
+            self.assertEqual(
+                client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
+            )
 
             self.assert_metric_expected(
                 client_duration,
@@ -158,7 +162,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 client_response_body_size,
             ) = metrics[:3]
 
-            self.assertEqual(client_request_duration.name, HTTP_CLIENT_REQUEST_DURATION)
+            self.assertEqual(
+                client_request_duration.name, HTTP_CLIENT_REQUEST_DURATION
+            )
 
             self.assert_metric_expected(
                 client_request_duration,
@@ -224,7 +230,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 client_response_size,
             ) = metrics[:6]
 
-            self.assertEqual(client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION)
+            self.assertEqual(
+                client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
+            )
 
             self.assert_metric_expected(
                 client_duration,
@@ -274,7 +282,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 ),
             )
 
-            self.assertEqual(client_request_duration.name, HTTP_CLIENT_REQUEST_DURATION)
+            self.assertEqual(
+                client_request_duration.name, HTTP_CLIENT_REQUEST_DURATION
+            )
 
             self.assert_metric_expected(
                 client_request_duration,
@@ -339,7 +349,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 client_response_size,
             ) = metrics[:3]
 
-            self.assertEqual(client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION)
+            self.assertEqual(
+                client_duration.name, MetricInstruments.HTTP_CLIENT_DURATION
+            )
             self.assert_metric_expected(
                 client_duration,
                 self.create_histogram_data_points(
@@ -388,7 +400,9 @@ class TestUrllibMetricsInstrumentation(TestBase):
                 ),
             )
 
-    @mark.skipif(python_implementation() == "PyPy", reason="Fails randomly in pypy")
+    @mark.skipif(
+        python_implementation() == "PyPy", reason="Fails randomly in pypy"
+    )
     def test_metric_uninstrument(self):
         with request.urlopen(self.URL):
             metrics = self.get_sorted_metrics(SCOPE)

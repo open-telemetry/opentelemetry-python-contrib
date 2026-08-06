@@ -17,7 +17,9 @@ from .common_test_func import async_func
 
 
 class TestAsyncioEnsureFuture(TestBase):
-    @patch.dict("os.environ", {OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"})
+    @patch.dict(
+        "os.environ", {OTEL_PYTHON_ASYNCIO_FUTURE_TRACE_ENABLED: "true"}
+    )
     def setUp(self):
         super().setUp()
         AsyncioInstrumentor().instrument()
@@ -63,7 +65,12 @@ class TestAsyncioEnsureFuture(TestBase):
             if span.name == "asyncio future":
                 self.assertNotEqual(span.parent.trace_id, 0)
 
-        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
+        for metric in (
+            self.memory_metrics_reader.get_metrics_data()
+            .resource_metrics[0]
+            .scope_metrics[0]
+            .metrics
+        ):
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["type"], "future")

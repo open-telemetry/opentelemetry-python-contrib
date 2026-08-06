@@ -149,7 +149,8 @@ class OpenAIInstrumentor(BaseInstrumentor):
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
             logger_provider=logger_provider,
-            completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
+            completion_hook=kwargs.get("completion_hook")
+            or load_completion_hook(),
         )
 
         wrap_function_wrapper(
@@ -158,7 +159,9 @@ class OpenAIInstrumentor(BaseInstrumentor):
             (
                 chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
-                else chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled())
+                else chat_completions_create_v_old(
+                    tracer, logger, instruments, is_content_enabled()
+                )
             ),
         )
 
@@ -168,7 +171,9 @@ class OpenAIInstrumentor(BaseInstrumentor):
             (
                 async_chat_completions_create_v_new(handler)
                 if latest_experimental_enabled
-                else async_chat_completions_create_v_old(tracer, logger, instruments, is_content_enabled())
+                else async_chat_completions_create_v_old(
+                    tracer, logger, instruments, is_content_enabled()
+                )
             ),
         )
 
@@ -176,13 +181,17 @@ class OpenAIInstrumentor(BaseInstrumentor):
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "Embeddings.create",
-            embeddings_create(tracer, instruments, latest_experimental_enabled),
+            embeddings_create(
+                tracer, instruments, latest_experimental_enabled
+            ),
         )
 
         wrap_function_wrapper(
             "openai.resources.embeddings",
             "AsyncEmbeddings.create",
-            async_embeddings_create(tracer, instruments, latest_experimental_enabled),
+            async_embeddings_create(
+                tracer, instruments, latest_experimental_enabled
+            ),
         )
 
         responses_module = _get_responses_module()

@@ -37,7 +37,9 @@ def get_content_capturing_mode() -> ContentCapturingMode:
     When the GEN_AI stability mode is DEFAULT this function will raise a ValueError -- see the code below."""
     envvar = os.environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
     if not is_experimental_mode():
-        raise ValueError("This function should never be called when StabilityMode is not experimental.")
+        raise ValueError(
+            "This function should never be called when StabilityMode is not experimental."
+        )
     if not envvar:
         return ContentCapturingMode.NO_CONTENT
     try:
@@ -117,10 +119,14 @@ class _GenAiJsonEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-gen_ai_json_dump = partial(json.dump, separators=(",", ":"), cls=_GenAiJsonEncoder)
+gen_ai_json_dump = partial(
+    json.dump, separators=(",", ":"), cls=_GenAiJsonEncoder
+)
 """Should be used by GenAI instrumentations when serializing objects that may contain
 bytes, datetimes, etc. for GenAI observability."""
 
-gen_ai_json_dumps = partial(json.dumps, separators=(",", ":"), cls=_GenAiJsonEncoder)
+gen_ai_json_dumps = partial(
+    json.dumps, separators=(",", ":"), cls=_GenAiJsonEncoder
+)
 """Should be used by GenAI instrumentations when serializing objects that may contain
 bytes, datetimes, etc. for GenAI observability."""

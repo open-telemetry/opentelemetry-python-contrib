@@ -49,27 +49,43 @@ class Interceptor(
     def __init__(self):
         pass
 
-    def intercept_unary_unary(self, continuation, client_call_details, request):
+    def intercept_unary_unary(
+        self, continuation, client_call_details, request
+    ):
         return self._intercept_call(continuation, client_call_details, request)
 
-    def intercept_unary_stream(self, continuation, client_call_details, request):
+    def intercept_unary_stream(
+        self, continuation, client_call_details, request
+    ):
         return self._intercept_call(continuation, client_call_details, request)
 
-    def intercept_stream_unary(self, continuation, client_call_details, request_iterator):
-        return self._intercept_call(continuation, client_call_details, request_iterator)
+    def intercept_stream_unary(
+        self, continuation, client_call_details, request_iterator
+    ):
+        return self._intercept_call(
+            continuation, client_call_details, request_iterator
+        )
 
-    def intercept_stream_stream(self, continuation, client_call_details, request_iterator):
-        return self._intercept_call(continuation, client_call_details, request_iterator)
+    def intercept_stream_stream(
+        self, continuation, client_call_details, request_iterator
+    ):
+        return self._intercept_call(
+            continuation, client_call_details, request_iterator
+        )
 
     @staticmethod
-    def _intercept_call(continuation, client_call_details, request_or_iterator):
+    def _intercept_call(
+        continuation, client_call_details, request_or_iterator
+    ):
         return continuation(client_call_details, request_or_iterator)
 
 
 class TestClientProtoFilterMethodName(TestBase):
     def setUp(self):
         super().setUp()
-        GrpcInstrumentorClient(filter_=filters.method_name("SimpleMethod")).instrument()
+        GrpcInstrumentorClient(
+            filter_=filters.method_name("SimpleMethod")
+        ).instrument()
         self.server = create_test_server(25565)
         self.server.start()
         # use a user defined interceptor along with the opentelemetry client interceptor
@@ -94,7 +110,9 @@ class TestClientProtoFilterMethodName(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
     def test_unary_unary(self):
         simple_method(self._stub)
@@ -106,7 +124,9 @@ class TestClientProtoFilterMethodName(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         self.assertSpanHasAttributes(
             span,
@@ -186,7 +206,9 @@ class TestClientProtoFilterMethodName(TestBase):
             interceptor.intercept_unary(
                 request,
                 {},
-                _UnaryClientInfo(full_method="/GRPCTestServer/SimpleMethod", timeout=None),
+                _UnaryClientInfo(
+                    full_method="/GRPCTestServer/SimpleMethod", timeout=None
+                ),
                 invoker=invoker,
             )
 
@@ -203,7 +225,9 @@ class TestClientProtoFilterMethodName(TestBase):
 class TestClientProtoFilterMethodPrefix(TestBase):
     def setUp(self):
         super().setUp()
-        GrpcInstrumentorClient(filter_=filters.method_prefix("Simple")).instrument()
+        GrpcInstrumentorClient(
+            filter_=filters.method_prefix("Simple")
+        ).instrument()
         self.server = create_test_server(25565)
         self.server.start()
         # use a user defined interceptor along with the opentelemetry client interceptor
@@ -228,7 +252,9 @@ class TestClientProtoFilterMethodPrefix(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
     def test_unary_unary(self):
         simple_method(self._stub)
@@ -240,7 +266,9 @@ class TestClientProtoFilterMethodPrefix(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         self.assertSpanHasAttributes(
             span,
@@ -320,7 +348,9 @@ class TestClientProtoFilterMethodPrefix(TestBase):
             interceptor.intercept_unary(
                 request,
                 {},
-                _UnaryClientInfo(full_method="/GRPCTestServer/SimpleMethod", timeout=None),
+                _UnaryClientInfo(
+                    full_method="/GRPCTestServer/SimpleMethod", timeout=None
+                ),
                 invoker=invoker,
             )
 
@@ -338,7 +368,9 @@ class TestClientProtoFilterByEnv(TestBase):
     def setUp(self):
         with mock.patch.dict(
             os.environ,
-            {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer,GRPCTestServer"},
+            {
+                "OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer,GRPCTestServer"
+            },
         ):
             super().setUp()
             GrpcInstrumentorClient().instrument()
@@ -374,7 +406,9 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
             {"OTEL_PYTHON_GRPC_EXCLUDED_SERVICES": "GRPCMockServer"},
         ):
             super().setUp()
-            GrpcInstrumentorClient(filter_=filters.service_prefix("GRPCTestServer")).instrument()
+            GrpcInstrumentorClient(
+                filter_=filters.service_prefix("GRPCTestServer")
+            ).instrument()
             self.server = create_test_server(25565)
             self.server.start()
             # use a user defined interceptor along with the opentelemetry client interceptor
@@ -399,7 +433,9 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
     def test_unary_unary(self):
         simple_method(self._stub)
@@ -411,7 +447,9 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         self.assertSpanHasAttributes(
             span,
@@ -433,7 +471,9 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         self.assertSpanHasAttributes(
             span,
@@ -455,7 +495,9 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         self.assertSpanHasAttributes(
             span,
@@ -473,11 +515,15 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
 
-        self.assertEqual(span.name, "/GRPCTestServer/BidirectionalStreamingMethod")
+        self.assertEqual(
+            span.name, "/GRPCTestServer/BidirectionalStreamingMethod"
+        )
         self.assertIs(span.kind, trace.SpanKind.CLIENT)
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.grpc)
+        self.assertEqualSpanInstrumentationScope(
+            span, opentelemetry.instrumentation.grpc
+        )
 
         self.assertSpanHasAttributes(
             span,
@@ -557,7 +603,9 @@ class TestClientProtoFilterByEnvAndOption(TestBase):
             interceptor.intercept_unary(
                 request,
                 {},
-                _UnaryClientInfo(full_method="/GRPCTestServer/SimpleMethod", timeout=None),
+                _UnaryClientInfo(
+                    full_method="/GRPCTestServer/SimpleMethod", timeout=None
+                ),
                 invoker=invoker,
             )
 

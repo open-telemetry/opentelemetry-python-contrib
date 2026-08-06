@@ -36,7 +36,9 @@ Next, use the provided `AwsXRayIdGenerator` to initialize the `TracerProvider`.
     from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
     from opentelemetry.sdk.trace import TracerProvider
 
-    trace.set_tracer_provider(TracerProvider(id_generator=AwsXRayIdGenerator()))
+    trace.set_tracer_provider(
+        TracerProvider(id_generator=AwsXRayIdGenerator())
+    )
 
 API
 ---

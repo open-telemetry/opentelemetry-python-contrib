@@ -19,7 +19,9 @@ SCOPE = "opentelemetry.instrumentation.celery"
 class TestMetrics(TestBase):
     def setUp(self):
         super().setUp()
-        self._worker = app.Worker(app=app, pool="solo", concurrency=1, hostname="celery@akochavi")
+        self._worker = app.Worker(
+            app=app, pool="solo", concurrency=1, hostname="celery@akochavi"
+        )
         self._thread = threading.Thread(target=self._worker.start)
         self._thread.daemon = True
         self._thread.start()
@@ -68,7 +70,9 @@ class TestMetrics(TestBase):
             est_value_delta=200,
         )
 
-    @mark.skipif(python_implementation() == "PyPy", reason="Fails randomly in pypy")
+    @mark.skipif(
+        python_implementation() == "PyPy", reason="Fails randomly in pypy"
+    )
     def test_metric_uninstrument(self):
         CeleryInstrumentor().instrument()
 

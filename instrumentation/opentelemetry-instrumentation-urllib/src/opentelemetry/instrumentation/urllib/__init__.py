@@ -290,19 +290,29 @@ class URLLibInstrumentor(BaseInstrumentor):
             histograms,
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
-            excluded_urls=(_excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls)),
+            excluded_urls=(
+                _excluded_urls_from_env
+                if excluded_urls is None
+                else parse_excluded_urls(excluded_urls)
+            ),
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
             captured_request_headers=kwargs.get(
                 "captured_request_headers",
-                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST),
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+                ),
             ),
             captured_response_headers=kwargs.get(
                 "captured_response_headers",
-                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE),
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+                ),
             ),
             sensitive_headers=kwargs.get(
                 "sensitive_headers",
-                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS),
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                ),
             ),
         )
 
@@ -335,7 +345,9 @@ def _instrument(
     def instrumented_open(opener, fullurl, data=None, timeout=None):
         if isinstance(fullurl, str):
             # in case of multiple entries for the same header Opener.open sends the first value
-            request_ = Request(fullurl, data, headers=dict(reversed(opener.addheaders)))
+            request_ = Request(
+                fullurl, data, headers=dict(reversed(opener.addheaders))
+            )
         else:
             request_ = fullurl
 
@@ -345,9 +357,13 @@ def _instrument(
         def call_wrapped():
             return opener_open(opener, request_, data=data, timeout=timeout)
 
-        return _instrumented_open_call(opener, request_, call_wrapped, get_or_create_headers)
+        return _instrumented_open_call(
+            opener, request_, call_wrapped, get_or_create_headers
+        )
 
-    def _instrumented_open_call(_, request, call_wrapped, get_or_create_headers):  # pylint: disable=too-many-locals
+    def _instrumented_open_call(
+        _, request, call_wrapped, get_or_create_headers
+    ):  # pylint: disable=too-many-locals
         if not is_http_instrumentation_enabled():
             return call_wrapped()
 
@@ -384,7 +400,9 @@ def _instrument(
             )
         )
 
-        with tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=labels) as span:
+        with tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, attributes=labels
+        ) as span:
             exception = None
             if callable(request_hook):
                 request_hook(span, request)
@@ -406,11 +424,15 @@ def _instrument(
                 code_ = result.getcode()
                 # set http status code based on semconv
                 if code_:
-                    _set_status_code_attribute(span, code_, labels, sem_conv_opt_in_mode)
+                    _set_status_code_attribute(
+                        span, code_, labels, sem_conv_opt_in_mode
+                    )
 
                 ver_ = str(getattr(result, "version", ""))
                 if ver_:
-                    _set_http_network_protocol_version(labels, f"{ver_[:1]}.{ver_[:-1]}", sem_conv_opt_in_mode)
+                    _set_http_network_protocol_version(
+                        labels, f"{ver_[:1]}.{ver_[:-1]}", sem_conv_opt_in_mode
+                    )
 
                 if span.is_recording():
                     span.set_attributes(
@@ -523,20 +545,26 @@ def _create_client_histograms(
 ) -> dict[str, Histogram]:
     histograms = {}
     if _report_old(sem_conv_opt_in_mode):
-        histograms[MetricInstruments.HTTP_CLIENT_DURATION] = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_DURATION,
-            unit="ms",
-            description="Measures the duration of the outbound HTTP request",
+        histograms[MetricInstruments.HTTP_CLIENT_DURATION] = (
+            meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_DURATION,
+                unit="ms",
+                description="Measures the duration of the outbound HTTP request",
+            )
         )
-        histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE] = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
-            unit="By",
-            description="Measures the size of HTTP request messages.",
+        histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE] = (
+            meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_REQUEST_SIZE,
+                unit="By",
+                description="Measures the size of HTTP request messages.",
+            )
         )
-        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE] = meter.create_histogram(
-            name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
-            unit="By",
-            description="Measures the size of HTTP response messages.",
+        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE] = (
+            meter.create_histogram(
+                name=MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE,
+                unit="By",
+                description="Measures the size of HTTP response messages.",
+            )
         )
     if _report_new(sem_conv_opt_in_mode):
         histograms[HTTP_CLIENT_REQUEST_DURATION] = meter.create_histogram(
@@ -545,8 +573,12 @@ def _create_client_histograms(
             description="Duration of HTTP client requests.",
             explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
         )
-        histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = create_http_client_request_body_size(meter)
-        histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE] = create_http_client_response_body_size(meter)
+        histograms[HTTP_CLIENT_REQUEST_BODY_SIZE] = (
+            create_http_client_request_body_size(meter)
+        )
+        histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE] = (
+            create_http_client_response_body_size(meter)
+        )
 
     return histograms
 
@@ -562,10 +594,22 @@ def _record_histograms(
 ):
     if _report_old(sem_conv_opt_in_mode):
         duration = max(round(duration_s * 1000), 0)
-        histograms[MetricInstruments.HTTP_CLIENT_DURATION].record(duration, attributes=metric_attributes_old)
-        histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE].record(request_size, attributes=metric_attributes_old)
-        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(response_size, attributes=metric_attributes_old)
+        histograms[MetricInstruments.HTTP_CLIENT_DURATION].record(
+            duration, attributes=metric_attributes_old
+        )
+        histograms[MetricInstruments.HTTP_CLIENT_REQUEST_SIZE].record(
+            request_size, attributes=metric_attributes_old
+        )
+        histograms[MetricInstruments.HTTP_CLIENT_RESPONSE_SIZE].record(
+            response_size, attributes=metric_attributes_old
+        )
     if _report_new(sem_conv_opt_in_mode):
-        histograms[HTTP_CLIENT_REQUEST_DURATION].record(duration_s, attributes=metric_attributes_new)
-        histograms[HTTP_CLIENT_REQUEST_BODY_SIZE].record(request_size, attributes=metric_attributes_new)
-        histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE].record(response_size, attributes=metric_attributes_new)
+        histograms[HTTP_CLIENT_REQUEST_DURATION].record(
+            duration_s, attributes=metric_attributes_new
+        )
+        histograms[HTTP_CLIENT_REQUEST_BODY_SIZE].record(
+            request_size, attributes=metric_attributes_new
+        )
+        histograms[HTTP_CLIENT_RESPONSE_BODY_SIZE].record(
+            response_size, attributes=metric_attributes_new
+        )

@@ -129,7 +129,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                         "describe_instances",
                         {
                             "Reservations": [],
-                            "ResponseMetadata": self._make_response_meta(request_id),
+                            "ResponseMetadata": self._make_response_meta(
+                                request_id
+                            ),
                         },
                     )
                     await client.describe_instances()
@@ -149,7 +151,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                         {
                             "Buckets": [],
                             "Owner": {"ID": "owner-id"},
-                            "ResponseMetadata": self._make_response_meta(request_id),
+                            "ResponseMetadata": self._make_response_meta(
+                                request_id
+                            ),
                         },
                     )
                     await client.list_buckets()
@@ -160,7 +164,9 @@ class TestAiobotocoreInstrumentor(TestBase):
     def test_no_op_tracer_provider(self):
         """Test that no spans are created when using NoOpTracerProvider."""
         AiobotocoreInstrumentor().uninstrument()
-        AiobotocoreInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
+        AiobotocoreInstrumentor().instrument(
+            tracer_provider=trace_api.NoOpTracerProvider()
+        )
 
         async def _test():
             async with self._make_client("ec2") as client:
@@ -169,7 +175,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                         "describe_instances",
                         {
                             "Reservations": [],
-                            "ResponseMetadata": self._make_response_meta("test-id"),
+                            "ResponseMetadata": self._make_response_meta(
+                                "test-id"
+                            ),
                         },
                     )
                     await client.describe_instances()
@@ -194,7 +202,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                             "describe_instances",
                             {
                                 "Reservations": [],
-                                "ResponseMetadata": self._make_response_meta("test-id"),
+                                "ResponseMetadata": self._make_response_meta(
+                                    "test-id"
+                                ),
                             },
                         )
                         await client.describe_instances()
@@ -218,7 +228,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                         http_status_code=404,
                     )
                     with self.assertRaises(ClientError):
-                        await client.get_object(Bucket="test-bucket", Key="test-key")
+                        await client.get_object(
+                            Bucket="test-bucket", Key="test-key"
+                        )
 
         asyncio.run(_test())
 
@@ -246,14 +258,18 @@ class TestAiobotocoreInstrumentor(TestBase):
                         "describe_instances",
                         {
                             "Reservations": [],
-                            "ResponseMetadata": self._make_response_meta("test-id"),
+                            "ResponseMetadata": self._make_response_meta(
+                                "test-id"
+                            ),
                         },
                     )
                     stubber.add_response(
                         "describe_instances",
                         {
                             "Reservations": [],
-                            "ResponseMetadata": self._make_response_meta("test-id-2"),
+                            "ResponseMetadata": self._make_response_meta(
+                                "test-id-2"
+                            ),
                         },
                     )
                     with suppress_instrumentation():
@@ -289,7 +305,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                         "list_objects_v2",
                         {
                             "Contents": [],
-                            "ResponseMetadata": self._make_response_meta(request_id),
+                            "ResponseMetadata": self._make_response_meta(
+                                request_id
+                            ),
                         },
                         expected_params={"Bucket": "test-bucket"},
                     )
@@ -304,7 +322,9 @@ class TestAiobotocoreInstrumentor(TestBase):
             attributes={
                 request_hook_service_attribute_name: "s3",
                 request_hook_operation_attribute_name: "ListObjectsV2",
-                request_hook_api_params_attribute_name: json.dumps({"Bucket": "test-bucket"}),
+                request_hook_api_params_attribute_name: json.dumps(
+                    {"Bucket": "test-bucket"}
+                ),
             },
         )
 
@@ -312,13 +332,17 @@ class TestAiobotocoreInstrumentor(TestBase):
         """Test that response hook is called with correct parameters."""
         response_hook_service_attribute_name = "response_hook.service_name"
         response_hook_operation_attribute_name = "response_hook.operation_name"
-        response_hook_bucket_count_attribute_name = "response_hook.bucket_count"
+        response_hook_bucket_count_attribute_name = (
+            "response_hook.bucket_count"
+        )
 
         def response_hook(span, service_name, operation_name, result):
             hook_attributes = {
                 response_hook_service_attribute_name: service_name,
                 response_hook_operation_attribute_name: operation_name,
-                response_hook_bucket_count_attribute_name: len(result["Buckets"]),
+                response_hook_bucket_count_attribute_name: len(
+                    result["Buckets"]
+                ),
             }
             span.set_attributes(hook_attributes)
 
@@ -338,7 +362,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                                 {"Name": "bucket2"},
                             ],
                             "Owner": {"ID": "owner-id"},
-                            "ResponseMetadata": self._make_response_meta(request_id),
+                            "ResponseMetadata": self._make_response_meta(
+                                request_id
+                            ),
                         },
                     )
                     await client.list_buckets()
@@ -367,7 +393,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                         {
                             "Buckets": [],
                             "Owner": {"ID": "owner-id"},
-                            "ResponseMetadata": self._make_response_meta("req-1"),
+                            "ResponseMetadata": self._make_response_meta(
+                                "req-1"
+                            ),
                         },
                     )
                     stubber.add_response(
@@ -375,7 +403,9 @@ class TestAiobotocoreInstrumentor(TestBase):
                         {
                             "Buckets": [],
                             "Owner": {"ID": "owner-id"},
-                            "ResponseMetadata": self._make_response_meta("req-2"),
+                            "ResponseMetadata": self._make_response_meta(
+                                "req-2"
+                            ),
                         },
                     )
                     await client.list_buckets()
@@ -392,15 +422,21 @@ class TestAiobotocoreInstrumentor(TestBase):
         self.assertEqual("req-1", spans[0].attributes["aws.request_id"])
         self.assertEqual("req-2", spans[1].attributes["aws.request_id"])
 
-    @patch("opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts")
+    @patch(
+        "opentelemetry.instrumentation.auto_instrumentation._load.get_dist_dependency_conflicts"
+    )
     @patch("opentelemetry.instrumentation.auto_instrumentation._load._logger")
-    def test_instruments_with_aiobotocore_installed(self, mock_logger, mock_dep):
+    def test_instruments_with_aiobotocore_installed(
+        self, mock_logger, mock_dep
+    ):
         mock_distro = Mock()
         mock_dep.return_value = None
         mock_distro.load_instrumentor.return_value = None
         _load_instrumentors(mock_distro)
         self.assertEqual(len(mock_distro.load_instrumentor.call_args_list), 2)
-        eps = [c[0][0].name for c in mock_distro.load_instrumentor.call_args_list]
+        eps = [
+            c[0][0].name for c in mock_distro.load_instrumentor.call_args_list
+        ]
         assert "aiobotocore" in eps
         assert "botocore" in eps
 

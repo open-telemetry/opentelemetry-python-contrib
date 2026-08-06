@@ -32,10 +32,14 @@ class ZoneOrRegion:
 
 
 def availability_zone_or_region() -> ZoneOrRegion:
-    cluster_location = _metadata.get_metadata()["instance"]["attributes"]["cluster-location"]
+    cluster_location = _metadata.get_metadata()["instance"]["attributes"][
+        "cluster-location"
+    ]
     hyphen_count = cluster_location.count("-")
     if hyphen_count == 1:
         return ZoneOrRegion(type="region", value=cluster_location)
     if hyphen_count == 2:
         return ZoneOrRegion(type="zone", value=cluster_location)
-    raise ValueError(f"unrecognized format for cluster location: {cluster_location}")
+    raise ValueError(
+        f"unrecognized format for cluster location: {cluster_location}"
+    )

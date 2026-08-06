@@ -62,7 +62,9 @@ class TestTraceResponsePropagator(TestBase):
         prop = TraceResponsePropagator()
         carrier = {}
         prop.inject(carrier, ctx)
-        self.assertEqual(carrier["Access-Control-Expose-Headers"], "traceresponse")
+        self.assertEqual(
+            carrier["Access-Control-Expose-Headers"], "traceresponse"
+        )
         self.assertEqual(
             carrier["traceresponse"],
             "00-00000000000000000000000000000001-0000000000000002-00",

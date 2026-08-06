@@ -49,5 +49,7 @@ def test_detects_faas_instance(fake_get_metadata: MagicMock) -> None:
 
 
 def test_detects_faas_region(fake_get_metadata: MagicMock) -> None:
-    fake_get_metadata.return_value = {"instance": {"region": "projects/233510669999/regions/us-east4"}}
+    fake_get_metadata.return_value = {
+        "instance": {"region": "projects/233510669999/regions/us-east4"}
+    }
     assert _faas.faas_cloud_region() == "us-east4"

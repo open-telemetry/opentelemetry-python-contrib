@@ -21,10 +21,14 @@ Usage
 
     PikaInstrumentor().instrument()
 
-    connection = pika.BlockingConnection(pika.URLParameters("amqp://localhost"))
+    connection = pika.BlockingConnection(
+        pika.URLParameters("amqp://localhost")
+    )
     channel = connection.channel()
     channel.queue_declare(queue="hello")
-    channel.basic_publish(exchange="", routing_key="hello", body=b"Hello World!")
+    channel.basic_publish(
+        exchange="", routing_key="hello", body=b"Hello World!"
+    )
 
 * PikaInstrumentor also supports instrumentation of a single channel
 
@@ -33,14 +37,18 @@ Usage
     import pika
     from opentelemetry.instrumentation.pika import PikaInstrumentor
 
-    connection = pika.BlockingConnection(pika.URLParameters("amqp://localhost"))
+    connection = pika.BlockingConnection(
+        pika.URLParameters("amqp://localhost")
+    )
     channel = connection.channel()
     channel.queue_declare(queue="hello")
 
     pika_instrumentation = PikaInstrumentor()
     pika_instrumentation.instrument_channel(channel=channel)
 
-    channel.basic_publish(exchange="", routing_key="hello", body=b"Hello World!")
+    channel.basic_publish(
+        exchange="", routing_key="hello", body=b"Hello World!"
+    )
 
     pika_instrumentation.uninstrument_channel(channel=channel)
 
@@ -52,15 +60,21 @@ Usage
     from opentelemetry.instrumentation.pika import PikaInstrumentor
     from opentelemetry.trace import get_tracer_provider
 
-    connection = pika.BlockingConnection(pika.URLParameters("amqp://localhost"))
+    connection = pika.BlockingConnection(
+        pika.URLParameters("amqp://localhost")
+    )
     channel = connection.channel()
     tracer_provider = get_tracer_provider()
 
     channel.queue_declare(queue="hello")
 
-    PikaInstrumentor.instrument_channel(channel, tracer_provider=tracer_provider)
+    PikaInstrumentor.instrument_channel(
+        channel, tracer_provider=tracer_provider
+    )
 
-    channel.basic_publish(exchange="", routing_key="hello", body=b"Hello World!")
+    channel.basic_publish(
+        exchange="", routing_key="hello", body=b"Hello World!"
+    )
 
     PikaInstrumentor.uninstrument_channel(channel)
 
@@ -85,13 +99,19 @@ Usage
         span.set_attribute("messaging.id", properties.message_id)
 
 
-    connection = pika.BlockingConnection(pika.URLParameters("amqp://localhost"))
+    connection = pika.BlockingConnection(
+        pika.URLParameters("amqp://localhost")
+    )
     channel = connection.channel()
     channel.queue_declare(queue="hello")
 
-    PikaInstrumentor.instrument_channel(channel, publish_hook=publish_hook, consume_hook=consume_hook)
+    PikaInstrumentor.instrument_channel(
+        channel, publish_hook=publish_hook, consume_hook=consume_hook
+    )
 
-    channel.basic_publish(exchange="", routing_key="hello", body=b"Hello World!")
+    channel.basic_publish(
+        exchange="", routing_key="hello", body=b"Hello World!"
+    )
 
     PikaInstrumentor.uninstrument_channel(channel)
 

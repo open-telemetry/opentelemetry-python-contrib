@@ -64,7 +64,8 @@ def _instrument(self, **kwargs):
         tracer_provider=tracer_provider,
         meter_provider=meter_provider,
         logger_provider=logger_provider,
-        completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
+        completion_hook=kwargs.get("completion_hook")
+        or load_completion_hook(),
     )
     # pass handler to each patch/wrapper function
 ```
@@ -74,7 +75,9 @@ def _instrument(self, **kwargs):
 Use `start_*()` and control span lifetime manually:
 
 ```python
-invocation = handler.start_inference(provider, request_model, server_address=..., server_port=...)
+invocation = handler.start_inference(
+    provider, request_model, server_address=..., server_port=...
+)
 invocation.temperature = ...
 try:
     response = client.call(...)

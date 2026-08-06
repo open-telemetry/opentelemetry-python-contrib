@@ -76,7 +76,9 @@ def test_upload_entry_point_no_fsspec(load_completion_hook):
 
 
 def test_upload_no_base_path(load_completion_hook, caplog):
-    with patch.dict("os.environ", {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": ""}):
+    with patch.dict(
+        "os.environ", {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH": ""}
+    ):
         assert isinstance(load_completion_hook(), _NoOpCompletionHook)
 
     assert caplog.records[0].levelno == logging.WARNING
@@ -97,10 +99,14 @@ def test_upload_no_base_path(load_completion_hook, caplog):
         ("jSoNl", "jsonl", False),
     ),
 )
-def test_parse_upload_format_envvar(envvar_value, expect_format, expect_warn, load_completion_hook, caplog):
+def test_parse_upload_format_envvar(
+    envvar_value, expect_format, expect_warn, load_completion_hook, caplog
+):
     with patch.dict(
         "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value} if envvar_value is not None else {},
+        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT": envvar_value}
+        if envvar_value is not None
+        else {},
     ):
         assert isinstance(hook := load_completion_hook(), UploadCompletionHook)
         assert hook._format == expect_format, (
@@ -124,10 +130,14 @@ def test_parse_upload_format_envvar(envvar_value, expect_format, expect_warn, lo
         ("100", 100, False),
     ),
 )
-def test_parse_max_queue_size_envvar(envvar_value, expect_size, expect_warn, load_completion_hook, caplog):
+def test_parse_max_queue_size_envvar(
+    envvar_value, expect_size, expect_warn, load_completion_hook, caplog
+):
     with patch.dict(
         "os.environ",
-        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE": envvar_value} if envvar_value is not None else {},
+        {"OTEL_INSTRUMENTATION_GENAI_UPLOAD_MAX_QUEUE_SIZE": envvar_value}
+        if envvar_value is not None
+        else {},
     ):
         assert isinstance(hook := load_completion_hook(), UploadCompletionHook)
         assert hook._max_queue_size == expect_size, (

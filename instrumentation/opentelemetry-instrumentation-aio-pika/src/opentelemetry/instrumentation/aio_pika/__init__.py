@@ -29,7 +29,9 @@ Run instrumented task
         async with connection:
             channel = await connection.channel()
             queue = await channel.declare_queue("hello")
-            await channel.default_exchange.publish(Message(b"Hello World!"), routing_key=queue.name)
+            await channel.default_exchange.publish(
+                Message(b"Hello World!"), routing_key=queue.name
+            )
 
 
     if __name__ == "__main__":

@@ -43,18 +43,28 @@ MAPPINGS = {
             ResourceAttributes.CLOUD_AVAILABILITY_ZONE,
             ResourceAttributes.CLOUD_REGION,
         ),
-        _constants.CLUSTER_NAME: MapConfig(ResourceAttributes.K8S_CLUSTER_NAME),
-        _constants.NAMESPACE_NAME: MapConfig(ResourceAttributes.K8S_NAMESPACE_NAME),
+        _constants.CLUSTER_NAME: MapConfig(
+            ResourceAttributes.K8S_CLUSTER_NAME
+        ),
+        _constants.NAMESPACE_NAME: MapConfig(
+            ResourceAttributes.K8S_NAMESPACE_NAME
+        ),
         _constants.POD_NAME: MapConfig(ResourceAttributes.K8S_POD_NAME),
-        _constants.CONTAINER_NAME: MapConfig(ResourceAttributes.K8S_CONTAINER_NAME),
+        _constants.CONTAINER_NAME: MapConfig(
+            ResourceAttributes.K8S_CONTAINER_NAME
+        ),
     },
     _constants.K8S_POD: {
         _constants.LOCATION: MapConfig(
             ResourceAttributes.CLOUD_AVAILABILITY_ZONE,
             ResourceAttributes.CLOUD_REGION,
         ),
-        _constants.CLUSTER_NAME: MapConfig(ResourceAttributes.K8S_CLUSTER_NAME),
-        _constants.NAMESPACE_NAME: MapConfig(ResourceAttributes.K8S_NAMESPACE_NAME),
+        _constants.CLUSTER_NAME: MapConfig(
+            ResourceAttributes.K8S_CLUSTER_NAME
+        ),
+        _constants.NAMESPACE_NAME: MapConfig(
+            ResourceAttributes.K8S_NAMESPACE_NAME
+        ),
         _constants.POD_NAME: MapConfig(ResourceAttributes.K8S_POD_NAME),
     },
     _constants.K8S_NODE: {
@@ -62,7 +72,9 @@ MAPPINGS = {
             ResourceAttributes.CLOUD_AVAILABILITY_ZONE,
             ResourceAttributes.CLOUD_REGION,
         ),
-        _constants.CLUSTER_NAME: MapConfig(ResourceAttributes.K8S_CLUSTER_NAME),
+        _constants.CLUSTER_NAME: MapConfig(
+            ResourceAttributes.K8S_CLUSTER_NAME
+        ),
         _constants.NODE_NAME: MapConfig(ResourceAttributes.K8S_NODE_NAME),
     },
     _constants.K8S_CLUSTER: {
@@ -70,7 +82,9 @@ MAPPINGS = {
             ResourceAttributes.CLOUD_AVAILABILITY_ZONE,
             ResourceAttributes.CLOUD_REGION,
         ),
-        _constants.CLUSTER_NAME: MapConfig(ResourceAttributes.K8S_CLUSTER_NAME),
+        _constants.CLUSTER_NAME: MapConfig(
+            ResourceAttributes.K8S_CLUSTER_NAME
+        ),
     },
     _constants.AWS_EC2_INSTANCE: {
         _constants.INSTANCE_ID: MapConfig(ResourceAttributes.HOST_ID),
@@ -103,7 +117,9 @@ MAPPINGS = {
             fallback="global",
         ),
         _constants.NAMESPACE: MapConfig(ResourceAttributes.SERVICE_NAMESPACE),
-        _constants.NODE_ID: MapConfig(ResourceAttributes.HOST_ID, ResourceAttributes.HOST_NAME),
+        _constants.NODE_ID: MapConfig(
+            ResourceAttributes.HOST_ID, ResourceAttributes.HOST_NAME
+        ),
     },
 }
 
@@ -118,7 +134,8 @@ class MonitoredResourceData:
 
 
 @deprecated(
-    "get_monitored_resource is deprecated and will be removed in a future release. Deprecated since version 1.15.0."
+    "get_monitored_resource is deprecated and will be removed in a future release. "
+    "Deprecated since version 1.15.0."
 )
 def get_monitored_resource(
     resource: Resource,
@@ -150,8 +167,12 @@ def get_monitored_resource(
         mr = _create_monitored_resource(_constants.AWS_EC2_INSTANCE, attrs)
     else:
         # fallback to generic_task
-        if (ResourceAttributes.SERVICE_NAME in attrs or ResourceAttributes.FAAS_NAME in attrs) and (
-            ResourceAttributes.SERVICE_INSTANCE_ID in attrs or ResourceAttributes.FAAS_INSTANCE in attrs
+        if (
+            ResourceAttributes.SERVICE_NAME in attrs
+            or ResourceAttributes.FAAS_NAME in attrs
+        ) and (
+            ResourceAttributes.SERVICE_INSTANCE_ID in attrs
+            or ResourceAttributes.FAAS_INSTANCE in attrs
         ):
             mr = _create_monitored_resource(_constants.GENERIC_TASK, attrs)
         else:
@@ -160,20 +181,25 @@ def get_monitored_resource(
     return mr
 
 
-def _create_monitored_resource(monitored_resource_type: str, resource_attrs: Attributes) -> MonitoredResourceData:
+def _create_monitored_resource(
+    monitored_resource_type: str, resource_attrs: Attributes
+) -> MonitoredResourceData:
     mapping = MAPPINGS[monitored_resource_type]
     labels: dict[str, str] = {}
 
     for mr_key, map_config in mapping.items():
         mr_value = None
         for otel_key in map_config.otel_keys:
-            if otel_key in resource_attrs and not str(resource_attrs[otel_key]).startswith(
-                _constants.UNKNOWN_SERVICE_PREFIX
-            ):
+            if otel_key in resource_attrs and not str(
+                resource_attrs[otel_key]
+            ).startswith(_constants.UNKNOWN_SERVICE_PREFIX):
                 mr_value = resource_attrs[otel_key]
                 break
 
-        if mr_value is None and ResourceAttributes.SERVICE_NAME in map_config.otel_keys:
+        if (
+            mr_value is None
+            and ResourceAttributes.SERVICE_NAME in map_config.otel_keys
+        ):
             # The service name started with unknown_service, and was ignored above.
             mr_value = resource_attrs.get(ResourceAttributes.SERVICE_NAME)
 
@@ -183,7 +209,9 @@ def _create_monitored_resource(monitored_resource_type: str, resource_attrs: Att
         # OTel attribute values can be any of str, bool, int, float, or Sequence of any of
         # them. Encode any non-strings as json string
         if not isinstance(mr_value, str):
-            mr_value = json.dumps(mr_value, sort_keys=True, indent=None, separators=(",", ":"))
+            mr_value = json.dumps(
+                mr_value, sort_keys=True, indent=None, separators=(",", ":")
+            )
         labels[mr_key] = mr_value
 
     return MonitoredResourceData(type=monitored_resource_type, labels=labels)

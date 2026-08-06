@@ -27,7 +27,9 @@ class RpcInfo:
 
 
 def _server_status(code, details):
-    error_status = Status(status_code=StatusCode.ERROR, description=f"{code}:{details}")
+    error_status = Status(
+        status_code=StatusCode.ERROR, description=f"{code}:{details}"
+    )
     status_codes = {
         grpc.StatusCode.UNKNOWN: error_status,
         grpc.StatusCode.DEADLINE_EXCEEDED: error_status,
@@ -37,4 +39,6 @@ def _server_status(code, details):
         grpc.StatusCode.DATA_LOSS: error_status,
     }
 
-    return status_codes.get(code, Status(status_code=StatusCode.UNSET, description=""))
+    return status_codes.get(
+        code, Status(status_code=StatusCode.UNSET, description="")
+    )

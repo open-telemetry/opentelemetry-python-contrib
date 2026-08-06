@@ -35,7 +35,9 @@ class AzureVMResourceDetector(ResourceDetector):
                 if not metadata_json:
                     return Resource(attributes)
                 for attribute_key in _EXPECTED_AZURE_AMS_ATTRIBUTES:
-                    attributes[attribute_key] = _get_attribute_from_metadata(metadata_json, attribute_key)
+                    attributes[attribute_key] = _get_attribute_from_metadata(
+                        metadata_json, attribute_key
+                    )
         return Resource(attributes)
 
 

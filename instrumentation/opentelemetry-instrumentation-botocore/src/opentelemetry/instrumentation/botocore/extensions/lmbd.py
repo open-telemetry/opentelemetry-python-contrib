@@ -28,7 +28,9 @@ class _LambdaOperation(abc.ABC):
         pass
 
     @classmethod
-    def prepare_attributes(cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT):
+    def prepare_attributes(
+        cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
+    ):
         pass
 
     @classmethod
@@ -49,7 +51,9 @@ class _OpInvoke(_LambdaOperation):
         return "Invoke"
 
     @classmethod
-    def extract_attributes(cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT):
+    def extract_attributes(
+        cls, call_context: _AwsSdkCallContext, attributes: _AttributeMapT
+    ):
         attributes[FAAS_INVOKED_PROVIDER] = "aws"
         attributes[FAAS_INVOKED_NAME] = cls._parse_function_name(call_context)
         attributes[FAAS_INVOKED_REGION] = call_context.region
@@ -89,7 +93,11 @@ class _OpInvoke(_LambdaOperation):
 
 def _is_operation(op: object) -> bool:
     try:
-        return inspect.isclass(op) and issubclass(op, _LambdaOperation) and not inspect.isabstract(op)
+        return (
+            inspect.isclass(op)
+            and issubclass(op, _LambdaOperation)
+            and not inspect.isabstract(op)
+        )
     except TypeError:
         return False
 
@@ -110,7 +118,9 @@ class _LambdaExtension(_AwsSdkExtension):
 
         self._op.extract_attributes(self._call_context, attributes)
 
-    def before_service_call(self, span: Span, instrumentor_context: _BotocoreInstrumentorContext):
+    def before_service_call(
+        self, span: Span, instrumentor_context: _BotocoreInstrumentorContext
+    ):
         if self._op is None:
             return
 

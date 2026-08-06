@@ -41,7 +41,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
     def test_sqlcommenter_disabled(self):
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         engine = create_engine("sqlite:///:memory:", echo=True)
-        SQLAlchemyInstrumentor().instrument(engine=engine, tracer_provider=self.tracer_provider)
+        SQLAlchemyInstrumentor().instrument(
+            engine=engine, tracer_provider=self.tracer_provider
+        )
         cnx = engine.connect()
         cnx.execute(text("SELECT 1;")).fetchall()
 
@@ -246,7 +248,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         cnx = engine.connect()
 
         current_context = context.get_current()
-        sqlcommenter_context = context.set_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context)
+        sqlcommenter_context = context.set_value(
+            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
+        )
         context.attach(sqlcommenter_context)
 
         cnx.execute(text("SELECT  1;")).fetchall()
@@ -277,7 +281,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
         cnx = engine.connect()
 
         current_context = context.get_current()
-        sqlcommenter_context = context.set_value("SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context)
+        sqlcommenter_context = context.set_value(
+            "SQLCOMMENTER_ORM_TAGS_AND_VALUES", {"flask": 1}, current_context
+        )
         context.attach(sqlcommenter_context)
 
         cnx.execute(text("SELECT  1;")).fetchall()
@@ -411,7 +417,9 @@ class TestSqlalchemyInstrumentationWithSQLCommenter(TestBase):
             r"SELECT  1 /\*db_driver='(.*)',traceparent='\d{1,2}-[a-zA-Z0-9_]{32}-[a-zA-Z0-9_]{16}-\d{1,2}'\*/;",
         )
 
-    @mock.patch.dict("os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"})
+    @mock.patch.dict(
+        "os.environ", {OTEL_SEMCONV_STABILITY_OPT_IN: "database/dup"}
+    )
     def test_sqlcommenter_enabled_database_dup_mode(self):
         _OpenTelemetrySemanticConventionStability._initialized = False
         _OpenTelemetrySemanticConventionStability._initialize()

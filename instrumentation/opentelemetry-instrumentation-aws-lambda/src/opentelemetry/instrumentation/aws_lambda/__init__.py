@@ -118,7 +118,9 @@ _HANDLER = "_HANDLER"
 
 _X_AMZN_TRACE_ID = "_X_AMZN_TRACE_ID"
 ORIG_HANDLER = "ORIG_HANDLER"
-OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
+OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT = (
+    "OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT"
+)
 
 if TYPE_CHECKING:
     import typing
@@ -241,7 +243,9 @@ def _get_api_gateway_v1_proxy_attributes(
         attributes[HTTP_ROUTE] = lambda_event["resource"]
 
         if lambda_event.get("queryStringParameters"):
-            attributes[HTTP_TARGET] = f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}"
+            attributes[HTTP_TARGET] = (
+                f"{lambda_event['resource']}?{urlencode(lambda_event['queryStringParameters'])}"
+            )
         else:
             attributes[HTTP_TARGET] = lambda_event["resource"]
     return attributes
@@ -257,7 +261,9 @@ def _get_api_gateway_v2_proxy_attributes(
     """
     attributes = {}
     if "domainName" in lambda_event["requestContext"]:
-        attributes[NET_HOST_NAME] = lambda_event["requestContext"]["domainName"]
+        attributes[NET_HOST_NAME] = lambda_event["requestContext"][
+            "domainName"
+        ]
 
     if lambda_event["requestContext"].get("http"):
         http = lambda_event["requestContext"]["http"]
@@ -268,7 +274,9 @@ def _get_api_gateway_v2_proxy_attributes(
         if "path" in http:
             attributes[HTTP_ROUTE] = http["path"]
             if lambda_event.get("rawQueryString"):
-                attributes[HTTP_TARGET] = f"{http['path']}?{lambda_event['rawQueryString']}"
+                attributes[HTTP_TARGET] = (
+                    f"{http['path']}?{lambda_event['rawQueryString']}"
+                )
             else:
                 attributes[HTTP_TARGET] = http["path"]
     return attributes
@@ -288,7 +296,9 @@ def _get_lambda_context_attributes(
     Returns:
         A dictionary mapping of OpenTelemetry attribute names to their values.
     """
-    function_arn_parts: list[str] = lambda_context.invoked_function_arn.split(":")
+    function_arn_parts: list[str] = lambda_context.invoked_function_arn.split(
+        ":"
+    )
     # NOTE: `cloud.account.id` can be parsed from the ARN as the fifth item when splitting on `:`
     #
     # See more:
@@ -328,7 +338,9 @@ def _instrument(
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-statements
     # pylint: disable=too-many-branches
-    def _instrumented_lambda_handler_call(call_wrapped, instance, args, kwargs):
+    def _instrumented_lambda_handler_call(
+        call_wrapped, instance, args, kwargs
+    ):
         lambda_event: Any = args[0]
         lambda_context: LambdaContext = args[1]
 
@@ -346,7 +358,9 @@ def _instrument(
 
         token = context_api.attach(parent_context)
         event_type = _get_lambda_event_type(lambda_event)
-        span_attributes: MutableMapping[str, Any] = _get_lambda_context_attributes(lambda_context)
+        span_attributes: MutableMapping[str, Any] = (
+            _get_lambda_context_attributes(lambda_context)
+        )
         if event_type is _LambdaEventType.SQS:
             span_attributes[FAAS_TRIGGER] = FaasTriggerValues.PUBSUB.value
         elif event_type is _LambdaEventType.API_GATEWAY:
@@ -355,9 +369,13 @@ def _instrument(
             # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/http.md#http-server-semantic-conventions
             span_attributes[FAAS_TRIGGER] = "http"
             if lambda_event.get("version") == "2.0":
-                span_attributes |= _get_api_gateway_v2_proxy_attributes(lambda_event)
+                span_attributes |= _get_api_gateway_v2_proxy_attributes(
+                    lambda_event
+                )
             else:
-                span_attributes |= _get_api_gateway_v1_proxy_attributes(lambda_event)
+                span_attributes |= _get_api_gateway_v1_proxy_attributes(
+                    lambda_event
+                )
 
         try:
             with tracer.start_as_current_span(
@@ -370,7 +388,9 @@ def _instrument(
 
                 try:
                     if event_type is _LambdaEventType.SQS:
-                        result = _run_sqs_handler(tracer, lambda_event, call_wrapped, args, kwargs)
+                        result = _run_sqs_handler(
+                            tracer, lambda_event, call_wrapped, args, kwargs
+                        )
                     else:
                         result = call_wrapped(*args, **kwargs)
                 # pylint: disable-next=broad-exception-caught
@@ -379,7 +399,11 @@ def _instrument(
                     span.set_status(Status(StatusCode.ERROR))
                     span.record_exception(exception)
 
-                if event_type is _LambdaEventType.API_GATEWAY and isinstance(result, dict) and result.get("statusCode"):
+                if (
+                    event_type is _LambdaEventType.API_GATEWAY
+                    and isinstance(result, dict)
+                    and result.get("statusCode")
+                ):
                     span.set_attribute(
                         HTTP_STATUS_CODE,
                         result.get("statusCode"),
@@ -469,7 +493,9 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             self._wrapped_function_name,
         ) = lambda_handler.rsplit(".", 1)
 
-        flush_timeout_env = os.environ.get(OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None)
+        flush_timeout_env = os.environ.get(
+            OTEL_INSTRUMENTATION_AWS_LAMBDA_FLUSH_TIMEOUT, None
+        )
         flush_timeout = 30000
         try:
             if flush_timeout_env is not None:
@@ -484,7 +510,9 @@ class AwsLambdaInstrumentor(BaseInstrumentor):
             self._wrapped_module_name,
             self._wrapped_function_name,
             flush_timeout,
-            event_context_extractor=kwargs.get("event_context_extractor", _default_event_context_extractor),
+            event_context_extractor=kwargs.get(
+                "event_context_extractor", _default_event_context_extractor
+            ),
             tracer_provider=kwargs.get("tracer_provider"),
             meter_provider=kwargs.get("meter_provider"),
         )

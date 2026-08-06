@@ -28,7 +28,9 @@ Usage Client
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    trace.get_tracer_provider().add_span_processor(
+        SimpleSpanProcessor(ConsoleSpanExporter())
+    )
 
     grpc_client_instrumentor = GrpcInstrumentorClient()
     grpc_client_instrumentor.instrument()
@@ -69,7 +71,9 @@ Usage Server
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    trace.get_tracer_provider().add_span_processor(
+        SimpleSpanProcessor(ConsoleSpanExporter())
+    )
 
     grpc_server_instrumentor = GrpcInstrumentorServer()
     grpc_server_instrumentor.instrument()
@@ -77,7 +81,9 @@ Usage Server
 
     class Greeter(helloworld_pb2_grpc.GreeterServicer):
         def SayHello(self, request, context):
-            return helloworld_pb2.HelloReply(message="Hello, %s!" % request.name)
+            return helloworld_pb2.HelloReply(
+                message="Hello, %s!" % request.name
+            )
 
 
     def serve():
@@ -101,7 +107,9 @@ You can also add the interceptor manually, rather than using
 
     from opentelemetry.instrumentation.grpc import server_interceptor
 
-    server = grpc.server(futures.ThreadPoolExecutor(), interceptors=[server_interceptor()])
+    server = grpc.server(
+        futures.ThreadPoolExecutor(), interceptors=[server_interceptor()]
+    )
 
 Usage Aio Client
 ----------------
@@ -126,7 +134,9 @@ Usage Aio Client
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    trace.get_tracer_provider().add_span_processor(
+        SimpleSpanProcessor(ConsoleSpanExporter())
+    )
 
     grpc_client_instrumentor = GrpcAioInstrumentorClient()
     grpc_client_instrumentor.instrument()
@@ -135,7 +145,9 @@ Usage Aio Client
     async def run():
         async with grpc.aio.insecure_channel("localhost:50051") as channel:
             stub = helloworld_pb2_grpc.GreeterStub(channel)
-            response = await stub.SayHello(helloworld_pb2.HelloRequest(name="YOU"))
+            response = await stub.SayHello(
+                helloworld_pb2.HelloRequest(name="YOU")
+            )
 
         print("Greeter client received: " + response.message)
 
@@ -177,7 +189,9 @@ Usage Aio Server
         from gen import helloworld_pb2, helloworld_pb2_grpc
 
     trace.set_tracer_provider(TracerProvider())
-    trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    trace.get_tracer_provider().add_span_processor(
+        SimpleSpanProcessor(ConsoleSpanExporter())
+    )
 
     grpc_server_instrumentor = GrpcAioInstrumentorServer()
     grpc_server_instrumentor.instrument()
@@ -185,7 +199,9 @@ Usage Aio Server
 
     class Greeter(helloworld_pb2_grpc.GreeterServicer):
         async def SayHello(self, request, context):
-            return helloworld_pb2.HelloReply(message="Hello, %s!" % request.name)
+            return helloworld_pb2.HelloReply(
+                message="Hello, %s!" % request.name
+            )
 
 
     async def serve():
@@ -326,10 +342,16 @@ class GrpcInstrumentorServer(BaseInstrumentor):
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
-                    server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
+                    server_interceptor(
+                        tracer_provider=tracer_provider, filter_=self._filter
+                    ),
                 )
             else:
-                kwargs["interceptors"] = [server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
+                kwargs["interceptors"] = [
+                    server_interceptor(
+                        tracer_provider=tracer_provider, filter_=self._filter
+                    )
+                ]
 
             return self._original_func(*args, **kwargs)
 
@@ -374,10 +396,16 @@ class GrpcAioInstrumentorServer(BaseInstrumentor):
                 # add our interceptor as the first
                 kwargs["interceptors"].insert(
                     0,
-                    aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter),
+                    aio_server_interceptor(
+                        tracer_provider=tracer_provider, filter_=self._filter
+                    ),
                 )
             else:
-                kwargs["interceptors"] = [aio_server_interceptor(tracer_provider=tracer_provider, filter_=self._filter)]
+                kwargs["interceptors"] = [
+                    aio_server_interceptor(
+                        tracer_provider=tracer_provider, filter_=self._filter
+                    )
+                ]
             return self._original_func(*args, **kwargs)
 
         grpc.aio.server = server
@@ -539,7 +567,9 @@ class GrpcAioInstrumentorClient(BaseInstrumentor):
         grpc.aio.secure_channel = self._original_secure
 
 
-def client_interceptor(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
+def client_interceptor(
+    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
+):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -594,7 +624,9 @@ def server_interceptor(tracer_provider=None, filter_=None):
     return _server.OpenTelemetryServerInterceptor(tracer, filter_=filter_)
 
 
-def aio_client_interceptors(tracer_provider=None, filter_=None, request_hook=None, response_hook=None):
+def aio_client_interceptors(
+    tracer_provider=None, filter_=None, request_hook=None, response_hook=None
+):
     """Create a gRPC client channel interceptor.
 
     Args:
@@ -658,11 +690,15 @@ def aio_server_interceptor(tracer_provider=None, filter_=None):
         schema_url="https://opentelemetry.io/schemas/1.11.0",
     )
 
-    return _aio_server.OpenTelemetryAioServerInterceptor(tracer, filter_=filter_)
+    return _aio_server.OpenTelemetryAioServerInterceptor(
+        tracer, filter_=filter_
+    )
 
 
 def _excluded_service_filter() -> Callable[[object], bool] | None:
-    services = _parse_services(os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", ""))
+    services = _parse_services(
+        os.environ.get("OTEL_PYTHON_GRPC_EXCLUDED_SERVICES", "")
+    )
     if len(services) == 0:
         return None
     filters = (service_name(srv) for srv in services)
@@ -671,7 +707,9 @@ def _excluded_service_filter() -> Callable[[object], bool] | None:
 
 def _parse_services(excluded_services: str) -> list[str]:
     if excluded_services != "":
-        excluded_service_list = [s.strip() for s in excluded_services.split(",")]
+        excluded_service_list = [
+            s.strip() for s in excluded_services.split(",")
+        ]
     else:
         excluded_service_list = []
     return excluded_service_list

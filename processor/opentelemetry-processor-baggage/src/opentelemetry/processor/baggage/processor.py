@@ -46,7 +46,9 @@ class BaggageSpanProcessor(SpanProcessor):
         else:
             self._predicates = list(baggage_key_predicate)
 
-    def on_start(self, span: "Span", parent_context: Context | None = None) -> None:
+    def on_start(
+        self, span: "Span", parent_context: Context | None = None
+    ) -> None:
         baggage = get_all_baggage(parent_context)
         for key, value in baggage.items():
             if any(predicate(key) for predicate in self._predicates):

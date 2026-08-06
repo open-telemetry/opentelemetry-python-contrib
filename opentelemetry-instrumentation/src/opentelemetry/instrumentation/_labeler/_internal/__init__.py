@@ -22,7 +22,9 @@ class Labeler:
     This feature is experimental and unstable.
     """
 
-    def __init__(self, max_custom_attrs: int = 20, max_attr_value_length: int = 100):
+    def __init__(
+        self, max_custom_attrs: int = 20, max_attr_value_length: int = 100
+    ):
         """
         Initialize a new Labeler instance.
 
@@ -57,10 +59,16 @@ class Labeler:
             return
 
         with self._lock:
-            if len(self._attributes) >= self._max_custom_attrs and key not in self._attributes:
+            if (
+                len(self._attributes) >= self._max_custom_attrs
+                and key not in self._attributes
+            ):
                 return
 
-            if isinstance(value, str) and len(value) > self._max_attr_value_length:
+            if (
+                isinstance(value, str)
+                and len(value) > self._max_attr_value_length
+            ):
                 value = value[: self._max_attr_value_length]
 
             self._attributes[key] = value
@@ -86,10 +94,16 @@ class Labeler:
                     )
                     continue
 
-                if len(self._attributes) >= self._max_custom_attrs and key not in self._attributes:
+                if (
+                    len(self._attributes) >= self._max_custom_attrs
+                    and key not in self._attributes
+                ):
                     continue
 
-                if isinstance(value, str) and len(value) > self._max_attr_value_length:
+                if (
+                    isinstance(value, str)
+                    and len(value) > self._max_attr_value_length
+                ):
                     value = value[: self._max_attr_value_length]
 
                 self._attributes[key] = value
@@ -191,7 +205,9 @@ def get_labeler_attributes() -> Mapping[str, str | int | float | bool]:
     try:
         current_value = get_value(LABELER_CONTEXT_KEY)
     except Exception:  # pylint: disable=broad-exception-caught
-        _logger.debug("Failed to read labeler attributes from context", exc_info=True)
+        _logger.debug(
+            "Failed to read labeler attributes from context", exc_info=True
+        )
         return MappingProxyType(empty_attributes)
 
     if not isinstance(current_value, Labeler):
@@ -241,7 +257,10 @@ def enrich_metric_attributes(
         if key in base_attributes:
             continue
 
-        if isinstance(value, str) and len(value) > labeler._max_attr_value_length:
+        if (
+            isinstance(value, str)
+            and len(value) > labeler._max_attr_value_length
+        ):
             value = value[: labeler._max_attr_value_length]
 
         enriched_attributes[key] = value

@@ -15,4 +15,9 @@ def is_content_recording_enabled(
 ) -> bool | ContentCapturingMode:
     if experimental_sem_convs_enabled:
         return get_content_capturing_mode()
-    return environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false").lower() == "true"
+    return (
+        environ.get(
+            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
+        ).lower()
+        == "true"
+    )

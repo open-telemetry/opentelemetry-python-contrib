@@ -228,17 +228,23 @@ class _OpenTelemetrySemanticConventionStability:
 
             opt_in_list = [s.strip() for s in opt_in.split(",")]
 
-            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[_OpenTelemetryStabilitySignalType.HTTP] = cls._filter_mode(
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.HTTP
+            ] = cls._filter_mode(
                 opt_in_list, _StabilityMode.HTTP, _StabilityMode.HTTP_DUP
             )
 
-            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[_OpenTelemetryStabilitySignalType.GEN_AI] = cls._filter_mode(
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.GEN_AI
+            ] = cls._filter_mode(
                 opt_in_list,
                 _StabilityMode.DEFAULT,
                 _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL,
             )
 
-            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[_OpenTelemetryStabilitySignalType.DATABASE] = cls._filter_mode(
+            cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING[
+                _OpenTelemetryStabilitySignalType.DATABASE
+            ] = cls._filter_mode(
                 opt_in_list,
                 _StabilityMode.DATABASE,
                 _StabilityMode.DATABASE_DUP,
@@ -252,12 +258,20 @@ class _OpenTelemetrySemanticConventionStability:
         if dup_mode.value in opt_in_list:
             return dup_mode
 
-        return stable_mode if stable_mode.value in opt_in_list else _StabilityMode.DEFAULT
+        return (
+            stable_mode
+            if stable_mode.value in opt_in_list
+            else _StabilityMode.DEFAULT
+        )
 
     @classmethod
-    def _get_opentelemetry_stability_opt_in_mode(cls, signal_type: _OpenTelemetryStabilitySignalType) -> _StabilityMode:
+    def _get_opentelemetry_stability_opt_in_mode(
+        cls, signal_type: _OpenTelemetryStabilitySignalType
+    ) -> _StabilityMode:
         # Get OpenTelemetry opt-in mode based off of signal type (http, messaging, etc.)
-        return cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(signal_type, _StabilityMode.DEFAULT)
+        return cls._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.get(
+            signal_type, _StabilityMode.DEFAULT
+        )
 
 
 def _get_semconv_opt_in_modes(
@@ -268,7 +282,9 @@ def _get_semconv_opt_in_modes(
     """
     _OpenTelemetrySemanticConventionStability._initialize()
     return {
-        signal_type: _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(signal_type)
+        signal_type: _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal_type
+        )
         for signal_type in signal_types
     }
 
@@ -281,7 +297,9 @@ def _filter_semconv_duration_attrs(
 ) -> dict[str, AttributeValue]:
     filtered_attrs = {}
     # duration is two different metrics depending on sem_conv_opt_in_mode, so no DUP attributes
-    allowed_attributes = new_attrs if sem_conv_opt_in_mode == _StabilityMode.HTTP else old_attrs
+    allowed_attributes = (
+        new_attrs if sem_conv_opt_in_mode == _StabilityMode.HTTP else old_attrs
+    )
     for key, val in attrs.items():
         if key in allowed_attributes:
             filtered_attrs[key] = val
@@ -649,7 +667,9 @@ def _set_status(
                 )
             )
     else:
-        status = http_status_to_status_code(status_code, server_span=server_span)
+        status = http_status_to_status_code(
+            status_code, server_span=server_span
+        )
 
         if _report_old(sem_conv_opt_in_mode):
             if span.is_recording():
@@ -717,9 +737,13 @@ def _get_schema_url_for_signal_types(
     """
     highest_schema_version = _LEGACY_SCHEMA_VERSION
     for signal_type in signal_types:
-        mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(signal_type)
+        mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
+            signal_type
+        )
         schema_version = _get_schema_version_for_opt_in_mode(signal_type, mode)
         # Keep the highest for all signals
-        if package_version.Version(schema_version) > package_version.Version(highest_schema_version):
+        if package_version.Version(schema_version) > package_version.Version(
+            highest_schema_version
+        ):
             highest_schema_version = schema_version
     return f"https://opentelemetry.io/schemas/{highest_schema_version}"

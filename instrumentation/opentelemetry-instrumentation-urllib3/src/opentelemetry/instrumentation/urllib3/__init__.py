@@ -359,9 +359,13 @@ class URLLib3Instrumentor(BaseInstrumentor):
                 explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS_NEW,
             )
             # http.client.request.body.size histogram
-            request_size_histogram_new = create_http_client_request_body_size(meter)
+            request_size_histogram_new = create_http_client_request_body_size(
+                meter
+            )
             # http.client.response.body.size histogram
-            response_size_histogram_new = create_http_client_response_body_size(meter)
+            response_size_histogram_new = (
+                create_http_client_response_body_size(meter)
+            )
 
         _instrument(
             tracer,
@@ -374,19 +378,29 @@ class URLLib3Instrumentor(BaseInstrumentor):
             request_hook=kwargs.get("request_hook"),
             response_hook=kwargs.get("response_hook"),
             url_filter=kwargs.get("url_filter"),
-            excluded_urls=(_excluded_urls_from_env if excluded_urls is None else parse_excluded_urls(excluded_urls)),
+            excluded_urls=(
+                _excluded_urls_from_env
+                if excluded_urls is None
+                else parse_excluded_urls(excluded_urls)
+            ),
             sem_conv_opt_in_mode=sem_conv_opt_in_mode,
             captured_request_headers=kwargs.get(
                 "captured_request_headers",
-                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST),
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+                ),
             ),
             captured_response_headers=kwargs.get(
                 "captured_response_headers",
-                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE),
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+                ),
             ),
             sensitive_headers=kwargs.get(
                 "sensitive_headers",
-                get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS),
+                get_custom_headers(
+                    OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+                ),
             ),
         )
 
@@ -418,7 +432,9 @@ def _instrument(
     captured_response_headers: list[str] | None = None,
     sensitive_headers: list[str] | None = None,
 ):
-    urlopen_signature = inspect.signature(urllib3.connectionpool.HTTPConnectionPool.urlopen)
+    urlopen_signature = inspect.signature(
+        urllib3.connectionpool.HTTPConnectionPool.urlopen
+    )
 
     def instrumented_urlopen(wrapped, instance, args, kwargs):
         if not is_http_instrumentation_enabled():
@@ -464,7 +480,9 @@ def _instrument(
         )
 
         with (
-            tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=span_attributes) as span,
+            tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+            ) as span,
             set_ip_on_next_http_connection(span),
         ):
             if callable(request_hook):
@@ -488,7 +506,9 @@ def _instrument(
                 duration_s = default_timer() - start_time
             # set http status code based on semconv
             metric_attributes = {}
-            _set_status_code_attribute(span, response.status, metric_attributes, sem_conv_opt_in_mode)
+            _set_status_code_attribute(
+                span, response.status, metric_attributes, sem_conv_opt_in_mode
+            )
 
             if callable(response_hook):
                 response_hook(span, instance, response)
@@ -611,7 +631,9 @@ def _set_metric_attributes(
     sanitized_method: str,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ) -> None:
-    _set_http_host_client(metric_attributes, instance.host, sem_conv_opt_in_mode)
+    _set_http_host_client(
+        metric_attributes, instance.host, sem_conv_opt_in_mode
+    )
     _set_http_scheme(metric_attributes, instance.scheme, sem_conv_opt_in_mode)
     _set_http_method(
         metric_attributes,
@@ -619,13 +641,19 @@ def _set_metric_attributes(
         sanitized_method,
         sem_conv_opt_in_mode,
     )
-    _set_http_net_peer_name_client(metric_attributes, instance.host, sem_conv_opt_in_mode)
-    _set_http_peer_port_client(metric_attributes, instance.port, sem_conv_opt_in_mode)
+    _set_http_net_peer_name_client(
+        metric_attributes, instance.host, sem_conv_opt_in_mode
+    )
+    _set_http_peer_port_client(
+        metric_attributes, instance.port, sem_conv_opt_in_mode
+    )
 
     version = response.version
     if version:
         http_version = "1.1" if version == 11 else "1.0"
-        _set_http_network_protocol_version(metric_attributes, http_version, sem_conv_opt_in_mode)
+        _set_http_network_protocol_version(
+            metric_attributes, http_version, sem_conv_opt_in_mode
+        )
 
 
 def _filter_attributes_semconv(
@@ -665,7 +693,9 @@ def _record_metrics(
     response_size: int,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):
-    attrs_old, attrs_new = _filter_attributes_semconv(metric_attributes, sem_conv_opt_in_mode)
+    attrs_old, attrs_new = _filter_attributes_semconv(
+        metric_attributes, sem_conv_opt_in_mode
+    )
     if duration_histogram_old:
         # Default behavior is to record the duration in milliseconds
         duration_histogram_old.record(
@@ -682,10 +712,14 @@ def _record_metrics(
 
     if request_size is not None:
         if request_size_histogram_old:
-            request_size_histogram_old.record(request_size, attributes=attrs_old)
+            request_size_histogram_old.record(
+                request_size, attributes=attrs_old
+            )
 
         if request_size_histogram_new:
-            request_size_histogram_new.record(request_size, attributes=attrs_new)
+            request_size_histogram_new.record(
+                request_size, attributes=attrs_new
+            )
 
     if response_size_histogram_old:
         response_size_histogram_old.record(response_size, attributes=attrs_old)

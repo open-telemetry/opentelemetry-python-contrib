@@ -18,13 +18,17 @@ from opentelemetry.trace import Span, Tracer
 
 class BaggageSpanProcessorTest(unittest.TestCase):
     def test_check_the_baggage(self):
-        self.assertIsInstance(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS), SpanProcessor)
+        self.assertIsInstance(
+            BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS), SpanProcessor
+        )
 
     def test_set_baggage_attaches_to_child_spans_and_detaches_properly_with_context(
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -32,12 +36,16 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self.assertEqual(get_all_baggage(), {})
         # set baggage in context
         ctx = set_baggage("queen", "bee")
-        with tracer.start_as_current_span(name="bumble", context=ctx) as bumble_span:
+        with tracer.start_as_current_span(
+            name="bumble", context=ctx
+        ) as bumble_span:
             # span should have baggage key-value pair in context
             self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
             # span should have baggage key-value pair in attribute
             self.assertEqual(bumble_span._attributes["queen"], "bee")
-            with tracer.start_as_current_span(name="child_span", context=ctx) as child_span:
+            with tracer.start_as_current_span(
+                name="child_span", context=ctx
+            ) as child_span:
                 self.assertIsInstance(child_span, Span)
                 # child span should have baggage key-value pair in context
                 self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
@@ -48,7 +56,9 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(self.has_prefix))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(self.has_prefix)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -56,12 +66,16 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self.assertEqual(get_all_baggage(), {})
         # set baggage in context
         ctx = set_baggage("queen", "bee")
-        with tracer.start_as_current_span(name="bumble", context=ctx) as bumble_span:
+        with tracer.start_as_current_span(
+            name="bumble", context=ctx
+        ) as bumble_span:
             # span should have baggage key-value pair in context
             self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
             # span should have baggage key-value pair in attribute
             self.assertEqual(bumble_span._attributes["queen"], "bee")
-            with tracer.start_as_current_span(name="child_span", context=ctx) as child_span:
+            with tracer.start_as_current_span(
+                name="child_span", context=ctx
+            ) as child_span:
                 self.assertIsInstance(child_span, Span)
                 # child span should have baggage key-value pair in context
                 self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
@@ -72,7 +86,9 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(self.matches_regex))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(self.matches_regex)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -80,12 +96,16 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self.assertEqual(get_all_baggage(), {})
         # set baggage in context
         ctx = set_baggage("queen", "bee")
-        with tracer.start_as_current_span(name="bumble", context=ctx) as bumble_span:
+        with tracer.start_as_current_span(
+            name="bumble", context=ctx
+        ) as bumble_span:
             # span should have baggage key-value pair in context
             self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
             # span should have baggage key-value pair in attribute
             self.assertEqual(bumble_span._attributes["queen"], "bee")
-            with tracer.start_as_current_span(name="child_span", context=ctx) as child_span:
+            with tracer.start_as_current_span(
+                name="child_span", context=ctx
+            ) as child_span:
                 self.assertIsInstance(child_span, Span)
                 # child span should have baggage key-value pair in context
                 self.assertEqual(get_all_baggage(ctx), {"queen": "bee"})
@@ -96,7 +116,9 @@ class BaggageSpanProcessorTest(unittest.TestCase):
         self,
     ):
         tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS))
+        tracer_provider.add_span_processor(
+            BaggageSpanProcessor(ALLOW_ALL_BAGGAGE_KEYS)
+        )
 
         # tracer has no baggage to start
         tracer = tracer_provider.get_tracer("my-tracer")
@@ -111,10 +133,14 @@ class BaggageSpanProcessorTest(unittest.TestCase):
             self.assertEqual(span._attributes["bumble"], "bee")
             # create a second context token and set more baggage
             moar_token = attach(set_baggage("moar", "bee"))
-            self.assertEqual(get_all_baggage(), {"bumble": "bee", "moar": "bee"})
+            self.assertEqual(
+                get_all_baggage(), {"bumble": "bee", "moar": "bee"}
+            )
             # in a child span, ensure all baggage is there as attributes
             with tracer.start_as_current_span("child") as child_span:
-                self.assertEqual(get_all_baggage(), {"bumble": "bee", "moar": "bee"})
+                self.assertEqual(
+                    get_all_baggage(), {"bumble": "bee", "moar": "bee"}
+                )
                 self.assertEqual(child_span._attributes["bumble"], "bee")
                 self.assertEqual(child_span._attributes["moar"], "bee")
             detach(moar_token)

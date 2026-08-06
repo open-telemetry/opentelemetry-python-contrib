@@ -137,7 +137,9 @@ class ChoiceToolCall:
     type: Literal["function"] = "function"
 
 
-FinishReason = Literal["content_filter", "error", "length", "stop", "tool_calls"]
+FinishReason = Literal[
+    "content_filter", "error", "length", "stop", "tool_calls"
+]
 
 
 def choice_event(
@@ -156,7 +158,9 @@ def choice_event(
         "message": _asdict_filter_nulls(message),
     }
 
-    tool_calls_list = [_asdict_filter_nulls(tool_call) for tool_call in tool_calls]
+    tool_calls_list = [
+        _asdict_filter_nulls(tool_call) for tool_call in tool_calls
+    ]
     if tool_calls_list:
         body["tool_calls"] = tool_calls_list
 

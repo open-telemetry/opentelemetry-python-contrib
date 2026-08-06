@@ -115,7 +115,9 @@ class TestFunctionalAiopgInstrumentConnection(TestBase):
                 host=POSTGRES_HOST,
                 port=POSTGRES_PORT,
             )
-            return AiopgInstrumentor().instrument_connection(connection, tracer_provider=self.tracer_provider)
+            return AiopgInstrumentor().instrument_connection(
+                connection, tracer_provider=self.tracer_provider
+            )
 
         self._connection = async_call(connect())
         self._cursor = async_call(self._connection.cursor())

@@ -71,7 +71,9 @@ def main():
     # pylint: disable=no-member
     default_instrumentations = ast.List(elts=[])
     libraries = ast.List(elts=[])
-    for pkg in get_instrumentation_packages(independent_packages=independent_packages):
+    for pkg in get_instrumentation_packages(
+        independent_packages=independent_packages
+    ):
         pkg_name = pkg.get("name")
         if pkg_name in packages_to_exclude:
             continue
@@ -98,7 +100,9 @@ def main():
     tree.body[1].value = default_instrumentations
     source = astor.to_source(tree)
 
-    with open(os.path.join(scripts_path, "license_header.txt"), encoding="utf-8") as header_file:
+    with open(
+        os.path.join(scripts_path, "license_header.txt"), encoding="utf-8"
+    ) as header_file:
         header = header_file.read()
         source = _template.format(header=header, source=source)
 

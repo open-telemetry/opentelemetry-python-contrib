@@ -39,14 +39,22 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
 
-        self.assertIsNone(self.otel.get_span_named("execute_tool somefunction"))
+        self.assertIsNone(
+            self.otel.get_span_named("execute_tool somefunction")
+        )
         wrapped_somefunction("someparam")
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertIn("gen_ai.system", generated_span.attributes)
-        self.assertEqual(generated_span.attributes["gen_ai.tool.name"], "somefunction")
-        self.assertEqual(generated_span.attributes["code.args.positional.count"], 1)
-        self.assertEqual(generated_span.attributes["code.args.keyword.count"], 0)
+        self.assertEqual(
+            generated_span.attributes["gen_ai.tool.name"], "somefunction"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.args.positional.count"], 1
+        )
+        self.assertEqual(
+            generated_span.attributes["code.args.keyword.count"], 0
+        )
 
     def test_tool_calls_with_config_object_outputs_spans(self):
         calls = []
@@ -71,14 +79,22 @@ class ToolCallInstrumentationTestCase(TestCase):
         tools = config.tools
         wrapped_somefunction = tools[0]
 
-        self.assertIsNone(self.otel.get_span_named("execute_tool somefunction"))
+        self.assertIsNone(
+            self.otel.get_span_named("execute_tool somefunction")
+        )
         wrapped_somefunction("someparam")
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertIn("gen_ai.system", generated_span.attributes)
-        self.assertEqual(generated_span.attributes["gen_ai.tool.name"], "somefunction")
-        self.assertEqual(generated_span.attributes["code.args.positional.count"], 1)
-        self.assertEqual(generated_span.attributes["code.args.keyword.count"], 0)
+        self.assertEqual(
+            generated_span.attributes["gen_ai.tool.name"], "somefunction"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.args.positional.count"], 1
+        )
+        self.assertEqual(
+            generated_span.attributes["code.args.keyword.count"], 0
+        )
 
     @patch.dict(
         "os.environ",
@@ -110,19 +126,27 @@ class ToolCallInstrumentationTestCase(TestCase):
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.someparam.type"],
+            generated_span.attributes[
+                "code.function.parameters.someparam.type"
+            ],
             "int",
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.otherparam.type"],
+            generated_span.attributes[
+                "code.function.parameters.otherparam.type"
+            ],
             "str",
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.someparam.value"],
+            generated_span.attributes[
+                "code.function.parameters.someparam.value"
+            ],
             123,
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.otherparam.value"],
+            generated_span.attributes[
+                "code.function.parameters.otherparam.value"
+            ],
             "abc",
         )
 
@@ -156,11 +180,15 @@ class ToolCallInstrumentationTestCase(TestCase):
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.someparam.type"],
+            generated_span.attributes[
+                "code.function.parameters.someparam.type"
+            ],
             "int",
         )
         self.assertEqual(
-            generated_span.attributes["code.function.parameters.otherparam.type"],
+            generated_span.attributes[
+                "code.function.parameters.otherparam.type"
+            ],
             "str",
         )
         self.assertNotIn(
@@ -201,8 +229,12 @@ class ToolCallInstrumentationTestCase(TestCase):
         wrapped_somefunction(123)
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(generated_span.attributes["code.function.return.type"], "int")
-        self.assertEqual(generated_span.attributes["code.function.return.value"], 125)
+        self.assertEqual(
+            generated_span.attributes["code.function.return.type"], "int"
+        )
+        self.assertEqual(
+            generated_span.attributes["code.function.return.value"], 125
+        )
 
     @patch.dict(
         "os.environ",
@@ -233,8 +265,12 @@ class ToolCallInstrumentationTestCase(TestCase):
         wrapped_somefunction(123)
         self.otel.assert_has_span_named("execute_tool somefunction")
         generated_span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(generated_span.attributes["code.function.return.type"], "int")
-        self.assertNotIn("code.function.return.value", generated_span.attributes)
+        self.assertEqual(
+            generated_span.attributes["code.function.return.type"], "int"
+        )
+        self.assertNotIn(
+            "code.function.return.value", generated_span.attributes
+        )
 
     def test_new_semconv_tool_calls_record_parameter_values(self):
         for mode in ContentCapturingMode:
@@ -248,9 +284,13 @@ class ToolCallInstrumentationTestCase(TestCase):
             )
             patched_otel_mapping = patch.dict(
                 _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
-                {_OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL},
+                {
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                },
             )
-            with self.subTest(f"mode: {mode}", patched_environ=patched_environ):
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
 
@@ -278,14 +318,22 @@ class ToolCallInstrumentationTestCase(TestCase):
                     tools = config.tools
                     wrapped_somefunction = tools[0]
                     wrapped_somefunction(123, otherparam="abc")
-                    self.otel.assert_has_span_named("execute_tool somefunction")
-                    generated_span = self.otel.get_span_named("execute_tool somefunction")
+                    self.otel.assert_has_span_named(
+                        "execute_tool somefunction"
+                    )
+                    generated_span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
                     self.assertEqual(
-                        generated_span.attributes["code.function.parameters.someparam.type"],
+                        generated_span.attributes[
+                            "code.function.parameters.someparam.type"
+                        ],
                         "int",
                     )
                     self.assertEqual(
-                        generated_span.attributes["code.function.parameters.otherparam.type"],
+                        generated_span.attributes[
+                            "code.function.parameters.otherparam.type"
+                        ],
                         "str",
                     )
                     if mode in [
@@ -293,11 +341,15 @@ class ToolCallInstrumentationTestCase(TestCase):
                         ContentCapturingMode.SPAN_AND_EVENT,
                     ]:
                         self.assertEqual(
-                            generated_span.attributes["code.function.parameters.someparam.value"],
+                            generated_span.attributes[
+                                "code.function.parameters.someparam.value"
+                            ],
                             123,
                         )
                         self.assertEqual(
-                            generated_span.attributes["code.function.parameters.otherparam.value"],
+                            generated_span.attributes[
+                                "code.function.parameters.otherparam.value"
+                            ],
                             "abc",
                         )
                     else:
@@ -323,9 +375,13 @@ class ToolCallInstrumentationTestCase(TestCase):
             )
             patched_otel_mapping = patch.dict(
                 _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING,
-                {_OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL},
+                {
+                    _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
+                },
             )
-            with self.subTest(f"mode: {mode}", patched_environ=patched_environ):
+            with self.subTest(
+                f"mode: {mode}", patched_environ=patched_environ
+            ):
                 self.setUp()
                 with patched_environ, patched_otel_mapping:
 
@@ -349,8 +405,12 @@ class ToolCallInstrumentationTestCase(TestCase):
                     tools = config.tools
                     wrapped_somefunction = tools[0]
                     wrapped_somefunction(123)
-                    self.otel.assert_has_span_named("execute_tool somefunction")
-                    generated_span = self.otel.get_span_named("execute_tool somefunction")
+                    self.otel.assert_has_span_named(
+                        "execute_tool somefunction"
+                    )
+                    generated_span = self.otel.get_span_named(
+                        "execute_tool somefunction"
+                    )
                     self.assertEqual(
                         generated_span.attributes["code.function.return.type"],
                         "int",

@@ -53,10 +53,16 @@ def _is_sqs_event(lambda_event: Any) -> bool:
             isinstance(lambda_event, dict)
             and isinstance(lambda_event.get("Records"), list)
             and lambda_event["Records"]
-            and lambda_event["Records"][0].get("eventSource", "").strip().lower() == "aws:sqs"
+            and lambda_event["Records"][0]
+            .get("eventSource", "")
+            .strip()
+            .lower()
+            == "aws:sqs"
         )
     except Exception as exc:  # pylint: disable=broad-except
-        logger.warning("An unexpected error occurred while checking SQS event: %s", exc)
+        logger.warning(
+            "An unexpected error occurred while checking SQS event: %s", exc
+        )
         return False
 
 
@@ -73,13 +79,17 @@ def _get_sqs_span_links(records: list[dict[str, Any]]) -> list[Link]:
             continue
         # Wrap in CIDict so propagation header name lookup is case-insensitive
         # (e.g. "TRACEPARENT" and "traceparent" are both found).
-        ctx = get_global_textmap().extract(CIDict(msg_attrs), getter=_sqs_getter)
+        ctx = get_global_textmap().extract(
+            CIDict(msg_attrs), getter=_sqs_getter
+        )
         span_ctx = get_current_span(ctx).get_span_context()
         if span_ctx and span_ctx.is_valid:
             links.append(
                 Link(
                     context=span_ctx,
-                    attributes={MESSAGING_MESSAGE_ID: record.get("messageId", "")},
+                    attributes={
+                        MESSAGING_MESSAGE_ID: record.get("messageId", "")
+                    },
                 )
             )
     return links

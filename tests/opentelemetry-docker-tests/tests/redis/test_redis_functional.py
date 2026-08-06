@@ -55,7 +55,9 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "MGET")
-        self.assertTrue(span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?"))
+        self.assertTrue(
+            span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?")
+        )
         self.assertTrue(span.attributes.get(DB_STATEMENT).endswith("..."))
 
     def test_long_command(self):
@@ -65,7 +67,9 @@ class TestRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "MGET")
-        self.assertTrue(span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?"))
+        self.assertTrue(
+            span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?")
+        )
         self.assertTrue(span.attributes.get(DB_STATEMENT).endswith("..."))
 
     def test_basics_sanitized(self):
@@ -181,7 +185,9 @@ class TestRedisInstrument(TestBase):
 class TestRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = redis.cluster.RedisCluster(host="localhost", port=7000)
+        self.redis_client = redis.cluster.RedisCluster(
+            host="localhost", port=7000
+        )
         self.redis_client.flushall()
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -235,9 +241,13 @@ class TestRedisClusterInstrument(TestBase):
             # On redis-py 6+ the queued commands are tracked on the execution
             # strategy rather than command_stack; assert the regression path is
             # genuinely exercised before checking the emitted span metadata.
-            if hasattr(pipeline, "_execution_strategy") and hasattr(pipeline._execution_strategy, "command_queue"):
+            if hasattr(pipeline, "_execution_strategy") and hasattr(
+                pipeline._execution_strategy, "command_queue"
+            ):
                 self.assertEqual(pipeline.command_stack, [])
-                self.assertEqual(len(pipeline._execution_strategy.command_queue), 3)
+                self.assertEqual(
+                    len(pipeline._execution_strategy.command_queue), 3
+                )
 
             pipeline.execute()
 
@@ -302,7 +312,9 @@ class TestAsyncRedisInstrument(TestBase):
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self._check_span(span, "MGET")
-        self.assertTrue(span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?"))
+        self.assertTrue(
+            span.attributes.get(DB_STATEMENT).startswith("MGET ? ? ? ?")
+        )
         self.assertTrue(span.attributes.get(DB_STATEMENT).endswith("..."))
 
     def test_basics(self):
@@ -339,7 +351,9 @@ class TestAsyncRedisInstrument(TestBase):
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
-            async with self.redis_client.pipeline(transaction=False) as pipeline:
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
                 pipeline.set("blah", 32)
                 pipeline.rpush("foo", "éé")
                 pipeline.hgetall("xxx")
@@ -363,7 +377,9 @@ class TestAsyncRedisInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(transaction=False) as pipeline:
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
                 nonlocal coro_created_time
                 nonlocal finish_time
                 pipeline.set("blah", 32)
@@ -407,7 +423,9 @@ class TestAsyncRedisInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(transaction=False) as pipeline:
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
                 nonlocal coro_created_time
                 nonlocal finish_time
                 pipeline.set("a", 1)
@@ -450,7 +468,9 @@ class TestAsyncRedisInstrument(TestBase):
 class TestAsyncRedisClusterInstrument(TestBase):
     def setUp(self):
         super().setUp()
-        self.redis_client = redis.asyncio.cluster.RedisCluster(host="localhost", port=7000)
+        self.redis_client = redis.asyncio.cluster.RedisCluster(
+            host="localhost", port=7000
+        )
         async_call(self.redis_client.flushall())
         RedisInstrumentor().instrument(tracer_provider=self.tracer_provider)
 
@@ -496,7 +516,9 @@ class TestAsyncRedisClusterInstrument(TestBase):
 
     def test_pipeline_traced(self):
         async def pipeline_simple():
-            async with self.redis_client.pipeline(transaction=False) as pipeline:
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
                 pipeline.set("blah", 32)
                 pipeline.rpush("foo", "éé")
                 pipeline.hgetall("xxx")
@@ -520,7 +542,9 @@ class TestAsyncRedisClusterInstrument(TestBase):
         finish_time = None
 
         async def pipeline_simple():
-            async with self.redis_client.pipeline(transaction=False) as pipeline:
+            async with self.redis_client.pipeline(
+                transaction=False
+            ) as pipeline:
                 nonlocal coro_created_time
                 nonlocal finish_time
                 pipeline.set("blah", 32)
@@ -633,13 +657,19 @@ class TestRedisearchInstrument(TestBase):
                 as_name="vector",
             ),
         )
-        definition = IndexDefinition(prefix=["test:"], index_type=IndexType.JSON)
-        res = self.redis_client.ft("idx:test_vss").create_index(fields=schema, definition=definition)
+        definition = IndexDefinition(
+            prefix=["test:"], index_type=IndexType.JSON
+        )
+        res = self.redis_client.ft("idx:test_vss").create_index(
+            fields=schema, definition=definition
+        )
         assert "OK" in str(res)
 
     def test_redis_create_index(self):
         spans = self.memory_exporter.get_finished_spans()
-        span = next(span for span in spans if span.name == "redis.create_index")
+        span = next(
+            span for span in spans if span.name == "redis.create_index"
+        )
         assert "redis.create_index.fields" in span.attributes
 
     def test_redis_query(self):

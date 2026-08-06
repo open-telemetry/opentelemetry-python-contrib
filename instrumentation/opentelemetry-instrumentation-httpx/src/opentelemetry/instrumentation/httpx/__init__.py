@@ -243,7 +243,9 @@ Or if you are using the transport classes directly:
 
 
     transport = httpx.HTTPTransport()
-    telemetry_transport = SyncOpenTelemetryTransport(transport, request_hook=request_hook, response_hook=response_hook)
+    telemetry_transport = SyncOpenTelemetryTransport(
+        transport, request_hook=request_hook, response_hook=response_hook
+    )
 
     async_transport = httpx.AsyncHTTPTransport()
     async_telemetry_transport = AsyncOpenTelemetryTransport(
@@ -471,8 +473,12 @@ _httpx2_module = _try_import("httpx2")
 
 RequestHook = typing.Callable[[Span, "RequestInfo"], None]
 ResponseHook = typing.Callable[[Span, "RequestInfo", "ResponseInfo"], None]
-AsyncRequestHook = typing.Callable[[Span, "RequestInfo"], typing.Awaitable[typing.Any]]
-AsyncResponseHook = typing.Callable[[Span, "RequestInfo", "ResponseInfo"], typing.Awaitable[typing.Any]]
+AsyncRequestHook = typing.Callable[
+    [Span, "RequestInfo"], typing.Awaitable[typing.Any]
+]
+AsyncResponseHook = typing.Callable[
+    [Span, "RequestInfo", "ResponseInfo"], typing.Awaitable[typing.Any]
+]
 
 
 class RequestInfo(typing.NamedTuple):
@@ -498,7 +504,9 @@ def _get_default_span_name(method: str) -> str:
     return method
 
 
-def _prepare_headers(headers: httpx.Headers | None, module: _HTTPXModule) -> httpx.Headers:
+def _prepare_headers(
+    headers: httpx.Headers | None, module: _HTTPXModule
+) -> httpx.Headers:
     return typing.cast("httpx.Headers", module.Headers(headers))
 
 
@@ -527,7 +535,9 @@ def _extract_parameters(
         url = args[1]
         headers = kwargs.get("headers", args[2] if len(args) > 2 else None)
         stream = kwargs.get("stream", args[3] if len(args) > 3 else None)
-        extensions = kwargs.get("extensions", args[4] if len(args) > 4 else None)
+        extensions = kwargs.get(
+            "extensions", args[4] if len(args) > 4 else None
+        )
 
     return method, url, headers, stream, extensions
 
@@ -536,8 +546,14 @@ def _normalize_url(
     url: httpx.URL | tuple[bytes, bytes, int | None, bytes],
 ) -> str:
     if isinstance(url, tuple):
-        scheme, host, port, path = [part.decode() if isinstance(part, bytes) else part for part in url]
-        return f"{scheme}://{host}:{port}{path}" if port else f"{scheme}://{host}{path}"
+        scheme, host, port, path = [
+            part.decode() if isinstance(part, bytes) else part for part in url
+        ]
+        return (
+            f"{scheme}://{host}:{port}{path}"
+            if port
+            else f"{scheme}://{host}{path}"
+        )
 
     return str(url)
 
@@ -553,13 +569,18 @@ def _inject_propagation_headers(headers, args, kwargs, module: _HTTPXModule):
 
 
 def _normalize_headers(
-    headers: httpx.Headers | dict[str, list[str] | str] | list[tuple[bytes, bytes]] | None,
+    headers: httpx.Headers
+    | dict[str, list[str] | str]
+    | list[tuple[bytes, bytes]]
+    | None,
     module: _HTTPXModule,
 ) -> dict[str, list[str]]:
     normalized_headers: defaultdict[str, list[str]] = defaultdict(list)
     if isinstance(headers, module.Headers):
         for key in headers.keys():
-            normalized_headers[key.lower()].extend(headers.get_list(key, split_commas=True))
+            normalized_headers[key.lower()].extend(
+                headers.get_list(key, split_commas=True)
+            )
     elif isinstance(headers, dict):
         for key, value in headers.items():
             if isinstance(value, list):
@@ -568,12 +589,15 @@ def _normalize_headers(
                 normalized_headers[key.lower()].append(value)
     elif isinstance(headers, list):
         for key, value in headers:
-            normalized_headers[key.decode("latin-1").lower()].append(value.decode("latin-1"))
+            normalized_headers[key.decode("latin-1").lower()].append(
+                value.decode("latin-1")
+            )
     return dict(normalized_headers)
 
 
 def _extract_response(
-    response: httpx.Response | tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]],
+    response: httpx.Response
+    | tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]],
     module: _HTTPXModule,
 ) -> tuple[
     int,
@@ -591,7 +615,9 @@ def _extract_response(
         http_version = http_response.http_version
     else:
         status_code, headers, stream, extensions = response
-        http_version = extensions.get("http_version", b"HTTP/1.1").decode("ascii", errors="ignore")
+        http_version = extensions.get("http_version", b"HTTP/1.1").decode(
+            "ascii", errors="ignore"
+        )
 
     return (status_code, headers, stream, extensions, http_version)
 
@@ -646,7 +672,9 @@ def _apply_request_client_attributes_to_span(
             _set_http_host_client(span_attributes, url.host, semconv)
             # Add metric labels
             _set_http_host_client(metric_attributes, url.host, semconv)
-            _set_http_net_peer_name_client(metric_attributes, url.host, semconv)
+            _set_http_net_peer_name_client(
+                metric_attributes, url.host, semconv
+            )
             # http semconv transition: net.sock.peer.addr -> network.peer.address
             span_attributes[NETWORK_PEER_ADDRESS] = url.host
         if url.port:
@@ -791,9 +819,15 @@ class _SyncOpenTelemetryTransportBase:
         self._request_hook = request_hook
         self._response_hook = response_hook
         self._excluded_urls = get_excluded_urls("HTTPX")
-        self._captured_request_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST)
-        self._captured_response_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE)
-        self._sensitive_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
+        self._captured_request_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+        )
+        self._captured_response_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+        )
+        self._sensitive_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
 
     def __enter__(self) -> _SyncOpenTelemetryTransportBase:
         self._transport.__enter__()
@@ -812,14 +846,21 @@ class _SyncOpenTelemetryTransportBase:
         self,
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]] | httpx.Response:
+    ) -> (
+        tuple[int, httpx.Headers, httpx.SyncByteStream, dict[str, typing.Any]]
+        | httpx.Response
+    ):
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return self._transport.handle_request(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(args, kwargs, self._module)
+        method, url, headers, stream, extensions = _extract_parameters(
+            args, kwargs, self._module
+        )
 
-        if self._excluded_urls and self._excluded_urls.url_disabled(_normalize_url(url)):
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
             return self._transport.handle_request(*args, **kwargs)
 
         method_original = method.decode()
@@ -841,7 +882,9 @@ class _SyncOpenTelemetryTransportBase:
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
 
-        with self._tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
+        with self._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
             exception = None
             if callable(self._request_hook):
                 self._request_hook(span, request_info)
@@ -859,7 +902,9 @@ class _SyncOpenTelemetryTransportBase:
                 elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (self._module.Response, tuple)):
-                status_code, headers, stream, extensions, http_version = _extract_response(response, self._module)
+                status_code, headers, stream, extensions, http_version = (
+                    _extract_response(response, self._module)
+                )
 
                 # Always apply response attributes to metrics
                 _apply_response_client_attributes_to_metrics(
@@ -890,9 +935,15 @@ class _SyncOpenTelemetryTransportBase:
                     )
 
             if exception:
-                if span.is_recording() and _report_new(self._sem_conv_opt_in_mode):
-                    span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-                    metric_attributes[ERROR_TYPE] = type(exception).__qualname__
+                if span.is_recording() and _report_new(
+                    self._sem_conv_opt_in_mode
+                ):
+                    span.set_attribute(
+                        ERROR_TYPE, type(exception).__qualname__
+                    )
+                    metric_attributes[ERROR_TYPE] = type(
+                        exception
+                    ).__qualname__
                 raise exception.with_traceback(exception.__traceback__)
 
             if self._duration_histogram_old is not None:
@@ -913,7 +964,9 @@ class _SyncOpenTelemetryTransportBase:
                     _client_duration_attrs_new,
                     _StabilityMode.HTTP,
                 )
-                self._duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+                self._duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
         return response
 
@@ -985,9 +1038,15 @@ class _AsyncOpenTelemetryTransportBase:
         self._request_hook = request_hook
         self._response_hook = response_hook
         self._excluded_urls = get_excluded_urls("HTTPX")
-        self._captured_request_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST)
-        self._captured_response_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE)
-        self._sensitive_headers = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
+        self._captured_request_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+        )
+        self._captured_response_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
+        )
+        self._sensitive_headers = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
 
     async def __aenter__(self) -> _AsyncOpenTelemetryTransportBase:
         await self._transport.__aenter__()
@@ -1004,14 +1063,21 @@ class _AsyncOpenTelemetryTransportBase:
     # pylint: disable=R0914
     async def handle_async_request(
         self, *args: typing.Any, **kwargs: typing.Any
-    ) -> tuple[int, httpx.Headers, httpx.AsyncByteStream, dict[str, typing.Any]] | httpx.Response:
+    ) -> (
+        tuple[int, httpx.Headers, httpx.AsyncByteStream, dict[str, typing.Any]]
+        | httpx.Response
+    ):
         """Add request info to span."""
         if not is_http_instrumentation_enabled():
             return await self._transport.handle_async_request(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(args, kwargs, self._module)
+        method, url, headers, stream, extensions = _extract_parameters(
+            args, kwargs, self._module
+        )
 
-        if self._excluded_urls and self._excluded_urls.url_disabled(_normalize_url(url)):
+        if self._excluded_urls and self._excluded_urls.url_disabled(
+            _normalize_url(url)
+        ):
             return await self._transport.handle_async_request(*args, **kwargs)
 
         method_original = method.decode()
@@ -1033,7 +1099,9 @@ class _AsyncOpenTelemetryTransportBase:
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
 
-        with self._tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
+        with self._tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
             exception = None
             if callable(self._request_hook):
                 await self._request_hook(span, request_info)
@@ -1043,7 +1111,9 @@ class _AsyncOpenTelemetryTransportBase:
             start_time = default_timer()
 
             try:
-                response = await self._transport.handle_async_request(*args, **kwargs)
+                response = await self._transport.handle_async_request(
+                    *args, **kwargs
+                )
             except Exception as exc:  # pylint: disable=W0703
                 exception = exc
                 response = getattr(exc, "response", None)
@@ -1051,7 +1121,9 @@ class _AsyncOpenTelemetryTransportBase:
                 elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (self._module.Response, tuple)):
-                status_code, headers, stream, extensions, http_version = _extract_response(response, self._module)
+                status_code, headers, stream, extensions, http_version = (
+                    _extract_response(response, self._module)
+                )
 
                 # Always apply response attributes to metrics
                 _apply_response_client_attributes_to_metrics(
@@ -1083,9 +1155,15 @@ class _AsyncOpenTelemetryTransportBase:
                     )
 
             if exception:
-                if span.is_recording() and _report_new(self._sem_conv_opt_in_mode):
-                    span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-                    metric_attributes[ERROR_TYPE] = type(exception).__qualname__
+                if span.is_recording() and _report_new(
+                    self._sem_conv_opt_in_mode
+                ):
+                    span.set_attribute(
+                        ERROR_TYPE, type(exception).__qualname__
+                    )
+                    metric_attributes[ERROR_TYPE] = type(
+                        exception
+                    ).__qualname__
 
                 raise exception.with_traceback(exception.__traceback__)
 
@@ -1107,7 +1185,9 @@ class _AsyncOpenTelemetryTransportBase:
                     _client_duration_attrs_new,
                     _StabilityMode.HTTP,
                 )
-                self._duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+                self._duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
         return response
 
@@ -1157,9 +1237,17 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         request_hook = kwargs.get("request_hook")
         response_hook = kwargs.get("response_hook")
         async_request_hook = kwargs.get("async_request_hook")
-        async_request_hook = async_request_hook if iscoroutinefunction(async_request_hook) else None
+        async_request_hook = (
+            async_request_hook
+            if iscoroutinefunction(async_request_hook)
+            else None
+        )
         async_response_hook = kwargs.get("async_response_hook")
-        async_response_hook = async_response_hook if iscoroutinefunction(async_response_hook) else None
+        async_response_hook = (
+            async_response_hook
+            if iscoroutinefunction(async_response_hook)
+            else None
+        )
         excluded_urls = get_excluded_urls("HTTPX")
         captured_request_headers: list[str] = get_custom_headers(
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
@@ -1167,7 +1255,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         captured_response_headers: list[str] = get_custom_headers(
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
         )
-        sensitive_headers: list[str] = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
+        sensitive_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
 
         _OpenTelemetrySemanticConventionStability._initialize()
         sem_conv_opt_in_mode = _OpenTelemetrySemanticConventionStability._get_opentelemetry_stability_opt_in_mode(
@@ -1271,7 +1361,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         if not is_http_instrumentation_enabled():
             return wrapped(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(args, kwargs, module)
+        method, url, headers, stream, extensions = _extract_parameters(
+            args, kwargs, module
+        )
 
         if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
             return wrapped(*args, **kwargs)
@@ -1295,7 +1387,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
 
-        with tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
+        with tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
             exception = None
             if callable(request_hook):
                 request_hook(span, request_info)
@@ -1313,7 +1407,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                 elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (module.Response, tuple)):
-                status_code, headers, stream, extensions, http_version = _extract_response(response, module)
+                status_code, headers, stream, extensions, http_version = (
+                    _extract_response(response, module)
+                )
 
                 # Always apply response attributes to metrics
                 _apply_response_client_attributes_to_metrics(
@@ -1346,8 +1442,12 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
             if exception:
                 if span.is_recording() and _report_new(sem_conv_opt_in_mode):
-                    span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
-                    metric_attributes[ERROR_TYPE] = type(exception).__qualname__
+                    span.set_attribute(
+                        ERROR_TYPE, type(exception).__qualname__
+                    )
+                    metric_attributes[ERROR_TYPE] = type(
+                        exception
+                    ).__qualname__
                 raise exception.with_traceback(exception.__traceback__)
 
             if duration_histogram_old is not None:
@@ -1368,7 +1468,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                     _client_duration_attrs_new,
                     _StabilityMode.HTTP,
                 )
-                duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+                duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
         return response
 
@@ -1394,7 +1496,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         if not is_http_instrumentation_enabled():
             return await wrapped(*args, **kwargs)
 
-        method, url, headers, stream, extensions = _extract_parameters(args, kwargs, module)
+        method, url, headers, stream, extensions = _extract_parameters(
+            args, kwargs, module
+        )
 
         if excluded_urls and excluded_urls.url_disabled(_normalize_url(url)):
             return await wrapped(*args, **kwargs)
@@ -1418,7 +1522,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
         request_info = RequestInfo(method, url, headers, stream, extensions)
 
-        with tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT, attributes=span_attributes) as span:
+        with tracer.start_as_current_span(
+            span_name, kind=SpanKind.CLIENT, attributes=span_attributes
+        ) as span:
             exception = None
             if callable(async_request_hook):
                 await async_request_hook(span, request_info)
@@ -1436,7 +1542,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                 elapsed_time = max(default_timer() - start_time, 0)
 
             if isinstance(response, (module.Response, tuple)):
-                status_code, headers, stream, extensions, http_version = _extract_response(response, module)
+                status_code, headers, stream, extensions, http_version = (
+                    _extract_response(response, module)
+                )
 
                 # Always apply response attributes to metrics
                 _apply_response_client_attributes_to_metrics(
@@ -1469,7 +1577,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
             if exception:
                 if span.is_recording() and _report_new(sem_conv_opt_in_mode):
-                    span.set_attribute(ERROR_TYPE, type(exception).__qualname__)
+                    span.set_attribute(
+                        ERROR_TYPE, type(exception).__qualname__
+                    )
                 raise exception.with_traceback(exception.__traceback__)
 
             if duration_histogram_old is not None:
@@ -1490,7 +1600,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                     _client_duration_attrs_new,
                     _StabilityMode.HTTP,
                 )
-                duration_histogram_new.record(elapsed_time, attributes=duration_attrs_new)
+                duration_histogram_new.record(
+                    elapsed_time, attributes=duration_attrs_new
+                )
 
         return response
 
@@ -1521,7 +1633,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             raise ModuleNotFoundError(f"{cls._module_name} must be installed")
 
         if getattr(client, "_is_instrumented_by_opentelemetry", False):
-            _logger.warning("Attempting to instrument Httpx client while already instrumented")
+            _logger.warning(
+                "Attempting to instrument Httpx client while already instrumented"
+            )
             return
 
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -1579,7 +1693,9 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
         captured_response_headers: list[str] = get_custom_headers(
             OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE
         )
-        sensitive_headers: list[str] = get_custom_headers(OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS)
+        sensitive_headers: list[str] = get_custom_headers(
+            OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS
+        )
 
         if hasattr(client._transport, "handle_request"):
             wrap_function_wrapper(
@@ -1683,12 +1799,16 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
 
 if _httpx_module is not None:
 
-    class SyncOpenTelemetryTransport(_SyncOpenTelemetryTransportBase, _httpx_module.BaseTransport):
+    class SyncOpenTelemetryTransport(
+        _SyncOpenTelemetryTransportBase, _httpx_module.BaseTransport
+    ):
         """Sync transport class that traces requests made with httpx."""
 
         _module = _httpx_module
 
-    class AsyncOpenTelemetryTransport(_AsyncOpenTelemetryTransportBase, _httpx_module.AsyncBaseTransport):
+    class AsyncOpenTelemetryTransport(
+        _AsyncOpenTelemetryTransportBase, _httpx_module.AsyncBaseTransport
+    ):
         """Async transport class that traces requests made with httpx."""
 
         _module = _httpx_module
@@ -1704,12 +1824,16 @@ class HTTPXClientInstrumentor(_BaseHTTPXClientInstrumentor):
 
 if _httpx2_module is not None:
 
-    class SyncOpenTelemetryTransportHttpx2(_SyncOpenTelemetryTransportBase, _httpx2_module.BaseTransport):
+    class SyncOpenTelemetryTransportHttpx2(
+        _SyncOpenTelemetryTransportBase, _httpx2_module.BaseTransport
+    ):
         """Sync transport class that traces requests made with httpx2."""
 
         _module = _httpx2_module
 
-    class AsyncOpenTelemetryTransportHttpx2(_AsyncOpenTelemetryTransportBase, _httpx2_module.AsyncBaseTransport):
+    class AsyncOpenTelemetryTransportHttpx2(
+        _AsyncOpenTelemetryTransportBase, _httpx2_module.AsyncBaseTransport
+    ):
         """Async transport class that traces requests made with httpx2."""
 
         _module = _httpx2_module

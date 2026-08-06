@@ -53,7 +53,9 @@ def test_detects_gae_service_instance(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_detects_gae_flex_zone_and_region(
     fake_get_metadata: MagicMock,
 ) -> None:
-    fake_get_metadata.return_value = {"instance": {"zone": "projects/233510669999/zones/us-east4-b"}}
+    fake_get_metadata.return_value = {
+        "instance": {"zone": "projects/233510669999/zones/us-east4-b"}
+    }
     zone_and_region = _gae.flex_availability_zone_and_region()
     assert zone_and_region.zone == "us-east4-b"
     assert zone_and_region.region == "us-east4"
@@ -62,12 +64,16 @@ def test_detects_gae_flex_zone_and_region(
 def test_gae_standard_zone(
     fake_get_metadata: MagicMock,
 ) -> None:
-    fake_get_metadata.return_value = {"instance": {"zone": "projects/233510669999/zones/us15"}}
+    fake_get_metadata.return_value = {
+        "instance": {"zone": "projects/233510669999/zones/us15"}
+    }
     assert _gae.standard_availability_zone() == "us15"
 
 
 def test_gae_standard_region(
     fake_get_metadata: MagicMock,
 ) -> None:
-    fake_get_metadata.return_value = {"instance": {"region": "projects/233510669999/regions/us-east4"}}
+    fake_get_metadata.return_value = {
+        "instance": {"region": "projects/233510669999/regions/us-east4"}
+    }
     assert _gae.standard_cloud_region() == "us-east4"
