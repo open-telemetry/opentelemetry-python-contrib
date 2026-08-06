@@ -248,6 +248,31 @@ class TestAiobotocoreInstrumentor(TestBase):
         self.assertIn(EXCEPTION_TYPE, event.attributes)
         self.assertIn(EXCEPTION_MESSAGE, event.attributes)
 
+    def test_3xx_response_not_error(self):
+        """Test that 3xx ClientError responses are not marked as span errors."""
+
+        async def _test():
+            async with self._make_client("s3") as client:
+                with botocore.stub.Stubber(client) as stubber:
+                    stubber.add_client_error(
+                        "get_object",
+                        service_error_code="NotModified",
+                        service_message="Not Modified",
+                        http_status_code=304,
+                    )
+                    with self.assertRaises(ClientError):
+                        await client.get_object(
+                            Bucket="test-bucket", Key="test-key"
+                        )
+
+        asyncio.run(_test())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace_api.StatusCode.OK)
+        self.assertEqual("S3.GetObject", span.name)
+
     def test_suppress_instrumentation(self):
         """Test that instrumentation can be suppressed."""
 

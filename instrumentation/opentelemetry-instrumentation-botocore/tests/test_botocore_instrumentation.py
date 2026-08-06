@@ -7,7 +7,8 @@ from unittest.mock import ANY, Mock, call, patch
 from urllib.parse import urlparse
 
 import botocore.session
-from botocore.exceptions import ParamValidationError
+import botocore.stub
+from botocore.exceptions import ClientError, ParamValidationError
 from moto import mock_aws  # pylint: disable=import-error
 
 from opentelemetry import trace as trace_api
@@ -166,6 +167,24 @@ class TestBotocoreInstrumentor(TestBase):
         self.assertIn(EXCEPTION_STACKTRACE, event.attributes)
         self.assertIn(EXCEPTION_TYPE, event.attributes)
         self.assertIn(EXCEPTION_MESSAGE, event.attributes)
+
+    def test_3xx_response_not_error(self):
+        s3 = self._make_client("s3")
+        with botocore.stub.Stubber(s3) as stubber:
+            stubber.add_client_error(
+                "get_object",
+                service_error_code="NotModified",
+                service_message="Not Modified",
+                http_status_code=304,
+            )
+            with self.assertRaises(ClientError):
+                s3.get_object(Bucket="test-bucket", Key="test-key")
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(1, len(spans))
+        span = spans[0]
+        self.assertIs(span.status.status_code, trace_api.StatusCode.OK)
+        self.assertEqual("S3.GetObject", span.name)
 
     @mock_aws
     def test_s3_client(self):
