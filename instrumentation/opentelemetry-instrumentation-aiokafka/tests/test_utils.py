@@ -1,18 +1,22 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-# pylint: disable=unnecessary-dunder-call
+# pylint: disable=unnecessary-dunder-call,too-many-public-methods
 from __future__ import annotations
 
+import time
 from unittest import IsolatedAsyncioTestCase, mock
 
 import aiokafka
 
+from opentelemetry.instrumentation.aiokafka import _fetch_and_cache_cluster_id
 from opentelemetry.instrumentation.aiokafka.utils import (
+    _MESSAGING_KAFKA_CLUSTER_ID,
     AIOKafkaContextGetter,
     AIOKafkaContextSetter,
     _aiokafka_getter,
     _aiokafka_setter,
     _create_consumer_span,
+    _extract_cluster_id_from_client,
     _extract_send_partition,
     _get_span_name,
     _wrap_getmany,
@@ -114,6 +118,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         produce_hook = mock.AsyncMock()
         original_send_callback = mock.AsyncMock()
         kafka_producer = mock.MagicMock()
+        kafka_producer.client._otel_cluster_id = None
         expected_span_name = _get_span_name("send", self.topic_name)
 
         wrapped_send = _wrap_send(tracer, produce_hook)
@@ -139,6 +144,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             topic=self.topic_name,
             partition=extract_send_partition.return_value,
             key=None,
+            cluster_id=None,
         )
 
         set_span_in_context.assert_called_once_with(span)
@@ -179,6 +185,7 @@ class TestUtils(IsolatedAsyncioTestCase):
         consume_hook = mock.AsyncMock()
         original_getone_callback = mock.AsyncMock()
         kafka_consumer = mock.MagicMock()
+        kafka_consumer._client._otel_cluster_id = None
 
         wrapped_getone = _wrap_getone(tracer, consume_hook)
         record = await wrapped_getone(
@@ -214,6 +221,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             bootstrap_servers,
             client_id,
             consumer_group,
+            None,
             self.args,
             self.kwargs,
         )
@@ -259,6 +267,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             }
         )
         kafka_consumer = mock.MagicMock()
+        kafka_consumer._client._otel_cluster_id = None
         _create_consumer_span.return_value = mock.MagicMock()
 
         wrapped_getmany = _wrap_getmany(tracer, consume_hook)
@@ -295,6 +304,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             bootstrap_servers,
             client_id,
             consumer_group,
+            None,
             self.args,
             self.kwargs,
         )
@@ -328,6 +338,7 @@ class TestUtils(IsolatedAsyncioTestCase):
             bootstrap_servers,
             client_id,
             consumer_group,
+            None,
             self.args,
             self.kwargs,
         )
@@ -352,11 +363,182 @@ class TestUtils(IsolatedAsyncioTestCase):
             partition=record.partition,
             key=str(record.key),
             offset=record.offset,
+            cluster_id=None,
         )
         consume_hook.assert_awaited_once_with(
             span, record, self.args, self.kwargs
         )
         detach.assert_called_once_with(attach.return_value)
+
+    async def test_cluster_id_attribute_set_on_send_span(self) -> None:
+        """Cluster ID is added to producer span when client metadata is available."""
+        tracer = mock.MagicMock()
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=span
+        )
+        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(
+            return_value=False
+        )
+
+        producer = mock.MagicMock()
+        producer.client._bootstrap_servers = "broker1:9092,broker2:9092"
+        producer.client._client_id = "test-client"
+        producer.client._wait_on_metadata = mock.AsyncMock()
+        producer.client._otel_cluster_id = "test-cluster-uuid"
+        producer._key_serializer = None
+        producer._value_serializer = None
+        producer._partition.return_value = 0
+
+        wrapped_send = _wrap_send(tracer, None)
+        await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
+
+        set_attribute_calls = {
+            call.args[0]: call.args[1]
+            for call in span.set_attribute.call_args_list
+        }
+        self.assertEqual(
+            set_attribute_calls.get(_MESSAGING_KAFKA_CLUSTER_ID),
+            "test-cluster-uuid",
+        )
+
+    async def test_cluster_id_attribute_absent_when_not_resolved(self) -> None:
+        """No cluster ID attribute is set when client metadata is not yet available."""
+        tracer = mock.MagicMock()
+        span = mock.MagicMock()
+        span.is_recording.return_value = True
+        tracer.start_as_current_span.return_value.__enter__ = mock.Mock(
+            return_value=span
+        )
+        tracer.start_as_current_span.return_value.__exit__ = mock.Mock(
+            return_value=False
+        )
+
+        producer = mock.MagicMock()
+        producer.client._bootstrap_servers = "unknown-broker:9092"
+        producer.client._client_id = "test-client"
+        producer.client._wait_on_metadata = mock.AsyncMock()
+        producer.client._otel_cluster_id = None
+        producer._key_serializer = None
+        producer._value_serializer = None
+        producer._partition.return_value = 0
+
+        wrapped_send = _wrap_send(tracer, None)
+        await wrapped_send(mock.AsyncMock(), producer, [self.topic_name], {})
+
+        attribute_keys = [
+            call.args[0] for call in span.set_attribute.call_args_list
+        ]
+        self.assertNotIn(_MESSAGING_KAFKA_CLUSTER_ID, attribute_keys)
+
+    def test_extract_cluster_id_from_client_returns_cluster_id(self) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = "abc-uuid-1234"
+        self.assertEqual(
+            _extract_cluster_id_from_client(client), "abc-uuid-1234"
+        )
+
+    def test_extract_cluster_id_from_client_returns_none_when_not_set(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+
+    def test_extract_cluster_id_from_client_returns_none_when_no_attr(
+        self,
+    ) -> None:
+        client = mock.MagicMock(spec=[])  # no attributes
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+
+    def test_extract_cluster_id_from_client_returns_none_on_empty_string(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = ""
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+
+    async def test_fetch_and_cache_cluster_id_caches_on_success(self) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        response = mock.MagicMock()
+        response.cluster_id = "abc-cluster-id"
+        client.send = mock.AsyncMock(return_value=response)
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client._otel_cluster_id, "abc-cluster-id")
+        client.send.assert_awaited_once()
+
+    async def test_fetch_and_cache_cluster_id_skips_if_already_cached(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = "already-cached"
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client.send.await_count, 0)
+
+    async def test_fetch_and_cache_cluster_id_skips_during_backoff(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = time.monotonic()
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client.send.await_count, 0)
+
+    async def test_fetch_and_cache_cluster_id_force_update_when_no_node(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = None
+        client.force_metadata_update = mock.AsyncMock()
+        client.send = mock.AsyncMock()
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertEqual(client.force_metadata_update.await_count, 1)
+        self.assertEqual(client.send.await_count, 0)
+
+    async def test_fetch_and_cache_cluster_id_empty_response_records_failure(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        response = mock.MagicMock()
+        response.cluster_id = ""
+        client.send = mock.AsyncMock(return_value=response)
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertIsNone(_extract_cluster_id_from_client(client))
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
+
+    async def test_fetch_and_cache_cluster_id_exception_records_failure(
+        self,
+    ) -> None:
+        client = mock.MagicMock()
+        client._otel_cluster_id = None
+        client._otel_cluster_id_failure_time = None
+        client.get_random_node.return_value = 0
+        client.send = mock.AsyncMock(side_effect=OSError("connection refused"))
+
+        await _fetch_and_cache_cluster_id(client)
+
+        self.assertIsNotNone(client._otel_cluster_id_failure_time)
 
     async def test_kafka_properties_extractor(self):
         aiokafka_instance_mock = mock.Mock()

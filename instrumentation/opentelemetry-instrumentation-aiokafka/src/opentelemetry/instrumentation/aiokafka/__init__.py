@@ -95,8 +95,9 @@ API
 
 from __future__ import annotations
 
+import time
 from inspect import iscoroutinefunction
-from typing import TYPE_CHECKING, Collection
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Collection, cast
 
 import aiokafka
 from wrapt import (
@@ -128,6 +129,80 @@ if TYPE_CHECKING:
         async_consume_hook: ConsumeHookT
 
     class UninstrumentKwargs(TypedDict, total=False):
+        pass
+
+
+_CLUSTER_ID_FAILURE_BACKOFF_SECS = 300  # 5 minutes
+
+try:
+    from aiokafka.protocol.metadata import (
+        MetadataRequest_v5 as _MetadataRequestV5,
+    )
+except ImportError:
+    _MetadataRequestV5 = None
+
+
+async def _fetch_and_cache_cluster_id(
+    client: aiokafka.AIOKafkaClient,
+) -> None:
+    if getattr(client, "_otel_cluster_id", None):
+        return
+
+    failure_time: float | None = getattr(
+        client, "_otel_cluster_id_failure_time", None
+    )
+    if (
+        failure_time is not None
+        and time.monotonic() - failure_time < _CLUSTER_ID_FAILURE_BACKOFF_SECS
+    ):
+        return
+
+    if _MetadataRequestV5 is None:
+        return
+
+    try:
+        node_id: int | None = cast(int | None, client.get_random_node())
+        if node_id is None:
+            await client.force_metadata_update()
+            node_id = cast(int | None, client.get_random_node())
+        if node_id is None:
+            return
+        response: object = await cast(Any, client).send(
+            node_id,
+            _MetadataRequestV5(topics=[], allow_auto_topic_creation=False),
+        )
+        cluster_id: str = getattr(response, "cluster_id", "") or ""
+        if cluster_id:
+            client._otel_cluster_id = cluster_id  # type: ignore[attr-defined]
+        else:
+            client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
+    except Exception:  # pylint: disable=broad-except
+        client._otel_cluster_id_failure_time = time.monotonic()  # type: ignore[attr-defined]
+
+
+async def _start_producer_wrapper(
+    func: Callable[..., Awaitable[None]],
+    instance: aiokafka.AIOKafkaProducer,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> None:
+    await func(*args, **kwargs)
+    try:
+        await _fetch_and_cache_cluster_id(instance.client)
+    except Exception:  # pylint: disable=broad-except
+        pass
+
+
+async def _start_consumer_wrapper(
+    func: Callable[..., Awaitable[None]],
+    instance: aiokafka.AIOKafkaConsumer,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> None:
+    await func(*args, **kwargs)
+    try:
+        await _fetch_and_cache_cluster_id(instance._client)
+    except Exception:  # pylint: disable=broad-except
         pass
 
 
@@ -167,6 +242,16 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
 
         wrap_function_wrapper(
             aiokafka.AIOKafkaProducer,
+            "start",
+            _start_producer_wrapper,
+        )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaConsumer,
+            "start",
+            _start_consumer_wrapper,
+        )
+        wrap_function_wrapper(
+            aiokafka.AIOKafkaProducer,
             "send",
             _wrap_send(tracer, async_produce_hook),
         )
@@ -182,6 +267,8 @@ class AIOKafkaInstrumentor(BaseInstrumentor):
         )
 
     def _uninstrument(self, **kwargs: Unpack[UninstrumentKwargs]):
+        unwrap(aiokafka.AIOKafkaProducer, "start")
+        unwrap(aiokafka.AIOKafkaConsumer, "start")
         unwrap(aiokafka.AIOKafkaProducer, "send")
         unwrap(aiokafka.AIOKafkaConsumer, "getone")
         unwrap(aiokafka.AIOKafkaConsumer, "getmany")
