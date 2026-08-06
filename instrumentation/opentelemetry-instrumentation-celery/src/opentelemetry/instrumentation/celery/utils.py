@@ -86,12 +86,7 @@ def set_attributes_from_context(
 
         attribute_name = None
 
-        # Celery 4.0 uses `origin` instead of `hostname`; this change preserves
-        # the same name for the tag despite Celery version
-        if key == "origin":
-            key = "hostname"
-
-        elif key == "delivery_info":
+        if key == "delivery_info":
             # Get also destination from this
             routing_key = value.get("routing_key")
 
@@ -169,7 +164,7 @@ def attach_context(
 def detach_context(
     task: Optional[Task], task_id: str, is_publish: bool = False
 ) -> None:
-    """Helper to remove  `Span`, `ContextManager` and context token in a
+    """Helper to remove `Span`, `ContextManager` and context token in a
     Celery task when it's propagated.
     This function handles tasks where no values are attached to the `Task`.
     """
@@ -217,8 +212,8 @@ def retrieve_task_from_sender(kwargs: Mapping[str, Any]) -> Optional[Task]:
     # for retry and failure signals sender is the task object
     if isinstance(sender, str):
         sender = registry.tasks.get(sender)
-        if sender is None:
-            logger.debug("Unable to retrieve the task from sender=%s", sender)
+    if sender is None:
+        logger.debug("Unable to retrieve the task from sender=%s", sender)
 
     return cast(Optional[Task], sender)
 
