@@ -33,6 +33,7 @@ If you are using AI agents to assist with contributions, please read [AGENTS.md]
     - [How to Receive Comments](#how-to-receive-comments)
     - [How to Get PRs Reviewed](#how-to-get-prs-reviewed)
     - [How to Get PRs Merged](#how-to-get-prs-merged)
+    - [Changelog](#changelog)
     - [Stale PRs](#stale-prs)
   - [Design Choices](#design-choices)
     - [Focus on Capabilities, Not Structure Compliance](#focus-on-capabilities-not-structure-compliance)
@@ -44,6 +45,7 @@ If you are using AI agents to assist with contributions, please read [AGENTS.md]
   - [Guideline for GenAI instrumentations](#guideline-for-genai-instrumentations)
   - [Get Involved](#get-involved)
   - [Expectations from contributors](#expectations-from-contributors)
+    - [Use of AI coding assistants](#use-of-ai-coding-assistants)
     - [Guidelines for native OpenTelemetry instrumentation](#guidelines-for-native-opentelemetry-instrumentation)
   - [Updating supported Python versions](#updating-supported-python-versions)
     - [Bumping the Python baseline](#bumping-the-python-baseline)
@@ -211,8 +213,8 @@ Open a pull request (PR) against the main `opentelemetry-python-contrib` repo.
 A descriptive PR title will help the community better triage and review your changes. Make sure to prefix with the name(s) of the package/subdirectory/domain that your PR updates. Following any of these examples will help:
 
 * "opentelemetry-instrumentation-dbapi: add client operation duration metrics"
-* "GenAI Utils: Add _BaseAgent base class and agent creation lifecycle"
-* "docs(google-genai): document config recording environment variables"
+* "scripts/build.sh: ignore opamp packages"
+* "docs(dbapi): fix pyodbc connect method example "
 
 ### How to Receive Comments
 
@@ -428,9 +430,7 @@ Example PRs: [#2976](https://github.com/open-telemetry/opentelemetry-python-cont
 
 ## Guideline for GenAI instrumentations
 
-[Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) instrumentations are **no longer developed in this repository**. They live in the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai) repository - please contribute new instrumentations, features, bug fixes, and issues there.
-
-The packages still present in the [instrumentation-genai](./instrumentation-genai) folder are deprecated, receive security patches only, and will be removed from this repository in the future.
+Instrumentations that relate to [Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/) systems should be housed in the dedicated repository [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai/). Please read [those guidelines](https://github.com/open-telemetry/opentelemetry-python-genai/blob/main/CONTRIBUTING.md).
 
 ## Get Involved
 
@@ -438,7 +438,7 @@ The packages still present in the [instrumentation-genai](./instrumentation-gena
 
 * Approving PRs: If you would like to be able to approve PRs related to these instrumentations, you must join [opentelemetry-python-contrib-approvers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-approvers) team. Please ask one of the [Python contrib maintainers](https://github.com/orgs/open-telemetry/teams/opentelemetry-python-contrib-maintainers) to be accepted into the team.
 
-* Tracking and Creating Issues: If you do not see an issue related to an instrumentation you would like to contribute to, please create a new tracking issue so the community is aware of its progress.
+* Tracking and Creating Issues: Create or search for issues [here](https://github.com/open-telemetry/opentelemetry-python-contrib/issues). If you do not see an issue related to an instrumentation you would like to contribute to, please create a new tracking issue so the community is aware of its progress.
 
 ## Expectations from contributors
 
