@@ -28,7 +28,7 @@ from opentelemetry.instrumentation.utils import suppress_http_instrumentation
 from opentelemetry.sdk.metrics.export import (
     HistogramDataPoint,
 )
-from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
 from opentelemetry.semconv._incubating.attributes.http_attributes import (
     HTTP_FLAVOR,
     HTTP_METHOD,
@@ -64,7 +64,7 @@ from opentelemetry.semconv.attributes.user_agent_attributes import (
     USER_AGENT_ORIGINAL,
 )
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace import StatusCode
+from opentelemetry.trace import SpanKind, StatusCode
 from opentelemetry.util._importlib_metadata import entry_points
 from opentelemetry.util.http import (
     OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SANITIZE_FIELDS,
@@ -419,40 +419,30 @@ async def test_excluded_urls(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "tracer",
-    [
-        TestBase().create_tracer_provider(
-            sampler=ParentBased(TraceIdRatioBased(0.05))
-        )
-    ],
+    [TestBase().create_tracer_provider(sampler=ALWAYS_ON)],
 )
 async def test_non_global_tracer_provider(
     tracer,
     server_fixture,
     aiohttp_client,
 ):
-    n_requests = 1000
-    collection_ratio = 0.05
-    n_expected_trace_ids = n_requests * collection_ratio
-
     _, memory_exporter = tracer
     server, _ = server_fixture
 
     assert len(memory_exporter.get_finished_spans()) == 0
 
     client = await aiohttp_client(server)
-    for _ in range(n_requests):
-        await client.get("/test-path")
+    await client.get("/test-path")
 
-    trace_ids = {
-        span.context.trace_id
-        for span in memory_exporter.get_finished_spans()
-        if span.context is not None
-    }
-    assert (
-        0.5 * n_expected_trace_ids
-        <= len(trace_ids)
-        <= 1.5 * n_expected_trace_ids
-    )
+    spans = memory_exporter.get_finished_spans()
+    assert len(spans) == 1
+
+    span = spans[0]
+    assert span.name == "GET /test-path"
+    assert span.kind == SpanKind.SERVER
+    assert span.attributes[HTTP_METHOD] == "GET"
+    assert span.attributes[HTTP_STATUS_CODE] == HTTPStatus.OK
+    assert span.attributes[HTTP_TARGET] == "/test-path"
 
 
 @pytest.mark.asyncio
