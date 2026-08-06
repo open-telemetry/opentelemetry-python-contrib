@@ -201,6 +201,47 @@ class TestMysqlIntegration(TestBase):
         self.assertEqual(kwargs["commenter_options"], {"foo": True})
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
+    @mock.patch("opentelemetry.instrumentation.mysql.dbapi.wrap_connect")
+    def test_instrument_capture_parameters_default(self, mock_wrap_connect):
+        MySQLInstrumentor().instrument()
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
+
+    @mock.patch("opentelemetry.instrumentation.mysql.dbapi.wrap_connect")
+    def test_instrument_capture_parameters_enabled(self, mock_wrap_connect):
+        MySQLInstrumentor().instrument(capture_parameters=True)
+        kwargs = mock_wrap_connect.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], True)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.instrument_connection")
+    @mock.patch("mysql.connector")
+    # pylint: disable=unused-argument
+    def test_instrument_connection_capture_parameters_default(
+        self,
+        mock_connect,
+        mock_instrument_connection,
+    ):
+        cnx = mysql.connector.connect(database="test")
+        MySQLInstrumentor().instrument_connection(cnx)
+        kwargs = mock_instrument_connection.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], False)
+
+    @mock.patch("opentelemetry.instrumentation.dbapi.instrument_connection")
+    @mock.patch("mysql.connector")
+    # pylint: disable=unused-argument
+    def test_instrument_connection_capture_parameters_enabled(
+        self,
+        mock_connect,
+        mock_instrument_connection,
+    ):
+        cnx = mysql.connector.connect(database="test")
+        MySQLInstrumentor().instrument_connection(
+            cnx,
+            capture_parameters=True,
+        )
+        kwargs = mock_instrument_connection.call_args[1]
+        self.assertEqual(kwargs["capture_parameters"], True)
+
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
         mock_connect_module, mock_connection, mock_cursor = (
             make_mysql_commenter_mocks()
