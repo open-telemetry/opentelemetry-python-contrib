@@ -16,6 +16,7 @@ from opentelemetry.instrumentation.tortoiseorm import TortoiseORMInstrumentor
 from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.semconv._incubating.attributes.db_attributes import (
     DB_NAME,
+    DB_QUERY_PARAMETER_TEMPLATE,
     DB_STATEMENT,
     DB_SYSTEM,
 )
@@ -171,6 +172,7 @@ class TestTortoiseORMInstrumentor(TestBase):
         self.assertEqual(insert_span.attributes[DB_NAMESPACE], ":memory:")
 
     def test_capture_parameters(self):
+        """Default mode (old semconv): only db.statement.parameters."""
         TortoiseORMInstrumentor().uninstrument()
         TortoiseORMInstrumentor().instrument(capture_parameters=True)
 
@@ -186,6 +188,75 @@ class TestTortoiseORMInstrumentor(TestBase):
             "Test Parameterized",
             insert_span.attributes["db.statement.parameters"],
         )
+        # db.query.parameter.<key> must NOT be present in old-only mode.
+        query_parameter_keys = [
+            key
+            for key in insert_span.attributes
+            if key.startswith(f"{DB_QUERY_PARAMETER_TEMPLATE}.")
+        ]
+        self.assertEqual(query_parameter_keys, [])
+
+    def test_capture_parameters_new_semconv(self):
+        """database opt-in mode: only db.query.parameter.<key>."""
+        TortoiseORMInstrumentor().uninstrument()
+
+        with use_semconv_opt_in("database"):
+            TortoiseORMInstrumentor().instrument(capture_parameters=True)
+
+            async def run():
+                await self._init_tortoise()
+                await MockModel.create(name="Test Parameterized New")
+
+            self._async_call(run())
+
+        spans = self.memory_exporter.get_finished_spans()
+        insert_span = next(s for s in spans if s.name == "INSERT")
+        self.assertNotIn("db.statement.parameters", insert_span.attributes)
+
+        query_parameters = {
+            key: value
+            for key, value in insert_span.attributes.items()
+            if key.startswith(f"{DB_QUERY_PARAMETER_TEMPLATE}.")
+        }
+        self.assertTrue(query_parameters)
+        # Positional parameters are keyed by 0-based index and stringified.
+        self.assertIn(f"{DB_QUERY_PARAMETER_TEMPLATE}.0", query_parameters)
+        for value in query_parameters.values():
+            self.assertIsInstance(value, str)
+        self.assertIn("Test Parameterized New", query_parameters.values())
+
+    def test_capture_parameters_dup_semconv(self):
+        """database/dup mode: both legacy blob and db.query.parameter.<key>."""
+        TortoiseORMInstrumentor().uninstrument()
+
+        with use_semconv_opt_in("database/dup"):
+            TortoiseORMInstrumentor().instrument(capture_parameters=True)
+
+            async def run():
+                await self._init_tortoise()
+                await MockModel.create(name="Test Parameterized Dup")
+
+            self._async_call(run())
+
+        spans = self.memory_exporter.get_finished_spans()
+        insert_span = next(s for s in spans if s.name == "INSERT")
+        # Legacy blob present.
+        self.assertIn("db.statement.parameters", insert_span.attributes)
+        self.assertIn(
+            "Test Parameterized Dup",
+            insert_span.attributes["db.statement.parameters"],
+        )
+        # New per-parameter attributes also present.
+        query_parameters = {
+            key: value
+            for key, value in insert_span.attributes.items()
+            if key.startswith(f"{DB_QUERY_PARAMETER_TEMPLATE}.")
+        }
+        self.assertTrue(query_parameters)
+        self.assertIn(f"{DB_QUERY_PARAMETER_TEMPLATE}.0", query_parameters)
+        for value in query_parameters.values():
+            self.assertIsInstance(value, str)
+        self.assertIn("Test Parameterized Dup", query_parameters.values())
 
     def test_uninstrument(self):
         TortoiseORMInstrumentor().uninstrument()
