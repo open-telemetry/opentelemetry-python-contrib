@@ -18,6 +18,7 @@ from opentelemetry.instrumentation.grpc import (
     GrpcInstrumentorServer,
     server_interceptor,
 )
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
@@ -57,6 +58,15 @@ class UnaryUnaryRpcHandler(grpc.GenericRpcHandler):
 
     def service(self, handler_call_details):
         return UnaryUnaryMethodHandler(self._unary_unary_handler)
+
+
+class SuppressRpcInterceptor(grpc.ServerInterceptor):
+    """An interceptor which runs the rest of the server interceptor chain
+    with instrumentation suppressed."""
+
+    def intercept_service(self, continuation, handler_call_details):
+        with suppress_instrumentation():
+            return continuation(handler_call_details)
 
 
 class Servicer(GRPCTestServerServicer):
@@ -388,6 +398,54 @@ class TestOpenTelemetryServerInterceptor(TestBase):
         self.assertEqual(
             parent_span.context.trace_id, child_span.context.trace_id
         )
+
+    def test_suppress_instrumentation(self):
+        """Check that no span is created for a call when instrumentation
+        is suppressed."""
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[SuppressRpcInterceptor(), interceptor],
+        ) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+
+            rpc_call = "/GRPCTestServer/SimpleMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                channel.unary_unary(rpc_call)(msg)
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    def test_suppress_instrumentation_streaming(self):
+        """Check that no span is created for a streaming call when
+        instrumentation is suppressed."""
+
+        interceptor = server_interceptor()
+
+        with self.server(
+            max_workers=1,
+            interceptors=[SuppressRpcInterceptor(), interceptor],
+        ) as (server, channel):
+            add_GRPCTestServerServicer_to_server(Servicer(), server)
+
+            rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            try:
+                server.start()
+                list(channel.unary_stream(rpc_call)(msg))
+            finally:
+                server.stop(None)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     def test_span_lifetime(self):
         """Check that the span is active for the duration of the call."""
