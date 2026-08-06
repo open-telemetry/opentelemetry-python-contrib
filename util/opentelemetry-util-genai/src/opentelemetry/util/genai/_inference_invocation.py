@@ -239,6 +239,8 @@ class LLMInvocation:
     finish_reasons: list[str] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    cache_creation_input_tokens: int | None = None
+    cache_read_input_tokens: int | None = None
     attributes: dict[str, Any] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
     """Additional attributes to set on spans and/or events. Not set on metrics."""
     metric_attributes: dict[str, Any] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
@@ -283,6 +285,8 @@ class LLMInvocation:
         inv.finish_reasons = self.finish_reasons
         inv.input_tokens = self.input_tokens
         inv.output_tokens = self.output_tokens
+        inv.cache_creation_input_tokens = self.cache_creation_input_tokens
+        inv.cache_read_input_tokens = self.cache_read_input_tokens
         inv.temperature = self.temperature
         inv.top_p = self.top_p
         inv.frequency_penalty = self.frequency_penalty
@@ -308,6 +312,8 @@ class LLMInvocation:
         inv.finish_reasons = self.finish_reasons
         inv.input_tokens = self.input_tokens
         inv.output_tokens = self.output_tokens
+        inv.cache_creation_input_tokens = self.cache_creation_input_tokens
+        inv.cache_read_input_tokens = self.cache_read_input_tokens
         inv.temperature = self.temperature
         inv.top_p = self.top_p
         inv.frequency_penalty = self.frequency_penalty

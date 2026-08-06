@@ -300,7 +300,7 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
                             # we handle in our context wrapper.
                             # Here, we're interested in uncaught exceptions.
                             # pylint:disable=unidiomatic-typecheck
-                            if type(error) != Exception:  # noqa: E721
+                            if type(error) != Exception:
                                 span.record_exception(error)
                             raise error
 
@@ -327,6 +327,6 @@ class OpenTelemetryServerInterceptor(grpc.ServerInterceptor):
 
                 except Exception as error:
                     # pylint:disable=unidiomatic-typecheck
-                    if type(error) != Exception:  # noqa: E721
+                    if type(error) != Exception:
                         span.record_exception(error)
                     raise error

@@ -51,7 +51,7 @@ class TestAiobotocoreInstrumentor(TestBase):
 
     def setUp(self):
         # pylint: disable-next=import-outside-toplevel
-        import aiobotocore.session  # noqa: PLC0415
+        import aiobotocore.session
 
         super().setUp()
         AiobotocoreInstrumentor().instrument()

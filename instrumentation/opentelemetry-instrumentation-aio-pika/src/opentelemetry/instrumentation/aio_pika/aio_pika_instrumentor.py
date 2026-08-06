@@ -1,6 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-from typing import Any, Callable, Collection
+from collections.abc import Callable, Collection
+from typing import Any
 
 import wrapt
 from aio_pika import Exchange, Queue

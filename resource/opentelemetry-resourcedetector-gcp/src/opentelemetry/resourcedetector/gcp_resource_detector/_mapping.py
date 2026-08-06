@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Tuple
 
 from typing_extensions import deprecated
 
@@ -15,7 +15,7 @@ from opentelemetry.sdk.resources import Attributes, Resource
 
 
 class MapConfig:
-    otel_keys: Tuple[str, ...]
+    otel_keys: tuple[str, ...]
     """
     OTel resource keys to try and populate the resource label from. For entries with multiple
     OTel resource keys, the keys' values will be coalesced in order until there is a non-empty
@@ -139,7 +139,7 @@ class MonitoredResourceData:
 )
 def get_monitored_resource(
     resource: Resource,
-) -> Optional[MonitoredResourceData]:
+) -> MonitoredResourceData | None:
     """Add Google resource specific information (e.g. instance id, region).
 
     See
@@ -185,7 +185,7 @@ def _create_monitored_resource(
     monitored_resource_type: str, resource_attrs: Attributes
 ) -> MonitoredResourceData:
     mapping = MAPPINGS[monitored_resource_type]
-    labels: Dict[str, str] = {}
+    labels: dict[str, str] = {}
 
     for mr_key, map_config in mapping.items():
         mr_value = None

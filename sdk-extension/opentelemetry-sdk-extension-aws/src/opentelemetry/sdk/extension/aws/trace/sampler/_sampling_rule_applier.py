@@ -7,8 +7,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from threading import Lock
-from typing import Sequence
 from urllib.parse import urlparse
 
 # pylint: disable=no-name-in-module
@@ -128,9 +128,9 @@ class _SamplingRuleApplier:
         name: str,
         kind: SpanKind | None = None,
         attributes: Attributes | None = None,
-        links: Sequence["Link"] | None = None,
+        links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
-    ) -> "SamplingResult":
+    ) -> SamplingResult:
         has_borrowed = False
         has_sampled = False
         sampling_result = SamplingResult(
@@ -183,7 +183,7 @@ class _SamplingRuleApplier:
 
         return old_stats.snapshot(self._clock)
 
-    def with_target(self, target: _SamplingTarget) -> "_SamplingRuleApplier":
+    def with_target(self, target: _SamplingTarget) -> _SamplingRuleApplier:
         new_applier = _SamplingRuleApplier(
             self.sampling_rule,
             self.__client_id,

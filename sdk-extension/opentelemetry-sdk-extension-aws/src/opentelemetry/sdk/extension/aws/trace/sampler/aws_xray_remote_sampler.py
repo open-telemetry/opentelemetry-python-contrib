@@ -8,9 +8,9 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from logging import getLogger
 from threading import Lock, Timer
-from typing import Sequence
 
 from typing_extensions import override
 
@@ -70,9 +70,9 @@ class AwsXRayRemoteSampler(Sampler):
         name: str,
         kind: SpanKind | None = None,
         attributes: Attributes | None = None,
-        links: Sequence["Link"] | None = None,
+        links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
-    ) -> "SamplingResult":
+    ) -> SamplingResult:
         return self._root.should_sample(
             parent_context,
             trace_id,
@@ -173,9 +173,9 @@ class _InternalAwsXRayRemoteSampler(Sampler):
         name: str,
         kind: SpanKind | None = None,
         attributes: Attributes | None = None,
-        links: Sequence["Link"] | None = None,
+        links: Sequence[Link] | None = None,
         trace_state: TraceState | None = None,
-    ) -> "SamplingResult":
+    ) -> SamplingResult:
         if self.__rule_cache.expired():
             _logger.debug(
                 "Rule cache is expired so using fallback sampling strategy"
@@ -250,6 +250,6 @@ class _InternalAwsXRayRemoteSampler(Sampler):
     def __generate_client_id(self) -> str:
         hex_chars = "0123456789abcdef"
         client_id_array: list[str] = []
-        for _ in range(0, 24):
+        for _ in range(24):
             client_id_array.append(random.choice(hex_chars))
         return "".join(client_id_array)

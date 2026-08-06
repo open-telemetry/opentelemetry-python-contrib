@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator, Mapping
 from logging import getLogger
-from typing import Any, Generator, Mapping
+from typing import Any
 
 from uuid_utils import uuid7
 

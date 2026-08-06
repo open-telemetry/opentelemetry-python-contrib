@@ -1,6 +1,5 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional
 
 from aio_pika.abc import AbstractChannel, AbstractMessage
 
@@ -75,7 +74,7 @@ class SpanBuilder:
                 properties.correlation_id
             )
 
-    def build(self) -> Optional[Span]:
+    def build(self) -> Span | None:
         if not is_instrumentation_enabled():
             return None
         if self._operation:

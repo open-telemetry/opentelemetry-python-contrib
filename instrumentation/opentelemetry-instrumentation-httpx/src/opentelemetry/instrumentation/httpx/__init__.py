@@ -1103,7 +1103,7 @@ class _AsyncOpenTelemetryTransportBase:
 
     async def __aexit__(
         self,
-        exc_type: typing.Type[BaseException] | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
@@ -1788,7 +1788,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                             sensitive_headers=sensitive_headers,
                         ),
                     )
-            setattr(client, "_is_instrumented_by_opentelemetry", True)
+            client._is_instrumented_by_opentelemetry = True
         if hasattr(client._transport, "handle_async_request"):
             wrap_function_wrapper(
                 client._transport,
@@ -1828,7 +1828,7 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
                             sensitive_headers=sensitive_headers,
                         ),
                     )
-            setattr(client, "_is_instrumented_by_opentelemetry", True)
+            client._is_instrumented_by_opentelemetry = True
 
     @staticmethod
     def uninstrument_client(client: httpx.Client | httpx.AsyncClient) -> None:
@@ -1841,12 +1841,12 @@ class _BaseHTTPXClientInstrumentor(BaseInstrumentor):
             unwrap(client._transport, "handle_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_request")
-            setattr(client, "_is_instrumented_by_opentelemetry", False)
+            client._is_instrumented_by_opentelemetry = False
         elif hasattr(client._transport, "handle_async_request"):
             unwrap(client._transport, "handle_async_request")
             for transport in client._mounts.values():
                 unwrap(transport, "handle_async_request")
-            setattr(client, "_is_instrumented_by_opentelemetry", False)
+            client._is_instrumented_by_opentelemetry = False
 
 
 if _httpx_module is not None:

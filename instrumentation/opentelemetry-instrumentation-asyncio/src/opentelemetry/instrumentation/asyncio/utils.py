@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 import os
-from typing import Set
 
 # pylint: disable=no-name-in-module
 from opentelemetry.instrumentation.asyncio.environment_variables import (
@@ -11,7 +10,7 @@ from opentelemetry.instrumentation.asyncio.environment_variables import (
 )
 
 
-def separate_coro_names_by_comma(coro_names: str) -> Set[str]:
+def separate_coro_names_by_comma(coro_names: str) -> set[str]:
     """
     Function to separate the coroutines to be traced by comma
     """

@@ -3,7 +3,7 @@
 
 
 from timeit import default_timer
-from typing import Any, Optional
+from typing import Any
 
 from openai import AsyncStream, Stream
 
@@ -362,7 +362,7 @@ def _record_metrics(
     duration: float,
     result,
     request_attributes: dict,
-    error_type: Optional[str],
+    error_type: str | None,
     operation_name: str,
 ):
     common_attributes = {
@@ -556,12 +556,12 @@ def _set_embeddings_response_attributes(
 
 
 class BaseStreamWrapper:
-    response_id: Optional[str] = None
-    response_model: Optional[str] = None
-    service_tier: Optional[str] = None
+    response_id: str | None = None
+    response_model: str | None = None
+    service_tier: str | None = None
     finish_reasons: list = []
-    prompt_tokens: Optional[int] = 0
-    completion_tokens: Optional[int] = 0
+    prompt_tokens: int | None = 0
+    completion_tokens: int | None = 0
 
     def __init__(
         self,
@@ -578,7 +578,7 @@ class BaseStreamWrapper:
         if not self._started:
             self._started = True
 
-    def cleanup(self, error: Optional[BaseException] = None):
+    def cleanup(self, error: BaseException | None = None):
         pass
 
     def __enter__(self):
@@ -705,12 +705,12 @@ class BaseStreamWrapper:
 
 class LegacyChatStreamWrapper(BaseStreamWrapper):
     span: Span
-    response_id: Optional[str] = None
-    response_model: Optional[str] = None
-    service_tier: Optional[str] = None
+    response_id: str | None = None
+    response_model: str | None = None
+    service_tier: str | None = None
     finish_reasons: list = []
-    prompt_tokens: Optional[int] = 0
-    completion_tokens: Optional[int] = 0
+    prompt_tokens: int | None = 0
+    completion_tokens: int | None = 0
 
     def __init__(
         self,
@@ -723,7 +723,7 @@ class LegacyChatStreamWrapper(BaseStreamWrapper):
         self.span = span
         self.logger = logger
 
-    def cleanup(self, error: Optional[BaseException] = None):
+    def cleanup(self, error: BaseException | None = None):
         if not self._started:
             return
         if self.span.is_recording():

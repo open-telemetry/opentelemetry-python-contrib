@@ -34,7 +34,7 @@ def create_spans(
     sampled_array, thread_id, span_attributes, remote_sampler, number_of_spans
 ):
     sampled = 0
-    for _ in range(0, number_of_spans):
+    for _ in range(number_of_spans):
         if (
             remote_sampler.should_sample(
                 None, 0, "name", attributes=span_attributes
@@ -271,7 +271,7 @@ class TestAwsXRayRemoteSampler(TestCase):
         sampled_array = []
         threads = []
 
-        for idx in range(0, thread_count):
+        for idx in range(thread_count):
             sampled_array.append(0)
             threads.append(
                 threading.Thread(
@@ -290,7 +290,7 @@ class TestAwsXRayRemoteSampler(TestCase):
             threads[idx].start()
         sum_sampled = 0
 
-        for idx in range(0, thread_count):
+        for idx in range(thread_count):
             threads[idx].join()
             sum_sampled += sampled_array[idx]
 
@@ -355,7 +355,7 @@ class TestAwsXRayRemoteSampler(TestCase):
         sampled_array = []
         threads = []
 
-        for idx in range(0, thread_count):
+        for idx in range(thread_count):
             sampled_array.append(0)
             threads.append(
                 threading.Thread(
@@ -374,7 +374,7 @@ class TestAwsXRayRemoteSampler(TestCase):
             threads[idx].start()
 
         sum_sampled = 0
-        for idx in range(0, thread_count):
+        for idx in range(thread_count):
             threads[idx].join()
             sum_sampled += sampled_array[idx]
 
@@ -393,7 +393,7 @@ class TestAwsXRayRemoteSampler(TestCase):
         )
         self.assertEqual(
             self.rs.get_description(),
-            "AwsXRayRemoteSampler{root:ParentBased{root:_InternalAwsXRayRemoteSampler{remote sampling with AWS X-Ray},remoteParentSampled:AlwaysOnSampler,remoteParentNotSampled:AlwaysOffSampler,localParentSampled:AlwaysOnSampler,localParentNotSampled:AlwaysOffSampler}}",  # noqa: E501
+            "AwsXRayRemoteSampler{root:ParentBased{root:_InternalAwsXRayRemoteSampler{remote sampling with AWS X-Ray},remoteParentSampled:AlwaysOnSampler,remoteParentNotSampled:AlwaysOffSampler,localParentSampled:AlwaysOnSampler,localParentNotSampled:AlwaysOffSampler}}",
         )
 
     @patch("requests.Session.post", side_effect=mocked_requests_get)

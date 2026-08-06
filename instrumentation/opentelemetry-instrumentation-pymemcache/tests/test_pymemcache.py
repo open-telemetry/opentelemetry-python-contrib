@@ -47,14 +47,14 @@ pymemcache_version = get_package_version.parse(pymemcache_package_version)
 
 # In pymemcache versions greater than 2, set_multi, set_many and delete_multi
 # now use a batched call
-# https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200  # noqa
+# https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
 pymemcache_version_lt_2 = pymemcache_version < get_package_version.parse(
     "2.0.0"
 )
 
 # In pymemcache versions greater than 3.4.1, the stats command no
 # longer sends trailing whitespace in the command
-# https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-342  # noqa
+# https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-342
 pymemcache_version_gt_341 = pymemcache_version > get_package_version.parse(
     "3.4.1"
 )
@@ -144,7 +144,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         spans = self.memory_exporter.get_finished_spans()
 
         # In pymemcache versions greater than 2, set_multi now uses a batched call
-        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200  # noqa
+        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
         if pymemcache_version_lt_2:
             self.assertTrue(result)
             self.check_spans(spans, 2, ["set key", "set_multi key"])
@@ -212,7 +212,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         spans = self.memory_exporter.get_finished_spans()
 
         # In pymemcache versions greater than 2, delete_many now uses a batched call
-        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200  # noqa
+        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
         if pymemcache_version_lt_2:
             self.check_spans(
                 spans, 3, ["add key", "delete key", "delete_many key"]
@@ -228,7 +228,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
         spans = self.memory_exporter.get_finished_spans()
 
         # In pymemcache versions greater than 2, set_many now uses a batched call
-        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200  # noqa
+        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-200
         if pymemcache_version_lt_2:
             self.assertTrue(result)
             self.check_spans(spans, 2, ["set key", "set_many key"])
@@ -475,7 +475,7 @@ class PymemcacheClientTestCase(TestBase):  # pylint: disable=too-many-public-met
 
         # In pymemcache versions greater than 3.4.1, the stats command no
         # longer sends trailing whitespace in the command
-        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-342  # noqa
+        # https://github.com/pinterest/pymemcache/blob/master/ChangeLog.rst#new-in-version-342
         if pymemcache_version_gt_341:
             assert client.sock.send_bufs == [b"stats\r\n"]
         else:
@@ -626,7 +626,7 @@ class PymemcacheHashClientTestCase(TestBase):
         current_port = TEST_PORT
 
         # pylint: disable=import-outside-toplevel
-        from pymemcache.client.hash import HashClient  # noqa: PLC0415
+        from pymemcache.client.hash import HashClient
 
         self.client = HashClient([], **kwargs)
         ip = TEST_HOST

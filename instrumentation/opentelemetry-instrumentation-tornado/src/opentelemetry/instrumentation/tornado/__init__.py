@@ -152,11 +152,11 @@ API
 """
 
 from collections import namedtuple
+from collections.abc import Collection
 from functools import partial
 from logging import getLogger
 from time import time_ns
 from timeit import default_timer
-from typing import Collection, Dict
 
 import tornado.web
 import tornado.websocket
@@ -389,7 +389,7 @@ class TornadoInstrumentor(BaseInstrumentor):
 
 def _create_server_histograms(
     meter_old, meter_new, sem_conv_opt_in_mode
-) -> Dict[str, Histogram]:
+) -> dict[str, Histogram]:
     histograms = {}
 
     # Create old semconv metrics
@@ -445,7 +445,7 @@ def _create_server_histograms(
 
 def _create_client_histograms(
     meter_old, meter_new, sem_conv_opt_in_mode
-) -> Dict[str, Histogram]:
+) -> dict[str, Histogram]:
     histograms = {}
 
     # Create old semconv metrics

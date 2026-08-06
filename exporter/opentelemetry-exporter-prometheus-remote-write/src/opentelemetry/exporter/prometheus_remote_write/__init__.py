@@ -4,8 +4,8 @@
 import logging
 import re
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from itertools import chain
-from typing import Dict, Mapping, Sequence
 
 import requests
 import snappy
@@ -60,14 +60,14 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
     def __init__(
         self,
         endpoint: str,
-        basic_auth: Dict = None,
-        headers: Dict = None,
+        basic_auth: dict = None,
+        headers: dict = None,
         timeout: int = 30,
-        tls_config: Dict = None,
-        proxies: Dict = None,
+        tls_config: dict = None,
+        proxies: dict = None,
         resources_as_labels: bool = True,
-        preferred_temporality: Dict[type, AggregationTemporality] = None,
-        preferred_aggregation: Dict = None,
+        preferred_temporality: dict[type, AggregationTemporality] = None,
+        preferred_aggregation: dict = None,
     ):
         self.endpoint = endpoint
         self.basic_auth = basic_auth
@@ -104,7 +104,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return self._basic_auth
 
     @basic_auth.setter
-    def basic_auth(self, basic_auth: Dict):
+    def basic_auth(self, basic_auth: dict):
         if basic_auth:
             if "username" not in basic_auth:
                 raise ValueError("username required in basic_auth")
@@ -136,7 +136,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return self._tls_config
 
     @tls_config.setter
-    def tls_config(self, tls_config: Dict):
+    def tls_config(self, tls_config: dict):
         if tls_config:
             new_config = {}
             if "ca_file" in tls_config:
@@ -159,7 +159,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return self._proxies
 
     @proxies.setter
-    def proxies(self, proxies: Dict):
+    def proxies(self, proxies: dict):
         self._proxies = proxies
 
     @property
@@ -167,7 +167,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return self._headers
 
     @headers.setter
-    def headers(self, headers: Dict):
+    def headers(self, headers: dict):
         self._headers = headers
 
     def export(
@@ -344,7 +344,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         serialized_message = write_request.SerializeToString()
         return snappy.compress(serialized_message)
 
-    def _build_headers(self) -> Dict:
+    def _build_headers(self) -> dict:
         headers = {
             "Content-Encoding": "snappy",
             "Content-Type": "application/x-protobuf",
@@ -356,7 +356,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         return headers
 
     def _send_message(
-        self, message: bytes, headers: Dict
+        self, message: bytes, headers: dict
     ) -> MetricExportResult:
         auth = None
         if self.basic_auth:

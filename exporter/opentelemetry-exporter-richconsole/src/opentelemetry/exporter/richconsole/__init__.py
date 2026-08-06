@@ -43,7 +43,6 @@ API
 
 import datetime
 import typing
-from typing import Dict, Optional
 
 from rich.console import Console
 from rich.syntax import Syntax
@@ -149,7 +148,7 @@ class RichConsoleSpanExporter(SpanExporter):
 
     def __init__(
         self,
-        service_name: Optional[str] = None,
+        service_name: str | None = None,
         suppress_resource: bool = False,
     ):
         self.service_name = service_name
@@ -172,7 +171,7 @@ class RichConsoleSpanExporter(SpanExporter):
         spans: typing.Sequence[ReadableSpan],
         *,
         suppress_resource: bool = False,
-    ) -> Dict[str, Tree]:
+    ) -> dict[str, Tree]:
         trees = {}
         parents = {}
         spans = list(spans)

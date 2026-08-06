@@ -704,7 +704,6 @@ class TestDBApiIntegration(TestBase):
 
         async def async_execute(_query, rowcount=-1):
             mock_cursor.rowcount = rowcount
-            return None
 
         asyncio.run(
             cursor_tracer.traced_execution_async(
@@ -1755,7 +1754,7 @@ class TestDBApiIntegration(TestBase):
     )
     def test_t_string_span_attributes(self):
         # pylint: disable-next=import-outside-toplevel,no-name-in-module
-        from string.templatelib import (  # noqa: PLC0415
+        from string.templatelib import (
             Interpolation,
             Template,
         )
@@ -1790,7 +1789,7 @@ class TestDBApiIntegration(TestBase):
     )
     def test_t_string_commenter(self):
         # pylint: disable-next=import-outside-toplevel,no-name-in-module
-        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+        from string.templatelib import Interpolation, Template
 
         connect_module = mock.MagicMock()
         connect_module.__name__ = "test"

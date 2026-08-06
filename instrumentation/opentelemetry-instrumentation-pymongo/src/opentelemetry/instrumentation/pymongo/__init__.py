@@ -63,8 +63,9 @@ for example:
 
 from __future__ import annotations
 
+from collections.abc import Callable, Collection
 from logging import getLogger
-from typing import Any, Callable, Collection, TypeVar
+from typing import Any, TypeVar
 
 from pymongo import monitoring
 
@@ -182,13 +183,13 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.start_hook(span, event)
             except (
-                Exception  # noqa pylint: disable=broad-except
-            ) as hook_exception:  # noqa pylint: disable=broad-except
+                Exception  # pylint: disable=broad-exception-caught
+            ) as hook_exception:
                 _LOG.exception(hook_exception)
 
             # Add Span to dictionary
             self._span_dict[_get_span_dict_key(event)] = span
-        except Exception as ex:  # noqa pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-exception-caught
             if span is not None and span.is_recording():
                 span.set_status(Status(StatusCode.ERROR, str(ex)))
                 if _report_new(self._semconv_opt_in_mode):
@@ -207,8 +208,8 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.success_hook(span, event)
             except (
-                Exception  # noqa pylint: disable=broad-except
-            ) as hook_exception:  # noqa pylint: disable=broad-except
+                Exception  # pylint: disable=broad-exception-caught
+            ) as hook_exception:
                 _LOG.exception(hook_exception)
         span.end()
 
@@ -233,8 +234,8 @@ class CommandTracer(monitoring.CommandListener):
             try:
                 self.failed_hook(span, event)
             except (
-                Exception  # noqa pylint: disable=broad-except
-            ) as hook_exception:  # noqa pylint: disable=broad-except
+                Exception  # pylint: disable=broad-exception-caught
+            ) as hook_exception:
                 _LOG.exception(hook_exception)
         span.end()
 

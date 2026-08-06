@@ -90,8 +90,9 @@ import logging
 import os
 import sys
 import threading
+from collections.abc import Collection, Iterable
 from platform import python_implementation
-from typing import Any, Collection, Iterable
+from typing import Any
 
 import psutil
 
@@ -897,7 +898,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         proc_memory = self._proc.memory_info()
         if hasattr(proc_memory, "rss"):
             yield Observation(
-                getattr(proc_memory, "rss"),
+                proc_memory.rss,
                 self._memory_usage_labels.copy(),
             )
 
@@ -908,7 +909,7 @@ class SystemMetricsInstrumentor(BaseInstrumentor):
         proc_memory = self._proc.memory_info()
         if hasattr(proc_memory, "vms"):
             yield Observation(
-                getattr(proc_memory, "vms"),
+                proc_memory.vms,
                 self._memory_virtual_labels.copy(),
             )
 

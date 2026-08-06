@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Any, MutableMapping
+from collections.abc import MutableMapping
+from typing import Any
 
 from opentelemetry.propagate import get_global_textmap, inject
 from opentelemetry.propagators.textmap import CarrierT, Setter

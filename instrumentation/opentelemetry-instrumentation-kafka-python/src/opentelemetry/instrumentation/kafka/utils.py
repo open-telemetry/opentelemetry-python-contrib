@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Callable
 from logging import getLogger
-from typing import Callable, Dict, List, Optional
 
 from kafka.record.abc import ABCRecord
 
@@ -90,12 +90,12 @@ class KafkaPropertiesExtractor:
             return None
 
 
-ProduceHookT = Optional[Callable[[Span, List, Dict], None]]
-ConsumeHookT = Optional[Callable[[Span, ABCRecord, List, Dict], None]]
+ProduceHookT = Callable[[Span, list, dict], None] | None
+ConsumeHookT = Callable[[Span, ABCRecord, list, dict], None] | None
 
 
 class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
-    def get(self, carrier: textmap.CarrierT, key: str) -> Optional[List[str]]:
+    def get(self, carrier: textmap.CarrierT, key: str) -> list[str] | None:
         if carrier is None:
             return None
 
@@ -105,7 +105,7 @@ class KafkaContextGetter(textmap.Getter[textmap.CarrierT]):
                     return [value.decode()]
         return None
 
-    def keys(self, carrier: textmap.CarrierT) -> List[str]:
+    def keys(self, carrier: textmap.CarrierT) -> list[str]:
         if carrier is None:
             return []
         return [key for (key, value) in carrier]
@@ -126,7 +126,7 @@ _kafka_setter = KafkaContextSetter()
 
 
 def _enrich_span(
-    span, bootstrap_servers: List[str], topic: str, partition: int
+    span, bootstrap_servers: list[str], topic: str, partition: int
 ):
     if span.is_recording():
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")

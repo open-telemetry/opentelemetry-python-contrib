@@ -64,8 +64,8 @@ API
 ---
 """
 
+from collections.abc import Collection
 from importlib import import_module
-from typing import Collection
 
 from typing_extensions import deprecated
 from wrapt import wrap_function_wrapper
@@ -208,7 +208,7 @@ class OpenAIInstrumentor(BaseInstrumentor):
             )
 
     def _uninstrument(self, **kwargs):
-        import openai  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import openai  # pylint: disable=import-outside-toplevel
 
         unwrap(openai.resources.chat.completions.Completions, "create")
         unwrap(openai.resources.chat.completions.AsyncCompletions, "create")

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from celery import registry  # pylint: disable=no-name-in-module
 from celery.app.task import Task
@@ -130,11 +130,11 @@ def set_attributes_from_context(
 
 
 def attach_context(
-    task: Optional[Task],
+    task: Task | None,
     task_id: str,
     span: Span,
     activation: AbstractContextManager[Span],
-    token: Optional[object],
+    token: object | None,
     is_publish: bool = False,
 ) -> None:
     """Helper to propagate a `Span`, `ContextManager` and context token
@@ -157,7 +157,7 @@ def attach_context(
     if task is None:
         return
 
-    ctx_dict = cast(Optional[ContextDict], getattr(task, CTX_KEY, None))
+    ctx_dict = cast(ContextDict | None, getattr(task, CTX_KEY, None))
 
     if ctx_dict is None:
         ctx_dict = {}
@@ -167,7 +167,7 @@ def attach_context(
 
 
 def detach_context(
-    task: Optional[Task], task_id: str, is_publish: bool = False
+    task: Task | None, task_id: str, is_publish: bool = False
 ) -> None:
     """Helper to remove  `Span`, `ContextManager` and context token in a
     Celery task when it's propagated.
@@ -176,7 +176,7 @@ def detach_context(
     if task is None:
         return
 
-    span_dict = cast(Optional[ContextDict], getattr(task, CTX_KEY, None))
+    span_dict = cast(ContextDict | None, getattr(task, CTX_KEY, None))
     if span_dict is None:
         return
 
@@ -185,15 +185,15 @@ def detach_context(
 
 
 def retrieve_context(
-    task: Optional[Task], task_id: str, is_publish: bool = False
-) -> Optional[ContextTuple]:
+    task: Task | None, task_id: str, is_publish: bool = False
+) -> ContextTuple | None:
     """Helper to retrieve an active `Span`, `ContextManager` and context token
     stored in a `Task` instance
     """
     if task is None:
         return None
 
-    span_dict = cast(Optional[ContextDict], getattr(task, CTX_KEY, None))
+    span_dict = cast(ContextDict | None, getattr(task, CTX_KEY, None))
     if span_dict is None:
         return None
 
@@ -201,14 +201,14 @@ def retrieve_context(
     return span_dict.get((task_id, is_publish), None)
 
 
-def retrieve_task(kwargs: Mapping[str, Any]) -> Optional[Task]:
+def retrieve_task(kwargs: Mapping[str, Any]) -> Task | None:
     task = kwargs.get("task")
     if task is None:
         logger.debug("Unable to retrieve task from signal arguments")
-    return cast(Optional[Task], task)
+    return cast(Task | None, task)
 
 
-def retrieve_task_from_sender(kwargs: Mapping[str, Any]) -> Optional[Task]:
+def retrieve_task_from_sender(kwargs: Mapping[str, Any]) -> Task | None:
     sender = kwargs.get("sender")
     if sender is None:
         logger.debug("Unable to retrieve the sender from signal arguments")
@@ -220,31 +220,31 @@ def retrieve_task_from_sender(kwargs: Mapping[str, Any]) -> Optional[Task]:
         if sender is None:
             logger.debug("Unable to retrieve the task from sender=%s", sender)
 
-    return cast(Optional[Task], sender)
+    return cast(Task | None, sender)
 
 
-def retrieve_task_id(kwargs: Mapping[str, Any]) -> Optional[str]:
+def retrieve_task_id(kwargs: Mapping[str, Any]) -> str | None:
     task_id = kwargs.get("task_id")
     if task_id is None:
         logger.debug("Unable to retrieve task_id from signal arguments")
-    return cast(Optional[str], task_id)
+    return cast(str | None, task_id)
 
 
-def retrieve_task_id_from_request(kwargs: Mapping[str, Any]) -> Optional[str]:
+def retrieve_task_id_from_request(kwargs: Mapping[str, Any]) -> str | None:
     # retry signal does not include task_id as argument so use request argument
     request = kwargs.get("request")
     if request is None:
         logger.debug("Unable to retrieve the request from signal arguments")
         return None
 
-    task_id = cast(Optional[str], getattr(request, "id", None))
+    task_id = cast(str | None, getattr(request, "id", None))
     if task_id is None:
         logger.debug("Unable to retrieve the task_id from the request")
 
     return task_id
 
 
-def retrieve_task_id_from_message(kwargs: Mapping[str, Any]) -> Optional[str]:
+def retrieve_task_id_from_message(kwargs: Mapping[str, Any]) -> str | None:
     """Helper to retrieve the `Task` identifier from the message `body`.
     This helper supports Protocol Version 1 and 2. The Protocol is well
     detailed in the official documentation:
@@ -254,14 +254,14 @@ def retrieve_task_id_from_message(kwargs: Mapping[str, Any]) -> Optional[str]:
     body = kwargs.get("body")
     if headers is not None and len(headers) > 0:
         # Protocol Version 2 (default from Celery 4.0)
-        return cast(Optional[str], headers.get("id"))
+        return cast(str | None, headers.get("id"))
     # Protocol Version 1
     if body is None:
         return None
-    return cast(Optional[str], body.get("id"))
+    return cast(str | None, body.get("id"))
 
 
-def retrieve_reason(kwargs: Mapping[str, Any]) -> Optional[object]:
+def retrieve_reason(kwargs: Mapping[str, Any]) -> object | None:
     reason = kwargs.get("reason")
     if not reason:
         logger.debug("Unable to retrieve the retry reason")

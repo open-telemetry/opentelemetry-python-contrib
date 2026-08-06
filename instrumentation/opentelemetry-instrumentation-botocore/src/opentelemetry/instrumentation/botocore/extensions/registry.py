@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, Mapping, Optional
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING
 
 from opentelemetry._logs import get_logger
 from opentelemetry.instrumentation.botocore.extensions.types import (
@@ -34,9 +35,9 @@ class ExtensionRegistry:
         self,
         package_name: str,
         extensions: Mapping[str, Callable[[], type[_AwsSdkExtension]]],
-        tracer_provider: Optional[TracerProvider] = None,
-        logger_provider: Optional[LoggerProvider] = None,
-        meter_provider: Optional[MeterProvider] = None,
+        tracer_provider: TracerProvider | None = None,
+        logger_provider: LoggerProvider | None = None,
+        meter_provider: MeterProvider | None = None,
     ):
         self._package_name = package_name
         self._extensions: Mapping[

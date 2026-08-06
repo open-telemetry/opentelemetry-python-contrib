@@ -19,7 +19,7 @@ def _get_container_id_v1():
         with open(
             _DEFAULT_CGROUP_V1_PATH, encoding="utf8"
         ) as container_info_file:
-            for raw_line in container_info_file.readlines():
+            for raw_line in container_info_file:
                 line = raw_line.strip()
 
                 match = re.search(
@@ -40,7 +40,7 @@ def _get_container_id_v2():
         with open(
             _DEFAULT_CGROUP_V2_PATH, encoding="utf8"
         ) as container_info_file:
-            for raw_line in container_info_file.readlines():
+            for raw_line in container_info_file:
                 line = raw_line.strip()
                 if any(
                     key_word in line for key_word in ["containers", "hostname"]

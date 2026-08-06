@@ -178,10 +178,10 @@ import collections.abc
 import inspect
 import io
 import typing
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from inspect import BoundArguments
 from timeit import default_timer
-from typing import Collection
 
 import urllib3.connectionpool
 import wrapt
@@ -252,15 +252,13 @@ class RequestInfo:
     # The type annotations here come from ``HTTPConnectionPool.urlopen()``.
     method: str
     url: str
-    headers: typing.Optional[typing.Mapping[str, str]]
-    body: typing.Union[
-        bytes, typing.IO[typing.Any], typing.Iterable[bytes], str, None
-    ]
+    headers: typing.Mapping[str, str] | None
+    body: bytes | typing.IO[typing.Any] | typing.Iterable[bytes] | str | None
 
 
-_UrlFilterT = typing.Optional[typing.Callable[[str], str]]
-_RequestHookT = typing.Optional[
-    typing.Callable[
+_UrlFilterT = Callable[[str], str] | None
+_RequestHookT = (
+    Callable[
         [
             Span,
             urllib3.connectionpool.HTTPConnectionPool,
@@ -268,9 +266,10 @@ _RequestHookT = typing.Optional[
         ],
         None,
     ]
-]
-_ResponseHookT = typing.Optional[
-    typing.Callable[
+    | None
+)
+_ResponseHookT = (
+    Callable[
         [
             Span,
             urllib3.connectionpool.HTTPConnectionPool,
@@ -278,7 +277,8 @@ _ResponseHookT = typing.Optional[
         ],
         None,
     ]
-]
+    | None
+)
 
 
 class URLLib3Instrumentor(BaseInstrumentor):
@@ -428,9 +428,9 @@ def _instrument(
     url_filter: _UrlFilterT = None,
     excluded_urls: ExcludeList = None,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
-    captured_request_headers: typing.Optional[list[str]] = None,
-    captured_response_headers: typing.Optional[list[str]] = None,
-    sensitive_headers: typing.Optional[list[str]] = None,
+    captured_request_headers: list[str] | None = None,
+    captured_response_headers: list[str] | None = None,
+    sensitive_headers: list[str] | None = None,
 ):
     urlopen_signature = inspect.signature(
         urllib3.connectionpool.HTTPConnectionPool.urlopen
@@ -577,7 +577,7 @@ def _get_url(
     return url
 
 
-def _get_body_size(body: object) -> typing.Optional[int]:
+def _get_body_size(body: object) -> int | None:
     if body is None:
         return 0
     # pylint: disable-next=no-member
@@ -588,7 +588,7 @@ def _get_body_size(body: object) -> typing.Optional[int]:
     return None
 
 
-def _should_append_port(scheme: str, port: typing.Optional[int]) -> bool:
+def _should_append_port(scheme: str, port: int | None) -> bool:
     if not port:
         return False
     if scheme == "http" and port == 80:
@@ -648,7 +648,7 @@ def _set_metric_attributes(
         metric_attributes, instance.port, sem_conv_opt_in_mode
     )
 
-    version = getattr(response, "version")
+    version = response.version
     if version:
         http_version = "1.1" if version == 11 else "1.0"
         _set_http_network_protocol_version(
@@ -689,7 +689,7 @@ def _record_metrics(
     response_size_histogram_old: Histogram,
     response_size_histogram_new: Histogram,
     duration_s: float,
-    request_size: typing.Optional[int],
+    request_size: int | None,
     response_size: int,
     sem_conv_opt_in_mode: _StabilityMode = _StabilityMode.DEFAULT,
 ):

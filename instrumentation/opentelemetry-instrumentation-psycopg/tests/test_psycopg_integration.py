@@ -703,7 +703,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
     )
     def test_t_string_span_attributes(self):
         # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
-        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+        from string.templatelib import Interpolation, Template
 
         PsycopgInstrumentor().instrument()
         cnx = psycopg.connect(database="test")
@@ -727,7 +727,7 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
     )
     def test_t_string_commenter(self):
         # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
-        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+        from string.templatelib import Interpolation, Template
 
         PsycopgInstrumentor().instrument(enable_commenter=True)
         cnx = psycopg.connect(database="test")
@@ -1005,7 +1005,7 @@ class TestPostgresqlIntegrationAsync(
     )
     async def test_t_string_span_attributes_async(self):
         # pylint: disable-next=import-outside-toplevel,no-name-in-module,no-member
-        from string.templatelib import Interpolation, Template  # noqa: PLC0415
+        from string.templatelib import Interpolation, Template
 
         PsycopgInstrumentor().instrument()
         cnx = await psycopg.AsyncConnection.connect("test")

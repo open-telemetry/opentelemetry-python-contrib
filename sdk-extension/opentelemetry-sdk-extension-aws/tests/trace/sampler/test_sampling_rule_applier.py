@@ -95,7 +95,7 @@ class TestSamplingRuleApplier(TestCase):
             Priority=20,
             ReservoirSize=1,
             # Note that ResourceARN is usually only able to be "*"
-            # See: https://docs.aws.amazon.com/xray/latest/devguide/xray-console-sampling.html#xray-console-sampling-options  # noqa: E501
+            # See: https://docs.aws.amazon.com/xray/latest/devguide/xray-console-sampling.html#xray-console-sampling-options
             ResourceARN="arn:aws:lambda:us-west-2:123456789012:function:my-function",
             RuleARN="arn:aws:xray:us-east-1:999999999999:sampling-rule/test",
             RuleName="test",
@@ -517,7 +517,7 @@ class TestSamplingRuleApplier(TestCase):
 
         mock_clock.add_time(seconds=2.0)
         sampled_count = 0
-        for _ in range(0, reservoir_size + 10):
+        for _ in range(reservoir_size + 10):
             if (
                 rule_applier.should_sample(None, 0, "name").decision
                 != Decision.DROP
@@ -538,7 +538,7 @@ class TestSamplingRuleApplier(TestCase):
         # Use only 100% of quota (10 out of 10), even if 2 seconds have passed
         mock_clock.add_time(seconds=2.0)
         sampled_count = 0
-        for _ in range(0, reservoir_size + 10):
+        for _ in range(reservoir_size + 10):
             if (
                 rule_applier.should_sample(None, 0, "name").decision
                 != Decision.DROP
@@ -549,7 +549,7 @@ class TestSamplingRuleApplier(TestCase):
         # Use only 50% of quota (5 out of 10)
         mock_clock.add_time(seconds=0.5)
         sampled_count = 0
-        for _ in range(0, reservoir_size + 10):
+        for _ in range(reservoir_size + 10):
             if (
                 rule_applier.should_sample(None, 0, "name").decision
                 != Decision.DROP
@@ -560,7 +560,7 @@ class TestSamplingRuleApplier(TestCase):
         # Expired at 10s, do not sample
         mock_clock.add_time(seconds=7.5)
         sampled_count = 0
-        for _ in range(0, reservoir_size + 10):
+        for _ in range(reservoir_size + 10):
             if (
                 rule_applier.should_sample(None, 0, "name").decision
                 != Decision.DROP
