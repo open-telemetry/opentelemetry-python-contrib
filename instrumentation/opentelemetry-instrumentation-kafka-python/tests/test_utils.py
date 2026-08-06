@@ -4,6 +4,9 @@
 
 from unittest import TestCase, mock
 
+from kafka.errors import KafkaTimeoutError
+
+from opentelemetry import trace
 from opentelemetry.instrumentation.kafka.utils import (
     KafkaPropertiesExtractor,
     _create_consumer_span,
@@ -13,7 +16,8 @@ from opentelemetry.instrumentation.kafka.utils import (
     _wrap_next,
     _wrap_send,
 )
-from opentelemetry.trace import SpanKind
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace import SpanKind, StatusCode
 
 
 class TestUtils(TestCase):
@@ -237,4 +241,91 @@ class TestUtils(TestCase):
                 kafka_properties_extractor, self.args, self.kwargs
             )
             is None
+        )
+
+
+class TestWrapSendSpanLifetime(TestBase):
+    """The producer span must stay active while the wrapped `send` runs.
+
+    Otherwise a synchronous failure happens after the span has already ended
+    and is never recorded on it.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.topic_name = "test_topic"
+        self.args = [self.topic_name]
+        self.kwargs = {"partition": 0, "headers": []}
+        self.tracer = self.tracer_provider.get_tracer(__name__)
+        self.producer = mock.MagicMock()
+
+    @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition",
+        return_value=0,
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers",
+        return_value=["localhost:9092"],
+    )
+    def test_send_runs_inside_the_producer_span(
+        self,
+        extract_bootstrap_servers: mock.MagicMock,
+        extract_send_partition: mock.MagicMock,
+    ) -> None:
+        captured_span_context = {}
+
+        def original_send(*args, **kwargs):
+            captured_span_context["value"] = (
+                trace.get_current_span().get_span_context()
+            )
+            return "future"
+
+        wrapped_send = _wrap_send(self.tracer, None)
+        retval = wrapped_send(
+            original_send, self.producer, self.args, self.kwargs
+        )
+
+        self.assertEqual(retval, "future")
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        self.assertEqual(
+            captured_span_context["value"].span_id, spans[0].context.span_id
+        )
+
+    @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_send_partition",
+        return_value=0,
+    )
+    @mock.patch(
+        "opentelemetry.instrumentation.kafka.utils.KafkaPropertiesExtractor.extract_bootstrap_servers",
+        return_value=["localhost:9092"],
+    )
+    def test_send_exception_is_recorded_and_reraised(
+        self,
+        extract_bootstrap_servers: mock.MagicMock,
+        extract_send_partition: mock.MagicMock,
+    ) -> None:
+        expected_exception = KafkaTimeoutError(
+            "Failed to update metadata after 60.0 secs."
+        )
+        original_send = mock.MagicMock(side_effect=expected_exception)
+
+        wrapped_send = _wrap_send(self.tracer, None)
+        with self.assertRaises(KafkaTimeoutError) as raised:
+            wrapped_send(original_send, self.producer, self.args, self.kwargs)
+
+        self.assertIs(raised.exception, expected_exception)
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.kind, SpanKind.PRODUCER)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+        self.assertEqual(len(span.events), 1)
+        event = span.events[0]
+        self.assertEqual(event.name, "exception")
+        self.assertEqual(
+            event.attributes["exception.type"],
+            "kafka.errors.KafkaTimeoutError",
         )

@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: keep the producer span active while the wrapped `send` executes so synchronous failures are recorded on it
