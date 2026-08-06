@@ -13,6 +13,29 @@ from opentelemetry.instrumentation.bootstrap_gen import (
     libraries,
 )
 
+EXPECTED_GENAI_LIBRARIES = [
+    {
+        "library": "anthropic >= 0.51.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-anthropic",
+    },
+    {
+        "library": "google-genai >= 1.32.0, <3",
+        "instrumentation": "opentelemetry-instrumentation-google-genai",
+    },
+    {
+        "library": "langchain >= 0.3.21",
+        "instrumentation": "opentelemetry-instrumentation-genai-langchain",
+    },
+    {
+        "library": "openai >= 1.26.0",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai",
+    },
+    {
+        "library": "openai-agents >= 0.3.3",
+        "instrumentation": "opentelemetry-instrumentation-genai-openai-agents",
+    },
+]
+
 
 def sample_packages(packages, rate):
     return sample(
@@ -57,6 +80,23 @@ class TestBootstrap(TestCase):
         super().tearDown()
         self.pip_check_patcher.stop()
         self.pip_install_patcher.stop()
+
+    def test_genai_libraries_are_available(self):
+        for library in EXPECTED_GENAI_LIBRARIES:
+            with self.subTest(library=library["library"]):
+                self.assertIn(library, libraries)
+
+    def test_deprecated_genai_instrumentations_are_not_available(self):
+        instrumentations = {
+            library["instrumentation"] for library in libraries
+        }
+        self.assertNotIn(
+            "opentelemetry-instrumentation-openai-v2", instrumentations
+        )
+        self.assertNotIn(
+            "opentelemetry-instrumentation-openai-agents-v2",
+            instrumentations,
+        )
 
     @patch("sys.argv", ["bootstrap", "-a", "pipenv"])
     def test_run_unknown_cmd(self):
