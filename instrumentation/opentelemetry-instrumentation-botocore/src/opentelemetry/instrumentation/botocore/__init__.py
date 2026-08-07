@@ -157,6 +157,7 @@ from opentelemetry.semconv._incubating.attributes.rpc_attributes import (
     RPC_SYSTEM,
 )
 from opentelemetry.trace.span import Span
+from opentelemetry.trace.status import StatusCode
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +280,7 @@ class BotocoreInstrumentor(BaseInstrumentor):
             # tracing streaming services require to close the span manually
             # at a later time after the stream has been consumed
             end_on_exit=end_span_on_exit,
+            set_status_on_exception=False,
         ) as span:
             _safe_invoke(extension.before_service_call, span, instrumentor_ctx)
             self._call_request_hook(span, call_context)
@@ -291,9 +293,25 @@ class BotocoreInstrumentor(BaseInstrumentor):
                     except ClientError as error:
                         result = getattr(error, "response", None)
                         _apply_response_attributes(span, result)
-                        _safe_invoke(
-                            extension.on_error, span, error, instrumentor_ctx
-                        )
+                        if _is_http_error(result):
+                            span.set_status(StatusCode.ERROR, str(error))
+                            _safe_invoke(
+                                extension.on_error,
+                                span,
+                                error,
+                                instrumentor_ctx,
+                            )
+                        else:
+                            span.set_status(StatusCode.OK)
+                            _safe_invoke(
+                                extension.on_success,
+                                span,
+                                result,
+                                instrumentor_ctx,
+                            )
+                        raise
+                    except Exception as error:
+                        span.set_status(StatusCode.ERROR, str(error))
                         raise
                     _apply_response_attributes(span, result)
                     _safe_invoke(
@@ -439,6 +457,7 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
             # tracing streaming services require to close the span manually
             # at a later time after the stream has been consumed
             end_on_exit=end_span_on_exit,
+            set_status_on_exception=False,
         ) as span:
             _safe_invoke(extension.before_service_call, span, instrumentor_ctx)
             self._call_request_hook(span, call_context)
@@ -451,9 +470,25 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
                     except ClientError as error:
                         result = getattr(error, "response", None)
                         _apply_response_attributes(span, result)
-                        _safe_invoke(
-                            extension.on_error, span, error, instrumentor_ctx
-                        )
+                        if _is_http_error(result):
+                            span.set_status(StatusCode.ERROR, str(error))
+                            _safe_invoke(
+                                extension.on_error,
+                                span,
+                                error,
+                                instrumentor_ctx,
+                            )
+                        else:
+                            span.set_status(StatusCode.OK)
+                            _safe_invoke(
+                                extension.on_success,
+                                span,
+                                result,
+                                instrumentor_ctx,
+                            )
+                        raise
+                    except Exception as error:
+                        span.set_status(StatusCode.ERROR, str(error))
                         raise
                     _apply_response_attributes(span, result)
                     _safe_invoke(
@@ -483,6 +518,16 @@ class AiobotocoreInstrumentor(BaseInstrumentor):
         self.response_hook(
             span, call_context.service, call_context.operation, result
         )
+
+
+def _is_http_error(result: Optional[Dict[str, Any]]) -> bool:
+    """Return True if the ClientError response represents a genuine HTTP error (>= 400)."""
+    if result is None:
+        return True
+    status_code = result.get("ResponseMetadata", {}).get("HTTPStatusCode")
+    if status_code is None:
+        return True
+    return status_code >= 400
 
 
 def _apply_response_attributes(span: Span, result):
