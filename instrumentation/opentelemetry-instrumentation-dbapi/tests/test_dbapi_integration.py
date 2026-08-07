@@ -131,17 +131,18 @@ class TestDBApiIntegration(TestBase):
         connection_props = _get_default_connection_props()
         connection_attributes = _get_default_connection_attributes()
         for query in ("/* comment only */", "   "):
-            db_integration = dbapi.DatabaseApiIntegration(
-                "instrumenting_module_test_name",
-                "testcomponent",
-                connection_attributes,
-            )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
-            cursor = mock_connection.cursor()
-            # Must not raise IndexError.
-            cursor.execute(query)
+            with self.subTest(query=query):
+                db_integration = dbapi.DatabaseApiIntegration(
+                    "instrumenting_module_test_name",
+                    "testcomponent",
+                    connection_attributes,
+                )
+                mock_connection = db_integration.wrapped_connection(
+                    mock_connect, {}, connection_props
+                )
+                cursor = mock_connection.cursor()
+                # Must not raise IndexError.
+                cursor.execute(query)
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
         for span in spans_list:
