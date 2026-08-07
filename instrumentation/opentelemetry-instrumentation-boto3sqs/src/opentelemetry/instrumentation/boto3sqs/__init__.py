@@ -19,7 +19,17 @@ Usage
 """
 
 import logging
-from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Generator,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+)
+from urllib.parse import urlparse
 
 import boto3.session
 import botocore.client
@@ -32,11 +42,20 @@ from opentelemetry.instrumentation.utils import (
     unwrap,
 )
 from opentelemetry.propagators.textmap import CarrierT, Getter, Setter
-from opentelemetry.semconv.trace import (
-    MessagingDestinationKindValues,
-    MessagingOperationValues,
-    SpanAttributes,
+from opentelemetry.semconv._incubating.attributes.messaging_attributes import (
+    MESSAGING_DESTINATION_NAME,
+    MESSAGING_MESSAGE_ID,
+    MESSAGING_OPERATION_NAME,
+    MESSAGING_OPERATION_TYPE,
+    MESSAGING_SYSTEM,
+    MessagingOperationTypeValues,
+    MessagingSystemValues,
 )
+from opentelemetry.semconv.attributes.server_attributes import (
+    SERVER_ADDRESS,
+    SERVER_PORT,
+)
+from opentelemetry.semconv.schemas import Schemas
 from opentelemetry.trace import Link, Span, SpanKind, Tracer, TracerProvider
 
 from .package import _instruments
@@ -45,6 +64,8 @@ from .version import __version__
 _logger = logging.getLogger(__name__)
 
 _IS_SQS_INSTRUMENTED_ATTRIBUTE = "_otel_boto3sqs_instrumented"
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
 class Boto3SQSGetter(Getter[CarrierT]):
@@ -133,30 +154,46 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         span: Span,
         queue_name: str,
         queue_url: str,
-        conversation_id: Optional[str] = None,
-        operation: Optional[MessagingOperationValues] = None,
+        operation_name: str,
+        operation_type: MessagingOperationTypeValues,
         message_id: Optional[str] = None,
     ) -> None:
         if not span.is_recording():
             return
-        span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "aws.sqs")
-        span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, queue_name)
         span.set_attribute(
-            SpanAttributes.MESSAGING_DESTINATION_KIND,
-            MessagingDestinationKindValues.QUEUE.value,
+            MESSAGING_SYSTEM, MessagingSystemValues.AWS_SQS.value
         )
-        span.set_attribute(SpanAttributes.MESSAGING_URL, queue_url)
+        span.set_attribute(MESSAGING_DESTINATION_NAME, queue_name)
+        span.set_attribute(MESSAGING_OPERATION_NAME, operation_name)
+        span.set_attribute(MESSAGING_OPERATION_TYPE, operation_type.value)
 
-        if operation:
-            span.set_attribute(
-                SpanAttributes.MESSAGING_OPERATION, operation.value
-            )
-        if conversation_id:
-            span.set_attribute(
-                SpanAttributes.MESSAGING_CONVERSATION_ID, conversation_id
-            )
+        server_address, server_port = (
+            Boto3SQSInstrumentor._extract_server_attributes(queue_url)
+        )
+        if server_address:
+            span.set_attribute(SERVER_ADDRESS, server_address)
+            if server_port:
+                span.set_attribute(SERVER_PORT, server_port)
+
         if message_id:
-            span.set_attribute(SpanAttributes.MESSAGING_MESSAGE_ID, message_id)
+            span.set_attribute(MESSAGING_MESSAGE_ID, message_id)
+
+    @staticmethod
+    def _extract_server_attributes(
+        queue_url: str,
+    ) -> Tuple[Optional[str], Optional[int]]:
+        # A queue URL comes from the caller, so it may not parse: both
+        # `urlparse` itself and reading `port` raise for a malformed one. Let
+        # botocore report a bad URL rather than failing the call from here.
+        try:
+            parsed_url = urlparse(queue_url)
+            hostname = parsed_url.hostname
+            port = parsed_url.port
+        except ValueError:
+            return None, None
+        if port is None:
+            port = _DEFAULT_PORTS.get(parsed_url.scheme)
+        return hostname, port
 
     @staticmethod
     def _safe_end_processing_span(receipt_handle: str) -> None:
@@ -202,8 +239,9 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 span,
                 queue_name,
                 queue_url,
+                "process",
+                MessagingOperationTypeValues.PROCESS,
                 message_id=message_id,
-                operation=MessagingOperationValues.PROCESS,
             )
 
     def _wrap_send_message(self, sqs_class: type) -> None:
@@ -221,16 +259,20 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 kind=SpanKind.PRODUCER,
                 end_on_exit=True,
             ) as span:
-                Boto3SQSInstrumentor._enrich_span(span, queue_name, queue_url)
+                Boto3SQSInstrumentor._enrich_span(
+                    span,
+                    queue_name,
+                    queue_url,
+                    "send",
+                    MessagingOperationTypeValues.PUBLISH,
+                )
                 attributes = kwargs.pop("MessageAttributes", {})
                 propagate.inject(attributes, setter=boto3sqs_setter)
                 retval = wrapped(*args, MessageAttributes=attributes, **kwargs)
                 message_id = retval.get("MessageId")
                 if message_id:
                     if span.is_recording():
-                        span.set_attribute(
-                            SpanAttributes.MESSAGING_MESSAGE_ID, message_id
-                        )
+                        span.set_attribute(MESSAGING_MESSAGE_ID, message_id)
                 return retval
 
         wrap_function_wrapper(sqs_class, "send_message", send_wrapper)
@@ -258,7 +300,11 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 )
                 ids_to_spans[entry_id] = span
                 Boto3SQSInstrumentor._enrich_span(
-                    span, queue_name, queue_url, conversation_id=entry_id
+                    span,
+                    queue_name,
+                    queue_url,
+                    "send",
+                    MessagingOperationTypeValues.PUBLISH,
                 )
                 with trace.use_span(span):
                     if "MessageAttributes" not in entry:
@@ -273,7 +319,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 if message_span:
                     if message_span.is_recording():
                         message_span.set_attribute(
-                            SpanAttributes.MESSAGING_MESSAGE_ID,
+                            MESSAGING_MESSAGE_ID,
                             successful_messages.get("MessageId"),
                         )
             for span in ids_to_spans.values():
@@ -303,7 +349,8 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                     span,
                     queue_name,
                     queue_url,
-                    operation=MessagingOperationValues.RECEIVE,
+                    "receive",
+                    MessagingOperationTypeValues.RECEIVE,
                 )
                 retval = wrapped(
                     *args,
@@ -415,7 +462,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             __name__,
             __version__,
             self._tracer_provider,
-            schema_url="https://opentelemetry.io/schemas/1.11.0",
+            schema_url=Schemas.V1_27_0.value,
         )
         self._wrap_client_creation()
 
