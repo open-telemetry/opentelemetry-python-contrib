@@ -36,6 +36,10 @@ OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_RESPONSE = "OTEL_INSTRUMENTATIO
 
 OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS = "OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_ALL_METHODS"
 
+OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE = (
+    "OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE"
+)
+
 # List of recommended metrics attributes
 _duration_attrs = {
     HTTP_METHOD,
@@ -240,6 +244,15 @@ def get_custom_header_attributes(
         return {}
     sanitize: SanitizeValue = SanitizeValue(sensitive_headers or ())
     return sanitize.sanitize_header_values(headers, captured_headers, normalize_function)
+
+
+def is_capture_response_body_size_enabled() -> bool:
+    return (
+        environ.get(
+            OTEL_PYTHON_INSTRUMENTATION_HTTP_RESPONSE_BODY_SIZE, ""
+        ).lower()
+        == "true"
+    )
 
 
 def _parse_active_request_count_attrs(req_attrs):
