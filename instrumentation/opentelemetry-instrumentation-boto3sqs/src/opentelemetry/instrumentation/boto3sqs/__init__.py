@@ -19,7 +19,16 @@ Usage
 """
 
 import logging
-from typing import Any, Collection, Dict, Generator, List, Mapping, Optional
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Generator,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+)
 from urllib.parse import urlparse
 
 import boto3.session
@@ -55,6 +64,8 @@ from .version import __version__
 _logger = logging.getLogger(__name__)
 
 _IS_SQS_INSTRUMENTED_ATTRIBUTE = "_otel_boto3sqs_instrumented"
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
 class Boto3SQSGetter(Getter[CarrierT]):
@@ -156,14 +167,33 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         span.set_attribute(MESSAGING_OPERATION_NAME, operation_name)
         span.set_attribute(MESSAGING_OPERATION_TYPE, operation_type.value)
 
-        parsed_url = urlparse(queue_url)
-        if parsed_url.hostname:
-            span.set_attribute(SERVER_ADDRESS, parsed_url.hostname)
-            if parsed_url.port:
-                span.set_attribute(SERVER_PORT, parsed_url.port)
+        server_address, server_port = (
+            Boto3SQSInstrumentor._extract_server_attributes(queue_url)
+        )
+        if server_address:
+            span.set_attribute(SERVER_ADDRESS, server_address)
+            if server_port:
+                span.set_attribute(SERVER_PORT, server_port)
 
         if message_id:
             span.set_attribute(MESSAGING_MESSAGE_ID, message_id)
+
+    @staticmethod
+    def _extract_server_attributes(
+        queue_url: str,
+    ) -> Tuple[Optional[str], Optional[int]]:
+        # A queue URL comes from the caller, so it may not parse: both
+        # `urlparse` itself and reading `port` raise for a malformed one. Let
+        # botocore report a bad URL rather than failing the call from here.
+        try:
+            parsed_url = urlparse(queue_url)
+            hostname = parsed_url.hostname
+            port = parsed_url.port
+        except ValueError:
+            return None, None
+        if port is None:
+            port = _DEFAULT_PORTS.get(parsed_url.scheme)
+        return hostname, port
 
     @staticmethod
     def _safe_end_processing_span(receipt_handle: str) -> None:

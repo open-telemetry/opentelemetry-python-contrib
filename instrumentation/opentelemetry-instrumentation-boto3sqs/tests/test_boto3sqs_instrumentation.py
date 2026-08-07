@@ -225,6 +225,7 @@ class TestBoto3SQSInstrumentation(TestBase):
             MESSAGING_OPERATION_NAME: operation_name,
             MESSAGING_OPERATION_TYPE: operation_type.value,
             SERVER_ADDRESS: "sqs.us-east-1.amazonaws.com",
+            SERVER_PORT: 443,
         }
 
     @staticmethod
@@ -309,6 +310,54 @@ class TestBoto3SQSInstrumentation(TestBase):
         span = self._get_only_span()
         self.assertEqual("localhost", span.attributes[SERVER_ADDRESS])
         self.assertEqual(4566, span.attributes[SERVER_PORT])
+
+    def test_send_message_custom_endpoint_without_port(self):
+        mock_response = {
+            "MD5OfMessageBody": "1234",
+            "MessageId": "123456789",
+        }
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message(
+                QueueUrl=f"http://localhost/123456789012/{self._queue_name}",
+                MessageBody="hello msg",
+            )
+
+        span = self._get_only_span()
+        self.assertEqual("localhost", span.attributes[SERVER_ADDRESS])
+        self.assertEqual(80, span.attributes[SERVER_PORT])
+
+    def test_send_message_malformed_port_skips_server_attributes(self):
+        mock_response = {
+            "MD5OfMessageBody": "1234",
+            "MessageId": "123456789",
+        }
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message(
+                QueueUrl=f"http://localhost:not-a-port/123456789012/{self._queue_name}",
+                MessageBody="hello msg",
+            )
+
+        span = self._get_only_span()
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
+
+    def test_send_message_unparsable_url_skips_server_attributes(self):
+        mock_response = {
+            "MD5OfMessageBody": "1234",
+            "MessageId": "123456789",
+        }
+
+        with self._mocked_endpoint(mock_response):
+            self._client.send_message(
+                QueueUrl=f"http://[::1/123456789012/{self._queue_name}",
+                MessageBody="hello msg",
+            )
+
+        span = self._get_only_span()
+        self.assertNotIn(SERVER_ADDRESS, span.attributes)
+        self.assertNotIn(SERVER_PORT, span.attributes)
 
     def test_send_message_batch(self):
         expected_message_ids = {"1": "msg-1", "2": "msg-2"}
