@@ -90,9 +90,7 @@ class TestPyMysqlIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.pymysql
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.pymysql)
 
         # check that no spans are generated after uninstrument
         PyMySQLInstrumentor().uninstrument()
@@ -128,9 +126,7 @@ class TestPyMysqlIntegration(TestBase):
     @mock.patch("pymysql.connect")
     # pylint: disable=unused-argument
     def test_no_op_tracer_provider(self, mock_connect):
-        PyMySQLInstrumentor().instrument(
-            tracer_provider=trace_api.NoOpTracerProvider()
-        )
+        PyMySQLInstrumentor().instrument(tracer_provider=trace_api.NoOpTracerProvider())
         cnx = pymysql.connect(database="test")
         cursor = cnx.cursor()
         query = "SELECT * FROM test"
@@ -546,9 +542,7 @@ class TestPyMysqlIntegration(TestBase):
 
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
             self.assertEqual(span.attributes[SERVER_PORT], 3306)
             self.assertNotIn(DB_SYSTEM, span.attributes)
@@ -575,12 +569,8 @@ class TestPyMysqlIntegration(TestBase):
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
             self.assertEqual(span.attributes[DB_NAME], "test")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_STATEMENT], "SELECT * FROM test"
-            )
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[DB_USER], "testuser")
             self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
             self.assertEqual(span.attributes[NET_PEER_PORT], 3306)

@@ -90,9 +90,7 @@ class SQLAlchemyTestMixin(TestBase):
         Base.metadata.create_all(self.engine, checkfirst=False)
         self.session = sessionmaker(bind=self.engine)()
         # trace the engine
-        SQLAlchemyInstrumentor().instrument(
-            engine=self.engine, tracer_provider=self.tracer_provider
-        )
+        SQLAlchemyInstrumentor().instrument(engine=self.engine, tracer_provider=self.tracer_provider)
         self.memory_exporter.clear()
 
     def tearDown(self):
@@ -241,6 +239,4 @@ class SQLAlchemyTestMixin(TestBase):
         # SQLAlchemy 1.4 uses the `execute_values` extension of the psycopg2 dialect to
         # batch inserts together which means `insert_players` only generates one span.
         # See https://docs.sqlalchemy.org/en/14/changelog/migration_14.html#orm-batch-inserts-with-psycopg2-now-batch-statements-with-returning-in-most-cases
-        self.assertEqual(
-            len(spans), 8 if self.VENDOR not in ["postgresql"] else 6
-        )
+        self.assertEqual(len(spans), 8 if self.VENDOR not in ["postgresql"] else 6)

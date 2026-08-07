@@ -62,9 +62,7 @@ def _remove_nonrecording(spanlist: list[Span]) -> bool:
     return True
 
 
-def trysetip(
-    conn: http.client.HTTPConnection, loglevel: int = logging.DEBUG
-) -> bool:
+def trysetip(conn: http.client.HTTPConnection, loglevel: int = logging.DEBUG) -> bool:
     """Tries to set the net.peer.ip semantic attribute on the current span from the given
     HttpConnection.
 
@@ -164,9 +162,7 @@ def _getstate() -> _ConnectionState | None:
 def set_ip_on_next_http_connection(span: Span):
     state = _getstate()
     if not state:
-        token = context.attach(
-            context.set_value(_STATE_KEY, {"need_ip": [span]})
-        )
+        token = context.attach(context.set_value(_STATE_KEY, {"need_ip": [span]}))
         try:
             yield
         finally:

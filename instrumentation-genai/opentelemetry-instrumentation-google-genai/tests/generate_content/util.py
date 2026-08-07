@@ -18,9 +18,7 @@ def create_response(
     output_tokens: Optional[int] = None,
     cached_tokens: Optional[int] = None,
     model_version: Optional[str] = None,
-    usage_metadata: Optional[
-        genai_types.GenerateContentResponseUsageMetadata
-    ] = None,
+    usage_metadata: Optional[genai_types.GenerateContentResponseUsageMetadata] = None,
     **kwargs,
 ) -> genai_types.GenerateContentResponse:
     # Build up the "candidates" subfield
@@ -65,6 +63,4 @@ def convert_to_response(
         return arg
     if isinstance(arg, dict):
         return create_response(**arg)
-    raise ValueError(
-        f"Unsure how to convert {arg} of type {arg.__class__.__name__} to response."
-    )
+    raise ValueError(f"Unsure how to convert {arg} of type {arg.__class__.__name__} to response.")

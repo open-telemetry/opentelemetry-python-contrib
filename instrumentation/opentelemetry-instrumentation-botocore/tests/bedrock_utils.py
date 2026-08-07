@@ -118,9 +118,7 @@ def assert_completion_attributes_from_streaming_body(
         request_top_p,
         request_temperature,
         request_max_tokens,
-        tuple(request_stop_sequences)
-        if request_stop_sequences is not None
-        else request_stop_sequences,
+        tuple(request_stop_sequences) if request_stop_sequences is not None else request_stop_sequences,
     )
 
 
@@ -155,9 +153,7 @@ def assert_converse_completion_attributes(
         request_top_p,
         request_temperature,
         request_max_tokens,
-        tuple(request_stop_sequences)
-        if request_stop_sequences is not None
-        else request_stop_sequences,
+        tuple(request_stop_sequences) if request_stop_sequences is not None else request_stop_sequences,
     )
 
 
@@ -183,18 +179,14 @@ def assert_stream_completion_attributes(
         request_top_p,
         request_temperature,
         request_max_tokens,
-        tuple(request_stop_sequences)
-        if request_stop_sequences is not None
-        else request_stop_sequences,
+        tuple(request_stop_sequences) if request_stop_sequences is not None else request_stop_sequences,
     )
 
 
 def assert_equal_or_not_present(value, attribute_name, span):
     if value is not None:
         assert attribute_name in span.attributes
-        assert value == span.attributes[attribute_name], span.attributes[
-            attribute_name
-        ]
+        assert value == span.attributes[attribute_name], span.attributes[attribute_name]
     else:
         assert attribute_name not in span.attributes, attribute_name
 
@@ -214,39 +206,19 @@ def assert_all_attributes(
     server_port: int = 443,
 ):
     assert span.name == f"{operation_name} {request_model}"
-    assert (
-        operation_name
-        == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-    )
-    assert (
-        GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
-        == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-    )
-    assert (
-        request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
-    )
+    assert operation_name == span.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
+    assert GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value == span.attributes[GenAIAttributes.GEN_AI_SYSTEM]
+    assert request_model == span.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL]
 
     assert server_address == span.attributes[ServerAttributes.SERVER_ADDRESS]
     assert server_port == span.attributes[ServerAttributes.SERVER_PORT]
 
-    assert_equal_or_not_present(
-        input_tokens, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, span
-    )
-    assert_equal_or_not_present(
-        output_tokens, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, span
-    )
-    assert_equal_or_not_present(
-        finish_reason, GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS, span
-    )
-    assert_equal_or_not_present(
-        request_top_p, GenAIAttributes.GEN_AI_REQUEST_TOP_P, span
-    )
-    assert_equal_or_not_present(
-        request_temperature, GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE, span
-    )
-    assert_equal_or_not_present(
-        request_max_tokens, GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS, span
-    )
+    assert_equal_or_not_present(input_tokens, GenAIAttributes.GEN_AI_USAGE_INPUT_TOKENS, span)
+    assert_equal_or_not_present(output_tokens, GenAIAttributes.GEN_AI_USAGE_OUTPUT_TOKENS, span)
+    assert_equal_or_not_present(finish_reason, GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS, span)
+    assert_equal_or_not_present(request_top_p, GenAIAttributes.GEN_AI_REQUEST_TOP_P, span)
+    assert_equal_or_not_present(request_temperature, GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE, span)
+    assert_equal_or_not_present(request_max_tokens, GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS, span)
     assert_equal_or_not_present(
         request_stop_sequences,
         GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES,
@@ -272,25 +244,20 @@ def assert_log_parent(log, span):
             f"{span.get_span_context().trace_id} does not equal {log.log_record.trace_id}"
         )
         assert log.log_record.span_id == span.get_span_context().span_id
-        assert (
-            log.log_record.trace_flags == span.get_span_context().trace_flags
-        )
+        assert log.log_record.trace_flags == span.get_span_context().trace_flags
 
 
 def assert_message_in_logs(log, event_name, expected_content, parent_span):
     assert log.log_record.event_name == event_name, log.log_record.event_name
     assert (
-        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-        == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
+        log.log_record.attributes[GenAIAttributes.GEN_AI_SYSTEM] == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
     )
 
     if not expected_content:
         assert not log.log_record.body
     else:
         assert log.log_record.body
-        assert dict(log.log_record.body) == remove_none_values(
-            expected_content
-        ), dict(log.log_record.body)
+        assert dict(log.log_record.body) == remove_none_values(expected_content), dict(log.log_record.body)
     assert_log_parent(log, parent_span)
 
 
@@ -303,23 +270,14 @@ def assert_all_metric_attributes(
     server_port: int = 443,
 ):
     assert GenAIAttributes.GEN_AI_OPERATION_NAME in data_point.attributes
-    assert (
-        data_point.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME]
-        == operation_name
-    )
+    assert data_point.attributes[GenAIAttributes.GEN_AI_OPERATION_NAME] == operation_name
     assert GenAIAttributes.GEN_AI_SYSTEM in data_point.attributes
-    assert (
-        data_point.attributes[GenAIAttributes.GEN_AI_SYSTEM]
-        == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
-    )
+    assert data_point.attributes[GenAIAttributes.GEN_AI_SYSTEM] == GenAIAttributes.GenAiSystemValues.AWS_BEDROCK.value
     assert GenAIAttributes.GEN_AI_REQUEST_MODEL in data_point.attributes
     assert data_point.attributes[GenAIAttributes.GEN_AI_REQUEST_MODEL] == model
 
     assert ServerAttributes.SERVER_ADDRESS in data_point.attributes
-    assert (
-        data_point.attributes[ServerAttributes.SERVER_ADDRESS]
-        == server_address
-    )
+    assert data_point.attributes[ServerAttributes.SERVER_ADDRESS] == server_address
     assert ServerAttributes.SERVER_PORT in data_point.attributes
     assert data_point.attributes[ServerAttributes.SERVER_PORT] == server_port
 
@@ -355,12 +313,8 @@ def assert_metrics(
 
     duration_point = duration_metric.data.data_points[0]
     assert duration_point.sum > 0
-    assert_all_metric_attributes(
-        duration_point, operation_name, model, error_type
-    )
-    assert duration_point.explicit_bounds == tuple(
-        _GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS
-    )
+    assert_all_metric_attributes(duration_point, operation_name, model, error_type)
+    assert duration_point.explicit_bounds == tuple(_GEN_AI_CLIENT_OPERATION_DURATION_BUCKETS)
 
     if input_tokens is not None:
         token_usage_metric = next(
@@ -373,17 +327,14 @@ def assert_metrics(
             (
                 d
                 for d in token_usage_metric.data.data_points
-                if d.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
-                == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
+                if d.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE] == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
             ),
             None,
         )
         assert input_token_usage is not None
         assert input_token_usage.sum == input_tokens
 
-        assert input_token_usage.explicit_bounds == tuple(
-            _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS
-        )
+        assert input_token_usage.explicit_bounds == tuple(_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS)
         assert_all_metric_attributes(input_token_usage, operation_name, model)
 
     if output_tokens is not None:
@@ -405,7 +356,5 @@ def assert_metrics(
         assert output_token_usage is not None
         assert output_token_usage.sum == output_tokens
 
-        assert output_token_usage.explicit_bounds == tuple(
-            _GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS
-        )
+        assert output_token_usage.explicit_bounds == tuple(_GEN_AI_CLIENT_TOKEN_USAGE_BUCKETS)
         assert_all_metric_attributes(output_token_usage, operation_name, model)

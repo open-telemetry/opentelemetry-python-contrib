@@ -405,13 +405,9 @@ class TestSamplingRuleApplier(TestCase):
         time_now = datetime.datetime.fromtimestamp(1707551387.0)
         mock_clock = MockClock(time_now)
 
-        rule_applier = _SamplingRuleApplier(
-            sampling_rule, CLIENT_ID, mock_clock
-        )
+        rule_applier = _SamplingRuleApplier(sampling_rule, CLIENT_ID, mock_clock)
 
-        self.assertEqual(
-            rule_applier._SamplingRuleApplier__fixed_rate_sampler._rate, 0.11
-        )
+        self.assertEqual(rule_applier._SamplingRuleApplier__fixed_rate_sampler._rate, 0.11)
         self.assertEqual(
             rule_applier._SamplingRuleApplier__reservoir_sampler._RateLimitingSampler__reservoir._quota,
             1,
@@ -434,9 +430,7 @@ class TestSamplingRuleApplier(TestCase):
         time_now = datetime.datetime.fromtimestamp(target.ReservoirQuotaTTL)
         mock_clock.set_time(time_now)
 
-        self.assertEqual(
-            rule_applier._SamplingRuleApplier__fixed_rate_sampler._rate, 1.0
-        )
+        self.assertEqual(rule_applier._SamplingRuleApplier__fixed_rate_sampler._rate, 1.0)
         self.assertEqual(
             rule_applier._SamplingRuleApplier__reservoir_sampler._RateLimitingSampler__reservoir._quota,
             30,
@@ -471,9 +465,7 @@ class TestSamplingRuleApplier(TestCase):
         )
 
     @patch.object(TraceIdRatioBased, "should_sample", fake_ratio_do_sample)
-    @patch.object(
-        _RateLimitingSampler, "should_sample", fake_reservoir_do_sample
-    )
+    @patch.object(_RateLimitingSampler, "should_sample", fake_reservoir_do_sample)
     def test_populate_and_get_then_reset_statistics(self):
         mock_clock = MockClock()
         rule_applier = _SamplingRuleApplier(
@@ -493,24 +485,16 @@ class TestSamplingRuleApplier(TestCase):
         self.assertEqual(statistics["RequestCount"], 3)
         self.assertEqual(statistics["BorrowCount"], 3)
         self.assertEqual(statistics["SampleCount"], 3)
-        self.assertEqual(
-            rule_applier._SamplingRuleApplier__statistics.RequestCount, 0
-        )
-        self.assertEqual(
-            rule_applier._SamplingRuleApplier__statistics.BorrowCount, 0
-        )
-        self.assertEqual(
-            rule_applier._SamplingRuleApplier__statistics.SampleCount, 0
-        )
+        self.assertEqual(rule_applier._SamplingRuleApplier__statistics.RequestCount, 0)
+        self.assertEqual(rule_applier._SamplingRuleApplier__statistics.BorrowCount, 0)
+        self.assertEqual(rule_applier._SamplingRuleApplier__statistics.SampleCount, 0)
 
     def test_should_sample_logic_from_reservoir(self):
         reservoir_size = 10
         time_now = datetime.datetime.fromtimestamp(1707551387.0)
         mock_clock = MockClock(time_now)
         rule_applier = _SamplingRuleApplier(
-            _SamplingRule(
-                RuleName="test", ReservoirSize=reservoir_size, FixedRate=0.0
-            ),
+            _SamplingRule(RuleName="test", ReservoirSize=reservoir_size, FixedRate=0.0),
             CLIENT_ID,
             mock_clock,
         )
@@ -518,10 +502,7 @@ class TestSamplingRuleApplier(TestCase):
         mock_clock.add_time(seconds=2.0)
         sampled_count = 0
         for _ in range(0, reservoir_size + 10):
-            if (
-                rule_applier.should_sample(None, 0, "name").decision
-                != Decision.DROP
-            ):
+            if rule_applier.should_sample(None, 0, "name").decision != Decision.DROP:
                 sampled_count += 1
         self.assertEqual(sampled_count, 1)
         # borrow means only 1 sampled
@@ -539,10 +520,7 @@ class TestSamplingRuleApplier(TestCase):
         mock_clock.add_time(seconds=2.0)
         sampled_count = 0
         for _ in range(0, reservoir_size + 10):
-            if (
-                rule_applier.should_sample(None, 0, "name").decision
-                != Decision.DROP
-            ):
+            if rule_applier.should_sample(None, 0, "name").decision != Decision.DROP:
                 sampled_count += 1
         self.assertEqual(sampled_count, reservoir_size)
 
@@ -550,10 +528,7 @@ class TestSamplingRuleApplier(TestCase):
         mock_clock.add_time(seconds=0.5)
         sampled_count = 0
         for _ in range(0, reservoir_size + 10):
-            if (
-                rule_applier.should_sample(None, 0, "name").decision
-                != Decision.DROP
-            ):
+            if rule_applier.should_sample(None, 0, "name").decision != Decision.DROP:
                 sampled_count += 1
         self.assertEqual(sampled_count, 5)
 
@@ -561,9 +536,6 @@ class TestSamplingRuleApplier(TestCase):
         mock_clock.add_time(seconds=7.5)
         sampled_count = 0
         for _ in range(0, reservoir_size + 10):
-            if (
-                rule_applier.should_sample(None, 0, "name").decision
-                != Decision.DROP
-            ):
+            if rule_applier.should_sample(None, 0, "name").decision != Decision.DROP:
                 sampled_count += 1
         self.assertEqual(sampled_count, 0)

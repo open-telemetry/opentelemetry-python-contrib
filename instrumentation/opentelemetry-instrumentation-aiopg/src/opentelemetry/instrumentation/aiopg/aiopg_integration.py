@@ -57,9 +57,7 @@ class AiopgIntegration(DatabaseApiIntegration):
         return get_traced_pool_proxy(pool, self)
 
 
-def get_traced_connection_proxy(
-    connection, db_api_integration, *args, **kwargs
-):
+def get_traced_connection_proxy(connection, db_api_integration, *args, **kwargs):
     # pylint: disable=abstract-method,no-member
     class TracedConnectionProxy(AsyncProxyObject):
         # pylint: disable=unused-argument
@@ -94,9 +92,7 @@ def get_traced_pool_proxy(pool, db_api_integration, *args, **kwargs):
             # pylint: disable=protected-access
             connection = await self.__wrapped__._acquire()
             if not isinstance(connection, AsyncProxyObject):
-                connection = get_traced_connection_proxy(
-                    connection, db_api_integration, *args, **kwargs
-                )
+                connection = get_traced_connection_proxy(connection, db_api_integration, *args, **kwargs)
             return connection
 
     return TracedPoolProxy(pool, *args, **kwargs)
@@ -120,9 +116,7 @@ class AsyncCursorTracer(CursorTracer):
                 else self._db_api_integration.name
             )
 
-        with self._db_api_integration._tracer.start_as_current_span(
-            span_name, kind=SpanKind.CLIENT
-        ) as span:
+        with self._db_api_integration._tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
             if span.is_recording():
                 self._populate_span(span, cursor, *args)
             start_time = time.perf_counter()
@@ -131,9 +125,7 @@ class AsyncCursorTracer(CursorTracer):
                 return await query_method(*args, **kwargs)
             except Exception as exc:
                 error = exc
-                if span.is_recording() and _report_new(
-                    self._db_api_integration._sem_conv_opt_in_mode_db
-                ):
+                if span.is_recording() and _report_new(self._db_api_integration._sem_conv_opt_in_mode_db):
                     span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
                 raise
             finally:
@@ -150,21 +142,15 @@ def get_traced_cursor_proxy(cursor, db_api_integration, *args, **kwargs):
             super().__init__(cursor)
 
         async def execute(self, *args, **kwargs):
-            result = await _traced_cursor.traced_execution(
-                self, self.__wrapped__.execute, *args, **kwargs
-            )
+            result = await _traced_cursor.traced_execution(self, self.__wrapped__.execute, *args, **kwargs)
             return result
 
         async def executemany(self, *args, **kwargs):
-            result = await _traced_cursor.traced_execution(
-                self, self.__wrapped__.executemany, *args, **kwargs
-            )
+            result = await _traced_cursor.traced_execution(self, self.__wrapped__.executemany, *args, **kwargs)
             return result
 
         async def callproc(self, *args, **kwargs):
-            result = await _traced_cursor.traced_execution(
-                self, self.__wrapped__.callproc, *args, **kwargs
-            )
+            result = await _traced_cursor.traced_execution(self, self.__wrapped__.callproc, *args, **kwargs)
             return result
 
     return AsyncCursorTracerProxy(cursor, *args, **kwargs)
