@@ -140,7 +140,7 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             except Exception as hook_exception:  # pylint: disable=W0703
                 _LOG.exception(hook_exception)
 
-        return func(*args, **kwargs)
+            return func(*args, **kwargs)
 
     return _traced_send
 

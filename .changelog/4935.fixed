@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-kafka-python`: record errors raised by `KafkaProducer.send()` on the producer span
