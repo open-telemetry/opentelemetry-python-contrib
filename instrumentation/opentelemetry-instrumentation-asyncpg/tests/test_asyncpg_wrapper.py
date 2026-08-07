@@ -44,6 +44,10 @@ from opentelemetry.semconv.attributes.db_attributes import (
     DB_SYSTEM_NAME,
 )
 from opentelemetry.semconv.attributes.error_attributes import ERROR_TYPE
+from opentelemetry.semconv.attributes.network_attributes import (
+    NETWORK_TRANSPORT,
+    NetworkTransportValues,
+)
 from opentelemetry.semconv.attributes.server_attributes import (
     SERVER_ADDRESS,
     SERVER_PORT,
@@ -443,6 +447,25 @@ class TestAsyncPGSemconvMigration(TestBase):
         self.assertEqual(span.attributes[NET_TRANSPORT], NetTransportValues.OTHER.value)
         self.assertNotIn(NET_PEER_PORT, span.attributes)
         self.assertNotIn(SERVER_ADDRESS, span.attributes)
+
+    def test_span_unix_socket_new_semconv(self):
+        with use_semconv_opt_in("database,http"):
+            conn = self._make_execute_conn(
+                addr="/var/run/postgresql/.s.PGSQL.5432"
+            )
+            spans = self._run_execute(conn)
+
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(
+            span.attributes[SERVER_ADDRESS],
+            "/var/run/postgresql/.s.PGSQL.5432",
+        )
+        self.assertEqual(
+            span.attributes[NETWORK_TRANSPORT],
+            NetworkTransportValues.UNIX.value,
+        )
+        self.assertNotIn(SERVER_PORT, span.attributes)
 
     def test_span_capture_parameters(self):
         apg = AsyncPGInstrumentor(capture_parameters=True)
