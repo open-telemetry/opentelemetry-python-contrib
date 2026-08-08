@@ -41,8 +41,8 @@ MOCK_LAMBDA_SQS_EVENT_WITH_TRACE_CONTEXT = {
             },
             "messageAttributes": {
                 "traceparent": {
-                    "DataType": "String",
-                    "StringValue": "00-5ce0e9a56015fec5aadfa328ae398115-ab54a98ceb1f0ad2-01",
+                    "dataType": "String",
+                    "stringValue": "00-5ce0e9a56015fec5aadfa328ae398115-ab54a98ceb1f0ad2-01",
                 }
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
@@ -68,8 +68,8 @@ MOCK_LAMBDA_SQS_EVENT_UPPERCASE_ATTRS = {
             },
             "messageAttributes": {
                 "TRACEPARENT": {
-                    "DataType": "String",
-                    "StringValue": "00-5ce0e9a56015fec5aadfa328ae398115-ab54a98ceb1f0ad2-01",
+                    "dataType": "String",
+                    "stringValue": "00-5ce0e9a56015fec5aadfa328ae398115-ab54a98ceb1f0ad2-01",
                 }
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
@@ -155,8 +155,8 @@ MOCK_LAMBDA_SQS_BATCH_EVENT_PARTIAL_CONTEXT = {
             },
             "messageAttributes": {
                 "Traceparent": {
-                    "DataType": "String",
-                    "StringValue": "00-aabbccddeeff00112233445566778899-aabbccddeeff0011-01",
+                    "dataType": "String",
+                    "stringValue": "00-aabbccddeeff00112233445566778899-aabbccddeeff0011-01",
                 }
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b4",
@@ -176,8 +176,8 @@ MOCK_LAMBDA_SQS_BATCH_EVENT_PARTIAL_CONTEXT = {
             },
             "messageAttributes": {
                 "traceparent": {
-                    "DataType": "String",
-                    "StringValue": "00-cafebabe12345678cafebabe12345678-cafebabe12345678-01",
+                    "dataType": "String",
+                    "stringValue": "00-cafebabe12345678cafebabe12345678-cafebabe12345678-01",
                 }
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b5",
@@ -214,7 +214,7 @@ MOCK_MALFORMED_SQS_EVENT_WRONG_SOURCE = {
 # Malformed: no Records key at all, _is_sqs_event should return False.
 MOCK_MALFORMED_SQS_EVENT_NO_RECORDS_KEY = {"body": "oops, no Records key"}
 
-# SQS event with a traceparent whose StringValue is not a valid W3C traceparent.
+# SQS event with a traceparent whose stringValue is not a valid W3C traceparent.
 # The propagator will parse it as an invalid context, no span link should be extracted.
 MOCK_LAMBDA_SQS_EVENT_INVALID_TRACEPARENT = {
     "Records": [
@@ -230,8 +230,8 @@ MOCK_LAMBDA_SQS_EVENT_INVALID_TRACEPARENT = {
             },
             "messageAttributes": {
                 "traceparent": {
-                    "DataType": "String",
-                    "StringValue": "not-a-valid-traceparent",
+                    "dataType": "String",
+                    "stringValue": "not-a-valid-traceparent",
                 }
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
@@ -267,8 +267,8 @@ MOCK_LAMBDA_SQS_EVENT_ATTR_NOT_DICT = {
     ]
 }
 
-# SQS event where the attribute dict has DataType but no StringValue key.
-# The getter returns None for missing StringValue, no link is extracted.
+# SQS event where the attribute dict has dataType but no stringValue key.
+# The getter returns None for missing stringValue, no link is extracted.
 MOCK_LAMBDA_SQS_EVENT_MISSING_STRING_VALUE = {
     "Records": [
         {
@@ -352,8 +352,8 @@ MOCK_LAMBDA_SQS_BATCH_EVENT = {
             },
             "messageAttributes": {
                 "traceparent": {
-                    "DataType": "String",
-                    "StringValue": "00-5ce0e9a56015fec5aadfa328ae398115-ab54a98ceb1f0ad2-01",
+                    "dataType": "String",
+                    "stringValue": "00-5ce0e9a56015fec5aadfa328ae398115-ab54a98ceb1f0ad2-01",
                 }
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b3",
@@ -373,8 +373,8 @@ MOCK_LAMBDA_SQS_BATCH_EVENT = {
             },
             "messageAttributes": {
                 "traceparent": {
-                    "DataType": "String",
-                    "StringValue": "00-8a3c60f7d188f8fa79d48a391a778fa6-53995c3f42cd8ad8-01",
+                    "dataType": "String",
+                    "stringValue": "00-8a3c60f7d188f8fa79d48a391a778fa6-53995c3f42cd8ad8-01",
                 }
             },
             "md5OfBody": "e4e68fb7bd0e697a0ae8f1bb342846b4",
