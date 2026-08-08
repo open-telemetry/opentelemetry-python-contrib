@@ -166,9 +166,7 @@ def instrument_connection(
         tracer_provider=tracer_provider,
         meter_provider=meter_provider,
     )
-    db_integration.get_connection_attributes(
-        getattr(connection, "_conn", connection)
-    )
+    db_integration.get_connection_attributes(getattr(connection, "_conn", connection))
     return get_traced_connection_proxy(connection, db_integration)
 
 
@@ -211,9 +209,7 @@ def wrap_create_pool(
             tracer_provider=tracer_provider,
             meter_provider=meter_provider,
         )
-        return _PoolContextManager(
-            db_integration.wrapped_pool(wrapped, args, kwargs)
-        )
+        return _PoolContextManager(db_integration.wrapped_pool(wrapped, args, kwargs))
 
     try:
         wrapt.wrap_function_wrapper(aiopg, "create_pool", wrap_create_pool_)

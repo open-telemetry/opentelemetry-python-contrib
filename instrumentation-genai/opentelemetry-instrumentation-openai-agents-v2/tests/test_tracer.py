@@ -60,15 +60,9 @@ from opentelemetry.semconv._incubating.attributes import (  # noqa: E402
 from opentelemetry.trace import SpanKind  # noqa: E402
 
 GEN_AI_PROVIDER_NAME = GenAI.GEN_AI_PROVIDER_NAME
-GEN_AI_INPUT_MESSAGES = getattr(
-    GenAI, "GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages"
-)
-GEN_AI_OUTPUT_MESSAGES = getattr(
-    GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
-)
-GEN_AI_TOOL_DEFINITIONS = getattr(
-    GenAI, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions"
-)
+GEN_AI_INPUT_MESSAGES = getattr(GenAI, "GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages")
+GEN_AI_OUTPUT_MESSAGES = getattr(GenAI, "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages")
+GEN_AI_TOOL_DEFINITIONS = getattr(GenAI, "GEN_AI_TOOL_DEFINITIONS", "gen_ai.tool.definitions")
 
 
 def _instrument_with_provider(**instrument_kwargs):
@@ -100,22 +94,15 @@ def test_generation_span_creates_client_span():
                 pass
 
         spans = exporter.get_finished_spans()
-        client_span = next(
-            span for span in spans if span.kind is SpanKind.CLIENT
-        )
+        client_span = next(span for span in spans if span.kind is SpanKind.CLIENT)
 
         assert client_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
         assert client_span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "chat"
-        assert (
-            client_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
-        )
+        assert client_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
         assert client_span.name == "chat gpt-4o-mini"
         assert client_span.attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 12
         assert client_span.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 3
-        assert (
-            client_span.attributes[ServerAttributes.SERVER_ADDRESS]
-            == "api.openai.com"
-        )
+        assert client_span.attributes[ServerAttributes.SERVER_ADDRESS] == "api.openai.com"
     finally:
         instrumentor.uninstrument()
         exporter.clear()
@@ -137,16 +124,12 @@ def test_generation_span_without_roles_uses_text_completion():
         completion_span = next(
             span
             for span in spans
-            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
-            == GenAI.GenAiOperationNameValues.TEXT_COMPLETION.value
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME] == GenAI.GenAiOperationNameValues.TEXT_COMPLETION.value
         )
 
         assert completion_span.kind is SpanKind.CLIENT
         assert completion_span.name == "text_completion gpt-4o-mini"
-        assert (
-            completion_span.attributes[GenAI.GEN_AI_REQUEST_MODEL]
-            == "gpt-4o-mini"
-        )
+        assert completion_span.attributes[GenAI.GEN_AI_REQUEST_MODEL] == "gpt-4o-mini"
     finally:
         instrumentor.uninstrument()
         exporter.clear()
@@ -157,19 +140,13 @@ def test_function_span_records_tool_attributes():
 
     try:
         with trace("workflow"):
-            with function_span(
-                name="fetch_weather", input='{"city": "Paris"}'
-            ):
+            with function_span(name="fetch_weather", input='{"city": "Paris"}'):
                 pass
 
         spans = exporter.get_finished_spans()
-        tool_span = next(
-            span for span in spans if span.kind is SpanKind.INTERNAL
-        )
+        tool_span = next(span for span in spans if span.kind is SpanKind.INTERNAL)
 
-        assert (
-            tool_span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "execute_tool"
-        )
+        assert tool_span.attributes[GenAI.GEN_AI_OPERATION_NAME] == "execute_tool"
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_NAME] == "fetch_weather"
         assert tool_span.attributes[GenAI.GEN_AI_TOOL_TYPE] == "function"
         assert tool_span.attributes[GEN_AI_PROVIDER_NAME] == "openai"
@@ -195,8 +172,7 @@ def test_agent_invoke_span_records_attributes():
         invoke_span = next(
             span
             for span in spans
-            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
-            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME] == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         )
 
         assert invoke_span.kind is SpanKind.CLIENT
@@ -217,19 +193,13 @@ def _placeholder_message() -> dict[str, Any]:
 
 def test_normalize_messages_skips_empty_when_sensitive_enabled():
     processor = GenAISemanticProcessor(metrics_enabled=False)
-    normalized = processor._normalize_messages_to_role_parts(
-        [{"role": "user", "content": None}]
-    )
+    normalized = processor._normalize_messages_to_role_parts([{"role": "user", "content": None}])
     assert not normalized
 
 
 def test_normalize_messages_emits_placeholder_when_sensitive_disabled():
-    processor = GenAISemanticProcessor(
-        include_sensitive_data=False, metrics_enabled=False
-    )
-    normalized = processor._normalize_messages_to_role_parts(
-        [{"role": "user", "content": None}]
-    )
+    processor = GenAISemanticProcessor(include_sensitive_data=False, metrics_enabled=False)
+    normalized = processor._normalize_messages_to_role_parts([{"role": "user", "content": None}])
     assert normalized == [_placeholder_message()]
 
 
@@ -262,9 +232,7 @@ def test_agent_content_aggregation_skips_duplicate_snapshots():
     )
 
     aggregated = processor._agent_content[agent_id]["input_messages"]
-    assert aggregated == [
-        {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
-    ]
+    assert aggregated == [{"role": "user", "parts": [{"type": "text", "content": "hello"}]}]
     # ensure data copied rather than reused to prevent accidental mutation
     assert aggregated is not payload.input_messages
 
@@ -278,34 +246,24 @@ def test_agent_content_aggregation_filters_placeholder_append_when_sensitive():
         "system_instructions": [],
     }
 
-    initial_payload = ContentPayload(
-        input_messages=[
-            {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
-        ]
-    )
+    initial_payload = ContentPayload(input_messages=[{"role": "user", "parts": [{"type": "text", "content": "hello"}]}])
     processor._update_agent_aggregate(
         SimpleNamespace(span_id="child-1", parent_id=agent_id, span_data=None),
         initial_payload,
     )
 
-    placeholder_payload = ContentPayload(
-        input_messages=[_placeholder_message()]
-    )
+    placeholder_payload = ContentPayload(input_messages=[_placeholder_message()])
     processor._update_agent_aggregate(
         SimpleNamespace(span_id="child-2", parent_id=agent_id, span_data=None),
         placeholder_payload,
     )
 
     aggregated = processor._agent_content[agent_id]["input_messages"]
-    assert aggregated == [
-        {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
-    ]
+    assert aggregated == [{"role": "user", "parts": [{"type": "text", "content": "hello"}]}]
 
 
 def test_agent_content_aggregation_retains_placeholder_when_sensitive_disabled():
-    processor = GenAISemanticProcessor(
-        include_sensitive_data=False, metrics_enabled=False
-    )
+    processor = GenAISemanticProcessor(include_sensitive_data=False, metrics_enabled=False)
     agent_id = "agent-span"
     processor._agent_content[agent_id] = {
         "input_messages": [],
@@ -313,9 +271,7 @@ def test_agent_content_aggregation_retains_placeholder_when_sensitive_disabled()
         "system_instructions": [],
     }
 
-    placeholder_payload = ContentPayload(
-        input_messages=[_placeholder_message()]
-    )
+    placeholder_payload = ContentPayload(input_messages=[_placeholder_message()])
     processor._update_agent_aggregate(
         SimpleNamespace(span_id="child-1", parent_id=agent_id, span_data=None),
         placeholder_payload,
@@ -334,11 +290,7 @@ def test_agent_content_aggregation_appends_new_messages_once():
         "system_instructions": [],
     }
 
-    initial_payload = ContentPayload(
-        input_messages=[
-            {"role": "user", "parts": [{"type": "text", "content": "hello"}]}
-        ]
-    )
+    initial_payload = ContentPayload(input_messages=[{"role": "user", "parts": [{"type": "text", "content": "hello"}]}])
     processor._update_agent_aggregate(
         SimpleNamespace(span_id="child-1", parent_id=agent_id, span_data=None),
         initial_payload,
@@ -390,8 +342,7 @@ def test_agent_span_collects_child_messages():
         agent_span = next(
             span
             for span in spans
-            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME)
-            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+            if span.attributes.get(GenAI.GEN_AI_OPERATION_NAME) == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         )
 
         prompt = json.loads(agent_span.attributes[GEN_AI_INPUT_MESSAGES])
@@ -417,9 +368,7 @@ def test_agent_span_collects_child_messages():
 
 
 def test_agent_name_override_applied_to_agent_spans():
-    instrumentor, exporter = _instrument_with_provider(
-        agent_name="Travel Concierge"
-    )
+    instrumentor, exporter = _instrument_with_provider(agent_name="Travel Concierge")
 
     try:
         with trace("workflow"):
@@ -430,25 +379,19 @@ def test_agent_name_override_applied_to_agent_spans():
         agent_span_record = next(
             span
             for span in spans
-            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
-            == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME] == GenAI.GenAiOperationNameValues.INVOKE_AGENT.value
         )
 
         assert agent_span_record.kind is SpanKind.CLIENT
         assert agent_span_record.name == "invoke_agent Travel Concierge"
-        assert (
-            agent_span_record.attributes[GenAI.GEN_AI_AGENT_NAME]
-            == "Travel Concierge"
-        )
+        assert agent_span_record.attributes[GenAI.GEN_AI_AGENT_NAME] == "Travel Concierge"
     finally:
         instrumentor.uninstrument()
         exporter.clear()
 
 
 def test_capture_mode_can_be_disabled():
-    instrumentor, exporter = _instrument_with_provider(
-        capture_message_content="no_content"
-    )
+    instrumentor, exporter = _instrument_with_provider(capture_message_content="no_content")
 
     try:
         with trace("workflow"):
@@ -460,9 +403,7 @@ def test_capture_mode_can_be_disabled():
                 pass
 
         spans = exporter.get_finished_spans()
-        client_span = next(
-            span for span in spans if span.kind is SpanKind.CLIENT
-        )
+        client_span = next(span for span in spans if span.kind is SpanKind.CLIENT)
 
         assert GEN_AI_INPUT_MESSAGES not in client_span.attributes
         assert GEN_AI_OUTPUT_MESSAGES not in client_span.attributes
@@ -516,32 +457,21 @@ def test_response_span_records_response_attributes():
         response = next(
             span
             for span in spans
-            if span.attributes[GenAI.GEN_AI_OPERATION_NAME]
-            == GenAI.GenAiOperationNameValues.CHAT.value
+            if span.attributes[GenAI.GEN_AI_OPERATION_NAME] == GenAI.GenAiOperationNameValues.CHAT.value
         )
 
         assert response.kind is SpanKind.CLIENT
         assert response.name == "chat gpt-4o-mini"
         assert response.attributes[GEN_AI_PROVIDER_NAME] == "openai"
         assert response.attributes[GenAI.GEN_AI_RESPONSE_ID] == "resp-123"
-        assert (
-            response.attributes[GenAI.GEN_AI_RESPONSE_MODEL] == "gpt-4o-mini"
-        )
+        assert response.attributes[GenAI.GEN_AI_RESPONSE_MODEL] == "gpt-4o-mini"
         assert response.attributes[GenAI.GEN_AI_USAGE_INPUT_TOKENS] == 42
         assert response.attributes[GenAI.GEN_AI_USAGE_OUTPUT_TOKENS] == 9
-        assert response.attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == (
-            "stop",
-        )
+        assert response.attributes[GenAI.GEN_AI_RESPONSE_FINISH_REASONS] == ("stop",)
 
-        system_instructions = json.loads(
-            response.attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS]
-        )
-        assert system_instructions == [
-            {"type": "text", "content": "You are a helpful assistant."}
-        ]
-        tool_definitions = json.loads(
-            response.attributes[GEN_AI_TOOL_DEFINITIONS]
-        )
+        system_instructions = json.loads(response.attributes[GenAI.GEN_AI_SYSTEM_INSTRUCTIONS])
+        assert system_instructions == [{"type": "text", "content": "You are a helpful assistant."}]
+        tool_definitions = json.loads(response.attributes[GEN_AI_TOOL_DEFINITIONS])
         assert tool_definitions == [
             {
                 "type": "function",
