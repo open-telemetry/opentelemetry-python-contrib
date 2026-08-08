@@ -419,6 +419,21 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
         self.assertEqual(spans_list[0].name, "SELECT")
         self.assertEqual(spans_list[0].attributes["db.statement"], "SELECT * FROM test")
 
+    def test_instrument_connection_comment_only_composed_query(self):
+        # Regression: a Composed statement that is comment-only (empty after
+        # leading-comment stripping) must not raise IndexError in
+        # get_operation_name.
+        cnx = psycopg.connect(database="test")
+        query: Composed = SQL("/* comment only */").format()
+
+        cnx = PsycopgInstrumentor().instrument_connection(cnx)
+        cursor = cnx.cursor()
+        # Must not raise IndexError.
+        cursor.execute(query)
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 1)
+
     # pylint: disable=unused-argument
     def test_instrument_connection_with_instrument(self):
         cnx = psycopg.connect(database="test")
