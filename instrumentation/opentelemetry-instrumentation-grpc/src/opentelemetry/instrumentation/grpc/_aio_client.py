@@ -21,7 +21,7 @@ from opentelemetry.trace.status import Status, StatusCode
 logger = logging.getLogger(__name__)
 
 
-def _unary_done_callback(span, code, details, response_hook):
+def _unary_done_callback(span, code, details, response, response_hook):
     def callback(call):
         try:
             span.set_attribute(
@@ -35,7 +35,8 @@ def _unary_done_callback(span, code, details, response_hook):
                         description=details,
                     )
                 )
-            response_hook(span, details)
+            else:
+                response_hook(span, response)
 
         finally:
             span.end()
@@ -103,7 +104,15 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             code = await call.code()
             details = await call.details()
 
-            callback = _unary_done_callback(span, code, details, self._call_response_hook)
+            # The response message is what the hook is documented to receive,
+            # and it is what the sync client and the streaming path both pass.
+            # grpc.aio caches the unary result, so awaiting the call here does
+            # not consume it -- the caller's own await still yields it.
+            response = None
+            if code == grpc.StatusCode.OK and self._response_hook:
+                response = await call
+
+            callback = _unary_done_callback(span, code, details, response, self._call_response_hook)
             try:
                 call.add_done_callback(callback)
             except NotImplementedError:
