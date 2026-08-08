@@ -30,7 +30,6 @@ dependencies = [
   "opentelemetry-instrumentation-wsgi == 0.66b0.dev",
   "opentelemetry-semantic-conventions == 0.66b0.dev",
   "opentelemetry-util-http == 0.66b0.dev",
-  "packaging >= 20.0",
 ]
 
 [project.optional-dependencies]
