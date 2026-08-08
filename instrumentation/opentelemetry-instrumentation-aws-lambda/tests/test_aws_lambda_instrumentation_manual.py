@@ -181,9 +181,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
     def test_default_event_context_extractor_does_not_log_for_missing_headers(
         self,
     ):
-        with mock.patch(
-            "opentelemetry.instrumentation.aws_lambda.logger.debug"
-        ) as debug_mock:
+        with mock.patch("opentelemetry.instrumentation.aws_lambda.logger.debug") as debug_mock:
             _default_event_context_extractor({})
 
         self.assertEqual(debug_mock.call_count, 0)
@@ -826,9 +824,9 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         AwsLambdaInstrumentor().instrument()
 
         event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
-        event["multiValueHeaders"][
-            TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME
-        ] = [MOCK_W3C_TRACE_CONTEXT_SAMPLED]
+        event["multiValueHeaders"][TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME] = [
+            MOCK_W3C_TRACE_CONTEXT_SAMPLED
+        ]
 
         mock_execute_lambda(event)
 
@@ -839,9 +837,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(span.get_span_context().trace_id, MOCK_W3C_TRACE_ID)
 
         parent_context = span.parent
-        self.assertEqual(
-            parent_context.trace_id, span.get_span_context().trace_id
-        )
+        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
         self.assertEqual(parent_context.span_id, MOCK_W3C_PARENT_SPAN_ID)
         self.assertTrue(parent_context.is_remote)
 
@@ -859,9 +855,9 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
 
         event = deepcopy(MOCK_LAMBDA_ALB_MULTI_VALUE_HEADER_EVENT)
         event["headers"] = {"accept": "text/html,application/xhtml+xml"}
-        event["multiValueHeaders"][
-            TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME
-        ] = [MOCK_W3C_TRACE_CONTEXT_SAMPLED]
+        event["multiValueHeaders"][TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME] = [
+            MOCK_W3C_TRACE_CONTEXT_SAMPLED
+        ]
 
         mock_execute_lambda(event)
 
@@ -872,9 +868,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(span.get_span_context().trace_id, MOCK_W3C_TRACE_ID)
 
         parent_context = span.parent
-        self.assertEqual(
-            parent_context.trace_id, span.get_span_context().trace_id
-        )
+        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
         self.assertEqual(parent_context.span_id, MOCK_W3C_PARENT_SPAN_ID)
         self.assertTrue(parent_context.is_remote)
 
@@ -896,9 +890,9 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
                 "00-11111111111111111111111111111111-2222222222222222-01"
             )
         }
-        event["multiValueHeaders"][
-            TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME
-        ] = [MOCK_W3C_TRACE_CONTEXT_SAMPLED]
+        event["multiValueHeaders"][TraceContextTextMapPropagator._TRACEPARENT_HEADER_NAME] = [
+            MOCK_W3C_TRACE_CONTEXT_SAMPLED
+        ]
 
         mock_execute_lambda(event)
 
@@ -909,9 +903,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(span.get_span_context().trace_id, MOCK_W3C_TRACE_ID)
 
         parent_context = span.parent
-        self.assertEqual(
-            parent_context.trace_id, span.get_span_context().trace_id
-        )
+        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
         self.assertEqual(parent_context.span_id, MOCK_W3C_PARENT_SPAN_ID)
         self.assertTrue(parent_context.is_remote)
 

@@ -190,9 +190,7 @@ def _extract_http_headers(lambda_event: Any) -> dict[str, Any]:
     normalized_multi_value_headers = {}
     if isinstance(multi_value_headers, dict):
         normalized_multi_value_headers = {
-            key: values[0]
-            for key, values in multi_value_headers.items()
-            if isinstance(values, list) and values
+            key: values[0] for key, values in multi_value_headers.items() if isinstance(values, list) and values
         }
 
     if not isinstance(headers, dict):
