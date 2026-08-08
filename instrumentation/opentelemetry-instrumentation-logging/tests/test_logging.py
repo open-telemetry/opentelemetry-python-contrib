@@ -246,6 +246,41 @@ class TestLoggingInstrumentor(TestBase):
         logging_handler_instances = [handler for handler in root_logger.handlers if isinstance(handler, LoggingHandler)]
         self.assertEqual(logging_handler_instances, [])
 
+    def test_uninstrument_keeps_factories_chained_after_ours(self):
+        # A factory installed after ours must survive uninstrument: the
+        # logging module offers no way to unlink a factory from the middle of
+        # the chain, so restoring the old factory here would silently drop it.
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            record = chained_onto(*args, **kwargs)
+            record.custom_app_attribute = "some-value"
+            return record
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            LoggingInstrumentor().uninstrument()
+
+            self.assertIs(logging.getLogRecordFactory(), app_factory)
+            with self.caplog.at_level(level=logging.INFO):
+                logging.getLogger("test logger").info("hello")
+                records = [
+                    record
+                    for record in self.caplog.records
+                    if record.name == "test logger"
+                ]
+                self.assertEqual(len(records), 1)
+                self.assertEqual(records[0].custom_app_attribute, "some-value")
+        finally:
+            logging.setLogRecordFactory(chained_onto)
+
+    def test_uninstrument_restores_factory_when_nothing_chained(self):
+        original_factory = LoggingInstrumentor._old_factory
+
+        LoggingInstrumentor().uninstrument()
+
+        self.assertIs(logging.getLogRecordFactory(), original_factory)
+
     @mock.patch("logging.basicConfig")
     def test_no_op_tracer_provider(self, basic_config_mock):
         LoggingInstrumentor().uninstrument()
