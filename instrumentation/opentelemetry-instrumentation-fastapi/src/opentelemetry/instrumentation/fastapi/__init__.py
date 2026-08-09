@@ -2,6 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
+This library provides automatic and manual instrumentation of FastAPI web frameworks,
+instrumenting http requests served by applications utilizing the framework.
+
+The package is available on PyPI as `opentelemetry-instrumentation-fastapi
+<https://pypi.org/project/opentelemetry-instrumentation-fastapi/>`_.
+
 Usage
 -----
 
@@ -174,6 +180,41 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
+
+Exporter and general SDK configuration
+***************************************
+This page only documents environment variables specific to FastAPI instrumentation.
+General OpenTelemetry SDK configuration, such as ``OTEL_SERVICE_NAME``, ``OTEL_EXPORTER_OTLP_ENDPOINT``,
+and ``OTEL_EXPORTER_OTLP_PROTOCOL``, is not specific to FastAPI and is documented separately in the
+`OpenTelemetry Python SDK environment variables <https://opentelemetry-python.readthedocs.io/en/latest/sdk/environment_variables.html>`_
+and the `general SDK configuration spec <https://opentelemetry.io/docs/languages/sdk-configuration/>`_.
+These variables are read by the SDK and exporter packages once they are installed and configured, and do not
+require any FastAPI-specific setup.
+
+Trace context propagation
+**************************
+Incoming trace context is extracted automatically. This instrumentation is built on top of the ASGI
+:class:`opentelemetry.instrumentation.asgi.OpenTelemetryMiddleware`, which reads the configured
+propagators (``tracecontext`` and ``baggage`` by default) from incoming request headers and continues
+the trace without any manual code. To use a different propagator (for example AWS X-Ray or B3), set
+the ``OTEL_PROPAGATORS`` environment variable; see the
+`propagators API docs <https://opentelemetry-python.readthedocs.io/en/latest/api/propagate.html>`_ for details.
+
+WebSocket support
+*******************
+WebSocket connections are instrumented as well as HTTP requests, since the underlying ASGI middleware
+handles both the ``http`` and ``websocket`` ASGI scope types. No additional configuration is required to
+trace WebSocket connections beyond the standard ``FastAPIInstrumentor.instrument_app(app)`` call.
+
+Logs
+******
+Logs are not captured automatically by this instrumentation. To correlate Python log records with the
+current trace and export them as OpenTelemetry log records/events, install and configure
+``opentelemetry-instrumentation-logging`` separately, and set ``OTEL_PYTHON_LOG_CORRELATION=true``
+(or pass ``set_logging_format=True`` to ``LoggingInstrumentor().instrument()``) to inject trace context
+into log records. See the
+`logging instrumentation docs <https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/logging/logging.html>`_
+for the full configuration options.
 
 API
 ---
