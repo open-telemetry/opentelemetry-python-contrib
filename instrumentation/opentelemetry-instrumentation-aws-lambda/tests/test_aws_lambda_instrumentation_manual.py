@@ -105,9 +105,7 @@ MOCK_LAMBDA_CONTEXT = MockLambdaContext(
 )
 
 MOCK_LAMBDA_CONTEXT_ATTRIBUTES = {
-    CLOUD_RESOURCE_ID: ":".join(
-        MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[:7]
-    ),
+    CLOUD_RESOURCE_ID: ":".join(MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[:7]),
     FAAS_INVOCATION_ID: MOCK_LAMBDA_CONTEXT.aws_request_id,
     CLOUD_ACCOUNT_ID: MOCK_LAMBDA_CONTEXT.invoked_function_arn.split(":")[4],
 }
@@ -117,18 +115,14 @@ MOCK_XRAY_TRACE_ID_STR = f"{MOCK_XRAY_TRACE_ID:x}"
 MOCK_XRAY_PARENT_SPAN_ID = 0x3328B8445A6DBAD2
 MOCK_XRAY_TRACE_CONTEXT_COMMON = f"Root={TRACE_ID_VERSION}-{MOCK_XRAY_TRACE_ID_STR[:TRACE_ID_FIRST_PART_LENGTH]}-{MOCK_XRAY_TRACE_ID_STR[TRACE_ID_FIRST_PART_LENGTH:]};Parent={MOCK_XRAY_PARENT_SPAN_ID:x}"
 MOCK_XRAY_TRACE_CONTEXT_SAMPLED = f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=1"
-MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED = (
-    f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=0"
-)
+MOCK_XRAY_TRACE_CONTEXT_NOT_SAMPLED = f"{MOCK_XRAY_TRACE_CONTEXT_COMMON};Sampled=0"
 
 # See more:
 # https://www.w3.org/TR/trace-context/#examples-of-http-traceparent-headers
 
 MOCK_W3C_TRACE_ID = 0x5CE0E9A56015FEC5AADFA328AE398115
 MOCK_W3C_PARENT_SPAN_ID = 0xAB54A98CEB1F0AD2
-MOCK_W3C_TRACE_CONTEXT_SAMPLED = (
-    f"00-{MOCK_W3C_TRACE_ID:x}-{MOCK_W3C_PARENT_SPAN_ID:x}-01"
-)
+MOCK_W3C_TRACE_CONTEXT_SAMPLED = f"00-{MOCK_W3C_TRACE_ID:x}-{MOCK_W3C_PARENT_SPAN_ID:x}-01"
 
 MOCK_W3C_TRACE_STATE_KEY = "vendor_specific_key"
 MOCK_W3C_TRACE_STATE_VALUE = "test_value"
@@ -154,9 +148,7 @@ def mock_execute_lambda(event=None, context=None):
 
     module_name, handler_name = os.environ[_HANDLER].rsplit(".", 1)
     handler_module = import_module(module_name.replace("/", "."))
-    return getattr(handler_module, handler_name)(
-        event, context or MOCK_LAMBDA_CONTEXT
-    )
+    return getattr(handler_module, handler_name)(event, context or MOCK_LAMBDA_CONTEXT)
 
 
 class TestAwsLambdaInstrumentorBase(TestBase):
@@ -217,9 +209,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         )
 
         parent_context = span.parent
-        self.assertEqual(
-            parent_context.trace_id, span.get_span_context().trace_id
-        )
+        self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
         self.assertEqual(parent_context.span_id, MOCK_XRAY_PARENT_SPAN_ID)
         self.assertTrue(parent_context.is_remote)
 
@@ -398,17 +388,11 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
                 assert spans
                 self.assertEqual(len(spans), 1)
                 span = spans[0]
-                self.assertEqual(
-                    span.get_span_context().trace_id, test.expected_traceid
-                )
+                self.assertEqual(span.get_span_context().trace_id, test.expected_traceid)
 
                 parent_context = span.parent
-                self.assertEqual(
-                    parent_context.trace_id, span.get_span_context().trace_id
-                )
-                self.assertEqual(
-                    parent_context.span_id, test.expected_parentid
-                )
+                self.assertEqual(parent_context.trace_id, span.get_span_context().trace_id)
+                self.assertEqual(parent_context.span_id, test.expected_parentid)
                 self.assertEqual(
                     len(parent_context.trace_state),
                     test.expected_trace_state_len,
@@ -469,9 +453,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertEqual(
-            span.attributes.get(HTTP_USER_AGENT), "lowercase-agent"
-        )
+        self.assertEqual(span.attributes.get(HTTP_USER_AGENT), "lowercase-agent")
         self.assertEqual(span.attributes.get(NET_HOST_NAME), "lowercase-host")
         self.assertEqual(span.attributes.get(HTTP_SCHEME), "http")
 
@@ -596,9 +578,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
         exc_env_patch.stop()
 
     @mock.patch("opentelemetry.instrumentation.aws_lambda.logger")
-    def test_lambda_handles_should_do_nothing_when_aws_lambda_environment_variables_not_present(
-        self, logger_mock
-    ):
+    def test_lambda_handles_should_do_nothing_when_aws_lambda_environment_variables_not_present(self, logger_mock):
         exc_env_patch = mock.patch.dict(
             "os.environ",
             {_HANDLER: "tests.mocks.lambda_function.handler"},
@@ -660,13 +640,7 @@ class TestAwsLambdaInstrumentor(TestAwsLambdaInstrumentorBase):
 
     def test_load_entry_point(self):
         self.assertIs(
-            next(
-                iter(
-                    entry_points(
-                        group="opentelemetry_instrumentor", name="aws-lambda"
-                    )
-                )
-            ).load(),
+            next(iter(entry_points(group="opentelemetry_instrumentor", name="aws-lambda"))).load(),
             AwsLambdaInstrumentor,
         )
 
@@ -852,9 +826,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         )
         self.assertEqual(consumer_span.name, "process my-queue")
         # Single record event should have no batch count attribute
-        self.assertNotIn(
-            MESSAGING_BATCH_MESSAGE_COUNT, consumer_span.attributes
-        )
+        self.assertNotIn(MESSAGING_BATCH_MESSAGE_COUNT, consumer_span.attributes)
         # No span links when messageAttributes is empty
         self.assertEqual(len(consumer_span.links), 0)
         # CONSUMER span is a child of the SERVER span
@@ -901,9 +873,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         consumer_span, _server_span, *_ = spans
         self.assertEqual(consumer_span.kind, SpanKind.CONSUMER)
 
-        self.assertEqual(
-            consumer_span.attributes.get(MESSAGING_BATCH_MESSAGE_COUNT), 2
-        )
+        self.assertEqual(consumer_span.attributes.get(MESSAGING_BATCH_MESSAGE_COUNT), 2)
         self.assertEqual(len(consumer_span.links), 2)
 
     def test_sqs_message_attributes_case_insensitive(self):
@@ -929,9 +899,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
             0xAB54A98CEB1F0AD2,
         )
 
-    @mock.patch.dict(
-        "os.environ", {_HANDLER: "tests.mocks.lambda_function.handler_exc"}
-    )
+    @mock.patch.dict("os.environ", {_HANDLER: "tests.mocks.lambda_function.handler_exc"})
     def test_sqs_event_exception(self):
         AwsLambdaInstrumentor().instrument()
 
@@ -945,9 +913,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
         self.assertEqual(consumer_span.status.status_code, StatusCode.ERROR)
         self.assertEqual(server_span.status.status_code, StatusCode.ERROR)
         # Both spans should have an exception event recorded
-        self.assertTrue(
-            any(e.name == "exception" for e in consumer_span.events)
-        )
+        self.assertTrue(any(e.name == "exception" for e in consumer_span.events))
         self.assertTrue(any(e.name == "exception" for e in server_span.events))
 
     def test_sqs_event_null_message_attrs(self):
@@ -1137,9 +1103,7 @@ class TestAwsLambdaInstrumentorMocks(TestAwsLambdaInstrumentorBase):
 
         # instrumentor re-raises the exception
         with self.assertRaises(Exception):
-            mock_execute_lambda(
-                {"requestContext": {"http": {"method": "GET"}}}
-            )
+            mock_execute_lambda({"requestContext": {"http": {"method": "GET"}}})
 
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)

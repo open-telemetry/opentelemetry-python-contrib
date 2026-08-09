@@ -124,9 +124,7 @@ class TestMysqlIntegration(TestBase):
         span = spans_list[0]
 
         # Check version and name in span's instrumentation info
-        self.assertEqualSpanInstrumentationScope(
-            span, opentelemetry.instrumentation.mysql
-        )
+        self.assertEqualSpanInstrumentationScope(span, opentelemetry.instrumentation.mysql)
 
         # check that no spans are generated after uninstrumen
         MySQLInstrumentor().uninstrument()
@@ -202,9 +200,7 @@ class TestMysqlIntegration(TestBase):
         self.assertEqual(kwargs["enable_attribute_commenter"], True)
 
     def test_instrument_connection_with_dbapi_sqlcomment_enabled(self):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -233,9 +229,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_stmt_enabled(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -265,9 +259,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_enabled_with_options(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -301,9 +293,7 @@ class TestMysqlIntegration(TestBase):
     def test_instrument_connection_with_dbapi_sqlcomment_not_enabled_default(
         self,
     ):
-        mock_connect_module, mock_connection, mock_cursor = (
-            make_mysql_commenter_mocks()
-        )
+        mock_connect_module, mock_connection, mock_cursor = make_mysql_commenter_mocks()
 
         with mock.patch(
             "opentelemetry.instrumentation.mysql.mysql.connector",
@@ -494,9 +484,7 @@ class TestMysqlIntegration(TestBase):
 
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
             self.assertEqual(span.attributes[SERVER_PORT], 3306)
             self.assertNotIn(DB_SYSTEM, span.attributes)
@@ -523,12 +511,8 @@ class TestMysqlIntegration(TestBase):
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "mysql")
             self.assertEqual(span.attributes[DB_NAME], "test")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_STATEMENT], "SELECT * FROM test"
-            )
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[DB_USER], "testuser")
             self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
             self.assertEqual(span.attributes[NET_PEER_PORT], 3306)
