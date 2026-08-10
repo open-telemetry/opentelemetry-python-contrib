@@ -12,6 +12,7 @@ from opentelemetry.instrumentation.grpc import (
     GrpcAioInstrumentorServer,
     aio_server_interceptor,
 )
+from opentelemetry.instrumentation.utils import suppress_instrumentation
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.semconv._incubating.attributes.net_attributes import (
     NET_PEER_IP,
@@ -53,6 +54,15 @@ class Servicer(GRPCTestServerServicer):
                 server_id=request.client_id,
                 response_data=data,
             )
+
+
+class SuppressAioRpcInterceptor(grpc.aio.ServerInterceptor):
+    """An interceptor which runs the rest of the server interceptor chain
+    with instrumentation suppressed."""
+
+    async def intercept_service(self, continuation, handler_call_details):
+        with suppress_instrumentation():
+            return await continuation(handler_call_details)
 
 
 async def run_with_test_server(runnable, servicer=Servicer(), interceptors=None):
@@ -318,6 +328,49 @@ class TestOpenTelemetryAioServerInterceptor(TestBase, IsolatedAsyncioTestCase):
         # Check the child span
         self.assertEqual(child_span.name, "child")
         self.assertEqual(parent_span.context.trace_id, child_span.context.trace_id)
+
+    async def test_suppress_instrumentation(self):
+        """Check that no span is created for a call when instrumentation
+        is suppressed."""
+        rpc_call = "/GRPCTestServer/SimpleMethod"
+
+        async def request(channel):
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            return await channel.unary_unary(rpc_call)(msg)
+
+        await run_with_test_server(
+            request,
+            interceptors=[
+                SuppressAioRpcInterceptor(),
+                aio_server_interceptor(),
+            ],
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
+
+    async def test_suppress_instrumentation_streaming(self):
+        """Check that no span is created for a streaming call when
+        instrumentation is suppressed."""
+        rpc_call = "/GRPCTestServer/ServerStreamingMethod"
+
+        async def request(channel):
+            request = Request(client_id=1, request_data="test")
+            msg = request.SerializeToString()
+            async for response in channel.unary_stream(rpc_call)(msg):
+                print(response)
+
+        await run_with_test_server(
+            request,
+            interceptors=[
+                SuppressAioRpcInterceptor(),
+                aio_server_interceptor(),
+            ],
+        )
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans_list), 0)
 
     async def test_span_lifetime(self):
         """Verify that the interceptor captures sub spans within the given
