@@ -59,6 +59,20 @@ class TestSqlalchemyInstrumentation(TestBase):
         super().tearDown()
         SQLAlchemyInstrumentor().uninstrument()
 
+    def test_operation_name_comment_or_whitespace_only(self):
+        # Regression: a comment-only or whitespace-only statement is truthy but has
+        # no tokens after leading-comment stripping; _operation_name must not raise
+        # IndexError and should fall back to the db name / vendor.
+        engine = create_engine("sqlite:///:memory:")
+        tracer = self.tracer_provider.get_tracer(__name__)
+        engine_tracer = EngineTracer(tracer, engine, mock.Mock())
+        self.assertEqual(
+            engine_tracer._operation_name("mydb", "/* comment only */"), "mydb"
+        )
+        self.assertEqual(
+            engine_tracer._operation_name(None, "   "), engine_tracer.vendor
+        )
+
     def test_trace_integration(self):
         engine = create_engine("sqlite:///:memory:")
         SQLAlchemyInstrumentor().instrument(
