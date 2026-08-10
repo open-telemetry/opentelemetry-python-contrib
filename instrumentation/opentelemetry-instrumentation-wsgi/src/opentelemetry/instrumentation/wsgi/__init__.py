@@ -278,6 +278,7 @@ from opentelemetry.util.http import (
     normalise_request_header_name,
     normalise_response_header_name,
     normalize_user_agent,
+    redact_query_string,
     redact_url,
     sanitize_method,
 )
@@ -324,6 +325,19 @@ class WSGIGetter(Getter[Dict[str, Any]]):
 wsgi_getter = WSGIGetter()
 
 
+def _redact_target(target: str) -> str:
+    """Redact sensitive query parameter values in a raw request target.
+
+    The target comes straight from the request line and may not be a valid
+    URL, so it is never parsed as one; only the part after its first "?" is
+    rewritten.
+    """
+    prefix, sep, query = target.partition("?")
+    if not sep:
+        return target
+    return f"{prefix}?{redact_query_string(query)}"
+
+
 # pylint: disable=too-many-branches
 def collect_request_attributes(
     environ: WSGIEnvironment,
@@ -368,8 +382,14 @@ def collect_request_attributes(
     if target is None:  # Note: `"" or None is None`
         target = environ.get("REQUEST_URI")
     if target:
+        # Redact sensitive query parameter values so they do not leak through
+        # `http.target`/`url.query`. `QUERY_STRING` is redacted separately
+        # since a server need not supply both.
+        target = _redact_target(target)
         path = environ.get("PATH_INFO")
         query = environ.get("QUERY_STRING")
+        if query:
+            query = redact_query_string(query)
         _set_http_target(result, target, path, query, sem_conv_opt_in_mode)
     else:
         # old semconv v1.20.0
