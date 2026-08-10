@@ -21,9 +21,7 @@ from opentelemetry.sdk.metrics.export import (
 
 @pytest.fixture
 def prom_rw():
-    return PrometheusRemoteWriteMetricsExporter(
-        "http://victoria:8428/api/v1/write"
-    )
+    return PrometheusRemoteWriteMetricsExporter("http://victoria:8428/api/v1/write")
 
 
 @pytest.fixture
@@ -34,13 +32,9 @@ def metric(request):
         type_ = random.choice(["gauge", "sum"])
 
     if type_ == "gauge":
-        return metric_util._generate_gauge(
-            "test.gauge", random.randint(0, 100)
-        )
+        return metric_util._generate_gauge("test.gauge", random.randint(0, 100))
     if type_ == "sum":
-        return metric_util._generate_sum(
-            "test.sum", random.randint(0, 9_999_999_999)
-        )
+        return metric_util._generate_sum("test.sum", random.randint(0, 9_999_999_999))
     if type_ == "histogram":
         return _generate_histogram("test_histogram")
 

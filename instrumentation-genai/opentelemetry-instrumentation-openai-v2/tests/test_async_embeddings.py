@@ -88,9 +88,7 @@ async def test_async_embeddings_with_dimensions(
     )
 
     # Verify dimensions attribute is set correctly
-    assert (
-        spans[0].attributes["gen_ai.embeddings.dimension.count"] == dimensions
-    )
+    assert spans[0].attributes["gen_ai.embeddings.dimension.count"] == dimensions
 
     # Verify actual embedding dimensions match the requested dimensions
     assert len(response.data[0].embedding) == dimensions
@@ -135,9 +133,7 @@ async def test_async_embeddings_with_batch_input(
 
 
 @pytest.mark.asyncio
-async def test_async_embeddings_error_handling(
-    span_exporter, metric_reader, instrument_no_content, vcr
-):
+async def test_async_embeddings_error_handling(span_exporter, metric_reader, instrument_no_content, vcr):
     """Test async embeddings error handling"""
     latest_experimental_enabled = is_experimental_mode()
     model_name = "non-existent-embedding-model"
@@ -200,11 +196,7 @@ async def test_async_embeddings_token_metrics(
 
     # Verify token usage metric
     token_metric = next(
-        (
-            m
-            for m in metric_data
-            if m.name == gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE
-        ),
+        (m for m in metric_data if m.name == gen_ai_metrics.GEN_AI_CLIENT_TOKEN_USAGE),
         None,
     )
     assert token_metric is not None
@@ -212,10 +204,7 @@ async def test_async_embeddings_token_metrics(
     # Find the input token data point
     input_token_point = None
     for point in token_metric.data.data_points:
-        if (
-            point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE]
-            == GenAIAttributes.GenAiTokenTypeValues.INPUT.value
-        ):
+        if point.attributes[GenAIAttributes.GEN_AI_TOKEN_TYPE] == GenAIAttributes.GenAiTokenTypeValues.INPUT.value:
             input_token_point = point
             break
 
@@ -256,6 +245,4 @@ async def test_async_embeddings_with_encoding_format(
     )
 
     # Verify encoding_format attribute is set correctly
-    assert spans[0].attributes["gen_ai.request.encoding_formats"] == (
-        encoding_format,
-    )
+    assert spans[0].attributes["gen_ai.request.encoding_formats"] == (encoding_format,)
