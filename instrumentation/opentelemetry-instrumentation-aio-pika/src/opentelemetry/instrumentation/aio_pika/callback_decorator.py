@@ -26,9 +26,7 @@ class CallbackDecorator:
         builder.set_message(message)
         return builder.build()
 
-    def decorate(
-        self, callback: Callable[[AbstractIncomingMessage], Any]
-    ) -> Callable[[AbstractIncomingMessage], Any]:
+    def decorate(self, callback: Callable[[AbstractIncomingMessage], Any]) -> Callable[[AbstractIncomingMessage], Any]:
         async def decorated(message: AbstractIncomingMessage):
             if not is_instrumentation_enabled():
                 return await callback(message)

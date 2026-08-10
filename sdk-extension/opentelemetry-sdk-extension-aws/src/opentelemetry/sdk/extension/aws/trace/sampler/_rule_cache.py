@@ -91,16 +91,12 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
             trace_state=trace_state,
         )
 
-    def update_sampling_rules(
-        self, new_sampling_rules: List[_SamplingRule]
-    ) -> None:
+    def update_sampling_rules(self, new_sampling_rules: List[_SamplingRule]) -> None:
         new_sampling_rules.sort()
         temp_rule_appliers: List[_SamplingRuleApplier] = []
         for sampling_rule in new_sampling_rules:
             if sampling_rule.RuleName == "":
-                _logger.debug(
-                    "sampling rule without rule name is not supported"
-                )
+                _logger.debug("sampling rule without rule name is not supported")
                 continue
             if sampling_rule.Version != 1:
                 _logger.debug(
@@ -108,17 +104,12 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
                     sampling_rule.RuleName,
                 )
                 continue
-            temp_rule_appliers.append(
-                _SamplingRuleApplier(
-                    sampling_rule, self.__client_id, self._clock
-                )
-            )
+            temp_rule_appliers.append(_SamplingRuleApplier(sampling_rule, self.__client_id, self._clock))
 
         with self.__cache_lock:
             # map list of rule appliers by each applier's sampling_rule name
             rule_applier_map: Dict[str, _SamplingRuleApplier] = {
-                applier.sampling_rule.RuleName: applier
-                for applier in self.__rule_appliers
+                applier.sampling_rule.RuleName: applier for applier in self.__rule_appliers
             }
 
             # If a sampling rule has not changed, keep its respective applier in the cache.
@@ -132,20 +123,14 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
             self.__rule_appliers = temp_rule_appliers
             self._last_modified = self._clock.now()
 
-    def update_sampling_targets(
-        self, sampling_targets_response: _SamplingTargetResponse
-    ):
-        targets: List[_SamplingTarget] = (
-            sampling_targets_response.SamplingTargetDocuments
-        )
+    def update_sampling_targets(self, sampling_targets_response: _SamplingTargetResponse):
+        targets: List[_SamplingTarget] = sampling_targets_response.SamplingTargetDocuments
 
         with self.__cache_lock:
             next_polling_interval = DEFAULT_TARGET_POLLING_INTERVAL_SECONDS
             min_polling_interval = None
 
-            target_map: Dict[str, _SamplingTarget] = {
-                target.RuleName: target for target in targets
-            }
+            target_map: Dict[str, _SamplingTarget] = {target.RuleName: target for target in targets}
 
             new_appliers: List[_SamplingRuleApplier] = []
             applier: _SamplingRuleApplier
@@ -155,10 +140,7 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
                     new_appliers.append(applier.with_target(target))
 
                     if target.Interval is not None:
-                        if (
-                            min_polling_interval is None
-                            or min_polling_interval > target.Interval
-                        ):
+                        if min_polling_interval is None or min_polling_interval > target.Interval:
                             min_polling_interval = target.Interval
                 else:
                     new_appliers.append(applier)
@@ -168,9 +150,7 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
             if min_polling_interval is not None:
                 next_polling_interval = min_polling_interval
 
-            last_rule_modification = self._clock.from_timestamp(
-                sampling_targets_response.LastRuleModification
-            )
+            last_rule_modification = self._clock.from_timestamp(sampling_targets_response.LastRuleModification)
             refresh_rules = last_rule_modification > self._last_modified
 
             return (refresh_rules, next_polling_interval)
@@ -184,8 +164,4 @@ class _RuleCache:  # pyright: ignore[reportUnusedClass]
 
     def expired(self) -> bool:
         with self.__cache_lock:
-            return (
-                self._clock.now()
-                > self._last_modified
-                + self._clock.time_delta(seconds=CACHE_TTL_SECONDS)
-            )
+            return self._clock.now() > self._last_modified + self._clock.time_delta(seconds=CACHE_TTL_SECONDS)
