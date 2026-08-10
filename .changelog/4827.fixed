@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-celery`: populate `celery.origin` and `celery.hostname` as distinct span attributes
