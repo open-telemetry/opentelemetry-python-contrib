@@ -8,17 +8,20 @@ These rules are additive to the shared instrumentation rules in the repo-root
 
 ## 0. Instrumentations Maintained Elsewhere
 
-GenAI instrumentations no longer live in this repository and are **not** updated here. They
-have moved to the [opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
-repository and receive all fixes and updates there:
+Development and releases for these GenAI instrumentations have moved to the
+[opentelemetry-python-genai](https://github.com/open-telemetry/opentelemetry-python-genai)
+repository. Direct new development and fixes there, not here:
 
 - `opentelemetry-instrumentation-genai-anthropic` (anthropic)
 - `opentelemetry-instrumentation-genai-claude-agent-sdk` (claude-agent-sdk)
 - `opentelemetry-instrumentation-genai-langchain` (langchain)
 - `opentelemetry-instrumentation-genai-weaviate-client` (weaviate-client)
+- `opentelemetry-instrumentation-genai-openai` (openai; only security patches in this repo, as `opentelemetry-instrumentation-openai-v2`)
+- `opentelemetry-instrumentation-genai-openai-agents` (openai-agents; only security patches in this repo, as `opentelemetry-instrumentation-openai-agents-v2`)
 
-Do not add, modify, or attempt to fix these instrumentations in this repository. Direct any changes
-to the `opentelemetry-python-genai` repo instead.
+Do not add, modify, or attempt to fix these instrumentations in this repository beyond security
+patches for the packages that still live here. Direct any other changes to the
+`opentelemetry-python-genai` repo instead.
 
 ## 1. Instrumentation Layer Boundary
 
@@ -51,6 +54,7 @@ hook without touching the environment.
 from opentelemetry.util.genai.completion_hook import load_completion_hook
 from opentelemetry.util.genai.handler import TelemetryHandler
 
+
 def _instrument(self, **kwargs):
     tracer_provider = kwargs.get("tracer_provider")
     meter_provider = kwargs.get("meter_provider")
@@ -60,7 +64,8 @@ def _instrument(self, **kwargs):
         tracer_provider=tracer_provider,
         meter_provider=meter_provider,
         logger_provider=logger_provider,
-        completion_hook=kwargs.get("completion_hook") or load_completion_hook(),
+        completion_hook=kwargs.get("completion_hook")
+        or load_completion_hook(),
     )
     # pass handler to each patch/wrapper function
 ```
@@ -70,7 +75,9 @@ def _instrument(self, **kwargs):
 Use `start_*()` and control span lifetime manually:
 
 ```python
-invocation = handler.start_inference(provider, request_model, server_address=..., server_port=...)
+invocation = handler.start_inference(
+    provider, request_model, server_address=..., server_port=...
+)
 invocation.temperature = ...
 try:
     response = client.call(...)
