@@ -21,9 +21,11 @@ Usage
 
     AsyncClickInstrumentor().instrument()
 
+
     @asyncclick.command()
     async def hello():
-        asyncclick.echo(f'Hello world!')
+        asyncclick.echo(f"Hello world!")
+
 
     if __name__ == "__main__":
         asyncio.run(hello())
@@ -121,9 +123,7 @@ async def _command_invoke_wrapper(
             span.set_status(StatusCode.ERROR, str(exc))
             if span.is_recording():
                 span.set_attribute(ERROR_TYPE, type(exc).__qualname__)
-                span.set_attribute(
-                    PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1)
-                )
+                span.set_attribute(PROCESS_EXIT_CODE, getattr(exc, "exit_code", 1))
             raise
 
 

@@ -16,9 +16,7 @@ class PublishDecorator:
         self._tracer = tracer
         self._exchange = exchange
 
-    def _get_publish_span(
-        self, message: AbstractMessage, routing_key: str
-    ) -> Optional[Span]:
+    def _get_publish_span(self, message: AbstractMessage, routing_key: str) -> Optional[Span]:
         builder = SpanBuilder(self._tracer)
         builder.set_as_producer()
         builder.set_destination(f"{self._exchange.name},{routing_key}")

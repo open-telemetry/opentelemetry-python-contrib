@@ -43,6 +43,4 @@ class AwsBeanstalkResourceDetectorTest(unittest.TestCase):
     def test_not_on_beanstalk(self, mock_path_exists):
         actual = AwsBeanstalkResourceDetector().detect()
         self.assertDictEqual(actual.attributes.copy(), {})
-        mock_path_exists.assert_called_once_with(
-            "/var/elasticbeanstalk/xray/environment.conf"
-        )
+        mock_path_exists.assert_called_once_with("/var/elasticbeanstalk/xray/environment.conf")
