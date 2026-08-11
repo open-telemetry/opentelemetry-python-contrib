@@ -104,8 +104,8 @@ class _BaseAioClientInterceptor(OpenTelemetryClientInterceptor):
             code = await call.code()
             details = await call.details()
 
-            # The response message is what the hook is documented to receive,
-            # and it is what the sync client and the streaming path both pass.
+            # The sync client and the aio streaming path both pass the response
+            # message to the hook; this path passed the status details instead.
             # grpc.aio caches the unary result, so awaiting the call here does
             # not consume it -- the caller's own await still yields it.
             response = None

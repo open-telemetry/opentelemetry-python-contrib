@@ -91,9 +91,13 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
     async def test_response_hook_not_called_on_error(self):
         """There is no response message to hand the hook when the RPC fails."""
         instrumentor = GrpcAioInstrumentorClient()
+        calls = []
+
+        def recording_hook(span, response):
+            calls.append(response)
 
         try:
-            instrumentor.instrument(response_hook=response_hook)
+            instrumentor.instrument(response_hook=recording_hook)
 
             channel = grpc.aio.insecure_channel("localhost:25565")
             stub = test_server_pb2_grpc.GRPCTestServerStub(channel)
@@ -101,10 +105,10 @@ class TestAioClientInterceptorWithHooks(TestBase, IsolatedAsyncioTestCase):
             with self.assertRaises(grpc.RpcError):
                 await simple_method(stub, error=True)
 
-            spans = self.memory_exporter.get_finished_spans()
-            self.assertEqual(len(spans), 1)
+            self.assertEqual(calls, [])
 
-            self.assertNotIn("response_data", spans[0].attributes)
+            # the span still has to be ended on the error path
+            self.assertEqual(len(self.memory_exporter.get_finished_spans()), 1)
         finally:
             instrumentor.uninstrument()
 
