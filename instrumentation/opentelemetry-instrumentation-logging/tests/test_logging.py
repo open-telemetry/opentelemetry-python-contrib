@@ -311,10 +311,18 @@ class TestLoggingInstrumentor(TestBase):
             logging.setLogRecordFactory(chained_onto)
 
     def test_uninstrument_restores_factory_when_nothing_chained(self):
-        original_factory = LoggingInstrumentor._old_factory
+        # Observe the pre-instrumentation factory rather than reading it back
+        # out of LoggingInstrumentor._old_factory: sourcing the expected value
+        # from the code under test would let this pass vacuously if that
+        # attribute were ever None. setUp() has already instrumented, so unwind
+        # once before taking the reading.
+        LoggingInstrumentor().uninstrument()
+        original_factory = logging.getLogRecordFactory()
+
+        LoggingInstrumentor().instrument()
+        self.assertIsNot(logging.getLogRecordFactory(), original_factory)
 
         LoggingInstrumentor().uninstrument()
-
         self.assertIs(logging.getLogRecordFactory(), original_factory)
 
     @mock.patch("logging.basicConfig")
