@@ -361,6 +361,18 @@ will replace the value of headers such as ``session-id`` and ``set-cookie`` with
 Note:
     The environment variable names used to capture HTTP headers are still experimental, and thus are subject to change.
 
+Semantic convention opt-in
+**************************
+This instrumentation emits the legacy, experimental HTTP and networking semantic conventions by default. Set
+``OTEL_SEMCONV_STABILITY_OPT_IN`` to one of the following values to change this behavior:
+
+* ``http`` - emit only the stable HTTP and networking semantic conventions.
+* ``http/dup`` - emit both the legacy and stable conventions, allowing for a phased migration.
+
+The environment variable accepts comma-separated values. See the
+`HTTP semantic convention stability migration
+<https://opentelemetry.io/docs/specs/semconv/non-normative/http-migration/>`_ for more details.
+
 API
 ---
 """

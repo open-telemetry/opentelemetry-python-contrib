@@ -244,6 +244,18 @@ The following sqlcomment key-values can be opted out of through ``commenter_opti
 | ``controller``    | Flask controller/endpoint name.                    | ``controller='home_view'``             |
 +-------------------+----------------------------------------------------+----------------------------------------+
 
+Semantic convention opt-in
+**************************
+This instrumentation emits the legacy, experimental HTTP and networking semantic conventions by default. Set
+``OTEL_SEMCONV_STABILITY_OPT_IN`` to one of the following values to change this behavior:
+
+* ``http`` - emit only the stable HTTP and networking semantic conventions.
+* ``http/dup`` - emit both the legacy and stable conventions, allowing for a phased migration.
+
+The environment variable accepts comma-separated values. See the
+`HTTP semantic convention stability migration
+<https://opentelemetry.io/docs/specs/semconv/non-normative/http-migration/>`_ for more details.
+
 API
 ---
 """
