@@ -135,6 +135,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
 
     _old_factory = None
     _our_factory = None
+    _injects_context = False
     _log_hook = None
     _logging_handler = None
 
@@ -219,6 +220,7 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
             return record
 
         LoggingInstrumentor._our_factory = record_factory
+        LoggingInstrumentor._injects_context = inject_context
         logging.setLogRecordFactory(record_factory)
 
         # Here we need to handle 3 scenarios:
@@ -280,15 +282,22 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 is LoggingInstrumentor._our_factory
             ):
                 logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
-            else:
+            elif LoggingInstrumentor._injects_context or callable(
+                LoggingInstrumentor._log_hook
+            ):
+                # Only worth reporting when the orphaned factory still mutates
+                # records. Without context injection or a log hook it returns
+                # the record untouched, so leaving it in the chain has no
+                # observable effect.
                 _logger.warning(
                     "Another log record factory was installed after "
                     "LoggingInstrumentor. Leaving the log record factory chain "
-                    "untouched to avoid unlinking it; log records may continue "
+                    "untouched to avoid unlinking it; log records will continue "
                     "to carry OpenTelemetry attributes."
                 )
         LoggingInstrumentor._old_factory = None
         LoggingInstrumentor._our_factory = None
+        LoggingInstrumentor._injects_context = False
 
         if LoggingInstrumentor._logging_handler:
             logging.getLogger().removeHandler(

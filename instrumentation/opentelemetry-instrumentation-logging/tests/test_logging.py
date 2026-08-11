@@ -282,6 +282,69 @@ class TestLoggingInstrumentor(TestBase):
         ]
         self.assertEqual(logging_handler_instances, [])
 
+    def test_uninstrument_warns_when_the_orphan_still_injects(self):
+        # The leftover factory keeps adding OTel attributes after uninstrument,
+        # which is a silent partial failure worth reporting.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument(inject_trace_context=True)
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return chained_onto(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            with self.caplog.at_level(level=logging.WARNING):
+                LoggingInstrumentor().uninstrument()
+
+            warnings = [
+                record.getMessage()
+                for record in self.caplog.records
+                if record.levelno == logging.WARNING
+                and "log record factory" in record.getMessage()
+            ]
+            self.assertEqual(len(warnings), 1)
+
+            record = logging.getLogRecordFactory()(
+                "n", logging.INFO, "p", 1, "m", None, None
+            )
+            self.assertTrue(hasattr(record, "otelTraceID"))
+        finally:
+            logging.setLogRecordFactory(baseline)
+
+    def test_uninstrument_stays_quiet_when_the_orphan_is_a_no_op(self):
+        # setUp() instruments without context injection or a log hook, so the
+        # orphaned factory returns records untouched and there is nothing to
+        # report.
+        LoggingInstrumentor().uninstrument()
+        baseline = logging.getLogRecordFactory()
+        LoggingInstrumentor().instrument()
+        chained_onto = logging.getLogRecordFactory()
+
+        def app_factory(*args, **kwargs):
+            return chained_onto(*args, **kwargs)
+
+        logging.setLogRecordFactory(app_factory)
+        try:
+            with self.caplog.at_level(level=logging.WARNING):
+                LoggingInstrumentor().uninstrument()
+
+            warnings = [
+                record.getMessage()
+                for record in self.caplog.records
+                if record.levelno == logging.WARNING
+                and "log record factory" in record.getMessage()
+            ]
+            self.assertEqual(warnings, [])
+
+            record = logging.getLogRecordFactory()(
+                "n", logging.INFO, "p", 1, "m", None, None
+            )
+            self.assertFalse(hasattr(record, "otelTraceID"))
+        finally:
+            logging.setLogRecordFactory(baseline)
+
     def test_uninstrument_keeps_factories_chained_after_ours(self):
         # A factory installed after ours must survive uninstrument: the
         # logging module offers no way to unlink a factory from the middle of
