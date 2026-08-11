@@ -120,9 +120,7 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
     ) -> bool:
         try:
             if exc_type is not None:
-                self._fail(
-                    str(exc_val), type(exc_val) if exc_val else Exception
-                )
+                self._fail(str(exc_val), type(exc_val) if exc_val else Exception)
         finally:
             self.close()
         return False
@@ -174,15 +172,11 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
             return None
         return _ResponseProxy(response, lambda: self._stop(None))
 
-    def _stop(
-        self, result: "ParsedResponse[TextFormatT] | Response | None"
-    ) -> None:
+    def _stop(self, result: "ParsedResponse[TextFormatT] | Response | None") -> None:
         if self._finalized:
             return
         with self._safe_instrumentation("response attribute extraction"):
-            _set_response_attributes(
-                self.invocation, result, self._capture_content
-            )
+            _set_response_attributes(self.invocation, result, self._capture_content)
         with self._safe_instrumentation("inference.stop"):
             self.invocation.stop()
         self._finalized = True
@@ -209,9 +203,7 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
 
     def process_event(self, event: "ResponseStreamEvent[TextFormatT]") -> None:
         event_type = event.type
-        response: "ParsedResponse[TextFormatT] | Response | None" = getattr(
-            event, "response", None
-        )
+        response: "ParsedResponse[TextFormatT] | Response | None" = getattr(event, "response", None)
 
         if response and not self.invocation.request_model:
             model = response.model
@@ -224,9 +216,7 @@ class ResponseStreamWrapper(Generic[TextFormatT]):
 
         if event_type in {"response.failed", "response.incomplete"}:
             with self._safe_instrumentation("response attribute extraction"):
-                _set_response_attributes(
-                    self.invocation, response, self._capture_content
-                )
+                _set_response_attributes(self.invocation, response, self._capture_content)
             self._fail(event_type, RuntimeError)
             return
 
@@ -286,9 +276,7 @@ class ResponseStreamManagerWrapper(Generic[TextFormatT]):
             return suppressed
 
     def parse(self) -> "ResponseStreamManagerWrapper[TextFormatT]":
-        raise NotImplementedError(
-            "ResponseStreamManagerWrapper.parse() is not implemented"
-        )
+        raise NotImplementedError("ResponseStreamManagerWrapper.parse() is not implemented")
 
     # TODO: Replace __getattr__ passthrough with wrapt.ObjectProxy in a future
     # cleanup once wrapt 2 typing support is available (wrapt PR #3903).
@@ -312,9 +300,7 @@ class AsyncResponseStreamWrapper(ResponseStreamWrapper[TextFormatT]):
     ) -> bool:
         try:
             if exc_type is not None:
-                self._fail(
-                    str(exc_val), type(exc_val) if exc_val else Exception
-                )
+                self._fail(str(exc_val), type(exc_val) if exc_val else Exception)
         finally:
             await self.close()
         return False
@@ -374,9 +360,7 @@ class AsyncResponseStreamManagerWrapper(Generic[TextFormatT]):
         self._manager = manager
         self._invocation = invocation
         self._capture_content = capture_content
-        self._stream_wrapper: (
-            AsyncResponseStreamWrapper[TextFormatT] | None
-        ) = None
+        self._stream_wrapper: AsyncResponseStreamWrapper[TextFormatT] | None = None
 
     async def __aenter__(self) -> AsyncResponseStreamWrapper[TextFormatT]:
         stream = await self._manager.__aenter__()
@@ -403,20 +387,14 @@ class AsyncResponseStreamManagerWrapper(Generic[TextFormatT]):
                     if suppressed:
                         await stream_wrapper.__aexit__(None, None, None)
                     else:
-                        await stream_wrapper.__aexit__(
-                            exc_type, exc_val, exc_tb
-                        )
+                        await stream_wrapper.__aexit__(exc_type, exc_val, exc_tb)
 
                 cleanup.push_async_callback(finalize_stream_wrapper)
-            suppressed = await self._manager.__aexit__(
-                exc_type, exc_val, exc_tb
-            )
+            suppressed = await self._manager.__aexit__(exc_type, exc_val, exc_tb)
             return suppressed
 
     def parse(self) -> "AsyncResponseStreamManagerWrapper[TextFormatT]":
-        raise NotImplementedError(
-            "AsyncResponseStreamManagerWrapper.parse() is not implemented"
-        )
+        raise NotImplementedError("AsyncResponseStreamManagerWrapper.parse() is not implemented")
 
     # TODO: Replace __getattr__ passthrough with wrapt.ObjectProxy in a future
     # cleanup once wrapt 2 typing support is available (wrapt PR #3903).

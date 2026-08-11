@@ -24,9 +24,7 @@ def simple_cidict() -> CIDict[str, int]:
         ({"A": 1, "a": 2}, 1),
     ],
 )
-def test_init_from_mapping(
-    data: Optional[dict[str, int]], expected_len: int
-) -> None:
+def test_init_from_mapping(data: Optional[dict[str, int]], expected_len: int) -> None:
     assert len(CIDict(data)) == expected_len
 
 
@@ -38,9 +36,7 @@ def test_init_from_mapping(
         ([("X", 1), ("x", 2)], 1),
     ],
 )
-def test_init_from_iterable_of_pairs(
-    pairs: list[tuple[str, int]], expected_len: int
-) -> None:
+def test_init_from_iterable_of_pairs(pairs: list[tuple[str, int]], expected_len: int) -> None:
     assert len(CIDict(pairs)) == expected_len
 
 
@@ -51,9 +47,7 @@ def test_init_non_string_keys() -> None:
 
 
 @pytest.mark.parametrize("key", ["Alpha", "alpha", "ALPHA", "aLpHa"])
-def test_getitem_case_insensitive(
-    simple_cidict: CIDict[str, int], key: str
-) -> None:
+def test_getitem_case_insensitive(simple_cidict: CIDict[str, int], key: str) -> None:
     assert simple_cidict[key] == 1
 
 
@@ -70,9 +64,7 @@ def test_getitem_missing_raises(simple_cidict: CIDict[str, int]) -> None:
         ("MiXeD", "mixed", 7),
     ],
 )
-def test_setitem_case_insensitive(
-    set_key: str, get_key: str, value: int
-) -> None:
+def test_setitem_case_insensitive(set_key: str, get_key: str, value: int) -> None:
     cid: CIDict[str, int] = CIDict()
     cid[set_key] = value
     assert cid[get_key] == value
@@ -87,9 +79,7 @@ def test_setitem_overwrite_updates_original_key() -> None:
 
 
 @pytest.mark.parametrize("del_key", ["Alpha", "alpha", "ALPHA", "aLpHa"])
-def test_delitem_case_insensitive(
-    simple_cidict: CIDict[str, int], del_key: str
-) -> None:
+def test_delitem_case_insensitive(simple_cidict: CIDict[str, int], del_key: str) -> None:
     del simple_cidict[del_key]
     assert "alpha" not in simple_cidict
     assert len(simple_cidict) == 2
@@ -112,9 +102,7 @@ def test_iter_yields_original_keys(simple_cidict: CIDict[str, int]) -> None:
         ("ALPHA", "Alpha"),
     ],
 )
-def test_original_key(
-    simple_cidict, lookup_key: str, expected_original: str
-) -> None:
+def test_original_key(simple_cidict, lookup_key: str, expected_original: str) -> None:
     assert simple_cidict.original_key(lookup_key) == expected_original
 
 
@@ -132,9 +120,7 @@ def test_normalized_items(simple_cidict: CIDict[str, int]) -> None:
         ("missing", False),
     ],
 )
-def test_contains(
-    simple_cidict: CIDict[str, int], key: str, expected: bool
-) -> None:
+def test_contains(simple_cidict: CIDict[str, int], key: str, expected: bool) -> None:
     assert (key in simple_cidict) is expected
 
 
@@ -151,9 +137,7 @@ def test_contains(
         (42, False),
     ],
 )
-def test_eq(
-    simple_cidict: CIDict[str, int], other: Any, expected: bool
-) -> None:
+def test_eq(simple_cidict: CIDict[str, int], other: Any, expected: bool) -> None:
     assert (simple_cidict == other) is expected
 
 

@@ -30,9 +30,7 @@ class TestMultiThreading(InstrumentationTest, WsgiTestBase):
         context is copied to the children threads
         """
         self.app = flask.Flask(__name__)
-        self.app.route("/multithreaded/<int:count>")(
-            self._multithreaded_endpoint
-        )
+        self.app.route("/multithreaded/<int:count>")(self._multithreaded_endpoint)
         client = Client(self.app, Response)
         count = 5
         resp = client.get(f"/multithreaded/{count}")
