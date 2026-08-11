@@ -265,14 +265,11 @@ class TestLoggingInstrumentor(TestBase):
             warnings = [
                 record.getMessage()
                 for record in self.caplog.records
-                if record.levelno == logging.WARNING
-                and "log record factory" in record.getMessage()
+                if record.levelno == logging.WARNING and "log record factory" in record.getMessage()
             ]
             self.assertEqual(len(warnings), 1)
 
-            record = logging.getLogRecordFactory()(
-                "n", logging.INFO, "p", 1, "m", None, None
-            )
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
             self.assertTrue(hasattr(record, "otelTraceID"))
         finally:
             logging.setLogRecordFactory(baseline)
@@ -297,14 +294,11 @@ class TestLoggingInstrumentor(TestBase):
             warnings = [
                 record.getMessage()
                 for record in self.caplog.records
-                if record.levelno == logging.WARNING
-                and "log record factory" in record.getMessage()
+                if record.levelno == logging.WARNING and "log record factory" in record.getMessage()
             ]
             self.assertEqual(warnings, [])
 
-            record = logging.getLogRecordFactory()(
-                "n", logging.INFO, "p", 1, "m", None, None
-            )
+            record = logging.getLogRecordFactory()("n", logging.INFO, "p", 1, "m", None, None)
             self.assertFalse(hasattr(record, "otelTraceID"))
         finally:
             logging.setLogRecordFactory(baseline)
@@ -327,11 +321,7 @@ class TestLoggingInstrumentor(TestBase):
             self.assertIs(logging.getLogRecordFactory(), app_factory)
             with self.caplog.at_level(level=logging.INFO):
                 logging.getLogger("test logger").info("hello")
-                records = [
-                    record
-                    for record in self.caplog.records
-                    if record.name == "test logger"
-                ]
+                records = [record for record in self.caplog.records if record.name == "test logger"]
                 self.assertEqual(len(records), 1)
                 self.assertEqual(records[0].custom_app_attribute, "some-value")
         finally:

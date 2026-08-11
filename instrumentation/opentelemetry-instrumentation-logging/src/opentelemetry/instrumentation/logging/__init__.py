@@ -235,13 +235,11 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
                 "log_handler_level",
                 _get_log_level(environ.get(OTEL_PYTHON_LOG_HANDLER_LEVEL)),
             )
-            logger_provider = get_logger_provider()
-            handler = _setup_logging_handler(
-                logger_provider=logger_provider,
+            LoggingInstrumentor._logging_handler = _setup_logging_handler(
+                logger_provider=get_logger_provider(),
                 log_code_attributes=log_code_attributes,
                 level=handler_level,
             )
-            LoggingInstrumentor._logging_handler = handler
 
     def _uninstrument(self, **kwargs):
         # `logging.setLogRecordFactory` is a single global slot that callers
@@ -252,14 +250,9 @@ class LoggingInstrumentor(BaseInstrumentor):  # pylint: disable=empty-docstring
         # removed from the middle without the cooperation of the factory that
         # wrapped it.
         if LoggingInstrumentor._our_factory is not None:
-            if (
-                logging.getLogRecordFactory()
-                is LoggingInstrumentor._our_factory
-            ):
+            if logging.getLogRecordFactory() is LoggingInstrumentor._our_factory:
                 logging.setLogRecordFactory(LoggingInstrumentor._old_factory)
-            elif LoggingInstrumentor._injects_context or callable(
-                LoggingInstrumentor._log_hook
-            ):
+            elif LoggingInstrumentor._injects_context or callable(LoggingInstrumentor._log_hook):
                 # Only worth reporting when the orphaned factory still mutates
                 # records. Without context injection or a log hook it returns
                 # the record untouched, so leaving it in the chain has no
