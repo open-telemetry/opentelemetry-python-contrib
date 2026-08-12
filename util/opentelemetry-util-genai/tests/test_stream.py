@@ -23,9 +23,9 @@ def test_stream_wrapper_abstract_method_signatures_match():
     )
 
     for method_name in method_names:
-        assert inspect.signature(
-            getattr(SyncStreamWrapper, method_name)
-        ) == inspect.signature(getattr(AsyncStreamWrapper, method_name))
+        assert inspect.signature(getattr(SyncStreamWrapper, method_name)) == inspect.signature(
+            getattr(AsyncStreamWrapper, method_name)
+        )
 
 
 class _FakeSyncStream:
@@ -155,9 +155,7 @@ def test_sync_stream_wrapper_close_stops_once():
 
 def test_sync_stream_wrapper_close_fails_with_close_error():
     error = RuntimeError("close failure")
-    wrapper = _TestSyncStreamWrapper(
-        _FakeSyncStream(chunks=["chunk"], close_error=error)
-    )
+    wrapper = _TestSyncStreamWrapper(_FakeSyncStream(chunks=["chunk"], close_error=error))
 
     with pytest.raises(RuntimeError, match="close failure"):
         wrapper.close()
@@ -259,9 +257,7 @@ def test_sync_stream_wrapper_stop_iteration_does_not_double_finalize():
 
 
 def test_sync_stream_wrapper_swallows_process_chunk_errors():
-    wrapper = _FailingSyncProcessStreamWrapper(
-        _FakeSyncStream(chunks=["chunk"])
-    )
+    wrapper = _FailingSyncProcessStreamWrapper(_FakeSyncStream(chunks=["chunk"]))
 
     assert next(wrapper) == "chunk"
     assert not wrapper._self_failures
@@ -404,9 +400,7 @@ def test_async_stream_wrapper_close_stops_once():
 def test_async_stream_wrapper_close_fails_with_close_error():
     async def exercise():
         error = RuntimeError("close failure")
-        wrapper = _TestAsyncStreamWrapper(
-            _FakeAsyncStream(chunks=["chunk"], close_error=error)
-        )
+        wrapper = _TestAsyncStreamWrapper(_FakeAsyncStream(chunks=["chunk"], close_error=error))
 
         with pytest.raises(RuntimeError, match="close failure"):
             await wrapper.close()
@@ -532,9 +526,7 @@ def test_async_stream_wrapper_stop_iteration_does_not_double_finalize():
 
 def test_async_stream_wrapper_swallows_process_chunk_errors():
     async def exercise():
-        wrapper = _FailingAsyncProcessStreamWrapper(
-            _FakeAsyncStream(chunks=["chunk"])
-        )
+        wrapper = _FailingAsyncProcessStreamWrapper(_FakeAsyncStream(chunks=["chunk"]))
 
         assert await anext(wrapper) == "chunk"
         assert not wrapper._self_failures

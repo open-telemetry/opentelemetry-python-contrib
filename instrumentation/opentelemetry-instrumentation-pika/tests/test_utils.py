@@ -40,13 +40,9 @@ class TestUtils(TestCase):
         destination = "myqueue"
         span_kind = mock.MagicMock(spec=SpanKind)
         get_value.return_value = None
-        _ = utils._get_span(
-            tracer, channel, properties, task_name, destination, span_kind
-        )
+        _ = utils._get_span(tracer, channel, properties, task_name, destination, span_kind)
         generate_span_name.assert_called_once()
-        tracer.start_span.assert_called_once_with(
-            name=generate_span_name.return_value, kind=span_kind
-        )
+        tracer.start_span.assert_called_once_with(name=generate_span_name.return_value, kind=span_kind)
         enrich_span.assert_called_once_with(
             tracer.start_span.return_value,
             channel,
@@ -71,9 +67,7 @@ class TestUtils(TestCase):
         span_kind = mock.MagicMock(spec=SpanKind)
         get_value.return_value = True
         ctx = mock.MagicMock()
-        span = utils._get_span(
-            tracer, channel, properties, task_name, span_kind, ctx
-        )
+        span = utils._get_span(tracer, channel, properties, task_name, span_kind, ctx)
         self.assertEqual(span, None)
         generate_span_name.assert_not_called()
         enrich_span.assert_not_called()
@@ -103,12 +97,8 @@ class TestUtils(TestCase):
             calls=[
                 mock.call(SpanAttributes.MESSAGING_SYSTEM, "rabbitmq"),
                 mock.call(SpanAttributes.MESSAGING_TEMP_DESTINATION, True),
-                mock.call(
-                    SpanAttributes.MESSAGING_DESTINATION, task_destination
-                ),
-                mock.call(
-                    SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id
-                ),
+                mock.call(SpanAttributes.MESSAGING_DESTINATION, task_destination),
+                mock.call(SpanAttributes.MESSAGING_MESSAGE_ID, properties.message_id),
                 mock.call(
                     SpanAttributes.MESSAGING_CONVERSATION_ID,
                     properties.correlation_id,
@@ -131,14 +121,10 @@ class TestUtils(TestCase):
         task_destination = "test.test"
         operation = mock.MagicMock()
         span = mock.MagicMock(spec=Span)
-        utils._enrich_span(
-            span, channel, properties, task_destination, operation
-        )
+        utils._enrich_span(span, channel, properties, task_destination, operation)
         span.set_attribute.assert_has_calls(
             any_order=True,
-            calls=[
-                mock.call(SpanAttributes.MESSAGING_OPERATION, operation.value)
-            ],
+            calls=[mock.call(SpanAttributes.MESSAGING_OPERATION, operation.value)],
         )
 
     @staticmethod
@@ -193,13 +179,9 @@ class TestUtils(TestCase):
         method.exchange = "test_exchange"
         properties = mock.MagicMock()
         mock_body = b"mock_body"
-        decorated_callback = utils._decorate_callback(
-            callback, tracer, mock_task_name
-        )
+        decorated_callback = utils._decorate_callback(callback, tracer, mock_task_name)
         retval = decorated_callback(channel, method, properties, mock_body)
-        extract.assert_called_once_with(
-            properties.headers, getter=utils._pika_getter
-        )
+        extract.assert_called_once_with(properties.headers, getter=utils._pika_getter)
         get_span.assert_called_once_with(
             tracer,
             channel,
@@ -209,12 +191,8 @@ class TestUtils(TestCase):
             task_name=mock_task_name,
             operation=MessagingOperationValues.RECEIVE,
         )
-        use_span.assert_called_once_with(
-            get_span.return_value, end_on_exit=True
-        )
-        callback.assert_called_once_with(
-            channel, method, properties, mock_body
-        )
+        use_span.assert_called_once_with(get_span.return_value, end_on_exit=True)
+        callback.assert_called_once_with(channel, method, properties, mock_body)
         self.assertEqual(retval, callback.return_value)
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
@@ -236,13 +214,9 @@ class TestUtils(TestCase):
         mock_body = b"mock_body"
         consume_hook = mock.MagicMock()
 
-        decorated_callback = utils._decorate_callback(
-            callback, tracer, mock_task_name, consume_hook
-        )
+        decorated_callback = utils._decorate_callback(callback, tracer, mock_task_name, consume_hook)
         retval = decorated_callback(channel, method, properties, mock_body)
-        extract.assert_called_once_with(
-            properties.headers, getter=utils._pika_getter
-        )
+        extract.assert_called_once_with(properties.headers, getter=utils._pika_getter)
         get_span.assert_called_once_with(
             tracer,
             channel,
@@ -252,15 +226,9 @@ class TestUtils(TestCase):
             task_name=mock_task_name,
             operation=MessagingOperationValues.RECEIVE,
         )
-        use_span.assert_called_once_with(
-            get_span.return_value, end_on_exit=True
-        )
-        consume_hook.assert_called_once_with(
-            get_span.return_value, mock_body, properties
-        )
-        callback.assert_called_once_with(
-            channel, method, properties, mock_body
-        )
+        use_span.assert_called_once_with(get_span.return_value, end_on_exit=True)
+        consume_hook.assert_called_once_with(get_span.return_value, mock_body, properties)
+        callback.assert_called_once_with(channel, method, properties, mock_body)
         self.assertEqual(retval, callback.return_value)
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
@@ -279,12 +247,8 @@ class TestUtils(TestCase):
         routing_key = "test-routing-key"
         properties = mock.MagicMock()
         mock_body = b"mock_body"
-        decorated_basic_publish = utils._decorate_basic_publish(
-            callback, channel, tracer
-        )
-        retval = decorated_basic_publish(
-            exchange_name, routing_key, mock_body, properties
-        )
+        decorated_basic_publish = utils._decorate_basic_publish(callback, channel, tracer)
+        retval = decorated_basic_publish(exchange_name, routing_key, mock_body, properties)
         get_span.assert_called_once_with(
             tracer,
             channel,
@@ -294,13 +258,9 @@ class TestUtils(TestCase):
             task_name="(temporary)",
             operation=None,
         )
-        use_span.assert_called_once_with(
-            get_span.return_value, end_on_exit=True
-        )
+        use_span.assert_called_once_with(get_span.return_value, end_on_exit=True)
         inject.assert_called_once_with(properties.headers)
-        callback.assert_called_once_with(
-            exchange_name, routing_key, mock_body, properties, False
-        )
+        callback.assert_called_once_with(exchange_name, routing_key, mock_body, properties, False)
         self.assertEqual(retval, callback.return_value)
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
@@ -319,14 +279,10 @@ class TestUtils(TestCase):
         channel = mock.MagicMock(spec=Channel)
         method = mock.MagicMock(spec=Basic.Deliver)
         mock_body = b"mock_body"
-        decorated_basic_publish = utils._decorate_basic_publish(
-            callback, channel, tracer
-        )
+        decorated_basic_publish = utils._decorate_basic_publish(callback, channel, tracer)
         retval = decorated_basic_publish(channel, method, body=mock_body)
         basic_properties.assert_called_once_with(BasicProperties, headers={})
-        use_span.assert_called_once_with(
-            get_span.return_value, end_on_exit=True
-        )
+        use_span.assert_called_once_with(get_span.return_value, end_on_exit=True)
         inject.assert_called_once_with(basic_properties.return_value.headers)
         self.assertEqual(retval, callback.return_value)
 
@@ -343,12 +299,8 @@ class TestUtils(TestCase):
         properties = mock.MagicMock()
         mock_body = b"mock_body"
 
-        decorated_basic_publish = utils._decorate_basic_publish(
-            callback, channel, tracer
-        )
-        decorated_basic_publish(
-            exchange_name, routing_key, mock_body, properties
-        )
+        decorated_basic_publish = utils._decorate_basic_publish(callback, channel, tracer)
+        decorated_basic_publish(exchange_name, routing_key, mock_body, properties)
 
         get_span.assert_called_once_with(
             tracer,
@@ -378,12 +330,8 @@ class TestUtils(TestCase):
         mock_body = b"mock_body"
         publish_hook = mock.MagicMock()
 
-        decorated_basic_publish = utils._decorate_basic_publish(
-            callback, channel, tracer, publish_hook
-        )
-        retval = decorated_basic_publish(
-            exchange_name, routing_key, mock_body, properties
-        )
+        decorated_basic_publish = utils._decorate_basic_publish(callback, channel, tracer, publish_hook)
+        retval = decorated_basic_publish(exchange_name, routing_key, mock_body, properties)
         get_span.assert_called_once_with(
             tracer,
             channel,
@@ -393,16 +341,10 @@ class TestUtils(TestCase):
             task_name="(temporary)",
             operation=None,
         )
-        use_span.assert_called_once_with(
-            get_span.return_value, end_on_exit=True
-        )
+        use_span.assert_called_once_with(get_span.return_value, end_on_exit=True)
         inject.assert_called_once_with(properties.headers)
-        publish_hook.assert_called_once_with(
-            get_span.return_value, mock_body, properties
-        )
-        callback.assert_called_once_with(
-            exchange_name, routing_key, mock_body, properties, False
-        )
+        publish_hook.assert_called_once_with(get_span.return_value, mock_body, properties)
+        callback.assert_called_once_with(exchange_name, routing_key, mock_body, properties, False)
         self.assertEqual(retval, callback.return_value)
 
     @mock.patch("opentelemetry.instrumentation.pika.utils._get_span")
@@ -427,12 +369,8 @@ class TestUtils(TestCase):
         mocked_span.is_recording.return_value = False
         get_span.return_value = mocked_span
 
-        decorated_basic_publish = utils._decorate_basic_publish(
-            callback, channel, tracer, publish_hook
-        )
-        retval = decorated_basic_publish(
-            exchange_name, routing_key, mock_body, properties
-        )
+        decorated_basic_publish = utils._decorate_basic_publish(callback, channel, tracer, publish_hook)
+        retval = decorated_basic_publish(exchange_name, routing_key, mock_body, properties)
         get_span.assert_called_once_with(
             tracer,
             channel,
@@ -442,16 +380,10 @@ class TestUtils(TestCase):
             task_name="(temporary)",
             operation=None,
         )
-        use_span.assert_called_once_with(
-            get_span.return_value, end_on_exit=True
-        )
+        use_span.assert_called_once_with(get_span.return_value, end_on_exit=True)
         inject.assert_called_once_with(properties.headers)
-        publish_hook.assert_called_once_with(
-            get_span.return_value, mock_body, properties
-        )
-        callback.assert_called_once_with(
-            exchange_name, routing_key, mock_body, properties, False
-        )
+        publish_hook.assert_called_once_with(get_span.return_value, mock_body, properties)
+        callback.assert_called_once_with(exchange_name, routing_key, mock_body, properties, False)
         self.assertEqual(retval, callback.return_value)
 
     # pylint: disable=too-many-statements
@@ -482,17 +414,13 @@ class TestUtils(TestCase):
         properties = mock.MagicMock()
         evt = _ConsumerDeliveryEvt(method, properties, b"mock_body")
         generator_info.pending_events.popleft.return_value = evt
-        proxy = utils.ReadyMessagesDequeProxy(
-            generator_info.pending_events, generator_info, tracer, consume_hook
-        )
+        proxy = utils.ReadyMessagesDequeProxy(generator_info.pending_events, generator_info, tracer, consume_hook)
 
         # First call (no detach cleanup)
         res = proxy.popleft()
         self.assertEqual(res, evt)
         generator_info.pending_events.popleft.assert_called_once()
-        extract.assert_called_once_with(
-            properties.headers, getter=utils._pika_getter
-        )
+        extract.assert_called_once_with(properties.headers, getter=utils._pika_getter)
         context_get_current.assert_called_once()
         self.assertEqual(context_attach.call_count, 2)
         self.assertEqual(context_detach.call_count, 1)
@@ -521,9 +449,7 @@ class TestUtils(TestCase):
         res = proxy.popleft()
         self.assertEqual(res, evt)
         generator_info.pending_events.popleft.assert_called_once()
-        extract.assert_called_once_with(
-            properties.headers, getter=utils._pika_getter
-        )
+        extract.assert_called_once_with(properties.headers, getter=utils._pika_getter)
         context_get_current.assert_called_once()
         self.assertEqual(context_attach.call_count, 2)
         self.assertEqual(context_detach.call_count, 2)
