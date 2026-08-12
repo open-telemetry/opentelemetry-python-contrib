@@ -1,5 +1,9 @@
 [build-system]
-requires = ["hatchling"]
+# hatchling >= 1.27 is required to emit Metadata-Version 2.4 when the
+# PEP 639 License-Expression/License-File fields are present. Older
+# hatchling versions write Metadata-Version 2.3 together with those fields,
+# producing wheels that packaging validators (e.g. twine check) reject.
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
