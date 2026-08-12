@@ -35,16 +35,8 @@ class TestMarker(TestCase):
         Specifiers spec its comparisons "use the PEP 440 version comparison
         rules when those are defined (that is when both sides have a valid
         version specifier)"."""
-        self.assertTrue(
-            Marker('python_version >= "3.0"').evaluate(
-                {"python_version": "3.12"}
-            )
-        )
-        self.assertFalse(
-            Marker('python_version >= "3.20"').evaluate(
-                {"python_version": "3.12"}
-            )
-        )
+        self.assertTrue(Marker('python_version >= "3.0"').evaluate({"python_version": "3.12"}))
+        self.assertFalse(Marker('python_version >= "3.20"').evaluate({"python_version": "3.12"}))
 
     def test_and_or(self):
         """PEP 508 marker grammar -- markers combine with boolean operators
@@ -52,12 +44,8 @@ class TestMarker(TestCase):
             marker_and = marker_expr 'and' marker_expr | marker_expr
             marker_or  = marker_and 'or' marker_and | marker_and"""
         marker = Marker('python_version >= "3.0" and extra == "instruments"')
-        self.assertTrue(
-            marker.evaluate({"python_version": "3.12", "extra": "instruments"})
-        )
-        self.assertFalse(
-            marker.evaluate({"python_version": "3.12", "extra": "other"})
-        )
+        self.assertTrue(marker.evaluate({"python_version": "3.12", "extra": "instruments"}))
+        self.assertFalse(marker.evaluate({"python_version": "3.12", "extra": "other"}))
 
         marker = Marker('extra == "a" or extra == "b"')
         self.assertTrue(marker.evaluate({"extra": "b"}))
@@ -67,15 +55,9 @@ class TestMarker(TestCase):
         marker_expr (capture/action annotations elided):
             marker_expr = marker_var marker_op marker_var | '(' marker ')'
         so an 'or' can be nested inside an 'and'."""
-        marker = Marker(
-            '(extra == "a" or extra == "b") and python_version >= "3.0"'
-        )
-        self.assertTrue(
-            marker.evaluate({"extra": "a", "python_version": "3.12"})
-        )
-        self.assertFalse(
-            marker.evaluate({"extra": "c", "python_version": "3.12"})
-        )
+        marker = Marker('(extra == "a" or extra == "b") and python_version >= "3.0"')
+        self.assertTrue(marker.evaluate({"extra": "a", "python_version": "3.12"}))
+        self.assertFalse(marker.evaluate({"extra": "c", "python_version": "3.12"}))
 
     def test_string_ordering_operators(self):
         """PyPA Dependency Specifiers spec (supersedes PEP 508) on ordered
