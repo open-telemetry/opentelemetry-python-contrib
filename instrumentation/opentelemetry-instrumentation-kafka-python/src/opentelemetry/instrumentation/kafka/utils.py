@@ -33,16 +33,6 @@ class KafkaPropertiesExtractor:
         return KafkaPropertiesExtractor._extract_argument("topic", 0, "unknown", args, kwargs)
 
     @staticmethod
-    def extract_send_value(args, kwargs):
-        """extract value from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument("value", 1, None, args, kwargs)
-
-    @staticmethod
-    def extract_send_key(args, kwargs):
-        """extract key from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument("key", 2, None, args, kwargs)
-
-    @staticmethod
     def extract_send_headers(args, kwargs):
         """extract headers from `send` method arguments in KafkaProducer class"""
         return KafkaPropertiesExtractor._extract_argument("headers", 3, None, args, kwargs)
