@@ -126,10 +126,10 @@ from collections.abc import Sequence
 from typing import Collection
 
 import sqlalchemy
-from packaging.version import parse as parse_version
 from sqlalchemy.engine.base import Engine
 from wrapt import wrap_function_wrapper as _w
 
+from opentelemetry.instrumentation._packaging.version import Version
 from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
@@ -236,7 +236,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             ),
         )
         # sqlalchemy.engine.create is not present in earlier versions of sqlalchemy (which we support)
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
+        if Version(sqlalchemy.__version__).release >= (1, 4):
             _w(
                 "sqlalchemy.engine.create",
                 "create_engine",
@@ -253,7 +253,7 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
             "Engine.connect",
             _wrap_connect(tracer),
         )
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
+        if Version(sqlalchemy.__version__).release >= (1, 4):
             _w(
                 "sqlalchemy.ext.asyncio",
                 "create_async_engine",
@@ -292,9 +292,9 @@ class SQLAlchemyInstrumentor(BaseInstrumentor):
     def _uninstrument(self, **kwargs):
         unwrap(sqlalchemy, "create_engine")
         unwrap(sqlalchemy.engine, "create_engine")
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
+        if Version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.engine.create, "create_engine")
         unwrap(Engine, "connect")
-        if parse_version(sqlalchemy.__version__).release >= (1, 4):
+        if Version(sqlalchemy.__version__).release >= (1, 4):
             unwrap(sqlalchemy.ext.asyncio, "create_async_engine")
         EngineTracer.remove_all_event_listeners()
