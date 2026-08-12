@@ -155,24 +155,18 @@ def _tokenize(marker: str) -> List[Tuple[str, str]]:
         if char in ("'", '"'):
             end = marker.find(char, index + 1)
             if end == -1:
-                raise InvalidMarker(
-                    f"Unterminated string in marker: {marker!r}"
-                )
+                raise InvalidMarker(f"Unterminated string in marker: {marker!r}")
             tokens.append(("STR", marker[index + 1 : end]))
             index = end + 1
             continue
-        matched_operator = next(
-            (op for op in _OPERATORS if marker.startswith(op, index)), None
-        )
+        matched_operator = next((op for op in _OPERATORS if marker.startswith(op, index)), None)
         if matched_operator is not None:
             tokens.append(("OP", matched_operator))
             index += len(matched_operator)
             continue
         if char.isalpha() or char == "_":
             start = index
-            while index < length and (
-                marker[index].isalnum() or marker[index] in "_."
-            ):
+            while index < length and (marker[index].isalnum() or marker[index] in "_."):
                 index += 1
             word = marker[start:index]
             lowered = word.lower()
@@ -185,9 +179,7 @@ def _tokenize(marker: str) -> List[Tuple[str, str]]:
             else:
                 tokens.append(("VAR", word))
             continue
-        raise InvalidMarker(
-            f"Unexpected character {char!r} in marker: {marker!r}"
-        )
+        raise InvalidMarker(f"Unexpected character {char!r} in marker: {marker!r}")
     return tokens
 
 
@@ -236,9 +228,7 @@ class _Parser:
             node = self._parse_or()
             closing = self._next()
             if closing[0] != "RPAREN":
-                raise InvalidMarker(
-                    f"Expected ')' in marker: {self._marker!r}"
-                )
+                raise InvalidMarker(f"Expected ')' in marker: {self._marker!r}")
             return node
         return self._parse_comparison()
 
@@ -253,9 +243,7 @@ class _Parser:
         if token[0] == "NOT":
             following = self._next()
             if following != ("OP", "in"):
-                raise InvalidMarker(
-                    f"Expected 'not in' in marker: {self._marker!r}"
-                )
+                raise InvalidMarker(f"Expected 'not in' in marker: {self._marker!r}")
             return "not in"
         if token[0] == "OP":
             return token[1]
@@ -267,9 +255,7 @@ class _Parser:
             return ("str", token[1])
         if token[0] == "VAR":
             if token[1] not in _VARIABLES:
-                raise InvalidMarker(
-                    f"Unknown marker variable {token[1]!r}: {self._marker!r}"
-                )
+                raise InvalidMarker(f"Unknown marker variable {token[1]!r}: {self._marker!r}")
             return ("var", token[1])
         raise InvalidMarker(f"Expected value in marker: {self._marker!r}")
 
@@ -314,18 +300,14 @@ def _evaluate(node: _Node, environment: Mapping[str, str]) -> bool:
         try:
             lhs_value = environment[key]
         except KeyError as exc:
-            raise UndefinedEnvironmentName(
-                f"{key!r} does not exist in evaluation environment."
-            ) from exc
+            raise UndefinedEnvironmentName(f"{key!r} does not exist in evaluation environment.") from exc
         rhs_value = rhs[1]
     else:
         key = rhs[1]
         try:
             rhs_value = environment[key]
         except KeyError as exc:
-            raise UndefinedEnvironmentName(
-                f"{key!r} does not exist in evaluation environment."
-            ) from exc
+            raise UndefinedEnvironmentName(f"{key!r} does not exist in evaluation environment.") from exc
         lhs_value = lhs[1]
     return _eval_op(lhs_value, op, rhs_value, key)
 
@@ -340,9 +322,7 @@ class Marker:
     def __repr__(self) -> str:
         return f"<Marker('{self}')>"
 
-    def evaluate(
-        self, environment: Optional[Mapping[str, str]] = None
-    ) -> bool:
+    def evaluate(self, environment: Optional[Mapping[str, str]] = None) -> bool:
         current: Dict[str, str] = default_environment()
         current["extra"] = ""
         if environment is not None:
