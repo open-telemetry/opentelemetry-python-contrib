@@ -69,10 +69,7 @@ def _version_join(components: List[str]) -> str:
 
 
 def _is_not_suffix(segment: str) -> bool:
-    return not any(
-        segment.startswith(prefix)
-        for prefix in ("dev", "a", "b", "rc", "post")
-    )
+    return not any(segment.startswith(prefix) for prefix in ("dev", "a", "b", "rc", "post"))
 
 
 def _numeric_prefix_len(split: List[str]) -> int:
@@ -116,9 +113,7 @@ def _post_base(version: Version) -> Version:
 class Specifier:
     """A single PEP 440 specifier, e.g. ``>=1.0`` or ``==1.4.*``."""
 
-    def __init__(
-        self, spec: str = "", prereleases: Optional[bool] = None
-    ) -> None:
+    def __init__(self, spec: str = "", prereleases: Optional[bool] = None) -> None:
         spec = spec.strip()
         operator = ""
         for candidate in _OPERATORS:
@@ -142,10 +137,7 @@ class Specifier:
             except InvalidVersion as exc:
                 raise InvalidSpecifier(f"Invalid specifier: {spec!r}") from exc
             if wildcard and (
-                parsed.pre is not None
-                or parsed.is_postrelease
-                or parsed.is_devrelease
-                or parsed.local is not None
+                parsed.pre is not None or parsed.is_postrelease or parsed.is_devrelease or parsed.local is not None
             ):
                 raise InvalidSpecifier(f"Invalid specifier: {spec!r}")
             if operator == "~=" and len(parsed.release) < 2:
@@ -199,13 +191,9 @@ class Specifier:
         return self._spec == other._spec
 
     def _compare_compatible(self, prospective: Version, spec: str) -> bool:
-        prefix = _version_join(
-            list(takewhile(_is_not_suffix, _version_split(spec)))[:-1]
-        )
+        prefix = _version_join(list(takewhile(_is_not_suffix, _version_split(spec)))[:-1])
         prefix += ".*"
-        return self._compare_greater_than_equal(
-            prospective, spec
-        ) and self._compare_equal(prospective, prefix)
+        return self._compare_greater_than_equal(prospective, spec) and self._compare_equal(prospective, prefix)
 
     @staticmethod
     def _compare_equal(prospective: Version, spec: str) -> bool:
@@ -241,11 +229,7 @@ class Specifier:
         spec = Version(spec_str)
         if not prospective < spec:
             return False
-        if (
-            not spec.is_prerelease
-            and prospective.is_prerelease
-            and prospective >= _earliest_prerelease(spec)
-        ):
+        if not spec.is_prerelease and prospective.is_prerelease and prospective >= _earliest_prerelease(spec):
             return False
         return True
 
@@ -254,23 +238,14 @@ class Specifier:
         spec = Version(spec_str)
         if not prospective > spec:
             return False
-        if (
-            not spec.is_postrelease
-            and prospective.is_postrelease
-            and _post_base(prospective) == spec
-        ):
+        if not spec.is_postrelease and prospective.is_postrelease and _post_base(prospective) == spec:
             return False
-        if (
-            prospective.local is not None
-            and Version(prospective.public) == spec
-        ):
+        if prospective.local is not None and Version(prospective.public) == spec:
             return False
         return True
 
     @staticmethod
-    def _compare_arbitrary(
-        prospective: Union[Version, str], spec: str
-    ) -> bool:
+    def _compare_arbitrary(prospective: Union[Version, str], spec: str) -> bool:
         return str(prospective).lower() == str(spec).lower()
 
     def _operator_callable(self, prospective: Version, spec: str) -> bool:
@@ -284,9 +259,7 @@ class Specifier:
             ">": self._compare_greater_than,
         }[self.operator](prospective, spec)
 
-    def contains(
-        self, item: Union[str, Version], prereleases: Optional[bool] = None
-    ) -> bool:
+    def contains(self, item: Union[str, Version], prereleases: Optional[bool] = None) -> bool:
         return bool(list(self.filter([item], prereleases=prereleases)))
 
     def filter(
@@ -296,16 +269,12 @@ class Specifier:
     ) -> Iterator[Union[str, Version]]:
         found_prereleases: List[Union[str, Version]] = []
         found_non_prereleases = False
-        include_prereleases = (
-            prereleases if prereleases is not None else self.prereleases
-        )
+        include_prereleases = prereleases if prereleases is not None else self.prereleases
 
         for version in iterable:
             parsed_version = _coerce_version(version)
             if parsed_version is None:
-                if self.operator == "===" and self._compare_arbitrary(
-                    version, self.version
-                ):
+                if self.operator == "===" and self._compare_arbitrary(version, self.version):
                     yield version
                 continue
             if self.operator == "===":
@@ -321,24 +290,16 @@ class Specifier:
                 elif prereleases is None and self._prereleases is not False:
                     found_prereleases.append(version)
 
-        if (
-            not found_non_prereleases
-            and prereleases is None
-            and self._prereleases is not False
-        ):
+        if not found_non_prereleases and prereleases is None and self._prereleases is not False:
             yield from found_prereleases
 
 
 class SpecifierSet:
     """A comma-separated set of :class:`Specifier` instances, ANDed together."""
 
-    def __init__(
-        self, specifiers: str = "", prereleases: Optional[bool] = None
-    ) -> None:
+    def __init__(self, specifiers: str = "", prereleases: Optional[bool] = None) -> None:
         split = [s.strip() for s in specifiers.split(",") if s.strip()]
-        self._specs: Tuple[Specifier, ...] = tuple(
-            Specifier(spec) for spec in split
-        )
+        self._specs: Tuple[Specifier, ...] = tuple(Specifier(spec) for spec in split)
         self._has_arbitrary = "===" in specifiers
         self._prereleases = prereleases
 
@@ -387,9 +348,7 @@ class SpecifierSet:
         version = _coerce_version(item)
         if version is not None and installed and version.is_prerelease:
             prereleases = True
-        if version is None or (
-            self._has_arbitrary and not isinstance(item, Version)
-        ):
+        if version is None or (self._has_arbitrary and not isinstance(item, Version)):
             check_item: Union[str, Version] = item
         else:
             check_item = version
@@ -419,12 +378,7 @@ class SpecifierSet:
             return iter(iterable)
         if prereleases is False:
             return iter(
-                item
-                for item in iterable
-                if (
-                    (version := _coerce_version(item)) is None
-                    or not version.is_prerelease
-                )
+                item for item in iterable if ((version := _coerce_version(item)) is None or not version.is_prerelease)
             )
         return self._prefer_final_releases(iterable)
 

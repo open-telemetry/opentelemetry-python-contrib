@@ -15,7 +15,7 @@ class TestRequirement(TestCase):
         "versionspec"; the version comparison operators are
         "version_cmp = wsp* '<' | '<=' | '!=' | '==' | '>=' | '>' | '~=' |
         '==='" and "Versions may be specified according to the PEP 440
-        rules.\" """
+        rules.\""""
         req = Requirement("flask >= 2.2.0, < 4.0")
         self.assertEqual(req.name, "flask")
         self.assertEqual(str(req.specifier), "<4.0,>=2.2.0")
@@ -42,7 +42,7 @@ class TestRequirement(TestCase):
 
     def test_extras(self):
         """PEP 508 extras grammar: "extras = '[' wsp* extras_list? wsp* ']'"
-        with "extras_list = identifier (wsp* ',' wsp* identifier)*.\" """
+        with "extras_list = identifier (wsp* ',' wsp* identifier)*.\""""
         req = Requirement("requests[security,socks] >= 2.0")
         self.assertEqual(req.name, "requests")
         self.assertEqual(req.extras, {"security", "socks"})

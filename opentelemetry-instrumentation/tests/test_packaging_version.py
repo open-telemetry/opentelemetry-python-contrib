@@ -37,7 +37,7 @@ class TestVersion(TestCase):
         """PEP 440, Version ordering: "X.Y and X.Y.0 are not considered
         distinct release numbers, as the release segment comparison rules
         implicit expand the two component form to X.Y.0 when comparing it to
-        any release segment that includes three components.\" """
+        any release segment that includes three components.\""""
         self.assertLess(parse("2.1.9"), parse("2.2.0"))
         self.assertGreaterEqual(parse("3.0.0"), parse("3.0.0"))
         self.assertGreater(parse("4.0"), parse("3.1.0"))
@@ -47,7 +47,7 @@ class TestVersion(TestCase):
         """PEP 440, Summary of permitted suffixes and relative ordering:
         "Within a numeric release (1.0, 2.7.3), the following suffixes are
         permitted and MUST be ordered as shown: .devN, aN, bN, rcN,
-        <no suffix>, .postN\" """
+        <no suffix>, .postN\""""
         self.assertLess(parse("1.0a1"), parse("1.0a2"))
         self.assertLess(parse("1.0a2"), parse("1.0b1"))
         self.assertLess(parse("1.0b1"), parse("1.0rc1"))
@@ -60,7 +60,7 @@ class TestVersion(TestCase):
         spellings of alpha, beta, c, pre, and preview for a, b, rc, rc, and rc
         respectively." Also: "Installation tools SHOULD interpret c versions
         as being equivalent to rc versions (that is, c1 indicates the same
-        version as rc1).\" """
+        version as rc1).\""""
         self.assertEqual(parse("1.0alpha1"), parse("1.0a1"))
         self.assertEqual(parse("1.0beta1"), parse("1.0b1"))
         self.assertEqual(parse("1.0c1"), parse("1.0rc1"))
@@ -70,7 +70,7 @@ class TestVersion(TestCase):
         """PEP 440, developmental and post-release segments: "The
         developmental release segment consists of the string .dev, followed by
         a non-negative integer value." / "The post-release segment consists of
-        the string .post, followed by a non-negative integer value.\" """
+        the string .post, followed by a non-negative integer value.\""""
         self.assertTrue(parse("1.0rc1").is_prerelease)
         self.assertTrue(parse("1.0.dev1").is_prerelease)
         self.assertTrue(parse("1.0.dev1").is_devrelease)
@@ -83,7 +83,7 @@ class TestVersion(TestCase):
         epoch appears before all other components, separated from the release
         segment by an exclamation mark: E!X.Y." Local version identifiers: "If
         a segment consists entirely of ASCII digits then that section should be
-        considered an integer for comparison purposes ...\" """
+        considered an integer for comparison purposes ...\""""
         self.assertGreater(parse("1!1.0"), parse("2.0"))
         self.assertEqual(parse("1!1.0").epoch, 1)
         self.assertEqual(parse("1.0+abc").local, "abc")
