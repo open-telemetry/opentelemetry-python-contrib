@@ -1017,9 +1017,7 @@ class TestURLLib3Instrumentor(TestBase):
 
 class TestURLLib3InstrumentorConfig(unittest.TestCase):
     def test_configuration_attribute_is_config_dataclass(self):
-        self.assertIs(
-            URLLib3Instrumentor.configuration, URLLib3InstrumentorConfig
-        )
+        self.assertIs(URLLib3Instrumentor.configuration, URLLib3InstrumentorConfig)
 
     def test_default_fields_are_none(self):
         config = URLLib3InstrumentorConfig()
