@@ -450,9 +450,7 @@ class TestAsyncPGSemconvMigration(TestBase):
 
     def test_span_unix_socket_new_semconv(self):
         with use_semconv_opt_in("database,http"):
-            conn = self._make_execute_conn(
-                addr="/var/run/postgresql/.s.PGSQL.5432"
-            )
+            conn = self._make_execute_conn(addr="/var/run/postgresql/.s.PGSQL.5432")
             spans = self._run_execute(conn)
 
         self.assertEqual(len(spans), 1)
