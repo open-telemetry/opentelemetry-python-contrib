@@ -147,9 +147,7 @@ _VERSION_REGEX = re_compile(
 _LOCAL_SEGMENT_SPLIT = re_compile(r"[\._-]")
 
 
-def _parse_letter_version(
-    letter: Optional[str], number: Optional[str]
-) -> Optional[_LetterVersion]:
+def _parse_letter_version(letter: Optional[str], number: Optional[str]) -> Optional[_LetterVersion]:
     if letter:
         # A pre-release without an explicit number implies 0.
         normalized = letter.lower()
@@ -173,18 +171,13 @@ def _parse_letter_version(
 def _parse_local_version(local: Optional[str]) -> _LocalVersion:
     if local is None:
         return None
-    return tuple(
-        part.lower() if not part.isdigit() else int(part)
-        for part in _LOCAL_SEGMENT_SPLIT.split(local)
-    )
+    return tuple(part.lower() if not part.isdigit() else int(part) for part in _LOCAL_SEGMENT_SPLIT.split(local))
 
 
 def _build_cmp_key(parsed: _Parsed) -> _CmpKey:
     # Trailing zeros in the release segment are not significant for ordering,
     # e.g. 1.0 == 1.0.0.
-    release = tuple(
-        reversed(list(dropwhile(lambda x: x == 0, reversed(parsed.release))))
-    )
+    release = tuple(reversed(list(dropwhile(lambda x: x == 0, reversed(parsed.release)))))
 
     # A version with no pre-segment sorts after one that has a pre-segment,
     # unless it is a dev release with neither pre nor post, which sorts first.
@@ -195,9 +188,7 @@ def _build_cmp_key(parsed: _Parsed) -> _CmpKey:
     else:
         pre = parsed.pre
 
-    post: _CmpPrePostDev = (
-        _NegativeInfinity if parsed.post is None else parsed.post
-    )
+    post: _CmpPrePostDev = _NegativeInfinity if parsed.post is None else parsed.post
     dev: _CmpPrePostDev = _Infinity if parsed.dev is None else parsed.dev
 
     if parsed.local is None:
@@ -206,10 +197,7 @@ def _build_cmp_key(parsed: _Parsed) -> _CmpKey:
     else:
         # Per PEP 440, numeric local segments sort after alphabetic ones.
         local = tuple(
-            (segment, "")
-            if isinstance(segment, int)
-            else (_NegativeInfinity, segment)
-            for segment in parsed.local
+            (segment, "") if isinstance(segment, int) else (_NegativeInfinity, segment) for segment in parsed.local
         )
 
     return parsed.epoch, release, pre, post, dev, local
@@ -226,19 +214,13 @@ class Version:
 
         self._parsed = _Parsed(
             epoch=int(match.group("epoch")) if match.group("epoch") else 0,
-            release=tuple(
-                int(part) for part in match.group("release").split(".")
-            ),
-            pre=_parse_letter_version(
-                match.group("pre_l"), match.group("pre_n")
-            ),
+            release=tuple(int(part) for part in match.group("release").split(".")),
+            pre=_parse_letter_version(match.group("pre_l"), match.group("pre_n")),
             post=_parse_letter_version(
                 match.group("post_l"),
                 match.group("post_n1") or match.group("post_n2"),
             ),
-            dev=_parse_letter_version(
-                match.group("dev_l"), match.group("dev_n")
-            ),
+            dev=_parse_letter_version(match.group("dev_l"), match.group("dev_n")),
             local=_parse_local_version(match.group("local")),
         )
         self._key = _build_cmp_key(self._parsed)
