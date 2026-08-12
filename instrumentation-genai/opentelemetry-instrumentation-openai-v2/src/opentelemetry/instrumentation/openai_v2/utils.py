@@ -9,7 +9,6 @@ from typing import Any, Iterable, List, Mapping
 from urllib.parse import urlparse
 
 import openai
-from httpx import URL
 from openai import NotGiven
 
 from opentelemetry._logs import LogRecord
@@ -91,13 +90,14 @@ def get_server_address_and_port(
     base_url = getattr(base_client, "base_url", None)
     if not base_url:
         return None, None
-    address = None
-    port = None
-    if isinstance(base_url, URL):
-        address = base_url.host
-        port = base_url.port
-    elif isinstance(base_url, str):
-        url = urlparse(base_url)
+
+    # Read the URL structurally rather than by type. openai 3.x builds on httpx2, so base_url is an
+    # httpx2.URL rather than an httpx.URL, and an isinstance check against either one silently stops
+    # matching when the SDK changes its HTTP client.
+    address = getattr(base_url, "host", None)
+    port = getattr(base_url, "port", None)
+    if address is None:
+        url = urlparse(str(base_url))
         address = url.hostname
         port = url.port
 
