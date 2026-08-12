@@ -154,9 +154,10 @@ members = [
 [tool.ruff]
 # https://docs.astral.sh/ruff/configuration/
 target-version = "py310"
-line-length = 79
+line-length = 120
 extend-exclude = ["_template", "*_pb2*.py*"]
 output-format = "concise"
+extension = { added = "markdown", changed = "markdown", deprecated = "markdown", removed = "markdown", fixed = "markdown" }
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/linter/#rule-selection
@@ -191,6 +192,9 @@ known-third-party = [
   "opencensus",
 ]
 
+[tool.ruff.format]
+docstring-code-format = true
+
 
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-rule-overrides
 [tool.pyright]
@@ -205,6 +209,7 @@ include = [
   "instrumentation/opentelemetry-instrumentation-aiokafka",
   "instrumentation/opentelemetry-instrumentation-asyncclick",
   "instrumentation/opentelemetry-instrumentation-fastapi/src/opentelemetry/instrumentation/fastapi",
+  "instrumentation/opentelemetry-instrumentation-httpx",
   "instrumentation/opentelemetry-instrumentation-threading",
   "instrumentation-genai/opentelemetry-instrumentation-vertexai",
   "util/opentelemetry-util-genai",
@@ -224,6 +229,7 @@ exclude = [
   "instrumentation-genai/opentelemetry-instrumentation-vertexai/examples/**/*.py",
   "util/opentelemetry-util-genai/tests/**/*.py",
   "instrumentation/opentelemetry-instrumentation-aiohttp-client/tests/**/*.py",
+  "instrumentation/opentelemetry-instrumentation-httpx/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/tests/**/*.py",
   "opamp/opentelemetry-opamp-client/src/opentelemetry/**/proto/**",
 ]

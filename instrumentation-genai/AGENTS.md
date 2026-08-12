@@ -54,6 +54,7 @@ hook without touching the environment.
 from opentelemetry.util.genai.completion_hook import load_completion_hook
 from opentelemetry.util.genai.handler import TelemetryHandler
 
+
 def _instrument(self, **kwargs):
     tracer_provider = kwargs.get("tracer_provider")
     meter_provider = kwargs.get("meter_provider")

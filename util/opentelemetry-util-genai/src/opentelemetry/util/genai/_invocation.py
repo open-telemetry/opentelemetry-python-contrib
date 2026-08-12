@@ -70,13 +70,9 @@ class GenAIInvocation(ABC):
         self._logger = logger
         self._completion_hook = completion_hook
         self._operation_name: str = operation_name
-        self.attributes: dict[str, Any] = (
-            {} if attributes is None else attributes
-        )
+        self.attributes: dict[str, Any] = {} if attributes is None else attributes
         """Additional attributes to set on spans and/or events. Not set on metrics."""
-        self.metric_attributes: dict[str, Any] = (
-            {} if metric_attributes is None else metric_attributes
-        )
+        self.metric_attributes: dict[str, Any] = {} if metric_attributes is None else metric_attributes
         """Additional attributes to set on metrics. Must be low cardinality. Not set on spans or events."""
         self.span: Span = _INVALID_SPAN
         self._span_context: Context
@@ -217,11 +213,7 @@ def get_content_attributes(
     # Tool definitions are always captured, the sem conv recommends adding params / description only
     # when the content capture mode is set..
     if mode not in allowed_modes:
-        return (
-            {GenAI.GEN_AI_TOOL_DEFINITIONS: serialize(tool_definitions)}
-            if tool_definitions
-            else {}
-        )
+        return {GenAI.GEN_AI_TOOL_DEFINITIONS: serialize(tool_definitions)} if tool_definitions else {}
 
     optional_attrs = (
         (
