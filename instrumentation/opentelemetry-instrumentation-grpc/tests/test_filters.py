@@ -22,9 +22,7 @@ class _HandlerCallDetails(
     pass
 
 
-class _UnaryClientInfo(
-    collections.namedtuple("_UnaryClientInfo", ("full_method", "timeout"))
-):
+class _UnaryClientInfo(collections.namedtuple("_UnaryClientInfo", ("full_method", "timeout"))):
     pass
 
 

@@ -30,30 +30,22 @@ class KafkaPropertiesExtractor:
     @staticmethod
     def extract_send_topic(args, kwargs):
         """extract topic from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "topic", 0, "unknown", args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("topic", 0, "unknown", args, kwargs)
 
     @staticmethod
     def extract_send_value(args, kwargs):
         """extract value from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "value", 1, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("value", 1, None, args, kwargs)
 
     @staticmethod
     def extract_send_key(args, kwargs):
         """extract key from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "key", 2, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("key", 2, None, args, kwargs)
 
     @staticmethod
     def extract_send_headers(args, kwargs):
         """extract headers from `send` method arguments in KafkaProducer class"""
-        return KafkaPropertiesExtractor._extract_argument(
-            "headers", 3, None, args, kwargs
-        )
+        return KafkaPropertiesExtractor._extract_argument("headers", 3, None, args, kwargs)
 
     @staticmethod
     def extract_send_partition(future) -> int | None:
@@ -115,12 +107,8 @@ def _enrich_span(
         span.set_attribute(SpanAttributes.MESSAGING_SYSTEM, "kafka")
         span.set_attribute(SpanAttributes.MESSAGING_DESTINATION, topic)
         if partition is not None:
-            span.set_attribute(
-                SpanAttributes.MESSAGING_KAFKA_PARTITION, partition
-            )
-        span.set_attribute(
-            SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers)
-        )
+            span.set_attribute(SpanAttributes.MESSAGING_KAFKA_PARTITION, partition)
+        span.set_attribute(SpanAttributes.MESSAGING_URL, json.dumps(bootstrap_servers))
 
 
 def _get_span_name(operation: str, topic: str):
@@ -135,13 +123,9 @@ def _wrap_send(tracer: Tracer, produce_hook: ProduceHookT) -> Callable:
             kwargs["headers"] = headers
 
         topic = KafkaPropertiesExtractor.extract_send_topic(args, kwargs)
-        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(
-            instance
-        )
+        bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
         span_name = _get_span_name("send", topic)
-        with tracer.start_as_current_span(
-            span_name, kind=trace.SpanKind.PRODUCER
-        ) as span:
+        with tracer.start_as_current_span(span_name, kind=trace.SpanKind.PRODUCER) as span:
             propagate.inject(
                 headers,
                 context=trace.set_span_in_context(span),
@@ -196,13 +180,9 @@ def _wrap_next(
         record = func(*args, **kwargs)
 
         if record:
-            bootstrap_servers = (
-                KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
-            )
+            bootstrap_servers = KafkaPropertiesExtractor.extract_bootstrap_servers(instance)
 
-            extracted_context = propagate.extract(
-                record.headers, getter=_kafka_getter
-            )
+            extracted_context = propagate.extract(record.headers, getter=_kafka_getter)
             _create_consumer_span(
                 tracer,
                 consume_hook,

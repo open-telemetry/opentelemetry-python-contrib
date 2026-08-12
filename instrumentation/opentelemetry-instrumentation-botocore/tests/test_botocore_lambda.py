@@ -51,9 +51,7 @@ class TestLambdaExtension(TestBase):
         BotocoreInstrumentor().instrument()
 
         session = botocore.session.get_session()
-        session.set_credentials(
-            access_key="access-key", secret_key="secret-key"
-        )
+        session.set_credentials(access_key="access-key", secret_key="secret-key")
         self.region = "us-west-2"
         self.client = session.create_client("lambda", region_name=self.region)
         self.iam_client = session.create_client("iam", region_name=self.region)
@@ -105,9 +103,7 @@ class TestLambdaExtension(TestBase):
             Runtime="python3.10",
             Role=role_arn,
             Handler="lambda_function.lambda_handler",
-            Code={
-                "ZipFile": get_as_zip_file("lambda_function.py", function_code)
-            },
+            Code={"ZipFile": get_as_zip_file("lambda_function.py", function_code)},
             Description="test lambda function",
             Timeout=3,
             MemorySize=128,
@@ -125,9 +121,7 @@ class TestLambdaExtension(TestBase):
         try:
             set_global_textmap(MockTextMapPropagator())
             function_name = "testFunction"
-            self._create_lambda_function(
-                function_name, return_headers_lambda_str()
-            )
+            self._create_lambda_function(function_name, return_headers_lambda_str())
             # 2 spans for create IAM + create lambda
             self.assertEqual(2, len(self.memory_exporter.get_finished_spans()))
             self.memory_exporter.clear()
