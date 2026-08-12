@@ -29,7 +29,8 @@ API
 ---
 """
 
-from typing import Collection
+from collections.abc import Mapping, Sequence
+from typing import Any, Collection
 
 import wrapt
 
@@ -38,6 +39,8 @@ from opentelemetry.instrumentation._semconv import (
     _get_schema_url_for_signal_types,
     _OpenTelemetrySemanticConventionStability,
     _OpenTelemetryStabilitySignalType,
+    _report_new,
+    _report_old,
     _set_db_name,
     _set_db_statement,
     _set_db_system,
@@ -80,6 +83,26 @@ except ModuleNotFoundError:
     TORTOISE_SQLITE_SUPPORT = False
 
 import tortoise.contrib.pydantic.base
+
+
+def _get_db_query_parameters(parameters: Sequence[Any]) -> dict[str, str]:
+    value: Any = parameters
+    if len(parameters) == 1:
+        value = parameters[0]
+
+    if isinstance(value, Mapping):
+        return {
+            str(parameter_key): str(parameter_value)
+            for parameter_key, parameter_value in value.items()
+        }
+
+    if isinstance(value, Sequence) and not isinstance(value, (bytes, str)):
+        return {
+            str(index): str(parameter_value)
+            for index, parameter_value in enumerate(value)
+        }
+
+    return {"0": str(value)}
 
 
 class TortoiseORMInstrumentor(BaseInstrumentor):
@@ -218,7 +241,9 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         )
         unwrap(tortoise.contrib.pydantic.base.PydanticListModel, "from_queryset")
 
-    def _hydrate_span_from_args(self, connection, query, parameters) -> dict:
+    def _hydrate_span_from_args(
+        self, connection, query, parameters, is_batch=False
+    ) -> dict:
         """Get network and database attributes from connection."""
         span_attributes = {}
         mode = self._sem_conv_opt_in_mode
@@ -254,9 +279,17 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
         if port:
             _set_http_peer_port_client(span_attributes, port, mode)
 
-        if self.capture_parameters:
+        if self.capture_parameters and not is_batch:
             if parameters is not None and len(parameters) > 0:
-                span_attributes["db.statement.parameters"] = str(parameters)
+                if _report_old(mode):
+                    span_attributes["db.statement.parameters"] = str(
+                        parameters
+                    )
+                if _report_new(mode):
+                    for key, value in _get_db_query_parameters(
+                        parameters
+                    ).items():
+                        span_attributes[f"db.query.parameter.{key}"] = value
 
         return span_attributes
 
@@ -273,6 +306,7 @@ class TortoiseORMInstrumentor(BaseInstrumentor):
                     instance,
                     args[0],
                     args[1:],
+                    func.__name__ == "execute_many",
                 )
                 for attribute, value in span_attributes.items():
                     span.set_attribute(attribute, value)
