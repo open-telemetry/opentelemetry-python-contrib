@@ -61,9 +61,7 @@ class OpAMPClient:
     ):
         # ReportsStatus is required by the OpAMP specification:
         # https://opentelemetry.io/docs/specs/opamp/#agenttoservercapabilities
-        if not capabilities & (
-            opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus
-        ):
+        if not capabilities & (opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus):
             raise ValueError("OpAMP capabilities must include ReportsStatus")
 
         self._capabilities = capabilities

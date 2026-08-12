@@ -215,15 +215,9 @@ def test_message_uses_custom_capabilities(builder_name):
     message.ParseFromString(data)
 
     assert message.capabilities == _EFFECTIVE_CONFIG_CAPABILITIES
-    assert not (
-        message.capabilities & opamp_pb2.AgentCapabilities_AcceptsRemoteConfig
-    )
-    assert not (
-        message.capabilities & opamp_pb2.AgentCapabilities_ReportsRemoteConfig
-    )
-    assert not (
-        message.capabilities & opamp_pb2.AgentCapabilities_ReportsHealth
-    )
+    assert not (message.capabilities & opamp_pb2.AgentCapabilities_AcceptsRemoteConfig)
+    assert not (message.capabilities & opamp_pb2.AgentCapabilities_ReportsRemoteConfig)
+    assert not (message.capabilities & opamp_pb2.AgentCapabilities_ReportsHealth)
 
 
 def test_clients_use_capabilities_independently():
@@ -363,9 +357,7 @@ def test_remote_config_status_response_uses_custom_capabilities():
         status=opamp_pb2.RemoteConfigStatuses_APPLIED,
     )
 
-    data = client.build_remote_config_status_response_message(
-        remote_config_status
-    )
+    data = client.build_remote_config_status_response_message(remote_config_status)
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
 
