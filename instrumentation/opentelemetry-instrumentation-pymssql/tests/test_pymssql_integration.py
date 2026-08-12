@@ -96,6 +96,26 @@ class TestPyMSSQLIntegration(TestBase):
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
 
+    @patch("opentelemetry.instrumentation.pymssql.dbapi")
+    def test_instrumentor_forwards_capture_parameters_default(
+        self, mock_dbapi
+    ):
+        PyMSSQLInstrumentor().instrument()
+
+        self.assertIs(
+            mock_dbapi.wrap_connect.call_args.kwargs["capture_parameters"],
+            False,
+        )
+
+    @patch("opentelemetry.instrumentation.pymssql.dbapi")
+    def test_instrumentor_forwards_capture_parameters(self, mock_dbapi):
+        PyMSSQLInstrumentor().instrument(capture_parameters=True)
+
+        self.assertIs(
+            mock_dbapi.wrap_connect.call_args.kwargs["capture_parameters"],
+            True,
+        )
+
     @patch("pymssql.connect", new=mock_connect)
     # pylint: disable=unused-argument
     def test_instrumentor_server_param(self):
@@ -170,6 +190,59 @@ class TestPyMSSQLIntegration(TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+
+    @patch("pymssql.connect", new=mock_connect)
+    def test_instrument_connection_capture_parameters(self):
+        cnx = pymssql.connect(database="test")  # pylint: disable=no-member
+        cnx = PyMSSQLInstrumentor().instrument_connection(
+            cnx, capture_parameters=True
+        )
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM test WHERE id = %s", (42,))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"], "(42,)"
+        )
+
+    @patch("opentelemetry.instrumentation.pymssql.dbapi")
+    def test_instrument_connection_forwards_capture_parameters(
+        self, mock_dbapi
+    ):
+        cnx = Mock()
+
+        PyMSSQLInstrumentor().instrument_connection(
+            cnx, capture_parameters=True
+        )
+
+        self.assertIs(
+            mock_dbapi.instrument_connection.call_args.kwargs[
+                "capture_parameters"
+            ],
+            True,
+        )
+
+    @patch("pymssql.connect", new=mock_connect)
+    def test_capture_parameters_deactivated_by_default(self):
+        PyMSSQLInstrumentor().instrument()
+        cnx = pymssql.connect(database="test")  # pylint: disable=no-member
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM test WHERE id = %s", (42,))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertNotIn("db.statement.parameters", spans_list[0].attributes)
+
+    @patch("pymssql.connect", new=mock_connect)
+    def test_capture_parameters_activated(self):
+        PyMSSQLInstrumentor().instrument(capture_parameters=True)
+        cnx = pymssql.connect(database="test")  # pylint: disable=no-member
+        cursor = cnx.cursor()
+        cursor.execute("SELECT * FROM test WHERE id = %s", (42,))
+
+        spans_list = self.memory_exporter.get_finished_spans()
+        self.assertEqual(
+            spans_list[0].attributes["db.statement.parameters"], "(42,)"
+        )
 
     @patch("pymssql.connect", new=mock_connect)
     # pylint: disable=unused-argument

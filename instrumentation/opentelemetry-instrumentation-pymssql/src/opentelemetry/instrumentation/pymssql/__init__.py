@@ -45,6 +45,7 @@ API
 The `instrument` method accepts the following keyword args:
 
 * tracer_provider (``TracerProvider``) - an optional tracer provider
+* capture_parameters (``bool``) - enable the capture of query parameters
 
 For example:
 
@@ -55,6 +56,12 @@ For example:
     from opentelemetry.trace import NoOpTracerProvider
 
     PyMSSQLInstrumentor().instrument(tracer_provider=NoOpTracerProvider())
+
+.. code:: python
+
+    from opentelemetry.instrumentation.pymssql import PyMSSQLInstrumentor
+
+    PyMSSQLInstrumentor().instrument(capture_parameters=True)
 """
 
 from __future__ import annotations
@@ -149,6 +156,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         https://github.com/pymssql/pymssql/
         """
         tracer_provider = kwargs.get("tracer_provider")
+        capture_parameters = kwargs.get("capture_parameters", False)
 
         dbapi.wrap_connect(
             __name__,
@@ -161,6 +169,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             # instead, we get the attributes from the connect method (which is done
             # via PyMSSQLDatabaseApiIntegration.wrapped_connection)
             db_api_integration_factory=_PyMSSQLDatabaseApiIntegration,
+            capture_parameters=capture_parameters,
         )
 
     def _uninstrument(self, **kwargs):
@@ -168,13 +177,17 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
         dbapi.unwrap_connect(pymssql, "connect")
 
     @staticmethod
-    def instrument_connection(connection, tracer_provider=None):
+    def instrument_connection(
+        connection, tracer_provider=None, capture_parameters=False
+    ):
         """Enable instrumentation in a pymssql connection.
 
         Args:
             connection: The connection to instrument.
             tracer_provider: The optional tracer provider to use. If omitted
                 the current globally configured one is used.
+            capture_parameters: Configure if db.statement.parameters should
+                be captured.
 
         Returns:
             An instrumented connection.
@@ -187,6 +200,7 @@ class PyMSSQLInstrumentor(BaseInstrumentor):
             version=__version__,
             tracer_provider=tracer_provider,
             db_api_integration_factory=_PyMSSQLDatabaseApiIntegration,
+            capture_parameters=capture_parameters,
         )
 
     @staticmethod
