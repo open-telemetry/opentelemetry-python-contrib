@@ -45,9 +45,7 @@ class Requirement:
         remainder = remainder.strip()
         name_match = _NAME_REGEX.match(remainder)
         if name_match is None:
-            raise InvalidRequirement(
-                f"Invalid requirement: {requirement_string!r}"
-            )
+            raise InvalidRequirement(f"Invalid requirement: {requirement_string!r}")
 
         self.name: str = name_match.group(1)
         remainder = remainder[name_match.end() :].strip()
@@ -56,14 +54,8 @@ class Requirement:
         if remainder.startswith("["):
             end = remainder.find("]")
             if end == -1:
-                raise InvalidRequirement(
-                    f"Invalid requirement: {requirement_string!r}"
-                )
-            self.extras = {
-                extra.strip()
-                for extra in remainder[1:end].split(",")
-                if extra.strip()
-            }
+                raise InvalidRequirement(f"Invalid requirement: {requirement_string!r}")
+            self.extras = {extra.strip() for extra in remainder[1:end].split(",") if extra.strip()}
             remainder = remainder[end + 1 :].strip()
 
         self.url: Optional[str] = None
@@ -74,18 +66,14 @@ class Requirement:
         try:
             self.specifier: SpecifierSet = SpecifierSet(remainder)
         except InvalidSpecifier as exc:
-            raise InvalidRequirement(
-                f"Invalid requirement: {requirement_string!r}"
-            ) from exc
+            raise InvalidRequirement(f"Invalid requirement: {requirement_string!r}") from exc
 
         self.marker: Optional[Marker] = None
         if marker_string is not None and marker_string.strip():
             try:
                 self.marker = Marker(marker_string)
             except InvalidMarker as exc:
-                raise InvalidRequirement(
-                    f"Invalid requirement: {requirement_string!r}"
-                ) from exc
+                raise InvalidRequirement(f"Invalid requirement: {requirement_string!r}") from exc
 
     def __str__(self) -> str:
         parts = [self.name]
