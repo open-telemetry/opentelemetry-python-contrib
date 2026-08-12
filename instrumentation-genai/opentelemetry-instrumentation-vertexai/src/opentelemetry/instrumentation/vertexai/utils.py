@@ -76,21 +76,13 @@ _MODEL = "model"
 @dataclass(frozen=True)
 class GenerateContentParams:
     model: str
-    contents: (
-        Sequence[content.Content] | Sequence[content_v1beta1.Content] | None
-    ) = None
+    contents: Sequence[content.Content] | Sequence[content_v1beta1.Content] | None = None
     system_instruction: content.Content | content_v1beta1.Content | None = None
     tools: Sequence[tool.Tool] | Sequence[tool_v1beta1.Tool] | None = None
     tool_config: tool.ToolConfig | tool_v1beta1.ToolConfig | None = None
     labels: Mapping[str, str] | None = None
-    safety_settings: (
-        Sequence[content.SafetySetting]
-        | Sequence[content_v1beta1.SafetySetting]
-        | None
-    ) = None
-    generation_config: (
-        content.GenerationConfig | content_v1beta1.GenerationConfig | None
-    ) = None
+    safety_settings: Sequence[content.SafetySetting] | Sequence[content_v1beta1.SafetySetting] | None = None
+    generation_config: content.GenerationConfig | content_v1beta1.GenerationConfig | None = None
 
 
 def get_server_attributes(
@@ -123,9 +115,7 @@ def get_genai_request_attributes(  # pylint: disable=too-many-branches
         GenAIAttributes.GEN_AI_REQUEST_MODEL: model,
     }
     if not use_latest_semconvs:
-        attributes[GenAIAttributes.GEN_AI_SYSTEM] = (
-            GenAIAttributes.GenAiSystemValues.VERTEX_AI.value
-        )
+        attributes[GenAIAttributes.GEN_AI_SYSTEM] = GenAIAttributes.GenAiSystemValues.VERTEX_AI.value
 
     if not generation_config:
         return attributes
@@ -133,63 +123,40 @@ def get_genai_request_attributes(  # pylint: disable=too-many-branches
     # Check for optional fields
     # https://proto-plus-python.readthedocs.io/en/stable/fields.html#optional-fields
     if "temperature" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] = (
-            generation_config.temperature
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_TEMPERATURE] = generation_config.temperature
     if "top_p" in generation_config:
         # There is also a top_k parameter ( The maximum number of tokens to consider when sampling.),
         # but no semconv yet exists for it.
-        attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] = (
-            generation_config.top_p
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_TOP_P] = generation_config.top_p
     if "max_output_tokens" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] = (
-            generation_config.max_output_tokens
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_MAX_TOKENS] = generation_config.max_output_tokens
     if "presence_penalty" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY] = (
-            generation_config.presence_penalty
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_PRESENCE_PENALTY] = generation_config.presence_penalty
     if "frequency_penalty" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY] = (
-            generation_config.frequency_penalty
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_FREQUENCY_PENALTY] = generation_config.frequency_penalty
     if "stop_sequences" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = (
-            generation_config.stop_sequences
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_STOP_SEQUENCES] = generation_config.stop_sequences
     if "seed" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = (
-            generation_config.seed
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_SEED] = generation_config.seed
     if "candidate_count" in generation_config:
-        attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = (
-            generation_config.candidate_count
-        )
+        attributes[GenAIAttributes.GEN_AI_REQUEST_CHOICE_COUNT] = generation_config.candidate_count
     if "response_mime_type" in generation_config:
         if generation_config.response_mime_type == "text/plain":
             attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "text"
         elif generation_config.response_mime_type == "application/json":
             attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = "json"
         else:
-            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = (
-                generation_config.response_mime_type
-            )
+            attributes[GenAIAttributes.GEN_AI_OUTPUT_TYPE] = generation_config.response_mime_type
 
     return attributes
 
 
 def get_genai_response_attributes(
-    response: prediction_service.GenerateContentResponse
-    | prediction_service_v1beta1.GenerateContentResponse
-    | None,
+    response: prediction_service.GenerateContentResponse | prediction_service_v1beta1.GenerateContentResponse | None,
 ) -> dict[str, AttributeValue]:
     if not response:
         return {}
-    finish_reasons: list[str] = [
-        _map_finish_reason(candidate.finish_reason)
-        for candidate in response.candidates
-    ]
+    finish_reasons: list[str] = [_map_finish_reason(candidate.finish_reason) for candidate in response.candidates]
     return {
         GenAIAttributes.GEN_AI_RESPONSE_MODEL: response.model_version,
         GenAIAttributes.GEN_AI_RESPONSE_FINISH_REASONS: finish_reasons,
@@ -198,18 +165,14 @@ def get_genai_response_attributes(
     }
 
 
-_MODEL_STRIP_RE = re.compile(
-    r"^projects/(.*)/locations/(.*)/publishers/google/models/"
-)
+_MODEL_STRIP_RE = re.compile(r"^projects/(.*)/locations/(.*)/publishers/google/models/")
 
 
 def _get_model_name(model: str) -> str:
     return _MODEL_STRIP_RE.sub("", model)
 
 
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = (
-    "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
-)
+OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 
 
 @overload
@@ -229,9 +192,7 @@ def is_content_enabled(
     ],
 ) -> Union[bool, ContentCapturingMode]:
     if mode == _StabilityMode.DEFAULT:
-        capture_content = environ.get(
-            OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false"
-        )
+        capture_content = environ.get(OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, "false")
 
         return capture_content.lower() == "true"
     return get_content_capturing_mode()
@@ -245,25 +206,19 @@ def get_span_name(span_attributes: Mapping[str, AttributeValue]) -> str:
     return f"{name} {model}"
 
 
-def request_to_events(
-    *, params: GenerateContentParams, capture_content: bool
-) -> Iterable[LogRecord]:
+def request_to_events(*, params: GenerateContentParams, capture_content: bool) -> Iterable[LogRecord]:
     # System message
     if params.system_instruction:
         request_content = _parts_to_any_value(
             capture_content=capture_content,
             parts=params.system_instruction.parts,
         )
-        yield system_event(
-            role=params.system_instruction.role, content=request_content
-        )
+        yield system_event(role=params.system_instruction.role, content=request_content)
 
     for content in params.contents or []:
         # Assistant message
         if content.role == _MODEL:
-            request_content = _parts_to_any_value(
-                capture_content=capture_content, parts=content.parts
-            )
+            request_content = _parts_to_any_value(capture_content=capture_content, parts=content.parts)
 
             yield assistant_event(role=content.role, content=request_content)
             continue
@@ -273,11 +228,7 @@ def request_to_events(
         # Function call results can be parts inside of a user Content or in a separate Content
         # entry without a role. That may cause duplication in a user event, see
         # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3280
-        function_responses = [
-            part.function_response
-            for part in content.parts
-            if "function_response" in part
-        ]
+        function_responses = [part.function_response for part in content.parts if "function_response" in part]
         for idx, function_response in enumerate(function_responses):
             yield tool_event(
                 id_=f"{function_response.name}_{idx}",
@@ -293,9 +244,7 @@ def request_to_events(
             # If the content only contained function responses, don't emit a user event
             continue
 
-        request_content = _parts_to_any_value(
-            capture_content=capture_content, parts=content.parts
-        )
+        request_content = _parts_to_any_value(capture_content=capture_content, parts=content.parts)
         yield user_event(role=content.role, content=request_content)
 
 
@@ -363,14 +312,11 @@ def convert_content_to_message_parts(
 
 def response_to_events(
     *,
-    response: prediction_service.GenerateContentResponse
-    | prediction_service_v1beta1.GenerateContentResponse,
+    response: prediction_service.GenerateContentResponse | prediction_service_v1beta1.GenerateContentResponse,
     capture_content: bool,
 ) -> Iterable[LogRecord]:
     for candidate in response.candidates:
-        tool_calls = _extract_tool_calls(
-            candidate=candidate, capture_content=capture_content
-        )
+        tool_calls = _extract_tool_calls(candidate=candidate, capture_content=capture_content)
 
         # The original function_call Part is still duplicated in message, see
         # https://github.com/open-telemetry/opentelemetry-python-contrib/issues/3280
@@ -433,14 +379,10 @@ def _parts_to_any_value(
 
 
 def _map_finish_reason(
-    finish_reason: content.Candidate.FinishReason
-    | content_v1beta1.Candidate.FinishReason,
+    finish_reason: content.Candidate.FinishReason | content_v1beta1.Candidate.FinishReason,
 ) -> FinishReason | str:
     EnumType = type(finish_reason)  # pylint: disable=invalid-name
-    if (
-        finish_reason is EnumType.FINISH_REASON_UNSPECIFIED
-        or finish_reason is EnumType.OTHER
-    ):
+    if finish_reason is EnumType.FINISH_REASON_UNSPECIFIED or finish_reason is EnumType.OTHER:
         return "error"
     if finish_reason is EnumType.STOP:
         return "stop"

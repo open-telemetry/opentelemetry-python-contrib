@@ -32,9 +32,7 @@ class TestCase(unittest.TestCase):
             get_logger_provider(),
             get_meter_provider(),
         )
-        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = (
-            "true"
-        )
+        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
         os.environ["OTEL_SEMCONV_STABILITY_OPT_IN"] = "default"
         _OpenTelemetrySemanticConventionStability._initialized = False
         _OpenTelemetrySemanticConventionStability._initialize()
@@ -48,9 +46,7 @@ class TestCase(unittest.TestCase):
         return self._otel_wrapper
 
     def wrap(self, tool_or_tools, **kwargs):
-        return tool_call_wrapper.wrapped(
-            tool_or_tools, self.otel_wrapper, **kwargs
-        )
+        return tool_call_wrapper.wrapped(tool_or_tools, self.otel_wrapper, **kwargs)
 
     def test_wraps_none(self):
         result = self.wrap(None)
@@ -67,9 +63,7 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction()
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            span.attributes["gen_ai.operation.name"], "execute_tool"
-        )
+        self.assertEqual(span.attributes["gen_ai.operation.name"], "execute_tool")
         self.assertEqual(span.attributes["gen_ai.tool.name"], "somefunction")
 
     def test_wraps_multiple_tool_functions_as_list(self):
@@ -101,9 +95,7 @@ class TestCase(unittest.TestCase):
         def otherfunction():
             pass
 
-        wrapped_functions = self.wrap(
-            {"somefunction": somefunction, "otherfunction": otherfunction}
-        )
+        wrapped_functions = self.wrap({"somefunction": somefunction, "otherfunction": otherfunction})
         wrapped_somefunction = wrapped_functions["somefunction"]
         wrapped_otherfunction = wrapped_functions["otherfunction"]
         self.otel.assert_does_not_have_span_named("execute_tool somefunction")
@@ -174,12 +166,8 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction(12345)
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            span.attributes["code.function.parameters.arg.type"], "int"
-        )
-        self.assertEqual(
-            span.attributes["code.function.parameters.arg.value"], 12345
-        )
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "int")
+        self.assertEqual(span.attributes["code.function.parameters.arg.value"], 12345)
 
     def test_handles_primitive_string_arg(self):
         def somefunction(arg=None):
@@ -192,9 +180,7 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction("a string value")
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            span.attributes["code.function.parameters.arg.type"], "str"
-        )
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "str")
         self.assertEqual(
             span.attributes["code.function.parameters.arg.value"],
             "a string value",
@@ -211,9 +197,7 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction({"key": "value"})
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            span.attributes["code.function.parameters.arg.type"], "dict"
-        )
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "dict")
         self.assertEqual(
             span.attributes["code.function.parameters.arg.value"],
             '{"key": "value"}',
@@ -230,9 +214,7 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction([1, 2, 3])
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            span.attributes["code.function.parameters.arg.type"], "list"
-        )
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "list")
         # A conversion is required here, because the Open Telemetry code converts the
         # list into a tuple. (But this conversion isn't happening in "tool_call_wrapper.py").
         self.assertEqual(
@@ -251,9 +233,7 @@ class TestCase(unittest.TestCase):
         wrapped_somefunction([123, "abc"])
         self.otel.assert_has_span_named("execute_tool somefunction")
         span = self.otel.get_span_named("execute_tool somefunction")
-        self.assertEqual(
-            span.attributes["code.function.parameters.arg.type"], "list"
-        )
+        self.assertEqual(span.attributes["code.function.parameters.arg.type"], "list")
         self.assertEqual(
             span.attributes["code.function.parameters.arg.value"],
             '[123, "abc"]',
@@ -273,16 +253,12 @@ class TestCase(unittest.TestCase):
                         "OTEL_SEMCONV_STABILITY_OPT_IN": "gen_ai_latest_experimental",
                     },
                 ):
-                    _OpenTelemetrySemanticConventionStability._initialized = (
-                        False
-                    )
+                    _OpenTelemetrySemanticConventionStability._initialized = False
                     _OpenTelemetrySemanticConventionStability._initialize()
                     wrapped_somefunction = self.wrap(somefunction)
                     wrapped_somefunction(12345)
 
-                    span = self.otel.get_span_named(
-                        "execute_tool somefunction"
-                    )
+                    span = self.otel.get_span_named("execute_tool somefunction")
 
                     if mode in [
                         ContentCapturingMode.NO_CONTENT,

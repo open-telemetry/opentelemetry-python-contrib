@@ -43,9 +43,3 @@ components:
     - DylanRussell
     - keith-decker
     - lmolkova
-
-  instrumentation-genai/opentelemetry-instrumentation-openai-agents-v2:
-    - nagkumar91
-
-  instrumentation-genai/opentelemetry-instrumentation-openai-v2:
-    - lmolkova

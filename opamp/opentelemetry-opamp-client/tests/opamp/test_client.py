@@ -34,15 +34,11 @@ _EFFECTIVE_CONFIG_CAPABILITIES = (
 
 @pytest.fixture(name="client")
 def client_fixture():
-    return OpAMPClient(
-        endpoint="url", agent_identifying_attributes={"foo": "bar"}
-    )
+    return OpAMPClient(endpoint="url", agent_identifying_attributes={"foo": "bar"})
 
 
 def test_can_instantiate_opamp_client_with_defaults():
-    client = OpAMPClient(
-        endpoint="url", agent_identifying_attributes={"foo": "bar"}
-    )
+    client = OpAMPClient(endpoint="url", agent_identifying_attributes={"foo": "bar"})
 
     assert client
     assert client._headers == {
@@ -258,9 +254,7 @@ def test_update_remote_config_status_without_previous_config(client):
 
     assert remote_config_status is not None
     assert remote_config_status.last_remote_config_hash == b"12345678"
-    assert (
-        remote_config_status.status == opamp_pb2.RemoteConfigStatuses_APPLIED
-    )
+    assert remote_config_status.status == opamp_pb2.RemoteConfigStatuses_APPLIED
     assert remote_config_status.error_message == ""
 
 
@@ -320,9 +314,7 @@ def test_build_remote_config_status_response_message_no_error_message(client):
         last_remote_config_hash=b"12345678",
         status=opamp_pb2.RemoteConfigStatuses_APPLIED,
     )
-    data = client.build_remote_config_status_response_message(
-        remote_config_status
-    )
+    data = client.build_remote_config_status_response_message(remote_config_status)
 
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
@@ -333,10 +325,7 @@ def test_build_remote_config_status_response_message_no_error_message(client):
     assert message.capabilities == _DEFAULT_CAPABILITIES
     assert message.remote_config_status
     assert message.remote_config_status.last_remote_config_hash == b"12345678"
-    assert (
-        message.remote_config_status.status
-        == opamp_pb2.RemoteConfigStatuses_APPLIED
-    )
+    assert message.remote_config_status.status == opamp_pb2.RemoteConfigStatuses_APPLIED
     assert not message.remote_config_status.error_message
 
 
@@ -348,9 +337,7 @@ def test_build_remote_config_status_response_message_with_error_message(
         status=opamp_pb2.RemoteConfigStatuses_FAILED,
         error_message="an error message",
     )
-    data = client.build_remote_config_status_response_message(
-        remote_config_status
-    )
+    data = client.build_remote_config_status_response_message(remote_config_status)
 
     message = opamp_pb2.AgentToServer()
     message.ParseFromString(data)
@@ -361,10 +348,7 @@ def test_build_remote_config_status_response_message_with_error_message(
     assert message.capabilities == _DEFAULT_CAPABILITIES
     assert message.remote_config_status
     assert message.remote_config_status.last_remote_config_hash == b"12345678"
-    assert (
-        message.remote_config_status.status
-        == opamp_pb2.RemoteConfigStatuses_FAILED
-    )
+    assert message.remote_config_status.status == opamp_pb2.RemoteConfigStatuses_FAILED
     assert message.remote_config_status.error_message == "an error message"
 
 
@@ -405,9 +389,7 @@ def test_update_effective_config_json_content_type(client):
     assert config == decoded_config
 
 
-def test_update_effective_config_skips_non_serializable_json_content(
-    client, caplog
-):
+def test_update_effective_config_skips_non_serializable_json_content(client, caplog):
     caplog.set_level(logging.WARNING, logger="opentelemetry._opamp.messages")
     effective_config = client.update_effective_config(
         {"config": {"a": object()}},
@@ -415,9 +397,7 @@ def test_update_effective_config_skips_non_serializable_json_content(
     )
     assert effective_config.config_map.config_map == {}
     message = "Failed to encode effective config body as JSON"
-    exception_records = [
-        record for record in caplog.records if message in record.getMessage()
-    ]
+    exception_records = [record for record in caplog.records if message in record.getMessage()]
     assert len(exception_records) == 1
     assert exception_records[0].exc_info
     assert exception_records[0].exc_info[0] is TypeError
@@ -489,10 +469,7 @@ def test_build_full_state_message(client):
     ]
     assert message.remote_config_status
     assert message.remote_config_status.last_remote_config_hash == b"12345678"
-    assert (
-        message.remote_config_status.status
-        == opamp_pb2.RemoteConfigStatuses_APPLIED
-    )
+    assert message.remote_config_status.status == opamp_pb2.RemoteConfigStatuses_APPLIED
     assert "filename" in message.effective_config.config_map.config_map
     config_file = message.effective_config.config_map.config_map["filename"]
     assert config_file.content_type == "application/json"
@@ -515,10 +492,7 @@ def test_build_full_state_message_no_config(client):
     ]
     assert message.remote_config_status
     assert message.remote_config_status.last_remote_config_hash == b""
-    assert (
-        message.remote_config_status.status
-        == opamp_pb2.RemoteConfigStatuses_UNSET
-    )
+    assert message.remote_config_status.status == opamp_pb2.RemoteConfigStatuses_UNSET
     assert message.effective_config.config_map.config_map == {}
 
 
@@ -556,13 +530,9 @@ def test_send(client):
 
 def test_decode_remote_config(client):
     config = opamp_pb2.AgentConfigMap()
-    config.config_map["application/json"].body = json.dumps(
-        {"a": "config"}
-    ).encode()
+    config.config_map["application/json"].body = json.dumps({"a": "config"}).encode()
     config.config_map["application/json"].content_type = "application/json"
-    config.config_map["text/json"].body = json.dumps(
-        {"other": "config"}
-    ).encode()
+    config.config_map["text/json"].body = json.dumps({"other": "config"}).encode()
     config.config_map["text/json"].content_type = "text/json"
     message = opamp_pb2.AgentRemoteConfig(config=config)
 
