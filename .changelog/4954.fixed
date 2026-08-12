@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-openai-v2`: fix `server.address` not being recorded with openai 3.x
