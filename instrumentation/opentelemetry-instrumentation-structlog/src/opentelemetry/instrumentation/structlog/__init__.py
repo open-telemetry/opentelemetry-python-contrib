@@ -288,7 +288,9 @@ class StructlogInstrumentor(BaseInstrumentor):
     chain, enabling automatic emission of structlog events as OpenTelemetry logs.
 
     Example:
-        >>> from opentelemetry.instrumentation.structlog import StructlogInstrumentor
+        >>> from opentelemetry.instrumentation.structlog import (
+        ...     StructlogInstrumentor,
+        ... )
         >>> import structlog
         >>> StructlogInstrumentor().instrument()
         >>> logger = structlog.get_logger()

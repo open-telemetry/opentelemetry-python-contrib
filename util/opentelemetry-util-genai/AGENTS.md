@@ -25,7 +25,9 @@ applicable ones.
 Every new operation type must follow this pattern:
 
 ```python
-invocation = handler.start_inference(provider, request_model, server_address=..., server_port=...)
+invocation = handler.start_inference(
+    provider, request_model, server_address=..., server_port=...
+)
 invocation.temperature = ...
 try:
     response = client.call(...)
