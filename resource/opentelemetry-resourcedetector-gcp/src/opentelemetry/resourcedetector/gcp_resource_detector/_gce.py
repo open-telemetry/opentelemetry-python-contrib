@@ -9,9 +9,7 @@ from opentelemetry.resourcedetector.gcp_resource_detector import _metadata
 
 # Format described in
 # https://cloud.google.com/compute/docs/metadata/default-metadata-values#vm_instance_metadata
-_ZONE_REGION_RE = re.compile(
-    r"projects\/\d+\/zones\/(?P<zone>(?P<region>\w+-\w+)-\w+)"
-)
+_ZONE_REGION_RE = re.compile(r"projects\/\d+\/zones\/(?P<zone>(?P<region>\w+-\w+)-\w+)")
 
 _logger = logging.getLogger(__name__)
 
@@ -21,8 +19,7 @@ def on_gce() -> bool:
         _metadata.get_metadata()["instance"]["machineType"]
     except (_metadata.MetadataAccessException, KeyError):
         _logger.debug(
-            "Could not fetch metadata attribute instance/machineType, "
-            "assuming not on GCE.",
+            "Could not fetch metadata attribute instance/machineType, assuming not on GCE.",
             exc_info=True,
         )
         return False
@@ -52,10 +49,7 @@ def availability_zone_and_region() -> ZoneAndRegion:
     match = _ZONE_REGION_RE.search(full_zone)
     if not match:
         raise ValueError(
-            "zone was not in the expected format: "
-            f"projects/PROJECT_NUM/zones/COUNTRY-REGION-ZONE. Got {full_zone}"
+            f"zone was not in the expected format: projects/PROJECT_NUM/zones/COUNTRY-REGION-ZONE. Got {full_zone}"
         )
 
-    return ZoneAndRegion(
-        zone=match.group("zone"), region=match.group("region")
-    )
+    return ZoneAndRegion(zone=match.group("zone"), region=match.group("region"))

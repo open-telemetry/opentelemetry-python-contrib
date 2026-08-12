@@ -59,9 +59,7 @@ _DEFAULT_REAL_LOCATION = "us-central1"
 
 
 def _get_project_from_env():
-    return (
-        os.getenv("GCLOUD_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
-    )
+    return os.getenv("GCLOUD_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
 
 
 def _get_project_from_gcloud_cli():
@@ -94,11 +92,7 @@ def _get_real_project():
 
 
 def _get_location_from_env():
-    return (
-        os.getenv("GCLOUD_LOCATION")
-        or os.getenv("GOOGLE_CLOUD_LOCATION")
-        or ""
-    )
+    return os.getenv("GCLOUD_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or ""
 
 
 def _get_real_location():
@@ -141,9 +135,7 @@ def _before_record_request(request):
         uri = uri.replace(f"projects/{project}", f"projects/{_FAKE_PROJECT}")
     location = _get_real_location()
     if location:
-        uri = uri.replace(
-            f"locations/{location}", f"locations/{_FAKE_LOCATION}"
-        )
+        uri = uri.replace(f"locations/{location}", f"locations/{_FAKE_LOCATION}")
         uri = uri.replace(
             f"//{location}-aiplatform.googleapis.com",
             f"//{_FAKE_LOCATION}-aiplatform.googleapis.com",
@@ -205,9 +197,7 @@ def _literal_block_scalar_presenter(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
 
 
-@pytest.fixture(
-    name="internal_setup_yaml_pretty_formatting", scope="module", autouse=True
-)
+@pytest.fixture(name="internal_setup_yaml_pretty_formatting", scope="module", autouse=True)
 def fixture_setup_yaml_pretty_formatting():
     yaml.add_representer(_LiteralBlockScalar, _literal_block_scalar_presenter)
 
@@ -251,9 +241,7 @@ class _PrettyPrintJSONBody:
     @staticmethod
     def serialize(cassette_dict):
         cassette_dict = _convert_body_to_literal(cassette_dict)
-        return yaml.dump(
-            cassette_dict, default_flow_style=False, allow_unicode=True
-        )
+        return yaml.dump(cassette_dict, default_flow_style=False, allow_unicode=True)
 
     @staticmethod
     def deserialize(cassette_string):
@@ -281,9 +269,7 @@ def fixture_patch_vcr_aiohttp_stream():
         # cassette replay, where the full response is already buffered
         # and this condition should be treated as normal EOF.
         def set_exception(self, exc):
-            if isinstance(exc, ClientConnectionError) and exc.args == (
-                "Connection closed",
-            ):
+            if isinstance(exc, ClientConnectionError) and exc.args == ("Connection closed",):
                 return
             super().set_exception(exc)
 
@@ -365,14 +351,10 @@ def fixture_setup_content_recording(request, semconv_version):
             }
         )
         _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING.update(
-            {
-                _OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL
-            }
+            {_OpenTelemetryStabilitySignalType.GEN_AI: _StabilityMode.GEN_AI_LATEST_EXPERIMENTAL}
         )
     else:
-        os.environ[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT] = str(
-            enabled
-        )
+        os.environ[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT] = str(enabled)
     yield
     _OpenTelemetrySemanticConventionStability._OTEL_SEMCONV_STABILITY_SIGNAL_MAPPING = orig_dict
 
@@ -409,9 +391,7 @@ def fixture_gcloud_credentials(in_replay_mode):
     if in_replay_mode:
         return FakeCredentials()
     creds, _ = google.auth.default()
-    return google.auth.credentials.with_scopes_if_required(
-        creds, ["https://www.googleapis.com/auth/cloud-platform"]
-    )
+    return google.auth.credentials.with_scopes_if_required(creds, ["https://www.googleapis.com/auth/cloud-platform"])
 
 
 @pytest.fixture(name="gemini_api_key")
@@ -444,18 +424,14 @@ def fixture_nonvertex_client_factory(gemini_api_key):
 
 
 @pytest.fixture(name="vertex_client_factory")
-def fixture_vertex_client_factory(
-    gcloud_project, gcloud_location, gcloud_credentials
-):
+def fixture_vertex_client_factory(gcloud_project, gcloud_location, gcloud_credentials):
     def _factory():
         return google.genai.Client(
             vertexai=True,
             project=gcloud_project,
             location=gcloud_location,
             credentials=gcloud_credentials,
-            http_options=types.HttpOptions(
-                headers={"accept-encoding": "identity"}
-            ),
+            http_options=types.HttpOptions(headers={"accept-encoding": "identity"}),
         )
 
     return _factory
@@ -474,9 +450,7 @@ def fixture_use_vertex(genai_sdk_backend):
 
 
 @pytest.fixture(name="client")
-def fixture_client(
-    vertex_client_factory, nonvertex_client_factory, use_vertex
-):
+def fixture_client(vertex_client_factory, nonvertex_client_factory, use_vertex):
     if use_vertex:
         return vertex_client_factory()
     return nonvertex_client_factory()
@@ -516,11 +490,7 @@ def fixture_generate_content_stream(client, is_async):
     def _async_impl(*args, **kwargs):
         async def _gather_all():
             results = []
-            async for (
-                result
-            ) in await client.aio.models.generate_content_stream(
-                *args, **kwargs
-            ):
+            async for result in await client.aio.models.generate_content_stream(*args, **kwargs):
                 results.append(result)
             return results
 
@@ -534,9 +504,7 @@ def fixture_generate_content_stream(client, is_async):
 @pytest.mark.parametrize("semconv_version", ["default"], indirect=True)
 @pytest.mark.vcr
 def test_non_streaming(generate_content, model, otel_mocker):
-    response = generate_content(
-        model=model, contents="Create a poem about Open Telemetry."
-    )
+    response = generate_content(model=model, contents="Create a poem about Open Telemetry.")
     assert response is not None
     assert response.text is not None
     assert len(response.text) > 0
@@ -547,9 +515,7 @@ def test_non_streaming(generate_content, model, otel_mocker):
 @pytest.mark.vcr
 def test_streaming(generate_content_stream, model, otel_mocker):
     count = 0
-    for response in generate_content_stream(
-        model=model, contents="Create a poem about Open Telemetry."
-    ):
+    for response in generate_content_stream(model=model, contents="Create a poem about Open Telemetry."):
         assert response is not None
         assert response.text is not None
         assert len(response.text) > 0
@@ -559,13 +525,9 @@ def test_streaming(generate_content_stream, model, otel_mocker):
 
 
 @pytest.mark.parametrize("semconv_version", ["experimental"], indirect=True)
-@pytest.mark.parametrize(
-    "enable_completion_hook", ["enable_completion_hook"], indirect=True
-)
+@pytest.mark.parametrize("enable_completion_hook", ["enable_completion_hook"], indirect=True)
 @pytest.mark.vcr
-def test_upload_hook_non_streaming(
-    generate_content, model, otel_mocker: OTelMocker
-):
+def test_upload_hook_non_streaming(generate_content, model, otel_mocker: OTelMocker):
     expected_input = [
         {
             "parts": [
@@ -589,22 +551,14 @@ def test_upload_hook_non_streaming(
             "finish_reason": "stop",
         }
     ]
-    _ = generate_content(
-        model=model, contents="Create a haiku about Open Telemetry."
-    )
+    _ = generate_content(model=model, contents="Create a haiku about Open Telemetry.")
     time.sleep(2)
 
-    event = otel_mocker.get_event_named(
-        "gen_ai.client.inference.operation.details"
-    )
-    assert_fsspec_equal(
-        event.attributes["gen_ai.input.messages_ref"], expected_input
-    )
+    event = otel_mocker.get_event_named("gen_ai.client.inference.operation.details")
+    assert_fsspec_equal(event.attributes["gen_ai.input.messages_ref"], expected_input)
 
     span = otel_mocker.get_span_named(f"generate_content {model}")
-    assert_fsspec_equal(
-        span.attributes["gen_ai.output.messages_ref"], expected_output
-    )
+    assert_fsspec_equal(span.attributes["gen_ai.output.messages_ref"], expected_output)
 
 
 def assert_fsspec_equal(path, value):

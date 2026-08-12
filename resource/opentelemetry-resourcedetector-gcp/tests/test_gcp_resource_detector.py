@@ -196,6 +196,4 @@ def test_entry_points():
     assert "gcp" in ep_map
     assert "gcp_resource_detector" in ep_map
     assert ep_map["gcp"].load() is GoogleCloudResourceDetector
-    assert (
-        ep_map["gcp_resource_detector"].load() is GoogleCloudResourceDetector
-    )
+    assert ep_map["gcp_resource_detector"].load() is GoogleCloudResourceDetector

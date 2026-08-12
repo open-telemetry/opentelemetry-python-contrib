@@ -5,7 +5,7 @@
 | [opentelemetry-instrumentation-aiohttp-client](./opentelemetry-instrumentation-aiohttp-client) | aiohttp ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-aiohttp-server](./opentelemetry-instrumentation-aiohttp-server) | aiohttp ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-aiokafka](./opentelemetry-instrumentation-aiokafka) | aiokafka >= 0.8, < 1.0 | No | development
-| [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | No | migration
+| [opentelemetry-instrumentation-aiopg](./opentelemetry-instrumentation-aiopg) | aiopg >= 0.13.0, < 2.0.0 | Yes | migration
 | [opentelemetry-instrumentation-asgi](./opentelemetry-instrumentation-asgi) | asgiref ~= 3.0 | Yes | migration
 | [opentelemetry-instrumentation-asyncclick](./opentelemetry-instrumentation-asyncclick) | asyncclick ~= 8.0 | No | development
 | [opentelemetry-instrumentation-asyncio](./opentelemetry-instrumentation-asyncio) | asyncio | No | development
