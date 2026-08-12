@@ -52,10 +52,7 @@ class TestFunctionalKafka(TestBase):
         """The partition recorded on the span must match the partition the
         broker actually delivered the message to, read back from the
         ``send()`` future rather than recomputed with the partitioner."""
-        futures = [
-            self.producer.send(KAFKA_TOPIC, b"payload-%d" % index)
-            for index in range(20)
-        ]
+        futures = [self.producer.send(KAFKA_TOPIC, b"payload-%d" % index) for index in range(20)]
         metadatas = [future.get(timeout=30) for future in futures]
 
         spans = self.memory_exporter.get_finished_spans()
@@ -63,24 +60,18 @@ class TestFunctionalKafka(TestBase):
         for span, metadata in zip(spans, metadatas):
             self.assertEqual(span.name, f"{KAFKA_TOPIC} send")
             self.assertIs(span.kind, trace_api.SpanKind.PRODUCER)
-            self.assertEqual(
-                span.attributes[SpanAttributes.MESSAGING_SYSTEM], "kafka"
-            )
+            self.assertEqual(span.attributes[SpanAttributes.MESSAGING_SYSTEM], "kafka")
             self.assertEqual(
                 span.attributes[SpanAttributes.MESSAGING_DESTINATION],
                 KAFKA_TOPIC,
             )
-            partition = span.attributes[
-                SpanAttributes.MESSAGING_KAFKA_PARTITION
-            ]
+            partition = span.attributes[SpanAttributes.MESSAGING_KAFKA_PARTITION]
             self.assertIsInstance(partition, int)
             self.assertEqual(partition, metadata.partition)
 
     def test_send_with_explicit_partition(self):
         explicit_partition = KAFKA_PARTITION_COUNT - 1
-        future = self.producer.send(
-            KAFKA_TOPIC, b"payload", partition=explicit_partition
-        )
+        future = self.producer.send(KAFKA_TOPIC, b"payload", partition=explicit_partition)
         metadata = future.get(timeout=30)
 
         self.assertEqual(metadata.partition, explicit_partition)
