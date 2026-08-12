@@ -110,9 +110,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 raise ValueError("username required in basic_auth")
             if "password_file" in basic_auth:
                 if "password" in basic_auth:
-                    raise ValueError(
-                        "basic_auth cannot contain password and password_file"
-                    )
+                    raise ValueError("basic_auth cannot contain password and password_file")
                 with open(  # pylint: disable=unspecified-encoding
                     basic_auth["password_file"]
                 ) as file:
@@ -145,13 +143,9 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 new_config["cert_file"] = tls_config["cert_file"]
                 new_config["key_file"] = tls_config["key_file"]
             elif "cert_file" in tls_config or "key_file" in tls_config:
-                raise ValueError(
-                    "tls_config requires both cert_file and key_file"
-                )
+                raise ValueError("tls_config requires both cert_file and key_file")
             if "insecure_skip_verify" in tls_config:
-                new_config["insecure_skip_verify"] = tls_config[
-                    "insecure_skip_verify"
-                ]
+                new_config["insecure_skip_verify"] = tls_config["insecure_skip_verify"]
         self._tls_config = tls_config
 
     @property
@@ -180,9 +174,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             return MetricExportResult.SUCCESS
         timeseries = self._translate_data(metrics_data)
         if not timeseries:
-            logger.error(
-                "All records contain unsupported aggregators, export aborted"
-            )
+            logger.error("All records contain unsupported aggregators, export aborted")
             return MetricExportResult.FAILURE
         message = self._build_message(timeseries)
         headers = self._build_headers()
@@ -196,22 +188,16 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             # OTLP Data model suggests combining some attrs into  job/instance
             # Should we do that here?
             if self.resources_as_labels:
-                resource_labels = [
-                    (n, str(v)) for n, v in resource.attributes.items()
-                ]
+                resource_labels = [(n, str(v)) for n, v in resource.attributes.items()]
             else:
                 resource_labels = []
             # Scope name/version probably not too useful from a labeling perspective
             for scope_metrics in resource_metrics.scope_metrics:
                 for metric in scope_metrics.metrics:
-                    rw_timeseries.extend(
-                        self._parse_metric(metric, resource_labels)
-                    )
+                    rw_timeseries.extend(self._parse_metric(metric, resource_labels))
         return rw_timeseries
 
-    def _parse_metric(
-        self, metric: Metric, resource_labels: Sequence
-    ) -> Sequence[TimeSeries]:
+    def _parse_metric(self, metric: Metric, resource_labels: Sequence) -> Sequence[TimeSeries]:
         """
         Parses the Metric & lower objects, then converts the output into
         OM TimeSeries. Returns a List of TimeSeries objects based on one Metric
@@ -247,9 +233,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
         timeseries = []
         for labels, samples in sample_sets.items():
             ts = TimeSeries()
-            for label_name, label_value in sorted(
-                chain(resource_labels, labels)
-            ):
+            for label_name, label_value in sorted(chain(resource_labels, labels)):
                 # Previous implementation did not str() the names...
                 ts.labels.append(self._label(label_name, str(label_value)))
             for value, timestamp in samples:
@@ -312,28 +296,18 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             return tuple(ts_attrs), ts_sample
 
         for bound_pos, bound in enumerate(data_point.explicit_bounds):
-            sample_attr_pairs.append(
-                handle_bucket(data_point.bucket_counts[bound_pos], bound)
-            )
+            sample_attr_pairs.append(handle_bucket(data_point.bucket_counts[bound_pos], bound))
 
         # Add the last label for implicit +inf bucket
-        sample_attr_pairs.append(
-            handle_bucket(data_point.bucket_counts[-1], bound="+Inf")
-        )
+        sample_attr_pairs.append(handle_bucket(data_point.bucket_counts[-1], bound="+Inf"))
 
         # Lastly, add series for count & sum
-        sample_attr_pairs.append(
-            handle_bucket(data_point.sum, name_override=f"{name}_sum")
-        )
-        sample_attr_pairs.append(
-            handle_bucket(data_point.count, name_override=f"{name}_count")
-        )
+        sample_attr_pairs.append(handle_bucket(data_point.sum, name_override=f"{name}_sum"))
+        sample_attr_pairs.append(handle_bucket(data_point.count, name_override=f"{name}_count"))
         return sample_attr_pairs
 
     def _parse_data_point(self, data_point, name=None):
-        attrs = tuple(data_point.attributes.items()) + (
-            ("__name__", self._sanitize_string(name, "name")),
-        )
+        attrs = tuple(data_point.attributes.items()) + (("__name__", self._sanitize_string(name, "name")),)
         sample = (data_point.value, (data_point.time_unix_nano // 1_000_000))
         return attrs, sample
 
@@ -355,9 +329,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
                 headers[header_name] = header_value
         return headers
 
-    def _send_message(
-        self, message: bytes, headers: Dict
-    ) -> MetricExportResult:
+    def _send_message(self, message: bytes, headers: Dict) -> MetricExportResult:
         auth = None
         if self.basic_auth:
             auth = (self.basic_auth["username"], self.basic_auth["password"])
@@ -370,10 +342,7 @@ class PrometheusRemoteWriteMetricsExporter(MetricExporter):
             elif "insecure_skip_verify" in self.tls_config:
                 verify = self.tls_config["insecure_skip_verify"]
 
-            if (
-                "cert_file" in self.tls_config
-                and "key_file" in self.tls_config
-            ):
+            if "cert_file" in self.tls_config and "key_file" in self.tls_config:
                 cert = (
                     self.tls_config["cert_file"],
                     self.tls_config["key_file"],

@@ -31,9 +31,7 @@ class TestTrySetIP(unittest.TestCase):
 
         # Verify that the IP was set correctly
         for span in self.mock_state["need_ip"]:
-            span.set_attribute.assert_called_once_with(
-                "net.peer.ip", "192.168.1.1"
-            )
+            span.set_attribute.assert_called_once_with("net.peer.ip", "192.168.1.1")
         self.assertTrue(success)
 
     def test_no_socket_connection(self):
@@ -50,7 +48,5 @@ class TestTrySetIP(unittest.TestCase):
         with self.assertLogs(level=logging.WARNING) as warning:
             success = trysetip(self.conn, loglevel=logging.WARNING)
             self.assertEqual(len(warning.records), 1)
-            self.assertIn(
-                "Failed to get peer address", warning.records[0].message
-            )
+            self.assertIn("Failed to get peer address", warning.records[0].message)
             self.assertTrue(success)

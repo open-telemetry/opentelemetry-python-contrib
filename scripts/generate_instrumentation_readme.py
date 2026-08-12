@@ -19,22 +19,12 @@ header = """
 def main(base_instrumentation_path):
     table = [header]
     for instrumentation in sorted(os.listdir(base_instrumentation_path)):
-        instrumentation_path = os.path.join(
-            base_instrumentation_path, instrumentation
-        )
-        if not os.path.isdir(
-            instrumentation_path
-        ) or not instrumentation.startswith(_prefix):
+        instrumentation_path = os.path.join(base_instrumentation_path, instrumentation)
+        if not os.path.isdir(instrumentation_path) or not instrumentation.startswith(_prefix):
             continue
 
-        src_dir = os.path.join(
-            instrumentation_path, "src", "opentelemetry", "instrumentation"
-        )
-        src_pkgs = [
-            f
-            for f in os.listdir(src_dir)
-            if os.path.isdir(os.path.join(src_dir, f))
-        ]
+        src_dir = os.path.join(instrumentation_path, "src", "opentelemetry", "instrumentation")
+        src_pkgs = [f for f in os.listdir(src_dir) if os.path.isdir(os.path.join(src_dir, f))]
         assert len(src_pkgs) == 1
         name = src_pkgs[0]
 
