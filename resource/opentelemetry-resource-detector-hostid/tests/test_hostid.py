@@ -97,9 +97,7 @@ class HostIdResourceDetectorTest(TestCase):
         f"{MODULE}._read_first_line",
         side_effect=[None, "dbus-machine-id"],
     )
-    def test_linux_falls_back_to_dbus_machine_id(
-        self, mock_read: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_linux_falls_back_to_dbus_machine_id(self, mock_read: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self._assert_only_host_id(resource, "dbus-machine-id")
         self.assertEqual(
@@ -109,17 +107,13 @@ class HostIdResourceDetectorTest(TestCase):
 
     @patch(f"{MODULE}.platform.system", return_value="Linux")
     @patch(f"{MODULE}._read_first_line", return_value=None)
-    def test_linux_no_machine_id(
-        self, mock_read: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_linux_no_machine_id(self, mock_read: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
     @patch(f"{MODULE}.platform.system", return_value="Darwin")
     @patch(f"{MODULE}.subprocess.run", return_value=_completed(_IOREG_OUTPUT))
-    def test_macos_parses_ioreg_platform_uuid(
-        self, mock_run: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_macos_parses_ioreg_platform_uuid(self, mock_run: MagicMock, mock_system: MagicMock) -> None:
         self._assert_only_host_id(
             HostIdResourceDetector().detect(),
             "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
@@ -127,9 +121,7 @@ class HostIdResourceDetectorTest(TestCase):
 
     @patch(f"{MODULE}.platform.system", return_value="Darwin")
     @patch(f"{MODULE}.subprocess.run", return_value=_completed("no uuid here"))
-    def test_macos_no_platform_uuid(
-        self, mock_run: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_macos_no_platform_uuid(self, mock_run: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
@@ -138,9 +130,7 @@ class HostIdResourceDetectorTest(TestCase):
         f"{MODULE}.subprocess.run",
         return_value=_completed("", return_code=1),
     )
-    def test_windows_registry_query_fails(
-        self, mock_run: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_windows_registry_query_fails(self, mock_run: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
@@ -149,9 +139,7 @@ class HostIdResourceDetectorTest(TestCase):
         f"{MODULE}.subprocess.run",
         return_value=_completed("no machine guid here"),
     )
-    def test_windows_no_machine_guid(
-        self, mock_run: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_windows_no_machine_guid(self, mock_run: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
@@ -182,9 +170,7 @@ class HostIdResourceDetectorTest(TestCase):
 
     @patch(f"{MODULE}.platform.system", return_value="FreeBSD")
     @patch(f"{MODULE}._read_first_line", return_value="bsd-host-id")
-    def test_bsd_reads_etc_hostid(
-        self, mock_read: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_bsd_reads_etc_hostid(self, mock_read: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self._assert_only_host_id(resource, "bsd-host-id")
         self.assertEqual(mock_read.call_args.args[0], "/etc/hostid")
@@ -201,9 +187,7 @@ class HostIdResourceDetectorTest(TestCase):
         mock_read: MagicMock,
         mock_system: MagicMock,
     ) -> None:
-        self._assert_only_host_id(
-            HostIdResourceDetector().detect(), "bsd-kenv-uuid"
-        )
+        self._assert_only_host_id(HostIdResourceDetector().detect(), "bsd-kenv-uuid")
 
     @patch(f"{MODULE}.platform.system", return_value="FreeBSD")
     @patch(f"{MODULE}._read_first_line", return_value=None)
@@ -221,9 +205,7 @@ class HostIdResourceDetectorTest(TestCase):
         self.assertNotIn(HOST_ID, resource.attributes)
 
     @patch(f"{MODULE}.platform.system", return_value="Java")
-    def test_unsupported_os_returns_empty(
-        self, mock_system: MagicMock
-    ) -> None:
+    def test_unsupported_os_returns_empty(self, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
@@ -234,17 +216,13 @@ class HostIdResourceDetectorTest(TestCase):
         f"{MODULE}.subprocess.run",
         side_effect=subprocess.TimeoutExpired(cmd="ioreg", timeout=5),
     )
-    def test_command_timeout_returns_empty(
-        self, mock_run: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_command_timeout_returns_empty(self, mock_run: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
     @patch(f"{MODULE}.platform.system", return_value="Darwin")
     @patch(f"{MODULE}.subprocess.run", side_effect=FileNotFoundError)
-    def test_command_not_found_returns_empty(
-        self, mock_run: MagicMock, mock_system: MagicMock
-    ) -> None:
+    def test_command_not_found_returns_empty(self, mock_run: MagicMock, mock_system: MagicMock) -> None:
         resource = HostIdResourceDetector().detect()
         self.assertNotIn(HOST_ID, resource.attributes)
 
@@ -259,8 +237,6 @@ class HostIdResourceDetectorTest(TestCase):
             HostIdResourceDetector(raise_on_error=True).detect()
 
     def test_host_id_entrypoint(self) -> None:
-        (entrypoint,) = entry_points(
-            group="opentelemetry_resource_detector", name="hostid"
-        )
+        (entrypoint,) = entry_points(group="opentelemetry_resource_detector", name="hostid")
         detector = entrypoint.load()()
         self.assertIsInstance(detector, HostIdResourceDetector)

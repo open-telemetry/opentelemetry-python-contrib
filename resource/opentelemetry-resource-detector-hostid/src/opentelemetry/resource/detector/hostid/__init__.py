@@ -75,9 +75,7 @@ def _run_command(command: tuple[str, ...]) -> str | None:
         logger.warning("Failed to run %s: %s", command[0], exception)
         return None
     if completed.returncode != 0:
-        logger.warning(
-            "Command %s exited with code %s", command[0], completed.returncode
-        )
+        logger.warning("Command %s exited with code %s", command[0], completed.returncode)
         return None
     return completed.stdout
 
@@ -142,9 +140,7 @@ def _get_host_id() -> str | None:
         case _ if system == "DragonFly" or system.endswith("BSD"):
             return _get_bsd_machine_id()
         case _:
-            logger.warning(
-                "Unsupported OS type for host.id detection: %s", system
-            )
+            logger.warning("Unsupported OS type for host.id detection: %s", system)
             return None
 
 
