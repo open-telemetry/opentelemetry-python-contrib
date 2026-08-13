@@ -68,7 +68,7 @@ class TestAsyncioToThread(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertGreaterEqual(span.end_time - span.start_time, 0.1 * 10 ** 9)
+        self.assertGreaterEqual(span.end_time - span.start_time, 0.1 * 10**9)
 
         for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == "asyncio.process.duration":
