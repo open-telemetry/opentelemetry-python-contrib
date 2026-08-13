@@ -68,14 +68,9 @@ class TestAsyncioToThread(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 1)
         span = spans[0]
-        self.assertGreaterEqual(span.end_time - span.start_time, 0.1 * 10**9)
+        self.assertGreaterEqual(span.end_time - span.start_time, 0.1 * 10 ** 9)
 
-        for metric in (
-            self.memory_metrics_reader.get_metrics_data()
-            .resource_metrics[0]
-            .scope_metrics[0]
-            .metrics
-        ):
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
                     self.assertGreaterEqual(point.sum, 0.1)
@@ -98,15 +93,57 @@ class TestAsyncioToThread(TestBase):
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
 
-        for metric in (
-            self.memory_metrics_reader.get_metrics_data()
-            .resource_metrics[0]
-            .scope_metrics[0]
-            .metrics
-        ):
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == "asyncio.process.duration":
                 for point in metric.data.data_points:
                     self.assertEqual(point.attributes["state"], "exception")
+
+    def test_to_thread_timeout_state(self):
+        def multiply(x, y):
+            raise asyncio.TimeoutError("fail")
+
+        async def to_thread():
+            await asyncio.to_thread(multiply, 2, 3)
+
+        with self.assertRaises(asyncio.TimeoutError):
+            asyncio.run(to_thread())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
+            if metric.name == "asyncio.process.duration":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["state"], "timeout")
+
+    def test_to_thread_cancelled_state(self):
+        def multiply(x, y):
+            raise asyncio.CancelledError()
+
+        async def to_thread():
+            await asyncio.to_thread(multiply, 2, 3)
+
+        with self.assertRaises(asyncio.CancelledError):
+            asyncio.run(to_thread())
+
+        spans = self.memory_exporter.get_finished_spans()
+        self.assertEqual(len(spans), 1)
+        span = spans[0]
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
+            if metric.name == "asyncio.process.duration":
+                for point in metric.data.data_points:
+                    self.assertEqual(point.attributes["state"], "cancelled")
+            if metric.name == "asyncio.process.created":
+                for point in metric.data.data_points:
+                    self.assertIn("state", point.attributes)
 
     def test_to_thread_repeated_calls(self):
         def multiply(x, y):
@@ -121,12 +158,7 @@ class TestAsyncioToThread(TestBase):
         spans = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans), 2)
 
-        for metric in (
-            self.memory_metrics_reader.get_metrics_data()
-            .resource_metrics[0]
-            .scope_metrics[0]
-            .metrics
-        ):
+        for metric in self.memory_metrics_reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics:
             if metric.name == "asyncio.process.created":
                 for point in metric.data.data_points:
                     self.assertEqual(point.value, 2)

@@ -227,9 +227,7 @@ class AsyncioInstrumentor(BaseInstrumentor):
         def wrapper(*args, **kwargs):
             start = default_timer()
             span = (
-                self._tracer.start_span(
-                    f"{ASYNCIO_PREFIX} to_thread-" + func_name
-                )
+                self._tracer.start_span(f"{ASYNCIO_PREFIX} to_thread-" + func_name)
                 if func_name in self._to_thread_name_to_trace
                 else None
             )
@@ -239,9 +237,9 @@ class AsyncioInstrumentor(BaseInstrumentor):
                 result = func(*args, **kwargs)
                 attr["state"] = "finished"
                 return result
-            except Exception as exc:
+            except BaseException as exc:
                 exception = exc
-                attr["state"] = "exception"
+                attr["state"] = determine_state(exc)
                 raise
             finally:
                 self.record_process(start, attr, span, exception)
