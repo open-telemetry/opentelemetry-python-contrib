@@ -49,10 +49,7 @@ def _encode_value(value: AnyValue) -> PB2AnyValue:
 
 
 def _encode_attributes(attributes: Mapping[str, AnyValue]):
-    return [
-        PB2KeyValue(key=key, value=_encode_value(value))
-        for key, value in attributes.items()
-    ]
+    return [PB2KeyValue(key=key, value=_encode_value(value)) for key, value in attributes.items()]
 
 
 def build_agent_description(
@@ -60,20 +57,14 @@ def build_agent_description(
     non_identifying_attributes: Mapping[str, AnyValue] | None = None,
 ) -> opamp_pb2.AgentDescription:
     identifying_attrs = _encode_attributes(identifying_attributes)
-    non_identifying_attrs = (
-        _encode_attributes(non_identifying_attributes)
-        if non_identifying_attributes
-        else None
-    )
+    non_identifying_attrs = _encode_attributes(non_identifying_attributes) if non_identifying_attributes else None
     return opamp_pb2.AgentDescription(
         identifying_attributes=identifying_attrs,
         non_identifying_attributes=non_identifying_attrs,
     )
 
 
-def build_heartbeat_message(
-    instance_uid: bytes, sequence_num: int, capabilities: int
-) -> opamp_pb2.AgentToServer:
+def build_heartbeat_message(instance_uid: bytes, sequence_num: int, capabilities: int) -> opamp_pb2.AgentToServer:
     command = opamp_pb2.AgentToServer(
         instance_uid=instance_uid,
         sequence_num=sequence_num,
@@ -121,16 +112,13 @@ def build_remote_config_status_response_message(
     return command
 
 
-def build_effective_config_message(
-    config: Mapping[str, Any], content_type: str
-):
+def build_effective_config_message(config: Mapping[str, Any], content_type: str):
     agent_config_map = opamp_pb2.AgentConfigMap()
     for filename, value in config.items():
         body = encode_effective_config_body(content_type, value)
         if body is None:
             _logger.warning(
-                "Skipping effective config entry %s with content type %s "
-                "because the value cannot be encoded",
+                "Skipping effective config entry %s with content type %s because the value cannot be encoded",
                 filename,
                 content_type,
             )
@@ -144,9 +132,7 @@ def build_effective_config_message(
     )
 
 
-def encode_effective_config_body(
-    content_type: str, value: Any
-) -> bytes | None:
+def encode_effective_config_body(content_type: str, value: Any) -> bytes | None:
     if content_type == "application/json":
         try:
             return json.dumps(value).encode("utf-8")

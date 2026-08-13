@@ -89,9 +89,7 @@ def fetch_async(  # pylint: disable=too-many-locals
 
     if span.is_recording():
         attributes = {}
-        _set_http_url(
-            attributes, redact_url(request.url), sem_conv_opt_in_mode
-        )
+        _set_http_url(attributes, redact_url(request.url), sem_conv_opt_in_mode)
         _set_http_method(
             attributes,
             request.method,
@@ -164,43 +162,25 @@ def _finish_tracing_callback(  # pylint: disable=too-many-locals,too-many-branch
         response_size = int(response.headers.get("Content-Length", 0))
 
         # Record old semconv metrics
-        if (
-            _report_old(sem_conv_opt_in_mode)
-            and duration_histogram_old is not None
-        ):
+        if _report_old(sem_conv_opt_in_mode) and duration_histogram_old is not None:
             metric_attributes_old = _create_metric_attributes_old(response)
             if duration_histogram_old:
-                duration_histogram_old.record(
-                    response.request_time, attributes=metric_attributes_old
-                )
+                duration_histogram_old.record(response.request_time, attributes=metric_attributes_old)
             if request_size_histogram_old:
-                request_size_histogram_old.record(
-                    request_size, attributes=metric_attributes_old
-                )
+                request_size_histogram_old.record(request_size, attributes=metric_attributes_old)
             if response_size_histogram_old:
-                response_size_histogram_old.record(
-                    response_size, attributes=metric_attributes_old
-                )
+                response_size_histogram_old.record(response_size, attributes=metric_attributes_old)
 
         # Record new semconv metrics (duration in seconds)
-        if (
-            _report_new(sem_conv_opt_in_mode)
-            and duration_histogram_new is not None
-        ):
+        if _report_new(sem_conv_opt_in_mode) and duration_histogram_new is not None:
             metric_attributes_new = _create_metric_attributes_new(response)
             # Convert request_time from seconds to seconds (it's already in seconds)
             if duration_histogram_new:
-                duration_histogram_new.record(
-                    response.request_time, attributes=metric_attributes_new
-                )
+                duration_histogram_new.record(response.request_time, attributes=metric_attributes_new)
             if request_size_histogram_new:
-                request_size_histogram_new.record(
-                    request_size, attributes=metric_attributes_new
-                )
+                request_size_histogram_new.record(request_size, attributes=metric_attributes_new)
             if response_size_histogram_new:
-                response_size_histogram_new.record(
-                    response_size, attributes=metric_attributes_new
-                )
+                response_size_histogram_new.record(response_size, attributes=metric_attributes_new)
 
     if response_hook:
         response_hook(span, future)

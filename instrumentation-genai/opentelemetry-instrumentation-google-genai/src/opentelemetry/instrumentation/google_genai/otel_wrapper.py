@@ -33,12 +33,8 @@ class OTelWrapper:
         self._tracer = tracer
         self._logger = logger
         self._meter = meter
-        self._operation_duration_metric = (
-            gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
-        )
-        self._token_usage_metric = (
-            gen_ai_metrics.create_gen_ai_client_token_usage(meter)
-        )
+        self._operation_duration_metric = gen_ai_metrics.create_gen_ai_client_operation_duration(meter)
+        self._token_usage_metric = gen_ai_metrics.create_gen_ai_client_token_usage(meter)
 
     @staticmethod
     def from_providers(
@@ -47,15 +43,9 @@ class OTelWrapper:
         meter_provider: MeterProvider,
     ):
         return OTelWrapper(
-            tracer_provider.get_tracer(
-                _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
-            ),
-            logger_provider.get_logger(
-                _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
-            ),
-            meter=meter_provider.get_meter(
-                _SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES
-            ),
+            tracer_provider.get_tracer(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
+            logger_provider.get_logger(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
+            meter=meter_provider.get_meter(_SCOPE_NAME, _LIBRARY_VERSION, _SCHEMA_URL, _SCOPE_ATTRIBUTES),
         )
 
     def start_as_current_span(self, *args, **kwargs):
@@ -69,33 +59,23 @@ class OTelWrapper:
     def token_usage_metric(self):
         return self._token_usage_metric
 
-    def log_system_prompt(
-        self, attributes: dict[str, str], body: dict[str, Any]
-    ):
+    def log_system_prompt(self, attributes: dict[str, str], body: dict[str, Any]):
         _logger.debug("Recording system prompt.")
         event_name = "gen_ai.system.message"
         self._log_event(event_name, attributes, body)
 
-    def log_user_prompt(
-        self, attributes: dict[str, str], body: dict[str, Any]
-    ):
+    def log_user_prompt(self, attributes: dict[str, str], body: dict[str, Any]):
         _logger.debug("Recording user prompt.")
         event_name = "gen_ai.user.message"
         self._log_event(event_name, attributes, body)
 
-    def log_response_content(
-        self, attributes: dict[str, str], body: dict[str, Any]
-    ):
+    def log_response_content(self, attributes: dict[str, str], body: dict[str, Any]):
         _logger.debug("Recording response.")
         event_name = "gen_ai.choice"
         self._log_event(event_name, attributes, body)
 
-    def _log_event(
-        self, event_name: str, attributes: dict[str, str], body: dict[str, Any]
-    ):
-        event = LogRecord(
-            event_name=event_name, body=body, attributes=attributes
-        )
+    def _log_event(self, event_name: str, attributes: dict[str, str], body: dict[str, Any]):
+        event = LogRecord(event_name=event_name, body=body, attributes=attributes)
         self._logger.emit(event)
 
     def log_completion_details(

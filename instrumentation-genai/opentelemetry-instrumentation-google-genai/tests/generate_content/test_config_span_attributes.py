@@ -33,9 +33,7 @@ class ConfigSpanAttributesTestCase(TestCase):
         self.assertEqual(span.attributes["gen_ai.request.choice.count"], 2)
 
     def test_option_reflected_to_span_attribute_choice_count_config_obj(self):
-        span = self.generate_and_get_span(
-            config=GenerateContentConfig(candidate_count=2)
-        )
+        span = self.generate_and_get_span(config=GenerateContentConfig(candidate_count=2))
         self.assertEqual(span.attributes["gen_ai.request.choice.count"], 2)
 
     def test_option_reflected_to_span_attribute_seed_config_dict(self):
@@ -43,69 +41,47 @@ class ConfigSpanAttributesTestCase(TestCase):
         self.assertEqual(span.attributes["gen_ai.request.seed"], 12345)
 
     def test_option_reflected_to_span_attribute_seed_config_obj(self):
-        span = self.generate_and_get_span(
-            config=GenerateContentConfig(seed=12345)
-        )
+        span = self.generate_and_get_span(config=GenerateContentConfig(seed=12345))
         self.assertEqual(span.attributes["gen_ai.request.seed"], 12345)
 
     def test_option_reflected_to_span_attribute_frequency_penalty(self):
         span = self.generate_and_get_span(config={"frequency_penalty": 1.0})
-        self.assertEqual(
-            span.attributes["gen_ai.request.frequency_penalty"], 1.0
-        )
+        self.assertEqual(span.attributes["gen_ai.request.frequency_penalty"], 1.0)
 
     def test_option_reflected_to_span_attribute_max_tokens(self):
-        span = self.generate_and_get_span(
-            config=GenerateContentConfig(max_output_tokens=5000)
-        )
+        span = self.generate_and_get_span(config=GenerateContentConfig(max_output_tokens=5000))
         self.assertEqual(span.attributes["gen_ai.request.max_tokens"], 5000)
 
     def test_option_reflected_to_span_attribute_presence_penalty(self):
-        span = self.generate_and_get_span(
-            config=GenerateContentConfig(presence_penalty=0.5)
-        )
-        self.assertEqual(
-            span.attributes["gen_ai.request.presence_penalty"], 0.5
-        )
+        span = self.generate_and_get_span(config=GenerateContentConfig(presence_penalty=0.5))
+        self.assertEqual(span.attributes["gen_ai.request.presence_penalty"], 0.5)
 
     def test_option_reflected_to_span_attribute_stop_sequences(self):
-        span = self.generate_and_get_span(
-            config={"stop_sequences": ["foo", "bar"]}
-        )
+        span = self.generate_and_get_span(config={"stop_sequences": ["foo", "bar"]})
         stop_sequences = span.attributes["gen_ai.request.stop_sequences"]
         self.assertEqual(len(stop_sequences), 2)
         self.assertEqual(stop_sequences[0], "foo")
         self.assertEqual(stop_sequences[1], "bar")
 
     def test_option_reflected_to_span_attribute_top_k(self):
-        span = self.generate_and_get_span(
-            config=GenerateContentConfig(top_k=20)
-        )
+        span = self.generate_and_get_span(config=GenerateContentConfig(top_k=20))
         self.assertEqual(span.attributes["gen_ai.request.top_k"], 20)
 
     def test_option_reflected_to_span_attribute_top_p(self):
         span = self.generate_and_get_span(config={"top_p": 10})
         self.assertEqual(span.attributes["gen_ai.request.top_p"], 10)
 
-    @mock.patch.dict(
-        os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"}
-    )
+    @mock.patch.dict(os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"})
     def test_option_not_reflected_to_span_attribute_system_instruction(self):
-        span = self.generate_and_get_span(
-            config={"system_instruction": "Yadda yadda yadda"}
-        )
-        self.assertNotIn(
-            "gcp.gen_ai.operation.config.system_instruction", span.attributes
-        )
+        span = self.generate_and_get_span(config={"system_instruction": "Yadda yadda yadda"})
+        self.assertNotIn("gcp.gen_ai.operation.config.system_instruction", span.attributes)
         self.assertNotIn("gen_ai.request.system_instruction", span.attributes)
         for key in span.attributes:
             value = span.attributes[key]
             if isinstance(value, str):
                 self.assertNotIn("Yadda yadda yadda", value)
 
-    @mock.patch.dict(
-        os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"}
-    )
+    @mock.patch.dict(os.environ, {"OTEL_GOOGLE_GENAI_GENERATE_CONTENT_CONFIG_INCLUDES": "*"})
     def test_option_reflected_to_span_attribute_automatic_func_calling(self):
         span = self.generate_and_get_span(
             config={
@@ -114,11 +90,7 @@ class ConfigSpanAttributesTestCase(TestCase):
                 }
             }
         )
-        self.assertTrue(
-            span.attributes[
-                "gcp.gen_ai.operation.config.automatic_function_calling.ignore_call_history"
-            ]
-        )
+        self.assertTrue(span.attributes["gcp.gen_ai.operation.config.automatic_function_calling.ignore_call_history"])
 
     def test_dynamic_config_options_not_included_without_allow_list(self):
         span = self.generate_and_get_span(
@@ -134,9 +106,7 @@ class ConfigSpanAttributesTestCase(TestCase):
         )
 
     def test_can_supply_allow_list_via_instrumentor_constructor(self):
-        self.set_instrumentor_constructor_kwarg(
-            "generate_content_config_key_allowlist", AllowList(includes=["*"])
-        )
+        self.set_instrumentor_constructor_kwarg("generate_content_config_key_allowlist", AllowList(includes=["*"]))
         span = self.generate_and_get_span(
             config={
                 "automatic_function_calling": {
@@ -144,8 +114,4 @@ class ConfigSpanAttributesTestCase(TestCase):
                 }
             }
         )
-        self.assertTrue(
-            span.attributes[
-                "gcp.gen_ai.operation.config.automatic_function_calling.ignore_call_history"
-            ]
-        )
+        self.assertTrue(span.attributes["gcp.gen_ai.operation.config.automatic_function_calling.ignore_call_history"])
