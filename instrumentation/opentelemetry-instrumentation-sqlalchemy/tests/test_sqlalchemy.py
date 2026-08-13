@@ -66,12 +66,17 @@ class TestSqlalchemyInstrumentation(TestBase):
         engine = create_engine("sqlite:///:memory:")
         tracer = self.tracer_provider.get_tracer(__name__)
         engine_tracer = EngineTracer(tracer, engine, mock.Mock())
-        self.assertEqual(
-            engine_tracer._operation_name("mydb", "/* comment only */"), "mydb"
-        )
-        self.assertEqual(
-            engine_tracer._operation_name(None, "   "), engine_tracer.vendor
-        )
+        try:
+            self.assertEqual(
+                engine_tracer._operation_name("mydb", "/* comment only */"),
+                "mydb",
+            )
+            self.assertEqual(
+                engine_tracer._operation_name(None, "   "),
+                engine_tracer.vendor,
+            )
+        finally:
+            EngineTracer.remove_all_event_listeners()
 
     def test_trace_integration(self):
         engine = create_engine("sqlite:///:memory:")
