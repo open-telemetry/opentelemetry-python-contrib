@@ -1,5 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=too-many-lines
 import asyncio
 import contextlib
 import logging
@@ -380,7 +381,7 @@ class TestAiopgInstrumentor(TestBase):
         self.assertEqual(len(spans_list), 1)
 
 
-class TestAiopgIntegration(TestBase):
+class TestAiopgIntegration(TestBase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         super().setUp()
         _OpenTelemetrySemanticConventionStability._initialized = False
@@ -432,26 +433,15 @@ class TestAiopgIntegration(TestBase):
         self.assertIs(span.status.status_code, trace_api.StatusCode.UNSET)
 
     def test_query_parameters_not_captured_by_default(self):
-        db_integration = AiopgIntegration(
-            "test", "testcomponent", {"database": "database"}
-        )
-        mock_connection = async_call(
-            db_integration.wrapped_connection(
-                mock_connect, {}, {"database": "testdatabase"}
-            )
-        )
+        db_integration = AiopgIntegration("test", "testcomponent", {"database": "database"})
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"}))
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.execute("Test query", ("param1Value", False)))
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
         span = spans_list[0]
         self.assertNotIn("db.statement.parameters", span.attributes)
-        self.assertFalse(
-            any(
-                key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
-                for key in span.attributes
-            )
-        )
+        self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
 
     def test_capture_query_parameters_new_semconv(self):
         with use_semconv_opt_in("database"):
@@ -462,9 +452,7 @@ class TestAiopgIntegration(TestBase):
                 capture_parameters=True,
             )
             mock_connection = async_call(
-                db_integration.wrapped_connection(
-                    mock_connect, {}, {"database": "testdatabase"}
-                )
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
             )
             cursor = async_call(mock_connection.cursor())
             async_call(cursor.execute("Test query", ("param1Value", False)))
@@ -476,12 +464,8 @@ class TestAiopgIntegration(TestBase):
                 span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
                 "param1Value",
             )
-            self.assertEqual(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False"
-            )
-            self.assertIsInstance(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], str
-            )
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False")
+            self.assertIsInstance(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], str)
             # The legacy attribute must not be present under the new semconv.
             self.assertNotIn("db.statement.parameters", span.attributes)
 
@@ -492,11 +476,7 @@ class TestAiopgIntegration(TestBase):
             {"database": "database"},
             capture_parameters=True,
         )
-        mock_connection = async_call(
-            db_integration.wrapped_connection(
-                mock_connect, {}, {"database": "testdatabase"}
-            )
-        )
+        mock_connection = async_call(db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"}))
         cursor = async_call(mock_connection.cursor())
         async_call(cursor.execute("Test query", ("param1Value", False)))
         spans_list = self.memory_exporter.get_finished_spans()
@@ -508,12 +488,7 @@ class TestAiopgIntegration(TestBase):
             "('param1Value', False)",
         )
         self.assertIsInstance(span.attributes["db.statement.parameters"], str)
-        self.assertFalse(
-            any(
-                key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
-                for key in span.attributes
-            )
-        )
+        self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
 
     def test_capture_query_parameters_dup_semconv(self):
         with use_semconv_opt_in("database/dup"):
@@ -524,9 +499,7 @@ class TestAiopgIntegration(TestBase):
                 capture_parameters=True,
             )
             mock_connection = async_call(
-                db_integration.wrapped_connection(
-                    mock_connect, {}, {"database": "testdatabase"}
-                )
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
             )
             cursor = async_call(mock_connection.cursor())
             async_call(cursor.execute("Test query", ("param1Value", False)))
@@ -542,9 +515,7 @@ class TestAiopgIntegration(TestBase):
                 span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
                 "param1Value",
             )
-            self.assertEqual(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False"
-            )
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False")
 
     def test_capture_query_parameters_string_values_new_semconv(self):
         with use_semconv_opt_in("database"):
@@ -555,9 +526,7 @@ class TestAiopgIntegration(TestBase):
                 capture_parameters=True,
             )
             mock_connection = async_call(
-                db_integration.wrapped_connection(
-                    mock_connect, {}, {"database": "testdatabase"}
-                )
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
             )
             cursor = async_call(mock_connection.cursor())
             async_call(
@@ -569,15 +538,9 @@ class TestAiopgIntegration(TestBase):
             spans_list = self.memory_exporter.get_finished_spans()
             self.assertEqual(len(spans_list), 1)
             span = spans_list[0]
-            self.assertEqual(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], "jdoe"
-            )
-            self.assertEqual(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "berlin"
-            )
-            self.assertIsInstance(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], str
-            )
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], "jdoe")
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "berlin")
+            self.assertIsInstance(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], str)
 
     def test_query_parameters_not_captured_for_batch_operations(self):
         with use_semconv_opt_in("database/dup"):
@@ -588,9 +551,7 @@ class TestAiopgIntegration(TestBase):
                 capture_parameters=True,
             )
             mock_connection = async_call(
-                db_integration.wrapped_connection(
-                    mock_connect, {}, {"database": "testdatabase"}
-                )
+                db_integration.wrapped_connection(mock_connect, {}, {"database": "testdatabase"})
             )
             cursor = async_call(mock_connection.cursor())
             async_call(
@@ -604,12 +565,7 @@ class TestAiopgIntegration(TestBase):
             span = spans_list[0]
             # db.query.parameter.<key> SHOULD NOT be captured on batch
             # operations, but the legacy attribute is still captured.
-            self.assertFalse(
-                any(
-                    key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
-                    for key in span.attributes
-                )
-            )
+            self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
             self.assertEqual(
                 span.attributes["db.statement.parameters"],
                 "[('param1Value',), ('param2Value',)]",
