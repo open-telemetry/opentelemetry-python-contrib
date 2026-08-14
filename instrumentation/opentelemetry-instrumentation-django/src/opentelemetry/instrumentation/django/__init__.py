@@ -25,13 +25,7 @@ dependency so this instrumentation can use the ASGI context helpers:
 
     pip install "opentelemetry-instrumentation-django[asgi]"
 
-Then instrument Django the same way as a WSGI application:
-
-.. code:: python
-
-    from opentelemetry.instrumentation.django import DjangoInstrumentor
-
-    DjangoInstrumentor().instrument()
+Then instrument Django the same way as a WSGI application.
 
 
 Configuration
