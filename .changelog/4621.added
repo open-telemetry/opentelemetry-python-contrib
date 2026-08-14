@@ -1,1 +1,1 @@
-`opentelemetry-instrumentation-grpc`: add rpc.client.call.duration and rpc.server.call.duration metrics for both sync and async components
+`opentelemetry-instrumentation-grpc`: emit RPC client and server duration metrics for sync and async components. Metrics default to the v1.37.0 conventions (`rpc.client.duration` / `rpc.server.duration`); set `OTEL_SEMCONV_STABILITY_OPT_IN=rpc` for the v1.40 conventions (`rpc.client.call.duration` / `rpc.server.call.duration`) or `rpc/dup` to emit both.
