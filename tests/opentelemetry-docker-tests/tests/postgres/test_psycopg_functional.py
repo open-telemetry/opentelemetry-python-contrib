@@ -219,11 +219,7 @@ class TestFunctionalPsycopgQueryParameters(TestBase):
             finally:
                 connection.close()
                 Psycopg2Instrumentor().uninstrument()
-        return [
-            span
-            for span in self.memory_exporter.get_finished_spans()
-            if span.kind is trace_api.SpanKind.CLIENT
-        ]
+        return [span for span in self.memory_exporter.get_finished_spans() if span.kind is trace_api.SpanKind.CLIENT]
 
     def test_positional_query_parameters_captured(self):
         spans = self._client_spans_for(
@@ -233,33 +229,21 @@ class TestFunctionalPsycopgQueryParameters(TestBase):
         self.assertEqual(len(spans), 1)
         attributes = spans[0].attributes
         # Positional parameters are keyed by their 0-based index and stringified.
-        self.assertEqual(
-            attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], "jdoe"
-        )
+        self.assertEqual(attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], "jdoe")
         self.assertEqual(attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "42")
-        self.assertIsInstance(
-            attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], str
-        )
-        self.assertIsInstance(
-            attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], str
-        )
+        self.assertIsInstance(attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"], str)
+        self.assertIsInstance(attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], str)
 
     def test_named_query_parameters_captured(self):
         spans = self._client_spans_for(
             "database",
-            lambda cursor: cursor.execute(
-                "SELECT %(userName)s", {"userName": "jdoe"}
-            ),
+            lambda cursor: cursor.execute("SELECT %(userName)s", {"userName": "jdoe"}),
         )
         self.assertEqual(len(spans), 1)
         attributes = spans[0].attributes
         # Named parameters are keyed by their name.
-        self.assertEqual(
-            attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.userName"], "jdoe"
-        )
-        self.assertIsInstance(
-            attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.userName"], str
-        )
+        self.assertEqual(attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.userName"], "jdoe")
+        self.assertIsInstance(attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.userName"], str)
 
     def test_query_parameters_not_captured_for_batch_operations(self):
         def operation(cursor):
@@ -276,12 +260,7 @@ class TestFunctionalPsycopgQueryParameters(TestBase):
         # db.query.parameter.<key> SHOULD NOT be captured on batch operations,
         # but the legacy db.statement.parameters blob still is under the old
         # semconv.
-        self.assertFalse(
-            any(
-                key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
-                for key in attributes
-            )
-        )
+        self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in attributes))
         self.assertEqual(
             attributes["db.statement.parameters"],
             "(('param1Value',), ('param2Value',))",
