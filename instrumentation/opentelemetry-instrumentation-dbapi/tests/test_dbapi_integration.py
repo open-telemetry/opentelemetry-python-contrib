@@ -338,12 +338,7 @@ class TestDBApiIntegration(TestBase):
             "('param1Value', False)",
         )
         # db.query.parameter.<key> belongs to the new semconv only.
-        self.assertFalse(
-            any(
-                key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
-                for key in span.attributes
-            )
-        )
+        self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
         self.assertEqual(span.attributes[DB_USER], "testuser")
         self.assertEqual(span.attributes[net_attributes.NET_PEER_NAME], "testhost")
         self.assertEqual(span.attributes[net_attributes.NET_PEER_PORT], 123)
@@ -380,9 +375,7 @@ class TestDBApiIntegration(TestBase):
                 span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
                 "param1Value",
             )
-            self.assertEqual(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False"
-            )
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False")
             # The legacy db.statement.parameters is replaced by
             # db.query.parameter.<key> in the stable semconv.
             self.assertFalse("db.statement.parameters" in span.attributes)
@@ -442,9 +435,7 @@ class TestDBApiIntegration(TestBase):
                 span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.0"],
                 "param1Value",
             )
-            self.assertEqual(
-                span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False"
-            )
+            self.assertEqual(span.attributes[f"{DB_QUERY_PARAMETER_TEMPLATE}.1"], "False")
             self.assertEqual(span.attributes[SERVER_ADDRESS], "testhost")
             self.assertEqual(span.attributes[SERVER_PORT], 123)
 
@@ -460,9 +451,7 @@ class TestDBApiIntegration(TestBase):
                 connection_attributes,
                 capture_parameters=True,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.execute(
                 "SELECT * FROM users WHERE name = %(userName)s",
@@ -487,9 +476,7 @@ class TestDBApiIntegration(TestBase):
                 connection_attributes,
                 capture_parameters=True,
             )
-            mock_connection = db_integration.wrapped_connection(
-                mock_connect, {}, connection_props
-            )
+            mock_connection = db_integration.wrapped_connection(mock_connect, {}, connection_props)
             cursor = mock_connection.cursor()
             cursor.executemany(
                 "INSERT INTO users VALUES (%s)",
@@ -500,12 +487,7 @@ class TestDBApiIntegration(TestBase):
             span = spans_list[0]
             # db.query.parameter.<key> SHOULD NOT be captured on batch
             # operations, but the legacy attribute is still captured.
-            self.assertFalse(
-                any(
-                    key.startswith(DB_QUERY_PARAMETER_TEMPLATE)
-                    for key in span.attributes
-                )
-            )
+            self.assertFalse(any(key.startswith(DB_QUERY_PARAMETER_TEMPLATE) for key in span.attributes))
             self.assertEqual(
                 span.attributes["db.statement.parameters"],
                 "[('param1Value',), ('param2Value',)]",

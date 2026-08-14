@@ -763,16 +763,12 @@ class TestOpenTelemetrySemConvStabilityDatabase(TestCase):
 
     def test_db_query_parameters_scalar_string_not_iterated(self):
         result = {}
-        _set_db_query_parameters(
-            result, "jdoe", sem_conv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        _set_db_query_parameters(result, "jdoe", sem_conv_opt_in_mode=_StabilityMode.DATABASE)
         # A bare string is a single scalar parameter, not a sequence of
         # single-character parameters, so nothing is captured.
         self.assertEqual(result, {})
 
     def test_db_query_parameters_none(self):
         result = {}
-        _set_db_query_parameters(
-            result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE
-        )
+        _set_db_query_parameters(result, None, sem_conv_opt_in_mode=_StabilityMode.DATABASE)
         self.assertEqual(result, {})

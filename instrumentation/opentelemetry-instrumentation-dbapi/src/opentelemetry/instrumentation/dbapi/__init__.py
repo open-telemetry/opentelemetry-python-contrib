@@ -783,9 +783,7 @@ class CursorTracer(Generic[CursorT]):
             # operations (e.g. executemany).
             if not is_batch:
                 query_parameter_attributes = {}
-                _set_db_query_parameters(
-                    query_parameter_attributes, parameters, sem_conv_mode
-                )
+                _set_db_query_parameters(query_parameter_attributes, parameters, sem_conv_mode)
                 span.set_attributes(query_parameter_attributes)
 
     def get_operation_name(self, cursor: CursorT, args: Sequence[Any]) -> str:  # pylint: disable=no-self-use
