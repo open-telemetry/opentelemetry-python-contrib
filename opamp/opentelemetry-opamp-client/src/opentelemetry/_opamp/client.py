@@ -30,7 +30,7 @@ _OPAMP_HTTP_HEADERS = {
     "User-Agent": "OTel-OpAMP-Python/" + __version__,
 }
 
-_DEFAULT_CAPABILITIES = (
+_DEFAULT_CAPABILITIES: Final = (
     opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsStatus
     | opamp_pb2.AgentCapabilities.AgentCapabilities_ReportsHeartbeat
     | opamp_pb2.AgentCapabilities.AgentCapabilities_AcceptsRemoteConfig
