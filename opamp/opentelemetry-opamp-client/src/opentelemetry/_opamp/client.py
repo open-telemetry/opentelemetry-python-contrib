@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Generator, Mapping
+from typing import Any, Final, Generator, Mapping
 
 from uuid_utils import uuid7
 
