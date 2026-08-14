@@ -617,9 +617,7 @@ class TestPostgresqlIntegration(TestBase):  # pylint: disable=too-many-public-me
 
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[SERVER_ADDRESS], "localhost")
             self.assertEqual(span.attributes[SERVER_PORT], 5432)
             self.assertNotIn(DB_SYSTEM, span.attributes)
@@ -649,12 +647,8 @@ class TestPostgresqlIntegration(TestBase):  # pylint: disable=too-many-public-me
             self.assertEqual(span.attributes[DB_SYSTEM_NAME], "postgresql")
             self.assertEqual(span.attributes[DB_NAME], "test")
             self.assertEqual(span.attributes[DB_NAMESPACE], "test")
-            self.assertEqual(
-                span.attributes[DB_STATEMENT], "SELECT * FROM test"
-            )
-            self.assertEqual(
-                span.attributes[DB_QUERY_TEXT], "SELECT * FROM test"
-            )
+            self.assertEqual(span.attributes[DB_STATEMENT], "SELECT * FROM test")
+            self.assertEqual(span.attributes[DB_QUERY_TEXT], "SELECT * FROM test")
             self.assertEqual(span.attributes[DB_USER], "testuser")
             self.assertEqual(span.attributes[NET_PEER_NAME], "localhost")
             self.assertEqual(span.attributes[NET_PEER_PORT], 5432)
