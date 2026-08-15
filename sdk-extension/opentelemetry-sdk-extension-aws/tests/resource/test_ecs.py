@@ -22,6 +22,8 @@ MockEcsResourceAttributes = {
     ResourceAttributes.CONTAINER_ID: "a4d00c9dd675d67f866c786181419e1b44832d4696780152e61afd44a3e02856",
 }
 
+MockEcsContainerName = "curl"
+
 
 def _read_file(filename: str) -> str:
     with open(join(dirname(__file__), "ecs", filename), encoding="utf-8") as file:
@@ -145,7 +147,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
-                    ResourceAttributes.CONTAINER_NAME: "curl",
+                    ResourceAttributes.CONTAINER_NAME: MockEcsContainerName,
                     ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/metadata",),
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/metadata",
@@ -208,7 +210,7 @@ class AwsEcsResourceDetectorTest(unittest.TestCase):
             OrderedDict(
                 {
                     **MockEcsResourceAttributes,
-                    ResourceAttributes.CONTAINER_NAME: "curl",
+                    ResourceAttributes.CONTAINER_NAME: MockEcsContainerName,
                     ResourceAttributes.AWS_LOG_GROUP_NAMES: ("/ecs/containerlogs",),
                     ResourceAttributes.AWS_LOG_GROUP_ARNS: (
                         "arn:aws:logs:us-west-2:111122223333:log-group:/ecs/containerlogs",
