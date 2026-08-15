@@ -60,9 +60,6 @@ class AwsEcsResourceDetector(ResourceDetector):
             metadata_container = json.loads(_http_get(metadata_v4_endpoint))
             metadata_task = json.loads(_http_get(f"{metadata_v4_endpoint}/task"))
 
-            # On tasks using the "awsvpc" network mode the hostname is the IP-like
-            # private DNS name of the ENI, so use the container name from the
-            # metadata endpoint instead. Fall back to the hostname if it is absent.
             container_name = metadata_container.get("Name", socket.gethostname())
             base_resource = base_resource.merge(
                 Resource({ResourceAttributes.CONTAINER_NAME: container_name})
