@@ -104,6 +104,18 @@ For consumer instrumentation, pika supports two consuming modes:
 * Consumers using the `consume` method which returns a generator over messages. This is supported for global
   instrumentations only (`PikaInstrumentor().instrument()`)
 
+Configuration
+-------------
+
+The following environment variables can be used to configure PikaInstrumentor. Both are not yet
+part of the official semantic conventions for RabbitMQ, so they are opt-in and disabled by
+default:
+
+* ``OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME``: when set to ``"true"``, captures the RabbitMQ
+  broker's virtual host as the ``messaging.rabbitmq.vhost.name`` span attribute.
+* ``OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME``: when set to ``"true"``, captures the RabbitMQ
+  broker's cluster name as the ``messaging.rabbitmq.cluster.name`` span attribute.
+
 API
 ---
 """
