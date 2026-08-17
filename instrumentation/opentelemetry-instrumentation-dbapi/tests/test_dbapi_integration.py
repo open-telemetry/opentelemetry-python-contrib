@@ -141,12 +141,11 @@ class TestDBApiIntegration(TestBase):
                 cursor = mock_connection.cursor()
                 # Must not raise IndexError.
                 cursor.execute(query)
-        spans_list = self.memory_exporter.get_finished_spans()
-        self.assertEqual(len(spans_list), 2)
-        for span in spans_list:
-            # With no operation token the span name falls back to the db name;
-            # the key assertion is that instrumentation did not raise IndexError.
-            self.assertEqual(span.name, "testdatabase")
+                spans_list = self.memory_exporter.get_finished_spans()
+                self.assertEqual(len(spans_list), 1)
+                # With no operation token the span name falls back to the db name.
+                self.assertEqual(spans_list[0].name, "testdatabase")
+                self.memory_exporter.clear()
 
     def test_suppress_instrumentation_async(self):
         execute = mock.AsyncMock(return_value="result")
