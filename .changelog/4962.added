@@ -1,0 +1,1 @@
+`opentelemetry-instrumentation-pika`: add opt-in `messaging.rabbitmq.vhost.name` and `messaging.rabbitmq.cluster.name` span attributes, gated behind `OTEL_PYTHON_PIKA_CAPTURE_VHOST_NAME` and `OTEL_PYTHON_PIKA_CAPTURE_CLUSTER_NAME`
