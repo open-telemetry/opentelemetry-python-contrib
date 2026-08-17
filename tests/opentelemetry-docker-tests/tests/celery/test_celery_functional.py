@@ -57,8 +57,7 @@ def span_by_action(spans, action):
     return next(span for span in spans if span.attributes.get("celery.action") == action)
 
 
-@mark.skip(reason="inconsistent test results")
-def test_instrumentation_info(celery_app, memory_exporter):
+def test_instrumentation_scope(celery_app, memory_exporter):
     @celery_app.task
     def fn_task():
         return 42
@@ -66,23 +65,20 @@ def test_instrumentation_info(celery_app, memory_exporter):
     result = fn_task.apply_async()
     assert result.get(timeout=ASYNC_GET_TIMEOUT) == 42
 
-    spans = memory_exporter.get_finished_spans()
+    spans = wait_for_spans(memory_exporter, 2)
     assert len(spans) == 2
 
-    async_span, run_span = spans
+    async_span = span_by_action(spans, "apply_async")
+    run_span = span_by_action(spans, "run")
 
-    assert run_span.parent == async_span.context
+    # The run span is a child of the publish span: the publish span injects the trace
+    # context into the message headers and the worker extracts it again.
     assert run_span.parent.span_id == async_span.context.span_id
     assert run_span.context.trace_id == async_span.context.trace_id
 
-    assert async_span.instrumentation_info.name == "apply_async/{}".format(
-        opentelemetry.instrumentation.celery.__name__
-    )
-    assert async_span.instrumentation_info.version == "apply_async/{}".format(
-        opentelemetry.instrumentation.celery.__version__
-    )
-    assert run_span.instrumentation_info.name == "run/{}".format(opentelemetry.instrumentation.celery.__name__)
-    assert run_span.instrumentation_info.version == "run/{}".format(opentelemetry.instrumentation.celery.__version__)
+    for span in (async_span, run_span):
+        assert span.instrumentation_scope.name == opentelemetry.instrumentation.celery.__name__
+        assert span.instrumentation_scope.version == opentelemetry.instrumentation.celery.__version__
 
 
 def test_fn_task_run(celery_app, memory_exporter):
@@ -153,7 +149,6 @@ def test_fn_task_apply_bind(celery_app, memory_exporter):
     assert span.attributes.get("celery.state") == "SUCCESS"
 
 
-@mark.skip(reason="inconsistent test results")
 def test_fn_task_apply_async(celery_app, memory_exporter):
     @celery_app.task
     def fn_task_parameters(user, force_logout=False):
@@ -162,12 +157,15 @@ def test_fn_task_apply_async(celery_app, memory_exporter):
     result = fn_task_parameters.apply_async(args=["user"], kwargs={"force_logout": True})
     assert result.get(timeout=ASYNC_GET_TIMEOUT) == ["user", True]
 
-    spans = memory_exporter.get_finished_spans()
+    spans = wait_for_spans(memory_exporter, 2)
     assert len(spans) == 2
 
-    async_span, run_span = spans
+    async_span = span_by_action(spans, "apply_async")
+    run_span = span_by_action(spans, "run")
 
-    assert run_span.context.trace_id != async_span.context.trace_id
+    # Trace context travels in the message headers, so both spans share a trace.
+    assert run_span.context.trace_id == async_span.context.trace_id
+    assert run_span.parent.span_id == async_span.context.span_id
 
     assert async_span.status.is_ok is True
     assert async_span.name == "apply_async/test_celery_functional.fn_task_parameters"
@@ -176,14 +174,13 @@ def test_fn_task_apply_async(celery_app, memory_exporter):
     assert async_span.attributes.get("celery.task_name") == "test_celery_functional.fn_task_parameters"
 
     assert run_span.status.is_ok is True
-    assert run_span.name == "test_celery_functional.fn_task_parameters"
+    assert run_span.name == "run/test_celery_functional.fn_task_parameters"
     assert run_span.attributes.get("celery.action") == "run"
     assert run_span.attributes.get("celery.state") == "SUCCESS"
     assert run_span.attributes.get(MESSAGING_MESSAGE_ID) == result.task_id
     assert run_span.attributes.get("celery.task_name") == "test_celery_functional.fn_task_parameters"
 
 
-@mark.skip(reason="inconsistent test results")
 def test_concurrent_delays(celery_app, memory_exporter):
     @celery_app.task
     def fn_task():
@@ -194,12 +191,11 @@ def test_concurrent_delays(celery_app, memory_exporter):
     for result in results:
         assert result.get(timeout=ASYNC_GET_TIMEOUT) == 42
 
-    spans = memory_exporter.get_finished_spans()
+    spans = wait_for_spans(memory_exporter, 200)
 
     assert len(spans) == 200
 
 
-@mark.skip(reason="inconsistent test results")
 def test_fn_task_delay(celery_app, memory_exporter):
     @celery_app.task
     def fn_task_parameters(user, force_logout=False):
@@ -208,12 +204,15 @@ def test_fn_task_delay(celery_app, memory_exporter):
     result = fn_task_parameters.delay("user", force_logout=True)
     assert result.get(timeout=ASYNC_GET_TIMEOUT) == ["user", True]
 
-    spans = memory_exporter.get_finished_spans()
+    spans = wait_for_spans(memory_exporter, 2)
     assert len(spans) == 2
 
-    async_span, run_span = spans
+    async_span = span_by_action(spans, "apply_async")
+    run_span = span_by_action(spans, "run")
 
-    assert run_span.context.trace_id != async_span.context.trace_id
+    # Trace context travels in the message headers, so both spans share a trace.
+    assert run_span.context.trace_id == async_span.context.trace_id
+    assert run_span.parent.span_id == async_span.context.span_id
 
     assert async_span.status.is_ok is True
     assert async_span.name == "apply_async/test_celery_functional.fn_task_parameters"
