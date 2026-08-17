@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import time
+
 import celery
 from celery.exceptions import Retry
 from pytest import mark
@@ -26,6 +28,33 @@ ASYNC_GET_TIMEOUT = 120
 
 class MyException(Exception):
     pass
+
+
+def wait_for_spans(memory_exporter, count, timeout=ASYNC_GET_TIMEOUT):
+    """Wait until at least ``count`` spans have been exported.
+
+    ``result.get()`` unblocks as soon as the worker has stored the result in the
+    backend (``backend.mark_as_done()``), but the run span is only ended when the
+    ``task_postrun`` signal fires, which celery does afterwards. Reading the exporter
+    straight after ``result.get()`` therefore races the worker and intermittently sees
+    the publish span alone.
+
+    Raises an ``AssertionError`` on timeout so a task whose message never arrives fails
+    the test instead of hanging it.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        spans = memory_exporter.get_finished_spans()
+        if len(spans) >= count:
+            return spans
+        time.sleep(0.01)
+    spans = memory_exporter.get_finished_spans()
+    raise AssertionError(f"expected {count} spans within {timeout}s, got {len(spans)}: {[s.name for s in spans]}")
+
+
+def span_by_action(spans, action):
+    """Select a span by its ``celery.action``; export order is end order, not call order."""
+    return next(span for span in spans if span.attributes.get("celery.action") == action)
 
 
 @mark.skip(reason="inconsistent test results")
@@ -482,11 +511,11 @@ def test_use_span_links(celery_app, tracer_provider, memory_exporter):
     result = fn_task.apply_async()
     assert result.get(timeout=ASYNC_GET_TIMEOUT) == 42
 
-    spans = memory_exporter.get_finished_spans()
+    spans = wait_for_spans(memory_exporter, 2)
     assert len(spans) == 2
 
-    run_span = next(s for s in spans if s.attributes.get("celery.action") == "run")
-    async_span = next(s for s in spans if s.attributes.get("celery.action") == "apply_async")
+    run_span = span_by_action(spans, "run")
+    async_span = span_by_action(spans, "apply_async")
 
     # The run span should not be a child of the async span when using links.
     assert run_span.parent is None
