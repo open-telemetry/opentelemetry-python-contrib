@@ -21,9 +21,7 @@ class Project(TypedDict):
     projectId: str
 
 
-Attributes = TypedDict(
-    "Attributes", {"cluster-location": str, "cluster-name": str}, total=False
-)
+Attributes = TypedDict("Attributes", {"cluster-location": str, "cluster-name": str}, total=False)
 
 
 class Instance(TypedDict):

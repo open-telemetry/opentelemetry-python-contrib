@@ -53,9 +53,7 @@ except ModuleNotFoundError:  # pragma: no cover - test stubs
     HandoffSpanData = getattr(tracing_module, "HandoffSpanData", Any)  # type: ignore[assignment]
     ResponseSpanData = getattr(tracing_module, "ResponseSpanData", Any)  # type: ignore[assignment]
     SpeechSpanData = getattr(tracing_module, "SpeechSpanData", Any)  # type: ignore[assignment]
-    TranscriptionSpanData = getattr(
-        tracing_module, "TranscriptionSpanData", Any
-    )  # type: ignore[assignment]
+    TranscriptionSpanData = getattr(tracing_module, "TranscriptionSpanData", Any)  # type: ignore[assignment]
 
 from opentelemetry.context import attach, detach
 from opentelemetry.metrics import Histogram, get_meter
@@ -165,73 +163,39 @@ def _attr(name: str, fallback: str) -> str:
 GEN_AI_PROVIDER_NAME = _attr("GEN_AI_PROVIDER_NAME", "gen_ai.provider.name")
 GEN_AI_OPERATION_NAME = _attr("GEN_AI_OPERATION_NAME", "gen_ai.operation.name")
 GEN_AI_REQUEST_MODEL = _attr("GEN_AI_REQUEST_MODEL", "gen_ai.request.model")
-GEN_AI_REQUEST_MAX_TOKENS = _attr(
-    "GEN_AI_REQUEST_MAX_TOKENS", "gen_ai.request.max_tokens"
-)
-GEN_AI_REQUEST_TEMPERATURE = _attr(
-    "GEN_AI_REQUEST_TEMPERATURE", "gen_ai.request.temperature"
-)
+GEN_AI_REQUEST_MAX_TOKENS = _attr("GEN_AI_REQUEST_MAX_TOKENS", "gen_ai.request.max_tokens")
+GEN_AI_REQUEST_TEMPERATURE = _attr("GEN_AI_REQUEST_TEMPERATURE", "gen_ai.request.temperature")
 GEN_AI_REQUEST_TOP_P = _attr("GEN_AI_REQUEST_TOP_P", "gen_ai.request.top_p")
 GEN_AI_REQUEST_TOP_K = _attr("GEN_AI_REQUEST_TOP_K", "gen_ai.request.top_k")
-GEN_AI_REQUEST_FREQUENCY_PENALTY = _attr(
-    "GEN_AI_REQUEST_FREQUENCY_PENALTY", "gen_ai.request.frequency_penalty"
-)
-GEN_AI_REQUEST_PRESENCE_PENALTY = _attr(
-    "GEN_AI_REQUEST_PRESENCE_PENALTY", "gen_ai.request.presence_penalty"
-)
-GEN_AI_REQUEST_CHOICE_COUNT = _attr(
-    "GEN_AI_REQUEST_CHOICE_COUNT", "gen_ai.request.choice.count"
-)
-GEN_AI_REQUEST_STOP_SEQUENCES = _attr(
-    "GEN_AI_REQUEST_STOP_SEQUENCES", "gen_ai.request.stop_sequences"
-)
-GEN_AI_REQUEST_ENCODING_FORMATS = _attr(
-    "GEN_AI_REQUEST_ENCODING_FORMATS", "gen_ai.request.encoding_formats"
-)
+GEN_AI_REQUEST_FREQUENCY_PENALTY = _attr("GEN_AI_REQUEST_FREQUENCY_PENALTY", "gen_ai.request.frequency_penalty")
+GEN_AI_REQUEST_PRESENCE_PENALTY = _attr("GEN_AI_REQUEST_PRESENCE_PENALTY", "gen_ai.request.presence_penalty")
+GEN_AI_REQUEST_CHOICE_COUNT = _attr("GEN_AI_REQUEST_CHOICE_COUNT", "gen_ai.request.choice.count")
+GEN_AI_REQUEST_STOP_SEQUENCES = _attr("GEN_AI_REQUEST_STOP_SEQUENCES", "gen_ai.request.stop_sequences")
+GEN_AI_REQUEST_ENCODING_FORMATS = _attr("GEN_AI_REQUEST_ENCODING_FORMATS", "gen_ai.request.encoding_formats")
 GEN_AI_REQUEST_SEED = _attr("GEN_AI_REQUEST_SEED", "gen_ai.request.seed")
 GEN_AI_RESPONSE_ID = _attr("GEN_AI_RESPONSE_ID", "gen_ai.response.id")
 GEN_AI_RESPONSE_MODEL = _attr("GEN_AI_RESPONSE_MODEL", "gen_ai.response.model")
-GEN_AI_RESPONSE_FINISH_REASONS = _attr(
-    "GEN_AI_RESPONSE_FINISH_REASONS", "gen_ai.response.finish_reasons"
-)
-GEN_AI_USAGE_INPUT_TOKENS = _attr(
-    "GEN_AI_USAGE_INPUT_TOKENS", "gen_ai.usage.input_tokens"
-)
-GEN_AI_USAGE_OUTPUT_TOKENS = _attr(
-    "GEN_AI_USAGE_OUTPUT_TOKENS", "gen_ai.usage.output_tokens"
-)
-GEN_AI_CONVERSATION_ID = _attr(
-    "GEN_AI_CONVERSATION_ID", "gen_ai.conversation.id"
-)
+GEN_AI_RESPONSE_FINISH_REASONS = _attr("GEN_AI_RESPONSE_FINISH_REASONS", "gen_ai.response.finish_reasons")
+GEN_AI_USAGE_INPUT_TOKENS = _attr("GEN_AI_USAGE_INPUT_TOKENS", "gen_ai.usage.input_tokens")
+GEN_AI_USAGE_OUTPUT_TOKENS = _attr("GEN_AI_USAGE_OUTPUT_TOKENS", "gen_ai.usage.output_tokens")
+GEN_AI_CONVERSATION_ID = _attr("GEN_AI_CONVERSATION_ID", "gen_ai.conversation.id")
 GEN_AI_AGENT_ID = _attr("GEN_AI_AGENT_ID", "gen_ai.agent.id")
 GEN_AI_AGENT_NAME = _attr("GEN_AI_AGENT_NAME", "gen_ai.agent.name")
-GEN_AI_AGENT_DESCRIPTION = _attr(
-    "GEN_AI_AGENT_DESCRIPTION", "gen_ai.agent.description"
-)
+GEN_AI_AGENT_DESCRIPTION = _attr("GEN_AI_AGENT_DESCRIPTION", "gen_ai.agent.description")
 GEN_AI_TOOL_NAME = _attr("GEN_AI_TOOL_NAME", "gen_ai.tool.name")
 GEN_AI_TOOL_TYPE = _attr("GEN_AI_TOOL_TYPE", "gen_ai.tool.type")
 GEN_AI_TOOL_CALL_ID = _attr("GEN_AI_TOOL_CALL_ID", "gen_ai.tool.call.id")
-GEN_AI_TOOL_DESCRIPTION = _attr(
-    "GEN_AI_TOOL_DESCRIPTION", "gen_ai.tool.description"
-)
+GEN_AI_TOOL_DESCRIPTION = _attr("GEN_AI_TOOL_DESCRIPTION", "gen_ai.tool.description")
 GEN_AI_OUTPUT_TYPE = _attr("GEN_AI_OUTPUT_TYPE", "gen_ai.output.type")
-GEN_AI_SYSTEM_INSTRUCTIONS = _attr(
-    "GEN_AI_SYSTEM_INSTRUCTIONS", "gen_ai.system_instructions"
-)
+GEN_AI_SYSTEM_INSTRUCTIONS = _attr("GEN_AI_SYSTEM_INSTRUCTIONS", "gen_ai.system_instructions")
 GEN_AI_INPUT_MESSAGES = _attr("GEN_AI_INPUT_MESSAGES", "gen_ai.input.messages")
-GEN_AI_OUTPUT_MESSAGES = _attr(
-    "GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages"
-)
+GEN_AI_OUTPUT_MESSAGES = _attr("GEN_AI_OUTPUT_MESSAGES", "gen_ai.output.messages")
 GEN_AI_DATA_SOURCE_ID = _attr("GEN_AI_DATA_SOURCE_ID", "gen_ai.data_source.id")
 
 # The semantic conventions currently expose multiple usage token attributes; we retain the
 # completion/prompt aliases for backwards compatibility where used.
-GEN_AI_USAGE_PROMPT_TOKENS = _attr(
-    "GEN_AI_USAGE_PROMPT_TOKENS", "gen_ai.usage.prompt_tokens"
-)
-GEN_AI_USAGE_COMPLETION_TOKENS = _attr(
-    "GEN_AI_USAGE_COMPLETION_TOKENS", "gen_ai.usage.completion_tokens"
-)
+GEN_AI_USAGE_PROMPT_TOKENS = _attr("GEN_AI_USAGE_PROMPT_TOKENS", "gen_ai.usage.prompt_tokens")
+GEN_AI_USAGE_COMPLETION_TOKENS = _attr("GEN_AI_USAGE_COMPLETION_TOKENS", "gen_ai.usage.completion_tokens")
 
 # Attributes not (yet) defined in the spec retain their literal values.
 GEN_AI_TOOL_CALL_ARGUMENTS = "gen_ai.tool.call.arguments"
@@ -263,11 +227,7 @@ def validate_tool_type(tool_type: Optional[str]) -> str:
     if not tool_type:
         return GenAIToolType.FUNCTION  # default
     normalized = tool_type.strip().lower()
-    return (
-        normalized
-        if normalized in GenAIToolType.ALL
-        else GenAIToolType.FUNCTION
-    )
+    return normalized if normalized in GenAIToolType.ALL else GenAIToolType.FUNCTION
 
 
 def normalize_output_type(output_type: Optional[str]) -> str:
@@ -482,29 +442,19 @@ class GenAISemanticProcessor(TracingProcessor):
 
         # Server information - use init parameters, then base_url inference
         self.server_address = server_address or server_address_default
-        resolved_port = (
-            server_port if server_port is not None else server_port_default
-        )
+        resolved_port = server_port if server_port is not None else server_port_default
         self.server_port = resolved_port
 
         # If server info not provided, try to extract from base_url
-        if (
-            not self.server_address or not self.server_port
-        ) and effective_base_url:
+        if (not self.server_address or not self.server_port) and effective_base_url:
             server_attrs = _infer_server_attributes(effective_base_url)
             if not self.server_address:
-                self.server_address = server_attrs.get(
-                    ServerAttributes.SERVER_ADDRESS
-                )
+                self.server_address = server_attrs.get(ServerAttributes.SERVER_ADDRESS)
             if not self.server_port:
-                self.server_port = server_attrs.get(
-                    ServerAttributes.SERVER_PORT
-                )
+                self.server_port = server_attrs.get(ServerAttributes.SERVER_PORT)
 
         # Content capture configuration
-        self._capture_messages = (
-            content_mode.capture_in_span or content_mode.capture_in_event
-        )
+        self._capture_messages = content_mode.capture_in_span or content_mode.capture_in_event
         self._capture_system_instructions = True
         self._capture_tool_definitions = True
 
@@ -534,9 +484,7 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _init_metrics(self):
         """Initialize metric instruments."""
-        self._meter = get_meter(
-            "opentelemetry.instrumentation.openai_agents", "0.1.0"
-        )
+        self._meter = get_meter("opentelemetry.instrumentation.openai_agents", "0.1.0")
 
         # Operation duration histogram
         self._duration_histogram = self._meter.create_histogram(
@@ -552,14 +500,9 @@ class GenAISemanticProcessor(TracingProcessor):
             unit="{token}",
         )
 
-    def _record_metrics(
-        self, span: Span[Any], attributes: dict[str, AttributeValue]
-    ) -> None:
+    def _record_metrics(self, span: Span[Any], attributes: dict[str, AttributeValue]) -> None:
         """Record metrics for the span."""
-        if not self._metrics_enabled or (
-            self._duration_histogram is None
-            and self._token_usage_histogram is None
-        ):
+        if not self._metrics_enabled or (self._duration_histogram is None and self._token_usage_histogram is None):
             return
 
         try:
@@ -577,16 +520,9 @@ class GenAISemanticProcessor(TracingProcessor):
             metric_attrs = {
                 GEN_AI_PROVIDER_NAME: attributes.get(GEN_AI_PROVIDER_NAME),
                 GEN_AI_OPERATION_NAME: attributes.get(GEN_AI_OPERATION_NAME),
-                GEN_AI_REQUEST_MODEL: (
-                    attributes.get(GEN_AI_REQUEST_MODEL)
-                    or attributes.get(GEN_AI_RESPONSE_MODEL)
-                ),
-                ServerAttributes.SERVER_ADDRESS: attributes.get(
-                    ServerAttributes.SERVER_ADDRESS
-                ),
-                ServerAttributes.SERVER_PORT: attributes.get(
-                    ServerAttributes.SERVER_PORT
-                ),
+                GEN_AI_REQUEST_MODEL: (attributes.get(GEN_AI_REQUEST_MODEL) or attributes.get(GEN_AI_RESPONSE_MODEL)),
+                ServerAttributes.SERVER_ADDRESS: attributes.get(ServerAttributes.SERVER_ADDRESS),
+                ServerAttributes.SERVER_PORT: attributes.get(ServerAttributes.SERVER_PORT),
             }
 
             # Add error type if present
@@ -596,9 +532,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     metric_attrs["error.type"] = error_type
 
             # Remove None values
-            metric_attrs = {
-                k: v for k, v in metric_attrs.items() if v is not None
-            }
+            metric_attrs = {k: v for k, v in metric_attrs.items() if v is not None}
 
             # Record duration
             if duration is not None and self._duration_histogram is not None:
@@ -610,17 +544,13 @@ class GenAISemanticProcessor(TracingProcessor):
                 if isinstance(input_tokens, (int, float)):
                     token_attrs = dict(metric_attrs)
                     token_attrs[GEN_AI_TOKEN_TYPE] = "input"
-                    self._token_usage_histogram.record(
-                        input_tokens, token_attrs
-                    )
+                    self._token_usage_histogram.record(input_tokens, token_attrs)
 
                 output_tokens = attributes.get(GEN_AI_USAGE_OUTPUT_TOKENS)
                 if isinstance(output_tokens, (int, float)):
                     token_attrs = dict(metric_attrs)
                     token_attrs[GEN_AI_TOKEN_TYPE] = "output"
-                    self._token_usage_histogram.record(
-                        output_tokens, token_attrs
-                    )
+                    self._token_usage_histogram.record(output_tokens, token_attrs)
 
         except Exception as e:
             logger.debug("Failed to record metrics: %s", e)
@@ -633,11 +563,7 @@ class GenAISemanticProcessor(TracingProcessor):
         agent_content: Optional[Dict[str, list[Any]]] = None,
     ) -> None:
         """Intentionally skip emitting gen_ai.* events to avoid payload duplication."""
-        if (
-            not self.include_sensitive_data
-            or not self._content_mode.capture_in_event
-            or not otel_span.is_recording()
-        ):
+        if not self.include_sensitive_data or not self._content_mode.capture_in_event or not otel_span.is_recording():
             return
 
         logger.debug(
@@ -646,9 +572,7 @@ class GenAISemanticProcessor(TracingProcessor):
         )
         return
 
-    def _collect_system_instructions(
-        self, messages: Sequence[Any] | None
-    ) -> list[dict[str, str]]:
+    def _collect_system_instructions(self, messages: Sequence[Any] | None) -> list[dict[str, str]]:
         """Return system/ai role instructions as typed text objects.
 
         Enforces format: [{"type": "text", "content": "..."}].
@@ -709,9 +633,7 @@ class GenAISemanticProcessor(TracingProcessor):
         """Return a single redacted text part for system instructions."""
         return [{"type": "text", "content": "readacted"}]
 
-    def _normalize_messages_to_role_parts(
-        self, messages: Sequence[Any] | None
-    ) -> list[dict[str, Any]]:
+    def _normalize_messages_to_role_parts(self, messages: Sequence[Any] | None) -> list[dict[str, Any]]:
         """Normalize input messages to enforced role+parts schema.
 
         Each message becomes: {"role": <role>, "parts": [ {"type": ..., ...} ]}
@@ -730,9 +652,7 @@ class GenAISemanticProcessor(TracingProcessor):
                         "parts": [
                             {
                                 "type": "text",
-                                "content": "readacted"
-                                if not self.include_sensitive_data
-                                else str(m),
+                                "content": "readacted" if not self.include_sensitive_data else str(m),
                             }
                         ],
                     }
@@ -759,33 +679,19 @@ class GenAISemanticProcessor(TracingProcessor):
                             newp["id"] = p.get("id")
                             newp["name"] = p.get("name")
                             args = p.get("arguments")
-                            newp["arguments"] = (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else args
-                            )
+                            newp["arguments"] = "readacted" if not self.include_sensitive_data else args
                         elif ptype == "tool_call_response":
                             newp["id"] = p.get("id") or m.get("tool_call_id")
                             result = p.get("result") or p.get("content")
-                            newp["result"] = (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else result
-                            )
+                            newp["result"] = "readacted" if not self.include_sensitive_data else result
                         else:
-                            newp["content"] = (
-                                "readacted"
-                                if not self.include_sensitive_data
-                                else str(p)
-                            )
+                            newp["content"] = "readacted" if not self.include_sensitive_data else str(p)
                         parts.append(newp)
                     else:
                         parts.append(
                             {
                                 "type": "text",
-                                "content": "readacted"
-                                if not self.include_sensitive_data
-                                else str(p),
+                                "content": "readacted" if not self.include_sensitive_data else str(p),
                             }
                         )
 
@@ -795,9 +701,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 parts.append(
                     {
                         "type": "text",
-                        "content": "readacted"
-                        if not self.include_sensitive_data
-                        else content,
+                        "content": "readacted" if not self.include_sensitive_data else content,
                     }
                 )
             elif isinstance(content, (list, tuple)):
@@ -811,11 +715,7 @@ class GenAISemanticProcessor(TracingProcessor):
                                     "type": "text",
                                     "content": "readacted"
                                     if not self.include_sensitive_data
-                                    else (
-                                        txt
-                                        if isinstance(txt, str)
-                                        else str(item)
-                                    ),
+                                    else (txt if isinstance(txt, str) else str(item)),
                                 }
                             )
                         else:
@@ -823,25 +723,19 @@ class GenAISemanticProcessor(TracingProcessor):
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": "readacted"
-                                    if not self.include_sensitive_data
-                                    else str(item),
+                                    "content": "readacted" if not self.include_sensitive_data else str(item),
                                 }
                             )
                     else:
                         parts.append(
                             {
                                 "type": "text",
-                                "content": "readacted"
-                                if not self.include_sensitive_data
-                                else str(item),
+                                "content": "readacted" if not self.include_sensitive_data else str(item),
                             }
                         )
 
             # Assistant tool_calls
-            if role == "assistant" and isinstance(
-                m.get("tool_calls"), (list, tuple)
-            ):
+            if role == "assistant" and isinstance(m.get("tool_calls"), (list, tuple)):
                 for tc in m["tool_calls"]:
                     if not isinstance(tc, dict):
                         continue
@@ -851,11 +745,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     if isinstance(fn, dict):
                         p["name"] = fn.get("name")
                         args = fn.get("arguments")
-                        p["arguments"] = (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else args
-                        )
+                        p["arguments"] = "readacted" if not self.include_sensitive_data else args
                     parts.append(p)
 
             # Tool call response
@@ -863,23 +753,17 @@ class GenAISemanticProcessor(TracingProcessor):
                 p = {"type": "tool_call_response"}
                 p["id"] = m.get("tool_call_id") or m.get("id")
                 result = m.get("result") or m.get("content")
-                p["result"] = (
-                    "readacted" if not self.include_sensitive_data else result
-                )
+                p["result"] = "readacted" if not self.include_sensitive_data else result
                 parts.append(p)
 
             if parts:
                 normalized.append({"role": role, "parts": parts})
             elif not self.include_sensitive_data:
-                normalized.append(
-                    {"role": role, "parts": self._redacted_text_parts()}
-                )
+                normalized.append({"role": role, "parts": self._redacted_text_parts()})
 
         return normalized
 
-    def _normalize_output_messages_to_role_parts(
-        self, span_data: Any
-    ) -> list[dict[str, Any]]:
+    def _normalize_output_messages_to_role_parts(self, span_data: Any) -> list[dict[str, Any]]:
         """Normalize output messages to enforced role+parts schema.
 
         Produces: [{"role": "assistant", "parts": [{"type": "text", "content": "..."}],
@@ -898,11 +782,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 parts.append(
                     {
                         "type": "text",
-                        "content": (
-                            "readacted"
-                            if not self.include_sensitive_data
-                            else output_text
-                        ),
+                        "content": ("readacted" if not self.include_sensitive_data else output_text),
                     }
                 )
             else:
@@ -915,11 +795,7 @@ class GenAISemanticProcessor(TracingProcessor):
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else txt
-                                    ),
+                                    "content": ("readacted" if not self.include_sensitive_data else txt),
                                 }
                             )
                         else:
@@ -927,11 +803,7 @@ class GenAISemanticProcessor(TracingProcessor):
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else str(item)
-                                    ),
+                                    "content": ("readacted" if not self.include_sensitive_data else str(item)),
                                 }
                             )
                         # Capture finish_reason from parts when present
@@ -951,61 +823,37 @@ class GenAISemanticProcessor(TracingProcessor):
                                 parts.append(
                                     {
                                         "type": "text",
-                                        "content": (
-                                            "readacted"
-                                            if not self.include_sensitive_data
-                                            else txt
-                                        ),
+                                        "content": ("readacted" if not self.include_sensitive_data else txt),
                                     }
                                 )
-                        elif "content" in item and isinstance(
-                            item["content"], str
-                        ):
+                        elif "content" in item and isinstance(item["content"], str):
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else item["content"]
-                                    ),
+                                    "content": ("readacted" if not self.include_sensitive_data else item["content"]),
                                 }
                             )
                         else:
                             parts.append(
                                 {
                                     "type": "text",
-                                    "content": (
-                                        "readacted"
-                                        if not self.include_sensitive_data
-                                        else str(item)
-                                    ),
+                                    "content": ("readacted" if not self.include_sensitive_data else str(item)),
                                 }
                             )
-                        if not finish_reason and isinstance(
-                            item.get("finish_reason"), str
-                        ):
+                        if not finish_reason and isinstance(item.get("finish_reason"), str):
                             finish_reason = item.get("finish_reason")
                     elif isinstance(item, str):
                         parts.append(
                             {
                                 "type": "text",
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else item
-                                ),
+                                "content": ("readacted" if not self.include_sensitive_data else item),
                             }
                         )
                     else:
                         parts.append(
                             {
                                 "type": "text",
-                                "content": (
-                                    "readacted"
-                                    if not self.include_sensitive_data
-                                    else str(item)
-                                ),
+                                "content": ("readacted" if not self.include_sensitive_data else str(item)),
                             }
                         )
 
@@ -1026,35 +874,25 @@ class GenAISemanticProcessor(TracingProcessor):
             return payload
 
         capture_messages = self._capture_messages and (
-            self._content_mode.capture_in_span
-            or self._content_mode.capture_in_event
+            self._content_mode.capture_in_span or self._content_mode.capture_in_event
         )
         capture_system = self._capture_system_instructions and (
-            self._content_mode.capture_in_span
-            or self._content_mode.capture_in_event
+            self._content_mode.capture_in_span or self._content_mode.capture_in_event
         )
         capture_tools = self._content_mode.capture_in_span or (
-            self._content_mode.capture_in_event
-            and _is_instance_of(span_data, FunctionSpanData)
+            self._content_mode.capture_in_event and _is_instance_of(span_data, FunctionSpanData)
         )
 
         if _is_instance_of(span_data, GenerationSpanData):
             span_input = getattr(span_data, "input", None)
             if capture_messages and span_input:
-                payload.input_messages = (
-                    self._normalize_messages_to_role_parts(span_input)
-                )
+                payload.input_messages = self._normalize_messages_to_role_parts(span_input)
             if capture_system and span_input:
                 sys_instr = self._collect_system_instructions(span_input)
                 if sys_instr:
                     payload.system_instructions = sys_instr
-            if capture_messages and (
-                getattr(span_data, "output", None)
-                or getattr(span_data, "response", None)
-            ):
-                normalized_out = self._normalize_output_messages_to_role_parts(
-                    span_data
-                )
+            if capture_messages and (getattr(span_data, "output", None) or getattr(span_data, "response", None)):
+                normalized_out = self._normalize_output_messages_to_role_parts(span_data)
                 if normalized_out:
                     payload.output_messages = normalized_out
 
@@ -1062,26 +900,16 @@ class GenAISemanticProcessor(TracingProcessor):
             span_input = getattr(span_data, "input", None)
             response_obj = getattr(span_data, "response", None)
             if capture_messages and span_input:
-                payload.input_messages = (
-                    self._normalize_messages_to_role_parts(span_input)
-                )
+                payload.input_messages = self._normalize_messages_to_role_parts(span_input)
 
-            if (
-                capture_system
-                and response_obj
-                and hasattr(response_obj, "instructions")
-            ):
-                payload.system_instructions = self._normalize_to_text_parts(
-                    response_obj.instructions
-                )
+            if capture_system and response_obj and hasattr(response_obj, "instructions"):
+                payload.system_instructions = self._normalize_to_text_parts(response_obj.instructions)
             if capture_system and span_input:
                 sys_instr = self._collect_system_instructions(span_input)
                 if sys_instr:
                     payload.system_instructions = sys_instr
             if capture_messages:
-                normalized_out = self._normalize_output_messages_to_role_parts(
-                    span_data
-                )
+                normalized_out = self._normalize_output_messages_to_role_parts(span_data)
                 if normalized_out:
                     payload.output_messages = normalized_out
 
@@ -1094,18 +922,12 @@ class GenAISemanticProcessor(TracingProcessor):
                     return safe_json_dumps(value)
                 return str(value)
 
-            payload.tool_arguments = _serialize_tool_value(
-                getattr(span_data, "input", None)
-            )
-            payload.tool_result = _serialize_tool_value(
-                getattr(span_data, "output", None)
-            )
+            payload.tool_arguments = _serialize_tool_value(getattr(span_data, "input", None))
+            payload.tool_result = _serialize_tool_value(getattr(span_data, "output", None))
 
         return payload
 
-    def _find_agent_parent_span_id(
-        self, span_id: Optional[str]
-    ) -> Optional[str]:
+    def _find_agent_parent_span_id(self, span_id: Optional[str]) -> Optional[str]:
         """Return nearest ancestor span id that represents an agent."""
         current = span_id
         visited: set[str] = set()
@@ -1118,9 +940,7 @@ class GenAISemanticProcessor(TracingProcessor):
             current = self._span_parents.get(current)
         return None
 
-    def _update_agent_aggregate(
-        self, span: Span[Any], payload: ContentPayload
-    ) -> None:
+    def _update_agent_aggregate(self, span: Span[Any], payload: ContentPayload) -> None:
         """Accumulate child span content for parent agent span."""
         agent_id = self._find_agent_parent_span_id(span.parent_id)
         if not agent_id:
@@ -1135,13 +955,9 @@ class GenAISemanticProcessor(TracingProcessor):
             },
         )
         if payload.input_messages:
-            entry["input_messages"] = self._merge_content_sequence(
-                entry["input_messages"], payload.input_messages
-            )
+            entry["input_messages"] = self._merge_content_sequence(entry["input_messages"], payload.input_messages)
         if payload.output_messages:
-            entry["output_messages"] = self._merge_content_sequence(
-                entry["output_messages"], payload.output_messages
-            )
+            entry["output_messages"] = self._merge_content_sequence(entry["output_messages"], payload.output_messages)
         if payload.system_instructions:
             entry["system_instructions"] = self._merge_content_sequence(
                 entry["system_instructions"], payload.system_instructions
@@ -1172,14 +988,10 @@ class GenAISemanticProcessor(TracingProcessor):
         # Check for embeddings operation
         if _is_instance_of(span_data, GenerationSpanData):
             if hasattr(span_data, "embedding_dimension"):
-                return (
-                    GenAIOutputType.TEXT
-                )  # Embeddings are numeric but represented as text
+                return GenAIOutputType.TEXT  # Embeddings are numeric but represented as text
 
         # Generation/Response - check output structure
-        output = getattr(span_data, "output", None) or getattr(
-            getattr(span_data, "response", None), "output", None
-        )
+        output = getattr(span_data, "output", None) or getattr(getattr(span_data, "response", None), "output", None)
         if isinstance(output, Sequence) and output:
             first = output[0]
             if isinstance(first, dict):
@@ -1330,10 +1142,7 @@ class GenAISemanticProcessor(TracingProcessor):
             return
 
         self._span_parents[span.span_id] = span.parent_id
-        if (
-            _is_instance_of(span.span_data, AgentSpanData)
-            and span.span_id not in self._agent_content
-        ):
+        if _is_instance_of(span.span_data, AgentSpanData) and span.span_id not in self._agent_content:
             self._agent_content[span.span_id] = {
                 "input_messages": [],
                 "output_messages": [],
@@ -1341,11 +1150,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 "request_model": None,
             }
 
-        parent_span = (
-            self._otel_spans.get(span.parent_id)
-            if span.parent_id
-            else self._root_spans.get(span.trace_id)
-        )
+        parent_span = self._otel_spans.get(span.parent_id) if span.parent_id else self._root_spans.get(span.trace_id)
         context = set_span_in_context(parent_span) if parent_span else None
 
         # Get operation details for span naming
@@ -1362,11 +1167,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if not agent_name:
             agent_name = self._agent_name_default
 
-        tool_name = (
-            getattr(span.span_data, "name", None)
-            if _is_instance_of(span.span_data, FunctionSpanData)
-            else None
-        )
+        tool_name = getattr(span.span_data, "name", None) if _is_instance_of(span.span_data, FunctionSpanData) else None
 
         # Generate spec-compliant span name
         span_name = get_span_name(operation_name, model, agent_name, tool_name)
@@ -1381,9 +1182,7 @@ class GenAISemanticProcessor(TracingProcessor):
         # Add configured agent and server attributes
         agent_name_override = self.agent_name or self._agent_name_default
         agent_id_override = self.agent_id or self._agent_id_default
-        agent_desc_override = (
-            self.agent_description or self._agent_description_default
-        )
+        agent_desc_override = self.agent_description or self._agent_description_default
         if agent_name_override:
             attributes[GEN_AI_AGENT_NAME] = agent_name_override
         if agent_id_override:
@@ -1409,23 +1208,15 @@ class GenAISemanticProcessor(TracingProcessor):
         payload = self._build_content_payload(span)
         self._update_agent_aggregate(span, payload)
         agent_content = (
-            self._agent_content.get(span.span_id)
-            if _is_instance_of(span.span_data, AgentSpanData)
-            else None
+            self._agent_content.get(span.span_id) if _is_instance_of(span.span_data, AgentSpanData) else None
         )
 
         if not (otel_span := self._otel_spans.pop(span.span_id, None)):
             # Log attributes even without OTel span
             try:
-                attributes = dict(
-                    self._extract_genai_attributes(
-                        span, payload, agent_content
-                    )
-                )
+                attributes = dict(self._extract_genai_attributes(span, payload, agent_content))
                 for key, value in attributes.items():
-                    logger.debug(
-                        "GenAI attr span %s: %s=%s", span.span_id, key, value
-                    )
+                    logger.debug("GenAI attr span %s: %s=%s", span.span_id, key, value)
             except Exception as e:
                 logger.warning(
                     "Failed to extract attributes for span %s: %s",
@@ -1444,19 +1235,13 @@ class GenAISemanticProcessor(TracingProcessor):
             if not otel_span.is_recording():
                 otel_span.end()
                 return
-            for key, value in self._extract_genai_attributes(
-                span, payload, agent_content
-            ):
+            for key, value in self._extract_genai_attributes(span, payload, agent_content):
                 otel_span.set_attribute(key, value)
                 attributes[key] = value
 
-            if _is_instance_of(
-                span.span_data, (GenerationSpanData, ResponseSpanData)
-            ):
+            if _is_instance_of(span.span_data, (GenerationSpanData, ResponseSpanData)):
                 operation_name = attributes.get(GEN_AI_OPERATION_NAME)
-                model_for_name = attributes.get(GEN_AI_REQUEST_MODEL) or (
-                    attributes.get(GEN_AI_RESPONSE_MODEL)
-                )
+                model_for_name = attributes.get(GEN_AI_REQUEST_MODEL) or (attributes.get(GEN_AI_RESPONSE_MODEL))
                 if operation_name and model_for_name:
                     agent_name_for_name = attributes.get(GEN_AI_AGENT_NAME)
                     tool_name_for_name = attributes.get(GEN_AI_TOOL_NAME)
@@ -1499,15 +1284,11 @@ class GenAISemanticProcessor(TracingProcessor):
     def shutdown(self) -> None:
         """Clean up resources on shutdown."""
         for span_id, otel_span in list(self._otel_spans.items()):
-            otel_span.set_status(
-                Status(StatusCode.ERROR, "Application shutdown")
-            )
+            otel_span.set_status(Status(StatusCode.ERROR, "Application shutdown"))
             otel_span.end()
 
         for trace_id, root_span in list(self._root_spans.items()):
-            root_span.set_status(
-                Status(StatusCode.ERROR, "Application shutdown")
-            )
+            root_span.set_status(Status(StatusCode.ERROR, "Application shutdown"))
             root_span.end()
 
         self._otel_spans.clear()
@@ -1567,9 +1348,7 @@ class GenAISemanticProcessor(TracingProcessor):
         # Add configured agent attributes (always include when set)
         agent_name_override = self.agent_name or self._agent_name_default
         agent_id_override = self.agent_id or self._agent_id_default
-        agent_desc_override = (
-            self.agent_description or self._agent_description_default
-        )
+        agent_desc_override = self.agent_description or self._agent_description_default
         if agent_name_override:
             yield GEN_AI_AGENT_NAME, agent_name_override
         if agent_id_override:
@@ -1583,25 +1362,15 @@ class GenAISemanticProcessor(TracingProcessor):
 
         # Process different span types
         if _is_instance_of(span_data, GenerationSpanData):
-            yield from self._get_attributes_from_generation_span_data(
-                span_data, payload
-            )
+            yield from self._get_attributes_from_generation_span_data(span_data, payload)
         elif _is_instance_of(span_data, AgentSpanData):
-            yield from self._get_attributes_from_agent_span_data(
-                span_data, agent_content
-            )
+            yield from self._get_attributes_from_agent_span_data(span_data, agent_content)
         elif _is_instance_of(span_data, FunctionSpanData):
-            yield from self._get_attributes_from_function_span_data(
-                span_data, payload
-            )
+            yield from self._get_attributes_from_function_span_data(span_data, payload)
         elif _is_instance_of(span_data, ResponseSpanData):
-            yield from self._get_attributes_from_response_span_data(
-                span_data, payload
-            )
+            yield from self._get_attributes_from_response_span_data(span_data, payload)
         elif _is_instance_of(span_data, TranscriptionSpanData):
-            yield from self._get_attributes_from_transcription_span_data(
-                span_data
-            )
+            yield from self._get_attributes_from_transcription_span_data(span_data)
         elif _is_instance_of(span_data, SpeechSpanData):
             yield from self._get_attributes_from_speech_span_data(span_data)
         elif _is_instance_of(span_data, GuardrailSpanData):
@@ -1640,9 +1409,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 else:
                     fr = getattr(part, "finish_reason", None)
                 if fr:
-                    finish_reasons.append(
-                        fr if isinstance(fr, str) else str(fr)
-                    )
+                    finish_reasons.append(fr if isinstance(fr, str) else str(fr))
         if finish_reasons:
             yield GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
 
@@ -1651,15 +1418,11 @@ class GenAISemanticProcessor(TracingProcessor):
             usage = span_data.usage
             self._sanitize_usage_payload(usage)
             if "prompt_tokens" in usage or "input_tokens" in usage:
-                tokens = usage.get("prompt_tokens") or usage.get(
-                    "input_tokens"
-                )
+                tokens = usage.get("prompt_tokens") or usage.get("input_tokens")
                 if tokens is not None:
                     yield GEN_AI_USAGE_INPUT_TOKENS, tokens
             if "completion_tokens" in usage or "output_tokens" in usage:
-                tokens = usage.get("completion_tokens") or usage.get(
-                    "output_tokens"
-                )
+                tokens = usage.get("completion_tokens") or usage.get("output_tokens")
                 if tokens is not None:
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, tokens
 
@@ -1687,16 +1450,10 @@ class GenAISemanticProcessor(TracingProcessor):
                     yield attr, value
 
             if hasattr(mc, "get"):
-                base_url = (
-                    mc.get("base_url")
-                    or mc.get("baseUrl")
-                    or mc.get("endpoint")
-                )
+                base_url = mc.get("base_url") or mc.get("baseUrl") or mc.get("endpoint")
             else:
                 base_url = (
-                    getattr(mc, "base_url", None)
-                    or getattr(mc, "baseUrl", None)
-                    or getattr(mc, "endpoint", None)
+                    getattr(mc, "base_url", None) or getattr(mc, "baseUrl", None) or getattr(mc, "endpoint", None)
                 )
             for key, value in _infer_server_attributes(base_url).items():
                 yield key, value
@@ -1753,11 +1510,7 @@ class GenAISemanticProcessor(TracingProcessor):
         incoming_list = [self._clone_message(item) for item in incoming]
 
         if self.include_sensitive_data:
-            filtered = [
-                msg
-                for msg in incoming_list
-                if not self._is_placeholder_message(msg)
-            ]
+            filtered = [msg for msg in incoming_list if not self._is_placeholder_message(msg)]
             if filtered:
                 incoming_list = filtered
 
@@ -1777,15 +1530,9 @@ class GenAISemanticProcessor(TracingProcessor):
                 if result[idx] != new_msg:
                     result[idx] = self._clone_message(new_msg)
             else:
-                if (
-                    self.include_sensitive_data
-                    and self._is_placeholder_message(new_msg)
-                ):
+                if self.include_sensitive_data and self._is_placeholder_message(new_msg):
                     if (
-                        any(
-                            not self._is_placeholder_message(existing_msg)
-                            for existing_msg in result
-                        )
+                        any(not self._is_placeholder_message(existing_msg) for existing_msg in result)
                         or new_msg in result
                     ):
                         continue
@@ -1796,9 +1543,7 @@ class GenAISemanticProcessor(TracingProcessor):
     def _clone_message(self, message: Any) -> Any:
         if isinstance(message, dict):
             return {
-                key: self._clone_message(value)
-                if isinstance(value, (dict, list))
-                else value
+                key: self._clone_message(value) if isinstance(value, (dict, list)) else value
                 for key, value in message.items()
             }
         if isinstance(message, list):
@@ -1812,11 +1557,7 @@ class GenAISemanticProcessor(TracingProcessor):
         if not isinstance(parts, list) or not parts:
             return False
         for part in parts:
-            if (
-                not isinstance(part, dict)
-                or part.get("type") != "text"
-                or part.get("content") != "readacted"
-            ):
+            if not isinstance(part, dict) or part.get("type") != "text" or part.get("content") != "readacted":
                 return False
         return True
 
@@ -1828,11 +1569,7 @@ class GenAISemanticProcessor(TracingProcessor):
         """Extract attributes from agent span."""
         yield GEN_AI_OPERATION_NAME, self._get_operation_name(span_data)
 
-        name = (
-            self.agent_name
-            or getattr(span_data, "name", None)
-            or self._agent_name_default
-        )
+        name = self.agent_name or getattr(span_data, "name", None) or self._agent_name_default
         if name:
             yield GEN_AI_AGENT_NAME, name
 
@@ -1858,31 +1595,23 @@ class GenAISemanticProcessor(TracingProcessor):
             yield GEN_AI_CONVERSATION_ID, span_data.conversation_id
 
         # Agent definitions
-        if self._capture_tool_definitions and hasattr(
-            span_data, "agent_definitions"
-        ):
+        if self._capture_tool_definitions and hasattr(span_data, "agent_definitions"):
             yield (
                 GEN_AI_ORCHESTRATOR_AGENT_DEFINITIONS,
                 safe_json_dumps(span_data.agent_definitions),
             )
 
         # System instructions from agent definitions
-        if self._capture_system_instructions and hasattr(
-            span_data, "agent_definitions"
-        ):
+        if self._capture_system_instructions and hasattr(span_data, "agent_definitions"):
             try:
                 defs = span_data.agent_definitions
                 if isinstance(defs, (list, tuple)):
                     collected: list[dict[str, str]] = []
                     for d in defs:
                         if isinstance(d, dict):
-                            msgs = d.get("messages") or d.get(
-                                "system_messages"
-                            )
+                            msgs = d.get("messages") or d.get("system_messages")
                             if isinstance(msgs, (list, tuple)):
-                                collected.extend(
-                                    self._collect_system_instructions(msgs)
-                                )
+                                collected.extend(self._collect_system_instructions(msgs))
                     if collected:
                         yield (
                             GEN_AI_SYSTEM_INSTRUCTIONS,
@@ -1945,27 +1674,17 @@ class GenAISemanticProcessor(TracingProcessor):
             yield GEN_AI_TOOL_DESCRIPTION, span_data.description
 
         # Tool definitions
-        if self._capture_tool_definitions and hasattr(
-            span_data, "tool_definitions"
-        ):
+        if self._capture_tool_definitions and hasattr(span_data, "tool_definitions"):
             yield (
                 GEN_AI_TOOL_DEFINITIONS,
                 safe_json_dumps(span_data.tool_definitions),
             )
 
         # Tool input/output (sensitive)
-        if (
-            self.include_sensitive_data
-            and self._content_mode.capture_in_span
-            and payload.tool_arguments is not None
-        ):
+        if self.include_sensitive_data and self._content_mode.capture_in_span and payload.tool_arguments is not None:
             yield GEN_AI_TOOL_CALL_ARGUMENTS, payload.tool_arguments
 
-        if (
-            self.include_sensitive_data
-            and self._content_mode.capture_in_span
-            and payload.tool_result is not None
-        ):
+        if self.include_sensitive_data and self._content_mode.capture_in_span and payload.tool_result is not None:
             yield GEN_AI_TOOL_CALL_RESULT, payload.tool_result
 
         yield (
@@ -1985,25 +1704,17 @@ class GenAISemanticProcessor(TracingProcessor):
                 yield GEN_AI_RESPONSE_ID, span_data.response.id
 
             # Model from response
-            if (
-                hasattr(span_data.response, "model")
-                and span_data.response.model
-            ):
+            if hasattr(span_data.response, "model") and span_data.response.model:
                 yield GEN_AI_RESPONSE_MODEL, span_data.response.model
                 if not getattr(span_data, "model", None):
                     yield GEN_AI_REQUEST_MODEL, span_data.response.model
 
             # Finish reasons
             finish_reasons = []
-            if (
-                hasattr(span_data.response, "output")
-                and span_data.response.output
-            ):
+            if hasattr(span_data.response, "output") and span_data.response.output:
                 for part in span_data.response.output:
                     if isinstance(part, dict):
-                        fr = part.get("finish_reason") or part.get(
-                            "stop_reason"
-                        )
+                        fr = part.get("finish_reason") or part.get("stop_reason")
                     else:
                         fr = getattr(part, "finish_reason", None)
                     if fr:
@@ -2012,10 +1723,7 @@ class GenAISemanticProcessor(TracingProcessor):
                 yield GEN_AI_RESPONSE_FINISH_REASONS, finish_reasons
 
             # Usage from response
-            if (
-                hasattr(span_data.response, "usage")
-                and span_data.response.usage
-            ):
+            if hasattr(span_data.response, "usage") and span_data.response.usage:
                 usage = span_data.response.usage
                 self._sanitize_usage_payload(usage)
                 input_tokens = getattr(usage, "input_tokens", None)
@@ -2031,9 +1739,7 @@ class GenAISemanticProcessor(TracingProcessor):
                     yield GEN_AI_USAGE_OUTPUT_TOKENS, output_tokens
 
             # Tool definitions from response
-            if self._capture_tool_definitions and hasattr(
-                span_data.response, "tools"
-            ):
+            if self._capture_tool_definitions and hasattr(span_data.response, "tools"):
                 yield (
                     GEN_AI_TOOL_DEFINITIONS,
                     safe_json_dumps(
@@ -2112,9 +1818,7 @@ class GenAISemanticProcessor(TracingProcessor):
             normalize_output_type(self._infer_output_type(span_data)),
         )
 
-    def _get_attributes_from_speech_span_data(
-        self, span_data: SpeechSpanData
-    ) -> Iterator[tuple[str, AttributeValue]]:
+    def _get_attributes_from_speech_span_data(self, span_data: SpeechSpanData) -> Iterator[tuple[str, AttributeValue]]:
         """Extract attributes from speech span."""
         yield GEN_AI_OPERATION_NAME, GenAIOperationName.SPEECH
 
@@ -2175,18 +1879,10 @@ class GenAISemanticProcessor(TracingProcessor):
 
     def _cleanup_spans_for_trace(self, trace_id: str) -> None:
         """Clean up spans for a trace to prevent memory leaks."""
-        spans_to_remove = [
-            span_id
-            for span_id in self._otel_spans.keys()
-            if span_id.startswith(trace_id)
-        ]
+        spans_to_remove = [span_id for span_id in self._otel_spans.keys() if span_id.startswith(trace_id)]
         for span_id in spans_to_remove:
             if otel_span := self._otel_spans.pop(span_id, None):
-                otel_span.set_status(
-                    Status(
-                        StatusCode.ERROR, "Trace ended before span completion"
-                    )
-                )
+                otel_span.set_status(Status(StatusCode.ERROR, "Trace ended before span completion"))
                 otel_span.end()
             self._tokens.pop(span_id, None)
 
