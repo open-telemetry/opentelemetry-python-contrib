@@ -141,6 +141,10 @@ class TestPostgresqlIntegration(TestBase):
         cursor.execute("   ")
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 2)
+        # No tokens survive comment/whitespace stripping, so operation_name is
+        # empty and the span name falls back to the db vendor.
+        self.assertEqual(spans_list[0].name, "postgresql")
+        self.assertEqual(spans_list[1].name, "postgresql")
 
     # pylint: disable=unused-argument
     def test_not_recording(self):
