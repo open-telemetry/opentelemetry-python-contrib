@@ -39,7 +39,11 @@ import pytest
 
 # The Weaver release the pinned conformance tooling expects. Keep in sync with
 # WEAVER_VERSION in the semantic-conventions-conformance repo the tooling is
-# pinned to (see this package's test-requirements-3.txt).
+# pinned to (the pin lives in this package's test-requirements).
+#
+# This file is the shared conformance harness: it is intended to be byte-for-byte
+# identical across every instrumentation's tests/semconv_conformance/conftest.py.
+# When changing it, copy the change to the others.
 _WEAVER_VERSION = "v0.25.1"
 
 # Where the downloaded Weaver binary is cached between runs.
