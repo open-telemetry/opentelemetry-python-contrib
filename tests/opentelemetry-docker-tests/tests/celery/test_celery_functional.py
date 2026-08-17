@@ -6,7 +6,6 @@ import time
 
 import celery
 from celery.exceptions import Retry
-from pytest import mark
 
 import opentelemetry.instrumentation.celery
 from opentelemetry import trace as trace_api
@@ -421,37 +420,44 @@ def test_shared_task(celery_app, memory_exporter):
     assert span.attributes.get(MESSAGING_MESSAGE_ID) == result.task_id
 
 
-@mark.skip(reason="inconsistent test results")
-def test_apply_async_previous_style_tasks(celery_app, celery_worker, memory_exporter):
-    """Ensures apply_async is properly patched if Celery 1.0 style tasks are
-    used even in newer versions. This should extend support to previous versions
-    of Celery."""
+def test_apply_async_with_overridden_apply_async(celery_app, celery_worker, memory_exporter):
+    """Ensures apply_async is still traced when a Task subclass overrides it and
+    delegates to super(). Celery 1.0 style tasks (celery.task.Task, with apply_async
+    as a classmethod) were removed in Celery 5, so an instance method override on
+    app.Task is the equivalent scenario."""
 
-    class CelerySuperClass(celery.task.Task):
+    class CelerySuperClass(celery_app.Task):
         abstract = True
 
-        @classmethod
-        def apply_async(cls, args=None, kwargs=None, **kwargs_):
+        def apply_async(self, args=None, kwargs=None, **kwargs_):
             return super().apply_async(args=args, kwargs=kwargs, **kwargs_)
 
         def run(self, *args, **kwargs):
             if "stop" in kwargs:
                 # avoid call loop
                 return
-            CelerySubClass.apply_async(args=[], kwargs={"stop": True}).get(timeout=ASYNC_GET_TIMEOUT)
+            subclass_task.apply_async(args=[], kwargs={"stop": True}).get(timeout=ASYNC_GET_TIMEOUT)
 
     class CelerySubClass(CelerySuperClass):
         pass
 
+    subclass_task = CelerySubClass()
+    celery_app.register_task(subclass_task)
     celery_worker.reload()
 
-    task = CelerySubClass()
-    result = task.apply()
+    result = subclass_task.apply()
 
-    spans = memory_exporter.get_finished_spans()
+    spans = wait_for_spans(memory_exporter, 3)
     assert len(spans) == 3
 
-    async_span, async_run_span, run_span = spans
+    async_span = span_by_action(spans, "apply_async")
+    run_spans = [span for span in spans if span.attributes.get("celery.action") == "run"]
+    assert len(run_spans) == 2
+
+    # The eagerly applied outer task keeps result.task_id; the task published from
+    # inside run() gets its own id.
+    run_span = next(s for s in run_spans if s.attributes.get(MESSAGING_MESSAGE_ID) == result.task_id)
+    async_run_span = next(s for s in run_spans if s.attributes.get(MESSAGING_MESSAGE_ID) != result.task_id)
 
     assert run_span.status.is_ok is True
     assert run_span.name == "run/test_celery_functional.CelerySubClass"
