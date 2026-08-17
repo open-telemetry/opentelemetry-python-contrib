@@ -433,6 +433,10 @@ class TestPostgresqlIntegration(PostgresqlIntegrationTestMixin, TestBase):
 
         spans_list = self.memory_exporter.get_finished_spans()
         self.assertEqual(len(spans_list), 1)
+        # No tokens survive comment stripping, so operation_name is empty;
+        # instrument_connection's mock fixture has no db name/vendor to fall
+        # back to either, so the span name is empty too.
+        self.assertEqual(spans_list[0].name, "")
 
     # pylint: disable=unused-argument
     def test_instrument_connection_with_instrument(self):
