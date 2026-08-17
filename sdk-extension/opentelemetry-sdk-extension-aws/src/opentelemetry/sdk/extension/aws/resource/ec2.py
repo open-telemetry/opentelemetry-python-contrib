@@ -88,17 +88,11 @@ class AwsEc2ResourceDetector(ResourceDetector):
                 {
                     ResourceAttributes.CLOUD_PROVIDER: CloudProviderValues.AWS.value,
                     ResourceAttributes.CLOUD_PLATFORM: CloudPlatformValues.AWS_EC2.value,
-                    ResourceAttributes.CLOUD_ACCOUNT_ID: identity_dict[
-                        "accountId"
-                    ],
+                    ResourceAttributes.CLOUD_ACCOUNT_ID: identity_dict["accountId"],
                     ResourceAttributes.CLOUD_REGION: identity_dict["region"],
-                    ResourceAttributes.CLOUD_AVAILABILITY_ZONE: identity_dict[
-                        "availabilityZone"
-                    ],
+                    ResourceAttributes.CLOUD_AVAILABILITY_ZONE: identity_dict["availabilityZone"],
                     ResourceAttributes.HOST_ID: identity_dict["instanceId"],
-                    ResourceAttributes.HOST_TYPE: identity_dict[
-                        "instanceType"
-                    ],
+                    ResourceAttributes.HOST_TYPE: identity_dict["instanceType"],
                     ResourceAttributes.HOST_NAME: hostname,
                 }
             )
