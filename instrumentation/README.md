@@ -28,7 +28,7 @@
 | [opentelemetry-instrumentation-jinja2](./opentelemetry-instrumentation-jinja2) | jinja2 >= 2.7, < 4.0 | No | development
 | [opentelemetry-instrumentation-kafka-python](./opentelemetry-instrumentation-kafka-python) | kafka-python >= 2.0, < 4.0 | No | development
 | [opentelemetry-instrumentation-logging](./opentelemetry-instrumentation-logging) | logging | No | development
-| [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python >= 8.0, < 10.0 | No | migration
+| [opentelemetry-instrumentation-mysql](./opentelemetry-instrumentation-mysql) | mysql-connector-python >= 8.0 | No | migration
 | [opentelemetry-instrumentation-mysqlclient](./opentelemetry-instrumentation-mysqlclient) | mysqlclient < 3 | No | migration
 | [opentelemetry-instrumentation-pika](./opentelemetry-instrumentation-pika) | pika >= 0.12.0 | No | development
 | [opentelemetry-instrumentation-psycopg](./opentelemetry-instrumentation-psycopg) | psycopg >= 3.1.0 | No | migration
